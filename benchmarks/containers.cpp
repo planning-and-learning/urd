@@ -1,5 +1,10 @@
-// Sets and maps under four workloads, for every container a set or map request can resolve to. The numbers
+// Sets and maps under four workloads, for every container a set or map request can resolve to, with urd's
+// hash, equality and order as the registry instantiates them. The numbers
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
+
+#include "urd/semantics/equal_to.hpp"
+#include "urd/semantics/hash.hpp"
+#include "urd/semantics/less.hpp"
 
 #include <array>
 #include <benchmark/benchmark.h>
@@ -7,10 +12,8 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
-#include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <map>
 #include <random>
 #include <set>
@@ -23,33 +26,13 @@
 namespace
 {
 
-/// A 32-byte key, as a small tuple of ids.
+/// A 32-byte key, as a small tuple of ids; it names its identity, from which urd hashes and orders it.
 struct Key32
 {
     std::array<std::uint64_t, 4> parts;
-    friend bool operator==(const Key32&, const Key32&) = default;
-    friend auto operator<=>(const Key32&, const Key32&) = default;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Key32::parts> {}; }
 };
-
-}  // namespace
-
-template<>
-struct std::hash<Key32>
-{
-    std::size_t operator()(const Key32& key) const noexcept
-    {
-        // Boost's hash_combine.
-        constexpr std::size_t golden_ratio = 0x9e3779b97f4a7c15ULL;
-        constexpr unsigned left = 6;
-        std::size_t seed = 0;
-        for (const auto part : key.parts)
-            seed ^= std::hash<std::uint64_t> {}(part) + golden_ratio + (seed << left) + (seed >> 2U);
-        return seed;
-    }
-};
-
-namespace
-{
 
 template<typename T>
 T make_key(std::uint64_t value)
@@ -159,21 +142,21 @@ void iterate(benchmark::State& state)
 }
 
 template<typename T>
-using HashSet = std::unordered_set<T>;
+using HashSet = std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using FlatHashSet = boost::unordered_flat_set<T, std::hash<T>>;
+using FlatHashSet = boost::unordered_flat_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using TreeSet = std::set<T>;
+using TreeSet = std::set<T, urd::Less<T>>;
 template<typename T>
-using FlatSet = boost::container::flat_set<T>;
+using FlatSet = boost::container::flat_set<T, urd::Less<T>>;
 template<typename T>
-using HashMap = std::unordered_map<T, int>;
+using HashMap = std::unordered_map<T, int, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using FlatHashMap = boost::unordered_flat_map<T, int, std::hash<T>>;
+using FlatHashMap = boost::unordered_flat_map<T, int, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using TreeMap = std::map<T, int>;
+using TreeMap = std::map<T, int, urd::Less<T>>;
 template<typename T>
-using FlatMap = boost::container::flat_map<T, int>;
+using FlatMap = boost::container::flat_map<T, int, urd::Less<T>>;
 
 // Inserting a random order into a sorted vector is O(n²): its insert and refill benchmarks stop at 10⁴.
 constexpr std::array<std::int64_t, 3> sizes { 100, 10'000, 100'000 };

@@ -10,7 +10,9 @@ order into a sorted vector is O(n²), so its insert and clear-and-refill rows st
   `std::set`/`map`, `boost::container::flat_set`/`_map`.
 - Workloads: **insert** n distinct keys in random order into an empty container; **lookup** n probes, half hits
   and half misses; **clear and refill** with n keys; **iterate** over n elements.
-- Keys: `int`, and a 32-byte key (four 64-bit ids) with a combined `std::hash`.
+- Keys: `int`, and a 32-byte key (four 64-bit ids) that names its identity (`identifying_members()`).
+- Hash, equality and order are urd's (`urd::Hash`, `urd::EqualTo`, `urd::Less`), as the registry instantiates the
+  containers: `int` hashes to itself (the flat tables mix it), other keys by xxHash64 over their bytes.
 
 Reproduce:
 
@@ -20,56 +22,57 @@ cmake --build build/bench -j8 && build/bench/benchmark_containers --benchmark_mi
 ```
 
 
+
 ## set<int>
 
 | Workload | n | std::unordered | boost::unordered_flat | std tree | boost::container::flat |
 |---|---|---|---|---|---|
-| insert | 100 | 16.8 | 8.4 | 19.5 | **8.2** |
-| insert | 10,000 | 28.2 | **8.4** | 75.3 | 101 |
-| insert | 100,000 | 45.9 | **7.7** | 137 | – |
-| lookup | 100 | 2.8 | **1.0** | 5.8 | 5.3 |
-| lookup | 10,000 | 3.2 | **1.1** | 51.9 | 46.8 |
-| lookup | 100,000 | 4.3 | **1.4** | 114 | 62.6 |
-| clear and refill | 100 | 15.1 | **3.9** | 19.8 | 6.4 |
-| clear and refill | 10,000 | 14.4 | **1.9** | 76.2 | 100 |
-| clear and refill | 100,000 | 18.1 | **2.4** | 134 | – |
-| iterate | 100 | 1.0 | 0.6 | 2.1 | **0.2** |
-| iterate | 10,000 | 1.6 | 0.7 | 5.6 | **0.1** |
-| iterate | 100,000 | 3.9 | 0.7 | 15.9 | **0.1** |
+| insert | 100 | 15.0 | 8.7 | 17.4 | **7.5** |
+| insert | 10,000 | 24.9 | **8.5** | 74.3 | 102 |
+| insert | 100,000 | 45.3 | **7.9** | 133 | – |
+| lookup | 100 | 2.8 | **1.0** | 4.1 | 5.6 |
+| lookup | 10,000 | 3.1 | **1.0** | 56.7 | 46.1 |
+| lookup | 100,000 | 4.4 | **1.4** | 120 | 62.4 |
+| clear and refill | 100 | 11.7 | **3.8** | 18.3 | 6.4 |
+| clear and refill | 10,000 | 10.8 | **2.1** | 73.9 | 100 |
+| clear and refill | 100,000 | 16.4 | **2.4** | 134 | – |
+| iterate | 100 | 1.1 | 0.6 | 2.0 | **0.2** |
+| iterate | 10,000 | 1.6 | 0.7 | 5.8 | **0.1** |
+| iterate | 100,000 | 3.6 | 0.6 | 16.9 | **0.1** |
 
 ## set<Key32>
 
 | Workload | n | std::unordered | boost::unordered_flat | std tree | boost::container::flat |
 |---|---|---|---|---|---|
-| insert | 100 | 20.9 | **9.7** | 21.7 | 11.9 |
-| insert | 10,000 | 46.8 | **11.9** | 106 | 904 |
-| insert | 100,000 | 77.7 | **13.4** | 191 | – |
-| lookup | 100 | 4.8 | **2.7** | 6.0 | 4.9 |
-| lookup | 10,000 | 9.8 | **3.1** | 62.4 | 50.0 |
-| lookup | 100,000 | 14.9 | **5.1** | 140 | 73.1 |
-| clear and refill | 100 | 17.7 | **5.1** | 22.1 | 8.2 |
-| clear and refill | 10,000 | 26.4 | **4.0** | 105 | 901 |
-| clear and refill | 100,000 | 43.9 | **5.1** | 187 | – |
-| iterate | 100 | 1.1 | 0.6 | 2.2 | **0.3** |
-| iterate | 10,000 | 2.9 | 0.7 | 6.8 | **0.2** |
-| iterate | 100,000 | 8.7 | 1.1 | 17.5 | **0.4** |
+| insert | 100 | 22.8 | 15.8 | 21.3 | **14.2** |
+| insert | 10,000 | 48.3 | **20.8** | 102 | 899 |
+| insert | 100,000 | 82.5 | **21.7** | 182 | – |
+| lookup | 100 | 8.5 | **7.3** | 12.2 | 9.2 |
+| lookup | 10,000 | 18.2 | **8.3** | 66.9 | 54.6 |
+| lookup | 100,000 | 26.2 | **11.2** | 136 | 81.9 |
+| clear and refill | 100 | 19.2 | **8.2** | 21.9 | 11.5 |
+| clear and refill | 10,000 | 29.7 | **9.4** | 101 | 937 |
+| clear and refill | 100,000 | 50.2 | **11.4** | 190 | – |
+| iterate | 100 | 1.0 | 0.6 | 2.2 | **0.2** |
+| iterate | 10,000 | 3.3 | 0.7 | 6.8 | **0.1** |
+| iterate | 100,000 | 9.7 | 1.0 | 17.8 | **0.1** |
 
 ## map<int, int>
 
 | Workload | n | std::unordered | boost::unordered_flat | std tree | boost::container::flat |
 |---|---|---|---|---|---|
-| insert | 100 | 18.2 | **8.8** | 21.5 | 9.4 |
-| insert | 10,000 | 29.8 | **9.2** | 96.5 | 183 |
-| insert | 100,000 | 48.2 | **8.6** | 172 | – |
-| lookup | 100 | 2.8 | **1.0** | 4.0 | 5.2 |
-| lookup | 10,000 | 3.2 | **1.1** | 54.0 | 45.9 |
-| lookup | 100,000 | 4.6 | **1.5** | 117 | 64.2 |
-| clear and refill | 100 | 15.0 | **3.8** | 22.5 | 7.8 |
-| clear and refill | 10,000 | 15.1 | **2.1** | 98.2 | 176 |
-| clear and refill | 100,000 | 20.4 | **2.8** | 176 | – |
-| iterate | 100 | 1.1 | 0.6 | 2.1 | **0.2** |
-| iterate | 10,000 | 1.6 | 0.7 | 5.6 | **0.1** |
-| iterate | 100,000 | 3.7 | 0.6 | 16.1 | **0.1** |
+| insert | 100 | 14.7 | **9.0** | 19.6 | 9.2 |
+| insert | 10,000 | 25.2 | **9.3** | 93.3 | 182 |
+| insert | 100,000 | 44.8 | **8.7** | 167 | – |
+| lookup | 100 | 2.7 | **1.1** | 5.4 | 4.8 |
+| lookup | 10,000 | 3.1 | **1.1** | 53.2 | 44.8 |
+| lookup | 100,000 | 4.7 | **1.4** | 117 | 63.6 |
+| clear and refill | 100 | 11.1 | **4.0** | 19.7 | 7.1 |
+| clear and refill | 10,000 | 11.3 | **2.2** | 92.3 | 176 |
+| clear and refill | 100,000 | 19.2 | **2.7** | 175 | – |
+| iterate | 100 | 1.0 | 0.5 | 2.0 | **0.2** |
+| iterate | 10,000 | 1.6 | 0.8 | 5.7 | **0.1** |
+| iterate | 100,000 | 3.7 | 0.6 | 16.2 | **0.1** |
 
 ## What the orders take from it
 
@@ -79,6 +82,10 @@ cmake --build build/bench -j8 && build/bench/benchmark_containers --benchmark_mi
   `frozen` requests as well. The node-based tables remain for `stable_refs`, which flat tables do not keep.
 - **Sorted requests: a tree where elements are inserted over time, a sorted vector where they are few or never
   change.** The sorted vector iterates 5–50 times faster and looks up faster than the tree, but inserts in O(n).
+- **Deterministic hashing costs a little on composite keys.** With urd::Hash (xxHash64 over the bytes) the
+  32-byte key is about twice as slow to hash and look up as with the minimal hash combine measured before, and
+  ordering it member by member doubles a tree's lookups at 100 elements. The orders stay: the flat hash table is
+  still fastest except at inserting 100 such keys, where a sorted vector is level with it.
 - **Iteration alone favors sorted vectors**: no request states an iteration-heavy workload yet; one would put
   them first.
 

@@ -127,6 +127,28 @@ representation, and the test checks them as defined:
 - **The vocabulary grew by one property,** `concurrent`, which the copied container already offered as a
   template parameter.
 
+## Keys and elements
+
+What a container needs of its elements comes from `urd::Hash`, `urd::EqualTo` and `urd::Less`
+(`include/urd/semantics/`, copied from yggdrasil): `hashable` and `orderable` in `include/urd/elements.hpp`,
+and the registry instantiates every hashed or ordered container with them. They cover numbers, enums,
+strings and the standard's composites (pairs, tuples, arrays, vectors, optionals, variants, spans). A type of
+your own becomes a key by naming its identity, with nothing in namespace std:
+
+```cpp
+struct Atom
+{
+    int predicate;
+    std::vector<int> objects;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Atom::predicate, &Atom::objects> {}; }
+};
+```
+
+Hash, equality and order then go member by member. Hashing is deterministic (xxHash64 over bytes, no
+std::hash), so a hash table iterates in the same order on every platform. `tests/semantics.cpp` checks the
+laws the containers rely on: equal values hash equally, and Less is a strict weak order agreeing with EqualTo.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
