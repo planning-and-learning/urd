@@ -2,7 +2,6 @@
 // workload select, offers what was asked for, and behaves like the reference container under random use.
 
 #include "check.hpp"
-#include "urd/algorithms.hpp"
 #include "urd/concepts.hpp"
 #include "urd/store.hpp"
 
@@ -33,16 +32,16 @@ static_assert(urd::includes(Store<key<int>, urd::frozen>::properties, props::sta
 // What each request resolves to (pinned, so a change in the selection shows up here).
 static_assert(std::same_as<Store<key<int>>::representation, std::unordered_set<int>>);
 static_assert(std::same_as<Store<key<int>, urd::sorted>::representation, std::set<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted, urd::frozen>::representation, urd::SortedUniqueVector<int>>);
-static_assert(std::same_as<Store<key<int>, urd::small>::representation, urd::SortedUniqueVector<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::frozen>::representation, boost::container::flat_set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::small>::representation, boost::container::flat_set<int>>);
 static_assert(std::same_as<Store<key<int>, urd::stable_refs>::representation, std::unordered_set<int>>);
-static_assert(std::same_as<Store<value<int>>::representation, urd::Refined<std::vector<int>, props::none>>);
-static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, urd::SortedVector<int>>);
+static_assert(std::same_as<Store<value<int>>::representation, std::vector<int>>);
+static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, boost::container::flat_multiset<int>>);
 // Elements that must not move: segments, unless nothing changes anyway.
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::representation, urd::repr::SegmentedVector<int>>);
 static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
                            urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
-static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, urd::Refined<std::vector<int>, props::none>>);
+static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, std::vector<int>>);
 
 // Only what was asked for: a small set is stored sorted, but it was not asked to be sorted, so it is not.
 static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
@@ -158,9 +157,6 @@ int main()
     const auto first = Store<value<int>, urd::sorted, urd::nonempty>::assume({ 4, 5 });
     URD_CHECK(first.front() == 4 && first[1] == 5);
 
-    // A sorted set Store meets the algorithms' requirements; the result is the same either way.
     const auto frozen = Store<key<int>, urd::sorted, urd::frozen>::make({ 2, 3, 5 });
-    const auto both = urd::intersect(ids, frozen);
-    URD_CHECK(std::vector<int>(both.begin(), both.end()) == std::vector<int>({ 2, 3 }));
-    URD_CHECK(urd::contains(frozen, 5) && !urd::contains(frozen, 4));
+    URD_CHECK(frozen.contains(5) && !frozen.contains(4));
 }

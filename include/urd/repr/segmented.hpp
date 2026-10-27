@@ -29,6 +29,7 @@ struct ops<SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>>
         range.push_back(element);
         return true;
     }
+    [[nodiscard]] static const T& at(const R& range, std::size_t pos) { return range[pos]; }
 };
 
 /// A sequence in segments that are never moved: appending keeps references valid, and the thread-safe

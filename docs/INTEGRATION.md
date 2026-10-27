@@ -1,7 +1,8 @@
 # Adding a representation
 
-A representation is any data structure a `urd::Store` can resolve to: one from the standard library, a
-copied or hand-written container, or a wrapper around another library. Downstream code never names it; it
+A representation is an existing container a `urd::Store` can resolve to: from the standard library, from
+another library (Boost's flat sets), or copied in (yggdrasil's segmented vector). urd does not wrap containers
+to give them properties; it registers containers that keep their properties by themselves. Downstream code never names it; it
 asks for properties, and the registry picks the best representation that has them. Adding one takes five
 steps.
 
@@ -28,11 +29,12 @@ cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-ins
 cmake --build dependencies-build -j8 && cmake --install dependencies-build
 ```
 
-## 3. Adapt it: `repr::ops<R>`
+## 3. Give it the common interface: `repr::ops<R>`
 
 Store calls every representation the same way, through a specialization of `urd::repr::ops` for its type
 (see `include/urd/repr/ops.hpp`): `make` and `assume` build it from a `std::vector` of elements, `insert`
-adds one, `contains` looks one up (sets), and `erase` removes one, only for representations that can.
+adds one, `contains` looks one up (sets), `at` reads by position (sequences), and `erase` and `clear` remove
+elements, only for representations that can. Each is a line or two over the container's own operations.
 
 ## 4. Register it: a candidate
 
@@ -56,11 +58,19 @@ A property is part of what a Store is: it holds from construction (`make`, or `a
 check) and every operation keeps it, or the operation is not offered. A container whose property holds only
 if callers remember to restore it is not a representation.
 
+The exceptions are part of the properties' definitions (`include/urd/props.hpp`), the same for every
+representation, and the test checks them as defined:
+
+| Property | Exception |
+|---|---|
+| `stable_refs` | `erase` and `clear` end the references to what they remove |
+| `concurrent` | covers inserts and reads of published elements; `erase`, `clear` and iteration need no other operation running |
+
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
 - For every property in `guarantees`, a test that would fail without it: `stable_refs` takes an element's
   address, appends 100 000 more and checks the address; `concurrent` inserts from several threads and
   checks every element arrived, and runs under ThreadSanitizer.
-- Add a Store that resolves to it to `tests/properties.cpp`. It runs random inserts and erases, and after
+- Add a Store that resolves to it to `tests/properties.cpp`. It runs random inserts, erases and clears, and after
   every single step compares the contents with a reference model and checks every requested property
   (sorted, unique, nonempty, monotone, stable_refs, contiguous, canonical), so a property that breaks and
   later recovers is caught too.

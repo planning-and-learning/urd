@@ -1,9 +1,10 @@
 #pragma once
 
 #include "urd/properties.hpp"
+#include "urd/repr/flat.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/std_set.hpp"
-#include "urd/repr/vector.hpp"
+#include "urd/repr/sequence.hpp"
 
 #include <array>
 #include <cstddef>
@@ -55,6 +56,6 @@ struct choose
 
 /// Every representation a Store can resolve to.
 template<typename S>
-using registry = choose<S, repr::sequence_vector, repr::segmented_sequence, repr::hash_set, repr::tree_set, repr::flat_set>;
+using registry = choose<S, repr::sequence_vector, repr::sorted_sequence, repr::segmented_sequence, repr::hash_set, repr::tree_set, repr::flat_set>;
 
 }  // namespace urd::detail

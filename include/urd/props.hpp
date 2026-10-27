@@ -1,11 +1,8 @@
 #pragma once
 
 #include <algorithm>
-#include <functional>
 #include <ranges>
-#include <set>
 #include <type_traits>
-#include <unordered_set>
 #include <vector>
 
 namespace urd
@@ -30,13 +27,15 @@ enum class props : unsigned
     // Lifecycle.
     frozen = 1U << 8U,       ///< no change after construction
     monotone = 1U << 9U,     ///< only grows: nothing is ever removed
-    stable_refs = 1U << 10U, ///< references to elements stay valid when others are inserted
+    stable_refs = 1U << 10U, ///< a reference to an element stays valid until that element is removed (erase, clear)
     persistent = 1U << 11U,  ///< a change makes a new version and old versions stay valid
     // Representation.
     contiguous = 1U << 12U,  ///< the elements lie next to each other in memory
     canonical = 1U << 13U,   ///< equal contents have equal representations
     // Concurrency.
-    concurrent = 1U << 14U,  ///< safe for concurrent inserts, and reads of what another thread has published
+    /// Inserts may run concurrently with each other and with reads of elements already published. Not covered:
+    /// erase, clear and iteration, which need no other operation running.
+    concurrent = 1U << 14U,
 };
 
 [[nodiscard]] constexpr props operator|(props lhs, props rhs) noexcept
@@ -52,37 +51,11 @@ enum class props : unsigned
 /// Whether `have` contains every property of `want`.
 [[nodiscard]] constexpr bool includes(props have, props want) noexcept { return (have & want) == want; }
 
-/// The properties every value of type T has. Containers whose type guarantees nothing have none.
+/// The properties every value of type T has. Only a Store has any: its properties are those it was asked for.
 template<typename T>
 struct properties_of
 {
     static constexpr props value = props::none;
-};
-
-template<typename T, typename Allocator>
-struct properties_of<std::vector<T, Allocator>>
-{
-    static constexpr props value = props::contiguous;
-};
-
-// std::set orders by its comparator; only std::less is the order that `sorted` means.
-template<typename T, typename Allocator>
-struct properties_of<std::set<T, std::less<T>, Allocator>>
-{
-    static constexpr props value = props::sorted | props::unique | props::stable_refs;
-};
-
-template<typename T, typename Allocator>
-struct properties_of<std::multiset<T, std::less<T>, Allocator>>
-{
-    static constexpr props value = props::sorted | props::stable_refs;
-};
-
-// Unique by std::equal_to, which is what `unique` means. References survive a rehash; iterators do not.
-template<typename T, typename Hash, typename Allocator>
-struct properties_of<std::unordered_set<T, Hash, std::equal_to<T>, Allocator>>
-{
-    static constexpr props value = props::unique | props::stable_refs;
 };
 
 template<typename R>

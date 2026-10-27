@@ -1,7 +1,6 @@
 // Store requests and uses that must not compile, checked like compile_fail.cpp: without URD_CASE the file
 // compiles; with URD_CASE=<n>, case n alone must fail.
 
-#include "urd/algorithms.hpp"
 #include "urd/store.hpp"
 
 #include <string>
@@ -18,8 +17,8 @@ int main()
     [[maybe_unused]] auto growing = Store<value<int>, urd::monotone>();
     [[maybe_unused]] auto sequence = Store<value<int>>();
 
-#if URD_CASE == 1  // stored sorted, but not asked to be sorted: intersect may not rely on it
-    (void)urd::intersect(small, small);
+#if URD_CASE == 1  // a set has no positions
+    (void)set[0];
 #elif URD_CASE == 2  // a frozen Store never changes
     frozen.insert(3);
 #elif URD_CASE == 3  // a monotone Store only grows

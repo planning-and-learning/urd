@@ -23,6 +23,7 @@ struct std_set_ops
     [[nodiscard]] static R assume(std::vector<E> elements) { return make(std::move(elements)); }
     static bool insert(R& set, const E& element) { return set.insert(element).second; }
     static std::size_t erase(R& set, const E& element) { return set.erase(element); }
+    static void clear(R& set) noexcept { set.clear(); }
     [[nodiscard]] static bool contains(const R& set, const E& element) { return set.contains(element); }
 };
 

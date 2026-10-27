@@ -1,6 +1,5 @@
 // Say what the data is and how it is used; urd picks the representation.
 
-#include "urd/algorithms.hpp"
 #include "urd/store.hpp"
 
 #include <iostream>
@@ -34,10 +33,11 @@ int main()
     goals.insert(5);
     const auto constants = ConstantIds::make({ 3, 5, 11 });
 
-    // Both are sorted sets by request, whatever their representations, so they merge in linear time.
+    // Sorted by request, whatever the representation.
     std::cout << "goals that are constants:";
-    for (const int id : urd::intersect(goals, constants))
-        std::cout << ' ' << id;
+    for (const int id : goals)
+        if (constants.contains(id))
+            std::cout << ' ' << id;
     std::cout << '\n';
 
     auto log = EventLog();

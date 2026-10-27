@@ -1,5 +1,5 @@
 // Every property a Store promises holds after every operation, not only at the end: each Store below runs
-// random inserts and erases (those it offers), and after each step its contents match a reference model
+// random inserts, erases and clears (those it offers), and after each step its contents match a reference model
 // and every requested property is checked.
 
 #include "check.hpp"
@@ -89,7 +89,8 @@ void check_step(const S& store, const Model<S>& model, const std::vector<const i
     if constexpr (has<S>(props::monotone))
         URD_CHECK(store.size() >= size_before);
 
-    // Each step is one insert or one erase: an insert moves no element, an erase removes only what it erased.
+    // Each step is one insert, erase or clear: an insert moves no element, the others end only the
+    // references to what they removed.
     if constexpr (has<S>(props::stable_refs))
     {
         const auto after = addresses(store);
@@ -131,7 +132,12 @@ void run(S store, unsigned seed)
         const int element = pick(random);
         if constexpr (can_insert<S> && can_erase<S>)
         {
-            if (coin(random))
+            if (step % 500 == 499)
+            {
+                store.clear();
+                model.elements.clear();
+            }
+            else if (coin(random))
                 URD_CHECK(store.insert(element) == model.insert(element));
             else
                 URD_CHECK(store.erase(element) == model.erase(element));
@@ -156,7 +162,6 @@ int main()
     // Sequences: vector in every order, segmented vector.
     run(urd::Store<value<int>>(), 6);
     run(urd::Store<value<int>, urd::sorted>(), 7);
-    run(urd::Store<value<int>, urd::unique>(), 8);
     run(urd::Store<value<int>, urd::sorted, urd::unique>(), 9);
     run(urd::Store<value<int>, urd::monotone>(), 10);
     run(urd::Store<value<int>, urd::nonempty, urd::monotone>::assume({ 1 }), 11);

@@ -49,16 +49,13 @@ public:
     /// nonempty); Debug builds check the claim.
     [[nodiscard]] static Store assume(std::vector<element_type> elements)
     {
-        auto made = [&]
-        {
-            // A set is built from any elements; only a sequence's order and uniqueness are claims.
-            if constexpr (S::is_sequence)
-                return ops::assume(std::move(elements));
-            else
-                return ops::make(std::move(elements));
-        }();
-        assert(holds<S::flags & props::nonempty>(made) && "urd::Store::assume: the contents lack a claimed property");
-        return Store(std::move(made));
+        // A set is built from any elements; only a sequence's order and uniqueness are claims.
+        assert(holds<S::flags & (S::is_sequence ? props::sorted | props::unique | props::nonempty : props::nonempty)>(elements)
+               && "urd::Store::assume: the contents lack a claimed property");
+        if constexpr (S::is_sequence)
+            return Store(ops::assume(std::move(elements)));
+        else
+            return Store(ops::make(std::move(elements)));
     }
 
     [[nodiscard]] const_iterator begin() const { return m_representation.begin(); }
@@ -70,7 +67,7 @@ public:
     [[nodiscard]] const element_type& operator[](std::size_t pos) const
         requires(S::is_sequence)
     {
-        return m_representation[pos];
+        return ops::at(m_representation, pos);
     }
 
     /// The first element; only a nonempty Store has one, so no check is needed.
@@ -101,6 +98,14 @@ public:
                  && !includes(S::flags, props::nonempty))
     {
         return ops::erase(m_representation, element);
+    }
+
+    /// Removes every element, ending all references to them. Not offered where erase is not.
+    void clear()
+        requires(!includes(S::flags, props::frozen) && !includes(S::flags, props::monotone)
+                 && !includes(S::flags, props::nonempty))
+    {
+        ops::clear(m_representation);
     }
 
     [[nodiscard]] friend bool operator==(const Store& lhs, const Store& rhs)
