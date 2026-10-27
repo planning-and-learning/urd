@@ -65,9 +65,9 @@ template<typename R>
 void add(R& range, int element)
 {
     if constexpr (urd::by_value<urd::container_traits<R>>)
-        urd::repr::insert(range, element);
+        range.insert(element);
     else
-        urd::repr::push_back(range, element);
+        range.push_back(element);
 }
 
 std::vector<int> descending(int count)
@@ -104,9 +104,9 @@ TYPED_TEST(Properties, Sorted)
         EXPECT_TRUE(std::ranges::is_sorted(range));
         for (const int element : { -1, 0, 50, 299, 300 })
         {
-            const auto [first, last] = urd::repr::equal_range(std::as_const(range), element);
-            EXPECT_EQ(first, urd::repr::lower_bound(std::as_const(range), element));
-            EXPECT_EQ(last, urd::repr::upper_bound(std::as_const(range), element));
+            const auto [first, last] = std::as_const(range).equal_range(element);
+            EXPECT_EQ(first, std::as_const(range).lower_bound(element));
+            EXPECT_EQ(last, std::as_const(range).upper_bound(element));
             EXPECT_EQ(first, std::ranges::lower_bound(std::as_const(range), element));
             EXPECT_EQ(last, std::ranges::upper_bound(std::as_const(range), element));
         }
@@ -121,11 +121,11 @@ TYPED_TEST(Properties, Unique)
     {
         auto range = built<TypeParam>({ 3, 1, 3, 3 });
         EXPECT_EQ(std::ranges::size(range), 2U);
-        EXPECT_EQ(urd::repr::count(std::as_const(range), 3), 1U);
+        EXPECT_EQ(std::as_const(range).count(3), 1U);
         if constexpr (growable<TypeParam>)
         {
-            EXPECT_FALSE(urd::repr::insert(range, 1).second);
-            EXPECT_TRUE(urd::repr::insert(range, 2).second);
+            EXPECT_FALSE(range.insert(1).second);
+            EXPECT_TRUE(range.insert(2).second);
             EXPECT_EQ(std::ranges::size(range), 3U);
         }
     }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/interface.hpp"
-#include "urd/operations.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
 #include "urd/traits.hpp"
@@ -180,32 +179,32 @@ public:
     [[nodiscard]] const_iterator find(const value_type& element) const
         requires keyed
     {
-        return repr::find(m_representation, element);
+        return m_representation.find(element);
     }
     [[nodiscard]] size_type count(const value_type& element) const
         requires keyed
     {
-        return repr::count(m_representation, element);
+        return m_representation.count(element);
     }
     [[nodiscard]] bool contains(const value_type& element) const
         requires keyed
     {
-        return repr::contains(m_representation, element);
+        return m_representation.contains(element);
     }
     [[nodiscard]] const_iterator lower_bound(const value_type& element) const
         requires has<S, sorted>
     {
-        return repr::lower_bound(m_representation, element);
+        return m_representation.lower_bound(element);
     }
     [[nodiscard]] const_iterator upper_bound(const value_type& element) const
         requires has<S, sorted>
     {
-        return repr::upper_bound(m_representation, element);
+        return m_representation.upper_bound(element);
     }
     [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const value_type& element) const
         requires has<S, sorted>
     {
-        return repr::equal_range(m_representation, element);
+        return m_representation.equal_range(element);
     }
 
     // Inserting, unless frozen: by value as std::set or std::multiset does, or at the end as std::vector does.
@@ -215,24 +214,24 @@ public:
     insert_result insert(const value_type& element)
         requires(keyed && has<S, growable>)
     {
-        return repr::insert(m_representation, element);
+        return m_representation.insert(element);
     }
     insert_result insert(value_type&& element)
         requires(keyed && has<S, growable>)
     {
-        return repr::insert(m_representation, std::move(element));
+        return m_representation.insert(std::move(element));
     }
     /// With a hint where the element goes.
     iterator insert(const_iterator hint, const value_type& element)
         requires(keyed && has<S, growable>)
     {
-        return repr::insert(m_representation, hint, element);
+        return m_representation.insert(hint, element);
     }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
         requires(keyed && has<S, growable>)
     {
-        repr::insert(m_representation, first, last);
+        m_representation.insert(first, last);
     }
     void insert(std::initializer_list<value_type> elements)
         requires(keyed && has<S, growable>)
@@ -243,37 +242,37 @@ public:
     insert_result emplace(Args&&... args)
         requires(keyed && has<S, growable>)
     {
-        return repr::emplace(m_representation, std::forward<Args>(args)...);
+        return m_representation.emplace(std::forward<Args>(args)...);
     }
 
     void push_back(const value_type& element)
         requires(!keyed && has<S, growable>)
     {
-        repr::push_back(m_representation, element);
+        m_representation.push_back(element);
     }
     void push_back(value_type&& element)
         requires(!keyed && has<S, growable>)
     {
-        repr::push_back(m_representation, std::move(element));
+        m_representation.push_back(std::move(element));
     }
     /// The new element; changeable in place only where the Store's elements are.
     template<typename... Args>
     std::conditional_t<writable, reference, const_reference> emplace_back(Args&&... args)
         requires(!keyed && has<S, growable>)
     {
-        return repr::emplace_back(m_representation, std::forward<Args>(args)...);
+        return m_representation.emplace_back(std::forward<Args>(args)...);
     }
     /// Inserting before a position moves the later elements, so only a sequence that may erase offers it.
     iterator insert(const_iterator pos, const value_type& element)
         requires(!keyed && has<S, shrinkable>)
     {
-        return repr::insert(m_representation, pos, element);
+        return m_representation.insert(pos, element);
     }
     template<typename... Args>
     iterator emplace(const_iterator pos, Args&&... args)
         requires(!keyed && has<S, shrinkable>)
     {
-        return repr::emplace(m_representation, pos, std::forward<Args>(args)...);
+        return m_representation.emplace(pos, std::forward<Args>(args)...);
     }
 
     // Removing, unless the Store only grows (monotone, frozen) or must keep an element (nonempty). Removing
@@ -282,28 +281,28 @@ public:
     iterator erase(const_iterator pos)
         requires has<S, shrinkable>
     {
-        return repr::erase(m_representation, pos);
+        return m_representation.erase(pos);
     }
     iterator erase(const_iterator first, const_iterator last)
         requires has<S, shrinkable>
     {
-        return repr::erase(m_representation, first, last);
+        return m_representation.erase(first, last);
     }
     /// Every element equal to `element`; how many there were.
     size_type erase(const value_type& element)
         requires(keyed && has<S, shrinkable>)
     {
-        return repr::erase(m_representation, element);
+        return m_representation.erase(element);
     }
     void pop_back()
         requires(!keyed && has<S, shrinkable>)
     {
-        repr::pop_back(m_representation);
+        m_representation.pop_back();
     }
     void clear()
         requires has<S, shrinkable>
     {
-        repr::clear(m_representation);
+        m_representation.clear();
     }
 
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
@@ -315,7 +314,7 @@ public:
         if constexpr (writable)
         {
             auto& range = store.m_representation;
-            repr::erase(range, std::remove_if(range.begin(), range.end(), pred), range.end());
+            range.erase(std::remove_if(range.begin(), range.end(), pred), range.end());
         }
         else
             // ponytail: one erase per element, O(n²) on a flat set; erase_if of the representation if it matters

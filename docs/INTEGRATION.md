@@ -63,12 +63,10 @@ checks it at compile time:
 | `shrinkable`, kept by value | `erase(e)` returning a count |
 | `shrinkable`, a sequence | `pop_back`, `insert(position, e)`, `emplace(position, …)` |
 
-Store and `urd::verify` call them as free functions, `urd::repr::insert(c, e)`, which use the container's member of
-that name; downstream code never does, since it uses data only through a Store. The
-standard library's containers, Boost's, and urd's own (`SegmentedVector`) offer them as they are; a container
-of urd's should be written that way. A library with other names gets an adapter: free functions of the
-standard names in its namespace, found by argument-dependent lookup. An adapter only renames; it adds no
-guarantee, and a library update that changes its interface breaks the adapter's build, not its behavior.
+The standard library's containers, Boost's, and urd's own (`SegmentedVector`) offer them as they are; a container
+of urd's should be written that way. A library with other names gets an adapter: a class that wraps it and
+offers the standard names. An adapter only renames; it adds no guarantee, and a library update that changes
+its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it
 
