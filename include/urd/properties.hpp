@@ -67,6 +67,9 @@ struct contiguous
 struct canonical
 {
 };
+struct concurrent
+{
+};
 
 /// How a Store is used. It does not change what a Store guarantees, only which representation is chosen.
 enum class workload
@@ -168,6 +171,11 @@ template<>
 struct flag_of<canonical>
 {
     static constexpr props value = props::canonical;
+};
+template<>
+struct flag_of<concurrent>
+{
+    static constexpr props value = props::concurrent;
 };
 
 template<typename T>

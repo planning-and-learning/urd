@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/properties.hpp"
+#include "urd/repr/segmented.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/repr/vector.hpp"
 
@@ -15,10 +16,16 @@ namespace urd::detail
 /// nonempty, frozen and monotone by the operations it offers, the kind (positional, functional, multi) by
 /// the representations that accept it.
 inline constexpr props guaranteed_by_representation = props::sorted | props::unique | props::stable_refs
-    | props::persistent | props::contiguous | props::canonical | props::dense | props::sparse;
+    | props::persistent | props::contiguous | props::canonical | props::dense | props::sparse | props::concurrent;
 
-/// The representation for spec S among the candidates Cs: of those that accept S and guarantee every
-/// requested property, the best ranked for S's workload; ties go to the earlier candidate.
+/// Whether a Store of spec S offers erase(), so its representation must be able to remove elements.
+template<typename S>
+inline constexpr bool needs_erase =
+    !includes(S::flags, props::frozen) && !includes(S::flags, props::monotone) && !includes(S::flags, props::nonempty);
+
+/// The representation for spec S among the candidates Cs: of those that accept S, guarantee every
+/// requested property and support the operations S's Store offers, the best ranked for S's workload; ties
+/// go to the earlier candidate.
 template<typename S, template<typename> class... Cs>
 struct choose
 {
@@ -27,7 +34,8 @@ struct choose
     // Once nothing changes, nothing moves either.
     static constexpr props granted = includes(S::flags, props::frozen) ? props::stable_refs : props::none;
 
-    static constexpr std::array<bool, count> fits { (Cs<S>::accepts && includes(Cs<S>::guarantees | granted, required))... };
+    static constexpr std::array<bool, count> fits { (Cs<S>::accepts && includes(Cs<S>::guarantees | granted, required)
+                                                      && (Cs<S>::erases || !needs_erase<S>))... };
     static constexpr std::array<int, count> ranks { Cs<S>::rank... };
 
     static constexpr std::size_t best = []
@@ -47,6 +55,6 @@ struct choose
 
 /// Every representation a Store can resolve to.
 template<typename S>
-using registry = choose<S, repr::sequence_vector, repr::hash_set, repr::tree_set, repr::flat_set>;
+using registry = choose<S, repr::sequence_vector, repr::segmented_sequence, repr::hash_set, repr::tree_set, repr::flat_set>;
 
 }  // namespace urd::detail

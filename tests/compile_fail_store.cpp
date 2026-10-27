@@ -49,5 +49,8 @@ int main()
     (void)sequence.front();
 #elif URD_CASE == 12  // a nonempty Store cannot start empty
     (void)Store<key<int>, urd::nonempty>();
+#elif URD_CASE == 13  // erasing from a sequence moves later elements: no representation keeps references then
+    using S = Store<value<int>, urd::stable_refs>;
+    (void)S();
 #endif
 }

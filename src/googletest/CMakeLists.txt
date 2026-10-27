@@ -1,0 +1,41 @@
+cmake_minimum_required(VERSION 3.21)
+project(InstallGoogletest)
+
+include(ExternalProject)
+
+urd_source(URD_GOOGLETEST_GIT_REPOSITORY googletest repository)
+urd_source(URD_GOOGLETEST_GIT_TAG googletest revision)
+
+message(STATUS "Dependency \"GTest\"...")
+
+# Attempt to find the installed googletest library
+find_package(GTest QUIET PATHS ${CMAKE_INSTALL_PREFIX} NO_DEFAULT_PATH)
+
+if (NOT GTest_FOUND)
+
+    list(APPEND CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+            -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
+            -DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}
+            -DBUILD_SHARED_LIBS:BOOL=ON
+            -DCMAKE_INSTALL_RPATH=${URD_DEPENDENCY_INSTALL_RPATH}
+    )
+
+    message(STATUS "Preparing external project \"googletest\" with args:")
+    foreach (CMAKE_ARG ${CMAKE_ARGS})
+        message(STATUS "-- ${CMAKE_ARG}")
+    endforeach ()
+
+    ExternalProject_Add(
+            googletest
+            GIT_REPOSITORY ${URD_GOOGLETEST_GIT_REPOSITORY}
+            GIT_TAG ${URD_GOOGLETEST_GIT_TAG}
+            PREFIX ${CMAKE_BINARY_DIR}/googletest
+            STAMP_DIR ${CMAKE_BINARY_DIR}/googletest/stamp/${URD_GOOGLETEST_GIT_TAG}
+            STEP_TARGETS download
+            UPDATE_COMMAND ""
+            CMAKE_ARGS ${CMAKE_ARGS}
+    )
+else ()
+    message(STATUS "googletest is already installed.")
+endif ()

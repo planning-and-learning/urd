@@ -9,6 +9,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(URD_BUILD_TESTS "Build urd's tests." ${PROJECT_IS_TOP_LEVEL})
 option(URD_BUILD_EXAMPLES "Build urd's examples." ${PROJECT_IS_TOP_LEVEL})
 option(URD_STDLIB_ASSERTIONS "Check bounds and preconditions of the standard library in Debug builds." ON)
+# The dependencies of docs/SOURCES.json, installed by the build of src/ (as in yggdrasil).
+set(URD_NATIVE_PREFIX "${PROJECT_SOURCE_DIR}/dependencies-install" CACHE PATH "Where src/ installed the dependencies.")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Debug checks the properties urd's types claim." FORCE)
@@ -18,6 +20,8 @@ add_library(urd INTERFACE)
 add_library(urd::urd ALIAS urd)
 target_include_directories(urd INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
 target_compile_features(urd INTERFACE cxx_std_20)
+# The dependencies' headers are system headers, so the build's warnings cover only urd.
+target_include_directories(urd SYSTEM INTERFACE "$<BUILD_INTERFACE:${URD_NATIVE_PREFIX}/include>")
 
 if(PROJECT_IS_TOP_LEVEL)
     # Debug builds check the standard library's preconditions too, such as the bounds of
@@ -40,11 +44,21 @@ endif()
 
 if(URD_BUILD_TESTS)
     enable_testing()
+    find_package(Threads REQUIRED)
 
     foreach(test refined algorithms store)
         add_executable(test_${test} tests/${test}.cpp)
-        target_link_libraries(test_${test} PRIVATE urd::urd)
+        target_link_libraries(test_${test} PRIVATE urd::urd Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
+    endforeach()
+
+    # The tests that came with the representations copied from yggdrasil, unchanged but for names.
+    find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
+    foreach(test segmented_vector unique_object_pool shared_object_pool)
+        add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)
+        target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)
+        add_test(NAME repr_${test} COMMAND test_repr_${test})
+        set_tests_properties(repr_${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
 
     if(URD_BUILD_EXAMPLES)
@@ -84,5 +98,5 @@ if(URD_BUILD_TESTS)
     endfunction()
 
     urd_compile_fail_cases(compile_fail tests/compile_fail.cpp 8)
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 12)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 13)
 endif()

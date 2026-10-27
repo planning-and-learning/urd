@@ -42,6 +42,7 @@ struct tree_set
 {
     using type = std::set<typename S::key_type>;
     static constexpr std::string_view name = "std::set";
+    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_set && std::totally_ordered<typename S::key_type>;
     static constexpr props guarantees = props::sorted | props::unique | props::stable_refs | props::sparse;
     static constexpr int rank = includes(S::flags, props::frozen) || S::work == workload::small ? 2 : 1;
@@ -58,6 +59,7 @@ struct hash_set
 {
     using type = std::unordered_set<typename S::key_type>;
     static constexpr std::string_view name = "std::unordered_set";
+    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_set && hashable<typename S::key_type>;
     static constexpr props guarantees = props::unique | props::stable_refs | props::sparse;
     static constexpr int rank = S::work == workload::small ? 3 : (includes(S::flags, props::frozen) ? 2 : 0);

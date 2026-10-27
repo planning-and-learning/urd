@@ -35,6 +35,8 @@ enum class props : unsigned
     // Representation.
     contiguous = 1U << 12U,  ///< the elements lie next to each other in memory
     canonical = 1U << 13U,   ///< equal contents have equal representations
+    // Concurrency.
+    concurrent = 1U << 14U,  ///< safe for concurrent inserts, and reads of what another thread has published
 };
 
 [[nodiscard]] constexpr props operator|(props lhs, props rhs) noexcept
