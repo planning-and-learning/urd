@@ -3,14 +3,18 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
+#include "urd/store/capacity.hpp"
 #include "urd/store/contiguous_data.hpp"
+#include "urd/store/equality.hpp"
 #include "urd/store/growth.hpp"
 #include "urd/store/iteration.hpp"
 #include "urd/store/lookup.hpp"
 #include "urd/store/ordered_lookup.hpp"
+#include "urd/store/ordering.hpp"
 #include "urd/store/positions.hpp"
 #include "urd/store/removal.hpp"
 #include "urd/store/reverse_iteration.hpp"
+#include "urd/store/sizing.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
 #include "urd/traits.hpp"
@@ -35,17 +39,21 @@ namespace detail
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
 /// allow (interface.hpp), and container_traits reports S's properties, not the representation's, so code cannot
-/// come to rely on what it never asked for. The Store itself holds what every Store has (construction, size,
-/// swap, comparison); its facets (include/urd/store/) hold what its kind and properties switch on, iteration
-/// included.
+/// come to rely on what it never asked for. The Store itself holds only what every Store has, whatever its
+/// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
+/// which its kind and properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
 class Store :
+    public facet_if<S::sized, facet::sizing<Store<R, S>, R, S>>,
     public facet_if<S::iterable, facet::iteration<Store<R, S>, R, S>>,
+    public facet_if<std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable), facet::equality<Store<R, S>, R, S>>,
+    public facet_if<store_types<R, S>::ordered && std::three_way_comparable<typename S::element_type>, facet::ordering<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
     public facet_if<S::is_sequence, facet::positions<Store<R, S>, R, S>>,
     public facet_if<has<S, contiguous>, facet::contiguous_data<Store<R, S>, R, S>>,
+    public facet_if<has<S, growable>, facet::capacity<Store<R, S>, R, S>>,
     public facet_if<has<S, growable>, facet::growth<Store<R, S>, R, S>>,
     public facet_if<has<S, shrinkable>, facet::removal<Store<R, S>, R, S>>,
     public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>
@@ -68,10 +76,18 @@ public:
         requires(!has<S, nonempty>)
     = default;
 
+    // Construction stays here: a facet's constructor could not initialize the representation, a member of the
+    // Store. Every kind so far is built from elements, which conforming requires of every representation; a
+    // kind built otherwise (a matrix from its shape) would move the representation into a base and construct
+    // through facets.
+
     /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
     template<std::input_iterator InputIt>
     Store(InputIt first, InputIt last) : m_representation(first, last)
-    { assert((!has<S, nonempty> || !empty()) && "urd::Store: a nonempty Store needs an element"); }
+    {
+        if constexpr (has<S, nonempty>)
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+    }
 
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
 
@@ -86,37 +102,12 @@ public:
         return Store(std::make_move_iterator(elements.begin()), std::make_move_iterator(elements.end()));
     }
 
-    [[nodiscard]] size_type size() const { return std::ranges::size(m_representation); }
-    [[nodiscard]] bool empty() const { return size() == 0; }
-
-    /// Hints how many elements will be inserted; does nothing where the representation cannot reserve.
-    void reserve(size_type count)
-        requires has<S, growable>
-    {
-        if constexpr (requires { m_representation.reserve(count); })
-            m_representation.reserve(count);
-    }
-
     void swap(Store& other) noexcept
     {
         using std::swap;
         swap(m_representation, other.m_representation);
     }
     friend void swap(Store& lhs, Store& rhs) noexcept { lhs.swap(rhs); }
-
-    /// Equal contents: the representation's ==, else element by element, where the Store is iterable.
-    [[nodiscard]] friend bool operator==(const Store& lhs, const Store& rhs)
-        requires(std::equality_comparable<value_type> && (std::equality_comparable<representation> || S::iterable))
-    {
-        if constexpr (std::equality_comparable<representation>)
-            return lhs.m_representation == rhs.m_representation;
-        else
-            return std::ranges::equal(lhs, rhs);
-    }
-    /// In order, as the standard's ordered containers compare.
-    [[nodiscard]] friend auto operator<=>(const Store& lhs, const Store& rhs)
-        requires(types::ordered && std::three_way_comparable<value_type>)
-    { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
 
 private:
     friend struct store_access;

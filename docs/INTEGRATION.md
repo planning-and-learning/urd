@@ -137,8 +137,9 @@ changes values by key only, since Boost's flat maps would let a key be overwritt
 
 ## The Store's facets
 
-`Store` holds only what every Store has: construction, size, swap, comparison. Even iteration is a facet,
-`iteration`, which every kind so far has but a queue or a filter would not. Each group of properties
+`Store` holds only what every Store has, whatever its representation: construction from elements and swap.
+Everything else is a facet, even `sizing` (size, empty), `iteration`, `equality` and `ordering` (== and <=>), and
+`capacity` (reserve): every kind so far has them, but a queue would not iterate and a filter would not count. Each group of properties
 has a facet in `include/urd/store/`, a class with the members those properties allow, which the Store
 inherits where its properties switch it on: `lookup` (kept by value or key), `ordered_lookup` (`sorted`), `reverse_iteration` (an order: `sorted`, or a sequence),
 `positions` (a sequence), `contiguous_data`, `growth`, `removal`, and `values_by_key` (a map with unique keys).

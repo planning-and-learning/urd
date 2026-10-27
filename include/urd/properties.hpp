@@ -149,6 +149,8 @@ struct spec : Properties
     /// Whether its elements can be visited in turn: every kind so far. A queue, reached by its front, or a filter,
     /// which only answers membership, would not be.
     static constexpr bool iterable = is_set || is_map || is_sequence;
+    /// Whether it knows how many elements it holds: every kind so far. A filter would not.
+    static constexpr bool sized = is_set || is_map || is_sequence;
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;
