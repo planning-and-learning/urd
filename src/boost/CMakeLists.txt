@@ -9,7 +9,8 @@ urd_source(URD_BOOST_SHA256 boost sha256)
 
 message(STATUS "Preparing external project \"boost\":")
 
-# Only Boost.Container (flat sets and maps) and Boost.Unordered (open-addressing hash tables).
+# Only Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2
+# (xxHash, for urd::Hash).
 ExternalProject_Add(
     boost
     URL ${URD_BOOST_URLS}
@@ -26,7 +27,7 @@ ExternalProject_Add(
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DBUILD_SHARED_LIBS=ON
         -DBUILD_TESTING=OFF
-        -DBOOST_INCLUDE_LIBRARIES=container|unordered
+        -DBOOST_INCLUDE_LIBRARIES=container|unordered|hash2
         -DCMAKE_INSTALL_RPATH=${URD_DEPENDENCY_INSTALL_RPATH}
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
 )

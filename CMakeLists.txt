@@ -58,7 +58,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. The last two count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows)
+    foreach(test store properties rows semantics)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
