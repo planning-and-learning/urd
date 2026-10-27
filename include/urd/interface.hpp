@@ -30,13 +30,16 @@ namespace urd
 // | shrinkable                       | clear, erase(position) -> iterator, erase(first, last)             |
 // | shrinkable, kept by value        | erase(e) -> count                                                  |
 // | shrinkable, a sequence           | pop_back, insert(position, e) -> iterator, emplace(position, args) |
+// | a map (names a mapped_type)      | the lookups and erase(e) above take a key; with unique keys, at(k) |
+// | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
+// |                                  | at(k) -> a mutable value                                           |
 //
-// "Kept by value" is the standard's associative containers (set, flat_multiset), which place an element by
-// its value; a sequence (vector) keeps it where it was put.
+// "Kept by value" is the standard's associative containers (set, flat_multiset, map, multimap), which place an
+// element by its value or key; a sequence (vector) keeps it where it was put.
 
-/// Whether Traits places elements by their value, as an associative container does.
+/// Whether Traits places elements by their value or key, as an associative container does.
 template<typename Traits>
-inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique>;
+inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique> || has<Traits, multi>;
 
 namespace detail
 {
@@ -53,6 +56,38 @@ template<typename R>
 struct value_of<R>
 {
     using type = typename R::value_type;
+};
+
+/// A map: it names what its keys map to.
+template<typename R>
+concept map_container = requires {
+    typename R::mapped_type;
+    requires !std::is_void_v<typename R::mapped_type>;
+};
+
+/// What R's lookups take: a map's key, else an element.
+template<typename R, typename E>
+struct lookup_of
+{
+    using type = E;
+};
+template<map_container R, typename E>
+struct lookup_of<R, E>
+{
+    using type = typename R::key_type;
+};
+
+template<typename R>
+concept unique_map_lookup = requires(const R& range, const typename R::key_type& key) {
+    { range.at(key) } -> std::same_as<const typename R::mapped_type&>;
+};
+
+/// Changing values by key, which a map that can change offers.
+template<typename R>
+concept unique_map_insertion = requires(R& range, const typename R::key_type& key, const typename R::mapped_type& mapped) {
+    { range.at(key) } -> std::same_as<typename R::mapped_type&>;
+    { range.try_emplace(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
+    { range.insert_or_assign(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
 };
 
 template<typename R, typename E>
@@ -111,18 +146,21 @@ concept sequence_removal = requires(R& range, const E& element, std::ranges::ite
 }  // namespace detail
 
 /// Whether R offers what its declared properties require (the table above).
-template<typename R, typename Traits = container_traits<std::remove_cvref_t<R>>, typename E = typename detail::value_of<R>::type>
+template<typename R, typename Traits = container_traits<std::remove_cvref_t<R>>, typename E = typename detail::value_of<R>::type,
+         typename L = typename detail::lookup_of<R, E>::type>
 concept conforming =
     detail::basic_container<R, E> && (!has<Traits, canonical> || std::equality_comparable<R>)
     && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
     && (!has<Traits, positional> || std::ranges::random_access_range<R>)
-    && (!by_value<Traits> || detail::lookup<R, E>)
-    && (!has<Traits, sorted> || detail::ordered_lookup<R, E>)
+    && (!by_value<Traits> || detail::lookup<R, L>)
+    && (!has<Traits, sorted> || detail::ordered_lookup<R, L>)
+    && (!detail::map_container<R> || !has<Traits, unique> || detail::unique_map_lookup<R>)
+    && (!detail::map_container<R> || !has<Traits, unique> || !has<Traits, growable> || detail::unique_map_insertion<R>)
     && (!has<Traits, growable>
         || (by_value<Traits> && detail::value_insertion<R, E, has<Traits, unique>>)
         || (!by_value<Traits> && detail::sequence_insertion<R, E>))
     && (!has<Traits, shrinkable>
-        || (detail::removal<R> && by_value<Traits> && detail::value_removal<R, E>)
+        || (detail::removal<R> && by_value<Traits> && detail::value_removal<R, L>)
         || (detail::removal<R> && !by_value<Traits> && detail::sequence_removal<R, E>));
 
 }  // namespace urd

@@ -6,10 +6,14 @@
 #include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
+#include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
+#include <map>
+#include <unordered_map>
+#include <utility>
 #include <cstddef>
 #include <ranges>
 #include <set>
@@ -34,10 +38,11 @@ struct requirement : S
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
-/// sequence's duplicates), and is random-access where S is a sequence. Where S's elements are Stores (rows), R
+/// sequence's duplicates), is a map exactly where S is, and is random-access where S is a sequence. Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves = container_traits<R>::declared && satisfies<container_traits<R>, requirement<S>> && conforming<R>
+concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map
+                 && satisfies<container_traits<R>, requirement<S>> && conforming<R>
                  && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
                  && (!has<S, positional> || std::ranges::random_access_range<R>)
                  && (!is_store<typename S::element_type>
@@ -48,6 +53,37 @@ template<template<typename...> class... Cs>
 struct candidates
 {
 };
+
+/// No container: what a map candidate is for elements that are not key-value pairs. It declares nothing,
+/// so it serves nothing.
+struct none
+{
+};
+
+/// Map M from a Store's element type, std::pair<const K, V>; none for any other element type.
+template<template<typename...> class M, typename E>
+struct as_map
+{
+    using type = none;
+};
+template<template<typename...> class M, typename K, typename V>
+struct as_map<M, std::pair<const K, V>>
+{
+    using type = M<K, V>;
+};
+
+template<typename E>
+using Map = typename as_map<std::map, E>::type;
+template<typename E>
+using MultiMap = typename as_map<std::multimap, E>::type;
+template<typename E>
+using UnorderedMap = typename as_map<std::unordered_map, E>::type;
+template<typename E>
+using UnorderedMultiMap = typename as_map<std::unordered_multimap, E>::type;
+template<typename E>
+using FlatMap = typename as_map<boost::container::flat_map, E>::type;
+template<typename E>
+using FlatMultiMap = typename as_map<boost::container::flat_multimap, E>::type;
 
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
@@ -63,9 +99,11 @@ template<typename S>
 using preference = std::conditional_t<
     has<S, frozen> || S::work == workload::small,
     candidates<repr::Jagged, std::vector, boost::container::flat_multiset, boost::container::flat_set, std::set,
-               std::unordered_set, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>,
+               std::unordered_set, FlatMultiMap, FlatMap, Map, MultiMap, UnorderedMap, UnorderedMultiMap, SegmentedVector,
+               ConcurrentSegmentedVector, repr::RowPool>,
     candidates<repr::Jagged, std::vector, std::unordered_set, std::set, boost::container::flat_multiset,
-               boost::container::flat_set, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
+               boost::container::flat_set, UnorderedMap, UnorderedMultiMap, Map, MultiMap, FlatMultiMap, FlatMap,
+               SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
 
 template<typename S, typename Candidates = preference<S>>
 struct choose;

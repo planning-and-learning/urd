@@ -18,6 +18,7 @@ claims.
 |---|---|
 | `sets.cpp` | sets: plain, sorted, frozen, small, stable references, retained memory |
 | `sequences.cpp` | sequences: plain, sorted, append-only, stable references, concurrent appends |
+| `maps.cpp` | maps: plain, sorted, frozen, multi; `operator[]`, `try_emplace`, `insert_or_assign`, `at` |
 | `rows.cpp` | Stores of Stores: flattened rows (CSR), a row pool that never frees, three levels |
 
 Each prints the requests and the container chosen for each, then uses a few of them. Lines commented with
@@ -27,8 +28,9 @@ Build and run from the repository root:
 
 ```sh
 cmake -S . -B build/examples -DCMAKE_BUILD_TYPE=Release
-cmake --build build/examples -j8 --target example_sets example_sequences example_rows
+cmake --build build/examples -j8 --target example_sets example_sequences example_maps example_rows
 ./build/examples/example_sets
 ./build/examples/example_sequences
+./build/examples/example_maps
 ./build/examples/example_rows
 ```

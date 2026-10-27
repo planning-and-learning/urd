@@ -57,5 +57,17 @@ int main()
 #elif URD_CASE == 15  // a frozen row is a view: it never changes
     auto rows = Store<value<Store<value<int>, urd::frozen>>> { { 1, 2 } };
     rows[0].push_back(3);
+#elif URD_CASE == 16  // a frozen map gains no keys
+    auto constants = Store<key<int>, value<int>, urd::frozen> { { 1, 2 } };
+    constants[3] = 4;
+#elif URD_CASE == 17  // a multimap has many values per key, so none to emplace against
+    auto many = Store<key<int>, value<int>, urd::multi>();
+    many.try_emplace(1, 2);
+#elif URD_CASE == 18  // a key is never written through an iterator: it would break the order
+    auto sorted_map = Store<key<int>, value<int>, urd::sorted> { { 1, 2 } };
+    sorted_map.begin()->first = 3;
+#elif URD_CASE == 19  // a frozen map's values never change
+    auto constants = Store<key<int>, value<int>, urd::frozen> { { 1, 2 } };
+    constants.insert_or_assign(1, 4);
 #endif
 }

@@ -43,6 +43,9 @@ private:
 public:
     using value_type = typename S::element_type;
     using key_type = typename S::key_type;
+    using mapped_type = typename S::mapped_type;
+    /// What lookups take: a map's key, else an element.
+    using lookup_type = std::conditional_t<S::is_map, key_type, value_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
@@ -164,10 +167,10 @@ public:
         assert(!empty());
         return *std::prev(end());
     }
-    [[nodiscard]] const value_type* data() const
+    [[nodiscard]] auto data() const
         requires has<S, contiguous>
     {
-        return std::ranges::data(m_representation);
+        return std::ranges::cdata(m_representation);
     }
     [[nodiscard]] value_type* data()
         requires(has<S, contiguous> && writable)
@@ -177,32 +180,32 @@ public:
 
     // Lookup, where elements are kept by value.
 
-    [[nodiscard]] const_iterator find(const value_type& element) const
+    [[nodiscard]] const_iterator find(const lookup_type& element) const
         requires keyed
     {
         return m_representation.find(element);
     }
-    [[nodiscard]] size_type count(const value_type& element) const
+    [[nodiscard]] size_type count(const lookup_type& element) const
         requires keyed
     {
         return m_representation.count(element);
     }
-    [[nodiscard]] bool contains(const value_type& element) const
+    [[nodiscard]] bool contains(const lookup_type& element) const
         requires keyed
     {
         return m_representation.contains(element);
     }
-    [[nodiscard]] const_iterator lower_bound(const value_type& element) const
+    [[nodiscard]] const_iterator lower_bound(const lookup_type& element) const
         requires has<S, sorted>
     {
         return m_representation.lower_bound(element);
     }
-    [[nodiscard]] const_iterator upper_bound(const value_type& element) const
+    [[nodiscard]] const_iterator upper_bound(const lookup_type& element) const
         requires has<S, sorted>
     {
         return m_representation.upper_bound(element);
     }
-    [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const value_type& element) const
+    [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const lookup_type& element) const
         requires has<S, sorted>
     {
         return m_representation.equal_range(element);
@@ -244,6 +247,46 @@ public:
         requires(keyed && has<S, growable>)
     {
         return m_representation.emplace(std::forward<Args>(args)...);
+    }
+
+    // A map with unique keys: its values, by key. Values change only through these; iterating gives const elements,
+    // as some representations' iterators would let a key be overwritten.
+
+    // The members below are templates only so that their signatures, which name key_type and mapped_type, form
+    // for maps alone.
+
+    template<typename K = key_type, typename M = mapped_type>
+    [[nodiscard]] const M& at(const K& key) const
+        requires(S::is_map && has<S, unique>)
+    {
+        return m_representation.at(key);
+    }
+    template<typename K = key_type, typename M = mapped_type>
+    [[nodiscard]] M& at(const K& key)
+        requires(S::is_map && has<S, unique> && !has<S, frozen>)
+    {
+        return m_representation.at(key);
+    }
+    /// The value for `key`, inserted as a default first where there is none.
+    template<typename K = key_type, typename M = mapped_type>
+    M& operator[](const K& key)
+        requires(S::is_map && has<S, unique> && has<S, growable> && std::default_initializable<M>)
+    {
+        return m_representation.try_emplace(key).first->second;
+    }
+    /// Inserts a value built from `args` unless `key` has one.
+    template<typename K = key_type, typename... Args>
+    std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
+        requires(S::is_map && has<S, unique> && has<S, growable>)
+    {
+        return m_representation.try_emplace(key, std::forward<Args>(args)...);
+    }
+    /// Sets the value for `key`, inserting it where there is none.
+    template<typename M, typename K = key_type>
+    std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
+        requires(S::is_map && has<S, unique> && has<S, growable>)
+    {
+        return m_representation.insert_or_assign(key, std::forward<M>(mapped));
     }
 
     void push_back(const value_type& element)
@@ -289,8 +332,8 @@ public:
     {
         return m_representation.erase(first, last);
     }
-    /// Every element equal to `element`; how many there were.
-    size_type erase(const value_type& element)
+    /// Every element equal to `element` (in a map, with that key); how many there were.
+    size_type erase(const lookup_type& element)
         requires(keyed && has<S, shrinkable>)
     {
         return m_representation.erase(element);

@@ -3,6 +3,7 @@
 #include "urd/traits.hpp"
 
 #include <type_traits>
+#include <utility>
 
 namespace urd
 {
@@ -145,8 +146,10 @@ struct spec : Properties
     static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
     static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V>;
 
-    /// What a Store's elements are: keys in a set, values in a sequence.
-    using element_type = std::conditional_t<is_set, K, V>;
+    /// What a key maps to, in a map.
+    using mapped_type = std::conditional_t<is_map, V, void>;
+    /// What a Store's elements are: keys in a set, values in a sequence, key-value pairs in a map.
+    using element_type = std::conditional_t<is_set, K, std::conditional_t<is_map, std::pair<const K, V>, V>>;
 };
 
 namespace detail
@@ -170,7 +173,6 @@ struct to_spec
     static constexpr bool has_key = !std::is_void_v<key_type>;
     static constexpr bool has_value = !std::is_void_v<value_type>;
     static_assert(has_key || has_value, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
-    static_assert(!(has_key && has_value), "urd::Store: maps (key<K> and value<V>) have no representation yet");
 
     using stated = properties_of<Ps...>;
     static_assert(!(has_key && has<stated, positional>),
@@ -183,7 +185,9 @@ struct to_spec
     static constexpr bool is_set = has_key && !has_value;
     using identity = std::conditional_t<is_sequence, positional, by_key>;
     // A set's keys are its contents, each once.
-    using uniqueness = std::conditional_t<is_set, unique, typename stated::uniqueness_category>;
+    // A map's keys are each once, unless it is a multimap.
+    using uniqueness = std::conditional_t<is_set || (has_key && has_value && !has<stated, multi>), unique,
+                                          typename stated::uniqueness_category>;
     // A map has one value per key unless it says multi; a sequence one value per position.
     using multiplicity = std::conditional_t<(has_key && has_value && !has<stated, multi>) || is_sequence, functional,
                                             typename stated::multiplicity_category>;

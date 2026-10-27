@@ -8,7 +8,9 @@
 #include <concepts>
 #include <iterator>
 #include <random>
+#include <map>
 #include <set>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -41,6 +43,27 @@ static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::r
 static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
                            urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, std::vector<int>>);
+// Maps: by key, as the sets are by element.
+static_assert(std::same_as<Store<key<int>, value<int>>::representation, std::unordered_map<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted>::representation, std::map<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::small>::representation, boost::container::flat_map<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::frozen>::representation, boost::container::flat_map<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi>::representation, std::unordered_multimap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::sorted>::representation, std::multimap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs>::representation, std::unordered_map<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::retains>::representation, boost::container::flat_map<int, int>>);
+// A map of rows holds the inner Stores; flattening by dense key comes with dense maps.
+static_assert(std::same_as<Store<key<int>, value<Store<value<int>, urd::frozen>>>::representation,
+                           std::unordered_map<int, Store<value<int>, urd::frozen>>>);
+// A map's values change by key, never through its iterators; only a map with unique keys has at and try_emplace.
+template<typename S>
+concept can_assign_by_key = requires(S store) { store[1] = 2; };
+template<typename S>
+concept can_try_emplace = requires(S store) { store.try_emplace(1, 2); };
+static_assert(can_assign_by_key<Store<key<int>, value<int>>> && !can_assign_by_key<Store<key<int>, value<int>, urd::frozen>>);
+static_assert(can_try_emplace<Store<key<int>, value<int>>> && !can_try_emplace<Store<key<int>, value<int>, urd::multi>>);
+static_assert(std::same_as<decltype(*Store<key<int>, value<int>>().begin()), const std::pair<const int, int>&>);
+
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);

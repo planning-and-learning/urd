@@ -6,8 +6,10 @@
 #include "urd/store.hpp"
 
 #include <iostream>
+#include <map>
 #include <set>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -53,6 +55,36 @@ template<typename T, std::size_t N, typename I>
 struct name<urd::repr::SegmentedVector<T, N, true, I>>
 {
     static constexpr std::string_view value = "segmented vector, thread-safe appends";
+};
+template<typename K, typename V, typename C, typename A>
+struct name<std::map<K, V, C, A>>
+{
+    static constexpr std::string_view value = "std::map (balanced tree)";
+};
+template<typename K, typename V, typename C, typename A>
+struct name<std::multimap<K, V, C, A>>
+{
+    static constexpr std::string_view value = "std::multimap (balanced tree)";
+};
+template<typename K, typename V, typename H, typename E, typename A>
+struct name<std::unordered_map<K, V, H, E, A>>
+{
+    static constexpr std::string_view value = "std::unordered_map (hash table)";
+};
+template<typename K, typename V, typename H, typename E, typename A>
+struct name<std::unordered_multimap<K, V, H, E, A>>
+{
+    static constexpr std::string_view value = "std::unordered_multimap (hash table)";
+};
+template<typename K, typename V, typename C, typename A>
+struct name<boost::container::flat_map<K, V, C, A>>
+{
+    static constexpr std::string_view value = "boost::container::flat_map (sorted vector)";
+};
+template<typename K, typename V, typename C, typename A>
+struct name<boost::container::flat_multimap<K, V, C, A>>
+{
+    static constexpr std::string_view value = "boost::container::flat_multimap (sorted vector)";
 };
 template<typename Inner>
 struct name<urd::repr::Jagged<Inner>>

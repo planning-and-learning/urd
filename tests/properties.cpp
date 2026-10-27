@@ -7,6 +7,7 @@
 #include "allocations.hpp"
 #include "verify.hpp"
 
+#include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <gtest/gtest.h>
 
@@ -14,12 +15,14 @@
 #include <deque>
 #include <cstddef>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <numeric>
 #include <ranges>
 #include <set>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -101,7 +104,13 @@ using Containers = testing::Types<
     Store<value<int>, urd::sorted, urd::unique>, Store<value<int>, urd::monotone>, Store<value<int>, urd::nonempty, urd::monotone>,
     Store<value<int>, urd::contiguous>, Store<value<int>, urd::stable_refs, urd::monotone>,
     Store<value<int>, urd::monotone, urd::concurrent>, Store<key<int>, urd::retains>, Store<key<int>, urd::sorted, urd::retains>,
-    Store<value<int>, urd::retains>, Store<key<int>, urd::reclaims>>;
+    Store<value<int>, urd::retains>, Store<key<int>, urd::reclaims>,
+    // Maps, as they are and as Stores.
+    std::map<int, int>, std::multimap<int, int>, std::unordered_map<int, int>, std::unordered_multimap<int, int>,
+    boost::container::flat_map<int, int>, boost::container::flat_multimap<int, int>, Store<key<int>, value<int>>,
+    Store<key<int>, value<int>, urd::sorted>, Store<key<int>, value<int>, urd::small>, Store<key<int>, value<int>, urd::sorted, urd::frozen>,
+    Store<key<int>, value<int>, urd::multi>, Store<key<int>, value<int>, urd::multi, urd::sorted>,
+    Store<key<int>, value<int>, urd::stable_refs>, Store<key<int>, value<int>, urd::retains>>;
 
 template<typename R>
 class Properties : public testing::Test
@@ -116,19 +125,49 @@ template<typename R>
 constexpr bool growable = declares<R, urd::growable>;
 
 template<typename R>
-R built(const std::vector<int>& elements)
+constexpr bool map = urd::detail::map_container<R>;
+
+/// R's element for `key`: the key itself, or in a map the pair (key, -key).
+template<typename R>
+auto element(int key)
 {
-    return R(elements.data(), elements.data() + elements.size());
+    if constexpr (map<R>)
+        return std::pair<const int, int>(key, -key);
+    else
+        return key;
 }
 
-/// Adds `element` as R's properties say: by value, or at the end.
-template<typename R>
-void add(R& range, int element)
+/// What an element is ordered and looked up by: its key in a map, else itself.
+constexpr auto key_of = [](const auto& element)
 {
-    if constexpr (urd::by_value<urd::container_traits<R>>)
-        range.insert(element);
+    if constexpr (requires { element.first; })
+        return element.first;
     else
-        range.push_back(element);
+        return element;
+};
+
+template<typename R>
+R built(const std::vector<int>& keys)
+{
+    if constexpr (map<R>)
+    {
+        auto pairs = std::vector<std::pair<int, int>>();
+        for (const int key : keys)
+            pairs.emplace_back(key, -key);
+        return R(pairs.begin(), pairs.end());
+    }
+    else
+        return R(keys.data(), keys.data() + keys.size());
+}
+
+/// Adds the element for `key` as R's properties say: by value, or at the end.
+template<typename R>
+void add(R& range, int key)
+{
+    if constexpr (urd::by_value<urd::container_traits<R>> || map<R>)
+        range.insert(element<R>(key));
+    else
+        range.push_back(key);
 }
 
 std::vector<int> descending(int count)
@@ -168,14 +207,14 @@ TYPED_TEST(Properties, Sorted)
         if constexpr (growable<TypeParam>)
             for (const int element : descending(300))
                 add(range, element);
-        EXPECT_TRUE(std::ranges::is_sorted(range));
+        EXPECT_TRUE(std::ranges::is_sorted(range, {}, key_of));
         for (const int element : { -1, 0, 50, 299, 300 })
         {
             const auto [first, last] = std::as_const(range).equal_range(element);
             EXPECT_EQ(first, std::as_const(range).lower_bound(element));
             EXPECT_EQ(last, std::as_const(range).upper_bound(element));
-            EXPECT_EQ(first, std::ranges::lower_bound(std::as_const(range), element));
-            EXPECT_EQ(last, std::ranges::upper_bound(std::as_const(range), element));
+            EXPECT_EQ(first, std::ranges::lower_bound(std::as_const(range), element, {}, key_of));
+            EXPECT_EQ(last, std::ranges::upper_bound(std::as_const(range), element, {}, key_of));
         }
     }
 }
@@ -191,8 +230,8 @@ TYPED_TEST(Properties, Unique)
         EXPECT_EQ(std::as_const(range).count(3), 1U);
         if constexpr (growable<TypeParam>)
         {
-            EXPECT_FALSE(range.insert(1).second);
-            EXPECT_TRUE(range.insert(2).second);
+            EXPECT_FALSE(range.insert(element<TypeParam>(1)).second);
+            EXPECT_TRUE(range.insert(element<TypeParam>(2)).second);
             EXPECT_EQ(std::ranges::size(range), 3U);
         }
     }
@@ -205,10 +244,10 @@ TYPED_TEST(Properties, StableRefs)
     else
     {
         auto range = built<TypeParam>({ -1 });
-        const int* first = std::addressof(*std::ranges::begin(range));
+        const auto* first = std::addressof(*std::ranges::begin(range));
         for (int element = 0; element < 100000; ++element)
             add(range, element);
-        const auto found = std::ranges::find(range, -1);
+        const auto found = std::ranges::find(range, -1, key_of);
         ASSERT_NE(found, std::ranges::end(range));
         EXPECT_EQ(std::addressof(*found), first);
     }
@@ -224,9 +263,9 @@ TYPED_TEST(Properties, Contiguous)
         if constexpr (growable<TypeParam>)
             for (int element = 1000; element < 3000; ++element)
                 add(range, element);
-        const int* data = std::ranges::data(range);
+        const auto* data = std::ranges::data(range);
         auto pos = std::size_t { 0 };
-        for (const int& element : range)
+        for (const auto& element : range)
             EXPECT_EQ(std::addressof(element), data + pos++);
     }
 }
