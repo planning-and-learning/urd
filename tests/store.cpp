@@ -34,33 +34,41 @@ static_assert(urd::has<Store<key<int>, urd::frozen>, urd::stable_refs>);
 
 // What each request resolves to (pinned, so a change in the selection shows up here). Where no order is asked
 // for, an open-addressing hash table, which docs/BENCHMARKS.md finds fastest at every size.
-template<typename T>
-using FlatHashSet = boost::unordered_flat_set<T, std::hash<T>>;
-template<typename K, typename V>
-using FlatHashMap = boost::unordered_flat_map<K, V, std::hash<K>>;
+// The registry's names: each container with urd's hash, equality and order.
+using urd::detail::FlatHashMapOf;
+using urd::detail::FlatHashSet;
+using urd::detail::FlatMapOf;
+using urd::detail::FlatMultiSet;
+using urd::detail::FlatSet;
+using urd::detail::HashMapOf;
+using urd::detail::HashMultiMapOf;
+using urd::detail::HashSet;
+using urd::detail::TreeMapOf;
+using urd::detail::TreeMultiMapOf;
+using urd::detail::TreeSet;
 static_assert(std::same_as<Store<key<int>>::representation, FlatHashSet<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted>::representation, std::set<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted, urd::frozen>::representation, boost::container::flat_set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted>::representation, TreeSet<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::frozen>::representation, FlatSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::small>::representation, FlatHashSet<int>>);
-static_assert(std::same_as<Store<key<int>, urd::stable_refs>::representation, std::unordered_set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::stable_refs>::representation, HashSet<int>>);
 static_assert(std::same_as<Store<value<int>>::representation, std::vector<int>>);
-static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, boost::container::flat_multiset<int>>);
+static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, FlatMultiSet<int>>);
 // Elements that must not move: segments, unless nothing changes anyway.
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::representation, urd::repr::SegmentedVector<int>>);
 static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
                            urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, std::vector<int>>);
 // Maps: by key, as the sets are by element.
-static_assert(std::same_as<Store<key<int>, value<int>>::representation, FlatHashMap<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted>::representation, std::map<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::small>::representation, FlatHashMap<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::frozen>::representation, boost::container::flat_map<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::multi>::representation, std::unordered_multimap<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::sorted>::representation, std::multimap<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs>::representation, std::unordered_map<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::retains>::representation, FlatHashMap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>>::representation, FlatHashMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted>::representation, TreeMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::small>::representation, FlatHashMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::frozen>::representation, FlatMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi>::representation, HashMultiMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::sorted>::representation, TreeMultiMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs>::representation, HashMapOf<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::retains>::representation, FlatHashMapOf<int, int>>);
 // A map of rows holds the inner Stores; flattening by dense key comes with dense maps.
-static_assert(std::same_as<Store<key<int>, value<Store<value<int>, urd::frozen>>>::representation, FlatHashMap<int, Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<key<int>, value<Store<value<int>, urd::frozen>>>::representation, FlatHashMapOf<int, Store<value<int>, urd::frozen>>>);
 // A map's values change by key, never through its iterators; only a map with unique keys has at and try_emplace.
 template<typename S>
 concept can_assign_by_key = requires(S store) { store[1] = 2; };
@@ -81,10 +89,10 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::retains>>, urd::re
 
 // Storage kept for reuse, or returned: the containers that do so.
 static_assert(std::same_as<Store<key<int>, urd::retains>::representation, FlatHashSet<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted, urd::retains>::representation, boost::container::flat_set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::retains>::representation, FlatSet<int>>);
 static_assert(std::same_as<Store<value<int>, urd::retains>::representation, std::vector<int>>);
-static_assert(std::same_as<Store<key<int>, urd::reclaims>::representation, std::set<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::representation, std::set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::reclaims>::representation, TreeSet<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::representation, TreeSet<int>>);
 
 // Only what was asked for: a set that reclaims is a tree, which is sorted, but it was not asked to be sorted, so it
 // is not.
@@ -187,6 +195,39 @@ void behaves_like_std_multiset(unsigned seed)
 }
 
 }  // namespace
+
+namespace
+{
+
+/// A key type that names its identity, and nothing else: no operators, nothing in namespace std.
+struct Fact
+{
+    int predicate = 0;
+    std::vector<int> objects;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Fact::predicate, &Fact::objects> {}; }
+};
+
+}  // namespace
+
+TEST(Store, KeysThatNameTheirIdentity)
+{
+    const auto facts = std::vector<Fact> { { 3, {} }, { 1, { 2 } }, { 1, { 2 } }, { 1, { 1 } } };
+    const auto hashed = Store<key<Fact>>(facts.begin(), facts.end());
+    EXPECT_EQ(hashed.size(), 3U);
+    EXPECT_TRUE(hashed.contains(Fact { 1, { 2 } }));
+
+    // Ordered member by member: predicate, then objects.
+    const auto tree = Store<key<Fact>, urd::sorted>(facts.begin(), facts.end());
+    const auto flat = Store<key<Fact>, urd::sorted, urd::frozen>(facts.begin(), facts.end());
+    EXPECT_EQ(tree.begin()->objects, std::vector<int>({ 1 }));
+    EXPECT_EQ(flat.begin()->objects, std::vector<int>({ 1 }));
+    EXPECT_EQ(std::prev(flat.end())->predicate, 3);
+
+    auto counts = Store<key<Fact>, value<int>>();
+    counts[Fact { 1, {} }] += 2;
+    EXPECT_EQ(counts.at(Fact { 1, {} }), 2);
+}
 
 TEST(Store, BehavesLikeTheStandardContainers)
 {

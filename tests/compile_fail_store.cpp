@@ -69,5 +69,11 @@ int main()
 #elif URD_CASE == 19  // a frozen map's values never change
     auto constants = Store<key<int>, value<int>, urd::frozen> { { 1, 2 } };
     constants.insert_or_assign(1, 4);
+#elif URD_CASE == 20  // a key with no identity, order or hash: no container can keep it
+    struct Opaque
+    {
+        int value;
+    };
+    (void) Store<key<Opaque>>();
 #endif
 }

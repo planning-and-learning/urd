@@ -72,25 +72,48 @@ struct as_map<M, std::pair<const K, V>>
     using type = M<K, V>;
 };
 
+// The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
+// has to be specialized in namespace std.
 template<typename T>
-using FlatHashSet = boost::unordered_flat_set<T, std::hash<T>>;
+using HashSet = std::unordered_set<T, Hash<T>, EqualTo<T>>;
+template<typename T>
+using FlatHashSet = boost::unordered_flat_set<T, Hash<T>, EqualTo<T>>;
+template<typename T>
+using TreeSet = std::set<T, Less<T>>;
+template<typename T>
+using FlatSet = boost::container::flat_set<T, Less<T>>;
+template<typename T>
+using FlatMultiSet = boost::container::flat_multiset<T, Less<T>>;
+
 template<typename K, typename V>
-using FlatHashMapOf = boost::unordered_flat_map<K, V, std::hash<K>>;
+using HashMapOf = std::unordered_map<K, V, Hash<K>, EqualTo<K>>;
+template<typename K, typename V>
+using HashMultiMapOf = std::unordered_multimap<K, V, Hash<K>, EqualTo<K>>;
+template<typename K, typename V>
+using FlatHashMapOf = boost::unordered_flat_map<K, V, Hash<K>, EqualTo<K>>;
+template<typename K, typename V>
+using TreeMapOf = std::map<K, V, Less<K>>;
+template<typename K, typename V>
+using TreeMultiMapOf = std::multimap<K, V, Less<K>>;
+template<typename K, typename V>
+using FlatMapOf = boost::container::flat_map<K, V, Less<K>>;
+template<typename K, typename V>
+using FlatMultiMapOf = boost::container::flat_multimap<K, V, Less<K>>;
 
 template<typename E>
 using FlatHashMap = typename as_map<FlatHashMapOf, E>::type;
 template<typename E>
-using Map = typename as_map<std::map, E>::type;
+using Map = typename as_map<TreeMapOf, E>::type;
 template<typename E>
-using MultiMap = typename as_map<std::multimap, E>::type;
+using MultiMap = typename as_map<TreeMultiMapOf, E>::type;
 template<typename E>
-using UnorderedMap = typename as_map<std::unordered_map, E>::type;
+using UnorderedMap = typename as_map<HashMapOf, E>::type;
 template<typename E>
-using UnorderedMultiMap = typename as_map<std::unordered_multimap, E>::type;
+using UnorderedMultiMap = typename as_map<HashMultiMapOf, E>::type;
 template<typename E>
-using FlatMap = typename as_map<boost::container::flat_map, E>::type;
+using FlatMap = typename as_map<FlatMapOf, E>::type;
 template<typename E>
-using FlatMultiMap = typename as_map<boost::container::flat_multimap, E>::type;
+using FlatMultiMap = typename as_map<FlatMultiMapOf, E>::type;
 
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
@@ -108,11 +131,11 @@ template<typename S>
 using preference = std::conditional_t<has<S, frozen> || has<S, small>,
                                       candidates<repr::Jagged,
                                                  std::vector,
-                                                 boost::container::flat_multiset,
+                                                 FlatMultiSet,
                                                  FlatHashSet,
-                                                 boost::container::flat_set,
-                                                 std::set,
-                                                 std::unordered_set,
+                                                 FlatSet,
+                                                 TreeSet,
+                                                 HashSet,
                                                  FlatMultiMap,
                                                  FlatHashMap,
                                                  FlatMap,
@@ -126,10 +149,10 @@ using preference = std::conditional_t<has<S, frozen> || has<S, small>,
                                       candidates<repr::Jagged,
                                                  std::vector,
                                                  FlatHashSet,
-                                                 std::unordered_set,
-                                                 std::set,
-                                                 boost::container::flat_multiset,
-                                                 boost::container::flat_set,
+                                                 HashSet,
+                                                 TreeSet,
+                                                 FlatMultiSet,
+                                                 FlatSet,
                                                  FlatHashMap,
                                                  UnorderedMap,
                                                  UnorderedMultiMap,

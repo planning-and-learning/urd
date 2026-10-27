@@ -10,15 +10,17 @@
 namespace urd
 {
 
-// Boost's open-addressing hash tables, with std::hash on hashable elements. Elements live in one array of
+// Boost's open-addressing hash tables, with a natural hash on hashable elements. Elements live in one array of
 // slots, so a rehash moves them (no stable_refs); erase and clear keep the slots.
-template<hashable T, typename Allocator>
-struct container_traits<boost::unordered_flat_set<T, std::hash<T>, std::equal_to<T>, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
+template<typename T, typename H, typename E, typename Allocator>
+    requires natural_hash<H, E, T>
+struct container_traits<boost::unordered_flat_set<T, H, E, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
 {
 };
 
-template<hashable K, typename V, typename Allocator>
-struct container_traits<boost::unordered_flat_map<K, V, std::hash<K>, std::equal_to<K>, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
+template<typename K, typename V, typename H, typename E, typename Allocator>
+    requires natural_hash<H, E, K>
+struct container_traits<boost::unordered_flat_map<K, V, H, E, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
 {
 };
 
