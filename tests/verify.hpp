@@ -193,7 +193,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
             auto wrong = std::string();
             int op = choose(random);
 
-            if (has<Traits, shrinkable> && step % 500 == 499)
+            if (has<Traits, shrinkable> && step % 100 == 99)
             {
                 if constexpr (has<Traits, shrinkable>)
                 {
@@ -359,7 +359,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
 /// Returns the first violation, naming the step and what broke, or nothing.
 template<typename R>
     requires std::constructible_from<detail::element_t<R>, int>
-[[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 2000)
+[[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
     static_assert(conforming<R>, "urd::verify: R lacks an operation its declared properties require (include/urd/interface.hpp lists them)");
     if constexpr (conforming<R>)

@@ -194,7 +194,9 @@ TYPED_TEST(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conf
 
 TYPED_TEST(Properties, KeepsItsPropertiesThroughRandomOperations)
 {
-    for (unsigned seed = 0; seed < 4; ++seed)
+    // Many short runs: most faults show at small sizes (empty, first growth, last removal), and each run starts
+    // fresh. Large sizes are the per-property tests' job.
+    for (unsigned seed = 0; seed < 64; ++seed)
     {
         const auto found = urd::verify(built<TypeParam>({ 5, 3, 3, 9, 1 }), seed);
         EXPECT_FALSE(found) << *found;
