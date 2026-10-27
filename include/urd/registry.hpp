@@ -105,7 +105,7 @@ using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_s
 /// rows are kept for reuse only where their memory must be. A container is registered by adding it to both
 /// lists; what it can serve, its container_traits say.
 template<typename S>
-using preference = std::conditional_t<has<S, frozen> || S::work == workload::small,
+using preference = std::conditional_t<has<S, frozen> || has<S, small>,
                                       candidates<repr::Jagged,
                                                  std::vector,
                                                  boost::container::flat_multiset,

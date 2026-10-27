@@ -149,6 +149,10 @@ Store is incomplete while they are built. A Store whose facets are off is no lar
 
 ## Choosing among containers
 
+A workload (`small`) is the one category that only chooses: a request says how the Store is used, which
+changes the representation picked, never what the Store guarantees. Each workload must be backed by a
+benchmark.
+
 The preference lists in `include/urd/registry.hpp` follow `docs/BENCHMARKS.md`, which `benchmarks/` produces
 (Google Benchmark, `-DURD_BUILD_BENCHMARKS=ON`). A change to an order cites a benchmark.
 

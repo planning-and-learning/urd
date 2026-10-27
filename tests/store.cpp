@@ -86,8 +86,9 @@ static_assert(std::same_as<Store<value<int>, urd::retains>::representation, std:
 static_assert(std::same_as<Store<key<int>, urd::reclaims>::representation, std::set<int>>);
 static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::representation, std::set<int>>);
 
-// Only what was asked for: a small set is stored sorted, but it was not asked to be sorted, so it is not.
-static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
+// Only what was asked for: a set that reclaims is a tree, which is sorted, but it was not asked to be sorted, so it
+// is not.
+static_assert(!urd::Sorted<Store<key<int>, urd::reclaims>>);
 static_assert(urd::Sorted<Store<key<int>, urd::sorted, urd::small>>);
 static_assert(urd::Unique<Store<key<int>, urd::small>>);
 

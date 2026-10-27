@@ -131,6 +131,15 @@ struct positional : by_key
 {
 };  ///< identified by position 0..n-1, in order (a sequence)
 
+// How a Store is used: it changes which representation is chosen, never what the Store guarantees. Only a
+// request says it; docs/BENCHMARKS.md backs what each one chooses.
+struct general
+{
+};
+struct small : general
+{
+};  ///< a few elements, or a few at a time
+
 /// The properties of something, one tag per category, in a fixed order: equal properties are one type.
 template<typename Order,
          typename Uniqueness,
@@ -145,7 +154,8 @@ template<typename Order,
          typename Emptiness,
          typename Multiplicity,
          typename Identity,
-         typename Memory>
+         typename Memory,
+         typename Workload>
 struct properties
 {
     using order_category = Order;
@@ -162,6 +172,7 @@ struct properties
     using multiplicity_category = Multiplicity;
     using identity_category = Identity;
     using memory_category = Memory;
+    using workload_category = Workload;
     static constexpr bool declared = true;
 };
 
@@ -191,7 +202,7 @@ struct root_list
 };
 using guaranteed_roots =
     root_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, ephemeral, immutable, any_memory>;
-using requested_roots = root_list<may_change, maybe_empty, any_multiplicity, by_key>;
+using requested_roots = root_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename Tag, typename List>
 inline constexpr bool in_list = false;
@@ -226,7 +237,8 @@ using properties_of = properties<detail::pick_t<any_order, Tags...>,
                                  detail::pick_t<maybe_empty, Tags...>,
                                  detail::pick_t<any_multiplicity, Tags...>,
                                  detail::pick_t<by_key, Tags...>,
-                                 detail::pick_t<any_memory, Tags...>>;
+                                 detail::pick_t<any_memory, Tags...>,
+                                 detail::pick_t<general, Tags...>>;
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
 /// to declare its properties, and check the declaration by adding the container to tests/properties.cpp:
@@ -297,6 +309,8 @@ consteval bool has_one()
         return std::derived_from<typename Traits::emptiness_category, Tag>;
     else if constexpr (std::derived_from<Tag, any_memory>)
         return std::derived_from<typename Traits::memory_category, Tag>;
+    else if constexpr (std::derived_from<Tag, general>)
+        return std::derived_from<typename Traits::workload_category, Tag>;
     else if constexpr (std::derived_from<Tag, any_multiplicity>)
         return std::derived_from<typename Traits::multiplicity_category, Tag>;
     else
