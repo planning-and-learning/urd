@@ -1,6 +1,12 @@
 {
   "schema_version": 1,
   "sources": {
+    "benchmark": {
+      "kind": "git",
+      "version": "1.9.4",
+      "repository": "https://github.com/google/benchmark.git",
+      "revision": "eddb0241389718a23a42db6af5f0164b6e0139af"
+    },
     "boost": {
       "kind": "archive",
       "version": "1.92.0",
