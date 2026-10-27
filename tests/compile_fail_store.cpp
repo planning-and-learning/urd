@@ -51,5 +51,8 @@ int main()
 #elif URD_CASE == 13  // erasing from a sequence moves later elements: no representation keeps references then
     using S = Store<value<int>, urd::stable_refs>;
     (void)S();
+#elif URD_CASE == 14  // memory is either kept for reuse or returned
+    using S = Store<key<int>, urd::retains, urd::reclaims>;
+    (void)S();
 #endif
 }

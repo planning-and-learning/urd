@@ -44,6 +44,11 @@ struct urd::container_traits<std::set<K, std::less<K>, Allocator>>
 
 Claim only what holds for every value of the type and through every operation; step 6 checks it.
 
+Memory is a category too: `retains` (storage that erase and clear free is kept, so refilling to an earlier size
+allocates nothing: vectors, flat sets) or `reclaims` (erase and clear return it: trees). A hash table that
+frees its nodes but keeps its buckets declares neither. No representation yet serves a sequence that
+`reclaims`; a Store could provide it by shrinking after removals.
+
 ## 4. Offer what the properties require
 
 As a graph must model Boost.Graph's concepts, a container must offer the operations its declared properties
@@ -98,8 +103,9 @@ representation, and the test checks them as defined:
 - Add the container, and a Store that resolves to it, to the type list in `tests/properties.cpp`. That
   instantiates one typed test per property for it: each declared property is checked through the operations
   alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address kept
-  through 100000 inserts; contiguous, canonical, unique, nonempty, concurrent likewise), and the others are
-  skipped. Another typed test runs `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
+  through 100000 inserts; retains: no allocation when refilling after a clear or after erasing each element;
+  reclaims: a clear frees each element's storage; contiguous, canonical, unique, nonempty, concurrent
+  likewise), and the others are skipped. The test binary counts allocations with its own global operator new. Another typed test runs `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
   properties require at random (inserts, erases of positions and ranges, clears, assignments where the
   iterators allow them), and after every single step compares the contents, each operation's result and the
   lookups with a reference model and checks every declared property (sorted, unique, nonempty, stable_refs,

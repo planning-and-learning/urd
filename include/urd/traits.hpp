@@ -37,6 +37,12 @@ struct single_threaded {};
 /// erase, clear and iteration, which need no other operation running.
 struct concurrent : single_threaded {};
 
+struct any_memory {};
+/// Storage that erase and clear free is kept for reuse: refilling up to an earlier size allocates nothing.
+struct retains : any_memory {};
+/// Erase and clear return the storage of what they remove.
+struct reclaims : any_memory {};
+
 struct ephemeral {};
 struct persistent : ephemeral {};  ///< a change makes a new version and old versions stay valid
 
@@ -62,7 +68,7 @@ struct positional : by_key {};  ///< identified by position 0..n-1, in order (a 
 /// The properties of something, one tag per category, in a fixed order: equal properties are one type.
 template<typename Order, typename Uniqueness, typename Keys, typename References, typename Layout, typename Canonical,
          typename Concurrency, typename Version, typename Mutability, typename Lifecycle, typename Emptiness,
-         typename Multiplicity, typename Identity>
+         typename Multiplicity, typename Identity, typename Memory>
 struct properties
 {
     using order_category = Order;
@@ -78,6 +84,7 @@ struct properties
     using emptiness_category = Emptiness;
     using multiplicity_category = Multiplicity;
     using identity_category = Identity;
+    using memory_category = Memory;
 };
 
 namespace detail
@@ -105,7 +112,7 @@ struct root_list
 {
 };
 using guaranteed_roots = root_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation,
-                                   single_threaded, ephemeral, immutable>;
+                                   single_threaded, ephemeral, immutable, any_memory>;
 using requested_roots = root_list<may_change, maybe_empty, any_multiplicity, by_key>;
 
 template<typename Tag, typename List>
@@ -134,7 +141,7 @@ using properties_of = properties<detail::pick_t<any_order, Tags...>, detail::pic
                                  detail::pick_t<single_threaded, Tags...>, detail::pick_t<ephemeral, Tags...>,
                                  detail::pick_t<immutable, Tags...>, detail::pick_t<may_change, Tags...>,
                                  detail::pick_t<maybe_empty, Tags...>, detail::pick_t<any_multiplicity, Tags...>,
-                                 detail::pick_t<by_key, Tags...>>;
+                                 detail::pick_t<by_key, Tags...>, detail::pick_t<any_memory, Tags...>>;
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
 /// to declare its properties, and check the declaration with urd::verify:
@@ -179,6 +186,8 @@ consteval bool has_one()
         return std::derived_from<typename Traits::lifecycle_category, Tag>;
     else if constexpr (std::derived_from<Tag, maybe_empty>)
         return std::derived_from<typename Traits::emptiness_category, Tag>;
+    else if constexpr (std::derived_from<Tag, any_memory>)
+        return std::derived_from<typename Traits::memory_category, Tag>;
     else if constexpr (std::derived_from<Tag, any_multiplicity>)
         return std::derived_from<typename Traits::multiplicity_category, Tag>;
     else
@@ -205,7 +214,8 @@ inline constexpr bool satisfies =
     && std::derived_from<typename Have::canonical_category, typename Want::canonical_category>
     && std::derived_from<typename Have::concurrency_category, typename Want::concurrency_category>
     && std::derived_from<typename Have::version_category, typename Want::version_category>
-    && std::derived_from<typename Have::mutability_category, typename Want::mutability_category>;
+    && std::derived_from<typename Have::mutability_category, typename Want::mutability_category>
+    && std::derived_from<typename Have::memory_category, typename Want::memory_category>;
 
 /// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
 /// about the type, not the contents; urd::verify checks those. O(n log n) at most.

@@ -8,7 +8,7 @@ namespace urd
 {
 
 template<typename T, typename Allocator>
-struct container_traits<std::vector<T, Allocator>> : properties_of<dense, contiguous, shrinkable>
+struct container_traits<std::vector<T, Allocator>> : properties_of<dense, contiguous, shrinkable, retains>
 {
 };
 

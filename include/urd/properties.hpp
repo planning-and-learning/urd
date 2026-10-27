@@ -206,7 +206,7 @@ struct to_spec
                       properties<typename stated::order_category, uniqueness, keys, references, typename stated::layout_category,
                                  typename stated::canonical_category, typename stated::concurrency_category,
                                  typename stated::version_category, mutability, typename stated::lifecycle_category,
-                                 typename stated::emptiness_category, multiplicity, identity>,
+                                 typename stated::emptiness_category, multiplicity, identity, typename stated::memory_category>,
                       work>;
 };
 

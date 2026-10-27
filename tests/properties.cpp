@@ -10,9 +10,12 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
+#include <cstdlib>
 #include <cstddef>
 #include <iterator>
 #include <memory>
+#include <new>
 #include <numeric>
 #include <ranges>
 #include <set>
@@ -30,6 +33,44 @@ using urd::Store;
 using urd::value;
 using urd::repr::SegmentedVector;
 
+// Allocations and deallocations, counted while `counting` is set: the global operator new and delete below
+// count them, for the memory properties.
+std::atomic<bool> counting { false };
+std::atomic<long> allocations { 0 };
+std::atomic<long> deallocations { 0 };
+
+/// Counts the allocations and deallocations made during its lifetime.
+struct Counted
+{
+    Counted()
+    {
+        allocations = 0;
+        deallocations = 0;
+        counting = true;
+    }
+    Counted(const Counted&) = delete;
+    Counted& operator=(const Counted&) = delete;
+    ~Counted() { counting = false; }
+};
+
+void* allocate(std::size_t size, std::size_t alignment)
+{
+    if (counting)
+        ++allocations;
+    const auto rounded = (size + alignment - 1) / alignment * alignment;
+    void* memory = alignment <= alignof(std::max_align_t) ? std::malloc(size == 0 ? 1 : size) : std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
+    if (memory == nullptr)
+        throw std::bad_alloc();
+    return memory;
+}
+
+void deallocate(void* memory) noexcept
+{
+    if (memory != nullptr && counting)
+        ++deallocations;
+    std::free(memory);
+}
+
 using Containers = testing::Types<
     // The representations, as they are.
     std::vector<int>, std::set<int>, std::unordered_set<int>, boost::container::flat_set<int>, boost::container::flat_multiset<int>,
@@ -40,7 +81,8 @@ using Containers = testing::Types<
     Store<key<int>, urd::sorted, urd::contiguous, urd::frozen>, Store<value<int>>, Store<value<int>, urd::sorted>,
     Store<value<int>, urd::sorted, urd::unique>, Store<value<int>, urd::monotone>, Store<value<int>, urd::nonempty, urd::monotone>,
     Store<value<int>, urd::contiguous>, Store<value<int>, urd::stable_refs, urd::monotone>,
-    Store<value<int>, urd::monotone, urd::concurrent>>;
+    Store<value<int>, urd::monotone, urd::concurrent>, Store<key<int>, urd::retains>, Store<key<int>, urd::sorted, urd::retains>,
+    Store<value<int>, urd::retains>, Store<key<int>, urd::reclaims>>;
 
 template<typename R>
 class Properties : public testing::Test
@@ -79,6 +121,19 @@ std::vector<int> descending(int count)
 }
 
 }  // namespace
+
+void* operator new(std::size_t size) { return allocate(size, alignof(std::max_align_t)); }
+void* operator new[](std::size_t size) { return allocate(size, alignof(std::max_align_t)); }
+void* operator new(std::size_t size, std::align_val_t alignment) { return allocate(size, static_cast<std::size_t>(alignment)); }
+void* operator new[](std::size_t size, std::align_val_t alignment) { return allocate(size, static_cast<std::size_t>(alignment)); }
+void operator delete(void* memory) noexcept { deallocate(memory); }
+void operator delete[](void* memory) noexcept { deallocate(memory); }
+void operator delete(void* memory, std::size_t) noexcept { deallocate(memory); }
+void operator delete[](void* memory, std::size_t) noexcept { deallocate(memory); }
+void operator delete(void* memory, std::align_val_t) noexcept { deallocate(memory); }
+void operator delete[](void* memory, std::align_val_t) noexcept { deallocate(memory); }
+void operator delete(void* memory, std::size_t, std::align_val_t) noexcept { deallocate(memory); }
+void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept { deallocate(memory); }
 
 TYPED_TEST(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
@@ -186,6 +241,62 @@ TYPED_TEST(Properties, Nonempty)
         // Nothing removes its elements, and it cannot start empty.
         static_assert(!declares<TypeParam, urd::shrinkable> && !std::default_initializable<TypeParam>);
         EXPECT_FALSE(std::ranges::empty(built<TypeParam>({ 1 })));
+    }
+}
+
+TYPED_TEST(Properties, Retains)
+{
+    if constexpr (!declares<TypeParam, urd::retains> || !declares<TypeParam, urd::shrinkable>)
+        GTEST_SKIP() << "not declared, or nothing is removed";
+    else
+    {
+        constexpr int COUNT = 1000;
+        auto range = TypeParam();
+        for (int element = 0; element < COUNT; ++element)
+            add(range, element);
+
+        // Cleared, then refilled: nothing is allocated.
+        range.clear();
+        {
+            const auto counted = Counted();
+            for (int element = 0; element < COUNT; ++element)
+                add(range, element);
+        }
+        EXPECT_EQ(allocations, 0) << "after clear";
+
+        // Erased one by one, then refilled: nothing is allocated either.
+        for (int element = 0; element < COUNT; ++element)
+        {
+            if constexpr (urd::by_value<urd::container_traits<TypeParam>>)
+                range.erase(element);
+            else
+                range.pop_back();
+        }
+        {
+            const auto counted = Counted();
+            for (int element = 0; element < COUNT; ++element)
+                add(range, element);
+        }
+        EXPECT_EQ(allocations, 0) << "after erasing each element";
+    }
+}
+
+TYPED_TEST(Properties, Reclaims)
+{
+    if constexpr (!declares<TypeParam, urd::reclaims>)
+        GTEST_SKIP() << "not declared";
+    else
+    {
+        // Clearing frees the storage of every element.
+        constexpr int COUNT = 1000;
+        auto range = TypeParam();
+        for (int element = 0; element < COUNT; ++element)
+            add(range, element);
+        {
+            const auto counted = Counted();
+            range.clear();
+        }
+        EXPECT_GE(deallocations, COUNT);
     }
 }
 

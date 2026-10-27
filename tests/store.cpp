@@ -41,6 +41,12 @@ static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::r
 static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
                            urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, std::vector<int>>);
+// Storage kept for reuse, or returned: the containers that do so.
+static_assert(std::same_as<Store<key<int>, urd::retains>::representation, boost::container::flat_set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::retains>::representation, boost::container::flat_set<int>>);
+static_assert(std::same_as<Store<value<int>, urd::retains>::representation, std::vector<int>>);
+static_assert(std::same_as<Store<key<int>, urd::reclaims>::representation, std::set<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::representation, std::set<int>>);
 
 // Only what was asked for: a small set is stored sorted, but it was not asked to be sorted, so it is not.
 static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
