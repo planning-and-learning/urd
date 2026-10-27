@@ -170,6 +170,7 @@ struct to_spec
     static constexpr bool has_key = !std::is_void_v<key_type>;
     static constexpr bool has_value = !std::is_void_v<value_type>;
     static_assert(has_key || has_value, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
+    static_assert(!(has_key && has_value), "urd::Store: maps (key<K> and value<V>) have no representation yet");
 
     using stated = properties_of<Ps...>;
     static_assert(!(has_key && has<stated, positional>),

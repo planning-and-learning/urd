@@ -4,7 +4,7 @@ A representation is an existing container a `urd::Store` can resolve to: from th
 another library (Boost's flat sets), or copied in (yggdrasil's segmented vector). urd does not wrap containers
 to give them properties; it registers containers that keep their properties by themselves. Downstream code
 never names one; it asks for properties, and the registry picks the best representation that has them.
-Adding one takes six steps.
+Adding one takes six steps; per container, only its `container_traits` and its place in the registry are written.
 
 ## 1. Bring in the container
 
@@ -70,20 +70,17 @@ of urd's should be written that way. A library with other names gets an adapter:
 standard names in its namespace, found by argument-dependent lookup. An adapter only renames; it adds no
 guarantee, and a library update that changes its interface breaks the adapter's build, not its behavior.
 
-## 5. Register it: a candidate
+## 5. Register it
 
-A candidate is a template over the request's spec `S` (see `include/urd/repr/segmented.hpp`):
+Add its template, taking the element type, to both preference lists in `include/urd/registry.hpp` (`detail::preference`): one
+for Stores whose elements are few or never change, one for the rest. A container with further template parameters
+gets an alias that fixes them (`ConcurrentSegmentedVector`). Nothing else is written per container: a request
+takes the first container in its list that serves it, meaning its `container_traits` for the request's
+elements satisfy the request and it offers the interface a Store for the request offers.
 
-| Member | Says |
-|---|---|
-| `type` | the representation for `S`; it may depend on `S` (`SegmentedVector` is thread-safe when `concurrent` is requested) |
-| `name` | how messages and the catalog name it |
-| `accepts` | whether it can represent `S` at all: kind (set, map, sequence) and element types |
-| `rank` | how well it suits `S`'s workload, lower is better |
-
-Add it to `detail::registry` in `include/urd/registry.hpp`. A candidate fits a request when it accepts it,
-its `container_traits` satisfy the request, and it offers the interface a Store for the request offers; where two fit, the rank decides; on a tie, the earlier one
-in the list.
+What a container needs of its elements belongs in its traits, as constraints with the concepts of
+`include/urd/elements.hpp` (`orderable`, `hashable`): `std::set<K>` is `sorted` only for orderable `K`, so a
+request for a sorted set of elements without `<` is not served by it.
 
 ## 6. Prove it
 

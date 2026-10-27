@@ -11,8 +11,11 @@
 #include <array>
 #include <cstddef>
 #include <ranges>
+#include <set>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
+#include <vector>
 
 namespace urd::detail
 {
@@ -27,57 +30,59 @@ struct requirement : S
     using key_category = std::conditional_t<S::is_sequence, any_keys, typename S::key_category>;
 };
 
-/// Whether representation R can serve spec S: it has S's properties and the interface a Store for S offers,
-/// placing elements the same way (by value or where they are put) and by position where S is a sequence.
+/// Whether representation R can serve spec S: it has S's properties for its elements (a set of elements
+/// without operator< is not sorted), and the interface a Store for S offers: it places elements as S does (by
+/// value or where they are put), is unique exactly where S is (a unique container would drop a sequence's
+/// duplicates), and is random-access where S is a sequence.
 template<typename R, typename S>
-inline constexpr bool serves = satisfies<container_traits<R>, requirement<S>> && conforming<R>
-                               && by_value<container_traits<R>> == by_value<S>
-                               && (!has<S, positional> || std::ranges::random_access_range<R>);
+concept serves = satisfies<container_traits<R>, requirement<S>> && conforming<R> && by_value<container_traits<R>> == by_value<S>
+                 && has<container_traits<R>, unique> == has<S, unique> && (!has<S, positional> || std::ranges::random_access_range<R>);
 
-/// Whether candidate C fits S. A candidate that does not accept S may name a type that cannot exist (a set of
-/// void), so it is not looked at further.
-template<typename C, typename S>
-consteval bool fits_one()
+/// Container templates, each taking the element type.
+template<template<typename...> class... Cs>
+struct candidates
 {
-    if constexpr (C::accepts)
-        return serves<typename C::type, S>;
-    else
-        return false;
-}
+};
 
-// A candidate registers a representation, as a template over the spec S it is asked for:
-//   using type = …;                          // the representation for S
-//   static constexpr std::string_view name;  // for messages and the catalog
-//   static constexpr bool accepts;           // whether it can represent S at all (kind, element types)
-//   static constexpr int rank;               // for S's workload; lower is better
+template<typename T>
+using SegmentedVector = repr::SegmentedVector<T>;
+template<typename T>
+using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_segment_size, true>;
 
-/// The representation for spec S among the candidates Cs: of those that accept S and serve it, the best
-/// ranked for S's workload; ties go to the earlier candidate.
-template<typename S, template<typename> class... Cs>
-struct choose
+/// Every representation, in order of preference for S; the first that serves S is chosen. Where elements are
+/// few or never change, contiguous storage comes first, as it is the most compact and the fastest to search
+/// and iterate; otherwise hashing, then trees, then contiguous storage, which is O(n) to insert. A container
+/// is registered by adding it to both lists; what it can serve, its container_traits say.
+template<typename S>
+using preference = std::conditional_t<
+    has<S, frozen> || S::work == workload::small,
+    candidates<std::vector, boost::container::flat_multiset, boost::container::flat_set, std::set, std::unordered_set,
+               SegmentedVector, ConcurrentSegmentedVector>,
+    candidates<std::vector, std::unordered_set, std::set, boost::container::flat_multiset, boost::container::flat_set,
+               SegmentedVector, ConcurrentSegmentedVector>>;
+
+template<typename S, typename Candidates = preference<S>>
+struct choose;
+
+/// The representation for spec S: the first of the candidates that serves S.
+template<typename S, template<typename...> class... Cs>
+struct choose<S, candidates<Cs...>>
 {
+    using element = typename S::element_type;
     static constexpr std::size_t count = sizeof...(Cs);
-
-    static constexpr std::array<bool, count> fits { fits_one<Cs<S>, S>()... };
-    static constexpr std::array<int, count> ranks { Cs<S>::rank... };
-
+    static constexpr std::array<bool, count> fits { serves<Cs<element>, S>... };
     static constexpr std::size_t best = []
     {
-        auto found = count;
-        for (std::size_t pos = 0; pos < count; ++pos)
-            if (fits[pos] && (found == count || ranks[pos] < ranks[found]))
-                found = pos;
+        std::size_t found = 0;
+        while (found < count && !fits[found])
+            ++found;
         return found;
     }();
 
     static_assert(best < count, "urd::Store: no representation provides this combination of properties; "
                                 "the pool needs a new representation for it");
 
-    using type = std::tuple_element_t<best < count ? best : 0, std::tuple<Cs<S>...>>;
+    using type = std::tuple_element_t<best < count ? best : 0, std::tuple<Cs<element>...>>;
 };
-
-/// Every representation a Store can resolve to.
-template<typename S>
-using registry = choose<S, repr::sequence_vector, repr::sorted_sequence, repr::segmented_sequence, repr::hash_set, repr::tree_set, repr::flat_set>;
 
 }  // namespace urd::detail

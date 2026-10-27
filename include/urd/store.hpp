@@ -15,7 +15,6 @@
 #include <iterator>
 #include <ranges>
 #include <stdexcept>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -26,16 +25,16 @@ namespace urd
 namespace detail
 {
 
-/// A Store resolved to representation Candidate::type for spec S. It offers the standard interface its
+/// A Store resolved to representation R for spec S. It offers the standard interface its
 /// requested properties allow (interface.hpp), and container_traits reports S's properties, not the
 /// representation's, so code cannot come to rely on what it never asked for. Beyond that interface:
 /// positions (operator[], at, front, back) for a sequence, and changing elements in place where no
 /// property depends on their values and the Store may change.
-template<typename Candidate, typename S>
+template<typename R, typename S>
 class Store
 {
 public:
-    using representation = typename Candidate::type;
+    using representation = R;
 
 private:
     static constexpr bool keyed = by_value<S>;
@@ -52,7 +51,6 @@ public:
     using const_iterator = std::ranges::iterator_t<const representation>;
     using iterator = std::conditional_t<writable, std::ranges::iterator_t<representation>, const_iterator>;
     static constexpr workload work = S::work;
-    static constexpr std::string_view representation_name = Candidate::name;
 
     Store()
         requires(!has<S, nonempty>)
@@ -362,7 +360,7 @@ template<typename... Ps>
 struct resolve
 {
     using spec_type = typename to_spec<Ps...>::type;
-    using type = Store<typename registry<spec_type>::type, spec_type>;
+    using type = Store<typename choose<spec_type>::type, spec_type>;
 };
 
 }  // namespace detail
@@ -379,12 +377,12 @@ using Store = typename detail::resolve<Ps...>::type;
 /// Whether R is a Store.
 template<typename R>
 inline constexpr bool is_store = false;
-template<typename Candidate, typename S>
-inline constexpr bool is_store<detail::Store<Candidate, S>> = true;
+template<typename R, typename S>
+inline constexpr bool is_store<detail::Store<R, S>> = true;
 
 /// A Store has the properties it was asked for, not those of its representation.
-template<typename Candidate, typename S>
-struct container_traits<detail::Store<Candidate, S>> : S
+template<typename R, typename S>
+struct container_traits<detail::Store<R, S>> : S
 {
 };
 

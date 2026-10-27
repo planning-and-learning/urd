@@ -1,9 +1,9 @@
-// Say what the data is and how it is used; urd picks the representation.
+// Say what the data is and how it is used; urd picks the representation, and the Store offers what the
+// properties allow.
 
 #include "urd/store.hpp"
 
 #include <iostream>
-#include <string_view>
 
 namespace
 {
@@ -14,21 +14,10 @@ using GoalIds = urd::Store<urd::key<int>, urd::sorted>;                      // 
 using ConstantIds = urd::Store<urd::key<int>, urd::sorted, urd::frozen>;     // built once, then read
 using EventLog = urd::Store<urd::value<int>, urd::monotone>;                 // a sequence that only grows
 
-template<typename S>
-void report(std::string_view name)
-{
-    std::cout << name << " -> " << S::representation_name << '\n';
-}
-
 }  // namespace
 
 int main()
 {
-    report<VisitedIds>("VisitedIds   (key<int>)");
-    report<GoalIds>("GoalIds      (key<int>, sorted)");
-    report<ConstantIds>("ConstantIds  (key<int>, sorted, frozen)");
-    report<EventLog>("EventLog     (value<int>, monotone)");
-
     auto goals = GoalIds { 7, 3, 9 };
     goals.insert(5);
     const auto constants = ConstantIds { 3, 5, 11 };
@@ -39,6 +28,11 @@ int main()
         if (constants.contains(id))
             std::cout << ' ' << id;
     std::cout << '\n';
+
+    auto visited = VisitedIds();
+    for (const int id : goals)
+        visited.insert(id);
+    std::cout << "visited " << visited.size() << " goals\n";
 
     auto log = EventLog();
     log.push_back(1);
