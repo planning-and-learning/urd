@@ -1,0 +1,86 @@
+name: CI
+
+# urd works on main directly, so main is what CI checks.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: "4"
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler }} ${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore dependencies
+        id: dependencies
+        uses: actions/cache@v4
+        with:
+          path: dependencies-install
+          key: dependencies-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+
+      - name: Build dependencies
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        run: |
+          cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build dependencies-build
+          cmake --install dependencies-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  thread-sanitizer:
+    name: ThreadSanitizer
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore dependencies
+        id: dependencies
+        uses: actions/cache@v4
+        with:
+          path: dependencies-install
+          key: dependencies-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+
+      - name: Build dependencies
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        run: |
+          cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build dependencies-build
+          cmake --install dependencies-build
+
+      # ThreadSanitizer cannot map its shadow memory with the runner's default address randomization.
+      - name: Allow ThreadSanitizer's memory layout
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Build with ThreadSanitizer
+        run: |
+          cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+            -DCMAKE_CXX_FLAGS=-fsanitize=thread -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=thread
+          cmake --build build --target test_properties test_rows example_sequences
+
+      # A data race makes ThreadSanitizer report and the program exit non-zero.
+      - name: Run concurrent code
+        env:
+          TSAN_OPTIONS: halt_on_error=1
+        run: |
+          build/test_properties
+          build/test_rows
+          build/example_sequences

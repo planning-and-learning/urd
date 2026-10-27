@@ -301,6 +301,8 @@ TYPED_TEST(Properties, Nonempty)
 
 TYPED_TEST(Properties, Retains)
 {
+    if (!urd::test::counts_allocations)
+        GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!declares<TypeParam, urd::retains> || !declares<TypeParam, urd::shrinkable>)
         GTEST_SKIP() << "not declared, or nothing is removed";
     else
@@ -338,6 +340,8 @@ TYPED_TEST(Properties, Retains)
 
 TYPED_TEST(Properties, Reclaims)
 {
+    if (!urd::test::counts_allocations)
+        GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!declares<TypeParam, urd::reclaims>)
         GTEST_SKIP() << "not declared";
     else

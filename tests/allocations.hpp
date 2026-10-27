@@ -8,8 +8,25 @@
 #include <cstdlib>
 #include <new>
 
+// ThreadSanitizer replaces operator new itself, so under it allocations are not counted, and the tests that
+// count them skip.
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define URD_TEST_SANITIZED_ALLOCATOR 1
+#endif
+#endif
+#if defined(__SANITIZE_THREAD__)
+#define URD_TEST_SANITIZED_ALLOCATOR 1
+#endif
+
 namespace urd::test
 {
+
+#if defined(URD_TEST_SANITIZED_ALLOCATOR)
+inline constexpr bool counts_allocations = false;
+#else
+inline constexpr bool counts_allocations = true;
+#endif
 
 // Allocations and deallocations, counted while `counting` is set: the global operator new and delete below
 // count them, for the memory properties.
@@ -51,6 +68,7 @@ inline void deallocate(void* memory) noexcept
 
 }  // namespace urd::test
 
+#if !defined(URD_TEST_SANITIZED_ALLOCATOR)
 void* operator new(std::size_t size) { return urd::test::allocate(size, alignof(std::max_align_t)); }
 void* operator new[](std::size_t size) { return urd::test::allocate(size, alignof(std::max_align_t)); }
 void* operator new(std::size_t size, std::align_val_t alignment) { return urd::test::allocate(size, static_cast<std::size_t>(alignment)); }
@@ -63,3 +81,4 @@ void operator delete(void* memory, std::align_val_t) noexcept { urd::test::deall
 void operator delete[](void* memory, std::align_val_t) noexcept { urd::test::deallocate(memory); }
 void operator delete(void* memory, std::size_t, std::align_val_t) noexcept { urd::test::deallocate(memory); }
 void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept { urd::test::deallocate(memory); }
+#endif

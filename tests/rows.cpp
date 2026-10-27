@@ -147,6 +147,8 @@ TYPED_TEST(Rows, SortedRowsAnswerLookups)
 
 TYPED_TEST(Rows, RetainsAtEveryLevel)
 {
+    if (!urd::test::counts_allocations)
+        GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!urd::has<TypeParam, urd::retains>)
         GTEST_SKIP() << "not asked to retain";
     else
