@@ -16,7 +16,6 @@ namespace
 {
 
 using urd::key;
-using urd::props;
 using urd::Store;
 using urd::value;
 
@@ -25,9 +24,9 @@ static_assert(std::same_as<Store<key<int>, urd::sorted>, Store<urd::sorted, key<
 static_assert(std::same_as<Store<value<int>, urd::unique, urd::sorted>, Store<urd::sorted, value<int>, urd::unique>>);
 
 // Implied properties: a set's keys are unique, values without keys are a sequence, frozen keeps references.
-static_assert(urd::includes(Store<key<int>>::properties, props::unique));
-static_assert(urd::includes(Store<value<int>>::properties, props::positional | props::functional | props::dense));
-static_assert(urd::includes(Store<key<int>, urd::frozen>::properties, props::stable_refs));
+static_assert(urd::has<Store<key<int>>, urd::unique>);
+static_assert(urd::has<Store<value<int>>, urd::positional, urd::functional, urd::dense>);
+static_assert(urd::has<Store<key<int>, urd::frozen>, urd::stable_refs>);
 
 // What each request resolves to (pinned, so a change in the selection shows up here).
 static_assert(std::same_as<Store<key<int>>::representation, std::unordered_set<int>>);

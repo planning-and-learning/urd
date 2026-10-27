@@ -2,11 +2,22 @@
 
 #include "urd/properties.hpp"
 #include "urd/repr/ops.hpp"
+#include "urd/traits.hpp"
 
 #include <cstddef>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+namespace urd
+{
+
+template<typename T, typename Allocator>
+struct container_traits<std::vector<T, Allocator>> : properties_of<dense, contiguous, shrinkable>
+{
+};
+
+}  // namespace urd
 
 namespace urd::repr
 {
@@ -34,9 +45,7 @@ struct sequence_vector
 {
     using type = std::vector<typename S::value_type>;
     static constexpr std::string_view name = "std::vector";
-    static constexpr bool erases = true;
-    static constexpr bool accepts = S::is_sequence && !includes(S::flags, props::sorted) && !includes(S::flags, props::unique);
-    static constexpr props guarantees = props::contiguous | props::dense;
+    static constexpr bool accepts = S::is_sequence;
     static constexpr int rank = 0;
 };
 

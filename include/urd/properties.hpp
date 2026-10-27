@@ -1,15 +1,14 @@
 #pragma once
 
-#include "urd/props.hpp"
+#include "urd/traits.hpp"
 
-#include <cstddef>
 #include <type_traits>
 
 namespace urd
 {
 
-// The properties a Store can be asked for. Each is a type, so element types (key<K>, value<V>) and flags
-// can be listed together, in any order.
+// What a Store can be asked for: element types, the property tags of traits.hpp, and a workload. Each is a
+// type, so they can be listed together, in any order.
 
 /// The elements are identified by keys of type K. Without value<V>, the keys are the contents: a set.
 template<typename K>
@@ -23,52 +22,6 @@ template<typename V>
 struct value
 {
     using type = V;
-};
-
-struct sorted
-{
-};
-struct unique
-{
-};
-struct nonempty
-{
-};
-struct positional
-{
-};
-struct functional
-{
-};
-struct multi
-{
-};
-struct dense
-{
-};
-struct sparse
-{
-};
-struct frozen
-{
-};
-struct monotone
-{
-};
-struct stable_refs
-{
-};
-struct persistent
-{
-};
-struct contiguous
-{
-};
-struct canonical
-{
-};
-struct concurrent
-{
 };
 
 /// How a Store is used. It does not change what a Store guarantees, only which representation is chosen.
@@ -96,87 +49,6 @@ struct lookup_heavy
 
 namespace detail
 {
-
-template<typename T>
-struct flag_of
-{
-    static constexpr props value = props::none;
-};
-template<>
-struct flag_of<sorted>
-{
-    static constexpr props value = props::sorted;
-};
-template<>
-struct flag_of<unique>
-{
-    static constexpr props value = props::unique;
-};
-template<>
-struct flag_of<nonempty>
-{
-    static constexpr props value = props::nonempty;
-};
-template<>
-struct flag_of<positional>
-{
-    static constexpr props value = props::positional;
-};
-template<>
-struct flag_of<functional>
-{
-    static constexpr props value = props::functional;
-};
-template<>
-struct flag_of<multi>
-{
-    static constexpr props value = props::multi;
-};
-template<>
-struct flag_of<dense>
-{
-    static constexpr props value = props::dense;
-};
-template<>
-struct flag_of<sparse>
-{
-    static constexpr props value = props::sparse;
-};
-template<>
-struct flag_of<frozen>
-{
-    static constexpr props value = props::frozen;
-};
-template<>
-struct flag_of<monotone>
-{
-    static constexpr props value = props::monotone;
-};
-template<>
-struct flag_of<stable_refs>
-{
-    static constexpr props value = props::stable_refs;
-};
-template<>
-struct flag_of<persistent>
-{
-    static constexpr props value = props::persistent;
-};
-template<>
-struct flag_of<contiguous>
-{
-    static constexpr props value = props::contiguous;
-};
-template<>
-struct flag_of<canonical>
-{
-    static constexpr props value = props::canonical;
-};
-template<>
-struct flag_of<concurrent>
-{
-    static constexpr props value = props::concurrent;
-};
 
 template<typename T>
 struct workload_of
@@ -219,9 +91,12 @@ inline constexpr bool is_value = false;
 template<typename V>
 inline constexpr bool is_value<value<V>> = true;
 
+/// A tag a Store may be asked for. Mutability is not one: it follows from frozen and monotone.
 template<typename T>
-inline constexpr bool is_property =
-    flag_of<T>::value != props::none || workload_of<T>::is_workload || is_key<T> || is_value<T>;
+inline constexpr bool is_tag = (is_guarantee<T> && !std::derived_from<T, immutable>) || is_request_only<T>;
+
+template<typename T>
+inline constexpr bool is_property = is_tag<T> || workload_of<T>::is_workload || is_key<T> || is_value<T>;
 
 /// The type in the first key<…> of Ps, else void.
 template<typename... Ps>
@@ -255,32 +130,15 @@ struct value_type_of<P, Ps...> : value_type_of<Ps...>
 {
 };
 
-/// The properties a list states and the ones they imply.
-[[nodiscard]] constexpr props with_implications(props flags, bool has_key, bool has_value) noexcept
-{
-    if (has_value && !has_key)
-        flags = flags | props::positional;  // values without keys are a sequence
-    if (has_key && !has_value)
-        flags = flags | props::unique;  // a set's keys are its contents, each once
-    if (has_key && has_value && !includes(flags, props::multi))
-        flags = flags | props::functional;  // a map has one value per key unless it says multi
-    if (includes(flags, props::positional))
-        flags = flags | props::functional | props::dense;  // one value per position, positions 0..n-1
-    if (includes(flags, props::frozen))
-        flags = flags | props::stable_refs;  // nothing moves once nothing changes
-    return flags;
-}
-
 }  // namespace detail
 
 /// A Store's request in canonical form: whatever order the properties were listed in, equal requests give
-/// equal specs, and so equal Store types.
-template<typename K, typename V, props Flags, workload Work>
-struct spec
+/// equal specs, and so equal Store types. Its categories are those of Properties.
+template<typename K, typename V, typename Properties, workload Work>
+struct spec : Properties
 {
     using key_type = K;
     using value_type = V;
-    static constexpr props flags = Flags;
     static constexpr workload work = Work;
 
     static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V>;
@@ -303,6 +161,9 @@ struct to_spec
     static_assert((0 + ... + int(is_key<Ps>)) <= 1, "urd::Store: at most one key<K>");
     static_assert((0 + ... + int(is_value<Ps>)) <= 1, "urd::Store: at most one value<V>");
     static_assert((0 + ... + int(workload_of<Ps>::is_workload)) <= 1, "urd::Store: at most one workload");
+    static_assert(one_per_category<guaranteed_roots, Ps...> && one_per_category<requested_roots, Ps...>,
+                  "urd::Store: two properties answer the same question (dense and sparse, functional and multi, "
+                  "frozen and monotone, …)");
 
     using key_type = typename key_type_of<Ps...>::type;
     using value_type = typename value_type_of<Ps...>::type;
@@ -310,16 +171,28 @@ struct to_spec
     static constexpr bool has_value = !std::is_void_v<value_type>;
     static_assert(has_key || has_value, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
 
-    static constexpr props stated = (props::none | ... | flag_of<Ps>::value);
-    static_assert(!(has_key && includes(stated, props::positional)),
+    using stated = properties_of<Ps...>;
+    static_assert(!(has_key && has<stated, positional>),
                   "urd::Store: positional identifies elements by position, so it cannot have key<K>");
-    static_assert(!includes(stated, props::functional | props::multi),
-                  "urd::Store: functional (one value per key) and multi (many) exclude each other");
-    static_assert(!includes(stated, props::dense | props::sparse), "urd::Store: dense and sparse exclude each other");
-    static_assert(!includes(stated, props::frozen | props::monotone),
-                  "urd::Store: frozen (never changes) and monotone (grows) exclude each other");
-    static_assert(!(includes(stated, props::contiguous | props::stable_refs) && !includes(stated, props::frozen)),
+    static_assert(!has<stated, contiguous, stable_refs> || has<stated, frozen>,
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
+
+    // What the list implies.
+    static constexpr bool is_sequence = has_value && !has_key;
+    static constexpr bool is_set = has_key && !has_value;
+    using identity = std::conditional_t<is_sequence, positional, by_key>;
+    // A set's keys are its contents, each once.
+    using uniqueness = std::conditional_t<is_set, unique, typename stated::uniqueness_category>;
+    // A map has one value per key unless it says multi; a sequence one value per position.
+    using multiplicity = std::conditional_t<(has_key && has_value && !has<stated, multi>) || is_sequence, functional,
+                                            typename stated::multiplicity_category>;
+    // Positions are 0..n-1.
+    using keys = std::conditional_t<is_sequence, dense, typename stated::key_category>;
+    // Nothing moves once nothing changes.
+    using references = std::conditional_t<has<stated, frozen>, stable_refs, typename stated::reference_category>;
+    // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty.
+    using mutability = std::conditional_t<has<stated, frozen>, immutable,
+                                          std::conditional_t<has<stated, monotone> || has<stated, nonempty>, growable, shrinkable>>;
 
     static constexpr workload work = []
     {
@@ -328,7 +201,12 @@ struct to_spec
         return found;
     }();
 
-    using type = spec<key_type, value_type, with_implications(stated, has_key, has_value), work>;
+    using type = spec<key_type, value_type,
+                      properties<typename stated::order_category, uniqueness, keys, references, typename stated::layout_category,
+                                 typename stated::canonical_category, typename stated::concurrency_category,
+                                 typename stated::version_category, mutability, typename stated::lifecycle_category,
+                                 typename stated::emptiness_category, multiplicity, identity>,
+                      work>;
 };
 
 }  // namespace detail

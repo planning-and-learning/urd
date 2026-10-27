@@ -58,7 +58,7 @@ A property is part of what a Store is: it holds from construction (`make`, or `a
 check) and every operation keeps it, or the operation is not offered. A container whose property holds only
 if callers remember to restore it is not a representation.
 
-The exceptions are part of the properties' definitions (`include/urd/props.hpp`), the same for every
+The exceptions are part of the properties' definitions (`include/urd/traits.hpp`), the same for every
 representation, and the test checks them as defined:
 
 | Property | Exception |

@@ -3,40 +3,37 @@
 #include "urd/properties.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/segmented.hpp"
-#include "urd/repr/std_set.hpp"
 #include "urd/repr/sequence.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/traits.hpp"
 
 #include <array>
 #include <cstddef>
 #include <tuple>
+#include <type_traits>
 
 namespace urd::detail
 {
 
-/// What a representation must guarantee by itself. The rest a Store enforces through its interface:
-/// nonempty, frozen and monotone by the operations it offers, the kind (positional, functional, multi) by
-/// the representations that accept it.
-inline constexpr props guaranteed_by_representation = props::sorted | props::unique | props::stable_refs
-    | props::persistent | props::contiguous | props::canonical | props::dense | props::sparse | props::concurrent;
-
-/// Whether a Store of spec S offers erase(), so its representation must be able to remove elements.
+/// What a representation must guarantee for spec S: S's properties, except where the Store provides them.
+/// A frozen Store's elements never move whatever the representation; a sequence's positions are dense
+/// in every representation of a sequence.
 template<typename S>
-inline constexpr bool needs_erase =
-    !includes(S::flags, props::frozen) && !includes(S::flags, props::monotone) && !includes(S::flags, props::nonempty);
+struct requirement : S
+{
+    using reference_category = std::conditional_t<has<S, frozen>, moving_refs, typename S::reference_category>;
+    using key_category = std::conditional_t<S::is_sequence, any_keys, typename S::key_category>;
+};
 
-/// The representation for spec S among the candidates Cs: of those that accept S, guarantee every
-/// requested property and support the operations S's Store offers, the best ranked for S's workload; ties
-/// go to the earlier candidate.
+/// The representation for spec S among the candidates Cs: of those that accept S and whose container_traits
+/// satisfy S's requirement, the best ranked for S's workload; ties go to the earlier candidate.
 template<typename S, template<typename> class... Cs>
 struct choose
 {
     static constexpr std::size_t count = sizeof...(Cs);
-    static constexpr props required = S::flags & guaranteed_by_representation;
-    // Once nothing changes, nothing moves either.
-    static constexpr props granted = includes(S::flags, props::frozen) ? props::stable_refs : props::none;
 
-    static constexpr std::array<bool, count> fits { (Cs<S>::accepts && includes(Cs<S>::guarantees | granted, required)
-                                                      && (Cs<S>::erases || !needs_erase<S>))... };
+    static constexpr std::array<bool, count> fits { (
+        Cs<S>::accepts && satisfies<container_traits<typename Cs<S>::type>, requirement<S>>)... };
     static constexpr std::array<int, count> ranks { Cs<S>::rank... };
 
     static constexpr std::size_t best = []

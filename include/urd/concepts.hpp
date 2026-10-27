@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/props.hpp"
+#include "urd/traits.hpp"
 
 namespace urd
 {
@@ -11,21 +11,21 @@ namespace urd
 //     void apply(const R& changes);
 
 template<typename R>
-concept Sorted = has_props<R, props::sorted>;
+concept Sorted = has<R, sorted>;
 
 template<typename R>
-concept Unique = has_props<R, props::unique>;
+concept Unique = has<R, unique>;
 
 template<typename R>
-concept Nonempty = has_props<R, props::nonempty>;
+concept Nonempty = has<R, nonempty>;
 
 template<typename R>
-concept Contiguous = has_props<R, props::contiguous>;
+concept Contiguous = has<R, contiguous>;
 
 template<typename R>
-concept StableRefs = has_props<R, props::stable_refs>;
+concept StableRefs = has<R, stable_refs>;
 
 template<typename R>
-concept Canonical = has_props<R, props::canonical>;
+concept Canonical = has<R, canonical>;
 
 }  // namespace urd

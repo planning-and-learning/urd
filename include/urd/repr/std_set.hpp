@@ -2,6 +2,7 @@
 
 #include "urd/properties.hpp"
 #include "urd/repr/ops.hpp"
+#include "urd/traits.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -11,6 +12,28 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+namespace urd
+{
+
+// std::set orders by its comparator; only std::less is the order that `sorted` means. References survive
+// inserts and a hash table's rehash; iterators of a hash table do not.
+template<typename T, typename Allocator>
+struct container_traits<std::set<T, std::less<T>, Allocator>> : properties_of<sorted, unique, stable_refs, sparse, shrinkable>
+{
+};
+
+template<typename T, typename Allocator>
+struct container_traits<std::multiset<T, std::less<T>, Allocator>> : properties_of<sorted, stable_refs, shrinkable>
+{
+};
+
+template<typename T, typename Hash, typename Allocator>
+struct container_traits<std::unordered_set<T, Hash, std::equal_to<T>, Allocator>> : properties_of<unique, stable_refs, sparse, shrinkable>
+{
+};
+
+}  // namespace urd
 
 namespace urd::repr
 {
@@ -43,10 +66,8 @@ struct tree_set
 {
     using type = std::set<typename S::key_type>;
     static constexpr std::string_view name = "std::set";
-    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_set && std::totally_ordered<typename S::key_type>;
-    static constexpr props guarantees = props::sorted | props::unique | props::stable_refs | props::sparse;
-    static constexpr int rank = includes(S::flags, props::frozen) || S::work == workload::small ? 2 : 1;
+    static constexpr int rank = has<S, frozen> || S::work == workload::small ? 2 : 1;
 };
 
 template<typename K>
@@ -60,10 +81,8 @@ struct hash_set
 {
     using type = std::unordered_set<typename S::key_type>;
     static constexpr std::string_view name = "std::unordered_set";
-    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_set && hashable<typename S::key_type>;
-    static constexpr props guarantees = props::unique | props::stable_refs | props::sparse;
-    static constexpr int rank = S::work == workload::small ? 3 : (includes(S::flags, props::frozen) ? 2 : 0);
+    static constexpr int rank = S::work == workload::small ? 3 : (has<S, frozen> ? 2 : 0);
 };
 
 }  // namespace urd::repr

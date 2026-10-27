@@ -16,17 +16,12 @@ namespace
 {
 
 using urd::key;
-using urd::props;
 using urd::value;
 
 constexpr int steps = 2000;
 constexpr int universe = 32;  // small, so inserts meet duplicates and erases find elements
 
-template<typename S>
-constexpr bool has(props wanted)
-{
-    return urd::includes(S::properties, wanted);
-}
+using urd::has;
 
 template<typename S>
 constexpr bool is_set = requires(const S& store, int element) { store.contains(element); };
@@ -45,10 +40,10 @@ struct Model
 
     bool insert(int element)
     {
-        const bool unique = is_set<S> || has<S>(props::unique);
+        const bool unique = is_set<S> || has<S, urd::unique>;
         if (unique && std::ranges::find(elements, element) != elements.end())
             return false;
-        if (has<S>(props::sorted))
+        if (has<S, urd::sorted>)
             elements.insert(std::ranges::upper_bound(elements, element), element);
         else
             elements.push_back(element);
@@ -76,22 +71,22 @@ void check_step(const S& store, const Model<S>& model, const std::vector<const i
 
     // The contents, in order where order is promised.
     auto expected = model.elements;
-    if (is_set<S> && !has<S>(props::sorted))
+    if (is_set<S> && !has<S, urd::sorted>)
     {
         std::ranges::sort(contents);
         std::ranges::sort(expected);
     }
     URD_CHECK(contents == expected);
 
-    URD_CHECK(urd::holds<S::properties & (props::sorted | props::unique | props::nonempty)>(store));
+    URD_CHECK(urd::holds<urd::container_traits<S>>(store));
     if constexpr (is_set<S>)
-        URD_CHECK(urd::holds<props::unique>(store));
-    if constexpr (has<S>(props::monotone))
+        URD_CHECK(urd::holds<urd::properties_of<urd::unique>>(store));
+    if constexpr (has<S, urd::monotone>)
         URD_CHECK(store.size() >= size_before);
 
     // Each step is one insert, erase or clear: an insert moves no element, the others end only the
     // references to what they removed.
-    if constexpr (has<S>(props::stable_refs))
+    if constexpr (has<S, urd::stable_refs>)
     {
         const auto after = addresses(store);
         const auto kept = std::set<const int*>(after.begin(), after.end());
@@ -99,7 +94,7 @@ void check_step(const S& store, const Model<S>& model, const std::vector<const i
         URD_CHECK(lost == (size_before > contents.size() ? size_before - contents.size() : 0));
     }
 
-    if constexpr (has<S>(props::contiguous))
+    if constexpr (has<S, urd::contiguous>)
     {
         const auto at = addresses(store);
         for (std::size_t pos = 1; pos < at.size(); ++pos)
@@ -107,7 +102,7 @@ void check_step(const S& store, const Model<S>& model, const std::vector<const i
     }
 
     // Equal contents, built in another order, give an equal Store.
-    if constexpr (has<S>(props::canonical) && !has<S>(props::nonempty))
+    if constexpr (has<S, urd::canonical> && !has<S, urd::nonempty>)
     {
         auto reversed = std::vector<int>(store.begin(), store.end());
         std::ranges::reverse(reversed);
