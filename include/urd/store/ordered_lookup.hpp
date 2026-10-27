@@ -13,12 +13,11 @@ class ordered_lookup
 {
     using types = store_types<R, S>;
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
-    using lookup_type = typename types::lookup_type;
 
 public:
-    [[nodiscard]] const_iterator_type lower_bound(const lookup_type& element) const { return representation().lower_bound(element); }
-    [[nodiscard]] const_iterator_type upper_bound(const lookup_type& element) const { return representation().upper_bound(element); }
-    [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const lookup_type& element) const
+    [[nodiscard]] const_iterator_type lower_bound(const typename types::lookup_type& element) const { return representation().lower_bound(element); }
+    [[nodiscard]] const_iterator_type upper_bound(const typename types::lookup_type& element) const { return representation().upper_bound(element); }
+    [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const typename types::lookup_type& element) const
     { return representation().equal_range(element); }
 
 private:

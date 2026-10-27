@@ -3,6 +3,7 @@
 #include "urd/store/types.hpp"
 
 #include <cassert>
+#include <cstddef>
 #include <iterator>
 #include <stdexcept>
 
@@ -14,31 +15,29 @@ template<typename Derived, typename R, typename S>
 class positions
 {
     using types = store_types<R, S>;
-    using size_type = typename types::size_type;
-    using difference_type = typename types::difference_type;
     using reference_type = typename iterator_types<R, S>::reference;
     using const_reference_type = typename iterator_types<R, S>::const_reference;
     static constexpr bool writable = types::writable;
 
 public:
-    [[nodiscard]] const_reference_type operator[](size_type pos) const
+    [[nodiscard]] const_reference_type operator[](std::size_t pos) const
     {
         assert(pos < self().size());
-        return self().begin()[static_cast<difference_type>(pos)];
+        return self().begin()[static_cast<std::ptrdiff_t>(pos)];
     }
-    [[nodiscard]] reference_type operator[](size_type pos)
+    [[nodiscard]] reference_type operator[](std::size_t pos)
         requires writable
     {
         assert(pos < self().size());
-        return self().begin()[static_cast<difference_type>(pos)];
+        return self().begin()[static_cast<std::ptrdiff_t>(pos)];
     }
-    [[nodiscard]] const_reference_type at(size_type pos) const
+    [[nodiscard]] const_reference_type at(std::size_t pos) const
     {
         if (pos >= self().size())
             throw std::out_of_range("urd::Store::at: position out of range");
         return (*this)[pos];
     }
-    [[nodiscard]] reference_type at(size_type pos)
+    [[nodiscard]] reference_type at(std::size_t pos)
         requires writable
     {
         if (pos >= self().size())

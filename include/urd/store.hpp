@@ -63,23 +63,14 @@ class Store :
 public:
     using representation = R;
     using value_type = typename types::value_type;
-    using key_type = typename types::key_type;
-    using mapped_type = typename types::mapped_type;
-    using lookup_type = typename types::lookup_type;
-    using size_type = typename types::size_type;
-    using difference_type = typename types::difference_type;
-    // iterator, const_iterator, reference and const_reference come with the iteration facet: only an iterable
-    // Store has them.
-    static constexpr workload work = S::work;
+    // The other member types come with the facets that use them: size_type with sizing, the iterator types and
+    // difference_type with iteration, key_type, lookup_type and mapped_type with lookup.
 
     Store()
         requires(!has<S, nonempty>)
     = default;
 
-    // Construction stays here: a facet's constructor could not initialize the representation, a member of the
-    // Store. Every kind so far is built from elements, which conforming requires of every representation; a
-    // kind built otherwise (a matrix from its shape) would move the representation into a base and construct
-    // through facets.
+    // Construction stays here, as a facet's constructor could not initialize the Store's representation.
 
     /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
     template<std::input_iterator InputIt>
@@ -90,17 +81,6 @@ public:
     }
 
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
-
-    /// From elements claimed to have the properties (a sequence's order and uniqueness, any Store's
-    /// nonemptiness), so the representation need not establish them; Debug builds check the claim.
-    [[nodiscard]] static Store assume(std::vector<value_type> elements)
-    {
-        if constexpr (S::is_sequence)
-            assert(holds<S>(elements) && "urd::Store::assume: the contents lack a claimed property");
-        else
-            assert((!has<S, nonempty> || !elements.empty()) && "urd::Store::assume: the contents lack a claimed property");
-        return Store(std::make_move_iterator(elements.begin()), std::make_move_iterator(elements.end()));
-    }
 
     void swap(Store& other) noexcept
     {

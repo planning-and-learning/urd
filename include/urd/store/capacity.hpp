@@ -2,6 +2,8 @@
 
 #include "urd/store/types.hpp"
 
+#include <cstddef>
+
 namespace urd::detail::facet
 {
 
@@ -9,11 +11,9 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class capacity
 {
-    using size_type = typename store_types<R, S>::size_type;
-
 public:
     /// Hints how many elements will be inserted; does nothing where the representation cannot reserve.
-    void reserve(size_type count)
+    void reserve(std::size_t count)
     {
         auto& representation = store_access::representation(static_cast<Derived&>(*this));
         if constexpr (requires { representation.reserve(count); })

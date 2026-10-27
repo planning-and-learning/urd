@@ -11,9 +11,9 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class sizing
 {
+public:
     using size_type = typename store_types<R, S>::size_type;
 
-public:
     [[nodiscard]] size_type size() const { return std::ranges::size(store_access::representation(static_cast<const Derived&>(*this))); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 };

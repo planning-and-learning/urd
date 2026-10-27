@@ -17,6 +17,7 @@ public:
     using const_iterator = typename iterator_types<R, S>::const_iterator;
     using reference = typename iterator_types<R, S>::reference;
     using const_reference = typename iterator_types<R, S>::const_reference;
+    using difference_type = typename store_types<R, S>::difference_type;
 
     [[nodiscard]] const_iterator begin() const { return representation().begin(); }
     [[nodiscard]] const_iterator end() const { return representation().end(); }

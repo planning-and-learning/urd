@@ -87,8 +87,8 @@ request for a sorted set of elements without `<` is not served by it.
 
 ## 6. Prove it
 
-A property is part of what a Store is: it holds from construction (from any elements, or `assume`, which
-Debug builds check) and every operation keeps it, or the operation is not offered. A container whose property holds only
+A property is part of what a Store is: it holds from construction (from any elements, which the
+representation puts in the order asked for) and every operation keeps it, or the operation is not offered. A container whose property holds only
 if callers remember to restore it is not a representation.
 
 The exceptions are part of the properties' definitions (`include/urd/traits.hpp`), the same for every

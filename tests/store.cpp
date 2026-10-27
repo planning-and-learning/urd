@@ -201,11 +201,11 @@ TEST(Store, BehavesLikeTheStandardContainers)
 
 TEST(Store, BuildsAndChangesAsAsked)
 {
-    // Built from elements, or from elements claimed to have the properties.
+    // Built from elements, which the representation puts in the order asked for.
     const auto ids = Store<key<int>, urd::sorted> { 3, 1, 3, 2 };
     EXPECT_TRUE(std::vector<int>(ids.begin(), ids.end()) == std::vector<int>({ 1, 2, 3 }));
     EXPECT_TRUE(*ids.lower_bound(2) == 2 && ids.upper_bound(3) == ids.end() && *ids.rbegin() == 3);
-    const auto first = Store<value<int>, urd::sorted, urd::nonempty>::assume({ 4, 5 });
+    const auto first = Store<value<int>, urd::sorted, urd::nonempty> { 5, 4 };
     EXPECT_TRUE(first.front() == 4 && first[1] == 5 && first.back() == 5);
 
     const auto frozen = Store<key<int>, urd::sorted, urd::frozen> { 2, 3, 5 };

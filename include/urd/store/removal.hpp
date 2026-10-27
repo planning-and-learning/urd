@@ -3,6 +3,7 @@
 #include "urd/store/types.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <iterator>
 #include <ranges>
 
@@ -16,7 +17,6 @@ class removal
 {
     using types = store_types<R, S>;
     using value_type = typename types::value_type;
-    using size_type = typename types::size_type;
     using iterator_type = typename iterator_types<R, S>::iterator;
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
     static constexpr bool keyed = types::keyed;
@@ -31,7 +31,7 @@ public:
     }
     iterator_type erase(const_iterator_type first, const_iterator_type last) { return representation().erase(first, last); }
     /// Every element equal to `element` (in a map, with that key); how many there were.
-    size_type erase(const typename types::lookup_type& element)
+    std::size_t erase(const typename types::lookup_type& element)
         requires keyed
     { return representation().erase(element); }
     void pop_back()
@@ -41,7 +41,7 @@ public:
 
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
     template<typename Pred>
-    friend size_type erase_if(Derived& store, Pred pred)
+    friend std::size_t erase_if(Derived& store, Pred pred)
     {
         const auto before = store.size();
         if constexpr (types::writable)
@@ -56,7 +56,7 @@ public:
         return before - store.size();
     }
     /// Every element equal to `element`, from a sequence; how many. As std::erase.
-    friend size_type erase(Derived& store, const value_type& element)
+    friend std::size_t erase(Derived& store, const value_type& element)
         requires(!keyed)
     {
         return erase_if(store, [&](const value_type& candidate) { return candidate == element; });

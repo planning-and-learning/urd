@@ -85,14 +85,6 @@ if(URD_BUILD_TESTS)
         endforeach()
     endif()
 
-    # assume() checks its claim only in Debug builds.
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        add_executable(test_assume_fails tests/assume_fails.cpp)
-        target_link_libraries(test_assume_fails PRIVATE urd::urd)
-        add_test(NAME assume_fails COMMAND test_assume_fails)
-        set_tests_properties(assume_fails PROPERTIES PASS_REGULAR_EXPRESSION "lack a claimed property")
-    endif()
-
     # Code that must not compile. The control build of each file must compile, so each case fails for its
     # own reason; the cases are skipped when the control does not build.
     function(urd_compile_fail_cases name source count)
