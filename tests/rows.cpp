@@ -121,7 +121,7 @@ TYPED_TEST(Rows, BehavesLikeAVectorOfVectors)
     }
 }
 
-TYPED_TEST(Rows, SortedRowsAnswerLookups)
+TYPED_TEST(Rows, SortedRowsAreSorted)
 {
     if constexpr (!urd::has<typename TypeParam::value_type, urd::sorted>)
         GTEST_SKIP() << "rows not sorted";
@@ -137,8 +137,8 @@ TYPED_TEST(Rows, SortedRowsAnswerLookups)
             ASSERT_TRUE(std::ranges::is_sorted(elements));
             for (int element = -1; element <= 10; ++element)
             {
-                EXPECT_EQ(row.lower_bound(element) - row.begin(), std::ranges::lower_bound(elements, element) - elements.begin());
-                EXPECT_EQ(row.contains(element), std::ranges::binary_search(elements, element));
+                EXPECT_EQ(std::ranges::lower_bound(row, element) - row.begin(), std::ranges::lower_bound(elements, element) - elements.begin());
+                EXPECT_EQ(std::ranges::binary_search(row, element), std::ranges::binary_search(elements, element));
             }
         }
     }

@@ -3,6 +3,8 @@
 #include "urd/interface.hpp"
 #include "urd/traits.hpp"
 
+#include <compare>
+#include <concepts>
 #include <cstddef>
 #include <ranges>
 #include <type_traits>
@@ -46,6 +48,17 @@ struct iterator_types
     using const_iterator = std::ranges::iterator_t<const R>;
     using iterator = std::conditional_t<store_types<R, S>::writable, std::ranges::iterator_t<R>, const_iterator>;
 };
+
+/// Whether a Store compares in order: it has an order, and the elements its representation yields compare
+/// (a flattened Store's rows are slices, which do not).
+template<typename R, typename S>
+consteval bool compares_in_order()
+{
+    if constexpr (store_types<R, S>::ordered)
+        return std::three_way_comparable<std::ranges::range_value_t<R>>;
+    else
+        return false;
+}
 
 /// How facets reach the Store's representation, which is private to the Store.
 struct store_access

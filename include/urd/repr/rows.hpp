@@ -2,7 +2,6 @@
 
 #include "urd/interface.hpp"
 #include "urd/traits.hpp"
-#include "urd/view.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -11,6 +10,7 @@
 #include <cstddef>
 #include <iterator>
 #include <ranges>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -21,7 +21,8 @@ namespace urd::repr
 {
 
 /// Frozen rows stored flattened, as CSR: offsets into one array of the elements, which at a deeper level are
-/// the rows below, stored the same way. A row is a View of its part. Erase and clear keep the storage.
+/// the rows below, stored the same way. A row is a read-only slice of that storage: a std::span of the innermost
+/// elements, or a subrange of the rows below. Erase and clear keep the storage.
 template<typename Inner>
 class Jagged
 {
@@ -36,7 +37,7 @@ public:
     using value_type = Inner;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using row = View<Si, std::ranges::iterator_t<const Data>>;
+    using row = std::conditional_t<leaf, std::span<const T>, std::ranges::subrange<std::ranges::iterator_t<const Data>>>;
 
     Jagged() = default;
 

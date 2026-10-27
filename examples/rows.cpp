@@ -22,7 +22,7 @@ int main()
     example::show<Store<value<Store<value<int>>>>>("Store<value<Store<value<int>>>>                       anything else");
     example::show<Blocks>("three levels, all frozen                              (one offsets array per level)");
 
-    // Frozen rows lie in one array; a row is a read-only view of its part.
+    // Frozen rows lie in one array; a row is a read-only slice of it (a std::span).
     auto successors = Rows { { 1, 2 }, { 0 }, { 0, 1, 3 } };
     successors.push_back({ 2 });
     std::cout << "\nsuccessors of 2:";
@@ -46,7 +46,7 @@ int main()
     for (const int element : scratch[3])
         std::cout << ' ' << element;
 
-    // Three levels, flattened: a view of views.
+    // Three levels, flattened: a slice of slices.
     const auto blocks = Blocks { { { 1 }, { 2, 3 } }, { { 4, 5, 6 } } };
     std::cout << "\nblock 0, row 1, element 1: " << blocks[0][1][1] << '\n';
 }

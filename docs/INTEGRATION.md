@@ -166,11 +166,11 @@ request, so the inner properties choose the outer representation too:
 
 | Request | Resolves to | Rows come as |
 |---|---|---|
-| rows `frozen` | `repr::Jagged`: CSR, one offsets array per level and one array of the innermost elements; three levels are a `Jagged` of a `Jagged` | `urd::View` (`include/urd/view.hpp`): read-only, with the row request's lookups (binary search where sorted) |
+| rows `frozen` | `repr::Jagged`: CSR, one offsets array per level and one array of the innermost elements; three levels are a `Jagged` of a `Jagged` | a read-only slice: `std::span` of the elements, or a `std::ranges::subrange` of the rows below; a sorted row is searched with `std::ranges::lower_bound` |
 | rows and Store `retains` | `repr::RowPool`: removed rows are cleared and kept, so nothing is freed at any level | the inner Store, `Inner&` |
 | anything else | `std::vector` of the inner Stores | the inner Store |
 
 `retains` is shallow, about a container's own storage; deep retention is the rows' `memory_category` in
-`element_traits`. A View, and references into a row, are valid until the outer Store changes.
+`element_traits`. A row, and references into it, are valid until the outer Store changes.
 `tests/rows.cpp` checks every nested Store against a `std::vector` of `std::vector`s under random inserts
 and erases of rows, sorted rows' lookups, and zero allocations when a retaining Store is refilled.

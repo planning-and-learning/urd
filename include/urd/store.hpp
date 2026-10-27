@@ -47,7 +47,7 @@ class Store :
     public facet_if<S::sized, facet::sizing<Store<R, S>, R, S>>,
     public facet_if<S::iterable, facet::iteration<Store<R, S>, R, S>>,
     public facet_if<std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable), facet::equality<Store<R, S>, R, S>>,
-    public facet_if<store_types<R, S>::ordered && std::three_way_comparable<typename S::element_type>, facet::ordering<Store<R, S>, R, S>>,
+    public facet_if<compares_in_order<R, S>(), facet::ordering<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
