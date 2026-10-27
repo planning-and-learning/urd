@@ -139,6 +139,46 @@ struct resolve
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
 
+/// A Store through the common interface, offering what the Store offers, so urd::verify can check it.
+template<typename Candidate, typename S>
+struct repr::ops<urd::detail::Store<Candidate, S>>
+{
+    using R = urd::detail::Store<Candidate, S>;
+    using E = typename S::element_type;
+
+    [[nodiscard]] static R make(std::vector<E> elements)
+        requires(!has<S, nonempty>)
+    {
+        return R::make(std::move(elements));
+    }
+    [[nodiscard]] static R assume(std::vector<E> elements) { return R::assume(std::move(elements)); }
+    static bool insert(R& store, const E& element)
+        requires(!has<S, frozen>)
+    {
+        return store.insert(element);
+    }
+    static std::size_t erase(R& store, const E& element)
+        requires(!has<S, monotone> && !has<S, nonempty>)
+    {
+        return store.erase(element);
+    }
+    static void clear(R& store)
+        requires(!has<S, monotone> && !has<S, nonempty>)
+    {
+        store.clear();
+    }
+    [[nodiscard]] static bool contains(const R& store, const E& element)
+        requires(S::is_set)
+    {
+        return store.contains(element);
+    }
+    [[nodiscard]] static const E& at(const R& store, std::size_t pos)
+        requires(S::is_sequence)
+    {
+        return store[pos];
+    }
+};
+
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename Candidate, typename S>
 struct container_traits<detail::Store<Candidate, S>> : S
