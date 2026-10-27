@@ -84,6 +84,18 @@ struct reclaims : any_memory
 {
 };
 
+struct any_clear
+{
+};
+/// Clear takes time in proportion to the elements present, not to the keys or capacity seen before.
+struct proportional_clear : any_clear
+{
+};
+/// Clear takes constant time, as with a generation counter.
+struct constant_clear : proportional_clear
+{
+};
+
 /// Offers no change.
 struct immutable
 {
@@ -159,7 +171,8 @@ struct type_list
 };
 
 /// The roots of the categories a container declares, then those only a Store's request has.
-using guaranteed_roots = type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory>;
+using guaranteed_roots =
+    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory, any_clear>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

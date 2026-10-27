@@ -299,7 +299,7 @@ concept flattenable = is_store<Inner> && has<container_traits<Inner>, frozen>
 
 /// Rows in one array: appends at the end, and erase and clear keep the storage at every level.
 template<detail::flattenable Inner>
-struct container_traits<repr::Jagged<Inner>> : properties_of<dense, shrinkable, retains>
+struct container_traits<repr::Jagged<Inner>> : properties_of<dense, shrinkable, retains, proportional_clear>
 {
 };
 
@@ -314,7 +314,7 @@ struct element_traits<repr::Jagged<Inner>> :
 /// Rows that can be cleared are kept for reuse.
 template<typename Inner>
     requires(is_store<Inner> && has<container_traits<Inner>, shrinkable>)
-struct container_traits<repr::RowPool<Inner>> : properties_of<dense, contiguous, shrinkable, retains>
+struct container_traits<repr::RowPool<Inner>> : properties_of<dense, contiguous, shrinkable, retains, proportional_clear>
 {
 };
 

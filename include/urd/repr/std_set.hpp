@@ -17,13 +17,13 @@ namespace urd
 // what it erases; a hash table frees its nodes but keeps its buckets, so it neither retains nor reclaims.
 template<typename T, typename C, typename Allocator>
     requires natural_order<C, T>
-struct container_traits<std::set<T, C, Allocator>> : properties_of<sorted, unique, stable_refs, sparse, shrinkable, reclaims>
+struct container_traits<std::set<T, C, Allocator>> : properties_of<sorted, unique, stable_refs, sparse, shrinkable, reclaims, proportional_clear>
 {
 };
 
 template<typename T, typename C, typename Allocator>
     requires natural_order<C, T>
-struct container_traits<std::multiset<T, C, Allocator>> : properties_of<sorted, stable_refs, shrinkable, reclaims>
+struct container_traits<std::multiset<T, C, Allocator>> : properties_of<sorted, stable_refs, shrinkable, reclaims, proportional_clear>
 {
 };
 
