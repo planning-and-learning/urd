@@ -9,6 +9,8 @@
 
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -107,7 +109,8 @@ using Containers = testing::Types<
     Store<value<int>, urd::retains>, Store<key<int>, urd::reclaims>,
     // Maps, as they are and as Stores.
     std::map<int, int>, std::multimap<int, int>, std::unordered_map<int, int>, std::unordered_multimap<int, int>,
-    boost::container::flat_map<int, int>, boost::container::flat_multimap<int, int>, Store<key<int>, value<int>>,
+    boost::container::flat_map<int, int>, boost::container::flat_multimap<int, int>,
+    boost::unordered_flat_set<int, std::hash<int>>, boost::unordered_flat_map<int, int, std::hash<int>>, Store<key<int>, value<int>>,
     Store<key<int>, value<int>, urd::sorted>, Store<key<int>, value<int>, urd::small>, Store<key<int>, value<int>, urd::sorted, urd::frozen>,
     Store<key<int>, value<int>, urd::multi>, Store<key<int>, value<int>, urd::multi, urd::sorted>,
     Store<key<int>, value<int>, urd::stable_refs>, Store<key<int>, value<int>, urd::retains>>;

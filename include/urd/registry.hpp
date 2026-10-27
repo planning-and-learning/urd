@@ -3,6 +3,7 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/flat.hpp"
+#include "urd/repr/flat_hash.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
@@ -11,6 +12,7 @@
 #include "urd/traits.hpp"
 
 #include <array>
+#include <functional>
 #include <map>
 #include <unordered_map>
 #include <utility>
@@ -72,6 +74,13 @@ struct as_map<M, std::pair<const K, V>>
     using type = M<K, V>;
 };
 
+template<typename T>
+using FlatHashSet = boost::unordered_flat_set<T, std::hash<T>>;
+template<typename K, typename V>
+using FlatHashMapOf = boost::unordered_flat_map<K, V, std::hash<K>>;
+
+template<typename E>
+using FlatHashMap = typename as_map<FlatHashMapOf, E>::type;
 template<typename E>
 using Map = typename as_map<std::map, E>::type;
 template<typename E>
@@ -90,20 +99,22 @@ using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
 using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_segment_size, true>;
 
-/// Every representation, in order of preference for S; the first that serves S is chosen. Where elements are
-/// few or never change, contiguous storage comes first, as it is the most compact and the fastest to search
-/// and iterate; otherwise hashing, then trees, then contiguous storage, which is O(n) to insert. Frozen rows
-/// are flattened first; rows are kept for reuse only where their memory must be. A container is registered by
-/// adding it to both lists; what it can serve, its container_traits say.
+/// Every representation, in order of preference for S; the first that serves S is chosen. The orders follow
+/// docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill at every
+/// size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs. Where
+/// order is asked for, a tree serves elements inserted over time, and a sorted vector (faster to search and
+/// iterate, O(n) to insert) serves elements that are few or never change. Frozen rows are flattened first;
+/// rows are kept for reuse only where their memory must be. A container is registered by adding it to both
+/// lists; what it can serve, its container_traits say.
 template<typename S>
 using preference = std::conditional_t<
     has<S, frozen> || S::work == workload::small,
-    candidates<repr::Jagged, std::vector, boost::container::flat_multiset, boost::container::flat_set, std::set,
-               std::unordered_set, FlatMultiMap, FlatMap, Map, MultiMap, UnorderedMap, UnorderedMultiMap, SegmentedVector,
-               ConcurrentSegmentedVector, repr::RowPool>,
-    candidates<repr::Jagged, std::vector, std::unordered_set, std::set, boost::container::flat_multiset,
-               boost::container::flat_set, UnorderedMap, UnorderedMultiMap, Map, MultiMap, FlatMultiMap, FlatMap,
-               SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
+    candidates<repr::Jagged, std::vector, boost::container::flat_multiset, FlatHashSet, boost::container::flat_set, std::set,
+               std::unordered_set, FlatMultiMap, FlatHashMap, FlatMap, Map, MultiMap, UnorderedMap, UnorderedMultiMap,
+               SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>,
+    candidates<repr::Jagged, std::vector, FlatHashSet, std::unordered_set, std::set, boost::container::flat_multiset,
+               boost::container::flat_set, FlatHashMap, UnorderedMap, UnorderedMultiMap, Map, MultiMap, FlatMultiMap,
+               FlatMap, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
 
 template<typename S, typename Candidates = preference<S>>
 struct choose;

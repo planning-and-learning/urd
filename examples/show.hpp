@@ -86,6 +86,16 @@ struct name<boost::container::flat_multimap<K, V, C, A>>
 {
     static constexpr std::string_view value = "boost::container::flat_multimap (sorted vector)";
 };
+template<typename T, typename H, typename E, typename A>
+struct name<boost::unordered_flat_set<T, H, E, A>>
+{
+    static constexpr std::string_view value = "boost::unordered_flat_set (open-addressing hash table)";
+};
+template<typename K, typename V, typename H, typename E, typename A>
+struct name<boost::unordered_flat_map<K, V, H, E, A>>
+{
+    static constexpr std::string_view value = "boost::unordered_flat_map (open-addressing hash table)";
+};
 template<typename Inner>
 struct name<urd::repr::Jagged<Inner>>
 {

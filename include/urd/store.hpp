@@ -325,7 +325,10 @@ public:
     iterator erase(const_iterator pos)
         requires has<S, shrinkable>
     {
-        return m_representation.erase(pos);
+        // Two conversions, one at a time: the representation's result (perhaps a proxy) to its iterator, that
+        // to the Store's.
+        const std::ranges::iterator_t<representation> next = m_representation.erase(pos);
+        return next;
     }
     iterator erase(const_iterator first, const_iterator last)
         requires has<S, shrinkable>

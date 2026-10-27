@@ -27,7 +27,8 @@ namespace urd
 // | growable, kept by value          | insert(e) (pair<iterator, bool> if unique, else iterator),         |
 // |                                  | insert(e&&), emplace(args), insert(first, last), insert(hint, e)   |
 // | growable, a sequence             | push_back(e), push_back(e&&), emplace_back(args) -> reference      |
-// | shrinkable                       | clear, erase(position) -> iterator, erase(first, last)             |
+// | shrinkable                       | clear, erase(position) -> (convertible to) iterator, erase(first,  |
+// |                                  | last)                                                              |
 // | shrinkable, kept by value        | erase(e) -> count                                                  |
 // | shrinkable, a sequence           | pop_back, insert(position, e) -> iterator, emplace(position, args) |
 // | a map (names a mapped_type)      | the lookups and erase(e) above take a key; with unique keys, at(k) |
@@ -127,7 +128,8 @@ concept sequence_insertion = requires(R& range, const E& element, E&& moved) {
 template<typename R>
 concept removal = requires(R& range, std::ranges::iterator_t<const R> position) {
     range.clear();
-    { range.erase(position) } -> std::same_as<std::ranges::iterator_t<R>>;
+    // Convertible, as the standard asks: Boost's flat hash tables return a cheaper proxy.
+    { range.erase(position) } -> std::convertible_to<std::ranges::iterator_t<R>>;
     range.erase(position, position);
 };
 

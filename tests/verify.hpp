@@ -576,8 +576,12 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         const auto last = op == 1 ? first + 1 : first + position(size - first);
                         operation = "erase positions " + std::to_string(first) + " to " + std::to_string(last);
                         const auto removed = std::vector<E>(detail::const_at(range, first), detail::const_at(range, last));
-                        [[maybe_unused]] const auto next = op == 1 ? range.erase(detail::const_at(range, first))
-                                                  : range.erase(detail::const_at(range, first), detail::const_at(range, last));
+                        // The iterator after the erased positions; erase(position) may return a proxy that converts.
+                        std::ranges::iterator_t<R> next;
+                        if (op == 1)
+                            next = range.erase(detail::const_at(range, first));
+                        else
+                            next = range.erase(detail::const_at(range, first), detail::const_at(range, last));
                         if constexpr (keyed)
                             for (const auto& each : removed)
                                 model.erase_one(each);
@@ -585,7 +589,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         {
                             model.elements.erase(model.elements.begin() + static_cast<std::ptrdiff_t>(first),
                                                  model.elements.begin() + static_cast<std::ptrdiff_t>(last));
-                            if (detail::position_of(range, next) != first)
+                            if (detail::position_of(range, std::ranges::iterator_t<const R>(next)) != first)
                                 wrong = "erase returns the wrong position";
                         }
                     }
