@@ -14,47 +14,54 @@ namespace urd
 struct any_order
 {
 };
+/// Ascending by urd::Less: operator< for numbers, member by member for identified types.
 struct sorted : any_order
 {
-};  ///< ascending by operator<
+};
 
 struct duplicates
 {
 };
+/// No two elements are equal.
 struct unique : duplicates
 {
-};  ///< no two elements are equal
+};
 
 struct any_keys
 {
 };
+/// The keys are 0..n-1, or nearly so.
 struct dense : any_keys
 {
-};  ///< the keys are 0..n-1, or nearly so
+};
+/// The keys are few compared to their range.
 struct sparse : any_keys
 {
-};  ///< the keys are few compared to their range
+};
 
 struct moving_refs
 {
 };
+/// A reference to an element stays valid until that element is removed (erase, clear).
 struct stable_refs : moving_refs
 {
-};  ///< a reference to an element stays valid until that element is removed (erase, clear)
+};
 
 struct any_layout
 {
 };
+/// The elements lie next to each other in memory.
 struct contiguous : any_layout
 {
-};  ///< the elements lie next to each other in memory
+};
 
 struct any_representation
 {
 };
+/// Equal contents have equal representations.
 struct canonical : any_representation
 {
-};  ///< equal contents have equal representations
+};
 
 struct single_threaded
 {
@@ -77,66 +84,70 @@ struct reclaims : any_memory
 {
 };
 
-struct ephemeral
-{
-};
-struct persistent : ephemeral
-{
-};  ///< a change makes a new version and old versions stay valid
-
+/// Offers no change.
 struct immutable
 {
-};  ///< offers no change
+};
+/// Offers insert.
 struct growable : immutable
 {
-};  ///< offers insert
+};
+/// Offers insert, erase and clear.
 struct shrinkable : growable
 {
-};  ///< offers insert, erase and clear
+};
 
-// What only a Store's interface enforces; no container declares these.
+// What a Store's interface enforces: no container declares a lifecycle, emptiness or identity. Multiplicity a
+// multimap declares (multi), but a request only states it.
 struct may_change
 {
 };
+/// Only grows: nothing is ever removed.
 struct monotone : may_change
 {
-};  ///< only grows: nothing is ever removed
+};
+/// No change after construction.
 struct frozen : monotone
 {
-};  ///< no change after construction
+};
 
 struct maybe_empty
 {
 };
+/// At least one element.
 struct nonempty : maybe_empty
 {
-};  ///< at least one element
+};
 
 struct any_multiplicity
 {
 };
+/// At most one value per key (a map).
 struct functional : any_multiplicity
 {
-};  ///< at most one value per key (a map)
+};
+/// Any number of values per key (a multimap).
 struct multi : any_multiplicity
 {
-};  ///< any number of values per key (a multimap)
+};
 
 struct by_key
 {
 };
+/// Identified by position 0..n-1, in order (a sequence).
 struct positional : by_key
 {
-};  ///< identified by position 0..n-1, in order (a sequence)
+};
 
 // How a Store is used: it changes which representation is chosen, never what the Store guarantees. Only a
 // request says it; docs/BENCHMARKS.md backs what each one chooses.
 struct general
 {
 };
+/// A few elements, or a few at a time.
 struct small : general
 {
-};  ///< a few elements, or a few at a time
+};
 
 namespace detail
 {
@@ -148,8 +159,7 @@ struct type_list
 };
 
 /// The roots of the categories a container declares, then those only a Store's request has.
-using guaranteed_roots =
-    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, ephemeral, immutable, any_memory>;
+using guaranteed_roots = type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

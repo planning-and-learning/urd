@@ -45,7 +45,7 @@ inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique> || h
 namespace detail
 {
 
-/// What R holds: its value_type where it names one (a container of rows hands out views of them), else what
+/// What R holds: its value_type where it names one (a container of rows hands out slices of them), else what
 /// iterating it gives.
 template<typename R>
 struct value_of
@@ -146,19 +146,35 @@ concept sequence_removal = requires(R& range, const E& element, std::ranges::ite
 
 }  // namespace detail
 
+namespace detail
+{
+
+// What each capability requires, as the Store's facets group what each offers.
+
+template<typename R, typename Traits, typename L>
+concept offers_lookup = (!by_value<Traits> || lookup<R, L>) && (!has<Traits, sorted> || ordered_lookup<R, L>);
+
+template<typename R, typename Traits>
+concept offers_values_by_key = !map_container<R> || !has<Traits, unique> || (unique_map_lookup<R> && (!has<Traits, growable> || unique_map_insertion<R>) );
+
+template<typename R, typename Traits, typename E>
+concept offers_growth = !has<Traits, growable> || (by_value<Traits> ? value_insertion<R, E, has<Traits, unique>> : sequence_insertion<R, E>);
+
+template<typename R, typename Traits, typename E, typename L>
+concept offers_removal = !has<Traits, shrinkable> || (removal<R> && (by_value<Traits> ? value_removal<R, L> : sequence_removal<R, E>) );
+
+template<typename R, typename Traits>
+concept offers_layout = (!has<Traits, canonical> || std::equality_comparable<R>) && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
+                        && (!has<Traits, positional> || std::ranges::random_access_range<R>);
+
+}  // namespace detail
+
 /// Whether R offers what its declared properties require (the table above).
 template<typename R,
          typename Traits = container_traits<std::remove_cvref_t<R>>,
          typename E = typename detail::value_of<R>::type,
          typename L = typename detail::lookup_of<R, E>::type>
-concept conforming =
-    detail::basic_container<R, E> && (!has<Traits, canonical> || std::equality_comparable<R>) && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
-    && (!has<Traits, positional> || std::ranges::random_access_range<R>) && (!by_value<Traits> || detail::lookup<R, L>)
-    && (!has<Traits, sorted> || detail::ordered_lookup<R, L>) && (!detail::map_container<R> || !has<Traits, unique> || detail::unique_map_lookup<R>)
-    && (!detail::map_container<R> || !has<Traits, unique> || !has<Traits, growable> || detail::unique_map_insertion<R>)
-    && (!has<Traits, growable>
-        || (by_value<Traits> && detail::value_insertion<R, E, has<Traits, unique>>) || (!by_value<Traits> && detail::sequence_insertion<R, E>) )
-    && (!has<Traits, shrinkable> || (detail::removal<R> && by_value<Traits> && detail::value_removal<R, L>)
-        || (detail::removal<R> && !by_value<Traits> && detail::sequence_removal<R, E>) );
+concept conforming = detail::basic_container<R, E> && detail::offers_layout<R, Traits> && detail::offers_lookup<R, Traits, L>
+                     && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E> && detail::offers_removal<R, Traits, E, L>;
 
 }  // namespace urd

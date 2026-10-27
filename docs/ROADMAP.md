@@ -196,7 +196,7 @@ flag vectors.
 | Two-level dense map (4) | nested Stores: `Store<key<Rel>, dense, value<Store<key<Row>, dense, value<V>, auto_resize>>>` with `constant_clear`; no new representation if M1 and nested Stores compose |
 | Bit matrix (14) | a uniform-length nested dense set: rows of equal length need no offsets; a `uniform` property makes it one bitset with a stride |
 | Partition (13) | a new kind, union-find, with `merge`, `find` and `same`; `refinable` for colour refinement later |
-| Persistent (15) | `persistent` exists without a representation: yggdrasil `tree_vector_set` and `tree_bitset_set` (copy), or immer if its license and size fit |
+| Persistent (15) | a `persistent` property (removed until it has a representation and a test): yggdrasil `tree_vector_set` and `tree_bitset_set` (copy), or immer if its license and size fit |
 | Delta tracking (16) | a `change_log` property: the Store records exactly what was added and removed since the last reset, for semi-naive evaluation |
 | Type-indexed family (18) | a combinator over Stores, one per type in a tag list; not a Store |
 | Hive and slot map | `handles` identity (from the earlier discussion), for object pools whose objects need stable addresses and reuse |
