@@ -62,9 +62,7 @@ public:
     /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
     template<std::input_iterator InputIt>
     Store(InputIt first, InputIt last) : m_representation(first, last)
-    {
-        assert((!has<S, nonempty> || !empty()) && "urd::Store: a nonempty Store needs an element");
-    }
+    { assert((!has<S, nonempty> || !empty()) && "urd::Store: a nonempty Store needs an element"); }
 
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
 
@@ -83,26 +81,18 @@ public:
     [[nodiscard]] const_iterator end() const { return m_representation.end(); }
     [[nodiscard]] iterator begin()
         requires writable
-    {
-        return m_representation.begin();
-    }
+    { return m_representation.begin(); }
     [[nodiscard]] iterator end()
         requires writable
-    {
-        return m_representation.end();
-    }
+    { return m_representation.end(); }
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
     [[nodiscard]] const_iterator cend() const { return end(); }
     [[nodiscard]] auto rbegin() const
         requires ordered
-    {
-        return std::make_reverse_iterator(end());
-    }
+    { return std::make_reverse_iterator(end()); }
     [[nodiscard]] auto rend() const
         requires ordered
-    {
-        return std::make_reverse_iterator(begin());
-    }
+    { return std::make_reverse_iterator(begin()); }
     [[nodiscard]] size_type size() const { return std::ranges::size(m_representation); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 
@@ -169,47 +159,31 @@ public:
     }
     [[nodiscard]] auto data() const
         requires has<S, contiguous>
-    {
-        return std::ranges::cdata(m_representation);
-    }
+    { return std::ranges::cdata(m_representation); }
     [[nodiscard]] value_type* data()
         requires(has<S, contiguous> && writable)
-    {
-        return std::ranges::data(m_representation);
-    }
+    { return std::ranges::data(m_representation); }
 
     // Lookup, where elements are kept by value.
 
     [[nodiscard]] const_iterator find(const lookup_type& element) const
         requires keyed
-    {
-        return m_representation.find(element);
-    }
+    { return m_representation.find(element); }
     [[nodiscard]] size_type count(const lookup_type& element) const
         requires keyed
-    {
-        return m_representation.count(element);
-    }
+    { return m_representation.count(element); }
     [[nodiscard]] bool contains(const lookup_type& element) const
         requires keyed
-    {
-        return m_representation.contains(element);
-    }
+    { return m_representation.contains(element); }
     [[nodiscard]] const_iterator lower_bound(const lookup_type& element) const
         requires has<S, sorted>
-    {
-        return m_representation.lower_bound(element);
-    }
+    { return m_representation.lower_bound(element); }
     [[nodiscard]] const_iterator upper_bound(const lookup_type& element) const
         requires has<S, sorted>
-    {
-        return m_representation.upper_bound(element);
-    }
+    { return m_representation.upper_bound(element); }
     [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const lookup_type& element) const
         requires has<S, sorted>
-    {
-        return m_representation.equal_range(element);
-    }
+    { return m_representation.equal_range(element); }
 
     // Inserting, unless frozen: by value as std::set or std::multiset does, or at the end as std::vector does.
 
@@ -217,37 +191,25 @@ public:
 
     insert_result insert(const value_type& element)
         requires(keyed && has<S, growable>)
-    {
-        return m_representation.insert(element);
-    }
+    { return m_representation.insert(element); }
     insert_result insert(value_type&& element)
         requires(keyed && has<S, growable>)
-    {
-        return m_representation.insert(std::move(element));
-    }
+    { return m_representation.insert(std::move(element)); }
     /// With a hint where the element goes.
     iterator insert(const_iterator hint, const value_type& element)
         requires(keyed && has<S, growable>)
-    {
-        return m_representation.insert(hint, element);
-    }
+    { return m_representation.insert(hint, element); }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
         requires(keyed && has<S, growable>)
-    {
-        m_representation.insert(first, last);
-    }
+    { m_representation.insert(first, last); }
     void insert(std::initializer_list<value_type> elements)
         requires(keyed && has<S, growable>)
-    {
-        insert(elements.begin(), elements.end());
-    }
+    { insert(elements.begin(), elements.end()); }
     template<typename... Args>
     insert_result emplace(Args&&... args)
         requires(keyed && has<S, growable>)
-    {
-        return m_representation.emplace(std::forward<Args>(args)...);
-    }
+    { return m_representation.emplace(std::forward<Args>(args)...); }
 
     // A map with unique keys: its values, by key. Values change only through these; iterating gives const elements,
     // as some representations' iterators would let a key be overwritten.
@@ -258,66 +220,46 @@ public:
     template<typename K = key_type, typename M = mapped_type>
     [[nodiscard]] const M& at(const K& key) const
         requires(S::is_map && has<S, unique>)
-    {
-        return m_representation.at(key);
-    }
+    { return m_representation.at(key); }
     template<typename K = key_type, typename M = mapped_type>
     [[nodiscard]] M& at(const K& key)
         requires(S::is_map && has<S, unique> && !has<S, frozen>)
-    {
-        return m_representation.at(key);
-    }
+    { return m_representation.at(key); }
     /// The value for `key`, inserted as a default first where there is none.
     template<typename K = key_type, typename M = mapped_type>
     M& operator[](const K& key)
         requires(S::is_map && has<S, unique> && has<S, growable> && std::default_initializable<M>)
-    {
-        return m_representation.try_emplace(key).first->second;
-    }
+    { return m_representation.try_emplace(key).first->second; }
     /// Inserts a value built from `args` unless `key` has one.
     template<typename K = key_type, typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
         requires(S::is_map && has<S, unique> && has<S, growable>)
-    {
-        return m_representation.try_emplace(key, std::forward<Args>(args)...);
-    }
+    { return m_representation.try_emplace(key, std::forward<Args>(args)...); }
     /// Sets the value for `key`, inserting it where there is none.
     template<typename M, typename K = key_type>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
         requires(S::is_map && has<S, unique> && has<S, growable>)
-    {
-        return m_representation.insert_or_assign(key, std::forward<M>(mapped));
-    }
+    { return m_representation.insert_or_assign(key, std::forward<M>(mapped)); }
 
     void push_back(const value_type& element)
         requires(!keyed && has<S, growable>)
-    {
-        m_representation.push_back(element);
-    }
+    { m_representation.push_back(element); }
     void push_back(value_type&& element)
         requires(!keyed && has<S, growable>)
-    {
-        m_representation.push_back(std::move(element));
-    }
+    { m_representation.push_back(std::move(element)); }
     /// The new element; changeable in place only where the Store's elements are.
     template<typename... Args>
     std::conditional_t<writable, reference, const_reference> emplace_back(Args&&... args)
         requires(!keyed && has<S, growable>)
-    {
-        return m_representation.emplace_back(std::forward<Args>(args)...);
-    }
+    { return m_representation.emplace_back(std::forward<Args>(args)...); }
     /// Inserting before a position moves the later elements, so only a sequence that may erase offers it.
     iterator insert(const_iterator pos, const value_type& element)
         requires(!keyed && has<S, shrinkable>)
-    {
-        return m_representation.insert(pos, element);
-    }
+    { return m_representation.insert(pos, element); }
     template<typename... Args>
     iterator emplace(const_iterator pos, Args&&... args)
         requires(!keyed && has<S, shrinkable>)
-    {
-        return m_representation.emplace(pos, std::forward<Args>(args)...);
-    }
+    { return m_representation.emplace(pos, std::forward<Args>(args)...); }
 
     // Removing, unless the Store only grows (monotone, frozen) or must keep an element (nonempty). Removing
     // an element ends the references to it.
@@ -332,25 +274,17 @@ public:
     }
     iterator erase(const_iterator first, const_iterator last)
         requires has<S, shrinkable>
-    {
-        return m_representation.erase(first, last);
-    }
+    { return m_representation.erase(first, last); }
     /// Every element equal to `element` (in a map, with that key); how many there were.
     size_type erase(const lookup_type& element)
         requires(keyed && has<S, shrinkable>)
-    {
-        return m_representation.erase(element);
-    }
+    { return m_representation.erase(element); }
     void pop_back()
         requires(!keyed && has<S, shrinkable>)
-    {
-        m_representation.pop_back();
-    }
+    { m_representation.pop_back(); }
     void clear()
         requires has<S, shrinkable>
-    {
-        m_representation.clear();
-    }
+    { m_representation.clear(); }
 
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
     template<typename Pred>
@@ -394,9 +328,7 @@ public:
     /// In order, as the standard's ordered containers compare.
     [[nodiscard]] friend auto operator<=>(const Store& lhs, const Store& rhs)
         requires(ordered && std::three_way_comparable<value_type>)
-    {
-        return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-    }
+    { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
 
 private:
     representation m_representation;

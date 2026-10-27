@@ -3,20 +3,19 @@
 // declares the property, and is skipped for the others; one more drives all operations at random through
 // urd::verify (verify.hpp). Validating a container is adding it to the list.
 
-#include "urd/store.hpp"
 #include "allocations.hpp"
 #include "names.hpp"
+#include "urd/store.hpp"
 #include "verify.hpp"
 
+#include <algorithm>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
-#include <gtest/gtest.h>
-
-#include <algorithm>
-#include <deque>
 #include <cstddef>
+#include <deque>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -93,28 +92,55 @@ using urd::test::allocations;
 using urd::test::Counted;
 using urd::test::deallocations;
 
-
 using Containers = testing::Types<
     // The representations, as they are.
-    std::vector<int>, std::set<int>, std::unordered_set<int>, boost::container::flat_set<int>, boost::container::flat_multiset<int>,
-    SegmentedVector<int>, SegmentedVector<int, urd::repr::default_first_segment_size, true>,
+    std::vector<int>,
+    std::set<int>,
+    std::unordered_set<int>,
+    boost::container::flat_set<int>,
+    boost::container::flat_multiset<int>,
+    SegmentedVector<int>,
+    SegmentedVector<int, urd::repr::default_first_segment_size, true>,
     // A container from elsewhere, through an adapter.
     Journal,
     // Stores, which promise what they were asked for.
-    Store<key<int>>, Store<key<int>, urd::sorted>, Store<key<int>, urd::small>, Store<key<int>, urd::sorted, urd::frozen>,
-    Store<key<int>, urd::nonempty>, Store<key<int>, urd::stable_refs>, Store<key<int>, urd::sorted, urd::stable_refs>,
-    Store<key<int>, urd::sorted, urd::contiguous, urd::frozen>, Store<value<int>>, Store<value<int>, urd::sorted>,
-    Store<value<int>, urd::sorted, urd::unique>, Store<value<int>, urd::monotone>, Store<value<int>, urd::nonempty, urd::monotone>,
-    Store<value<int>, urd::contiguous>, Store<value<int>, urd::stable_refs, urd::monotone>,
-    Store<value<int>, urd::monotone, urd::concurrent>, Store<key<int>, urd::retains>, Store<key<int>, urd::sorted, urd::retains>,
-    Store<value<int>, urd::retains>, Store<key<int>, urd::reclaims>,
+    Store<key<int>>,
+    Store<key<int>, urd::sorted>,
+    Store<key<int>, urd::small>,
+    Store<key<int>, urd::sorted, urd::frozen>,
+    Store<key<int>, urd::nonempty>,
+    Store<key<int>, urd::stable_refs>,
+    Store<key<int>, urd::sorted, urd::stable_refs>,
+    Store<key<int>, urd::sorted, urd::contiguous, urd::frozen>,
+    Store<value<int>>,
+    Store<value<int>, urd::sorted>,
+    Store<value<int>, urd::sorted, urd::unique>,
+    Store<value<int>, urd::monotone>,
+    Store<value<int>, urd::nonempty, urd::monotone>,
+    Store<value<int>, urd::contiguous>,
+    Store<value<int>, urd::stable_refs, urd::monotone>,
+    Store<value<int>, urd::monotone, urd::concurrent>,
+    Store<key<int>, urd::retains>,
+    Store<key<int>, urd::sorted, urd::retains>,
+    Store<value<int>, urd::retains>,
+    Store<key<int>, urd::reclaims>,
     // Maps, as they are and as Stores.
-    std::map<int, int>, std::multimap<int, int>, std::unordered_map<int, int>, std::unordered_multimap<int, int>,
-    boost::container::flat_map<int, int>, boost::container::flat_multimap<int, int>,
-    boost::unordered_flat_set<int, std::hash<int>>, boost::unordered_flat_map<int, int, std::hash<int>>, Store<key<int>, value<int>>,
-    Store<key<int>, value<int>, urd::sorted>, Store<key<int>, value<int>, urd::small>, Store<key<int>, value<int>, urd::sorted, urd::frozen>,
-    Store<key<int>, value<int>, urd::multi>, Store<key<int>, value<int>, urd::multi, urd::sorted>,
-    Store<key<int>, value<int>, urd::stable_refs>, Store<key<int>, value<int>, urd::retains>>;
+    std::map<int, int>,
+    std::multimap<int, int>,
+    std::unordered_map<int, int>,
+    std::unordered_multimap<int, int>,
+    boost::container::flat_map<int, int>,
+    boost::container::flat_multimap<int, int>,
+    boost::unordered_flat_set<int, std::hash<int>>,
+    boost::unordered_flat_map<int, int, std::hash<int>>,
+    Store<key<int>, value<int>>,
+    Store<key<int>, value<int>, urd::sorted>,
+    Store<key<int>, value<int>, urd::small>,
+    Store<key<int>, value<int>, urd::sorted, urd::frozen>,
+    Store<key<int>, value<int>, urd::multi>,
+    Store<key<int>, value<int>, urd::multi, urd::sorted>,
+    Store<key<int>, value<int>, urd::stable_refs>,
+    Store<key<int>, value<int>, urd::retains>>;
 
 template<typename R>
 class Properties : public testing::Test
@@ -183,7 +209,6 @@ std::vector<int> descending(int count)
 }
 
 }  // namespace
-
 
 TYPED_TEST(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
@@ -371,10 +396,12 @@ TYPED_TEST(Properties, Concurrent)
         auto range = TypeParam();
         auto threads = std::vector<std::thread>();
         for (int thread = 0; thread < THREADS; ++thread)
-            threads.emplace_back([&range, thread] {
-                for (int element = 0; element < EACH; ++element)
-                    add(range, thread * EACH + element);
-            });
+            threads.emplace_back(
+                [&range, thread]
+                {
+                    for (int element = 0; element < EACH; ++element)
+                        add(range, thread * EACH + element);
+                });
         for (auto& thread : threads)
             thread.join();
         auto contents = std::vector<int>(std::ranges::begin(range), std::ranges::end(range));

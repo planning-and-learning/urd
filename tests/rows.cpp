@@ -6,9 +6,8 @@
 #include "names.hpp"
 #include "urd/store.hpp"
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <random>
 #include <ranges>
 #include <span>
@@ -28,10 +27,10 @@ using Leaf = Store<value<int>, urd::frozen>;
 using SortedLeaf = Store<value<int>, urd::sorted, urd::frozen>;
 using Middle = Store<value<Leaf>, urd::frozen>;
 
-using Nested = testing::Types<Store<value<Leaf>>,                                          // flattened rows
-                              Store<value<SortedLeaf>>,                                    // flattened, each row sorted
-                              Store<value<Middle>>,                                        // three levels, flattened
-                              Store<value<Leaf>, urd::retains>,                            // flattened, storage kept
+using Nested = testing::Types<Store<value<Leaf>>,                                           // flattened rows
+                              Store<value<SortedLeaf>>,                                     // flattened, each row sorted
+                              Store<value<Middle>>,                                         // three levels, flattened
+                              Store<value<Leaf>, urd::retains>,                             // flattened, storage kept
                               Store<value<Store<value<int>, urd::retains>>, urd::retains>,  // rows kept for reuse
                               Store<value<Store<value<int>>>>>;                             // a vector of Stores
 

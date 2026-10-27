@@ -12,16 +12,16 @@
 #include "urd/traits.hpp"
 
 #include <array>
+#include <cstddef>
 #include <functional>
 #include <map>
-#include <unordered_map>
-#include <utility>
-#include <cstddef>
 #include <ranges>
 #include <set>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace urd::detail
@@ -44,11 +44,9 @@ struct requirement : S
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map
-                 && satisfies<container_traits<R>, requirement<S>> && conforming<R>
-                 && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
-                 && (!has<S, positional> || std::ranges::random_access_range<R>)
-                 && (!is_store<typename S::element_type>
-                     || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
+                 && satisfies<container_traits<R>, requirement<S>> && conforming<R> && by_value<container_traits<R>> == by_value<S>
+                 && has<container_traits<R>, unique> == has<S, unique> && (!has<S, positional> || std::ranges::random_access_range<R>)
+                 && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
 
 /// Container templates, each taking the element type.
 template<template<typename...> class... Cs>
@@ -107,14 +105,41 @@ using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_s
 /// rows are kept for reuse only where their memory must be. A container is registered by adding it to both
 /// lists; what it can serve, its container_traits say.
 template<typename S>
-using preference = std::conditional_t<
-    has<S, frozen> || S::work == workload::small,
-    candidates<repr::Jagged, std::vector, boost::container::flat_multiset, FlatHashSet, boost::container::flat_set, std::set,
-               std::unordered_set, FlatMultiMap, FlatHashMap, FlatMap, Map, MultiMap, UnorderedMap, UnorderedMultiMap,
-               SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>,
-    candidates<repr::Jagged, std::vector, FlatHashSet, std::unordered_set, std::set, boost::container::flat_multiset,
-               boost::container::flat_set, FlatHashMap, UnorderedMap, UnorderedMultiMap, Map, MultiMap, FlatMultiMap,
-               FlatMap, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
+using preference = std::conditional_t<has<S, frozen> || S::work == workload::small,
+                                      candidates<repr::Jagged,
+                                                 std::vector,
+                                                 boost::container::flat_multiset,
+                                                 FlatHashSet,
+                                                 boost::container::flat_set,
+                                                 std::set,
+                                                 std::unordered_set,
+                                                 FlatMultiMap,
+                                                 FlatHashMap,
+                                                 FlatMap,
+                                                 Map,
+                                                 MultiMap,
+                                                 UnorderedMap,
+                                                 UnorderedMultiMap,
+                                                 SegmentedVector,
+                                                 ConcurrentSegmentedVector,
+                                                 repr::RowPool>,
+                                      candidates<repr::Jagged,
+                                                 std::vector,
+                                                 FlatHashSet,
+                                                 std::unordered_set,
+                                                 std::set,
+                                                 boost::container::flat_multiset,
+                                                 boost::container::flat_set,
+                                                 FlatHashMap,
+                                                 UnorderedMap,
+                                                 UnorderedMultiMap,
+                                                 Map,
+                                                 MultiMap,
+                                                 FlatMultiMap,
+                                                 FlatMap,
+                                                 SegmentedVector,
+                                                 ConcurrentSegmentedVector,
+                                                 repr::RowPool>>;
 
 template<typename S, typename Candidates = preference<S>>
 struct choose;
@@ -134,10 +159,11 @@ struct choose<S, candidates<Cs...>>
         return found;
     }();
 
-    static_assert(best < count, "urd::Store: no representation provides this combination of properties; "
-                                "the pool needs a new representation for it");
+    static_assert(best < count,
+                  "urd::Store: no representation provides this combination of properties; "
+                  "the pool needs a new representation for it");
 
-    using type = std::tuple_element_t<best < count ? best : 0, std::tuple<Cs<element>...>>;
+    using type = std::tuple_element_t < best<count ? best : 0, std::tuple<Cs<element>...>>;
 };
 
 }  // namespace urd::detail

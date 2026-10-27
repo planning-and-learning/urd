@@ -13,62 +13,139 @@ namespace urd
 // type, and a tag derived from another means "at least that". The root of a category promises nothing.
 
 // What a container guarantees by itself.
-struct any_order {};
-struct sorted : any_order {};  ///< ascending by operator<
+struct any_order
+{
+};
+struct sorted : any_order
+{
+};  ///< ascending by operator<
 
-struct duplicates {};
-struct unique : duplicates {};  ///< no two elements are equal
+struct duplicates
+{
+};
+struct unique : duplicates
+{
+};  ///< no two elements are equal
 
-struct any_keys {};
-struct dense : any_keys {};   ///< the keys are 0..n-1, or nearly so
-struct sparse : any_keys {};  ///< the keys are few compared to their range
+struct any_keys
+{
+};
+struct dense : any_keys
+{
+};  ///< the keys are 0..n-1, or nearly so
+struct sparse : any_keys
+{
+};  ///< the keys are few compared to their range
 
-struct moving_refs {};
-struct stable_refs : moving_refs {};  ///< a reference to an element stays valid until that element is removed (erase, clear)
+struct moving_refs
+{
+};
+struct stable_refs : moving_refs
+{
+};  ///< a reference to an element stays valid until that element is removed (erase, clear)
 
-struct any_layout {};
-struct contiguous : any_layout {};  ///< the elements lie next to each other in memory
+struct any_layout
+{
+};
+struct contiguous : any_layout
+{
+};  ///< the elements lie next to each other in memory
 
-struct any_representation {};
-struct canonical : any_representation {};  ///< equal contents have equal representations
+struct any_representation
+{
+};
+struct canonical : any_representation
+{
+};  ///< equal contents have equal representations
 
-struct single_threaded {};
+struct single_threaded
+{
+};
 /// Inserts may run concurrently with each other and with reads of elements already published. Not covered:
 /// erase, clear and iteration, which need no other operation running.
-struct concurrent : single_threaded {};
+struct concurrent : single_threaded
+{
+};
 
-struct any_memory {};
+struct any_memory
+{
+};
 /// Storage that erase and clear free is kept for reuse: refilling up to an earlier size allocates nothing.
-struct retains : any_memory {};
+struct retains : any_memory
+{
+};
 /// Erase and clear return the storage of what they remove.
-struct reclaims : any_memory {};
+struct reclaims : any_memory
+{
+};
 
-struct ephemeral {};
-struct persistent : ephemeral {};  ///< a change makes a new version and old versions stay valid
+struct ephemeral
+{
+};
+struct persistent : ephemeral
+{
+};  ///< a change makes a new version and old versions stay valid
 
-struct immutable {};                ///< offers no change
-struct growable : immutable {};     ///< offers insert
-struct shrinkable : growable {};    ///< offers insert, erase and clear
+struct immutable
+{
+};  ///< offers no change
+struct growable : immutable
+{
+};  ///< offers insert
+struct shrinkable : growable
+{
+};  ///< offers insert, erase and clear
 
 // What only a Store's interface enforces; no container declares these.
-struct may_change {};
-struct monotone : may_change {};  ///< only grows: nothing is ever removed
-struct frozen : monotone {};      ///< no change after construction
+struct may_change
+{
+};
+struct monotone : may_change
+{
+};  ///< only grows: nothing is ever removed
+struct frozen : monotone
+{
+};  ///< no change after construction
 
-struct maybe_empty {};
-struct nonempty : maybe_empty {};  ///< at least one element
+struct maybe_empty
+{
+};
+struct nonempty : maybe_empty
+{
+};  ///< at least one element
 
-struct any_multiplicity {};
-struct functional : any_multiplicity {};  ///< at most one value per key (a map)
-struct multi : any_multiplicity {};       ///< any number of values per key (a multimap)
+struct any_multiplicity
+{
+};
+struct functional : any_multiplicity
+{
+};  ///< at most one value per key (a map)
+struct multi : any_multiplicity
+{
+};  ///< any number of values per key (a multimap)
 
-struct by_key {};
-struct positional : by_key {};  ///< identified by position 0..n-1, in order (a sequence)
+struct by_key
+{
+};
+struct positional : by_key
+{
+};  ///< identified by position 0..n-1, in order (a sequence)
 
 /// The properties of something, one tag per category, in a fixed order: equal properties are one type.
-template<typename Order, typename Uniqueness, typename Keys, typename References, typename Layout, typename Canonical,
-         typename Concurrency, typename Version, typename Mutability, typename Lifecycle, typename Emptiness,
-         typename Multiplicity, typename Identity, typename Memory>
+template<typename Order,
+         typename Uniqueness,
+         typename Keys,
+         typename References,
+         typename Layout,
+         typename Canonical,
+         typename Concurrency,
+         typename Version,
+         typename Mutability,
+         typename Lifecycle,
+         typename Emptiness,
+         typename Multiplicity,
+         typename Identity,
+         typename Memory>
 struct properties
 {
     using order_category = Order;
@@ -112,8 +189,8 @@ template<typename... Roots>
 struct root_list
 {
 };
-using guaranteed_roots = root_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation,
-                                   single_threaded, ephemeral, immutable, any_memory>;
+using guaranteed_roots =
+    root_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, ephemeral, immutable, any_memory>;
 using requested_roots = root_list<may_change, maybe_empty, any_multiplicity, by_key>;
 
 template<typename Tag, typename List>
@@ -136,13 +213,20 @@ inline constexpr bool is_request_only = detail::in_list<Tag, detail::requested_r
 
 /// The properties stated by Tags, in any order; categories no tag answers keep their root.
 template<typename... Tags>
-using properties_of = properties<detail::pick_t<any_order, Tags...>, detail::pick_t<duplicates, Tags...>,
-                                 detail::pick_t<any_keys, Tags...>, detail::pick_t<moving_refs, Tags...>,
-                                 detail::pick_t<any_layout, Tags...>, detail::pick_t<any_representation, Tags...>,
-                                 detail::pick_t<single_threaded, Tags...>, detail::pick_t<ephemeral, Tags...>,
-                                 detail::pick_t<immutable, Tags...>, detail::pick_t<may_change, Tags...>,
-                                 detail::pick_t<maybe_empty, Tags...>, detail::pick_t<any_multiplicity, Tags...>,
-                                 detail::pick_t<by_key, Tags...>, detail::pick_t<any_memory, Tags...>>;
+using properties_of = properties<detail::pick_t<any_order, Tags...>,
+                                 detail::pick_t<duplicates, Tags...>,
+                                 detail::pick_t<any_keys, Tags...>,
+                                 detail::pick_t<moving_refs, Tags...>,
+                                 detail::pick_t<any_layout, Tags...>,
+                                 detail::pick_t<any_representation, Tags...>,
+                                 detail::pick_t<single_threaded, Tags...>,
+                                 detail::pick_t<ephemeral, Tags...>,
+                                 detail::pick_t<immutable, Tags...>,
+                                 detail::pick_t<may_change, Tags...>,
+                                 detail::pick_t<maybe_empty, Tags...>,
+                                 detail::pick_t<any_multiplicity, Tags...>,
+                                 detail::pick_t<by_key, Tags...>,
+                                 detail::pick_t<any_memory, Tags...>>;
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
 /// to declare its properties, and check the declaration by adding the container to tests/properties.cpp:
@@ -230,17 +314,16 @@ inline constexpr bool has = (detail::has_one<traits_t<X>, Tags>() && ...);
 
 /// Whether Have provides, in every category a container declares, at least what Want asks for.
 template<typename Have, typename Want>
-inline constexpr bool satisfies =
-    std::derived_from<typename Have::order_category, typename Want::order_category>
-    && std::derived_from<typename Have::uniqueness_category, typename Want::uniqueness_category>
-    && std::derived_from<typename Have::key_category, typename Want::key_category>
-    && std::derived_from<typename Have::reference_category, typename Want::reference_category>
-    && std::derived_from<typename Have::layout_category, typename Want::layout_category>
-    && std::derived_from<typename Have::canonical_category, typename Want::canonical_category>
-    && std::derived_from<typename Have::concurrency_category, typename Want::concurrency_category>
-    && std::derived_from<typename Have::version_category, typename Want::version_category>
-    && std::derived_from<typename Have::mutability_category, typename Want::mutability_category>
-    && std::derived_from<typename Have::memory_category, typename Want::memory_category>;
+inline constexpr bool satisfies = std::derived_from<typename Have::order_category, typename Want::order_category>
+                                  && std::derived_from<typename Have::uniqueness_category, typename Want::uniqueness_category>
+                                  && std::derived_from<typename Have::key_category, typename Want::key_category>
+                                  && std::derived_from<typename Have::reference_category, typename Want::reference_category>
+                                  && std::derived_from<typename Have::layout_category, typename Want::layout_category>
+                                  && std::derived_from<typename Have::canonical_category, typename Want::canonical_category>
+                                  && std::derived_from<typename Have::concurrency_category, typename Want::concurrency_category>
+                                  && std::derived_from<typename Have::version_category, typename Want::version_category>
+                                  && std::derived_from<typename Have::mutability_category, typename Want::mutability_category>
+                                  && std::derived_from<typename Have::memory_category, typename Want::memory_category>;
 
 /// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
 /// about the type, not the contents; the tests check those. O(n log n) at most.

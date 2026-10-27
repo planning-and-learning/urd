@@ -37,15 +37,11 @@ std::vector<const element_t<R>*> addresses(const R& range)
 
 template<typename R>
 std::ranges::iterator_t<const R> const_at(const R& range, std::size_t pos)
-{
-    return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos));
-}
+{ return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos)); }
 
 template<typename R>
 std::size_t position_of(const R& range, std::ranges::iterator_t<const R> it)
-{
-    return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it));
-}
+{ return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it)); }
 
 /// What a container's contents must be after the same operations: placed by value as Traits says (in sorted
 /// order, each element once), or where they were put.
@@ -82,8 +78,10 @@ bool reports(const Result& result, bool inserted, const E& element)
 /// The first property `range` breaks after a step that left `size_before` elements at `before`, if any.
 /// `probe` is looked up and compared with the model.
 template<typename R, typename Traits = container_traits<R>>
-std::optional<std::string> violation(const R& range, const Model<Traits, element_t<R>>& model,
-                                     const std::vector<const element_t<R>*>& before, std::size_t size_before,
+std::optional<std::string> violation(const R& range,
+                                     const Model<Traits, element_t<R>>& model,
+                                     const std::vector<const element_t<R>*>& before,
+                                     std::size_t size_before,
                                      const element_t<R>& probe)
 {
     using E = element_t<R>;
@@ -149,8 +147,8 @@ std::optional<std::string> violation(const R& range, const Model<Traits, element
         const auto lower = static_cast<std::size_t>(std::ranges::lower_bound(model.elements, probe) - model.elements.begin());
         const auto upper = static_cast<std::size_t>(std::ranges::upper_bound(model.elements, probe) - model.elements.begin());
         const auto [first, last] = range.equal_range(probe);
-        if (position_of(range, range.lower_bound(probe)) != lower || position_of(range, range.upper_bound(probe)) != upper
-            || position_of(range, first) != lower || position_of(range, last) != upper)
+        if (position_of(range, range.lower_bound(probe)) != lower || position_of(range, range.upper_bound(probe)) != upper || position_of(range, first) != lower
+            || position_of(range, last) != upper)
             return "lower_bound, upper_bound, equal_range: wrong positions";
     }
     return std::nullopt;
@@ -163,14 +161,8 @@ struct MapModel
 {
     std::vector<std::pair<K, V>> pairs;
 
-    [[nodiscard]] auto find(const K& key) const
-    {
-        return std::ranges::find(pairs, key, &std::pair<K, V>::first);
-    }
-    [[nodiscard]] std::size_t count(const K& key) const
-    {
-        return static_cast<std::size_t>(std::ranges::count(pairs, key, &std::pair<K, V>::first));
-    }
+    [[nodiscard]] auto find(const K& key) const { return std::ranges::find(pairs, key, &std::pair<K, V>::first); }
+    [[nodiscard]] std::size_t count(const K& key) const { return static_cast<std::size_t>(std::ranges::count(pairs, key, &std::pair<K, V>::first)); }
     bool insert(const K& key, const V& value)
     {
         if (has<Traits, unique> && find(key) != pairs.end())
@@ -190,14 +182,17 @@ struct MapModel
         found->second = value;
         return false;
     }
-    std::size_t erase(const K& key) { return std::erase_if(pairs, [&](const auto& pair) { return pair.first == key; }); }
+    std::size_t erase(const K& key)
+    {
+        return std::erase_if(pairs, [&](const auto& pair) { return pair.first == key; });
+    }
     void erase_one(const std::pair<K, V>& pair) { pairs.erase(std::ranges::find(pairs, pair)); }
 };
 
 /// The first property a map `range` breaks, as violation() for other containers; `probe` is a key.
 template<typename R, typename Traits, typename K, typename V>
-std::optional<std::string> map_violation(const R& range, const MapModel<Traits, K, V>& model,
-                                         const std::vector<const element_t<R>*>& before, std::size_t size_before, const K& probe)
+std::optional<std::string>
+map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::vector<const element_t<R>*>& before, std::size_t size_before, const K& probe)
 {
     auto contents = std::vector<std::pair<K, V>>();
     for (const auto& [key, value] : range)
@@ -266,8 +261,8 @@ std::optional<std::string> map_violation(const R& range, const MapModel<Traits, 
         const auto lower = static_cast<std::size_t>(std::ranges::count_if(model.pairs, [&](const auto& pair) { return pair.first < probe; }));
         const auto upper = lower + model.count(probe);
         const auto [first, last] = range.equal_range(probe);
-        if (position_of(range, range.lower_bound(probe)) != lower || position_of(range, range.upper_bound(probe)) != upper
-            || position_of(range, first) != lower || position_of(range, last) != upper)
+        if (position_of(range, range.lower_bound(probe)) != lower || position_of(range, range.upper_bound(probe)) != upper || position_of(range, first) != lower
+            || position_of(range, last) != upper)
             return "lower_bound, upper_bound, equal_range: wrong positions";
     }
     return std::nullopt;

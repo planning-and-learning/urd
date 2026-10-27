@@ -21,9 +21,9 @@ int main()
     // A symbol table: the standard's map operations.
     auto symbols = Store<key<std::string>, value<int>>();
     symbols["x"] = 0;
-    symbols.try_emplace("y", 1);         // inserts: no value for "y" yet
-    symbols.try_emplace("x", 7);         // keeps 0: "x" has a value
-    symbols.insert_or_assign("y", 2);    // overwrites
+    symbols.try_emplace("y", 1);       // inserts: no value for "y" yet
+    symbols.try_emplace("x", 7);       // keeps 0: "x" has a value
+    symbols.insert_or_assign("y", 2);  // overwrites
     std::cout << "\nx = " << symbols.at("x") << ", y = " << symbols.at("y") << '\n';
 
     // Sorted by key, with the bounds to search it.

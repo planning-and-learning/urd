@@ -1,13 +1,12 @@
 // Sets and maps under four workloads, for every container a set or map request can resolve to. The numbers
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
 
+#include <array>
 #include <benchmark/benchmark.h>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
-
-#include <array>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
@@ -177,10 +176,10 @@ using FlatMap = boost::container::flat_map<T, int>;
 
 }  // namespace
 
-#define URD_CONTAINER(C, T, insert_sizes)                                \
-    BENCHMARK_TEMPLATE(insert, C<T>)->Apply(insert_sizes);               \
-    BENCHMARK_TEMPLATE(lookup, C<T>)->Apply(large);                      \
-    BENCHMARK_TEMPLATE(clear_refill, C<T>)->Apply(insert_sizes);         \
+#define URD_CONTAINER(C, T, insert_sizes)                        \
+    BENCHMARK_TEMPLATE(insert, C<T>)->Apply(insert_sizes);       \
+    BENCHMARK_TEMPLATE(lookup, C<T>)->Apply(large);              \
+    BENCHMARK_TEMPLATE(clear_refill, C<T>)->Apply(insert_sizes); \
     BENCHMARK_TEMPLATE(iterate, C<T>)->Apply(large)
 
 URD_CONTAINER(HashSet, int, large);

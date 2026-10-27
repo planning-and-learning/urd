@@ -8,10 +8,10 @@
 using urd::Store;
 using urd::value;
 
-using Row = Store<value<int>, urd::frozen>;                 // written once
-using GrowingRow = Store<value<int>, urd::retains>;         // grows, keeps its storage when cleared
-using Rows = Store<value<Row>>;                             // rows written once
-using Scratch = Store<value<GrowingRow>, urd::retains>;     // a buffer of buffers, reset every round
+using Row = Store<value<int>, urd::frozen>;                   // written once
+using GrowingRow = Store<value<int>, urd::retains>;           // grows, keeps its storage when cleared
+using Rows = Store<value<Row>>;                               // rows written once
+using Scratch = Store<value<GrowingRow>, urd::retains>;       // a buffer of buffers, reset every round
 using Blocks = Store<value<Store<value<Row>, urd::frozen>>>;  // three levels
 
 int main()

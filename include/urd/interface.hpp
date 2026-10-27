@@ -110,8 +110,7 @@ concept ordered_lookup = std::ranges::bidirectional_range<R> && requires(const R
 
 template<typename R, typename E, bool Unique>
 concept value_insertion = requires(R& range, const E& element, E&& moved, const E* first, std::ranges::iterator_t<const R> hint) {
-    { range.insert(element) }
-        -> std::same_as<std::conditional_t<Unique, std::pair<std::ranges::iterator_t<R>, bool>, std::ranges::iterator_t<R>>>;
+    { range.insert(element) } -> std::same_as<std::conditional_t<Unique, std::pair<std::ranges::iterator_t<R>, bool>, std::ranges::iterator_t<R>>>;
     range.insert(std::move(moved));
     range.emplace(element);
     range.insert(first, first);
@@ -148,21 +147,18 @@ concept sequence_removal = requires(R& range, const E& element, std::ranges::ite
 }  // namespace detail
 
 /// Whether R offers what its declared properties require (the table above).
-template<typename R, typename Traits = container_traits<std::remove_cvref_t<R>>, typename E = typename detail::value_of<R>::type,
+template<typename R,
+         typename Traits = container_traits<std::remove_cvref_t<R>>,
+         typename E = typename detail::value_of<R>::type,
          typename L = typename detail::lookup_of<R, E>::type>
 concept conforming =
-    detail::basic_container<R, E> && (!has<Traits, canonical> || std::equality_comparable<R>)
-    && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
-    && (!has<Traits, positional> || std::ranges::random_access_range<R>)
-    && (!by_value<Traits> || detail::lookup<R, L>)
-    && (!has<Traits, sorted> || detail::ordered_lookup<R, L>)
-    && (!detail::map_container<R> || !has<Traits, unique> || detail::unique_map_lookup<R>)
+    detail::basic_container<R, E> && (!has<Traits, canonical> || std::equality_comparable<R>) && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
+    && (!has<Traits, positional> || std::ranges::random_access_range<R>) && (!by_value<Traits> || detail::lookup<R, L>)
+    && (!has<Traits, sorted> || detail::ordered_lookup<R, L>) && (!detail::map_container<R> || !has<Traits, unique> || detail::unique_map_lookup<R>)
     && (!detail::map_container<R> || !has<Traits, unique> || !has<Traits, growable> || detail::unique_map_insertion<R>)
     && (!has<Traits, growable>
-        || (by_value<Traits> && detail::value_insertion<R, E, has<Traits, unique>>)
-        || (!by_value<Traits> && detail::sequence_insertion<R, E>))
-    && (!has<Traits, shrinkable>
-        || (detail::removal<R> && by_value<Traits> && detail::value_removal<R, L>)
-        || (detail::removal<R> && !by_value<Traits> && detail::sequence_removal<R, E>));
+        || (by_value<Traits> && detail::value_insertion<R, E, has<Traits, unique>>) || (!by_value<Traits> && detail::sequence_insertion<R, E>) )
+    && (!has<Traits, shrinkable> || (detail::removal<R> && by_value<Traits> && detail::value_removal<R, L>)
+        || (detail::removal<R> && !by_value<Traits> && detail::sequence_removal<R, E>) );
 
 }  // namespace urd

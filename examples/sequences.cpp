@@ -47,10 +47,12 @@ int main()
     auto shared = Store<value<int>, urd::concurrent, urd::monotone>();
     auto threads = std::vector<std::thread>();
     for (int thread = 0; thread < 4; ++thread)
-        threads.emplace_back([&shared] {
-            for (int entry = 0; entry < 1000; ++entry)
-                shared.push_back(entry);
-        });
+        threads.emplace_back(
+            [&shared]
+            {
+                for (int entry = 0; entry < 1000; ++entry)
+                    shared.push_back(entry);
+            });
     for (auto& thread : threads)
         thread.join();
     std::cout << "\nentries appended by 4 threads: " << shared.size() << '\n';

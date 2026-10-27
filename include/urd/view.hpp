@@ -65,9 +65,7 @@ public:
     }
     [[nodiscard]] auto data() const
         requires(has<Si, contiguous> && std::contiguous_iterator<It>)
-    {
-        return std::to_address(m_first);
-    }
+    { return std::to_address(m_first); }
 
     [[nodiscard]] It find(const value_type& element) const
         requires by_value<Si>
@@ -93,35 +91,23 @@ public:
     }
     [[nodiscard]] bool contains(const value_type& element) const
         requires by_value<Si>
-    {
-        return find(element) != m_last;
-    }
+    { return find(element) != m_last; }
     [[nodiscard]] It lower_bound(const value_type& element) const
         requires has<Si, sorted>
-    {
-        return std::ranges::lower_bound(*this, element);
-    }
+    { return std::ranges::lower_bound(*this, element); }
     [[nodiscard]] It upper_bound(const value_type& element) const
         requires has<Si, sorted>
-    {
-        return std::ranges::upper_bound(*this, element);
-    }
+    { return std::ranges::upper_bound(*this, element); }
     [[nodiscard]] std::pair<It, It> equal_range(const value_type& element) const
         requires has<Si, sorted>
-    {
-        return { lower_bound(element), upper_bound(element) };
-    }
+    { return { lower_bound(element), upper_bound(element) }; }
 
     [[nodiscard]] friend bool operator==(const View& lhs, const View& rhs)
         requires std::equality_comparable<value_type>
-    {
-        return std::ranges::equal(lhs, rhs);
-    }
+    { return std::ranges::equal(lhs, rhs); }
     [[nodiscard]] friend auto operator<=>(const View& lhs, const View& rhs)
         requires std::three_way_comparable<value_type>
-    {
-        return std::lexicographical_compare_three_way(lhs.m_first, lhs.m_last, rhs.m_first, rhs.m_last);
-    }
+    { return std::lexicographical_compare_three_way(lhs.m_first, lhs.m_last, rhs.m_first, rhs.m_last); }
 
 private:
     It m_first {};

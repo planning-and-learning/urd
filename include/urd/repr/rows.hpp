@@ -78,9 +78,7 @@ public:
     /// row's properties ask for.
     template<std::ranges::input_range Row>
     void push_back(const Row& elements)
-    {
-        insert(end(), elements);
-    }
+    { insert(end(), elements); }
     template<std::ranges::input_range Row>
     row emplace_back(const Row& elements)
     {
@@ -118,9 +116,7 @@ public:
     }
     template<std::ranges::input_range Row>
     iterator emplace(iterator pos, const Row& elements)
-    {
-        return insert(pos, elements);
-    }
+    { return insert(pos, elements); }
 
     iterator erase(iterator pos) { return erase(pos, pos + 1); }
     iterator erase(iterator first, iterator last)
@@ -336,8 +332,7 @@ struct container_traits<repr::Jagged<Inner>> : properties_of<dense, shrinkable, 
 template<detail::flattenable Inner>
 struct element_traits<repr::Jagged<Inner>> : container_traits<Inner>
 {
-    using layout_category =
-        std::conditional_t<is_store<typename container_traits<Inner>::element_type>, any_layout, contiguous>;
+    using layout_category = std::conditional_t<is_store<typename container_traits<Inner>::element_type>, any_layout, contiguous>;
     using reference_category = moving_refs;
     using memory_category = retains;
 };

@@ -1,15 +1,16 @@
 // A Store resolves the same request to the same type in any order, to the representation its properties and
 // workload select, offers what was asked for, and behaves like the reference container under random use.
 
+#include "urd/store.hpp"
+
 #include "check.hpp"
 #include "urd/concepts.hpp"
-#include "urd/store.hpp"
 
 #include <concepts>
 #include <functional>
 #include <iterator>
-#include <random>
 #include <map>
+#include <random>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -59,8 +60,7 @@ static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::sorted>:
 static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs>::representation, std::unordered_map<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::retains>::representation, FlatHashMap<int, int>>);
 // A map of rows holds the inner Stores; flattening by dense key comes with dense maps.
-static_assert(std::same_as<Store<key<int>, value<Store<value<int>, urd::frozen>>>::representation,
-                           FlatHashMap<int, Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<key<int>, value<Store<value<int>, urd::frozen>>>::representation, FlatHashMap<int, Store<value<int>, urd::frozen>>>);
 // A map's values change by key, never through its iterators; only a map with unique keys has at and try_emplace.
 template<typename S>
 concept can_assign_by_key = requires(S store) { store[1] = 2; };

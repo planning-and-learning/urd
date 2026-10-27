@@ -53,7 +53,8 @@ inline void* allocate(std::size_t size, std::size_t alignment)
     if (counting)
         ++allocations;
     const auto rounded = (size + alignment - 1) / alignment * alignment;
-    void* memory = alignment <= alignof(std::max_align_t) ? std::malloc(size == 0 ? 1 : size) : std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
+    void* memory =
+        alignment <= alignof(std::max_align_t) ? std::malloc(size == 0 ? 1 : size) : std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
     if (memory == nullptr)
         throw std::bad_alloc();
     return memory;

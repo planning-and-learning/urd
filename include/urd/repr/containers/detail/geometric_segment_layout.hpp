@@ -39,7 +39,8 @@ struct GeometricSegmentLayout
     {
         const auto quotient = index >> shift;
         if constexpr (shift == 0)
-            return quotient == std::numeric_limits<Index>::max() ? max_segments : static_cast<size_t>(std::bit_width(static_cast<Index>(quotient + Index { 1 })) - 1);
+            return quotient == std::numeric_limits<Index>::max() ? max_segments :
+                                                                   static_cast<size_t>(std::bit_width(static_cast<Index>(quotient + Index { 1 })) - 1);
         else
             return static_cast<size_t>(std::bit_width(static_cast<Index>(quotient + Index { 1 })) - 1);
     }
