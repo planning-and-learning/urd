@@ -17,10 +17,10 @@ namespace
 using urd::props;
 
 // What the standard containers guarantee by type, and what they do not.
-static_assert(urd::properties_of_v<std::set<int>> == (props::sorted | props::unique));
-static_assert(urd::properties_of_v<std::multiset<int>> == props::sorted);
-static_assert(urd::properties_of_v<std::unordered_set<int>> == props::unique);
-static_assert(urd::properties_of_v<std::vector<int>> == props::none);
+static_assert(urd::properties_of_v<std::set<int>> == (props::sorted | props::unique | props::stable_refs));
+static_assert(urd::properties_of_v<std::multiset<int>> == (props::sorted | props::stable_refs));
+static_assert(urd::properties_of_v<std::unordered_set<int>> == (props::unique | props::stable_refs));
+static_assert(urd::properties_of_v<std::vector<int>> == props::contiguous);
 static_assert(urd::properties_of_v<std::set<int, std::greater<>>> == props::none);  // sorted, but descending
 
 static_assert(urd::lookup_of<std::vector<int>>() == urd::lookup::linear_scan);

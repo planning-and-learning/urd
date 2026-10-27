@@ -1,0 +1,53 @@
+// Store requests and uses that must not compile, checked like compile_fail.cpp: without URD_CASE the file
+// compiles; with URD_CASE=<n>, case n alone must fail.
+
+#include "urd/algorithms.hpp"
+#include "urd/store.hpp"
+
+#include <string>
+
+using urd::key;
+using urd::Store;
+using urd::value;
+
+int main()
+{
+    [[maybe_unused]] auto set = Store<key<int>>();
+    [[maybe_unused]] auto small = Store<key<int>, urd::small>::make({ 1, 2 });
+    [[maybe_unused]] auto frozen = Store<key<int>, urd::frozen>::make({ 1, 2 });
+    [[maybe_unused]] auto growing = Store<value<int>, urd::monotone>();
+    [[maybe_unused]] auto sequence = Store<value<int>>();
+
+#if URD_CASE == 1  // stored sorted, but not asked to be sorted: intersect may not rely on it
+    (void)urd::intersect(small, small);
+#elif URD_CASE == 2  // a frozen Store never changes
+    frozen.insert(3);
+#elif URD_CASE == 3  // a monotone Store only grows
+    (void)growing.erase(3);
+#elif URD_CASE == 4  // one value per key, and many: a contradiction
+    using S = Store<key<int>, value<int>, urd::functional, urd::multi>;
+    (void)S();
+#elif URD_CASE == 5
+    using S = Store<key<int>, urd::dense, urd::sparse>;
+    (void)S();
+#elif URD_CASE == 6  // contiguous storage moves elements when it grows
+    using S = Store<key<int>, urd::contiguous, urd::stable_refs>;
+    (void)S();
+#elif URD_CASE == 7  // positional identifies by position, so it has no key
+    using S = Store<key<int>, value<int>, urd::positional>;
+    (void)S();
+#elif URD_CASE == 8  // dense keys need a representation for them; strings have none
+    using S = Store<key<std::string>, urd::dense>;
+    (void)S();
+#elif URD_CASE == 9  // one key type only
+    using S = Store<key<int>, key<long>>;
+    (void)S();
+#elif URD_CASE == 10  // only urd properties
+    using S = Store<key<int>, int>;
+    (void)S();
+#elif URD_CASE == 11  // only a nonempty Store has a front without a check
+    (void)sequence.front();
+#elif URD_CASE == 12  // a nonempty Store cannot start empty
+    (void)Store<key<int>, urd::nonempty>();
+#endif
+}

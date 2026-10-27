@@ -32,7 +32,7 @@ if(PROJECT_IS_TOP_LEVEL)
 endif()
 
 if(URD_BUILD_EXAMPLES)
-    foreach(example basics set_algebra lookup)
+    foreach(example basics set_algebra lookup store)
         add_executable(example_${example} examples/${example}.cpp)
         target_link_libraries(example_${example} PRIVATE urd::urd)
     endforeach()
@@ -41,14 +41,14 @@ endif()
 if(URD_BUILD_TESTS)
     enable_testing()
 
-    foreach(test refined algorithms)
+    foreach(test refined algorithms store)
         add_executable(test_${test} tests/${test}.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd)
         add_test(NAME ${test} COMMAND test_${test})
     endforeach()
 
     if(URD_BUILD_EXAMPLES)
-        foreach(example basics set_algebra lookup)
+        foreach(example basics set_algebra lookup store)
             add_test(NAME example_${example} COMMAND example_${example})
         endforeach()
     endif()
@@ -61,24 +61,28 @@ if(URD_BUILD_TESTS)
         set_tests_properties(assume_fails PROPERTIES PASS_REGULAR_EXPRESSION "lack a claimed property")
     endif()
 
-    # The surrounding code must compile, so each failure below is the case's own; the cases are
-    # skipped when it does not.
-    add_executable(test_compile_fail_control EXCLUDE_FROM_ALL tests/compile_fail.cpp)
-    target_link_libraries(test_compile_fail_control PRIVATE urd::urd)
-    add_test(
-        NAME compile_fail_control
-        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_compile_fail_control --config $<CONFIG>
-    )
-    set_tests_properties(compile_fail_control PROPERTIES FIXTURES_SETUP compile_fail)
-
-    foreach(case RANGE 1 8)
-        add_executable(test_compile_fail_${case} EXCLUDE_FROM_ALL tests/compile_fail.cpp)
-        target_link_libraries(test_compile_fail_${case} PRIVATE urd::urd)
-        target_compile_definitions(test_compile_fail_${case} PRIVATE URD_CASE=${case})
+    # Code that must not compile. The control build of each file must compile, so each case fails for its
+    # own reason; the cases are skipped when the control does not build.
+    function(urd_compile_fail_cases name source count)
+        add_executable(test_${name}_control EXCLUDE_FROM_ALL ${source})
+        target_link_libraries(test_${name}_control PRIVATE urd::urd)
         add_test(
-            NAME compile_fail_${case}
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_compile_fail_${case} --config $<CONFIG>
+            NAME ${name}_control
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_${name}_control --config $<CONFIG>
         )
-        set_tests_properties(compile_fail_${case} PROPERTIES WILL_FAIL TRUE FIXTURES_REQUIRED compile_fail)
-    endforeach()
+        set_tests_properties(${name}_control PROPERTIES FIXTURES_SETUP ${name})
+        foreach(case RANGE 1 ${count})
+            add_executable(test_${name}_${case} EXCLUDE_FROM_ALL ${source})
+            target_link_libraries(test_${name}_${case} PRIVATE urd::urd)
+            target_compile_definitions(test_${name}_${case} PRIVATE URD_CASE=${case})
+            add_test(
+                NAME ${name}_${case}
+                COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_${name}_${case} --config $<CONFIG>
+            )
+            set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL TRUE FIXTURES_REQUIRED ${name})
+        endforeach()
+    endfunction()
+
+    urd_compile_fail_cases(compile_fail tests/compile_fail.cpp 8)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 12)
 endif()
