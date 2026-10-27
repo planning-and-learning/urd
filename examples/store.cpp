@@ -29,9 +29,9 @@ int main()
     report<ConstantIds>("ConstantIds  (key<int>, sorted, frozen)");
     report<EventLog>("EventLog     (value<int>, monotone)");
 
-    auto goals = GoalIds::make({ 7, 3, 9 });
+    auto goals = GoalIds { 7, 3, 9 };
     goals.insert(5);
-    const auto constants = ConstantIds::make({ 3, 5, 11 });
+    const auto constants = ConstantIds { 3, 5, 11 };
 
     // Sorted by request, whatever the representation.
     std::cout << "goals that are constants:";
@@ -41,7 +41,7 @@ int main()
     std::cout << '\n';
 
     auto log = EventLog();
-    log.insert(1);
-    log.insert(2);  // log.erase(1) would not compile: the log only grows
+    log.push_back(1);
+    log.push_back(2);  // log.pop_back() would not compile: the log only grows
     std::cout << "log size: " << log.size() << '\n';
 }

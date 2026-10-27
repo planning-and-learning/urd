@@ -1,14 +1,22 @@
 #pragma once
 
+#include "urd/interface.hpp"
+#include "urd/operations.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
-#include "urd/repr/ops.hpp"
 #include "urd/traits.hpp"
 
+#include <algorithm>
 #include <cassert>
+#include <compare>
 #include <concepts>
 #include <cstddef>
+#include <initializer_list>
+#include <iterator>
+#include <ranges>
+#include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -18,18 +26,31 @@ namespace urd
 namespace detail
 {
 
-/// A Store resolved to representation Candidate::type for spec S. It offers exactly what S asks for:
-/// operations the requested properties allow, and container_traits reports S's properties, not the
-/// representation's, so code cannot come to rely on what it never asked for.
+/// A Store resolved to representation Candidate::type for spec S. It offers the standard interface its
+/// requested properties allow (interface.hpp), and container_traits reports S's properties, not the
+/// representation's, so code cannot come to rely on what it never asked for. Beyond that interface:
+/// positions (operator[], at, front, back) for a sequence, and changing elements in place where no
+/// property depends on their values and the Store may change.
 template<typename Candidate, typename S>
 class Store
 {
 public:
     using representation = typename Candidate::type;
-    using element_type = typename S::element_type;
+
+private:
+    static constexpr bool keyed = by_value<S>;
+    static constexpr bool writable = !keyed && !has<S, monotone>;
+    static constexpr bool ordered = has<S, sorted> || S::is_sequence;
+
+public:
+    using value_type = typename S::element_type;
     using key_type = typename S::key_type;
-    using value_type = typename S::value_type;
-    using const_iterator = typename representation::const_iterator;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using const_iterator = std::ranges::iterator_t<const representation>;
+    using iterator = std::conditional_t<writable, std::ranges::iterator_t<representation>, const_iterator>;
     static constexpr workload work = S::work;
     static constexpr std::string_view representation_name = Candidate::name;
 
@@ -37,87 +58,303 @@ public:
         requires(!has<S, nonempty>)
     = default;
 
-    /// From any elements: a set keeps each once, a sorted sequence sorts them.
-    [[nodiscard]] static Store make(std::vector<element_type> elements)
-        requires(!has<S, nonempty>)
+    /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
+    template<std::input_iterator InputIt>
+    Store(InputIt first, InputIt last) : m_representation(first, last)
     {
-        return Store(ops::make(std::move(elements)));
+        assert((!has<S, nonempty> || !empty()) && "urd::Store: a nonempty Store needs an element");
     }
 
-    /// From elements claimed to have the properties (for a sequence: sorted, unique; for any Store:
-    /// nonempty); Debug builds check the claim.
-    [[nodiscard]] static Store assume(std::vector<element_type> elements)
+    Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
+
+    /// From elements claimed to have the properties (a sequence's order and uniqueness, any Store's
+    /// nonemptiness), so the representation need not establish them; Debug builds check the claim.
+    [[nodiscard]] static Store assume(std::vector<value_type> elements)
     {
-        // A set is built from any elements; only a sequence's order and uniqueness are claims.
         if constexpr (S::is_sequence)
             assert(holds<S>(elements) && "urd::Store::assume: the contents lack a claimed property");
         else
             assert((!has<S, nonempty> || !elements.empty()) && "urd::Store::assume: the contents lack a claimed property");
-        if constexpr (S::is_sequence)
-            return Store(ops::assume(std::move(elements)));
-        else
-            return Store(ops::make(std::move(elements)));
+        return Store(std::make_move_iterator(elements.begin()), std::make_move_iterator(elements.end()));
     }
 
     [[nodiscard]] const_iterator begin() const { return m_representation.begin(); }
     [[nodiscard]] const_iterator end() const { return m_representation.end(); }
-    [[nodiscard]] std::size_t size() const { return m_representation.size(); }
-    [[nodiscard]] bool empty() const { return m_representation.empty(); }
+    [[nodiscard]] iterator begin()
+        requires writable
+    {
+        return m_representation.begin();
+    }
+    [[nodiscard]] iterator end()
+        requires writable
+    {
+        return m_representation.end();
+    }
+    [[nodiscard]] const_iterator cbegin() const { return begin(); }
+    [[nodiscard]] const_iterator cend() const { return end(); }
+    [[nodiscard]] auto rbegin() const
+        requires ordered
+    {
+        return std::make_reverse_iterator(end());
+    }
+    [[nodiscard]] auto rend() const
+        requires ordered
+    {
+        return std::make_reverse_iterator(begin());
+    }
+    [[nodiscard]] size_type size() const { return std::ranges::size(m_representation); }
+    [[nodiscard]] bool empty() const { return size() == 0; }
 
-    /// The element at `pos` of a sequence.
-    [[nodiscard]] const element_type& operator[](std::size_t pos) const
+    /// Hints how many elements will be inserted; does nothing where the representation cannot reserve.
+    void reserve(size_type count)
+        requires has<S, growable>
+    {
+        if constexpr (requires { m_representation.reserve(count); })
+            m_representation.reserve(count);
+    }
+
+    // Positions, for a sequence.
+
+    [[nodiscard]] const_reference operator[](size_type pos) const
         requires(S::is_sequence)
     {
-        return ops::at(m_representation, pos);
+        assert(pos < size());
+        return begin()[static_cast<difference_type>(pos)];
     }
-
-    /// The first element; only a nonempty Store has one, so no check is needed.
-    [[nodiscard]] const element_type& front() const
-        requires(has<S, nonempty>)
+    [[nodiscard]] reference operator[](size_type pos)
+        requires(S::is_sequence && writable)
     {
-        return *m_representation.begin();
+        assert(pos < size());
+        return begin()[static_cast<difference_type>(pos)];
     }
-
-    [[nodiscard]] bool contains(const element_type& element) const
-        requires(S::is_set)
+    [[nodiscard]] const_reference at(size_type pos) const
+        requires(S::is_sequence)
     {
-        return ops::contains(m_representation, element);
+        if (pos >= size())
+            throw std::out_of_range("urd::Store::at: position out of range");
+        return (*this)[pos];
     }
-
-    /// Inserts where the properties allow; returns whether `element` was inserted (a set, or a unique
-    /// sequence, refuses one it already has). A frozen Store never changes.
-    bool insert(const element_type& element)
-        requires(!has<S, frozen>)
+    [[nodiscard]] reference at(size_type pos)
+        requires(S::is_sequence && writable)
     {
-        return ops::insert(m_representation, element);
+        if (pos >= size())
+            throw std::out_of_range("urd::Store::at: position out of range");
+        return (*this)[pos];
     }
-
-    /// Removes every element equal to `element`; returns how many. Not offered where removing is
-    /// excluded: frozen, monotone (only grows) and nonempty (could become empty).
-    std::size_t erase(const element_type& element)
-        requires(!has<S, monotone> && !has<S, nonempty>)
+    /// The first element; a nonempty Store always has one, any other needs one.
+    [[nodiscard]] const_reference front() const
+        requires(S::is_sequence)
     {
-        return ops::erase(m_representation, element);
+        assert(!empty());
+        return *begin();
+    }
+    [[nodiscard]] reference front()
+        requires(S::is_sequence && writable)
+    {
+        assert(!empty());
+        return *begin();
+    }
+    [[nodiscard]] const_reference back() const
+        requires(S::is_sequence)
+    {
+        assert(!empty());
+        return *std::prev(end());
+    }
+    [[nodiscard]] reference back()
+        requires(S::is_sequence && writable)
+    {
+        assert(!empty());
+        return *std::prev(end());
+    }
+    [[nodiscard]] const value_type* data() const
+        requires has<S, contiguous>
+    {
+        return std::ranges::data(m_representation);
+    }
+    [[nodiscard]] value_type* data()
+        requires(has<S, contiguous> && writable)
+    {
+        return std::ranges::data(m_representation);
     }
 
-    /// Removes every element, ending all references to them. Not offered where erase is not.
+    // Lookup, where elements are kept by value.
+
+    [[nodiscard]] const_iterator find(const value_type& element) const
+        requires keyed
+    {
+        return urd::find(m_representation, element);
+    }
+    [[nodiscard]] size_type count(const value_type& element) const
+        requires keyed
+    {
+        return urd::count(m_representation, element);
+    }
+    [[nodiscard]] bool contains(const value_type& element) const
+        requires keyed
+    {
+        return urd::contains(m_representation, element);
+    }
+    [[nodiscard]] const_iterator lower_bound(const value_type& element) const
+        requires has<S, sorted>
+    {
+        return urd::lower_bound(m_representation, element);
+    }
+    [[nodiscard]] const_iterator upper_bound(const value_type& element) const
+        requires has<S, sorted>
+    {
+        return urd::upper_bound(m_representation, element);
+    }
+    [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const value_type& element) const
+        requires has<S, sorted>
+    {
+        return urd::equal_range(m_representation, element);
+    }
+
+    // Inserting, unless frozen: by value as std::set or std::multiset does, or at the end as std::vector does.
+
+    using insert_result = std::conditional_t<has<S, unique>, std::pair<iterator, bool>, iterator>;
+
+    insert_result insert(const value_type& element)
+        requires(keyed && has<S, growable>)
+    {
+        return urd::insert(m_representation, element);
+    }
+    insert_result insert(value_type&& element)
+        requires(keyed && has<S, growable>)
+    {
+        return urd::insert(m_representation, std::move(element));
+    }
+    /// With a hint where the element goes.
+    iterator insert(const_iterator hint, const value_type& element)
+        requires(keyed && has<S, growable>)
+    {
+        return urd::insert(m_representation, hint, element);
+    }
+    template<std::input_iterator InputIt>
+    void insert(InputIt first, InputIt last)
+        requires(keyed && has<S, growable>)
+    {
+        urd::insert(m_representation, first, last);
+    }
+    void insert(std::initializer_list<value_type> elements)
+        requires(keyed && has<S, growable>)
+    {
+        insert(elements.begin(), elements.end());
+    }
+    template<typename... Args>
+    insert_result emplace(Args&&... args)
+        requires(keyed && has<S, growable>)
+    {
+        return urd::emplace(m_representation, std::forward<Args>(args)...);
+    }
+
+    void push_back(const value_type& element)
+        requires(!keyed && has<S, growable>)
+    {
+        urd::push_back(m_representation, element);
+    }
+    void push_back(value_type&& element)
+        requires(!keyed && has<S, growable>)
+    {
+        urd::push_back(m_representation, std::move(element));
+    }
+    /// The new element; changeable in place only where the Store's elements are.
+    template<typename... Args>
+    std::conditional_t<writable, reference, const_reference> emplace_back(Args&&... args)
+        requires(!keyed && has<S, growable>)
+    {
+        return urd::emplace_back(m_representation, std::forward<Args>(args)...);
+    }
+    /// Inserting before a position moves the later elements, so only a sequence that may erase offers it.
+    iterator insert(const_iterator pos, const value_type& element)
+        requires(!keyed && has<S, shrinkable>)
+    {
+        return urd::insert(m_representation, pos, element);
+    }
+    template<typename... Args>
+    iterator emplace(const_iterator pos, Args&&... args)
+        requires(!keyed && has<S, shrinkable>)
+    {
+        return urd::emplace(m_representation, pos, std::forward<Args>(args)...);
+    }
+
+    // Removing, unless the Store only grows (monotone, frozen) or must keep an element (nonempty). Removing
+    // an element ends the references to it.
+
+    iterator erase(const_iterator pos)
+        requires has<S, shrinkable>
+    {
+        return urd::erase(m_representation, pos);
+    }
+    iterator erase(const_iterator first, const_iterator last)
+        requires has<S, shrinkable>
+    {
+        return urd::erase(m_representation, first, last);
+    }
+    /// Every element equal to `element`; how many there were.
+    size_type erase(const value_type& element)
+        requires(keyed && has<S, shrinkable>)
+    {
+        return urd::erase(m_representation, element);
+    }
+    void pop_back()
+        requires(!keyed && has<S, shrinkable>)
+    {
+        urd::pop_back(m_representation);
+    }
     void clear()
-        requires(!has<S, monotone> && !has<S, nonempty>)
+        requires has<S, shrinkable>
     {
-        ops::clear(m_representation);
+        urd::clear(m_representation);
     }
+
+    /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
+    template<typename Pred>
+    friend size_type erase_if(Store& store, Pred pred)
+        requires has<S, shrinkable>
+    {
+        const auto before = store.size();
+        if constexpr (writable)
+        {
+            auto& range = store.m_representation;
+            urd::erase(range, std::remove_if(range.begin(), range.end(), pred), range.end());
+        }
+        else
+            // ponytail: one erase per element, O(n²) on a flat set; erase_if of the representation if it matters
+            for (auto it = store.begin(); it != store.end();)
+                it = pred(*it) ? store.erase(it) : std::next(it);
+        return before - store.size();
+    }
+    /// Every element equal to `element`, from a sequence; how many. As std::erase.
+    friend size_type erase(Store& store, const value_type& element)
+        requires(!keyed && has<S, shrinkable>)
+    {
+        return erase_if(store, [&](const value_type& candidate) { return candidate == element; });
+    }
+
+    void swap(Store& other) noexcept
+    {
+        using std::swap;
+        swap(m_representation, other.m_representation);
+    }
+    friend void swap(Store& lhs, Store& rhs) noexcept { lhs.swap(rhs); }
 
     [[nodiscard]] friend bool operator==(const Store& lhs, const Store& rhs)
-        requires std::equality_comparable<representation>
+        requires std::equality_comparable<value_type>
     {
-        return lhs.m_representation == rhs.m_representation;
+        if constexpr (std::equality_comparable<representation>)
+            return lhs.m_representation == rhs.m_representation;
+        else
+            return std::ranges::equal(lhs, rhs);
+    }
+    /// In order, as the standard's ordered containers compare.
+    [[nodiscard]] friend auto operator<=>(const Store& lhs, const Store& rhs)
+        requires(ordered && std::three_way_comparable<value_type>)
+    {
+        return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
 private:
-    using ops = repr::ops<representation>;
-
-    explicit Store(representation made) : m_representation(std::move(made)) {}
-
     representation m_representation;
 };
 
@@ -138,46 +375,6 @@ struct resolve
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
-
-/// A Store through the common interface, offering what the Store offers, so urd::verify can check it.
-template<typename Candidate, typename S>
-struct repr::ops<urd::detail::Store<Candidate, S>>
-{
-    using R = urd::detail::Store<Candidate, S>;
-    using E = typename S::element_type;
-
-    [[nodiscard]] static R make(std::vector<E> elements)
-        requires(!has<S, nonempty>)
-    {
-        return R::make(std::move(elements));
-    }
-    [[nodiscard]] static R assume(std::vector<E> elements) { return R::assume(std::move(elements)); }
-    static bool insert(R& store, const E& element)
-        requires(!has<S, frozen>)
-    {
-        return store.insert(element);
-    }
-    static std::size_t erase(R& store, const E& element)
-        requires(!has<S, monotone> && !has<S, nonempty>)
-    {
-        return store.erase(element);
-    }
-    static void clear(R& store)
-        requires(!has<S, monotone> && !has<S, nonempty>)
-    {
-        store.clear();
-    }
-    [[nodiscard]] static bool contains(const R& store, const E& element)
-        requires(S::is_set)
-    {
-        return store.contains(element);
-    }
-    [[nodiscard]] static const E& at(const R& store, std::size_t pos)
-        requires(S::is_sequence)
-    {
-        return store[pos];
-    }
-};
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename Candidate, typename S>

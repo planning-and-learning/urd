@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/segmented.hpp"
@@ -9,6 +10,7 @@
 
 #include <array>
 #include <cstddef>
+#include <ranges>
 #include <tuple>
 #include <type_traits>
 
@@ -25,15 +27,38 @@ struct requirement : S
     using key_category = std::conditional_t<S::is_sequence, any_keys, typename S::key_category>;
 };
 
-/// The representation for spec S among the candidates Cs: of those that accept S and whose container_traits
-/// satisfy S's requirement, the best ranked for S's workload; ties go to the earlier candidate.
+/// Whether representation R can serve spec S: it has S's properties and the interface a Store for S offers,
+/// placing elements the same way (by value or where they are put) and by position where S is a sequence.
+template<typename R, typename S>
+inline constexpr bool serves = satisfies<container_traits<R>, requirement<S>> && conforming<R>
+                               && by_value<container_traits<R>> == by_value<S>
+                               && (!has<S, positional> || std::ranges::random_access_range<R>);
+
+/// Whether candidate C fits S. A candidate that does not accept S may name a type that cannot exist (a set of
+/// void), so it is not looked at further.
+template<typename C, typename S>
+consteval bool fits_one()
+{
+    if constexpr (C::accepts)
+        return serves<typename C::type, S>;
+    else
+        return false;
+}
+
+// A candidate registers a representation, as a template over the spec S it is asked for:
+//   using type = …;                          // the representation for S
+//   static constexpr std::string_view name;  // for messages and the catalog
+//   static constexpr bool accepts;           // whether it can represent S at all (kind, element types)
+//   static constexpr int rank;               // for S's workload; lower is better
+
+/// The representation for spec S among the candidates Cs: of those that accept S and serve it, the best
+/// ranked for S's workload; ties go to the earlier candidate.
 template<typename S, template<typename> class... Cs>
 struct choose
 {
     static constexpr std::size_t count = sizeof...(Cs);
 
-    static constexpr std::array<bool, count> fits { (
-        Cs<S>::accepts && satisfies<container_traits<typename Cs<S>::type>, requirement<S>>)... };
+    static constexpr std::array<bool, count> fits { fits_one<Cs<S>, S>()... };
     static constexpr std::array<int, count> ranks { Cs<S>::rank... };
 
     static constexpr std::size_t best = []

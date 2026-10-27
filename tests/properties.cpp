@@ -1,6 +1,6 @@
-// Every container keeps the properties it declares through every operation: urd::verify runs random inserts,
-// erases and clears on each representation and each Store, and checks every declared property after each step.
-// A container that declares a property it lacks is caught.
+// Every container offers the operations its declared properties require and keeps those properties through
+// them: urd::verify runs each operation at random on each representation and each Store, and checks the
+// results and every declared property after each step. A container that declares a property it lacks is caught.
 
 #include "check.hpp"
 #include "urd/store.hpp"
@@ -34,9 +34,14 @@ void verified(R range, unsigned seed)
 struct ClaimsStableRefs
 {
     std::vector<int> elements;
+
+    ClaimsStableRefs() = default;
+    ClaimsStableRefs(const int* first, const int* last) : elements(first, last) {}
     [[nodiscard]] auto begin() const { return elements.begin(); }
     [[nodiscard]] auto end() const { return elements.end(); }
     [[nodiscard]] std::size_t size() const { return elements.size(); }
+    void push_back(int element) { elements.push_back(element); }
+    const int& emplace_back(int element) { return elements.emplace_back(element); }
 };
 
 }  // namespace
@@ -44,16 +49,6 @@ struct ClaimsStableRefs
 template<>
 struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_refs, urd::growable>
 {
-};
-
-template<>
-struct urd::repr::ops<ClaimsStableRefs>
-{
-    static bool insert(ClaimsStableRefs& range, int element)
-    {
-        range.elements.push_back(element);
-        return true;
-    }
 };
 
 int main()
@@ -71,7 +66,7 @@ int main()
     verified(urd::Store<key<int>>(), 11);
     verified(urd::Store<key<int>, urd::sorted>(), 12);
     verified(urd::Store<key<int>, urd::small>(), 13);
-    verified(urd::Store<key<int>, urd::sorted, urd::frozen>::make({ 5, 3, 3, 9 }), 14);
+    verified(urd::Store<key<int>, urd::sorted, urd::frozen> { 5, 3, 3, 9 }, 14);
     verified(urd::Store<key<int>, urd::nonempty>::assume({ 7 }), 15);
     verified(urd::Store<key<int>, urd::stable_refs>(), 16);
     verified(urd::Store<key<int>, urd::sorted, urd::stable_refs>(), 17);

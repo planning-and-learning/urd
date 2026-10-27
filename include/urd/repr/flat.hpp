@@ -1,17 +1,14 @@
 #pragma once
 
 #include "urd/properties.hpp"
-#include "urd/repr/ops.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/container/flat_set.hpp>
 
 #include <concepts>
-#include <cstddef>
 #include <functional>
 #include <string_view>
 #include <type_traits>
-#include <vector>
 
 namespace urd
 {
@@ -33,39 +30,6 @@ struct container_traits<boost::container::flat_multiset<K, std::less<K>, Allocat
 
 namespace urd::repr
 {
-
-/// Boost's flat sets: sorted vectors that keep themselves sorted (and, flat_set, free of duplicates).
-template<typename R, typename E, auto ordered>
-struct boost_flat_ops
-{
-    [[nodiscard]] static R make(std::vector<E> elements) { return R(elements.begin(), elements.end()); }
-    /// Takes the elements as already in order, as the Store's assume() has checked in Debug builds.
-    [[nodiscard]] static R assume(std::vector<E> elements) { return R(ordered, elements.begin(), elements.end()); }
-    static bool insert(R& range, const E& element)
-    {
-        if constexpr (std::is_same_v<decltype(range.insert(element)), typename R::iterator>)
-        {
-            range.insert(element);
-            return true;
-        }
-        else
-            return range.insert(element).second;
-    }
-    static std::size_t erase(R& range, const E& element) { return range.erase(element); }
-    static void clear(R& range) noexcept { range.clear(); }
-    [[nodiscard]] static bool contains(const R& range, const E& element) { return range.contains(element); }
-    [[nodiscard]] static const E& at(const R& range, std::size_t pos) { return *range.nth(pos); }
-};
-
-template<typename K>
-struct ops<boost::container::flat_set<K>> : boost_flat_ops<boost::container::flat_set<K>, K, boost::container::ordered_unique_range>
-{
-};
-
-template<typename K>
-struct ops<boost::container::flat_multiset<K>> : boost_flat_ops<boost::container::flat_multiset<K>, K, boost::container::ordered_range>
-{
-};
 
 /// A sorted sequence: boost::container::flat_multiset, or flat_set when it is also unique.
 template<typename S>

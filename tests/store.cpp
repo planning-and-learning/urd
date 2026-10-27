@@ -6,6 +6,7 @@
 #include "urd/store.hpp"
 
 #include <concepts>
+#include <iterator>
 #include <random>
 #include <set>
 #include <thread>
@@ -47,15 +48,34 @@ static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
 static_assert(urd::Sorted<Store<key<int>, urd::sorted, urd::small>>);
 static_assert(urd::Unique<Store<key<int>, urd::small>>);
 
-// The interface follows from the properties.
+// The interface follows from the properties, in the standard's names.
 template<typename S>
 concept can_insert = requires(S store, int element) { store.insert(element); };
 template<typename S>
-concept can_erase = requires(S store, int element) { store.erase(element); };
-static_assert(can_insert<Store<key<int>>> && can_erase<Store<key<int>>>);
+concept can_push_back = requires(S store, int element) { store.push_back(element); };
+template<typename S>
+concept can_erase = requires(S store, int element) { store.erase(store.begin()); };
+template<typename S>
+concept can_search = requires(const S store, int element) { store.lower_bound(element); };
+template<typename S>
+concept can_assign = requires(S store, int element) { store[0] = element; };
+static_assert(can_insert<Store<key<int>>> && can_erase<Store<key<int>>> && !can_push_back<Store<key<int>>>);
 static_assert(!can_insert<Store<key<int>, urd::frozen>> && !can_erase<Store<key<int>, urd::frozen>>);
-static_assert(can_insert<Store<value<int>, urd::monotone>> && !can_erase<Store<value<int>, urd::monotone>>);
+static_assert(can_push_back<Store<value<int>, urd::monotone>> && !can_erase<Store<value<int>, urd::monotone>>);
 static_assert(!can_erase<Store<key<int>, urd::nonempty>>);
+// A sorted Store is searched by order; a sorted sequence keeps elements by value, as std::flat_multiset.
+static_assert(can_search<Store<key<int>, urd::sorted>> && !can_search<Store<key<int>>>);
+static_assert(can_insert<Store<value<int>, urd::sorted>> && !can_push_back<Store<value<int>, urd::sorted>>);
+// Elements change in place only where no property depends on their values and the Store may change.
+static_assert(can_assign<Store<value<int>>>);
+static_assert(!can_assign<Store<value<int>, urd::sorted>> && !can_assign<Store<value<int>, urd::monotone>>);
+// A unique set's insert says whether it inserted; a multiset's does not.
+static_assert(std::same_as<decltype(Store<key<int>>().insert(1).second), bool>);
+static_assert(std::same_as<decltype(Store<value<int>, urd::sorted>().insert(1)), Store<value<int>, urd::sorted>::iterator>);
+// Every Store offers what its properties require of a container.
+static_assert(urd::conforming<Store<key<int>>> && urd::conforming<Store<key<int>, urd::sorted>>);
+static_assert(urd::conforming<Store<value<int>>> && urd::conforming<Store<value<int>, urd::sorted, urd::nonempty>>);
+static_assert(urd::conforming<Store<value<int>, urd::stable_refs, urd::monotone>> && urd::conforming<Store<key<int>, urd::frozen>>);
 
 constexpr int RANGE = 25;
 constexpr int STEPS = 2000;
@@ -74,7 +94,7 @@ void behaves_like_std_set(unsigned seed)
         if (pick(random) % 3 == 0)
             URD_CHECK(store.erase(element) == reference.erase(element));
         else
-            URD_CHECK(store.insert(element) == reference.insert(element).second);
+            URD_CHECK(store.insert(element).second == reference.insert(element).second);
         const int probe = pick(random);
         URD_CHECK(store.contains(probe) == reference.contains(probe));
         URD_CHECK(store.size() == reference.size());
@@ -100,11 +120,11 @@ void behaves_like_std_multiset(unsigned seed)
         if (pick(random) % 3 == 0)
             URD_CHECK(store.erase(element) == reference.erase(element));
         else
-        {
-            URD_CHECK(store.insert(element));
-            reference.insert(element);
-        }
+            URD_CHECK(*store.insert(element) == *reference.insert(element));
         URD_CHECK(std::vector<int>(store.begin(), store.end()) == std::vector<int>(reference.begin(), reference.end()));
+        const int probe = pick(random);
+        URD_CHECK(store.count(probe) == reference.count(probe));
+        URD_CHECK(std::distance(store.begin(), store.lower_bound(probe)) == std::distance(reference.begin(), reference.lower_bound(probe)));
     }
 }
 
@@ -124,10 +144,10 @@ int main()
     // stable_refs: an element keeps its address however much is appended after it.
     {
         auto log = Store<value<int>, urd::stable_refs, urd::monotone>();
-        log.insert(0);
+        log.push_back(0);
         const int* first = &log[0];
         for (int element = 1; element < 100000; ++element)
-            log.insert(element);
+            log.push_back(element);
         URD_CHECK(&log[0] == first && *first == 0 && log.size() == 100000 && log[99999] == 99999);
     }
 
@@ -140,7 +160,7 @@ int main()
         for (int thread = 0; thread < THREADS; ++thread)
             threads.emplace_back([&log, thread] {
                 for (int element = 0; element < EACH; ++element)
-                    log.insert(thread * EACH + element);
+                    log.push_back(thread * EACH + element);
             });
         for (auto& thread : threads)
             thread.join();
@@ -150,12 +170,21 @@ int main()
         URD_CHECK(std::ranges::adjacent_find(contents) == contents.end());
     }
 
-    // make and assume.
-    const auto ids = Store<key<int>, urd::sorted>::make({ 3, 1, 3, 2 });
+    // Built from elements, or from elements claimed to have the properties.
+    const auto ids = Store<key<int>, urd::sorted> { 3, 1, 3, 2 };
     URD_CHECK(std::vector<int>(ids.begin(), ids.end()) == std::vector<int>({ 1, 2, 3 }));
+    URD_CHECK(*ids.lower_bound(2) == 2 && ids.upper_bound(3) == ids.end() && *ids.rbegin() == 3);
     const auto first = Store<value<int>, urd::sorted, urd::nonempty>::assume({ 4, 5 });
-    URD_CHECK(first.front() == 4 && first[1] == 5);
+    URD_CHECK(first.front() == 4 && first[1] == 5 && first.back() == 5);
 
-    const auto frozen = Store<key<int>, urd::sorted, urd::frozen>::make({ 2, 3, 5 });
+    const auto frozen = Store<key<int>, urd::sorted, urd::frozen> { 2, 3, 5 };
     URD_CHECK(frozen.contains(5) && !frozen.contains(4));
+
+    // A plain sequence reads and changes like std::vector.
+    auto numbers = Store<value<int>> { 1, 2, 3, 2 };
+    numbers[0] = 7;
+    numbers.insert(numbers.begin() + 1, 9);
+    URD_CHECK(erase(numbers, 2) == 2);
+    URD_CHECK(numbers == (Store<value<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<value<int>> { 8 });
+    URD_CHECK(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
 }

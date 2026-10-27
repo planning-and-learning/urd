@@ -192,6 +192,13 @@ public:
 
     SegmentedVector() : m_capacity(0), m_size(0) {}
 
+    template<std::input_iterator InputIt>
+    SegmentedVector(InputIt first, InputIt last) : SegmentedVector()
+    {
+        for (; first != last; ++first)
+            emplace_back(*first);
+    }
+
     SegmentedVector(const SegmentedVector&) = delete;
     SegmentedVector& operator=(const SegmentedVector&) = delete;
     SegmentedVector(SegmentedVector&& other) noexcept : SegmentedVector() { take(other); }

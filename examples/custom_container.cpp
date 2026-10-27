@@ -1,63 +1,57 @@
 // Your own container gets urd's properties the way a graph gets Boost.Graph's: declare them in
-// urd::container_traits, give it the common interface in urd::repr::ops, and let urd::verify check the claim.
+// urd::container_traits, offer the operations they require (urd/interface.hpp), and let urd::verify check both.
+// A container with the standard's names offers them as it is; one with its own names, such as a library's,
+// gets an adapter: free functions of the standard names in its namespace.
 
 #include "urd/concepts.hpp"
+#include "urd/operations.hpp"
 #include "urd/verify.hpp"
 
-#include <algorithm>
 #include <cstddef>
+#include <deque>
 #include <iostream>
-#include <list>
 
-namespace
+namespace lib
 {
 
-/// A list kept in ascending order: inserting finds the place, and list nodes never move.
-class SortedList
+/// A library's append-only journal, with its own names. Entries never move once written.
+class Journal
 {
 public:
-    [[nodiscard]] auto begin() const { return m_elements.begin(); }
-    [[nodiscard]] auto end() const { return m_elements.end(); }
-    [[nodiscard]] std::size_t size() const { return m_elements.size(); }
+    Journal() = default;
+    Journal(const int* first, const int* last) : m_entries(first, last) {}
 
-    void insert(int element) { m_elements.insert(std::ranges::upper_bound(m_elements, element), element); }
-    std::size_t erase(int element) { return m_elements.remove(element); }
-    void clear() { m_elements.clear(); }
+    [[nodiscard]] auto begin() const { return m_entries.begin(); }
+    [[nodiscard]] auto end() const { return m_entries.end(); }
+    [[nodiscard]] std::size_t size() const { return m_entries.size(); }
+
+    const int& append(int entry) { return m_entries.emplace_back(entry); }
 
 private:
-    std::list<int> m_elements;
+    std::deque<int> m_entries;
 };
 
-}  // namespace
+// The adapter: what a growable sequence must offer, in the library's namespace, where urd finds it.
+inline void push_back(Journal& journal, int entry) { journal.append(entry); }
+inline const int& emplace_back(Journal& journal, int entry) { return journal.append(entry); }
 
-// What it guarantees, through every operation it offers.
-template<>
-struct urd::container_traits<SortedList> : urd::properties_of<urd::sorted, urd::stable_refs, urd::shrinkable>
-{
-};
+}  // namespace lib
 
-// The common interface urd::verify (and later a Store) uses.
+// What it guarantees: it only grows, and entries keep their address.
 template<>
-struct urd::repr::ops<SortedList>
+struct urd::container_traits<lib::Journal> : urd::properties_of<urd::stable_refs, urd::growable>
 {
-    static bool insert(SortedList& list, int element)
-    {
-        list.insert(element);
-        return true;
-    }
-    static std::size_t erase(SortedList& list, int element) { return list.erase(element); }
-    static void clear(SortedList& list) { list.clear(); }
 };
 
 namespace
 {
 
-/// Needs ascending input, and says so.
+/// Appends and keeps a reference, which stays valid only because R says so.
 template<typename R>
-    requires urd::Sorted<R>
-int smallest(const R& range)
+    requires urd::StableRefs<R>
+const int& append(R& range, int entry)
 {
-    return *range.begin();
+    return urd::emplace_back(range, entry);
 }
 
 }  // namespace
@@ -65,16 +59,16 @@ int smallest(const R& range)
 int main()
 {
     // The claim is checked, not trusted.
-    if (const auto violation = urd::verify(SortedList(), 1))
+    if (const auto violation = urd::verify(lib::Journal(), 1))
     {
-        std::cout << "SortedList breaks a property: " << *violation << '\n';
+        std::cout << "Journal breaks a property: " << *violation << '\n';
         return 1;
     }
-    std::cout << "SortedList keeps sorted and stable_refs through 2000 random operations\n";
+    std::cout << "Journal offers what stable_refs and growable require and keeps them through 2000 random operations\n";
 
-    auto list = SortedList();
-    list.insert(7);
-    list.insert(3);
-    list.insert(5);
-    std::cout << "smallest: " << smallest(list) << '\n';  // compiles because SortedList declares sorted
+    auto journal = lib::Journal();
+    const int& first = append(journal, 7);
+    for (int entry = 0; entry < 10000; ++entry)
+        append(journal, entry);
+    std::cout << "first entry, after 10000 more: " << first << '\n';
 }

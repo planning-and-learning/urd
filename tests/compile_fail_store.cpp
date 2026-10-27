@@ -12,17 +12,17 @@ using urd::value;
 int main()
 {
     [[maybe_unused]] auto set = Store<key<int>>();
-    [[maybe_unused]] auto small = Store<key<int>, urd::small>::make({ 1, 2 });
-    [[maybe_unused]] auto frozen = Store<key<int>, urd::frozen>::make({ 1, 2 });
+    [[maybe_unused]] auto small = Store<key<int>, urd::small> { 1, 2 };
+    [[maybe_unused]] auto frozen = Store<key<int>, urd::frozen> { 1, 2 };
     [[maybe_unused]] auto growing = Store<value<int>, urd::monotone>();
-    [[maybe_unused]] auto sequence = Store<value<int>>();
+    [[maybe_unused]] auto sorted = Store<value<int>, urd::sorted> { 1, 2 };
 
 #if URD_CASE == 1  // a set has no positions
     (void)set[0];
 #elif URD_CASE == 2  // a frozen Store never changes
     frozen.insert(3);
 #elif URD_CASE == 3  // a monotone Store only grows
-    (void)growing.erase(3);
+    growing.pop_back();
 #elif URD_CASE == 4  // one value per key, and many: a contradiction
     using S = Store<key<int>, value<int>, urd::functional, urd::multi>;
     (void)S();
@@ -44,8 +44,8 @@ int main()
 #elif URD_CASE == 10  // only urd properties
     using S = Store<key<int>, int>;
     (void)S();
-#elif URD_CASE == 11  // only a nonempty Store has a front without a check
-    (void)sequence.front();
+#elif URD_CASE == 11  // changing an element in place could break the order
+    sorted[0] = 3;
 #elif URD_CASE == 12  // a nonempty Store cannot start empty
     (void)Store<key<int>, urd::nonempty>();
 #elif URD_CASE == 13  // erasing from a sequence moves later elements: no representation keeps references then

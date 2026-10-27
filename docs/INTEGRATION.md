@@ -29,14 +29,7 @@ cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-ins
 cmake --build dependencies-build -j8 && cmake --install dependencies-build
 ```
 
-## 3. Give it the common interface: `repr::ops<R>`
-
-Store calls every representation the same way, through a specialization of `urd::repr::ops` for its type
-(see `include/urd/repr/ops.hpp`): `make` and `assume` build it from a `std::vector` of elements, `insert`
-adds one, `contains` looks one up (sets), `at` reads by position (sequences), and `erase` and `clear` remove
-elements, only for representations that can. Each is a line or two over the container's own operations.
-
-## 4. Declare its properties: `container_traits<R>`
+## 3. Declare its properties: `container_traits<R>`
 
 What a container guarantees is a type trait, as `graph_traits` is for Boost.Graph: one tag per category
 (`include/urd/traits.hpp`), the root of a category where it promises nothing. List the tags it has:
@@ -49,9 +42,32 @@ struct urd::container_traits<std::set<K, std::less<K>, Allocator>>
 };
 ```
 
-Its mutability says which operations it offers: `growable` (insert), `shrinkable` (insert, erase, clear).
-A request that may erase only resolves to a shrinkable representation. Claim only what holds for every
-value of the type and through every operation; step 6 checks it.
+Claim only what holds for every value of the type and through every operation; step 6 checks it.
+
+## 4. Offer what the properties require
+
+As a graph must model Boost.Graph's concepts, a container must offer the operations its declared properties
+require (`include/urd/interface.hpp`), with the standard library's names and results; `urd::conforming<R>`
+checks it at compile time:
+
+| Property | Requires |
+|---|---|
+| any | a sized forward range, constructible from an iterator range |
+| `canonical` | `==` |
+| `contiguous` | a contiguous range |
+| kept by value (`sorted` or `unique`, as std::set and std::flat_multiset) | `find`, `count`, `contains` |
+| `sorted` | a bidirectional range; `lower_bound`, `upper_bound`, `equal_range` |
+| `growable`, kept by value | `insert(e)` (`pair<iterator, bool>` if `unique`, else `iterator`), `insert(e&&)`, `emplace`, `insert(first, last)`, `insert(hint, e)` |
+| `growable`, a sequence | `push_back(e)`, `push_back(e&&)`, `emplace_back` returning a reference |
+| `shrinkable` | `clear`, `erase(position)`, `erase(first, last)` |
+| `shrinkable`, kept by value | `erase(e)` returning a count |
+| `shrinkable`, a sequence | `pop_back`, `insert(position, e)`, `emplace(position, …)` |
+
+urd calls them as free functions, `urd::insert(c, e)`, which use the container's member of that name. The
+standard library's containers, Boost's, and urd's own (`SegmentedVector`) offer them as they are; a container
+of urd's should be written that way. A library with other names gets an adapter: free functions of the
+standard names in its namespace, found by argument-dependent lookup. An adapter only renames; it adds no
+guarantee, and a library update that changes its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it: a candidate
 
@@ -64,14 +80,14 @@ A candidate is a template over the request's spec `S` (see `include/urd/repr/seg
 | `accepts` | whether it can represent `S` at all: kind (set, map, sequence) and element types |
 | `rank` | how well it suits `S`'s workload, lower is better |
 
-Add it to `detail::registry` in `include/urd/registry.hpp`. A candidate fits a request when it accepts it
-and its `container_traits` satisfy the request; where two fit, the rank decides; on a tie, the earlier one
+Add it to `detail::registry` in `include/urd/registry.hpp`. A candidate fits a request when it accepts it,
+its `container_traits` satisfy the request, and it offers the interface a Store for the request offers; where two fit, the rank decides; on a tie, the earlier one
 in the list.
 
 ## 6. Prove it
 
-A property is part of what a Store is: it holds from construction (`make`, or `assume`, which Debug builds
-check) and every operation keeps it, or the operation is not offered. A container whose property holds only
+A property is part of what a Store is: it holds from construction (from any elements, or `assume`, which
+Debug builds check) and every operation keeps it, or the operation is not offered. A container whose property holds only
 if callers remember to restore it is not a representation.
 
 The exceptions are part of the properties' definitions (`include/urd/traits.hpp`), the same for every
@@ -84,10 +100,11 @@ representation, and the test checks them as defined:
 
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
 - Add the container, and a Store that resolves to it, to `tests/properties.cpp`. Both go through
-  `urd::verify` (`include/urd/verify.hpp`): random inserts, erases and clears, as its mutability allows, and
-  after every single step a comparison with a reference model and a check of every declared property
-  (sorted, unique, nonempty, stable_refs, contiguous, canonical), so a property that breaks and later
-  recovers is caught too.
+  `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
+  properties require at random (inserts, erases of positions and ranges, clears, assignments where the
+  iterators allow them), and after every single step compares the contents, each operation's result and the
+  lookups with a reference model and checks every declared property (sorted, unique, nonempty, stable_refs,
+  contiguous, canonical), so a property that breaks and later recovers is caught too.
 - `concurrent` needs threads: a test that inserts from several threads and checks every element arrived,
   run under ThreadSanitizer (`tests/store.cpp`).
 - A request it makes possible, and one that should still fail, as compile-fail cases.
@@ -107,7 +124,8 @@ representation, and the test checks them as defined:
 
 ## Your own container
 
-Steps 3, 4 and 6 work for any container, without registering it: specialize `urd::container_traits` and
-`urd::repr::ops` for it, and check the declaration with `urd::verify`. It then meets urd's concepts
-(`urd::Sorted<R>`, …) like urd's own containers. `examples/custom_container.cpp` does this for a sorted list.
-Making it a candidate a `Store` can pick needs a registry users can extend, which is not there yet.
+Steps 3, 4 and 6 work for any container, without registering it: specialize `urd::container_traits`, offer
+the required operations (directly or through an adapter), and check both with `urd::verify`. It then meets
+urd's concepts (`urd::Sorted<R>`, …), which require the operations too, so generic code can call them.
+`examples/custom_container.cpp` does this for a library's journal with its own names. Making it a candidate a
+`Store` can pick needs a registry users can extend, which is not there yet.
