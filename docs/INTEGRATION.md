@@ -75,15 +75,17 @@ its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it
 
-Add its template, taking the element type, to both preference lists in `include/urd/registry.hpp` (`detail::preference`): one
-for Stores whose elements are few or never change, one for the rest. A container with further template parameters
-gets an alias that fixes them (`ConcurrentSegmentedVector`). Nothing else is written per container: a request
-takes the first container in its list that serves it, meaning its `container_traits` for the request's
-elements satisfy the request and it offers the interface a Store for the request offers.
+Add its template to one list in `include/urd/registry.hpp`: `element_preference` for one taking the element
+type, `map_preference` for a map taking its key and value types. A container with further template parameters
+gets an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order). Nothing
+else is written per container: a request takes the first container in the list that serves it, meaning its
+`container_traits` for the request's elements satisfy the request and it offers the interface a Store for the
+request offers. Where a request is `small` or `frozen`, node-based containers (declaring `stable_refs`) move
+last, as contiguous storage is faster for few or unchanging elements.
 
 What a container needs of its elements belongs in its traits, as constraints with the concepts of
-`include/urd/elements.hpp` (`orderable`, `hashable`): `std::set<K>` is `sorted` only for orderable `K`, so a
-request for a sorted set of elements without `<` is not served by it.
+`include/urd/elements.hpp` (`orderable`, `hashable`, `natural_order`, `natural_hash`): a tree is `sorted` only
+for orderable keys, so a request for a sorted set of keys urd cannot order is not served by it.
 
 ## 6. Prove it
 

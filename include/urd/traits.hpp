@@ -1,10 +1,8 @@
 #pragma once
 
-#include <algorithm>
 #include <concepts>
 #include <ranges>
 #include <type_traits>
-#include <vector>
 
 namespace urd
 {
@@ -323,25 +321,5 @@ inline constexpr bool has = (detail::has_one<traits_t<X>, Tags> && ...);
 /// Whether Have provides, in every category a container declares, at least what Want asks for.
 template<typename Have, typename Want>
 inline constexpr bool satisfies = detail::satisfies_all<Have, Want, detail::guaranteed_roots>;
-
-/// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
-/// about the type, not the contents; the tests check those. O(n log n) at most.
-template<typename Traits, std::ranges::forward_range R>
-[[nodiscard]] bool holds(const R& range)
-{
-    if (has<Traits, nonempty> && std::ranges::empty(range))
-        return false;
-    if (has<Traits, sorted> && !std::ranges::is_sorted(range))
-        return false;
-    if constexpr (has<Traits, unique>)
-    {
-        if constexpr (has<Traits, sorted>)
-            return std::ranges::adjacent_find(range) == std::ranges::end(range);
-        auto copy = std::vector<std::ranges::range_value_t<R>>(std::ranges::begin(range), std::ranges::end(range));
-        std::ranges::sort(copy);
-        return std::ranges::adjacent_find(copy) == copy.end();
-    }
-    return true;
-}
 
 }  // namespace urd

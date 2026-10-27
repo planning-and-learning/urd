@@ -23,6 +23,26 @@ namespace urd
 namespace detail
 {
 
+/// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
+/// about the type, not the contents; the checks below cover those. O(n log n) at most.
+template<typename Traits, std::ranges::forward_range R>
+[[nodiscard]] bool holds(const R& range)
+{
+    if (has<Traits, nonempty> && std::ranges::empty(range))
+        return false;
+    if (has<Traits, sorted> && !std::ranges::is_sorted(range))
+        return false;
+    if constexpr (has<Traits, unique>)
+    {
+        if constexpr (has<Traits, sorted>)
+            return std::ranges::adjacent_find(range) == std::ranges::end(range);
+        auto copy = std::vector<std::ranges::range_value_t<R>>(std::ranges::begin(range), std::ranges::end(range));
+        std::ranges::sort(copy);
+        return std::ranges::adjacent_find(copy) == copy.end();
+    }
+    return true;
+}
+
 template<typename R>
 using element_t = std::ranges::range_value_t<R>;
 
