@@ -64,7 +64,7 @@ checks it at compile time:
 | `sorted` | a bidirectional range; `lower_bound`, `upper_bound`, `equal_range` |
 | `growable`, kept by value | `insert(e)` (`pair<iterator, bool>` if `unique`, else `iterator`), `insert(e&&)`, `emplace`, `insert(first, last)`, `insert(hint, e)` |
 | `growable`, a sequence | `push_back(e)`, `push_back(e&&)`, `emplace_back` returning a reference |
-| `shrinkable` | `clear`, `erase(position)`, `erase(first, last)` |
+| `shrinkable` | `clear`, `erase(position)` (its result convertible to an iterator, as Boost's flat hash tables return a proxy), `erase(first, last)` |
 | `shrinkable`, kept by value | `erase(e)` returning a count |
 | `shrinkable`, a sequence | `pop_back`, `insert(position, e)`, `emplace(position, …)` |
 
@@ -126,6 +126,19 @@ representation, and the test checks them as defined:
   open.
 - **The vocabulary grew by one property,** `concurrent`, which the copied container already offered as a
   template parameter.
+
+## Maps
+
+`key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
+container names `mapped_type`, which tells the registry it is one; its lookups and `erase` take a key, and
+with unique keys it offers `at`, `try_emplace` and `insert_or_assign` (`include/urd/interface.hpp`). The
+element requirements (`orderable`, `hashable`) apply to the key. A map Store hands out const iterators and
+changes values by key only, since Boost's flat maps would let a key be overwritten through an iterator.
+
+## Choosing among containers
+
+The preference lists in `include/urd/registry.hpp` follow `docs/BENCHMARKS.md`, which `benchmarks/` produces
+(Google Benchmark, `-DURD_BUILD_BENCHMARKS=ON`). A change to an order cites a benchmark.
 
 ## Nested Stores
 

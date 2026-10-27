@@ -48,7 +48,13 @@ Code taken from yggdrasil is copied with its tests, as in tier 1 (`docs/INTEGRAT
 - **Builds:** GCC and Clang, Debug and Release, green.
 - The `urd-design` memory and `docs/SURVEY.md` ("urd today" column) are updated.
 
-## M0: Foundations (needed by most patterns)
+## M0: Foundations (needed by most patterns) — done
+
+Maps and multimaps, Boost's flat hash tables first where no order is asked for (docs/BENCHMARKS.md), the
+benchmark harness, CI with ThreadSanitizer, clang-tidy and clang-format through peachycheck, test names by
+container, survey pins in tests/survey.cpp. One change from the plan below: a map Store's iterators are
+const, and values change by key only, as Boost's flat maps would let a key be overwritten.
+
 
 1. **Maps.** Today `key<K>` with `value<V>` is rejected. Maps follow the standard's map interface:
    - **Interface:**

@@ -67,6 +67,10 @@ if(URD_BUILD_TESTS)
     target_sources(test_properties PRIVATE tests/allocations.cpp)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
 
+    # Declarations from the four libraries as Store requests: compiling them is the test.
+    add_library(survey OBJECT tests/survey.cpp)
+    target_link_libraries(survey PRIVATE urd::urd)
+
     # The tests that came with the representations copied from yggdrasil, unchanged but for names.
     foreach(test segmented_vector unique_object_pool shared_object_pool)
         add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)
