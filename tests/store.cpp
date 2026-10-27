@@ -272,3 +272,58 @@ TEST(Store, BuildsAndChangesAsAsked)
     EXPECT_TRUE(numbers == (Store<value<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<value<int>> { 8 });
     EXPECT_TRUE(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
 }
+
+namespace
+{
+
+template<typename S>
+class SetAlgebra : public testing::Test
+{
+};
+using Sets = testing::Types<Store<key<int>>,
+                            Store<key<int>, urd::sorted>,
+                            Store<key<int>, urd::small>,
+                            Store<key<int>, urd::stable_refs>,
+                            Store<key<int>, urd::dense>,
+                            Store<key<int>, urd::dense, urd::constant_clear>>;
+TYPED_TEST_SUITE(SetAlgebra, Sets);
+
+std::vector<int> sorted_copy(const auto& set)
+{
+    auto result = std::vector<int>(set.begin(), set.end());
+    std::ranges::sort(result);
+    return result;
+}
+
+}  // namespace
+
+// Union, intersection, difference, inclusion and overlap give what std::set_* give on sorted copies.
+TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
+{
+    auto random = std::mt19937(5);
+    auto pick = std::uniform_int_distribution<int>(0, 40);
+    for (int round = 0; round < 200; ++round)
+    {
+        auto lhs = TypeParam();
+        auto rhs = TypeParam();
+        for (int count = pick(random) % 12; count > 0; --count)
+            lhs.insert(pick(random));
+        for (int count = pick(random) % 12; count > 0; --count)
+            rhs.insert(pick(random));
+        const auto a = sorted_copy(lhs);
+        const auto b = sorted_copy(rhs);
+
+        auto expected = std::vector<int>();
+        std::ranges::set_union(a, b, std::back_inserter(expected));
+        EXPECT_EQ(sorted_copy(TypeParam(lhs) |= rhs), expected);
+        expected.clear();
+        std::ranges::set_intersection(a, b, std::back_inserter(expected));
+        EXPECT_EQ(sorted_copy(TypeParam(lhs) &= rhs), expected);
+        EXPECT_EQ(lhs.intersects(rhs), !expected.empty());
+        expected.clear();
+        std::ranges::set_difference(a, b, std::back_inserter(expected));
+        EXPECT_EQ(sorted_copy(TypeParam(lhs) -= rhs), expected);
+        EXPECT_EQ(lhs.includes(rhs), std::ranges::includes(a, b));
+        EXPECT_EQ((TypeParam(lhs) |= rhs).size(), sorted_copy(TypeParam(lhs) |= rhs).size());
+    }
+}

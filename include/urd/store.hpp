@@ -14,6 +14,7 @@
 #include "urd/store/positions.hpp"
 #include "urd/store/removal.hpp"
 #include "urd/store/reverse_iteration.hpp"
+#include "urd/store/set_algebra.hpp"
 #include "urd/store/sizing.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
@@ -56,7 +57,8 @@ class Store :
     public facet_if<has<S, growable>, facet::capacity<Store<R, S>, R, S>>,
     public facet_if<has<S, growable>, facet::growth<Store<R, S>, R, S>>,
     public facet_if<has<S, shrinkable>, facet::removal<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>
+    public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>,
+    public facet_if<S::is_set, facet::set_algebra<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

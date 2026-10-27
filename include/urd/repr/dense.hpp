@@ -114,6 +114,45 @@ public:
         m_count = 0;
     }
 
+    // Set algebra on whole words, which the Store's set_algebra uses.
+
+    [[nodiscard]] bool includes(const DenseSet& other) const
+    {
+        for (std::size_t block = 0; block < other.m_words.size(); ++block)
+            if ((other.m_words[block] & ~word_at(block)) != 0)
+                return false;
+        return true;
+    }
+    [[nodiscard]] bool intersects(const DenseSet& other) const
+    {
+        const auto common = std::min(m_words.size(), other.m_words.size());
+        for (std::size_t block = 0; block < common; ++block)
+            if ((m_words[block] & other.m_words[block]) != 0)
+                return true;
+        return false;
+    }
+    DenseSet& operator|=(const DenseSet& other)
+    {
+        if (other.m_words.size() > m_words.size())
+            m_words.resize(other.m_words.size());
+        for (std::size_t block = 0; block < other.m_words.size(); ++block)
+            m_words[block] |= other.m_words[block];
+        return recount();
+    }
+    DenseSet& operator&=(const DenseSet& other)
+    {
+        for (std::size_t block = 0; block < m_words.size(); ++block)
+            m_words[block] &= other.word_at(block);
+        return recount();
+    }
+    DenseSet& operator-=(const DenseSet& other)
+    {
+        const auto common = std::min(m_words.size(), other.m_words.size());
+        for (std::size_t block = 0; block < common; ++block)
+            m_words[block] &= ~other.m_words[block];
+        return recount();
+    }
+
     /// Equal keys; how many words each holds does not matter.
     [[nodiscard]] friend bool operator==(const DenseSet& lhs, const DenseSet& rhs)
     {
@@ -170,6 +209,14 @@ public:
     };
 
 private:
+    [[nodiscard]] word word_at(std::size_t block) const { return block < m_words.size() ? m_words[block] : word { 0 }; }
+    DenseSet& recount()
+    {
+        m_count = 0;
+        for (const auto block : m_words)
+            m_count += static_cast<std::size_t>(std::popcount(block));
+        return *this;
+    }
     [[nodiscard]] bool test(std::size_t index) const
     { return index / word_bits < m_words.size() && (m_words[index / word_bits] >> (index % word_bits) & word { 1 }) != 0; }
     void reset(std::size_t index)
