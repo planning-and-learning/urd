@@ -124,6 +124,18 @@ struct name<urd::repr::RowPool<Inner>>
     static constexpr std::string_view id = "row_pool";
     static constexpr std::string_view value = "row pool (cleared rows are kept for reuse)";
 };
+template<typename K>
+struct name<urd::repr::DenseSet<K>>
+{
+    static constexpr std::string_view id = "dense_set";
+    static constexpr std::string_view value = "dense set (a bitset over indices)";
+};
+template<typename K>
+struct name<urd::repr::SparseSet<K>>
+{
+    static constexpr std::string_view id = "sparse_set";
+    static constexpr std::string_view value = "sparse set (members array plus index positions, O(1) clear)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

@@ -5,6 +5,7 @@
 
 #include "allocations.hpp"
 #include "names.hpp"
+#include "urd/repr/dense.hpp"
 #include "urd/store.hpp"
 #include "verify.hpp"
 
@@ -143,7 +144,13 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::multi>,
     Store<key<int>, value<int>, urd::multi, urd::sorted>,
     Store<key<int>, value<int>, urd::stable_refs>,
-    Store<key<int>, value<int>, urd::retains>>;
+    Store<key<int>, value<int>, urd::retains>,
+    // Dense keys: indices, by position.
+    urd::repr::DenseSet<int>,
+    urd::repr::SparseSet<int>,
+    Store<key<int>, urd::dense>,
+    Store<key<int>, urd::dense, urd::sorted>,
+    Store<key<int>, urd::dense, urd::constant_clear>>;
 
 template<typename R>
 class Properties : public testing::Test

@@ -2,6 +2,7 @@
 
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
+#include "urd/repr/dense.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/rows.hpp"
@@ -37,19 +38,14 @@ using requirement = with_t<S,
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
-/// sequence's duplicates), is a map exactly where S is, and is random-access where S is a sequence. Where S's elements are Stores (rows), R
+/// sequence's duplicates), is a map exactly where S is, and is random-access where S is a sequence. A sequence
+/// kept by value must be sorted, or its positions would mean nothing (an insertion-ordered one is still to come). Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map
-                 && satisfies<container_traits<R>, requirement<S>> && conforming<R> && by_value<container_traits<R>> == by_value<S>
-                 && has<container_traits<R>, unique> == has<S, unique> && (!has<S, positional> || std::ranges::random_access_range<R>)
+concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map && satisfies<container_traits<R>, requirement<S>> && conforming<R>
+                 && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
+                 && (!has<S, positional> || std::ranges::random_access_range<R>) && (!S::is_sequence || !by_value<S> || has<S, sorted>)
                  && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
-
-/// Container templates, each taking the element type.
-template<template<typename...> class... Cs>
-struct candidates
-{
-};
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
@@ -99,7 +95,8 @@ struct map_candidates
 /// registered by adding it to one of these lists; what it can serve, its container_traits say. The order
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
 /// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
-/// where order is asked for, a tree serves elements inserted over time. Frozen rows are flattened first; rows
+/// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
+/// tables, which declare sparse keys, so only a request for dense keys reaches them. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
 using element_preference = element_candidates<repr::Jagged,
                                               std::vector,
@@ -108,6 +105,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               TreeSet,
                                               FlatMultiSet,
                                               FlatSet,
+                                              repr::DenseSet,
+                                              repr::SparseSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool>;
