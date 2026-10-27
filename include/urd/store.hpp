@@ -9,6 +9,7 @@
 #include "urd/store/ordered_lookup.hpp"
 #include "urd/store/positions.hpp"
 #include "urd/store/removal.hpp"
+#include "urd/store/reverse_iteration.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
 #include "urd/traits.hpp"
@@ -39,6 +40,7 @@ template<typename R, typename S>
 class Store :
     public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
+    public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
     public facet_if<S::is_sequence, facet::positions<Store<R, S>, R, S>>,
     public facet_if<has<S, contiguous>, facet::contiguous_data<Store<R, S>, R, S>>,
     public facet_if<has<S, growable>, facet::growth<Store<R, S>, R, S>>,
@@ -85,6 +87,8 @@ public:
 
     [[nodiscard]] const_iterator begin() const { return m_representation.begin(); }
     [[nodiscard]] const_iterator end() const { return m_representation.end(); }
+    // Mutable iteration stays here, not in a facet: it overloads the const begin() and end() above, and a
+    // base's overload would be hidden by them.
     [[nodiscard]] iterator begin()
         requires types::writable
     { return m_representation.begin(); }
@@ -93,12 +97,6 @@ public:
     { return m_representation.end(); }
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
     [[nodiscard]] const_iterator cend() const { return end(); }
-    [[nodiscard]] auto rbegin() const
-        requires types::ordered
-    { return std::make_reverse_iterator(end()); }
-    [[nodiscard]] auto rend() const
-        requires types::ordered
-    { return std::make_reverse_iterator(begin()); }
     [[nodiscard]] size_type size() const { return std::ranges::size(m_representation); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 

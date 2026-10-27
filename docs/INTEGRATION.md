@@ -139,7 +139,7 @@ changes values by key only, since Boost's flat maps would let a key be overwritt
 
 `Store` holds only what every Store has: construction, iteration, size, comparison. Each group of properties
 has a facet in `include/urd/store/`, a class with the members those properties allow, which the Store
-inherits where its properties switch it on: `lookup` (kept by value or key), `ordered_lookup` (`sorted`),
+inherits where its properties switch it on: `lookup` (kept by value or key), `ordered_lookup` (`sorted`), `reverse_iteration` (an order: `sorted`, or a sequence),
 `positions` (a sequence), `contiguous_data`, `growth`, `removal`, and `values_by_key` (a map with unique keys).
 A new property or kind adds a facet and a line in the Store's list of bases. Each member name lives in one
 facet only, so that calls are never ambiguous between two; facets take their types from `store_types`, as the
