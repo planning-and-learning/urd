@@ -105,7 +105,7 @@ representation, and the test checks them as defined:
   alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address kept
   through 100000 inserts; retains: no allocation when refilling after a clear or after erasing each element;
   reclaims: a clear frees each element's storage; contiguous, canonical, unique, nonempty, concurrent
-  likewise), and the others are skipped. The test binary counts allocations with its own global operator new. Another typed test runs `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
+  likewise), and the others are skipped. The test binary counts allocations with its own global operator new. Another typed test runs `urd::verify` (`tests/verify.hpp`): it checks `conforming<R>`, then runs every operation the
   properties require at random (inserts, erases of positions and ranges, clears, assignments where the
   iterators allow them), and after every single step compares the contents, each operation's result and the
   lookups with a reference model and checks every declared property (sorted, unique, nonempty, stable_refs,
@@ -126,10 +126,3 @@ representation, and the test checks them as defined:
   open.
 - **The vocabulary grew by one property,** `concurrent`, which the copied container already offered as a
   template parameter.
-
-## Your own container
-
-Steps 3, 4 and 6 work for any container: specialize `urd::container_traits`, offer the required operations
-(directly or through an adapter), and check both with `urd::verify`. `examples/custom_container.cpp` does this
-for a library's journal with its own names. Downstream code still uses it only through a Store, so it is of use
-once it is a candidate a `Store` can pick, which needs a registry users can extend; that is not there yet.

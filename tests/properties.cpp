@@ -1,10 +1,10 @@
 // Every container offers the operations its declared properties require and keeps those properties. One typed
 // test per property, written against the operations alone, runs for every container in the list below that
 // declares the property, and is skipped for the others; one more drives all operations at random through
-// urd::verify. Validating a container is adding it to the list.
+// urd::verify (verify.hpp). Validating a container is adding it to the list.
 
 #include "urd/store.hpp"
-#include "urd/verify.hpp"
+#include "verify.hpp"
 
 #include <boost/container/flat_set.hpp>
 #include <gtest/gtest.h>
@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
+#include <deque>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -24,6 +25,58 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+namespace lib
+{
+
+/// A library's append-only journal, with its own names. Entries never move once written.
+class Journal
+{
+public:
+    [[nodiscard]] auto begin() const { return m_entries.begin(); }
+    [[nodiscard]] auto end() const { return m_entries.end(); }
+    [[nodiscard]] std::size_t count() const { return m_entries.size(); }
+
+    const int& append(int entry) { return m_entries.emplace_back(entry); }
+
+private:
+    std::deque<int> m_entries;
+};
+
+}  // namespace lib
+
+namespace
+{
+
+/// An adapter: the library's journal under the names a growable sequence must offer. It only renames.
+class Journal
+{
+public:
+    Journal() = default;
+    Journal(const int* first, const int* last)
+    {
+        for (; first != last; ++first)
+            m_journal.append(*first);
+    }
+
+    [[nodiscard]] auto begin() const { return m_journal.begin(); }
+    [[nodiscard]] auto end() const { return m_journal.end(); }
+    [[nodiscard]] std::size_t size() const { return m_journal.count(); }
+
+    void push_back(int entry) { m_journal.append(entry); }
+    const int& emplace_back(int entry) { return m_journal.append(entry); }
+
+private:
+    lib::Journal m_journal;
+};
+
+}  // namespace
+
+// What it guarantees: it only grows, and entries keep their address.
+template<>
+struct urd::container_traits<Journal> : urd::properties_of<urd::stable_refs, urd::growable>
+{
+};
 
 namespace
 {
@@ -75,6 +128,8 @@ using Containers = testing::Types<
     // The representations, as they are.
     std::vector<int>, std::set<int>, std::unordered_set<int>, boost::container::flat_set<int>, boost::container::flat_multiset<int>,
     SegmentedVector<int>, SegmentedVector<int, urd::repr::default_first_segment_size, true>,
+    // A container from elsewhere, through an adapter.
+    Journal,
     // Stores, which promise what they were asked for.
     Store<key<int>>, Store<key<int>, urd::sorted>, Store<key<int>, urd::small>, Store<key<int>, urd::sorted, urd::frozen>,
     Store<key<int>, urd::nonempty>, Store<key<int>, urd::stable_refs>, Store<key<int>, urd::sorted, urd::stable_refs>,

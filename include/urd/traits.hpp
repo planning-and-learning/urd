@@ -144,7 +144,7 @@ using properties_of = properties<detail::pick_t<any_order, Tags...>, detail::pic
                                  detail::pick_t<by_key, Tags...>, detail::pick_t<any_memory, Tags...>>;
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
-/// to declare its properties, and check the declaration with urd::verify:
+/// to declare its properties, and check the declaration by adding the container to tests/properties.cpp:
 ///
 ///     template<> struct urd::container_traits<MyList> : urd::properties_of<urd::sorted, urd::shrinkable> {};
 ///
@@ -218,7 +218,7 @@ inline constexpr bool satisfies =
     && std::derived_from<typename Have::memory_category, typename Want::memory_category>;
 
 /// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
-/// about the type, not the contents; urd::verify checks those. O(n log n) at most.
+/// about the type, not the contents; the tests check those. O(n log n) at most.
 template<typename Traits, std::ranges::forward_range R>
 [[nodiscard]] bool holds(const R& range)
 {

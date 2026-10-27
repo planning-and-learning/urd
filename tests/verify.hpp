@@ -361,7 +361,7 @@ template<typename R>
     requires std::constructible_from<detail::element_t<R>, int>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 2000)
 {
-    static_assert(conforming<R>, "urd::verify: R lacks an operation its declared properties require (urd/interface.hpp lists them)");
+    static_assert(conforming<R>, "urd::verify: R lacks an operation its declared properties require (include/urd/interface.hpp lists them)");
     if constexpr (conforming<R>)
         return detail::run(std::move(range), seed, steps);
     else
