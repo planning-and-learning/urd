@@ -9,6 +9,7 @@
 #include <concepts>
 #include <random>
 #include <set>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -37,6 +38,11 @@ static_assert(std::same_as<Store<key<int>, urd::small>::representation, urd::Sor
 static_assert(std::same_as<Store<key<int>, urd::stable_refs>::representation, std::unordered_set<int>>);
 static_assert(std::same_as<Store<value<int>>::representation, urd::Refined<std::vector<int>, props::none>>);
 static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, urd::SortedVector<int>>);
+// Elements that must not move: segments, unless nothing changes anyway.
+static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::representation, urd::repr::SegmentedVector<int>>);
+static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
+                           urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
+static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, urd::Refined<std::vector<int>, props::none>>);
 
 // Only what was asked for: a small set is stored sorted, but it was not asked to be sorted, so it is not.
 static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
@@ -115,6 +121,35 @@ int main()
         behaves_like_std_set<Store<key<int>, urd::small>>(seed);
         behaves_like_std_set<Store<key<int>, urd::sorted, urd::small>>(seed);
         behaves_like_std_multiset<Store<value<int>, urd::sorted>>(seed);
+    }
+
+    // stable_refs: an element keeps its address however much is appended after it.
+    {
+        auto log = Store<value<int>, urd::stable_refs, urd::monotone>();
+        log.insert(0);
+        const int* first = &log[0];
+        for (int element = 1; element < 100000; ++element)
+            log.insert(element);
+        URD_CHECK(&log[0] == first && *first == 0 && log.size() == 100000 && log[99999] == 99999);
+    }
+
+    // concurrent: inserts from several threads all arrive.
+    {
+        constexpr int THREADS = 4;
+        constexpr int EACH = 20000;
+        auto log = Store<value<int>, urd::monotone, urd::concurrent>();
+        auto threads = std::vector<std::thread>();
+        for (int thread = 0; thread < THREADS; ++thread)
+            threads.emplace_back([&log, thread] {
+                for (int element = 0; element < EACH; ++element)
+                    log.insert(thread * EACH + element);
+            });
+        for (auto& thread : threads)
+            thread.join();
+        auto contents = std::vector<int>(log.begin(), log.end());
+        std::ranges::sort(contents);
+        URD_CHECK(contents.size() == THREADS * EACH && contents.front() == 0 && contents.back() == THREADS * EACH - 1);
+        URD_CHECK(std::ranges::adjacent_find(contents) == contents.end());
     }
 
     // make and assume.

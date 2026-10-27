@@ -33,6 +33,7 @@ struct sequence_vector
     static constexpr props content = S::flags & (props::sorted | props::unique);
     using type = Refined<std::vector<typename S::value_type>, content>;
     static constexpr std::string_view name = "vector";
+    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_sequence;
     static constexpr props guarantees = content | props::contiguous | props::dense
         | (includes(content, props::sorted | props::unique) ? props::canonical : props::none);
@@ -45,6 +46,7 @@ struct flat_set
 {
     using type = Refined<std::vector<typename S::key_type>, props::sorted | props::unique>;
     static constexpr std::string_view name = "sorted unique vector";
+    static constexpr bool erases = true;
     static constexpr bool accepts = S::is_set && std::totally_ordered<typename S::key_type>;
     static constexpr props guarantees =
         props::sorted | props::unique | props::contiguous | props::canonical | props::sparse;
