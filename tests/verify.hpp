@@ -40,7 +40,7 @@ std::ranges::iterator_t<const R> const_at(const R& range, std::size_t pos)
 { return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos)); }
 
 template<typename R>
-std::size_t position_of(const R& range, std::ranges::iterator_t<const R> it)
+std::size_t position_of(const R& range, const std::ranges::iterator_t<const R>& it)
 { return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it)); }
 
 /// What a container's contents must be after the same operations: placed by value as Traits says (in sorted
@@ -119,7 +119,7 @@ std::optional<std::string> violation(const R& range,
     {
         const auto at = addresses(range);
         for (std::size_t pos = 1; pos < at.size(); ++pos)
-            if (at[pos] != at[0] + pos)
+            if (at[pos] != std::next(at[0], static_cast<std::ptrdiff_t>(pos)))
                 return "contiguous: the elements are not next to each other";
     }
 
@@ -127,7 +127,7 @@ std::optional<std::string> violation(const R& range,
     if constexpr (has<Traits, canonical>)
     {
         std::ranges::reverse(contents);
-        if (!(R(contents.data(), contents.data() + contents.size()) == range))
+        if (!(R(contents.begin(), contents.end()) == range))
             return "canonical: equal contents built in another order differ";
     }
 
@@ -233,7 +233,7 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
     {
         const auto at = addresses(range);
         for (std::size_t pos = 1; pos < at.size(); ++pos)
-            if (at[pos] != at[0] + pos)
+            if (at[pos] != std::next(at[0], static_cast<std::ptrdiff_t>(pos)))
                 return "contiguous: the elements are not next to each other";
     }
     if constexpr (has<Traits, canonical>)
@@ -271,7 +271,7 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
 /// urd::verify for a conforming map R: inserts of every kind the standard's maps have, erases by key, position
 /// and range, and clears, each checked against the model.
 template<typename R>
-std::optional<std::string> run_map(R range, unsigned seed, int steps)
+std::optional<std::string> run_map(R& range, unsigned seed, int steps)
 {
     using K = std::remove_const_t<typename R::key_type>;
     using V = typename R::mapped_type;
@@ -420,7 +420,7 @@ std::optional<std::string> run_map(R range, unsigned seed, int steps)
 
 /// urd::verify for a conforming R.
 template<typename R>
-std::optional<std::string> run(R range, unsigned seed, int steps)
+std::optional<std::string> run(R& range, unsigned seed, int steps)
 {
     using E = detail::element_t<R>;
     using Traits = container_traits<R>;
@@ -493,7 +493,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                     {
                         const auto batch = std::vector<E> { element, E(pick(random)), element };
                         operation = "insert a range from " + std::to_string(drawn);
-                        range.insert(batch.data(), batch.data() + batch.size());
+                        range.insert(batch.begin(), batch.end());
                         for (const auto& each : batch)
                             model.insert(each);
                     }
@@ -528,12 +528,15 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                     model.elements.push_back(element);
                 }
             }
-            else if ((op -= inserts) < removals)
+            else if (op - inserts < removals)
             {
                 if constexpr (removals > 0)
                 {
+                    op -= inserts;
                     const auto size = std::ranges::size(range);
-                    if (keyed && op == 0)
+                    // Op 0 removes by value (kept by value) or the last element (a sequence); ops 3 and 4, which
+                    // only a sequence has, insert before a position.
+                    if (op == 0)
                     {
                         if constexpr (keyed)
                         {
@@ -541,17 +544,14 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                             if (static_cast<std::size_t>(range.erase(element)) != static_cast<std::size_t>(std::erase(model.elements, element)))
                                 wrong = "erase reports the wrong count";
                         }
-                    }
-                    else if (!keyed && op == 0 && size > 0)
-                    {
-                        if constexpr (!keyed)
+                        else if (size > 0)
                         {
                             operation = "pop_back";
                             range.pop_back();
                             model.elements.pop_back();
                         }
                     }
-                    else if (!keyed && op >= 3)
+                    else if (op >= 3)
                     {
                         if constexpr (!keyed)
                         {
@@ -631,9 +631,9 @@ template<typename R>
     if constexpr (!conforming<R>)
         return std::nullopt;
     else if constexpr (detail::map_container<R>)
-        return detail::run_map(std::move(range), seed, steps);
+        return detail::run_map(range, seed, steps);
     else
-        return detail::run(std::move(range), seed, steps);
+        return detail::run(range, seed, steps);
 }
 
 }  // namespace urd

@@ -54,23 +54,20 @@ endif()
 if(URD_BUILD_TESTS)
     enable_testing()
     find_package(Threads REQUIRED)
-
-    foreach(test store)
-        add_executable(test_${test} tests/${test}.cpp)
-        target_link_libraries(test_${test} PRIVATE urd::urd Threads::Threads)
-        add_test(NAME ${test} COMMAND test_${test})
-    endforeach()
-
-    # The tests that came with the representations copied from yggdrasil, unchanged but for names.
     find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
-    # Typed tests: one per property, for every container that declares it; one per behavior of nested Stores.
-    foreach(test properties rows)
+
+    # The Store, and typed tests: one per property for every container that declares it, one per behavior of
+    # nested Stores. The last two count allocations (tests/allocations.cpp replaces operator new).
+    foreach(test store properties rows)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
         set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
+    target_sources(test_properties PRIVATE tests/allocations.cpp)
+    target_sources(test_rows PRIVATE tests/allocations.cpp)
 
+    # The tests that came with the representations copied from yggdrasil, unchanged but for names.
     foreach(test segmented_vector unique_object_pool shared_object_pool)
         add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)

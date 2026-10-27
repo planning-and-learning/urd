@@ -2,6 +2,7 @@
 
 #include "urd/traits.hpp"
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
@@ -26,7 +27,7 @@ struct value
 };
 
 /// How a Store is used. It does not change what a Store guarantees, only which representation is chosen.
-enum class workload
+enum class workload : std::uint8_t
 {
     general,
     many_similar,   ///< many values that differ little, such as search states

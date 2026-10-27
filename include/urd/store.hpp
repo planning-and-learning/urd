@@ -215,29 +215,29 @@ public:
     // as some representations' iterators would let a key be overwritten.
 
     // The members below are templates only so that their signatures, which name key_type and mapped_type, form
-    // for maps alone.
+    // for maps alone. K is never deduced (std::type_identity_t): a key is always converted to key_type.
 
     template<typename K = key_type, typename M = mapped_type>
-    [[nodiscard]] const M& at(const K& key) const
+    [[nodiscard]] const M& at(const std::type_identity_t<K>& key) const
         requires(S::is_map && has<S, unique>)
     { return m_representation.at(key); }
     template<typename K = key_type, typename M = mapped_type>
-    [[nodiscard]] M& at(const K& key)
+    [[nodiscard]] M& at(const std::type_identity_t<K>& key)
         requires(S::is_map && has<S, unique> && !has<S, frozen>)
     { return m_representation.at(key); }
     /// The value for `key`, inserted as a default first where there is none.
     template<typename K = key_type, typename M = mapped_type>
-    M& operator[](const K& key)
+    M& operator[](const std::type_identity_t<K>& key)
         requires(S::is_map && has<S, unique> && has<S, growable> && std::default_initializable<M>)
     { return m_representation.try_emplace(key).first->second; }
     /// Inserts a value built from `args` unless `key` has one.
     template<typename K = key_type, typename... Args>
-    std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
+    std::pair<iterator, bool> try_emplace(const std::type_identity_t<K>& key, Args&&... args)
         requires(S::is_map && has<S, unique> && has<S, growable>)
     { return m_representation.try_emplace(key, std::forward<Args>(args)...); }
     /// Sets the value for `key`, inserting it where there is none.
     template<typename M, typename K = key_type>
-    std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
+    std::pair<iterator, bool> insert_or_assign(const std::type_identity_t<K>& key, M&& mapped)
         requires(S::is_map && has<S, unique> && has<S, growable>)
     { return m_representation.insert_or_assign(key, std::forward<M>(mapped)); }
 

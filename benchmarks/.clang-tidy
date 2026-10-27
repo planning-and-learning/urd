@@ -1,0 +1,4 @@
+# Benchmarks: a fixed seed gives every run the same input, so runs compare.
+InheritParentConfig: true
+Checks: >
+  -bugprone-random-generator-seed

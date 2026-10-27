@@ -182,7 +182,7 @@ template<typename Root, typename... Tags>
 using pick_t = typename pick<Root, Tags...>::type;
 
 template<typename Root, typename... Tags>
-inline constexpr int count_in = (0 + ... + int(std::derived_from<Tags, Root>));
+inline constexpr int count_in = (0 + ... + static_cast<int>(std::derived_from<Tags, Root>));
 
 /// The roots of the categories a container declares, then those only a Store's request has.
 template<typename... Roots>

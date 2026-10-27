@@ -3,6 +3,7 @@
 #include "show.hpp"
 #include "urd/store.hpp"
 
+#include <exception>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -10,7 +11,10 @@
 using urd::Store;
 using urd::value;
 
-int main()
+namespace
+{
+
+void run()
 {
     std::cout << "Sequences of ints:\n";
     example::show<Store<value<int>>>("Store<value<int>>                        a plain sequence");
@@ -56,4 +60,19 @@ int main()
     for (auto& thread : threads)
         thread.join();
     std::cout << "\nentries appended by 4 threads: " << shared.size() << '\n';
+}
+
+}  // namespace
+
+int main()
+{
+    try
+    {
+        run();
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "error: " << error.what() << '\n';
+        return 1;
+    }
 }

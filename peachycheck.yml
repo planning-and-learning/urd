@@ -1,0 +1,4 @@
+# peachycheck's configuration: https://github.com/drexlerd/peachycheck#configuration
+ENABLE_LINTERS: [CPP_CLANG_TIDY, CPP_CLANG_FORMAT]
+# Each case of the compile-fail test is meant not to compile.
+CPP_CLANG_TIDY_FILTER_REGEX_EXCLUDE: '^tests/compile_fail_store\.cpp$'

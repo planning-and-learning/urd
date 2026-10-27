@@ -29,6 +29,8 @@
 #include <utility>
 #include <vector>
 
+namespace
+{
 namespace lib
 {
 
@@ -47,6 +49,7 @@ private:
 };
 
 }  // namespace lib
+}  // namespace
 
 namespace
 {
@@ -56,10 +59,10 @@ class Journal
 {
 public:
     Journal() = default;
-    Journal(const int* first, const int* last)
+    template<std::input_iterator InputIt>
+    Journal(InputIt first, InputIt last)
     {
-        for (; first != last; ++first)
-            m_journal.append(*first);
+        std::for_each(first, last, [this](int entry) { m_journal.append(entry); });
     }
 
     [[nodiscard]] auto begin() const { return m_journal.begin(); }
@@ -187,7 +190,7 @@ R built(const std::vector<int>& keys)
         return R(pairs.begin(), pairs.end());
     }
     else
-        return R(keys.data(), keys.data() + keys.size());
+        return R(keys.begin(), keys.end());
 }
 
 /// Adds the element for `key` as R's properties say: by value, or at the end.
@@ -222,7 +225,7 @@ TYPED_TEST(Properties, KeepsItsPropertiesThroughRandomOperations)
     for (unsigned seed = 0; seed < 64; ++seed)
     {
         const auto found = urd::verify(built<TypeParam>({ 5, 3, 3, 9, 1 }), seed, steps);
-        EXPECT_FALSE(found) << *found;
+        EXPECT_FALSE(found) << found.value_or("");
     }
 }
 
@@ -293,9 +296,9 @@ TYPED_TEST(Properties, Contiguous)
             for (int element = 1000; element < 3000; ++element)
                 add(range, element);
         const auto* data = std::ranges::data(range);
-        auto pos = std::size_t { 0 };
+        auto pos = std::ptrdiff_t { 0 };
         for (const auto& element : range)
-            EXPECT_EQ(std::addressof(element), data + pos++);
+            EXPECT_EQ(std::addressof(element), std::next(data, pos++));
     }
 }
 
@@ -344,7 +347,7 @@ TYPED_TEST(Properties, Retains)
             for (int element = 0; element < COUNT; ++element)
                 add(range, element);
         }
-        EXPECT_EQ(allocations, 0) << "after clear";
+        EXPECT_EQ(allocations(), 0) << "after clear";
 
         // Erased one by one, then refilled: nothing is allocated either.
         for (int element = 0; element < COUNT; ++element)
@@ -359,7 +362,7 @@ TYPED_TEST(Properties, Retains)
             for (int element = 0; element < COUNT; ++element)
                 add(range, element);
         }
-        EXPECT_EQ(allocations, 0) << "after erasing each element";
+        EXPECT_EQ(allocations(), 0) << "after erasing each element";
     }
 }
 
@@ -380,7 +383,7 @@ TYPED_TEST(Properties, Reclaims)
             const auto counted = Counted();
             range.clear();
         }
-        EXPECT_GE(deallocations, COUNT);
+        EXPECT_GE(deallocations(), COUNT);
     }
 }
 
@@ -406,7 +409,7 @@ TYPED_TEST(Properties, Concurrent)
             thread.join();
         auto contents = std::vector<int>(std::ranges::begin(range), std::ranges::end(range));
         std::ranges::sort(contents);
-        auto expected = std::vector<int>(THREADS * EACH);
+        auto expected = std::vector<int>(static_cast<std::size_t>(THREADS) * EACH);
         std::iota(expected.begin(), expected.end(), 0);
         EXPECT_EQ(contents, expected);
     }
@@ -421,7 +424,10 @@ struct ClaimsStableRefs
     std::vector<int> elements;
 
     ClaimsStableRefs() = default;
-    ClaimsStableRefs(const int* first, const int* last) : elements(first, last) {}
+    template<std::input_iterator InputIt>
+    ClaimsStableRefs(InputIt first, InputIt last) : elements(first, last)
+    {
+    }
     [[nodiscard]] auto begin() const { return elements.begin(); }
     [[nodiscard]] auto end() const { return elements.end(); }
     [[nodiscard]] std::size_t size() const { return elements.size(); }
@@ -438,7 +444,6 @@ struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_
 
 TEST(Properties, AFalseClaimIsCaught)
 {
-    const auto found = urd::verify(ClaimsStableRefs(), 31);
-    ASSERT_TRUE(found);
-    EXPECT_NE(found->find("stable_refs"), std::string::npos) << *found;
+    const auto found = urd::verify(ClaimsStableRefs(), 31).value_or("");
+    EXPECT_NE(found.find("stable_refs"), std::string::npos) << found;
 }

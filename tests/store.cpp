@@ -3,11 +3,11 @@
 
 #include "urd/store.hpp"
 
-#include "check.hpp"
 #include "urd/concepts.hpp"
 
 #include <concepts>
 #include <functional>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <map>
 #include <random>
@@ -135,17 +135,23 @@ void behaves_like_std_set(unsigned seed)
     {
         const int element = pick(random);
         if (pick(random) % 3 == 0)
-            URD_CHECK(store.erase(element) == reference.erase(element));
+        {
+            EXPECT_TRUE(store.erase(element) == reference.erase(element));
+        }
         else
-            URD_CHECK(store.insert(element).second == reference.insert(element).second);
+        {
+            EXPECT_TRUE(store.insert(element).second == reference.insert(element).second);
+        }
         const int probe = pick(random);
-        URD_CHECK(store.contains(probe) == reference.contains(probe));
-        URD_CHECK(store.size() == reference.size());
+        EXPECT_TRUE(store.contains(probe) == reference.contains(probe));
+        EXPECT_TRUE(store.size() == reference.size());
         auto contents = std::vector<int>(store.begin(), store.end());
         std::ranges::sort(contents);
-        URD_CHECK(contents == std::vector<int>(reference.begin(), reference.end()));
+        EXPECT_TRUE(contents == std::vector<int>(reference.begin(), reference.end()));
         if constexpr (urd::Sorted<S>)
-            URD_CHECK(std::ranges::is_sorted(store));
+        {
+            EXPECT_TRUE(std::ranges::is_sorted(store));
+        }
     }
 }
 
@@ -161,19 +167,23 @@ void behaves_like_std_multiset(unsigned seed)
     {
         const int element = pick(random);
         if (pick(random) % 3 == 0)
-            URD_CHECK(store.erase(element) == reference.erase(element));
+        {
+            EXPECT_TRUE(store.erase(element) == reference.erase(element));
+        }
         else
-            URD_CHECK(*store.insert(element) == *reference.insert(element));
-        URD_CHECK(std::vector<int>(store.begin(), store.end()) == std::vector<int>(reference.begin(), reference.end()));
+        {
+            EXPECT_TRUE(*store.insert(element) == *reference.insert(element));
+        }
+        EXPECT_TRUE(std::vector<int>(store.begin(), store.end()) == std::vector<int>(reference.begin(), reference.end()));
         const int probe = pick(random);
-        URD_CHECK(store.count(probe) == reference.count(probe));
-        URD_CHECK(std::distance(store.begin(), store.lower_bound(probe)) == std::distance(reference.begin(), reference.lower_bound(probe)));
+        EXPECT_TRUE(store.count(probe) == reference.count(probe));
+        EXPECT_TRUE(std::distance(store.begin(), store.lower_bound(probe)) == std::distance(reference.begin(), reference.lower_bound(probe)));
     }
 }
 
 }  // namespace
 
-int main()
+TEST(Store, BehavesLikeTheStandardContainers)
 {
     for (unsigned seed = 0; seed < 5; ++seed)
     {
@@ -183,22 +193,25 @@ int main()
         behaves_like_std_set<Store<key<int>, urd::sorted, urd::small>>(seed);
         behaves_like_std_multiset<Store<value<int>, urd::sorted>>(seed);
     }
+}
 
+TEST(Store, BuildsAndChangesAsAsked)
+{
     // Built from elements, or from elements claimed to have the properties.
     const auto ids = Store<key<int>, urd::sorted> { 3, 1, 3, 2 };
-    URD_CHECK(std::vector<int>(ids.begin(), ids.end()) == std::vector<int>({ 1, 2, 3 }));
-    URD_CHECK(*ids.lower_bound(2) == 2 && ids.upper_bound(3) == ids.end() && *ids.rbegin() == 3);
+    EXPECT_TRUE(std::vector<int>(ids.begin(), ids.end()) == std::vector<int>({ 1, 2, 3 }));
+    EXPECT_TRUE(*ids.lower_bound(2) == 2 && ids.upper_bound(3) == ids.end() && *ids.rbegin() == 3);
     const auto first = Store<value<int>, urd::sorted, urd::nonempty>::assume({ 4, 5 });
-    URD_CHECK(first.front() == 4 && first[1] == 5 && first.back() == 5);
+    EXPECT_TRUE(first.front() == 4 && first[1] == 5 && first.back() == 5);
 
     const auto frozen = Store<key<int>, urd::sorted, urd::frozen> { 2, 3, 5 };
-    URD_CHECK(frozen.contains(5) && !frozen.contains(4));
+    EXPECT_TRUE(frozen.contains(5) && !frozen.contains(4));
 
     // A plain sequence reads and changes like std::vector.
     auto numbers = Store<value<int>> { 1, 2, 3, 2 };
     numbers[0] = 7;
     numbers.insert(numbers.begin() + 1, 9);
-    URD_CHECK(erase(numbers, 2) == 2);
-    URD_CHECK(numbers == (Store<value<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<value<int>> { 8 });
-    URD_CHECK(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
+    EXPECT_TRUE(erase(numbers, 2) == 2);
+    EXPECT_TRUE(numbers == (Store<value<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<value<int>> { 8 });
+    EXPECT_TRUE(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
 }

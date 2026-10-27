@@ -1,0 +1,37 @@
+name: peachycheck
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  peachycheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # The dependencies live outside the repository: the peachycheck action checks it out again, which would
+      # delete them there. Restore and save are separate steps, so the cache is saved right after the build,
+      # even when the lint then fails the job.
+      - uses: actions/cache/restore@v4
+        id: deps
+        with:
+          path: ~/urd-deps
+          key: deps-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+      - name: Build dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        run: |
+          cmake -S src -B "$RUNNER_TEMP/deps-build" -DCMAKE_INSTALL_PREFIX="$HOME/urd-deps" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build "$RUNNER_TEMP/deps-build" --parallel 4
+          cmake --install "$RUNNER_TEMP/deps-build"
+      - uses: actions/cache/save@v4
+        if: steps.deps.outputs.cache-hit != 'true'
+        with:
+          path: ~/urd-deps
+          key: ${{ steps.deps.outputs.cache-primary-key }}
+      - uses: drexlerd/peachycheck@v0.1.1
+        with:
+          # clang-tidy reads compile_commands.json; the benchmarks are configured too, so they are linted.
+          prepare: |
+            cmake -S . -B build/peachycheck -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                  -DURD_BUILD_BENCHMARKS=ON -DURD_NATIVE_PREFIX="$HOME/urd-deps"

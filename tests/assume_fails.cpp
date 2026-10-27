@@ -8,6 +8,14 @@
 
 int main()
 {
-    std::signal(SIGABRT, [](int) { std::_Exit(EXIT_FAILURE); });
-    [[maybe_unused]] const auto wrong = urd::Store<urd::value<int>, urd::sorted>::assume({ 3, 1, 2 });
+    if (std::signal(SIGABRT, [](int) { std::_Exit(EXIT_FAILURE); }) == SIG_ERR)
+        return EXIT_FAILURE;
+    try
+    {
+        [[maybe_unused]] const auto wrong = urd::Store<urd::value<int>, urd::sorted>::assume({ 3, 1, 2 });
+    }
+    catch (...)
+    {
+        return EXIT_FAILURE;  // not the failure this program is for
+    }
 }

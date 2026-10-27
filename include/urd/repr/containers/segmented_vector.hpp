@@ -24,6 +24,7 @@
 #include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -195,8 +196,7 @@ public:
     template<std::input_iterator InputIt>
     SegmentedVector(InputIt first, InputIt last) : SegmentedVector()
     {
-        for (; first != last; ++first)
-            emplace_back(*first);
+        std::for_each(first, last, [this](const auto& element) { this->emplace_back(element); });
     }
 
     SegmentedVector(const SegmentedVector&) = delete;

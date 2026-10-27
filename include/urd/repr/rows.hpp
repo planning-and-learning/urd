@@ -20,23 +20,6 @@
 namespace urd::repr
 {
 
-namespace detail
-{
-
-/// The iterator a row views its storage through: a pointer into the innermost elements, else rows of the level below.
-template<typename Data>
-struct data_iterator
-{
-    using type = std::ranges::iterator_t<const Data>;
-};
-template<typename T, typename Allocator>
-struct data_iterator<std::vector<T, Allocator>>
-{
-    using type = const T*;
-};
-
-}  // namespace detail
-
 /// Frozen rows stored flattened, as CSR: offsets into one array of the elements, which at a deeper level are
 /// the rows below, stored the same way. A row is a View of its part. Erase and clear keep the storage.
 template<typename Inner>
@@ -53,15 +36,14 @@ public:
     using value_type = Inner;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using row = View<Si, typename detail::data_iterator<Data>::type>;
+    using row = View<Si, std::ranges::iterator_t<const Data>>;
 
     Jagged() = default;
 
     template<std::input_iterator InputIt>
     Jagged(InputIt first, InputIt last)
     {
-        for (; first != last; ++first)
-            push_back(*first);
+        std::for_each(first, last, [this](const auto& elements) { this->push_back(elements); });
     }
 
     [[nodiscard]] iterator begin() const { return iterator(this, 0); }
@@ -194,13 +176,7 @@ public:
     };
 
 private:
-    [[nodiscard]] auto element(size_type pos) const
-    {
-        if constexpr (leaf)
-            return m_data.data() + pos;
-        else
-            return m_data.begin() + static_cast<difference_type>(pos);
-    }
+    [[nodiscard]] auto element(size_type pos) const { return std::ranges::begin(m_data) + static_cast<difference_type>(pos); }
 
     template<typename Row>
     void insert_elements(size_type pos, const Row& elements)
@@ -224,8 +200,8 @@ class RowPool
 {
 public:
     using value_type = Inner;
-    using iterator = Inner*;
-    using const_iterator = const Inner*;
+    using iterator = typename std::vector<Inner>::iterator;
+    using const_iterator = typename std::vector<Inner>::const_iterator;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -234,14 +210,13 @@ public:
     template<std::input_iterator InputIt>
     RowPool(InputIt first, InputIt last)
     {
-        for (; first != last; ++first)
-            push_back(*first);
+        std::for_each(first, last, [this](const auto& row) { this->push_back(row); });
     }
 
-    [[nodiscard]] iterator begin() { return m_rows.data(); }
-    [[nodiscard]] iterator end() { return m_rows.data() + m_used; }
-    [[nodiscard]] const_iterator begin() const { return m_rows.data(); }
-    [[nodiscard]] const_iterator end() const { return m_rows.data() + m_used; }
+    [[nodiscard]] iterator begin() { return m_rows.begin(); }
+    [[nodiscard]] iterator end() { return m_rows.begin() + static_cast<difference_type>(m_used); }
+    [[nodiscard]] const_iterator begin() const { return m_rows.begin(); }
+    [[nodiscard]] const_iterator end() const { return m_rows.begin() + static_cast<difference_type>(m_used); }
     [[nodiscard]] size_type size() const { return m_used; }
 
     void push_back(const Inner& row) { emplace_back() = row; }

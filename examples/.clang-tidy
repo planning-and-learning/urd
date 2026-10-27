@@ -1,0 +1,4 @@
+# Examples: their literal values are the example's data, as a test's are.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-avoid-magic-numbers

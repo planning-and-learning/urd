@@ -176,7 +176,7 @@ TYPED_TEST(Rows, RetainsAtEveryLevel)
             const auto counted = Counted();
             fill(store);
         }
-        EXPECT_EQ(allocations, 0);
+        EXPECT_EQ(allocations(), 0);
         EXPECT_EQ(materialize(store), expected);
     }
 }

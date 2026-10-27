@@ -19,10 +19,6 @@
 #ifndef URD_REPR_CORE_CONFIG_HPP_
 #define URD_REPR_CORE_CONFIG_HPP_
 
-#ifndef URD_REPR_ENABLE_FMT_FORMATTERS
-#define URD_REPR_ENABLE_FMT_FORMATTERS 1
-#endif
-
 /// Keeps a rarely taken helper out of line, so its size does not count towards the inlined size of
 /// its caller. Without this, a hot caller whose body is small can exceed the inliner's single-call
 /// budget purely because of a cold path spliced into it.

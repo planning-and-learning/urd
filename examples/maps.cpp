@@ -3,6 +3,7 @@
 #include "show.hpp"
 #include "urd/store.hpp"
 
+#include <exception>
 #include <iostream>
 #include <string>
 
@@ -10,7 +11,10 @@ using urd::key;
 using urd::Store;
 using urd::value;
 
-int main()
+namespace
+{
+
+void run()
 {
     std::cout << "Maps from strings to ints:\n";
     example::show<Store<key<std::string>, value<int>>>("Store<key<string>, value<int>>                  a map, nothing more asked");
@@ -38,4 +42,19 @@ int main()
     auto achievers = Store<key<std::string>, value<std::string>, urd::multi> { { "at-goal", "move-a" }, { "at-goal", "move-b" } };
     achievers.insert({ "holding", "pick-up" });
     std::cout << "achievers of at-goal: " << achievers.count("at-goal") << '\n';
+}
+
+}  // namespace
+
+int main()
+{
+    try
+    {
+        run();
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "error: " << error.what() << '\n';
+        return 1;
+    }
 }
