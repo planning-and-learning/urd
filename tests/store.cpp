@@ -86,6 +86,9 @@ static_assert(std::same_as<decltype(*Store<key<int>, value<int>>().begin()), con
 static_assert(std::same_as<Store<key<int>, urd::dense>::representation, urd::repr::DenseSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::dense, urd::sorted>::representation, urd::repr::DenseSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::dense, urd::constant_clear>::representation, urd::repr::SparseSet<int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense>::representation, urd::repr::IndexMap<int, int, false>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear>::representation, urd::repr::IndexMap<int, int, true>>);
+
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);

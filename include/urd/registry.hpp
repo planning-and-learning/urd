@@ -75,6 +75,11 @@ using FlatMapOf = boost::container::flat_map<K, V, Less<K>>;
 template<typename K, typename V>
 using FlatMultiMapOf = boost::container::flat_multimap<K, V, Less<K>>;
 
+template<typename K, typename V>
+using DenseMapOf = repr::IndexMap<K, V, false>;
+template<typename K, typename V>
+using GenerationMapOf = repr::IndexMap<K, V, true>;
+
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
@@ -110,7 +115,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool>;
-using map_preference = map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf>;
+using map_preference =
+    map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf, DenseMapOf, GenerationMapOf>;
 
 template<typename... Lists>
 struct join

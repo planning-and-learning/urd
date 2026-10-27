@@ -150,7 +150,11 @@ using Containers = testing::Types<
     urd::repr::SparseSet<int>,
     Store<key<int>, urd::dense>,
     Store<key<int>, urd::dense, urd::sorted>,
-    Store<key<int>, urd::dense, urd::constant_clear>>;
+    Store<key<int>, urd::dense, urd::constant_clear>,
+    urd::repr::IndexMap<int, int, false>,
+    urd::repr::IndexMap<int, int, true>,
+    Store<key<int>, value<int>, urd::dense>,
+    Store<key<int>, value<int>, urd::dense, urd::constant_clear>>;
 
 template<typename R>
 class Properties : public testing::Test

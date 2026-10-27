@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/core/config.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -9,6 +10,8 @@
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <optional>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -313,6 +316,266 @@ private:
     std::vector<std::size_t> m_places;
 };
 
+/// A map from indices to values, a slot per index below the largest key, iterated in key order. With Generations,
+/// each slot carries the generation it was written in, and clear only starts a new one (O(1)): older slots read
+/// as absent and keep their storage, as tyr's DenseRelationMap does. Without, a slot is a std::optional.
+/// Iterating gives each key with a view of its value; values change by key (at, insert_or_assign).
+template<typename K, typename V, bool Generations>
+class IndexMap
+{
+    static_assert(indexable<K>, "urd::repr::IndexMap: keys must be indices (urd::index_of)");
+    static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
+
+    struct generation_slot
+    {
+        std::uint64_t generation = 0;
+        V value {};
+    };
+    using slot = std::conditional_t<Generations, generation_slot, std::optional<V>>;
+
+public:
+    class iterator;
+    using const_iterator = iterator;
+    using key_type = K;
+    using mapped_type = V;
+    /// What iterating gives: a key and a view of its value.
+    using value_type = std::pair<const K, const V&>;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    IndexMap() = default;
+
+    template<std::input_iterator InputIt>
+    IndexMap(InputIt first, InputIt last)
+    { insert(first, last); }
+
+    [[nodiscard]] iterator begin() const { return iterator(this, next_from(0)); }
+    [[nodiscard]] iterator end() const { return iterator(this, npos); }
+    [[nodiscard]] size_type size() const { return m_count; }
+    [[nodiscard]] bool empty() const { return m_count == 0; }
+
+    /// Room for keys below `count`.
+    void reserve(size_type count) { m_slots.reserve(count); }
+
+    [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
+    [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
+    [[nodiscard]] bool contains(const K& key) const { return index_of<K>::is_index(key) && present(index_of<K>::to_index(key)); }
+    [[nodiscard]] iterator lower_bound(const K& key) const
+    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0)); }
+    [[nodiscard]] iterator upper_bound(const K& key) const
+    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key) + 1) : next_from(0)); }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const { return { lower_bound(key), upper_bound(key) }; }
+
+    [[nodiscard]] const V& at(const K& key) const
+    {
+        if (!contains(key))
+            throw std::out_of_range("urd::repr::IndexMap::at: no value for the key");
+        return value(index_of<K>::to_index(key));
+    }
+    [[nodiscard]] V& at(const K& key)
+    {
+        if (!contains(key))
+            throw std::out_of_range("urd::repr::IndexMap::at: no value for the key");
+        return value(index_of<K>::to_index(key));
+    }
+
+    /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
+    template<typename Pair>
+        requires requires(const Pair& pair) {
+            K(pair.first);
+            V(pair.second);
+        }
+    std::pair<iterator, bool> insert(const Pair& pair)
+    { return try_emplace(K(pair.first), pair.second); }
+    template<typename Pair>
+    iterator insert(const_iterator /*hint*/, const Pair& pair)
+    { return insert(pair).first; }
+    template<std::input_iterator InputIt>
+    void insert(InputIt first, InputIt last)
+    {
+        std::for_each(first, last, [this](const auto& pair) { this->insert(pair); });
+    }
+    template<typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args)
+    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    /// Inserts a value built from `args` unless `key` has one.
+    template<typename... Args>
+    std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
+    {
+        const auto index = index_of<K>::to_index(key);
+        if (present(index))
+            return { iterator(this, index), false };
+        place(index, V(std::forward<Args>(args)...));
+        return { iterator(this, index), true };
+    }
+    /// Sets the value for `key`, inserting it where there is none.
+    template<typename M>
+    std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
+    {
+        const auto index = index_of<K>::to_index(key);
+        if (present(index))
+        {
+            value(index) = std::forward<M>(mapped);
+            return { iterator(this, index), false };
+        }
+        place(index, V(std::forward<M>(mapped)));
+        return { iterator(this, index), true };
+    }
+
+    size_type erase(const K& key)
+    {
+        if (!contains(key))
+            return 0;
+        remove(index_of<K>::to_index(key));
+        return 1;
+    }
+    iterator erase(const_iterator pos)
+    {
+        const auto next = next_from(pos.m_index + 1);
+        remove(pos.m_index);
+        return iterator(this, next);
+    }
+    iterator erase(const_iterator first, const_iterator last)
+    {
+        while (first != last)
+            first = erase(first);
+        return last;
+    }
+    /// With generations O(1): a new generation, in which no slot is present.
+    void clear()
+    {
+        if constexpr (Generations)
+            ++m_generation;
+        else
+            std::ranges::for_each(m_slots, [](slot& each) { each.reset(); });
+        m_count = 0;
+    }
+
+    /// A key at a time, in key order, with a view of its value.
+    class iterator
+    {
+    public:
+        using value_type = typename IndexMap::value_type;
+        using reference = value_type;
+        using difference_type = std::ptrdiff_t;
+        using iterator_concept = std::bidirectional_iterator_tag;
+        using iterator_category = std::input_iterator_tag;
+
+        /// What -> points at: the pair, kept for the expression's lifetime.
+        struct arrow
+        {
+            value_type pair;
+            const value_type* operator->() const { return &pair; }
+        };
+
+        iterator() = default;
+
+        reference operator*() const { return { index_of<K>::from_index(m_index), m_map->value(m_index) }; }
+        arrow operator->() const { return { **this }; }
+        iterator& operator++()
+        {
+            m_index = m_map->next_from(m_index + 1);
+            return *this;
+        }
+        iterator operator++(int)
+        {
+            auto copy = *this;
+            ++*this;
+            return copy;
+        }
+        iterator& operator--()
+        {
+            m_index = m_map->previous_from(m_index == npos ? m_map->m_slots.size() : m_index);
+            return *this;
+        }
+        iterator operator--(int)
+        {
+            auto copy = *this;
+            --*this;
+            return copy;
+        }
+        friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_index == rhs.m_index; }
+
+    private:
+        friend class IndexMap;
+        iterator(const IndexMap* map, std::size_t index) : m_map(map), m_index(index) {}
+
+        const IndexMap* m_map = nullptr;
+        std::size_t m_index = npos;
+    };
+
+private:
+    [[nodiscard]] bool present(std::size_t index) const
+    {
+        if (index >= m_slots.size())
+            return false;
+        if constexpr (Generations)
+            return m_slots[index].generation == m_generation;
+        else
+            return m_slots[index].has_value();
+    }
+    [[nodiscard]] const V& value(std::size_t index) const
+    {
+        if constexpr (Generations)
+            return m_slots[index].value;
+        else
+        {
+            auto& present_slot = m_slots[index];
+            URD_REPR_ASSUME(present_slot.has_value());  // callers look a value up only where present
+            return *present_slot;
+        }
+    }
+    [[nodiscard]] V& value(std::size_t index)
+    {
+        if constexpr (Generations)
+            return m_slots[index].value;
+        else
+        {
+            auto& present_slot = m_slots[index];
+            URD_REPR_ASSUME(present_slot.has_value());  // callers look a value up only where present
+            return *present_slot;
+        }
+    }
+    void place(std::size_t index, V&& mapped)
+    {
+        if (index >= m_slots.size())
+            m_slots.resize(index + 1);
+        if constexpr (Generations)
+            m_slots[index] = { m_generation, std::move(mapped) };
+        else
+            m_slots[index].emplace(std::move(mapped));
+        ++m_count;
+    }
+    void remove(std::size_t index)
+    {
+        if constexpr (Generations)
+            m_slots[index].generation = 0;
+        else
+            m_slots[index].reset();
+        --m_count;
+    }
+    /// The first present key at or after `index`, else npos.
+    [[nodiscard]] std::size_t next_from(std::size_t index) const
+    {
+        for (; index < m_slots.size(); ++index)
+            if (present(index))
+                return index;
+        return npos;
+    }
+    /// The last present key before `index`, else npos.
+    [[nodiscard]] std::size_t previous_from(std::size_t index) const
+    {
+        while (index-- > 0)
+            if (present(index))
+                return index;
+        return npos;
+    }
+
+    std::vector<slot> m_slots;
+    std::size_t m_count = 0;
+    std::uint64_t m_generation = 1;  // slots start at 0, so a new slot is absent
+};
+
 }  // namespace urd::repr
 
 namespace urd
@@ -328,6 +591,20 @@ struct container_traits<repr::DenseSet<K>> : properties_of<sorted, unique, dense
 template<indexable K>
 struct container_traits<repr::SparseSet<K>> :
     properties_of<unique, dense, contiguous, shrinkable, retains, std::conditional_t<std::is_trivially_destructible_v<K>, constant_clear, proportional_clear>>
+{
+};
+
+/// A slot per key, in key order: sorted; erase frees what the value owns (std::optional::reset), clear scans every
+/// slot.
+template<indexable K, typename V>
+struct container_traits<repr::IndexMap<K, V, false>> : properties_of<sorted, unique, dense, shrinkable, retains>
+{
+};
+
+/// Clear starts a new generation; stale slots keep their values' storage until written again.
+template<indexable K, typename V>
+    requires std::default_initializable<V> && std::movable<V>
+struct container_traits<repr::IndexMap<K, V, true>> : properties_of<sorted, unique, dense, shrinkable, retains, constant_clear>
 {
 };
 

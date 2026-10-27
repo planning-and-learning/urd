@@ -136,6 +136,18 @@ struct name<urd::repr::SparseSet<K>>
     static constexpr std::string_view id = "sparse_set";
     static constexpr std::string_view value = "sparse set (members array plus index positions, O(1) clear)";
 };
+template<typename K, typename V>
+struct name<urd::repr::IndexMap<K, V, false>>
+{
+    static constexpr std::string_view id = "dense_map";
+    static constexpr std::string_view value = "dense map (a slot per index)";
+};
+template<typename K, typename V>
+struct name<urd::repr::IndexMap<K, V, true>>
+{
+    static constexpr std::string_view id = "generation_map";
+    static constexpr std::string_view value = "generation map (a slot per index, O(1) clear by generation)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

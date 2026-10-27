@@ -28,7 +28,10 @@ public:
     /// The value for `key`, inserted as a default first where there is none.
     mapped& operator[](const map_key& key)
         requires(has<S, growable> && std::default_initializable<mapped>)
-    { return representation().try_emplace(key).first->second; }
+    {
+        representation().try_emplace(key);
+        return representation().at(key);
+    }
     /// Inserts a value built from `args` unless `key` has one.
     template<typename... Args>
     std::pair<iterator_type, bool> try_emplace(const map_key& key, Args&&... args)
