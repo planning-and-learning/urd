@@ -1,0 +1,64 @@
+#pragma once
+
+#include "urd/interface.hpp"
+#include "urd/traits.hpp"
+
+#include <cstddef>
+#include <ranges>
+#include <type_traits>
+
+namespace urd::detail
+{
+
+// A Store is its core (store.hpp) and facets (namespace facet): one class per group of properties, holding
+// the members those properties allow, inherited where the Store's properties switch them on. Each member name lives in one
+// facet only, so that calls are never ambiguous between two of them.
+
+/// The types a Store and its facets share. They come from the representation R and the spec S, not from the
+/// Store, which is still incomplete while its facets are built.
+template<typename R, typename S>
+struct store_types
+{
+    /// Kept by value or key, as an associative container (set, map, sorted sequence).
+    static constexpr bool keyed = by_value<S>;
+    /// Elements change in place: nothing depends on their values, and the Store may change.
+    static constexpr bool writable = !keyed && !has<S, monotone>;
+    /// Iterated in an order the request asked for.
+    static constexpr bool ordered = has<S, sorted> || S::is_sequence;
+
+    using value_type = typename S::element_type;
+    using key_type = typename S::key_type;
+    using mapped_type = typename S::mapped_type;
+    /// What lookups take: a map's key, else an element.
+    using lookup_type = std::conditional_t<S::is_map, key_type, value_type>;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
+    using const_reference = std::ranges::range_reference_t<const R>;
+    using reference = std::conditional_t<writable, std::ranges::range_reference_t<R>, const_reference>;
+    using const_iterator = std::ranges::iterator_t<const R>;
+    using iterator = std::conditional_t<writable, std::ranges::iterator_t<R>, const_iterator>;
+};
+
+/// How facets reach the Store's representation, which is private to the Store.
+struct store_access
+{
+    template<typename Store>
+    static auto& representation(Store& store)
+    { return store.m_representation; }
+    template<typename Store>
+    static const auto& representation(const Store& store)
+    { return store.m_representation; }
+};
+
+/// What a Store inherits in place of a facet its properties leave off: nothing. One type per facet, so that
+/// several left-off facets are distinct bases.
+template<typename Facet>
+struct no_facet
+{
+};
+
+template<bool On, typename Facet>
+using facet_if = std::conditional_t<On, Facet, no_facet<Facet>>;
+
+}  // namespace urd::detail

@@ -1,0 +1,69 @@
+#pragma once
+
+#include "urd/store/types.hpp"
+
+#include <algorithm>
+#include <iterator>
+#include <ranges>
+
+namespace urd::detail::facet
+{
+
+/// Shrinkable: removing, which a Store that only grows (monotone, frozen) or must keep an element (nonempty)
+/// does not offer. Removing an element ends the references to it.
+template<typename Derived, typename R, typename S>
+class removal
+{
+    using types = store_types<R, S>;
+    using value_type = typename types::value_type;
+    using size_type = typename types::size_type;
+    using iterator = typename types::iterator;
+    using const_iterator = typename types::const_iterator;
+    static constexpr bool keyed = types::keyed;
+
+public:
+    iterator erase(const_iterator pos)
+    {
+        // Two conversions, one at a time: the representation's result (perhaps a proxy) to its iterator, that
+        // to the Store's.
+        const std::ranges::iterator_t<R> next = representation().erase(pos);
+        return next;
+    }
+    iterator erase(const_iterator first, const_iterator last) { return representation().erase(first, last); }
+    /// Every element equal to `element` (in a map, with that key); how many there were.
+    size_type erase(const typename types::lookup_type& element)
+        requires keyed
+    { return representation().erase(element); }
+    void pop_back()
+        requires(!keyed)
+    { representation().pop_back(); }
+    void clear() { representation().clear(); }
+
+    /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
+    template<typename Pred>
+    friend size_type erase_if(Derived& store, Pred pred)
+    {
+        const auto before = store.size();
+        if constexpr (types::writable)
+        {
+            auto& range = store_access::representation(store);
+            range.erase(std::remove_if(range.begin(), range.end(), pred), range.end());
+        }
+        else
+            // ponytail: one erase per element, O(n²) on a flat set; erase_if of the representation if it matters
+            for (auto it = store.begin(); it != store.end();)
+                it = pred(*it) ? store.erase(it) : std::next(it);
+        return before - store.size();
+    }
+    /// Every element equal to `element`, from a sequence; how many. As std::erase.
+    friend size_type erase(Derived& store, const value_type& element)
+        requires(!keyed)
+    {
+        return erase_if(store, [&](const value_type& candidate) { return candidate == element; });
+    }
+
+private:
+    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+};
+
+}  // namespace urd::detail::facet

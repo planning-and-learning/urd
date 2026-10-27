@@ -91,6 +91,10 @@ static_assert(!urd::Sorted<Store<key<int>, urd::small>>);
 static_assert(urd::Sorted<Store<key<int>, urd::sorted, urd::small>>);
 static_assert(urd::Unique<Store<key<int>, urd::small>>);
 
+// A Store adds no space to its representation: the facets it does not have are empty bases.
+static_assert(sizeof(Store<value<int>>) == sizeof(Store<value<int>>::representation));
+static_assert(sizeof(Store<key<int>, value<int>, urd::sorted>) == sizeof(Store<key<int>, value<int>, urd::sorted>::representation));
+
 // The interface follows from the properties, in the standard's names.
 template<typename S>
 concept can_insert = requires(S store, int element) { store.insert(element); };
