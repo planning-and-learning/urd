@@ -45,8 +45,9 @@ public:
     using key_type = typename S::key_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using reference = value_type&;
-    using const_reference = const value_type&;
+    // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
+    using const_reference = std::ranges::range_reference_t<const representation>;
+    using reference = std::conditional_t<writable, std::ranges::range_reference_t<representation>, const_reference>;
     using const_iterator = std::ranges::iterator_t<const representation>;
     using iterator = std::conditional_t<writable, std::ranges::iterator_t<representation>, const_iterator>;
     static constexpr workload work = S::work;
@@ -372,12 +373,6 @@ struct resolve
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
-
-/// Whether R is a Store.
-template<typename R>
-inline constexpr bool is_store = false;
-template<typename R, typename S>
-inline constexpr bool is_store<detail::Store<R, S>> = true;
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>

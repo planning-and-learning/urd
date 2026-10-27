@@ -126,3 +126,22 @@ representation, and the test checks them as defined:
   open.
 - **The vocabulary grew by one property,** `concurrent`, which the copied container already offered as a
   template parameter.
+
+## Nested Stores
+
+A Store's elements can be Stores (rows): `Store<value<Store<value<int>, frozen>>>`. The same rules apply one
+level down. What a container guarantees about rows it holds is `element_traits<R>`
+(`include/urd/traits.hpp`): by default the rows' own properties, except memory, since destroying a row frees
+what it owns. A representation serves a nested request only if its `element_traits` satisfy the rows'
+request, so the inner properties choose the outer representation too:
+
+| Request | Resolves to | Rows come as |
+|---|---|---|
+| rows `frozen` | `repr::Jagged`: CSR, one offsets array per level and one array of the innermost elements; three levels are a `Jagged` of a `Jagged` | `urd::View` (`include/urd/view.hpp`): read-only, with the row request's lookups (binary search where sorted) |
+| rows and Store `retains` | `repr::RowPool`: removed rows are cleared and kept, so nothing is freed at any level | the inner Store, `Inner&` |
+| anything else | `std::vector` of the inner Stores | the inner Store |
+
+`retains` is shallow, about a container's own storage; deep retention is the rows' `memory_category` in
+`element_traits`. A View, and references into a row, are valid until the outer Store changes.
+`tests/rows.cpp` checks every nested Store against a `std::vector` of `std::vector`s under random inserts
+and erases of rows, sorted rows' lookups, and zero allocations when a retaining Store is refilled.

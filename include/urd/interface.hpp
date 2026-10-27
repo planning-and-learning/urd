@@ -41,6 +41,20 @@ inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique>;
 namespace detail
 {
 
+/// What R holds: its value_type where it names one (a container of rows hands out views of them), else what
+/// iterating it gives.
+template<typename R>
+struct value_of
+{
+    using type = std::ranges::range_value_t<R>;
+};
+template<typename R>
+    requires requires { typename R::value_type; }
+struct value_of<R>
+{
+    using type = typename R::value_type;
+};
+
 template<typename R, typename E>
 concept basic_container = std::ranges::forward_range<R> && std::ranges::sized_range<R> && std::constructible_from<R, const E*, const E*>;
 
@@ -97,7 +111,7 @@ concept sequence_removal = requires(R& range, const E& element, std::ranges::ite
 }  // namespace detail
 
 /// Whether R offers what its declared properties require (the table above).
-template<typename R, typename Traits = container_traits<std::remove_cvref_t<R>>, typename E = std::ranges::range_value_t<R>>
+template<typename R, typename Traits = container_traits<std::remove_cvref_t<R>>, typename E = typename detail::value_of<R>::type>
 concept conforming =
     detail::basic_container<R, E> && (!has<Traits, canonical> || std::equality_comparable<R>)
     && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)

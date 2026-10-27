@@ -4,19 +4,17 @@
 // urd::verify (verify.hpp). Validating a container is adding it to the list.
 
 #include "urd/store.hpp"
+#include "allocations.hpp"
 #include "verify.hpp"
 
 #include <boost/container/flat_set.hpp>
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <atomic>
-#include <cstdlib>
 #include <deque>
 #include <cstddef>
 #include <iterator>
 #include <memory>
-#include <new>
 #include <numeric>
 #include <ranges>
 #include <set>
@@ -85,44 +83,10 @@ using urd::key;
 using urd::Store;
 using urd::value;
 using urd::repr::SegmentedVector;
+using urd::test::allocations;
+using urd::test::Counted;
+using urd::test::deallocations;
 
-// Allocations and deallocations, counted while `counting` is set: the global operator new and delete below
-// count them, for the memory properties.
-std::atomic<bool> counting { false };
-std::atomic<long> allocations { 0 };
-std::atomic<long> deallocations { 0 };
-
-/// Counts the allocations and deallocations made during its lifetime.
-struct Counted
-{
-    Counted()
-    {
-        allocations = 0;
-        deallocations = 0;
-        counting = true;
-    }
-    Counted(const Counted&) = delete;
-    Counted& operator=(const Counted&) = delete;
-    ~Counted() { counting = false; }
-};
-
-void* allocate(std::size_t size, std::size_t alignment)
-{
-    if (counting)
-        ++allocations;
-    const auto rounded = (size + alignment - 1) / alignment * alignment;
-    void* memory = alignment <= alignof(std::max_align_t) ? std::malloc(size == 0 ? 1 : size) : std::aligned_alloc(alignment, rounded == 0 ? alignment : rounded);
-    if (memory == nullptr)
-        throw std::bad_alloc();
-    return memory;
-}
-
-void deallocate(void* memory) noexcept
-{
-    if (memory != nullptr && counting)
-        ++deallocations;
-    std::free(memory);
-}
 
 using Containers = testing::Types<
     // The representations, as they are.
@@ -177,18 +141,6 @@ std::vector<int> descending(int count)
 
 }  // namespace
 
-void* operator new(std::size_t size) { return allocate(size, alignof(std::max_align_t)); }
-void* operator new[](std::size_t size) { return allocate(size, alignof(std::max_align_t)); }
-void* operator new(std::size_t size, std::align_val_t alignment) { return allocate(size, static_cast<std::size_t>(alignment)); }
-void* operator new[](std::size_t size, std::align_val_t alignment) { return allocate(size, static_cast<std::size_t>(alignment)); }
-void operator delete(void* memory) noexcept { deallocate(memory); }
-void operator delete[](void* memory) noexcept { deallocate(memory); }
-void operator delete(void* memory, std::size_t) noexcept { deallocate(memory); }
-void operator delete[](void* memory, std::size_t) noexcept { deallocate(memory); }
-void operator delete(void* memory, std::align_val_t) noexcept { deallocate(memory); }
-void operator delete[](void* memory, std::align_val_t) noexcept { deallocate(memory); }
-void operator delete(void* memory, std::size_t, std::align_val_t) noexcept { deallocate(memory); }
-void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept { deallocate(memory); }
 
 TYPED_TEST(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 

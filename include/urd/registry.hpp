@@ -3,6 +3,7 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/flat.hpp"
+#include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
 #include "urd/repr/std_set.hpp"
@@ -30,13 +31,17 @@ struct requirement : S
     using key_category = std::conditional_t<S::is_sequence, any_keys, typename S::key_category>;
 };
 
-/// Whether representation R can serve spec S: it has S's properties for its elements (a set of elements
-/// without operator< is not sorted), and the interface a Store for S offers: it places elements as S does (by
-/// value or where they are put), is unique exactly where S is (a unique container would drop a sequence's
-/// duplicates), and is random-access where S is a sequence.
+/// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
+/// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
+/// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
+/// sequence's duplicates), and is random-access where S is a sequence. Where S's elements are Stores (rows), R
+/// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves = satisfies<container_traits<R>, requirement<S>> && conforming<R> && by_value<container_traits<R>> == by_value<S>
-                 && has<container_traits<R>, unique> == has<S, unique> && (!has<S, positional> || std::ranges::random_access_range<R>);
+concept serves = container_traits<R>::declared && satisfies<container_traits<R>, requirement<S>> && conforming<R>
+                 && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
+                 && (!has<S, positional> || std::ranges::random_access_range<R>)
+                 && (!is_store<typename S::element_type>
+                     || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
 
 /// Container templates, each taking the element type.
 template<template<typename...> class... Cs>
@@ -51,15 +56,16 @@ using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_s
 
 /// Every representation, in order of preference for S; the first that serves S is chosen. Where elements are
 /// few or never change, contiguous storage comes first, as it is the most compact and the fastest to search
-/// and iterate; otherwise hashing, then trees, then contiguous storage, which is O(n) to insert. A container
-/// is registered by adding it to both lists; what it can serve, its container_traits say.
+/// and iterate; otherwise hashing, then trees, then contiguous storage, which is O(n) to insert. Frozen rows
+/// are flattened first; rows are kept for reuse only where their memory must be. A container is registered by
+/// adding it to both lists; what it can serve, its container_traits say.
 template<typename S>
 using preference = std::conditional_t<
     has<S, frozen> || S::work == workload::small,
-    candidates<std::vector, boost::container::flat_multiset, boost::container::flat_set, std::set, std::unordered_set,
-               SegmentedVector, ConcurrentSegmentedVector>,
-    candidates<std::vector, std::unordered_set, std::set, boost::container::flat_multiset, boost::container::flat_set,
-               SegmentedVector, ConcurrentSegmentedVector>>;
+    candidates<repr::Jagged, std::vector, boost::container::flat_multiset, boost::container::flat_set, std::set,
+               std::unordered_set, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>,
+    candidates<repr::Jagged, std::vector, std::unordered_set, std::set, boost::container::flat_multiset,
+               boost::container::flat_set, SegmentedVector, ConcurrentSegmentedVector, repr::RowPool>>;
 
 template<typename S, typename Candidates = preference<S>>
 struct choose;

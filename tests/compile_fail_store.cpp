@@ -54,5 +54,8 @@ int main()
 #elif URD_CASE == 14  // memory is either kept for reuse or returned
     using S = Store<key<int>, urd::retains, urd::reclaims>;
     (void)S();
+#elif URD_CASE == 15  // a frozen row is a view: it never changes
+    auto rows = Store<value<Store<value<int>, urd::frozen>>> { { 1, 2 } };
+    rows[0].push_back(3);
 #endif
 }

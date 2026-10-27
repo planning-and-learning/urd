@@ -41,6 +41,15 @@ static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::monotone>::r
 static_assert(std::same_as<Store<value<int>, urd::monotone, urd::concurrent>::representation,
                            urd::repr::SegmentedVector<int, urd::repr::default_first_segment_size, true>>);
 static_assert(std::same_as<Store<value<int>, urd::stable_refs, urd::frozen>::representation, std::vector<int>>);
+// Rows: a Store of Stores.
+static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
+static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<value<Store<value<Store<value<int>, urd::frozen>>, urd::frozen>>>::representation,
+                           urd::repr::Jagged<Store<value<Store<value<int>, urd::frozen>>, urd::frozen>>>);
+static_assert(std::same_as<Store<value<Store<value<Store<value<int>, urd::frozen>>, urd::frozen>>>::representation::value_type::representation,
+                           urd::repr::Jagged<Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<value<Store<value<int>, urd::retains>>, urd::retains>::representation, urd::repr::RowPool<Store<value<int>, urd::retains>>>);
+
 // Storage kept for reuse, or returned: the containers that do so.
 static_assert(std::same_as<Store<key<int>, urd::retains>::representation, boost::container::flat_set<int>>);
 static_assert(std::same_as<Store<key<int>, urd::sorted, urd::retains>::representation, boost::container::flat_set<int>>);
