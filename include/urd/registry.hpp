@@ -31,12 +31,9 @@ namespace urd::detail
 /// A frozen Store's elements never move whatever the representation; a sequence's positions are dense
 /// in every representation of a sequence.
 template<typename S>
-struct requirement : S
-{
-    using reference_category = std::conditional_t<has<S, frozen>, moving_refs, typename S::reference_category>;
-    using key_category = std::conditional_t<S::is_sequence, any_keys, typename S::key_category>;
-};
-
+using requirement = with_t<S,
+                           std::conditional_t<has<S, frozen>, moving_refs, category_t<S, moving_refs>>,
+                           std::conditional_t<S::is_sequence, any_keys, category_t<S, any_keys>>>;
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a

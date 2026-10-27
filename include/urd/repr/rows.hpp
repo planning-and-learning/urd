@@ -306,11 +306,9 @@ struct container_traits<repr::Jagged<Inner>> : properties_of<dense, shrinkable, 
 /// The rows are frozen, their elements move when rows before them are inserted or erased, and their storage is
 /// kept; innermost rows lie next to each other.
 template<detail::flattenable Inner>
-struct element_traits<repr::Jagged<Inner>> : container_traits<Inner>
+struct element_traits<repr::Jagged<Inner>> :
+    with_t<container_traits<Inner>, std::conditional_t<is_store<typename container_traits<Inner>::element_type>, any_layout, contiguous>, moving_refs, retains>
 {
-    using layout_category = std::conditional_t<is_store<typename container_traits<Inner>::element_type>, any_layout, contiguous>;
-    using reference_category = moving_refs;
-    using memory_category = retains;
 };
 
 /// Rows that can be cleared are kept for reuse.

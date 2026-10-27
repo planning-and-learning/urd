@@ -140,44 +140,30 @@ struct small : general
 {
 };  ///< a few elements, or a few at a time
 
-/// The properties of something, one tag per category, in a fixed order: equal properties are one type.
-template<typename Order,
-         typename Uniqueness,
-         typename Keys,
-         typename References,
-         typename Layout,
-         typename Canonical,
-         typename Concurrency,
-         typename Version,
-         typename Mutability,
-         typename Lifecycle,
-         typename Emptiness,
-         typename Multiplicity,
-         typename Identity,
-         typename Memory,
-         typename Workload>
-struct properties
-{
-    using order_category = Order;
-    using uniqueness_category = Uniqueness;
-    using key_category = Keys;
-    using reference_category = References;
-    using layout_category = Layout;
-    using canonical_category = Canonical;
-    using concurrency_category = Concurrency;
-    using version_category = Version;
-    using mutability_category = Mutability;
-    using lifecycle_category = Lifecycle;
-    using emptiness_category = Emptiness;
-    using multiplicity_category = Multiplicity;
-    using identity_category = Identity;
-    using memory_category = Memory;
-    using workload_category = Workload;
-    static constexpr bool declared = true;
-};
-
 namespace detail
 {
+
+/// A list of types: tags, or the roots of their categories.
+template<typename... Ts>
+struct type_list
+{
+};
+
+/// The roots of the categories a container declares, then those only a Store's request has.
+using guaranteed_roots =
+    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, ephemeral, immutable, any_memory>;
+using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
+
+template<typename... Lists>
+struct concat;
+template<typename... As, typename... Bs>
+struct concat<type_list<As...>, type_list<Bs...>>
+{
+    using type = type_list<As..., Bs...>;
+};
+
+/// Every category, in the order that makes properties canonical. A new category is a root added here.
+using all_roots = typename concat<guaranteed_roots, requested_roots>::type;
 
 /// The tag among Tags in the category rooted at Root, else Root.
 template<typename Root, typename... Tags>
@@ -195,24 +181,47 @@ using pick_t = typename pick<Root, Tags...>::type;
 template<typename Root, typename... Tags>
 inline constexpr int count_in = (0 + ... + static_cast<int>(std::derived_from<Tags, Root>));
 
-/// The roots of the categories a container declares, then those only a Store's request has.
-template<typename... Roots>
-struct root_list
-{
-};
-using guaranteed_roots =
-    root_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, ephemeral, immutable, any_memory>;
-using requested_roots = root_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
-
 template<typename Tag, typename List>
 inline constexpr bool in_list = false;
 template<typename Tag, typename... Roots>
-inline constexpr bool in_list<Tag, root_list<Roots...>> = (std::derived_from<Tag, Roots> || ...);
+inline constexpr bool in_list<Tag, type_list<Roots...>> = (std::derived_from<Tag, Roots> || ...);
 
 template<typename List, typename... Tags>
 inline constexpr bool one_per_category = false;
 template<typename... Roots, typename... Tags>
-inline constexpr bool one_per_category<root_list<Roots...>, Tags...> = ((count_in<Roots, Tags...> <= 1) && ...);
+inline constexpr bool one_per_category<type_list<Roots...>, Tags...> = ((count_in<Roots, Tags...> <= 1) && ...);
+
+}  // namespace detail
+
+/// The properties of something: one tag per category, in the order of all_roots, so that equal properties are
+/// one type. Write them with properties_of.
+template<typename... Tags>
+struct properties
+{
+    using tag_list = detail::type_list<Tags...>;
+    static constexpr bool declared = true;
+};
+
+namespace detail
+{
+
+template<typename Roots, typename... Tags>
+struct in_root_order;
+template<typename... Roots, typename... Tags>
+struct in_root_order<type_list<Roots...>, Tags...>
+{
+    using type = properties<pick_t<Roots, Tags...>...>;
+};
+
+template<typename Root, typename List>
+struct category_in;
+template<typename Root, typename... Tags>
+struct category_in<Root, type_list<Tags...>> : pick<Root, Tags...>
+{
+};
+
+template<typename List, typename... Tags>
+struct with_tags;
 
 }  // namespace detail
 
@@ -224,21 +233,26 @@ inline constexpr bool is_request_only = detail::in_list<Tag, detail::requested_r
 
 /// The properties stated by Tags, in any order; categories no tag answers keep their root.
 template<typename... Tags>
-using properties_of = properties<detail::pick_t<any_order, Tags...>,
-                                 detail::pick_t<duplicates, Tags...>,
-                                 detail::pick_t<any_keys, Tags...>,
-                                 detail::pick_t<moving_refs, Tags...>,
-                                 detail::pick_t<any_layout, Tags...>,
-                                 detail::pick_t<any_representation, Tags...>,
-                                 detail::pick_t<single_threaded, Tags...>,
-                                 detail::pick_t<ephemeral, Tags...>,
-                                 detail::pick_t<immutable, Tags...>,
-                                 detail::pick_t<may_change, Tags...>,
-                                 detail::pick_t<maybe_empty, Tags...>,
-                                 detail::pick_t<any_multiplicity, Tags...>,
-                                 detail::pick_t<by_key, Tags...>,
-                                 detail::pick_t<any_memory, Tags...>,
-                                 detail::pick_t<general, Tags...>>;
+using properties_of = typename detail::in_root_order<detail::all_roots, Tags...>::type;
+
+/// The tag Traits holds in the category rooted at Root.
+template<typename Traits, typename Root>
+using category_t = typename detail::category_in<Root, typename Traits::tag_list>::type;
+
+namespace detail
+{
+
+template<typename... Current, typename... Tags>
+struct with_tags<type_list<Current...>, Tags...>
+{
+    using type = properties_of<Tags..., Current...>;
+};
+
+}  // namespace detail
+
+/// Traits with the categories of Tags replaced by them.
+template<typename Traits, typename... Tags>
+using with_t = typename detail::with_tags<typename Traits::tag_list, Tags...>::type;
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
 /// to declare its properties, and check the declaration by adding the container to tests/properties.cpp:
@@ -270,74 +284,45 @@ inline constexpr bool is_store<detail::Store<R, S>> = true;
 /// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,
 /// as erase and clear do. A container that keeps rows, or stores them flattened, specializes it.
 template<typename R>
-struct element_traits : container_traits<std::ranges::range_value_t<R>>
+struct element_traits : with_t<container_traits<std::ranges::range_value_t<R>>, reclaims>
 {
-    using memory_category = reclaims;
 };
 
 /// The properties of X: X itself when it lists them (a request's spec), else its container_traits.
 template<typename X>
-using traits_t = std::conditional_t<requires { typename X::order_category; }, X, container_traits<std::remove_cvref_t<X>>>;
+using traits_t = std::conditional_t<requires { typename X::tag_list; }, X, container_traits<std::remove_cvref_t<X>>>;
 
 namespace detail
 {
 
-template<typename Traits, typename Tag>
-consteval bool has_one()
+/// The root of Tag's category.
+template<typename Tag, typename List>
+struct root_of
 {
-    if constexpr (std::derived_from<Tag, any_order>)
-        return std::derived_from<typename Traits::order_category, Tag>;
-    else if constexpr (std::derived_from<Tag, duplicates>)
-        return std::derived_from<typename Traits::uniqueness_category, Tag>;
-    else if constexpr (std::derived_from<Tag, any_keys>)
-        return std::derived_from<typename Traits::key_category, Tag>;
-    else if constexpr (std::derived_from<Tag, moving_refs>)
-        return std::derived_from<typename Traits::reference_category, Tag>;
-    else if constexpr (std::derived_from<Tag, any_layout>)
-        return std::derived_from<typename Traits::layout_category, Tag>;
-    else if constexpr (std::derived_from<Tag, any_representation>)
-        return std::derived_from<typename Traits::canonical_category, Tag>;
-    else if constexpr (std::derived_from<Tag, single_threaded>)
-        return std::derived_from<typename Traits::concurrency_category, Tag>;
-    else if constexpr (std::derived_from<Tag, ephemeral>)
-        return std::derived_from<typename Traits::version_category, Tag>;
-    else if constexpr (std::derived_from<Tag, immutable>)
-        return std::derived_from<typename Traits::mutability_category, Tag>;
-    else if constexpr (std::derived_from<Tag, may_change>)
-        return std::derived_from<typename Traits::lifecycle_category, Tag>;
-    else if constexpr (std::derived_from<Tag, maybe_empty>)
-        return std::derived_from<typename Traits::emptiness_category, Tag>;
-    else if constexpr (std::derived_from<Tag, any_memory>)
-        return std::derived_from<typename Traits::memory_category, Tag>;
-    else if constexpr (std::derived_from<Tag, general>)
-        return std::derived_from<typename Traits::workload_category, Tag>;
-    else if constexpr (std::derived_from<Tag, any_multiplicity>)
-        return std::derived_from<typename Traits::multiplicity_category, Tag>;
-    else
-    {
-        static_assert(std::derived_from<Tag, by_key>, "urd::has: not an urd property");
-        return std::derived_from<typename Traits::identity_category, Tag>;
-    }
-}
+    static_assert(std::is_void_v<Tag> && !std::is_void_v<Tag>, "urd::has: not an urd property");
+};
+template<typename Tag, typename Root, typename... Roots>
+struct root_of<Tag, type_list<Root, Roots...>> : std::conditional_t<std::derived_from<Tag, Root>, std::type_identity<Root>, root_of<Tag, type_list<Roots...>>>
+{
+};
+
+template<typename Traits, typename Tag>
+inline constexpr bool has_one = std::derived_from<category_t<Traits, typename root_of<Tag, all_roots>::type>, Tag>;
+
+template<typename Have, typename Want, typename Roots>
+inline constexpr bool satisfies_all = false;
+template<typename Have, typename Want, typename... Roots>
+inline constexpr bool satisfies_all<Have, Want, type_list<Roots...>> = (std::derived_from<category_t<Have, Roots>, category_t<Want, Roots>> && ...);
 
 }  // namespace detail
 
 /// Whether X (a container, a Store, or a request's spec) has every property in Tags.
 template<typename X, typename... Tags>
-inline constexpr bool has = (detail::has_one<traits_t<X>, Tags>() && ...);
+inline constexpr bool has = (detail::has_one<traits_t<X>, Tags> && ...);
 
 /// Whether Have provides, in every category a container declares, at least what Want asks for.
 template<typename Have, typename Want>
-inline constexpr bool satisfies = std::derived_from<typename Have::order_category, typename Want::order_category>
-                                  && std::derived_from<typename Have::uniqueness_category, typename Want::uniqueness_category>
-                                  && std::derived_from<typename Have::key_category, typename Want::key_category>
-                                  && std::derived_from<typename Have::reference_category, typename Want::reference_category>
-                                  && std::derived_from<typename Have::layout_category, typename Want::layout_category>
-                                  && std::derived_from<typename Have::canonical_category, typename Want::canonical_category>
-                                  && std::derived_from<typename Have::concurrency_category, typename Want::concurrency_category>
-                                  && std::derived_from<typename Have::version_category, typename Want::version_category>
-                                  && std::derived_from<typename Have::mutability_category, typename Want::mutability_category>
-                                  && std::derived_from<typename Have::memory_category, typename Want::memory_category>;
+inline constexpr bool satisfies = detail::satisfies_all<Have, Want, detail::guaranteed_roots>;
 
 /// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
 /// about the type, not the contents; the tests check those. O(n log n) at most.

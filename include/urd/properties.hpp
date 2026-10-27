@@ -110,37 +110,21 @@ struct to_spec
     static_assert(!has<stated, contiguous, stable_refs> || has<stated, frozen>,
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
 
-    // What the list implies.
+    // What the list implies, in place of what it states.
     using identity = std::conditional_t<kind::is_sequence, positional, by_key>;
     // A set's keys are its contents, each once; a map's keys are each once unless it is a multimap.
-    using uniqueness = std::conditional_t<kind::is_set || (kind::is_map && !has<stated, multi>), unique, typename stated::uniqueness_category>;
+    using uniqueness = std::conditional_t<kind::is_set || (kind::is_map && !has<stated, multi>), unique, category_t<stated, duplicates>>;
     // A map has one value per key unless it says multi; a sequence one value per position.
-    using multiplicity = std::conditional_t<(kind::is_map && !has<stated, multi>) || kind::is_sequence, functional, typename stated::multiplicity_category>;
+    using multiplicity = std::conditional_t<(kind::is_map && !has<stated, multi>) || kind::is_sequence, functional, category_t<stated, any_multiplicity>>;
     // Positions are 0..n-1.
-    using keys = std::conditional_t<kind::is_sequence, dense, typename stated::key_category>;
+    using keys = std::conditional_t<kind::is_sequence, dense, category_t<stated, any_keys>>;
     // Nothing moves once nothing changes.
-    using references = std::conditional_t<has<stated, frozen>, stable_refs, typename stated::reference_category>;
+    using references = std::conditional_t<has<stated, frozen>, stable_refs, category_t<stated, moving_refs>>;
     // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty.
     using mutability =
         std::conditional_t<has<stated, frozen>, immutable, std::conditional_t<has<stated, monotone> || has<stated, nonempty>, growable, shrinkable>>;
 
-    using type = spec<key_type,
-                      value_type,
-                      properties<typename stated::order_category,
-                                 uniqueness,
-                                 keys,
-                                 references,
-                                 typename stated::layout_category,
-                                 typename stated::canonical_category,
-                                 typename stated::concurrency_category,
-                                 typename stated::version_category,
-                                 mutability,
-                                 typename stated::lifecycle_category,
-                                 typename stated::emptiness_category,
-                                 multiplicity,
-                                 identity,
-                                 typename stated::memory_category,
-                                 typename stated::workload_category>>;
+    using type = spec<key_type, value_type, with_t<stated, identity, uniqueness, multiplicity, keys, references, mutability>>;
 };
 
 }  // namespace detail
