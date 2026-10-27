@@ -51,6 +51,9 @@ static_assert(std::same_as<Store<key<int>, urd::sorted>::representation, TreeSet
 static_assert(std::same_as<Store<key<int>, urd::sorted, urd::frozen>::representation, FlatSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::small>::representation, FlatHashSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::stable_refs>::representation, HashSet<int>>);
+// Few elements: contiguous storage first, node-based containers last, a hash table before a tree among them.
+static_assert(std::same_as<Store<key<int>, urd::small, urd::stable_refs>::representation, HashSet<int>>);
+static_assert(std::same_as<Store<key<int>, urd::small, urd::sorted, urd::stable_refs>::representation, TreeSet<int>>);
 static_assert(std::same_as<Store<value<int>>::representation, std::vector<int>>);
 static_assert(std::same_as<Store<value<int>, urd::sorted>::representation, FlatMultiSet<int>>);
 // Elements that must not move: segments, unless nothing changes anyway.

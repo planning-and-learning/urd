@@ -51,24 +51,6 @@ struct candidates
 {
 };
 
-/// No container: what a map candidate is for elements that are not key-value pairs. It declares nothing,
-/// so it serves nothing.
-struct none
-{
-};
-
-/// Map M from a Store's element type, std::pair<const K, V>; none for any other element type.
-template<template<typename...> class M, typename E>
-struct as_map
-{
-    using type = none;
-};
-template<template<typename...> class M, typename K, typename V>
-struct as_map<M, std::pair<const K, V>>
-{
-    using type = M<K, V>;
-};
-
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
 template<typename T>
@@ -97,84 +79,100 @@ using FlatMapOf = boost::container::flat_map<K, V, Less<K>>;
 template<typename K, typename V>
 using FlatMultiMapOf = boost::container::flat_multimap<K, V, Less<K>>;
 
-template<typename E>
-using FlatHashMap = typename as_map<FlatHashMapOf, E>::type;
-template<typename E>
-using Map = typename as_map<TreeMapOf, E>::type;
-template<typename E>
-using MultiMap = typename as_map<TreeMultiMapOf, E>::type;
-template<typename E>
-using UnorderedMap = typename as_map<HashMapOf, E>::type;
-template<typename E>
-using UnorderedMultiMap = typename as_map<HashMultiMapOf, E>::type;
-template<typename E>
-using FlatMap = typename as_map<FlatMapOf, E>::type;
-template<typename E>
-using FlatMultiMap = typename as_map<FlatMultiMapOf, E>::type;
-
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
 using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_segment_size, true>;
 
-/// Every representation, in order of preference for S; the first that serves S is chosen. The orders follow
-/// docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill at every
-/// size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs. Where
-/// order is asked for, a tree serves elements inserted over time, and a sorted vector (faster to search and
-/// iterate, O(n) to insert) serves elements that are few or never change. Frozen rows are flattened first;
-/// rows are kept for reuse only where their memory must be. A container is registered by adding it to both
-/// lists; what it can serve, its container_traits say.
-template<typename S>
-using preference = std::conditional_t<has<S, frozen> || has<S, small>,
-                                      candidates<repr::Jagged,
-                                                 std::vector,
-                                                 FlatMultiSet,
-                                                 FlatHashSet,
-                                                 FlatSet,
-                                                 TreeSet,
-                                                 HashSet,
-                                                 FlatMultiMap,
-                                                 FlatHashMap,
-                                                 FlatMap,
-                                                 Map,
-                                                 MultiMap,
-                                                 UnorderedMap,
-                                                 UnorderedMultiMap,
-                                                 SegmentedVector,
-                                                 ConcurrentSegmentedVector,
-                                                 repr::RowPool>,
-                                      candidates<repr::Jagged,
-                                                 std::vector,
-                                                 FlatHashSet,
-                                                 HashSet,
-                                                 TreeSet,
-                                                 FlatMultiSet,
-                                                 FlatSet,
-                                                 FlatHashMap,
-                                                 UnorderedMap,
-                                                 UnorderedMultiMap,
-                                                 Map,
-                                                 MultiMap,
-                                                 FlatMultiMap,
-                                                 FlatMap,
-                                                 SegmentedVector,
-                                                 ConcurrentSegmentedVector,
-                                                 repr::RowPool>>;
-
-template<typename S, typename Candidates = preference<S>>
-struct choose;
-
-/// The representation for spec S: the first of the candidates that serves S.
-template<typename S, template<typename...> class... Cs>
-struct choose<S, candidates<Cs...>>
+/// Container templates over the element type (sets, sequences, rows), in order of preference.
+template<template<typename...> class... Cs>
+struct element_candidates
 {
-    using element = typename S::element_type;
-    static constexpr std::size_t count = sizeof...(Cs);
-    static constexpr std::array<bool, count> fits { serves<Cs<element>, S>... };
+};
+/// Container templates over the key and the value type (maps), in order of preference.
+template<template<typename, typename> class... Cs>
+struct map_candidates
+{
+};
+
+/// Every representation, in order of preference; the first that serves a request is chosen. A container is
+/// registered by adding it to one of these lists; what it can serve, its container_traits say. The order
+/// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
+/// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
+/// where order is asked for, a tree serves elements inserted over time. Frozen rows are flattened first; rows
+/// are kept for reuse only where their memory must be.
+using element_preference = element_candidates<repr::Jagged,
+                                              std::vector,
+                                              FlatHashSet,
+                                              HashSet,
+                                              TreeSet,
+                                              FlatMultiSet,
+                                              FlatSet,
+                                              SegmentedVector,
+                                              ConcurrentSegmentedVector,
+                                              repr::RowPool>;
+using map_preference = map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf>;
+
+template<typename... Lists>
+struct join
+{
+    using type = type_list<>;
+};
+template<typename... Ts>
+struct join<type_list<Ts...>>
+{
+    using type = type_list<Ts...>;
+};
+template<typename... As, typename... Bs, typename... Lists>
+struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As..., Bs...>, Lists...>
+{
+};
+
+/// The registered containers for spec S, instantiated with its element type, or a map's key and value types.
+template<typename S, typename Candidates>
+struct instantiated;
+template<typename S, template<typename...> class... Cs>
+struct instantiated<S, element_candidates<Cs...>>
+{
+    using type = type_list<Cs<typename S::element_type>...>;
+};
+template<typename S, template<typename, typename> class... Cs>
+struct instantiated<S, map_candidates<Cs...>>
+{
+    using type = type_list<Cs<typename S::key_type, typename S::mapped_type>...>;
+};
+
+/// Node-based: it keeps references stable by allocating every element on its own.
+template<typename R>
+inline constexpr bool node_based = has<container_traits<R>, stable_refs>;
+
+/// The order for S: where elements are few or never change, node-based containers come last, since contiguous
+/// storage is more compact and faster to search and iterate (docs/BENCHMARKS.md); otherwise the lists' order.
+template<typename S, typename List>
+struct ordered_for;
+template<typename S, typename... Rs>
+struct ordered_for<S, type_list<Rs...>>
+{
+    static constexpr bool compact = has<S, frozen> || has<S, small>;
+    using type = std::conditional_t<compact,
+                                    typename join<std::conditional_t<node_based<Rs>, type_list<>, type_list<Rs>>...,
+                                                  std::conditional_t<node_based<Rs>, type_list<Rs>, type_list<>>...>::type,
+                                    type_list<Rs...>>;
+};
+
+template<typename S, typename List>
+struct choose_in;
+
+/// The first of the containers that serves S.
+template<typename S, typename... Rs>
+struct choose_in<S, type_list<Rs...>>
+{
+    static constexpr std::size_t count = sizeof...(Rs);
+    static constexpr std::array<bool, count> fits { serves<Rs, S>... };
     static constexpr std::size_t best = []
     {
         std::size_t found = 0;
-        while (found < count && !fits[found])
+        while (found < count && !fits.at(found))
             ++found;
         return found;
     }();
@@ -183,7 +181,14 @@ struct choose<S, candidates<Cs...>>
                   "urd::Store: no representation provides this combination of properties; "
                   "the pool needs a new representation for it");
 
-    using type = std::tuple_element_t < best<count ? best : 0, std::tuple<Cs<element>...>>;
+    // Where none serves, a stand-in after the static_assert, so that it is the only error.
+    using type = std::tuple_element_t<best, std::tuple<Rs..., std::vector<typename S::element_type>>>;
 };
+
+/// The representation for spec S: the first registered container that serves it, in the order for S.
+template<typename S>
+using choose = choose_in<
+    S,
+    typename ordered_for<S, typename std::conditional_t<S::is_map, instantiated<S, map_preference>, instantiated<S, element_preference>>::type>::type>;
 
 }  // namespace urd::detail
