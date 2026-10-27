@@ -52,12 +52,18 @@ a tie, the earlier one in the list.
 
 ## 5. Prove it
 
+A property is part of what a Store is: it holds from construction (`make`, or `assume`, which Debug builds
+check) and every operation keeps it, or the operation is not offered. A container whose property holds only
+if callers remember to restore it is not a representation.
+
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
 - For every property in `guarantees`, a test that would fail without it: `stable_refs` takes an element's
   address, appends 100 000 more and checks the address; `concurrent` inserts from several threads and
   checks every element arrived, and runs under ThreadSanitizer.
-- Run it against a reference container under random operations (as the set representations run against
-  `std::set`).
+- Add a Store that resolves to it to `tests/properties.cpp`. It runs random inserts and erases, and after
+  every single step compares the contents with a reference model and checks every requested property
+  (sorted, unique, nonempty, monotone, stable_refs, contiguous, canonical), so a property that breaks and
+  later recovers is caught too.
 - A request it makes possible, and one that should still fail, as compile-fail cases.
 
 ## What the first tier showed

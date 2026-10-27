@@ -46,7 +46,7 @@ if(URD_BUILD_TESTS)
     enable_testing()
     find_package(Threads REQUIRED)
 
-    foreach(test refined algorithms store)
+    foreach(test refined algorithms store properties)
         add_executable(test_${test} tests/${test}.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
