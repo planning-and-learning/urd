@@ -63,7 +63,8 @@ checks it at compile time:
 | `shrinkable`, kept by value | `erase(e)` returning a count |
 | `shrinkable`, a sequence | `pop_back`, `insert(position, e)`, `emplace(position, …)` |
 
-urd calls them as free functions, `urd::insert(c, e)`, which use the container's member of that name. The
+Store and `urd::verify` call them as free functions, `urd::repr::insert(c, e)`, which use the container's member of
+that name; downstream code never does, since it uses data only through a Store. The
 standard library's containers, Boost's, and urd's own (`SegmentedVector`) offer them as they are; a container
 of urd's should be written that way. A library with other names gets an adapter: free functions of the
 standard names in its namespace, found by argument-dependent lookup. An adapter only renames; it adds no
@@ -99,14 +100,17 @@ representation, and the test checks them as defined:
 | `concurrent` | covers inserts and reads of published elements; `erase`, `clear` and iteration need no other operation running |
 
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
-- Add the container, and a Store that resolves to it, to `tests/properties.cpp`. Both go through
-  `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
+- Add the container, and a Store that resolves to it, to the type list in `tests/properties.cpp`. That
+  instantiates one typed test per property for it: each declared property is checked through the operations
+  alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address kept
+  through 100000 inserts; contiguous, canonical, unique, nonempty, concurrent likewise), and the others are
+  skipped. Another typed test runs `urd::verify` (`include/urd/verify.hpp`): it checks `conforming<R>`, then runs every operation the
   properties require at random (inserts, erases of positions and ranges, clears, assignments where the
   iterators allow them), and after every single step compares the contents, each operation's result and the
   lookups with a reference model and checks every declared property (sorted, unique, nonempty, stable_refs,
   contiguous, canonical), so a property that breaks and later recovers is caught too.
-- `concurrent` needs threads: a test that inserts from several threads and checks every element arrived,
-  run under ThreadSanitizer (`tests/store.cpp`).
+- `concurrent` needs threads: its typed test inserts from several threads and checks every element arrived;
+  run it under ThreadSanitizer.
 - A request it makes possible, and one that should still fail, as compile-fail cases.
 
 ## What the first tier showed
@@ -124,8 +128,7 @@ representation, and the test checks them as defined:
 
 ## Your own container
 
-Steps 3, 4 and 6 work for any container, without registering it: specialize `urd::container_traits`, offer
-the required operations (directly or through an adapter), and check both with `urd::verify`. It then meets
-urd's concepts (`urd::Sorted<R>`, …), which require the operations too, so generic code can call them.
-`examples/custom_container.cpp` does this for a library's journal with its own names. Making it a candidate a
-`Store` can pick needs a registry users can extend, which is not there yet.
+Steps 3, 4 and 6 work for any container: specialize `urd::container_traits`, offer the required operations
+(directly or through an adapter), and check both with `urd::verify`. `examples/custom_container.cpp` does this
+for a library's journal with its own names. Downstream code still uses it only through a Store, so it is of use
+once it is a candidate a `Store` can pick, which needs a registry users can extend; that is not there yet.

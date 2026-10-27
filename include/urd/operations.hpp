@@ -5,15 +5,17 @@
 namespace urd
 {
 
-// The operations a container's properties require (interface.hpp says which), as Boost.Graph's are for graphs:
-// called as free functions, `urd::insert(c, element)`, so generic code works on any conforming container.
-// Each calls the container's member of the standard name when it has one, so standard containers and
-// containers written to the standard conform as they are. A container with another interface conforms
-// through an adapter: free functions of the same name in its namespace, found by argument-dependent lookup.
+// The operations a representation's properties require (interface.hpp says which), as Boost.Graph's are for
+// graphs: free functions, `repr::insert(c, element)`, through which Store and urd::verify use any conforming
+// representation. They are not for downstream code: it goes through a Store, which offers what its properties
+// allow, never a representation directly. Each calls the container's member of the standard name when it has
+// one, so standard containers and containers written to the standard conform as they are. A container with
+// another interface conforms through an adapter: free functions of the same name in its namespace, found by
+// argument-dependent lookup.
 //
 //     namespace lib { auto insert(Bag& bag, int element) { return bag.add(element); } }
 
-namespace detail::operations
+namespace repr::cpo
 {
 
 // Declared deleted so that only a member or an adapter found by argument-dependent lookup is called.
@@ -212,20 +214,25 @@ struct equal_range_fn
     }
 };
 
-}  // namespace detail::operations
+}  // namespace repr::cpo
 
-inline constexpr detail::operations::insert_fn insert {};
-inline constexpr detail::operations::emplace_fn emplace {};
-inline constexpr detail::operations::push_back_fn push_back {};
-inline constexpr detail::operations::emplace_back_fn emplace_back {};
-inline constexpr detail::operations::pop_back_fn pop_back {};
-inline constexpr detail::operations::erase_fn erase {};
-inline constexpr detail::operations::clear_fn clear {};
-inline constexpr detail::operations::find_fn find {};
-inline constexpr detail::operations::count_fn count {};
-inline constexpr detail::operations::contains_fn contains {};
-inline constexpr detail::operations::lower_bound_fn lower_bound {};
-inline constexpr detail::operations::upper_bound_fn upper_bound {};
-inline constexpr detail::operations::equal_range_fn equal_range {};
+namespace repr
+{
+
+inline constexpr cpo::insert_fn insert {};
+inline constexpr cpo::emplace_fn emplace {};
+inline constexpr cpo::push_back_fn push_back {};
+inline constexpr cpo::emplace_back_fn emplace_back {};
+inline constexpr cpo::pop_back_fn pop_back {};
+inline constexpr cpo::erase_fn erase {};
+inline constexpr cpo::clear_fn clear {};
+inline constexpr cpo::find_fn find {};
+inline constexpr cpo::count_fn count {};
+inline constexpr cpo::contains_fn contains {};
+inline constexpr cpo::lower_bound_fn lower_bound {};
+inline constexpr cpo::upper_bound_fn upper_bound {};
+inline constexpr cpo::equal_range_fn equal_range {};
+
+}  // namespace repr
 
 }  // namespace urd

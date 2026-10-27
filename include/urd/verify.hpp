@@ -137,20 +137,20 @@ std::optional<std::string> violation(const R& range, const Model<Traits, element
     if constexpr (by_value<Traits>)
     {
         const auto present = std::ranges::find(model.elements, probe) != model.elements.end();
-        const auto found = urd::find(range, probe);
+        const auto found = repr::find(range, probe);
         if ((found != std::ranges::end(range)) != present || (present && !(*found == probe)))
             return "find: wrong for an element looked up";
-        if (static_cast<std::size_t>(urd::count(range, probe)) != static_cast<std::size_t>(std::ranges::count(model.elements, probe)))
+        if (static_cast<std::size_t>(repr::count(range, probe)) != static_cast<std::size_t>(std::ranges::count(model.elements, probe)))
             return "count: wrong for an element looked up";
-        if (urd::contains(range, probe) != present)
+        if (repr::contains(range, probe) != present)
             return "contains: wrong for an element looked up";
     }
     if constexpr (has<Traits, sorted>)
     {
         const auto lower = static_cast<std::size_t>(std::ranges::lower_bound(model.elements, probe) - model.elements.begin());
         const auto upper = static_cast<std::size_t>(std::ranges::upper_bound(model.elements, probe) - model.elements.begin());
-        const auto [first, last] = urd::equal_range(range, probe);
-        if (position_of(range, urd::lower_bound(range, probe)) != lower || position_of(range, urd::upper_bound(range, probe)) != upper
+        const auto [first, last] = repr::equal_range(range, probe);
+        if (position_of(range, repr::lower_bound(range, probe)) != lower || position_of(range, repr::upper_bound(range, probe)) != upper
             || position_of(range, first) != lower || position_of(range, last) != upper)
             return "lower_bound, upper_bound, equal_range: wrong positions";
     }
@@ -199,7 +199,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                 if constexpr (has<Traits, shrinkable>)
                 {
                     operation = "clear";
-                    urd::clear(range);
+                    repr::clear(range);
                     model.elements.clear();
                 }
             }
@@ -211,28 +211,28 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                     {
                         operation = "insert " + std::to_string(drawn);
                         const auto inserted = model.insert(element);
-                        if (!detail::reports(urd::insert(range, element), inserted, element))
+                        if (!detail::reports(repr::insert(range, element), inserted, element))
                             wrong = "insert reports the wrong outcome";
                     }
                     else if (op == 1)
                     {
                         operation = "insert moved " + std::to_string(drawn);
                         const auto inserted = model.insert(element);
-                        if (!detail::reports(urd::insert(range, E(element)), inserted, element))
+                        if (!detail::reports(repr::insert(range, E(element)), inserted, element))
                             wrong = "insert reports the wrong outcome";
                     }
                     else if (op == 2)
                     {
                         operation = "emplace " + std::to_string(drawn);
                         const auto inserted = model.insert(element);
-                        if (!detail::reports(urd::emplace(range, drawn), inserted, element))
+                        if (!detail::reports(repr::emplace(range, drawn), inserted, element))
                             wrong = "emplace reports the wrong outcome";
                     }
                     else if (op == 3)
                     {
                         const auto batch = std::vector<E> { element, E(pick(random)), element };
                         operation = "insert a range from " + std::to_string(drawn);
-                        urd::insert(range, batch.data(), batch.data() + batch.size());
+                        repr::insert(range, batch.data(), batch.data() + batch.size());
                         for (const auto& each : batch)
                             model.insert(each);
                     }
@@ -241,7 +241,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         operation = "insert with a hint " + std::to_string(drawn);
                         const auto hint = detail::const_at(range, position(std::ranges::size(range)));
                         model.insert(element);
-                        if (!(*urd::insert(range, hint, element) == element))
+                        if (!(*repr::insert(range, hint, element) == element))
                             wrong = "insert with a hint returns the wrong element";
                     }
                 }
@@ -250,17 +250,17 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                     if (op == 0)
                     {
                         operation = "push_back " + std::to_string(drawn);
-                        urd::push_back(range, element);
+                        repr::push_back(range, element);
                     }
                     else if (op == 1)
                     {
                         operation = "push_back moved " + std::to_string(drawn);
-                        urd::push_back(range, E(element));
+                        repr::push_back(range, E(element));
                     }
                     else
                     {
                         operation = "emplace_back " + std::to_string(drawn);
-                        const auto& made = urd::emplace_back(range, drawn);
+                        const auto& made = repr::emplace_back(range, drawn);
                         if (!(made == element) || std::addressof(made) != std::addressof(*detail::const_at(range, size_before)))
                             wrong = "emplace_back returns the wrong element";
                     }
@@ -277,7 +277,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         if constexpr (keyed)
                         {
                             operation = "erase " + std::to_string(drawn);
-                            if (static_cast<std::size_t>(urd::erase(range, element)) != static_cast<std::size_t>(std::erase(model.elements, element)))
+                            if (static_cast<std::size_t>(repr::erase(range, element)) != static_cast<std::size_t>(std::erase(model.elements, element)))
                                 wrong = "erase reports the wrong count";
                         }
                     }
@@ -286,7 +286,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         if constexpr (!keyed)
                         {
                             operation = "pop_back";
-                            urd::pop_back(range);
+                            repr::pop_back(range);
                             model.elements.pop_back();
                         }
                     }
@@ -297,7 +297,7 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                             const auto pos = position(size);
                             operation = (op == 3 ? "insert " : "emplace ") + std::to_string(drawn) + " at " + std::to_string(pos);
                             const auto at = detail::const_at(range, pos);
-                            const auto made = op == 3 ? urd::insert(range, at, element) : urd::emplace(range, at, drawn);
+                            const auto made = op == 3 ? repr::insert(range, at, element) : repr::emplace(range, at, drawn);
                             model.elements.insert(model.elements.begin() + static_cast<std::ptrdiff_t>(pos), element);
                             if (detail::position_of(range, made) != pos || !(*made == element))
                                 wrong = operation.substr(0, operation.find(' ')) + " returns the wrong position";
@@ -310,8 +310,8 @@ std::optional<std::string> run(R range, unsigned seed, int steps)
                         const auto last = op == 1 ? first + 1 : first + position(size - first);
                         operation = "erase positions " + std::to_string(first) + " to " + std::to_string(last);
                         const auto removed = std::vector<E>(detail::const_at(range, first), detail::const_at(range, last));
-                        [[maybe_unused]] const auto next = op == 1 ? urd::erase(range, detail::const_at(range, first))
-                                                  : urd::erase(range, detail::const_at(range, first), detail::const_at(range, last));
+                        [[maybe_unused]] const auto next = op == 1 ? repr::erase(range, detail::const_at(range, first))
+                                                  : repr::erase(range, detail::const_at(range, first), detail::const_at(range, last));
                         if constexpr (keyed)
                             for (const auto& each : removed)
                                 model.erase_one(each);

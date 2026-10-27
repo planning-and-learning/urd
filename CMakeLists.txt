@@ -46,7 +46,7 @@ if(URD_BUILD_TESTS)
     enable_testing()
     find_package(Threads REQUIRED)
 
-    foreach(test store properties)
+    foreach(test store)
         add_executable(test_${test} tests/${test}.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -54,6 +54,12 @@ if(URD_BUILD_TESTS)
 
     # The tests that came with the representations copied from yggdrasil, unchanged but for names.
     find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
+    # One typed test per property, for every container that declares it.
+    add_executable(test_properties tests/properties.cpp tests/repr/main.cpp)
+    target_link_libraries(test_properties PRIVATE urd::urd GTest::gtest Threads::Threads)
+    add_test(NAME properties COMMAND test_properties)
+    set_tests_properties(properties PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
+
     foreach(test segmented_vector unique_object_pool shared_object_pool)
         add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)

@@ -46,52 +46,52 @@ concept basic_container = std::ranges::forward_range<R> && std::ranges::sized_ra
 
 template<typename R, typename E>
 concept lookup = requires(const R& range, const E& element) {
-    { urd::find(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
-    { urd::count(range, element) } -> std::convertible_to<std::size_t>;
-    { urd::contains(range, element) } -> std::same_as<bool>;
+    { repr::find(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
+    { repr::count(range, element) } -> std::convertible_to<std::size_t>;
+    { repr::contains(range, element) } -> std::same_as<bool>;
 };
 
 template<typename R, typename E>
 concept ordered_lookup = std::ranges::bidirectional_range<R> && requires(const R& range, const E& element) {
-    { urd::lower_bound(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
-    { urd::upper_bound(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
-    { urd::equal_range(range, element) } -> std::same_as<std::pair<std::ranges::iterator_t<const R>, std::ranges::iterator_t<const R>>>;
+    { repr::lower_bound(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
+    { repr::upper_bound(range, element) } -> std::same_as<std::ranges::iterator_t<const R>>;
+    { repr::equal_range(range, element) } -> std::same_as<std::pair<std::ranges::iterator_t<const R>, std::ranges::iterator_t<const R>>>;
 };
 
 template<typename R, typename E, bool Unique>
 concept value_insertion = requires(R& range, const E& element, E&& moved, const E* first, std::ranges::iterator_t<const R> hint) {
-    { urd::insert(range, element) }
+    { repr::insert(range, element) }
         -> std::same_as<std::conditional_t<Unique, std::pair<std::ranges::iterator_t<R>, bool>, std::ranges::iterator_t<R>>>;
-    urd::insert(range, std::move(moved));
-    urd::emplace(range, element);
-    urd::insert(range, first, first);
-    { urd::insert(range, hint, element) } -> std::same_as<std::ranges::iterator_t<R>>;
+    repr::insert(range, std::move(moved));
+    repr::emplace(range, element);
+    repr::insert(range, first, first);
+    { repr::insert(range, hint, element) } -> std::same_as<std::ranges::iterator_t<R>>;
 };
 
 template<typename R, typename E>
 concept sequence_insertion = requires(R& range, const E& element, E&& moved) {
-    urd::push_back(range, element);
-    urd::push_back(range, std::move(moved));
-    { urd::emplace_back(range, element) } -> std::same_as<std::ranges::range_reference_t<R>>;
+    repr::push_back(range, element);
+    repr::push_back(range, std::move(moved));
+    { repr::emplace_back(range, element) } -> std::same_as<std::ranges::range_reference_t<R>>;
 };
 
 template<typename R>
 concept removal = requires(R& range, std::ranges::iterator_t<const R> position) {
-    urd::clear(range);
-    { urd::erase(range, position) } -> std::same_as<std::ranges::iterator_t<R>>;
-    urd::erase(range, position, position);
+    repr::clear(range);
+    { repr::erase(range, position) } -> std::same_as<std::ranges::iterator_t<R>>;
+    repr::erase(range, position, position);
 };
 
 template<typename R, typename E>
 concept value_removal = requires(R& range, const E& element) {
-    { urd::erase(range, element) } -> std::convertible_to<std::size_t>;
+    { repr::erase(range, element) } -> std::convertible_to<std::size_t>;
 };
 
 template<typename R, typename E>
 concept sequence_removal = requires(R& range, const E& element, std::ranges::iterator_t<const R> position) {
-    urd::pop_back(range);
-    { urd::insert(range, position, element) } -> std::same_as<std::ranges::iterator_t<R>>;
-    { urd::emplace(range, position, element) } -> std::same_as<std::ranges::iterator_t<R>>;
+    repr::pop_back(range);
+    { repr::insert(range, position, element) } -> std::same_as<std::ranges::iterator_t<R>>;
+    { repr::emplace(range, position, element) } -> std::same_as<std::ranges::iterator_t<R>>;
 };
 
 }  // namespace detail

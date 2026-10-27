@@ -1,10 +1,9 @@
-// Your own container gets urd's properties the way a graph gets Boost.Graph's: declare them in
-// urd::container_traits, offer the operations they require (urd/interface.hpp), and let urd::verify check both.
-// A container with the standard's names offers them as it is; one with its own names, such as a library's,
-// gets an adapter: free functions of the standard names in its namespace.
+// Preparing a container to represent Stores, the way a graph models Boost.Graph's concepts: declare its
+// properties in urd::container_traits, offer the operations they require (urd/interface.hpp), and let
+// urd::verify check both. A container with the standard's names offers them as it is; one with its own names,
+// such as a library's, gets an adapter: free functions of the standard names in its namespace. Downstream code
+// never uses it directly: it asks a Store for properties, and the registry picks a representation.
 
-#include "urd/concepts.hpp"
-#include "urd/operations.hpp"
 #include "urd/verify.hpp"
 
 #include <cstddef>
@@ -43,19 +42,6 @@ struct urd::container_traits<lib::Journal> : urd::properties_of<urd::stable_refs
 {
 };
 
-namespace
-{
-
-/// Appends and keeps a reference, which stays valid only because R says so.
-template<typename R>
-    requires urd::StableRefs<R>
-const int& append(R& range, int entry)
-{
-    return urd::emplace_back(range, entry);
-}
-
-}  // namespace
-
 int main()
 {
     // The claim is checked, not trusted.
@@ -65,10 +51,4 @@ int main()
         return 1;
     }
     std::cout << "Journal offers what stable_refs and growable require and keeps them through 2000 random operations\n";
-
-    auto journal = lib::Journal();
-    const int& first = append(journal, 7);
-    for (int entry = 0; entry < 10000; ++entry)
-        append(journal, entry);
-    std::cout << "first entry, after 10000 more: " << first << '\n';
 }
