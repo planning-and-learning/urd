@@ -5,6 +5,7 @@
 
 #include "urd/store.hpp"
 #include "allocations.hpp"
+#include "names.hpp"
 #include "verify.hpp"
 
 #include <boost/container/flat_map.hpp>
@@ -119,7 +120,7 @@ template<typename R>
 class Properties : public testing::Test
 {
 };
-TYPED_TEST_SUITE(Properties, Containers);
+TYPED_TEST_SUITE(Properties, Containers, urd::test::Names);
 
 template<typename R, typename Tag>
 constexpr bool declares = urd::has<urd::container_traits<R>, Tag>;

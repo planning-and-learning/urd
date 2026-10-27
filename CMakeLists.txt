@@ -41,6 +41,7 @@ if(URD_BUILD_EXAMPLES)
     foreach(example sets sequences maps rows)
         add_executable(example_${example} examples/${example}.cpp)
         target_link_libraries(example_${example} PRIVATE urd::urd Threads::Threads)
+        target_include_directories(example_${example} PRIVATE "${PROJECT_SOURCE_DIR}/tests")
     endforeach()
 endif()
 

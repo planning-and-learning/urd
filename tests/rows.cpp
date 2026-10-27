@@ -3,6 +3,7 @@
 // allocates nothing when refilled. One typed test per behavior, for every nested Store in the list.
 
 #include "allocations.hpp"
+#include "names.hpp"
 #include "urd/store.hpp"
 
 #include <gtest/gtest.h>
@@ -38,7 +39,7 @@ template<typename S>
 class Rows : public testing::Test
 {
 };
-TYPED_TEST_SUITE(Rows, Nested);
+TYPED_TEST_SUITE(Rows, Nested, urd::test::Names);
 
 /// The contents as std::vectors, level by level.
 template<typename R>
