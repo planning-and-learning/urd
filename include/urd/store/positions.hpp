@@ -16,29 +16,29 @@ class positions
     using types = store_types<R, S>;
     using size_type = typename types::size_type;
     using difference_type = typename types::difference_type;
-    using reference = typename types::reference;
-    using const_reference = typename types::const_reference;
+    using reference_type = typename iterator_types<R, S>::reference;
+    using const_reference_type = typename iterator_types<R, S>::const_reference;
     static constexpr bool writable = types::writable;
 
 public:
-    [[nodiscard]] const_reference operator[](size_type pos) const
+    [[nodiscard]] const_reference_type operator[](size_type pos) const
     {
         assert(pos < self().size());
         return self().begin()[static_cast<difference_type>(pos)];
     }
-    [[nodiscard]] reference operator[](size_type pos)
+    [[nodiscard]] reference_type operator[](size_type pos)
         requires writable
     {
         assert(pos < self().size());
         return self().begin()[static_cast<difference_type>(pos)];
     }
-    [[nodiscard]] const_reference at(size_type pos) const
+    [[nodiscard]] const_reference_type at(size_type pos) const
     {
         if (pos >= self().size())
             throw std::out_of_range("urd::Store::at: position out of range");
         return (*this)[pos];
     }
-    [[nodiscard]] reference at(size_type pos)
+    [[nodiscard]] reference_type at(size_type pos)
         requires writable
     {
         if (pos >= self().size())
@@ -46,23 +46,23 @@ public:
         return (*this)[pos];
     }
     /// The first element; a nonempty Store always has one, any other needs one.
-    [[nodiscard]] const_reference front() const
+    [[nodiscard]] const_reference_type front() const
     {
         assert(!self().empty());
         return *self().begin();
     }
-    [[nodiscard]] reference front()
+    [[nodiscard]] reference_type front()
         requires writable
     {
         assert(!self().empty());
         return *self().begin();
     }
-    [[nodiscard]] const_reference back() const
+    [[nodiscard]] const_reference_type back() const
     {
         assert(!self().empty());
         return *std::prev(self().end());
     }
-    [[nodiscard]] reference back()
+    [[nodiscard]] reference_type back()
         requires writable
     {
         assert(!self().empty());

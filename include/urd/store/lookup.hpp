@@ -12,7 +12,8 @@ class lookup
     using types = store_types<R, S>;
 
 public:
-    [[nodiscard]] typename types::const_iterator find(const typename types::lookup_type& element) const { return representation().find(element); }
+    [[nodiscard]] typename iterator_types<R, S>::const_iterator find(const typename types::lookup_type& element) const
+    { return representation().find(element); }
     [[nodiscard]] typename types::size_type count(const typename types::lookup_type& element) const { return representation().count(element); }
     [[nodiscard]] bool contains(const typename types::lookup_type& element) const { return representation().contains(element); }
 

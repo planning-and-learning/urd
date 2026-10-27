@@ -5,6 +5,7 @@
 #include "urd/registry.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/growth.hpp"
+#include "urd/store/iteration.hpp"
 #include "urd/store/lookup.hpp"
 #include "urd/store/ordered_lookup.hpp"
 #include "urd/store/positions.hpp"
@@ -34,10 +35,12 @@ namespace detail
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
 /// allow (interface.hpp), and container_traits reports S's properties, not the representation's, so code cannot
-/// come to rely on what it never asked for. The Store itself holds what every Store has; its facets
-/// (include/urd/store/) hold what properties switch on.
+/// come to rely on what it never asked for. The Store itself holds what every Store has (construction, size,
+/// swap, comparison); its facets (include/urd/store/) hold what its kind and properties switch on, iteration
+/// included.
 template<typename R, typename S>
 class Store :
+    public facet_if<S::iterable, facet::iteration<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
@@ -57,10 +60,8 @@ public:
     using lookup_type = typename types::lookup_type;
     using size_type = typename types::size_type;
     using difference_type = typename types::difference_type;
-    using const_reference = typename types::const_reference;
-    using reference = typename types::reference;
-    using const_iterator = typename types::const_iterator;
-    using iterator = typename types::iterator;
+    // iterator, const_iterator, reference and const_reference come with the iteration facet: only an iterable
+    // Store has them.
     static constexpr workload work = S::work;
 
     Store()
@@ -85,18 +86,6 @@ public:
         return Store(std::make_move_iterator(elements.begin()), std::make_move_iterator(elements.end()));
     }
 
-    [[nodiscard]] const_iterator begin() const { return m_representation.begin(); }
-    [[nodiscard]] const_iterator end() const { return m_representation.end(); }
-    // Mutable iteration stays here, not in a facet: it overloads the const begin() and end() above, and a
-    // base's overload would be hidden by them.
-    [[nodiscard]] iterator begin()
-        requires types::writable
-    { return m_representation.begin(); }
-    [[nodiscard]] iterator end()
-        requires types::writable
-    { return m_representation.end(); }
-    [[nodiscard]] const_iterator cbegin() const { return begin(); }
-    [[nodiscard]] const_iterator cend() const { return end(); }
     [[nodiscard]] size_type size() const { return std::ranges::size(m_representation); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 
@@ -115,8 +104,9 @@ public:
     }
     friend void swap(Store& lhs, Store& rhs) noexcept { lhs.swap(rhs); }
 
+    /// Equal contents: the representation's ==, else element by element, where the Store is iterable.
     [[nodiscard]] friend bool operator==(const Store& lhs, const Store& rhs)
-        requires std::equality_comparable<value_type>
+        requires(std::equality_comparable<value_type> && (std::equality_comparable<representation> || S::iterable))
     {
         if constexpr (std::equality_comparable<representation>)
             return lhs.m_representation == rhs.m_representation;

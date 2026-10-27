@@ -17,19 +17,19 @@ class removal
     using types = store_types<R, S>;
     using value_type = typename types::value_type;
     using size_type = typename types::size_type;
-    using iterator = typename types::iterator;
-    using const_iterator = typename types::const_iterator;
+    using iterator_type = typename iterator_types<R, S>::iterator;
+    using const_iterator_type = typename iterator_types<R, S>::const_iterator;
     static constexpr bool keyed = types::keyed;
 
 public:
-    iterator erase(const_iterator pos)
+    iterator_type erase(const_iterator_type pos)
     {
-        // Two conversions, one at a time: the representation's result (perhaps a proxy) to its iterator, that
+        // Two conversions, one at a time: the representation's result (perhaps a proxy) to its iterator_type, that
         // to the Store's.
         const std::ranges::iterator_t<R> next = representation().erase(pos);
         return next;
     }
-    iterator erase(const_iterator first, const_iterator last) { return representation().erase(first, last); }
+    iterator_type erase(const_iterator_type first, const_iterator_type last) { return representation().erase(first, last); }
     /// Every element equal to `element` (in a map, with that key); how many there were.
     size_type erase(const typename types::lookup_type& element)
         requires keyed

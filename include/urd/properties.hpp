@@ -146,6 +146,9 @@ struct spec : Properties
     static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V>;
     static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
     static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V>;
+    /// Whether its elements can be visited in turn: every kind so far. A queue, reached by its front, or a filter,
+    /// which only answers membership, would not be.
+    static constexpr bool iterable = is_set || is_map || is_sequence;
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;

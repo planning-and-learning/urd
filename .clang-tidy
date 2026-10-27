@@ -92,7 +92,7 @@ CheckOptions:
   performance-unnecessary-copy-initialization.AllowedTypes: 'SharedObjectPoolPtr'
   # Iterators are passed by value, as the standard library passes them; Boost's vector iterator declares its
   # copy constructor, which makes the check take a pointer's copy for a costly one.
-  performance-unnecessary-value-param.AllowedTypes: 'iterator$'
+  performance-unnecessary-value-param.AllowedTypes: 'iterator(_type)?$'
   # URD_REPR_ASSUME (repr/core/config.hpp) must expand at its call site, like assert: the analysis
   # of optionals sees a condition only in the function that states it, never through a call.
   cppcoreguidelines-macro-usage.AllowedRegexp: '^URD_REPR_ASSUME$'

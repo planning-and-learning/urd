@@ -17,7 +17,7 @@ class values_by_key
     using types = store_types<R, S>;
     using key_type = typename types::key_type;
     using mapped_type = typename types::mapped_type;
-    using iterator = typename types::iterator;
+    using iterator_type = typename iterator_types<R, S>::iterator;
 
 public:
     [[nodiscard]] const mapped_type& at(const key_type& key) const { return representation().at(key); }
@@ -30,12 +30,12 @@ public:
     { return representation().try_emplace(key).first->second; }
     /// Inserts a value built from `args` unless `key` has one.
     template<typename... Args>
-    std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
+    std::pair<iterator_type, bool> try_emplace(const key_type& key, Args&&... args)
         requires has<S, growable>
     { return representation().try_emplace(key, std::forward<Args>(args)...); }
     /// Sets the value for `key`, inserting it where there is none.
     template<typename M>
-    std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& mapped)
+    std::pair<iterator_type, bool> insert_or_assign(const key_type& key, M&& mapped)
         requires has<S, growable>
     { return representation().insert_or_assign(key, std::forward<M>(mapped)); }
 

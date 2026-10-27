@@ -14,8 +14,8 @@ namespace urd::detail
 // the members those properties allow, inherited where the Store's properties switch them on. Each member name lives in one
 // facet only, so that calls are never ambiguous between two of them.
 
-/// The types a Store and its facets share. They come from the representation R and the spec S, not from the
-/// Store, which is still incomplete while its facets are built.
+/// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
+/// which is still incomplete while its facets are built.
 template<typename R, typename S>
 struct store_types
 {
@@ -24,7 +24,7 @@ struct store_types
     /// Elements change in place: nothing depends on their values, and the Store may change.
     static constexpr bool writable = !keyed && !has<S, monotone>;
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = has<S, sorted> || S::is_sequence;
+    static constexpr bool ordered = S::iterable && (has<S, sorted> || S::is_sequence);
 
     using value_type = typename S::element_type;
     using key_type = typename S::key_type;
@@ -33,11 +33,18 @@ struct store_types
     using lookup_type = std::conditional_t<S::is_map, key_type, value_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
+};
+
+/// The types of an iterable Store's iterators and references, which come from the representation's. Only the
+/// facets of iterable Stores form them, so a representation without iterators never has to name any.
+template<typename R, typename S>
+struct iterator_types
+{
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
     using const_reference = std::ranges::range_reference_t<const R>;
-    using reference = std::conditional_t<writable, std::ranges::range_reference_t<R>, const_reference>;
+    using reference = std::conditional_t<store_types<R, S>::writable, std::ranges::range_reference_t<R>, const_reference>;
     using const_iterator = std::ranges::iterator_t<const R>;
-    using iterator = std::conditional_t<writable, std::ranges::iterator_t<R>, const_iterator>;
+    using iterator = std::conditional_t<store_types<R, S>::writable, std::ranges::iterator_t<R>, const_iterator>;
 };
 
 /// How facets reach the Store's representation, which is private to the Store.
