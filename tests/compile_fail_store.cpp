@@ -102,6 +102,14 @@ int main()
 #elif URD_CASE == 28  // order_by orders a sorted Store or a priority queue; an unordered set has no order to change
     using S = Store<key<std::pair<int, int>>, urd::order_by<&std::pair<int, int>::first>>;
     (void) S();
+#elif URD_CASE == 30  // a map ordered by its values hands out no value to change: writing through it would break the order
+    using S = Store<key<int>, value<int>, urd::sorted, urd::order_by<[](int, int value) { return value; }>>;
+    auto ordered = S();
+    ordered.insert_or_assign(1, 2);
+    ordered.at(1) = 3;
+#elif URD_CASE == 31  // a set has no values to order by
+    using S = Store<key<int>, urd::sorted, urd::order_by<[](int key, int value) { return key + value; }>>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

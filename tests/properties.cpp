@@ -98,6 +98,9 @@ using urd::test::allocations;
 using urd::test::Counted;
 using urd::test::deallocations;
 
+/// Orders a map by its values, ties by key: what order_by<P> with P(key, value) asks for.
+constexpr auto by_value = [](int /*key*/, int value) { return value; };
+
 using Containers = testing::Types<
     // The representations, as they are.
     std::vector<int>,
@@ -192,6 +195,9 @@ using Containers = testing::Types<
     // Change logs.
     urd::repr::ChangeLogged<boost::unordered_flat_set<int, std::hash<int>>>,
     Store<key<int>, urd::change_log>,
+    // Maps ordered by their values: entries by P(key, value), found by key.
+    urd::repr::FlatEntryMap<int, int, urd::EntryLess<int, int, by_value>>,
+    Store<key<int>, value<int>, urd::sorted, urd::order_by<by_value>>,
     // A sorted map that keeps erased nodes and their values for reuse.
     urd::repr::RecyclingMap<int, int>,
     urd::repr::RecyclingHashMap<int, int>,
@@ -296,14 +302,20 @@ TYPED_TEST(Properties, Sorted)
         if constexpr (growable<TypeParam>)
             for (const int element : descending(300))
                 add(range, element);
-        EXPECT_TRUE(std::ranges::is_sorted(range, {}, key_of));
-        for (const int element : { -1, 0, 50, 299, 300 })
+        if constexpr (urd::orders_by_value<TypeParam>)
+            // In the order the request gave, which reads the values; there are no bounds by key.
+            EXPECT_TRUE(std::ranges::is_sorted(range, urd::detail::value_order_t<TypeParam> {}));
+        else
         {
-            const auto [first, last] = std::as_const(range).equal_range(element);
-            EXPECT_EQ(first, std::as_const(range).lower_bound(element));
-            EXPECT_EQ(last, std::as_const(range).upper_bound(element));
-            EXPECT_EQ(first, std::ranges::lower_bound(std::as_const(range), element, {}, key_of));
-            EXPECT_EQ(last, std::ranges::upper_bound(std::as_const(range), element, {}, key_of));
+            EXPECT_TRUE(std::ranges::is_sorted(range, {}, key_of));
+            for (const int element : { -1, 0, 50, 299, 300 })
+            {
+                const auto [first, last] = std::as_const(range).equal_range(element);
+                EXPECT_EQ(first, std::as_const(range).lower_bound(element));
+                EXPECT_EQ(last, std::as_const(range).upper_bound(element));
+                EXPECT_EQ(first, std::ranges::lower_bound(std::as_const(range), element, {}, key_of));
+                EXPECT_EQ(last, std::ranges::upper_bound(std::as_const(range), element, {}, key_of));
+            }
         }
     }
 }

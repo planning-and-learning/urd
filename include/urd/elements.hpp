@@ -50,8 +50,34 @@ struct ProjectedLess
     }
 };
 
+/// What order_by<P> means for a map whose P takes the key and the value: entries ordered by P(key, value) under
+/// urd::Less, ties by the key, which identifies an entry. Compares any pair-like entries (std::pair<const K, V>, or
+/// std::pair<K, V> as a flat representation keeps them).
+template<typename K, typename V, auto P>
+struct EntryLess
+{
+    static constexpr auto projection = P;
+
+    template<typename Entry>
+    constexpr bool operator()(const Entry& lhs, const Entry& rhs) const
+    {
+        using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const K&, const V&>>;
+        // Projected twice rather than held, as in ProjectedLess.
+        if (Less<Projected> {}(std::invoke(P, lhs.first, lhs.second), std::invoke(P, rhs.first, rhs.second)))
+            return true;
+        if (Less<Projected> {}(std::invoke(P, rhs.first, rhs.second), std::invoke(P, lhs.first, lhs.second)))
+            return false;
+        return Less<K> {}(lhs.first, rhs.first);
+    }
+};
+
 namespace detail
 {
+
+template<typename C>
+inline constexpr bool is_entry_less = false;
+template<typename K, typename V, auto P>
+inline constexpr bool is_entry_less<EntryLess<K, V, P>> = true;
 
 template<typename C, typename T>
 inline constexpr bool is_projected_less = false;

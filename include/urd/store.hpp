@@ -61,7 +61,7 @@ class Store :
     public facet_if<std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable), facet::equality<Store<R, S>, R, S>>,
     public facet_if<compares_in_order<R, S>(), facet::ordering<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::keyed && S::iterable, facet::lookup<Store<R, S>, R, S>>,
-    public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
+    public facet_if<has<S, sorted> && !is_entry_less<typename S::order_type>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
     public facet_if<has<S, positional>, facet::positions<Store<R, S>, R, S>>,
     public facet_if<has<S, contiguous>, facet::contiguous_data<Store<R, S>, R, S>>,
@@ -163,6 +163,10 @@ struct resolve
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
+
+/// A Store is ordered by its values where its representation is.
+template<typename R, typename S>
+inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>

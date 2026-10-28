@@ -143,6 +143,7 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<key<I>, partition>` | `DisjointSets` (union-find) |
 | `Store<value<T>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
 | `Store<value<T>, by_priority, order_by<&T::cost>>` | `Heap` by the cost; `sorted` Stores take `order_by` too |
+| `Store<key<K>, value<V>, sorted, order_by<[](const K&, const V&) { … }>>` | `FlatEntryMap`: found by key, in the order the values give |
 | `Store<value<T>, by_priority, handles>` | `AddressableHeap`: `push` gives a handle; `update(h, e)`, `erase(h)` |
 | `Store<value<I>, by_priority, monotone_priority>` | `BucketQueue` (a bucket per integral priority) |
 | `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
@@ -183,7 +184,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | identity | `positional` | elements identified by position (sequences, and sets with positions) |
 | workload | `small` | a few elements: picks compact containers, never changes a guarantee |
 | priority | `monotone_priority` | a priority queue never pushed below the last popped: integral priorities go to buckets |
-| order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map): a member pointer or a stateless lambda; ties by the element's own order |
+| order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map), or a map ordered by `P(key, value)`: a member pointer or a stateless lambda; ties by the element's (the key's) own order. Ordered by values, a map's values change only through `update`, `merge`, `insert_or_assign` |
 
 The kind of a Store follows from its arguments: `key<K>` is a set, `key<K>, value<V>` a map, `value<V>` a sequence;
 an access tag makes a value Store a queue, `handles` a pool, `partition` a key Store a partition.
@@ -207,6 +208,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `IndexMap` (dense map) | O(1)\* | O(1) | O(1) | O(U); O(1) with generations | O(U), in key order | a slot per index (+ a 1-byte lock, thread-safe) |
 | `IndexedSet` | O(1)\*~ | O(1)~ | O(n) (keeps order) | O(capacity) | O(n), contiguous | n elements + a table of positions |
 | `OrderedMap` | as its key set | as its key set | O(n) (keeps order) | as its key set | O(n); keys and values as spans | key set + n values |
+| `FlatEntryMap` (ordered by values) | O(n) (into place) | O(n) scan | O(n) | O(n) | O(n), in the given order | n entries; for few |
 | `PostingMap` (multi) | O(1)\*~ | O(1)~; `values(k)` a span | O(r) per value, O(1)~ per key | O(capacity + n) | O(n) | one vector of values per key |
 | `CsrMultiMap` (frozen) | build O(n + U) | O(1); `values(k)` a span | — | — | O(n + U), in key order | n values + U + 1 offsets |
 | `ScopedMap` | O(1)\*~ | O(1)~ | O(1)~ | O(capacity) | O(capacity) | + a log entry per change in a scope; `pop_scope` O(changes) |

@@ -88,19 +88,40 @@ inline constexpr bool is_order_by = false;
 template<auto P>
 inline constexpr bool is_order_by<order_by<P>> = true;
 
-/// The comparator of the first order_by<P> among Ps for elements T, else void.
-template<typename T, typename... Ps>
+/// The comparator order_by<P> stands for: with one argument, P orders elements T (a map's keys); with two, a map's
+/// entries by key K and value V.
+template<typename T, auto P>
+consteval auto projected_order()
+{
+    static_assert(std::invocable<decltype(P), const T&>, "urd::Store: order_by<P> takes P(element) (a map's P(key)), or for a map P(key, value); P is neither");
+    return std::type_identity<ProjectedLess<T, P>> {};
+}
+template<typename T, typename K, typename V, auto P>
+consteval auto order_from()
+{
+    if constexpr (!std::is_void_v<K> && !std::is_void_v<V>)
+    {
+        if constexpr (std::invocable<decltype(P), const K&, const V&>)
+            return std::type_identity<EntryLess<K, V, P>> {};
+        else
+            return projected_order<T, P>();
+    }
+    else
+        return projected_order<T, P>();
+}
+/// The comparator of the first order_by<P> among Ps, else void.
+template<typename T, typename K, typename V, typename... Ps>
 struct order_of
 {
     using type = void;
 };
-template<typename T, auto P, typename... Ps>
-struct order_of<T, order_by<P>, Ps...>
+template<typename T, typename K, typename V, auto P, typename... Ps>
+struct order_of<T, K, V, order_by<P>, Ps...>
 {
-    using type = ProjectedLess<T, P>;
+    using type = typename decltype(order_from<T, K, V, P>())::type;
 };
-template<typename T, typename P, typename... Ps>
-struct order_of<T, P, Ps...> : order_of<T, Ps...>
+template<typename T, typename K, typename V, typename P, typename... Ps>
+struct order_of<T, K, V, P, Ps...> : order_of<T, K, V, Ps...>
 {
 };
 
@@ -292,7 +313,7 @@ struct to_spec
     static_assert(!ordered_by || !keyed || stated.has(tag::multi) || orderable<ordered_type>,
                   "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
                   "(else two keys with equal P(key) would be one)");
-    using order_type = typename order_of<ordered_type, Ps...>::type;
+    using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
 
     static constexpr listed_tags listed = non_roots(implied(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));

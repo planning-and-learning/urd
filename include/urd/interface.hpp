@@ -47,7 +47,8 @@ namespace urd
 // |                                  | for set rows, insert(h, added, removed) -> handle, contains(h, e)  |
 // | bidirectional (a map)            | keys(v): a range of the keys that map to v                         |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
-// |                                  | at(k) -> a mutable value                                           |
+// |                                  | at(k) -> a mutable value; ordered by its values (orders_by_value), |
+// |                                  | update(k, f) in place of the mutable value; no bounds by key       |
 //
 // "Kept by value" is the standard's associative containers (set, flat_multiset, map, multimap), which place an
 // element by its value or key; a sequence (vector) keeps it where it was put.
@@ -103,6 +104,15 @@ concept unique_map_insertion = requires(R& range, const typename R::key_type& ke
     { range.at(key) } -> std::same_as<typename R::mapped_type&>;
     { range.try_emplace(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
     { range.insert_or_assign(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
+};
+
+/// Changing values by key in a map ordered by its values: no reference to a value, only operations that put the entry
+/// back in order.
+template<typename R>
+concept ordered_value_insertion = requires(R& range, const typename R::key_type& key, const typename R::mapped_type& mapped) {
+    { range.try_emplace(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
+    { range.insert_or_assign(key, mapped) } -> std::same_as<std::pair<std::ranges::iterator_t<R>, bool>>;
+    range.update(key, [](typename R::mapped_type&, bool) {});
 };
 
 template<typename R, typename E>
@@ -238,10 +248,12 @@ namespace detail
 // What each capability requires, as the Store's facets group what each offers.
 
 template<typename R, typename Traits, typename L>
-concept offers_lookup = (!by_value<Traits> || lookup<R, L>) && (!has<Traits, sorted> || ordered_lookup<R, L>);
+concept offers_lookup = (!by_value<Traits> || lookup<R, L>) && (!has<Traits, sorted> || orders_by_value<R> || ordered_lookup<R, L>);
 
 template<typename R, typename Traits>
-concept offers_values_by_key = !map_container<R> || !has<Traits, unique> || (unique_map_lookup<R> && (!has<Traits, growable> || unique_map_insertion<R>) );
+concept offers_values_by_key =
+    !map_container<R> || !has<Traits, unique>
+    || (unique_map_lookup<R> && (!has<Traits, growable> || (orders_by_value<R> ? ordered_value_insertion<R> : unique_map_insertion<R>) ));
 
 template<typename R, typename Traits, typename E>
 concept offers_growth = !has<Traits, growable> || (by_value<Traits> ? value_insertion<R, E, has<Traits, unique>> : sequence_insertion<R, E>);

@@ -338,6 +338,16 @@ works over any node-based map (hashed too), and the bucket queue's reliance on i
 probing nearby requests, left until a site needs them (none of the surveyed libraries does): a dense concurrent set,
 an insertion-ordered concurrent map, a concurrent map whose values retain.
 
+## M11: maps ordered by their values
+
+Identity and order can differ: `order_by<P>` with `P(key, value)` orders a map's entries by their values while keys
+identify them (one-argument projections stay as they were). A value then moves its entry, so the Store changes values
+only through `update`, `merge` and `insert_or_assign` (no mutable `at` or `operator[]`, no bounds by key);
+`orders_by_value<R>` marks such representations, and the interface asks them for `update` instead. `repr::FlatEntryMap`
+serves it (one sorted vector, found by a scan; for few entries, as `small` says). Covers tyr's
+`NumericIntervalAnnotations`. Left out until a large site needs it: a hash index beside an ordered one
+(Boost.MultiIndex) for many entries.
+
 ## Order and size
 
 | Milestone | Coverage | Size |

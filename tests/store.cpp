@@ -1359,3 +1359,66 @@ TEST(Recycling, UnorderedMapsRecycleToo)
     EXPECT_EQ(groups.at(7).size(), 50U);
     EXPECT_FALSE(groups.at(7).contains(0));
 }
+
+// Entries identified by one thing and ordered by another: offers per interval, kept cheapest first. merge inserts or
+// keeps the cheaper; every change puts the entry back in order; equal costs go by the interval.
+namespace
+{
+struct Span
+{
+    int lower;
+    int upper;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Span::lower, &Span::upper> {}; }
+};
+struct Offer
+{
+    double cost;
+    int source;
+    friend bool operator==(const Offer&, const Offer&) = default;
+};
+constexpr auto cheapest_first = [](const Span& span, const Offer& offer) { return std::tuple(offer.cost, span.lower, span.upper); };
+using Offers = Store<key<Span>, value<Offer>, urd::sorted, urd::small, urd::order_by<cheapest_first>>;
+template<typename S>
+concept changes_values_by_reference = requires(S offers, Span span) { offers.at(span).cost = 0; } || requires(S offers, Span span) { offers[span]; };
+}  // namespace
+
+TEST(OrderByValue, KeepsEntriesInTheOrderTheirValuesGive)
+{
+    static_assert(std::same_as<Offers::representation, urd::repr::FlatEntryMap<Span, Offer, urd::EntryLess<Span, Offer, cheapest_first>>>);
+    static_assert(!changes_values_by_reference<Offers> && changes_values_by_reference<Store<key<Span>, value<Offer>, urd::sorted>>);
+    const auto cheaper = [](const Offer& held, const Offer& next) { return next.cost < held.cost ? next : held; };
+    auto offers = Offers();
+    EXPECT_TRUE(offers.merge(Span { 0, 4 }, Offer { 5.0, 1 }, cheaper));
+    EXPECT_TRUE(offers.merge(Span { 2, 3 }, Offer { 2.0, 2 }, cheaper));
+    EXPECT_TRUE(offers.merge(Span { 1, 1 }, Offer { 2.0, 3 }, cheaper));
+    EXPECT_FALSE(offers.merge(Span { 0, 4 }, Offer { 7.0, 4 }, cheaper));  // not cheaper: unchanged
+    const auto sources = [&offers]
+    {
+        auto order = std::vector<int>();
+        for (const auto& [span, offer] : offers)
+            order.push_back(offer.source);
+        return order;
+    };
+    EXPECT_EQ(sources(), (std::vector<int> { 3, 2, 1 }));                 // equal costs by span: {1, 1} before {2, 3}
+    EXPECT_TRUE(offers.merge(Span { 0, 4 }, Offer { 1.0, 5 }, cheaper));  // cheaper: moves to the front
+    EXPECT_EQ(sources(), (std::vector<int> { 5, 3, 2 }));
+    offers.update(Span { 1, 1 }, [](Offer& offer, bool) { offer.cost = 9.0; });
+    EXPECT_EQ(sources(), (std::vector<int> { 5, 2, 3 }));
+    EXPECT_EQ(std::prev(offers.end())->first.lower, 1);  // the most expensive last
+    EXPECT_EQ(offers.at(Span { 2, 3 }).source, 2);       // found by its span
+    EXPECT_EQ(offers.read(Span { 7, 7 }, [](const Offer& offer) { return offer.source; }, -1), -1);
+    offers.insert_or_assign(Span { 2, 3 }, Offer { 0.5, 6 });
+    EXPECT_EQ(sources(), (std::vector<int> { 6, 5, 3 }));
+}
+
+// Entries whose projections tie come in key order, whatever order they were inserted in.
+TEST(OrderByValue, TiesGoByKey)
+{
+    auto ranked = Store<key<int>, value<int>, urd::sorted, urd::order_by<[](int, int score) { return score; }>>();
+    for (const int key : { 5, 1, 3, 4, 2 })
+        ranked.insert_or_assign(key, key % 2);
+    auto keys = std::vector<int>();
+    for (const auto& [key, score] : ranked)
+        keys.push_back(key);
+    EXPECT_EQ(keys, (std::vector<int> { 2, 4, 1, 3, 5 }));
+}

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -287,6 +288,30 @@ static_assert(std::same_as<RowAnnotations::representation, urd::repr::IndexMap<R
 static_assert(std::same_as<RelationAnnotations::representation, urd::repr::IndexMap<Predicate, RowAnnotations, false>>);
 using SharedRowAnnotations = Store<key<Row>, value<double>, urd::dense, urd::constant_clear, urd::concurrent>;
 static_assert(std::same_as<SharedRowAnnotations::representation, urd::repr::IndexMap<Row, double, true, true>>);
+
+// tyr's NumericIntervalAnnotations: per (relation, row) a few annotations, one per interval, kept cheapest first by
+// (cost, lower, upper); insert-if-cheaper is merge, find(interval) a lookup by key, find(binding) the last entry; the
+// rows cleared by generation, a lock per slot with ThreadSafe. Identity (the interval) and order (the cost) differ:
+// order_by<P> with P(key, value).
+struct ClosedInterval
+{
+    double lower = 0;
+    double upper = 0;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&ClosedInterval::lower, &ClosedInterval::upper> {}; }
+};
+struct IntervalAnnotation
+{
+    double cost = 0;
+    std::uint32_t witness = 0;
+};
+constexpr auto cheapest_interval_first = [](const ClosedInterval& interval, const IntervalAnnotation& annotation)
+{ return std::tuple(annotation.cost, interval.lower, interval.upper); };
+using IntervalAnnotations = Store<key<ClosedInterval>, value<IntervalAnnotation>, urd::sorted, urd::small, urd::order_by<cheapest_interval_first>>;
+using NumericIntervalAnnotations = Store<key<Predicate>, value<Store<key<Row>, value<IntervalAnnotations>, urd::dense, urd::constant_clear>>, urd::dense>;
+static_assert(
+    std::same_as<IntervalAnnotations::representation,
+                 urd::repr::FlatEntryMap<ClosedInterval, IntervalAnnotation, urd::EntryLess<ClosedInterval, IntervalAnnotation, cheapest_interval_first>>>);
+static_assert(std::same_as<NumericIntervalAnnotations::representation::mapped_type::representation, urd::repr::IndexMap<Row, IntervalAnnotations, true>>);
 
 // tyr's DeduplicatedAdjacencyMatrix (specific to k-partite graphs, so no urd container of its own) as a composition
 // of general pools: each distinct partition bitset once (a pool of dense-set rows, read back as a BitsetSpan by

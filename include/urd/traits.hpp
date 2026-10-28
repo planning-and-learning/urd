@@ -690,6 +690,12 @@ struct held<R>
 template<typename R>
 inline constexpr detail::property_set relies_on = detail::property_set::roots();
 
+/// Whether map representation R orders its entries by their values too (order_by<P> with P(key, value)): its values
+/// then change only through operations that put the entry back in order (update, insert_or_assign), never through a
+/// reference. False by default.
+template<typename R>
+inline constexpr bool orders_by_value = false;
+
 template<typename R>
 struct element_traits : with_t<container_traits<typename detail::held<R>::type>, reclaims>
 {

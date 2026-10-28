@@ -5,6 +5,7 @@
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/entry_ordered.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/grouped.hpp"
@@ -290,6 +291,10 @@ template<typename K, typename V, typename C>
 using RecyclingMapBy = repr::Recycling<std::map<K, V, C>>;
 using ordered_element_preference = ordered_element_candidates<TreeSetBy, FlatMultiSetBy, FlatSetBy, BucketQueueBy, HeapBy, AddressableHeapBy>;
 using ordered_map_preference = ordered_map_candidates<TreeMapBy, TreeMultiMapBy, FlatMultiMapBy, FlatMapBy, RecyclingMapBy>;
+/// Maps ordered by their values too (order_by<P> with P(key, value)).
+template<typename K, typename V, typename C>
+using FlatEntryMapBy = repr::FlatEntryMap<K, V, C>;
+using value_ordered_map_preference = ordered_map_candidates<FlatEntryMapBy>;
 
 template<typename... Lists>
 struct join
@@ -382,11 +387,16 @@ struct choose_in<S, type_list<Rs...>> : first_serving<S, Rs...>
                   "the pool needs a new representation for it");
 };
 
-/// The candidates for spec S: the comparator-taking ones where it gives order_by, else all.
+/// The candidates for spec S: the comparator-taking ones where it gives order_by (those ordered by values too where
+/// its P reads them), else all.
 template<typename S>
-using candidates_for = std::conditional_t<std::is_void_v<typename S::order_type>,
-                                          std::conditional_t<S::is_map, instantiated<S, map_preference>, instantiated<S, element_preference>>,
-                                          std::conditional_t<S::is_map, instantiated<S, ordered_map_preference>, instantiated<S, ordered_element_preference>>>;
+using candidates_for = std::conditional_t<
+    std::is_void_v<typename S::order_type>,
+    std::conditional_t<S::is_map, instantiated<S, map_preference>, instantiated<S, element_preference>>,
+    std::conditional_t<
+        S::is_map,
+        std::conditional_t<is_entry_less<typename S::order_type>, instantiated<S, value_ordered_map_preference>, instantiated<S, ordered_map_preference>>,
+        instantiated<S, ordered_element_preference>>>;
 
 /// The representation for spec S: the first registered container that serves it, in the order for S.
 template<typename S>

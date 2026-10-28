@@ -114,5 +114,5 @@ if(URD_BUILD_TESTS)
         endforeach()
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 29)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 31)
 endif()
