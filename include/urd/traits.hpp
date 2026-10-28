@@ -407,16 +407,12 @@ struct any_priority
     using root = any_priority;
     static constexpr tag value = tag::any_priority;
 };
-/// A priority queue whose pushes are never below the last popped (Dijkstra with non-negative costs): with integral
-/// priorities, a bucket queue serves it.
+/// A priority queue whose pushes are never below the last popped (shortest paths with non-negative lengths, event
+/// simulation): with integral priorities, a bucket queue serves it.
 struct monotone_priority : any_priority
 {
     static constexpr tag value = tag::monotone_priority;
 };
-
-/// Whether representation R relies on monotone_priority, so that it serves only requests that state it.
-template<typename R>
-inline constexpr bool needs_monotone_priority = false;
 
 namespace detail
 {
@@ -577,6 +573,15 @@ constexpr bool satisfies(const property_set& have, const property_set& want)
     return true;
 }
 
+/// Whether a request that states `stated` makes every promise in `needed`, in the categories only a request states.
+constexpr bool promises(const property_set& stated, const property_set& needed)
+{
+    for (const auto root : requested_roots)
+        if (!at_least(stated.in(root), needed.in(root)))
+            return false;
+    return true;
+}
+
 template<typename P>
 concept a_tag = requires {
     typename P::root;
@@ -678,6 +683,12 @@ struct held<R>
 };
 
 }  // namespace detail
+
+/// The promises representation R relies on, among those only a request makes (monotone_priority, small, …): it
+/// serves only requests that make them. A bucket queue pops in order whatever is pushed, but is fast only where pushes
+/// never go below the last popped. None by default.
+template<typename R>
+inline constexpr detail::property_set relies_on = detail::property_set::roots();
 
 template<typename R>
 struct element_traits : with_t<container_traits<typename detail::held<R>::type>, reclaims>

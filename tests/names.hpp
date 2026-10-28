@@ -232,6 +232,12 @@ struct name<urd::repr::RecyclingMap<K, V>>
     static constexpr std::string_view id = "recycling_map";
     static constexpr std::string_view value = "recycling map (std::map that keeps erased nodes and their values for reuse)";
 };
+template<typename K, typename V>
+struct name<urd::repr::RecyclingHashMap<K, V>>
+{
+    static constexpr std::string_view id = "recycling_hash_map";
+    static constexpr std::string_view value = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
+};
 template<typename T>
 struct name<urd::repr::ParallelHashSet<T>>
 {

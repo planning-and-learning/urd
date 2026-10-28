@@ -1194,13 +1194,13 @@ TEST(FixedShape, NestedRowsOfBits)
 {
     using Graph = Store<value<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>, urd::fixed_shape>;
     static_assert(std::same_as<Graph::representation, urd::repr::Jagged<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>>);
-    const auto shape = std::vector<urd::row_lengths> { { 64, 65, 1 }, { 130 }, {}, { 3, 64 } };
+    const auto shape = std::vector<std::vector<std::size_t>> { { 64, 65, 1 }, { 130 }, {}, { 3, 64 } };
     auto graph = Graph(shape);
     auto model = std::vector<std::vector<std::vector<bool>>>();
     for (const auto& lengths : shape)
     {
         auto& partitions = model.emplace_back();
-        for (const auto length : lengths.lengths)
+        for (const auto length : lengths)
             partitions.emplace_back(length, false);
     }
     auto random = std::mt19937(47);
@@ -1310,4 +1310,52 @@ TEST(Recycling, BucketsRefillWithoutAllocating)
     EXPECT_EQ(buckets.size(), 2U);
     EXPECT_EQ(buckets.begin()->first, 7.5);
     EXPECT_EQ(buckets.at(8.5).size(), 100U);
+}
+
+// Three levels deep: rows of rows of rows of values, each level a range over the one below, all in one array.
+TEST(FixedShape, ThreeLevels)
+{
+    using Cube = Store<value<Store<value<Store<value<Store<value<int>>>, urd::fixed_shape>>, urd::fixed_shape>>, urd::fixed_shape>;
+    const auto shape = std::vector<std::vector<std::vector<std::size_t>>> { { { 2, 3 }, { 1 } }, {}, { { 4 } } };
+    auto cube = Cube(shape);
+    ASSERT_EQ(cube.size(), 3U);
+    auto layer = cube[0];
+    auto row = layer[0];
+    ASSERT_EQ(std::ranges::size(row), 2);
+    row[1][2] = 7;
+    cube[2][0][0][3] = 9;
+    const auto& read = cube;
+    EXPECT_EQ(read[0][0][1][2], 7);
+    EXPECT_EQ(read[2][0][0][3], 9);
+    EXPECT_EQ(read[0][1][0].size(), 1U);
+    EXPECT_EQ(read[1].size(), 0);
+    cube.reset();
+    EXPECT_EQ(read[0][0][1][2], 0);
+    EXPECT_EQ(read[2][0][0][3], 0);
+}
+
+// Without an order asked for, values that keep their memory get a hash map that recycles: no tree where none is needed.
+TEST(Recycling, UnorderedMapsRecycleToo)
+{
+    using Bucket = Store<key<int>, urd::retains>;
+    using Groups = Store<key<int>, value<Bucket>>;
+    static_assert(std::same_as<Groups::representation, urd::repr::RecyclingHashMap<int, Bucket>>);
+    auto groups = Groups();
+    for (int round = 0; round < 3; ++round)
+    {
+        for (int each = 0; each < 50; ++each)
+            groups[round].insert(each + (round * 100));
+        groups.erase(round);
+    }
+    {
+        const auto counted = urd::test::Counted();
+        for (int each = 0; each < 50; ++each)
+            groups[7].insert(each + 700);
+    }
+    if (urd::test::counts_allocations)
+    {
+        EXPECT_EQ(urd::test::allocations(), 0);
+    }
+    EXPECT_EQ(groups.at(7).size(), 50U);
+    EXPECT_FALSE(groups.at(7).contains(0));
 }

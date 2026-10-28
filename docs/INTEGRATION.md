@@ -231,7 +231,8 @@ the caller's.
 ## Order by a projection
 
 `order_by<P>` orders a sorted Store or a priority queue by `P(element)` (`P(key)` for maps): `P` is a member pointer
-or a stateless lambda, and a tuple orders by several fields (`std::tuple(n.f, -n.g)`: least f, then largest g).
+or a stateless lambda, and a tuple orders by several fields (`std::tuple(job.deadline, -job.weight)`: earliest
+deadline, then largest weight).
 Ties fall back to the element's own order, so a sorted set still holds every distinct element; unique keys
 must therefore be orderable, while a queue's elements need no order of their own. The comparator,
 `urd::ProjectedLess<T, P>`, is part of the spec, and only containers that take a comparator are candidates for it
@@ -252,7 +253,8 @@ With `handles`, a priority queue's `push` returns a handle, and `update(h, e)` a
 element wherever it is (`repr::AddressableHeap`, an indexed binary heap). `monotone_priority` says pushes never go
 below the last popped (Dijkstra with non-negative costs); with integral priorities (the element, or its `order_by`
 projection) it resolves to `repr::BucketQueue`, which pops in order whatever is pushed but is fast only under that
-promise, so it serves only requests that make it (`needs_monotone_priority`).
+promise, so it serves only requests that make it: a representation names the request-only promises it relies on
+in `relies_on<R>`, and selection skips it for requests that do not make them.
 
 ## Scopes and layers
 
@@ -313,7 +315,7 @@ it grows, never their elements, so a view stays valid until the pool is cleared.
 ## Maps
 
 A map's values, where they are Stores, are rows like a sequence's: the representation's `element_traits` say what
-they keep. Most maps free a value when its key goes; `repr::RecyclingMap` keeps the node and the value, cleared, for
+they keep. Most maps free a value when its key goes; `repr::Recycling<Map>` (over a std::map or std::unordered_map) keeps the node and the value, cleared, for
 the next key, so `Store<key<K>, value<Row>, sorted>` with a `retains` Row refills without allocating.
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map

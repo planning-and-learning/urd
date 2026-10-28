@@ -16,7 +16,7 @@
 #include <vector>
 
 // Queues: elements reached by the order they leave in, with the standard adaptors' names (push, pop, front or top),
-// and clear and reserve, which the adaptors lack, so that a queue reused per search keeps its storage.
+// and clear and reserve, which the adaptors lack, so that a queue reused run after run keeps its storage.
 
 namespace urd::repr
 {
@@ -300,6 +300,6 @@ struct container_traits<repr::BucketQueue<T, C>> : properties_of<by_priority, sh
 };
 /// It is fast only where pushes never go below the last popped, so it serves only requests that say so.
 template<typename T, typename C>
-inline constexpr bool needs_monotone_priority<repr::BucketQueue<T, C>> = true;
+inline constexpr detail::property_set relies_on<repr::BucketQueue<T, C>> = detail::property_set::of({ tag::monotone_priority });
 
 }  // namespace urd

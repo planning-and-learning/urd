@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/std_map.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -8,19 +9,23 @@
 #include <cstddef>
 #include <iterator>
 #include <map>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace urd::repr
 {
 
-/// A sorted map that keeps erased values for reuse: a std::map, and the nodes of erased keys, their values cleared but
-/// holding their storage. A new key takes such a node, value and all, before allocating one: the buckets of a cost
-/// queue, emptied and refilled, allocate nothing once warm.
-template<typename K, typename V>
-class RecyclingMap : public std::map<K, V, Less<K>>
+/// A map that keeps erased values for reuse: Map (a std::map or std::unordered_map, whose nodes can be taken out and
+/// put back), and the nodes of erased keys, their values cleared but holding their storage. A new key takes such a
+/// node, value and all, before allocating one: values emptied and refilled under changing keys allocate nothing once
+/// warm.
+template<typename Map>
+class Recycling : public Map
 {
-    using Base = std::map<K, V, Less<K>>;
+    using Base = Map;
+    using K = typename Map::key_type;
+    using V = typename Map::mapped_type;
 
 public:
     using typename Base::const_iterator;
@@ -28,10 +33,10 @@ public:
     using typename Base::size_type;
     using typename Base::value_type;
 
-    RecyclingMap() = default;
+    Recycling() = default;
 
     template<std::input_iterator InputIt>
-    RecyclingMap(InputIt first, InputIt last)
+    Recycling(InputIt first, InputIt last)
     { insert(first, last); }
 
     /// A value built from `args` for `key` unless it has one; a kept node first, where there is one.
@@ -114,20 +119,28 @@ private:
     std::vector<typename Base::node_type> m_free;
 };
 
+/// A sorted map that keeps erased values for reuse.
+template<typename K, typename V>
+using RecyclingMap = Recycling<std::map<K, V, Less<K>>>;
+/// A hash map that keeps erased values for reuse.
+template<typename K, typename V>
+using RecyclingHashMap = Recycling<std::unordered_map<K, V, Hash<K>, EqualTo<K>>>;
+
 }  // namespace urd::repr
 
 namespace urd
 {
 
-/// A tree whose erased nodes, and the values in them, are kept for the next keys.
-template<orderable K, typename V>
-struct container_traits<repr::RecyclingMap<K, V>> : properties_of<sorted, unique, sparse, stable_refs, shrinkable, retains, proportional_clear>
+/// As Map, but its erased nodes, and the values in them, are kept for the next keys.
+template<typename Map>
+    requires container_traits<Map>::declared
+struct container_traits<repr::Recycling<Map>> : with_t<container_traits<Map>, retains>
 {
 };
 
 /// Its values keep what they hold when their keys are erased: their own properties, memory included.
-template<typename K, typename V>
-struct element_traits<repr::RecyclingMap<K, V>> : container_traits<V>
+template<typename Map>
+struct element_traits<repr::Recycling<Map>> : container_traits<typename Map::mapped_type>
 {
 };
 

@@ -32,7 +32,7 @@ struct value
 };
 
 /// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
-/// pointer (&Node::cost) or a stateless lambda ([](const Node& n) { return std::tuple(n.f, -n.g); }). Ties fall back
+/// pointer (&Job::deadline) or a stateless lambda ([](const Job& job) { return std::tuple(job.deadline, -job.weight); }). Ties fall back
 /// to the element's own order where it has one.
 template<auto P>
 struct order_by

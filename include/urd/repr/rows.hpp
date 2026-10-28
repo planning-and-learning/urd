@@ -31,10 +31,26 @@ namespace urd::repr
 /// Frozen rows are read-only slices of that storage: a std::span of the innermost elements, or a subrange of the
 /// rows below. Rows that are not frozen (a fixed_shape Store's) keep their lengths and change in place: a mutable
 /// std::span of their elements, or for a dense set a BitsetSpan over its words, a bit per index below its length; one
-/// level up, a subrange of such rows (vertex × partition × bits). reset() sets every element back to its default;
+/// level up, a subrange of such rows, and so on at any depth. reset() sets every element back to its default;
 /// with TrackRows, only in the rows handed out to change since the last reset (writes through a row are not seen, so
 /// handing it out counts).
 template<typename Inner, bool TrackRows = false>
+class Jagged;
+
+/// The shape a Jagged of fixed rows is built from: for rows of elements, their lengths; one level up, for each row,
+/// the shape of its rows; and so on.
+template<typename Data>
+struct shape_below
+{
+    using type = std::vector<std::size_t>;
+};
+template<typename Inner, bool TrackRows>
+struct shape_below<Jagged<Inner, TrackRows>>
+{
+    using type = typename Jagged<Inner, TrackRows>::shape_type;
+};
+
+template<typename Inner, bool TrackRows>
 class Jagged
 {
     using Si = container_traits<Inner>;
@@ -59,6 +75,7 @@ public:
         const_row>;
     using iterator = basic_iterator<!writable>;
     using const_iterator = basic_iterator<true>;
+    using shape_type = std::conditional_t<leaf, std::vector<size_type>, std::vector<typename shape_below<Data>::type>>;
 
     Jagged() = default;
 
@@ -87,18 +104,18 @@ public:
         }
         m_data.resize(m_offsets.back());
     }
-    /// Rows of rows: for each row, the lengths of its rows.
-    explicit Jagged(const std::vector<std::vector<size_type>>& shape)
+    /// Rows of rows, at any depth: for each row, the shape of its rows.
+    explicit Jagged(const shape_type& shape)
         requires(writable && !leaf)
     {
-        auto lengths = std::vector<size_type>();
+        auto below = typename Data::shape_type();
         m_offsets.reserve(shape.size() + 1);
-        for (const auto& below : shape)
+        for (const auto& rows : shape)
         {
-            lengths.insert(lengths.end(), below.begin(), below.end());
-            m_offsets.push_back(m_offsets.back() + below.size());
+            below.insert(below.end(), rows.begin(), rows.end());
+            m_offsets.push_back(m_offsets.back() + rows.size());
         }
-        m_data = Data(lengths);
+        m_data = Data(below);
     }
 
     /// Every element back to its default, every bit unset; with TrackRows, in the rows handed out to change since the
@@ -431,14 +448,27 @@ template<typename Inner>
 concept flattenable = is_store<Inner> && has<container_traits<Inner>, frozen>
                       && (!is_store<typename container_traits<Inner>::element_type> || !by_value<container_traits<Inner>>);
 
-/// A row Jagged can hold changing in place: a sequence of elements, or a dense set's bits.
-template<typename Row>
-concept fixed_leaf_row = is_store<Row> && !has<container_traits<Row>, frozen> && !is_store<typename container_traits<Row>::element_type>
-                         && (!by_value<container_traits<Row>> || (container_traits<Row>::is_set && has<container_traits<Row>, unique, dense>) );
-/// Whether Jagged can hold rows Inner that change in place: such rows, or fixed-shape rows of them (two levels).
+/// Whether Jagged can hold rows Inner that change in place: rows of elements, as a sequence, or a dense set's bits;
+/// or fixed-shape rows of such rows, at any depth.
 template<typename Inner>
-concept fixed_rows =
-    fixed_leaf_row<Inner> || (is_store<Inner> && has<container_traits<Inner>, fixed_shape> && fixed_leaf_row<typename container_traits<Inner>::element_type>);
+consteval bool holds_fixed_rows()
+{
+    if constexpr (!is_store<Inner>)
+        return false;
+    else
+    {
+        using traits = container_traits<Inner>;
+        using below = typename traits::element_type;
+        if constexpr (has<traits, frozen>)
+            return false;
+        else if constexpr (!is_store<below>)
+            return !by_value<traits> || (traits::is_set && has<traits, unique, dense>);
+        else
+            return has<traits, fixed_shape> && holds_fixed_rows<below>();
+    }
+}
+template<typename Inner>
+concept fixed_rows = holds_fixed_rows<Inner>();
 
 }  // namespace detail
 
@@ -467,7 +497,7 @@ struct container_traits<repr::Jagged<Inner, TrackRows>> :
 template<detail::fixed_rows Inner, bool TrackRows>
 struct element_traits<repr::Jagged<Inner, TrackRows>> :
     with_t<container_traits<Inner>,
-           std::conditional_t<detail::fixed_leaf_row<Inner> && !by_value<container_traits<Inner>>, contiguous, any_layout>,
+           std::conditional_t<!is_store<typename container_traits<Inner>::element_type> && !by_value<container_traits<Inner>>, contiguous, any_layout>,
            moving_refs,
            retains>
 {

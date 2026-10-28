@@ -319,8 +319,9 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    `assign` where it has one, else a fresh build. Compressed sparse rows rebuild in their arrays (count, offsets,
    place, shift back; no allocation for a rebuild of the same size, checked by counting allocations), and frozen rows
    by clear and append.
-5. Nested fixed shapes and reset — done: `fixed_shape` rows of `fixed_shape` rows (two levels: vertex × partition ×
-   bits), built from a `std::vector<row_lengths>`; a row of rows is a range of `BitsetSpan`s over one word array.
+5. Nested fixed shapes and reset — done: `fixed_shape` rows of `fixed_shape` rows, at any depth (generalized after
+   M10 from two levels), built from nested vectors of lengths; a row of rows is a range of the rows below, all in one
+   array.
    `reset()` on fixed-shape Stores; with `proportional_clear`, a `TrackRows` policy on `Jagged` resets only the rows
    handed out to change since the last reset (writes through a row are not seen; handing it out counts). Deeper
    nesting and a uniform stride are left out.
@@ -328,10 +329,14 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    or for a dense set its `BitsetSpan`; dense-set rows are now stored as their bitset words (trailing zero words
    dropped, so equal sets stay equal). A view stays valid until the pool is cleared. Tree pools keep `get` and `read`.
 7. Sorted maps that keep erased values' storage — done: a map's values, where they are Stores, are now checked as
-   rows are (`element_traits` describe them), and `repr::RecyclingMap` (std::map with a free list of erased nodes,
+   rows are (`element_traits` describe them), and `repr::Recycling<Map>` (std::map or std::unordered_map with a free list of erased nodes,
    their values cleared) serves sorted maps whose values `retain`: buckets emptied and refilled allocate nothing.
 
-M10 is done.
+M10 is done. A pass after it removed what was tailored to one use: fixed shapes nest at any depth, value recycling
+works over any node-based map (hashed too), and the bucket queue's reliance on its promise is a general trait
+(`relies_on<R>`: the request-only promises a representation needs) rather than a flag of its own. Open gaps found by
+probing nearby requests: a dense concurrent set, an insertion-ordered concurrent map, a concurrent map whose values
+retain.
 
 ## Order and size
 

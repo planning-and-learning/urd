@@ -125,19 +125,11 @@ public:
         : m_representation(lengths.lengths)
     {
     }
-    /// Rows of rows, empty: for each row, the lengths of its rows.
-    explicit Store(const std::vector<row_lengths>& rows)
-        requires has<S, fixed_shape>
-        :
-        m_representation(
-            [&rows]
-            {
-                auto lengths = std::vector<std::vector<std::size_t>>();
-                lengths.reserve(rows.size());
-                for (const auto& each : rows)
-                    lengths.push_back(each.lengths);
-                return lengths;
-            }())
+    /// Rows of rows, empty, at any depth: for each row, the shape of its rows (a std::vector of row lengths for rows
+    /// of rows, a std::vector of those one level up).
+    template<typename Shape>
+        requires(has<S, fixed_shape> && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
+    explicit Store(const Shape& rows) : m_representation(rows)
     {
     }
 

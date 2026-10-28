@@ -194,6 +194,7 @@ using Containers = testing::Types<
     Store<key<int>, urd::change_log>,
     // A sorted map that keeps erased nodes and their values for reuse.
     urd::repr::RecyclingMap<int, int>,
+    urd::repr::RecyclingHashMap<int, int>,
     // Sharded hash tables that threads share (gtl).
     urd::repr::ParallelHashSet<int>,
     urd::repr::ParallelHashMap<int, int>,

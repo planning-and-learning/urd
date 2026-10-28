@@ -75,9 +75,8 @@ template<typename S>
 using row_of = std::conditional_t<S::is_map, typename S::mapped_type, typename S::element_type>;
 
 template<typename R, typename S>
-concept serves =
-    serves_by_traits<R, S> && (!needs_monotone_priority<R> || has<S, monotone_priority>) && (!has<S, positional> || std::ranges::random_access_range<R>)
-    && (!is_store<row_of<S>> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<row_of<S>>>));
+concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || std::ranges::random_access_range<R>)
+                 && (!is_store<row_of<S>> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<row_of<S>>>));
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
@@ -168,6 +167,8 @@ using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
 using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
 template<typename K, typename V>
+using RecyclingHashMapOf = repr::RecyclingHashMap<K, V>;
+template<typename K, typename V>
 using RecyclingMapOf = repr::RecyclingMap<K, V>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
@@ -242,6 +243,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       TreeMultiMapOf,
                                       FlatMultiMapOf,
                                       FlatMapOf,
+                                      RecyclingHashMapOf,
                                       RecyclingMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
@@ -284,8 +286,10 @@ template<typename K, typename V, typename C>
 using FlatMapBy = boost::container::flat_map<K, V, C>;
 template<typename K, typename V, typename C>
 using FlatMultiMapBy = boost::container::flat_multimap<K, V, C>;
+template<typename K, typename V, typename C>
+using RecyclingMapBy = repr::Recycling<std::map<K, V, C>>;
 using ordered_element_preference = ordered_element_candidates<TreeSetBy, FlatMultiSetBy, FlatSetBy, BucketQueueBy, HeapBy, AddressableHeapBy>;
-using ordered_map_preference = ordered_map_candidates<TreeMapBy, TreeMultiMapBy, FlatMultiMapBy, FlatMapBy>;
+using ordered_map_preference = ordered_map_candidates<TreeMapBy, TreeMultiMapBy, FlatMultiMapBy, FlatMapBy, RecyclingMapBy>;
 
 template<typename... Lists>
 struct join
