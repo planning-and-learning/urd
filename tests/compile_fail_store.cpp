@@ -1,7 +1,7 @@
 // Store requests and uses that must not compile, checked like compile_fail.cpp: without URD_CASE the file
 // compiles; with URD_CASE=<n>, case n alone must fail.
 
-#include "urd/family.hpp"
+#include "urd/compose/family.hpp"
 #include "urd/store.hpp"
 
 #include <string>
@@ -92,7 +92,7 @@ int main()
     using S = Store<value<int>, urd::fifo, urd::frozen>;
     (void) S();
 #elif URD_CASE == 25  // a family reaches only the types it was given
-    (void) urd::Family<SetOf, int, long>().get<short>();
+    (void) urd::compose::Family<SetOf, int, long>().get<short>();
 #elif URD_CASE == 26  // a pool is reached by handle, never iterated
     auto states = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
     (void) states.begin();

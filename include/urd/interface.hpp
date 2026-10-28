@@ -36,11 +36,14 @@ namespace urd
 // | fifo, lifo, by_priority (queues) | in place of all above: default construction, size, empty, push(e), |
 // |                                  | push(e&&), emplace(args), pop; front() for fifo, else top(); clear |
 // |                                  | if shrinkable                                                      |
+// | partition                        | in place of all above: insert(k), merge(a, b) -> bool, find(k) -> |
+// |                                  | k, same(a, b), class_size(k), classes(), size; clear if shrinkable |
 // | handles, not unique (slots)      | in place of all above: insert(e) -> handle, [h], size, empty;      |
 // |                                  | acquire() if default-constructible; erase(h), clear if shrinkable  |
 // | handles, unique (interning)      | in place of all above: insert(span of a row's elements) -> handle, |
 // |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
 // |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle |
+// | bidirectional (a map)            | keys(v): a range of the keys that map to v                         |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value                                           |
 //
@@ -202,6 +205,18 @@ concept slot_operations =
         pool.clear();
     });
 
+/// A partition: elements join by insert, classes by merge; find names an element's class.
+template<typename R, typename Traits>
+concept partition_operations = std::default_initializable<R> && requires(R& groups, const R& constant, const typename R::value_type& element) {
+    groups.insert(element);
+    { groups.merge(element, element) } -> std::same_as<bool>;
+    { constant.find(element) } -> std::same_as<typename R::value_type>;
+    { constant.same(element, element) } -> std::same_as<bool>;
+    { constant.class_size(element) } -> std::convertible_to<std::size_t>;
+    { constant.classes() } -> std::convertible_to<std::size_t>;
+    { constant.size() } -> std::convertible_to<std::size_t>;
+} && (!has<Traits, shrinkable> || requires(R& groups) { groups.clear(); });
+
 /// Whether Traits declares an order of leaving: a queue.
 template<typename Traits>
 inline constexpr bool queue_traits = !std::same_as<category_t<Traits, any_access>, any_access>;
@@ -226,6 +241,11 @@ template<typename R, typename Traits, typename E, typename L>
 concept offers_removal = !has<Traits, shrinkable> || (removal<R> && (by_value<Traits> ? value_removal<R, L> : sequence_removal<R, E>) );
 
 template<typename R, typename Traits>
+concept offers_inverse = !has<Traits, bidirectional> || requires(const R& range, const typename R::mapped_type& mapped) {
+    { range.keys(mapped) } -> std::ranges::forward_range;
+};
+
+template<typename R, typename Traits>
 concept offers_layout = (!has<Traits, canonical> || std::equality_comparable<R>) && (!has<Traits, contiguous> || std::ranges::contiguous_range<R>)
                         && (!has<Traits, positional> || std::ranges::random_access_range<R>);
 
@@ -237,10 +257,11 @@ template<typename R,
          typename E = typename detail::value_of<R>::type,
          typename L = typename detail::lookup_of<R, E>::type>
 concept conforming =
-    (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>) || (has<Traits, handles, unique> && detail::pool_operations<R, Traits>)
+    (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>) || (has<Traits, partition> && detail::partition_operations<R, Traits>)
+    || (has<Traits, handles, unique> && detail::pool_operations<R, Traits>)
     || (has<Traits, handles> && !has<Traits, unique> && detail::slot_operations<R, Traits>)
-    || (!detail::queue_traits<Traits> && !has<Traits, handles> && detail::basic_container<R, E> && detail::offers_layout<R, Traits>
-        && detail::offers_lookup<R, Traits, L> && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E>
-        && detail::offers_removal<R, Traits, E, L>);
+    || (!detail::queue_traits<Traits> && !has<Traits, handles> && !has<Traits, partition> && detail::basic_container<R, E> && detail::offers_layout<R, Traits>
+        && detail::offers_lookup<R, Traits, L> && detail::offers_values_by_key<R, Traits> && detail::offers_inverse<R, Traits>
+        && detail::offers_growth<R, Traits, E> && detail::offers_removal<R, Traits, E, L>);
 
 }  // namespace urd

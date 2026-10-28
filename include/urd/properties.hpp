@@ -68,7 +68,9 @@ struct spec : Properties
     using key_type = K;
     using value_type = V;
 
-    static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V>;
+    /// Keys grouped into disjoint classes (partition), reached by merge and find.
+    static constexpr bool is_partition = !std::is_void_v<K> && std::is_void_v<V> && std::same_as<category_t<Properties, any_grouping>, partition>;
+    static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V> && !is_partition;
     static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
     /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
     static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && !std::same_as<category_t<Properties, any_access>, any_access>;
@@ -80,12 +82,12 @@ struct spec : Properties
     static constexpr bool iterable = is_set || is_map || is_sequence;
     /// Whether it knows how many elements it holds: all but an interning pool (handles, unique), which may share
     /// parts of its elements and keeps no list of them. A filter would not either.
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || (is_pool && !has<Properties, unique>);
+    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !has<Properties, unique>);
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;
     /// What a Store's elements are: keys in a set, values in a sequence, key-value pairs in a map.
-    using element_type = std::conditional_t<is_set, K, std::conditional_t<is_map, std::pair<const K, V>, V>>;
+    using element_type = std::conditional_t<is_set || is_partition, K, std::conditional_t<is_map, std::pair<const K, V>, V>>;
 };
 
 namespace detail
@@ -110,7 +112,9 @@ struct to_spec
 
     using stated = properties_of<Ps...>;
     // The kind, from one place.
-    using kind = spec<key_type, value_type, properties_of<category_t<stated, any_access>, category_t<stated, any_handle>>>;
+    using kind = spec<key_type, value_type, properties_of<category_t<stated, any_access>, category_t<stated, any_handle>, category_t<stated, any_grouping>>>;
+    static_assert(!has<stated, partition> || (std::is_void_v<value_type> && !has<stated, frozen>),
+                  "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
     static_assert(!has<stated, handles> || (std::is_void_v<key_type> && !kind::is_queue && !has<stated, positional> && !has<stated, frozen>),
                   "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
                   "position or order");

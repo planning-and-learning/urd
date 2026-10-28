@@ -3,9 +3,7 @@
 // (identifying_members()), from which urd hashes, compares and orders it: nothing is put into namespace std.
 // It compiles or it does not: there is nothing to run.
 
-#include "urd/bit_matrix.hpp"
-#include "urd/family.hpp"
-#include "urd/partition.hpp"
+#include "urd/compose/family.hpp"
 #include "urd/store.hpp"
 
 #include <concepts>
@@ -163,9 +161,11 @@ using GroupsByIndex = Store<key<Predicate>, value<Rule>, urd::multi, urd::dense,
 static_assert(std::same_as<GroupsByIndex::representation, urd::repr::CsrMultiMap<Predicate, Rule>>);
 
 // runir graphs/static_graph.hpp: StaticGraph, out-edge offsets built by a counting sort over (source, target)
-// pairs. Its out-edges are the successors of urd::Graph, which keeps the in-edges the same way.
+// pairs; with bidirectional, the in-edges the same way.
 using Successors = Store<key<Vertex>, value<Vertex>, urd::multi, urd::dense, urd::frozen>;
 static_assert(std::same_as<Successors::representation, urd::repr::CsrMultiMap<Vertex, Vertex>>);
+using StaticGraph = Store<key<Vertex>, value<Vertex>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>;
+static_assert(std::same_as<StaticGraph::representation, urd::repr::BidirectionalCsr<Vertex, Vertex>>);
 
 // yggdrasil database/semantics/join_index.hpp: JoinIndex, UnorderedMultiMap<hash_t, size_t> m_index, the rows of
 // each key hash: postings.
@@ -223,12 +223,8 @@ static_assert(std::same_as<RelationValues::representation, urd::repr::IndexMap<P
 static_assert(std::same_as<RowValues::representation, urd::repr::IndexMap<RelationBinding, double, false>>);
 
 // tyr formalism/planning/invariants/constraints.cpp: DisjointSet over term ids, classes of equal terms.
-using TermClasses = urd::Partition<std::size_t>;
-static_assert(std::default_initializable<TermClasses>);
-
-// tyr analysis/static_literal_compatibility.hpp: BinaryCompatibility, rows of one bitset length in one array.
-using Compatibility = urd::BitMatrix<Object, Object>;
-static_assert(std::default_initializable<Compatibility>);
+using TermClasses = Store<key<std::size_t>, urd::partition>;
+static_assert(std::same_as<TermClasses::representation, urd::repr::DisjointSets<std::size_t>>);
 
 // tyr and runir semi-naive evaluation: the facts of a relation, and those new since the last round.
 using Facts = Store<key<Atom>, urd::change_log>;
@@ -237,7 +233,7 @@ static_assert(std::same_as<Facts::representation, urd::repr::ChangeLogged<FlatHa
 // loki TranslationStorage, tyr static and fluent twins: one Store per kind of entity, reached by its type.
 template<typename T>
 using Interned = Store<key<T>, urd::positional, urd::monotone>;
-using Repositories = urd::Family<Interned, Object, Predicate, Action>;
+using Repositories = urd::compose::Family<Interned, Object, Predicate, Action>;
 static_assert(std::same_as<decltype(std::declval<Repositories&>().get<Predicate>()), Interned<Predicate>&>);
 
 // tyr planning/state_repository.hpp: SharedObjectPool<Builder<State>, true>, scratch state builders handed out to

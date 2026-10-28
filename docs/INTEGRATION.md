@@ -177,8 +177,9 @@ the order and costs O(n).
 `Store<key<K>, value<V>, multi, dense, frozen>` resolves to `repr::CsrMultiMap` (`include/urd/repr/csr.hpp`):
 compressed sparse rows, built at once from pairs in any order by a counting sort that keeps the order of equal
 keys. Every multimap Store has `values(key)`, the values of a key as a range: a `std::span` here, a view of
-`equal_range` elsewhere. `urd::Graph<Vertex>` (`include/urd/graph.hpp`) is two of them over vertices 0..n-1,
-built from (source, target) pairs, with `successors(v)` and `predecessors(v)` as spans.
+`equal_range` elsewhere. With `bidirectional`, a map answers by value too: `keys(v)` gives the keys that map to
+`v`. A frozen graph is `Store<key<V>, value<V>, multi, dense, frozen, bidirectional>` (`repr::BidirectionalCsr`, a
+CSR in each direction): successors are `values(v)`, predecessors `keys(v)`.
 
 ## Postings
 
@@ -217,13 +218,17 @@ changed since `clear_changes()`; an element added and removed again is in neithe
 each round works on `added()`. `repr::ChangeLogged<R>` (`include/urd/repr/change_logged.hpp`) logs into two
 indexed sets.
 
-## Beyond one Store
+## Partitions, and compositions of Stores
 
-Some structures are not one Store: `urd::Graph` (M3), `urd::Partition<K>` (union-find over indices,
-`include/urd/partition.hpp`), `urd::BitMatrix<Row, Column>` (rows of one bit length in one array, with
-`unite_rows` for closures, `include/urd/bit_matrix.hpp`) and `urd::Family<F, Ts...>` (one `F<T>` per type,
-reached by `get<T>()`, `include/urd/family.hpp`). A two-level dense map needs nothing new: nested dense Stores
-compose (`Store<key<R>, value<Store<key<Row>, value<V>, dense>>, dense, constant_clear>`).
+`Store<key<K>, partition>` is a partition of indices into classes (`repr::DisjointSets`, union-find):
+`insert(k)` adds elements, `merge(a, b)` joins classes, `find`, `same`, `class_size` and `classes()` ask about them.
+
+The include root holds only the vocabulary and `Store` (tests/layout.cmake checks it); containers are in
+`urd/repr`. Compositions that hold Stores and choose no representation of their own are in `urd/compose`:
+`urd::compose::Family<F, Ts...>` keeps one `F<T>` per type, reached by `get<T>()`. A two-level dense map needs
+nothing new: nested dense Stores compose (`Store<key<R>, value<Store<key<Row>, value<V>, dense>>, dense,
+constant_clear>`). A matrix of bits of fixed shape waits for a `uniform` property on nested Stores (any depth,
+`repr::BitTensor`).
 
 ## Maps
 

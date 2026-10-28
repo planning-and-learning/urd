@@ -167,6 +167,36 @@ private:
     std::vector<V> m_values;
 };
 
+/// A CsrMultiMap that also keeps the inverse, values to keys, as compressed sparse rows: a frozen graph with its
+/// in-edges. Its values must be indices too.
+template<typename K, typename V>
+class BidirectionalCsr : public CsrMultiMap<K, V>
+{
+public:
+    BidirectionalCsr() = default;
+
+    template<std::input_iterator InputIt>
+    BidirectionalCsr(InputIt first, InputIt last) : BidirectionalCsr(std::vector<std::pair<K, V>>(first, last))
+    {
+    }
+
+    /// The keys that map to `value`, in the order their pairs were given.
+    [[nodiscard]] std::span<const K> keys(const V& value) const { return m_inverse.values(value); }
+
+private:
+    explicit BidirectionalCsr(const std::vector<std::pair<K, V>>& pairs) : CsrMultiMap<K, V>(pairs.begin(), pairs.end()), m_inverse(inverted(pairs)) {}
+    [[nodiscard]] static CsrMultiMap<V, K> inverted(const std::vector<std::pair<K, V>>& pairs)
+    {
+        auto swapped = std::vector<std::pair<V, K>>();
+        swapped.reserve(pairs.size());
+        for (const auto& [key, value] : pairs)
+            swapped.emplace_back(value, key);
+        return CsrMultiMap<V, K>(swapped.begin(), swapped.end());
+    }
+
+    CsrMultiMap<V, K> m_inverse;
+};
+
 }  // namespace urd::repr
 
 namespace urd
@@ -175,6 +205,12 @@ namespace urd
 /// Values in key order, each key's in the order given; built once, never changed.
 template<indexable K, typename V>
 struct container_traits<repr::CsrMultiMap<K, V>> : properties_of<sorted, multi, dense, canonical>
+{
+};
+
+/// As a CsrMultiMap, answering by value too.
+template<indexable K, indexable V>
+struct container_traits<repr::BidirectionalCsr<K, V>> : with_t<container_traits<repr::CsrMultiMap<K, V>>, bidirectional>
 {
 };
 

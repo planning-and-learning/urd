@@ -7,7 +7,9 @@
 #include "urd/store/changes.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/equality.hpp"
+#include "urd/store/grouping.hpp"
 #include "urd/store/growth.hpp"
+#include "urd/store/inverse.hpp"
 #include "urd/store/iteration.hpp"
 #include "urd/store/layers.hpp"
 #include "urd/store/lookup.hpp"
@@ -72,7 +74,9 @@ class Store :
     public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>,
     public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>,
     public facet_if<S::is_pool && has<S, unique>, facet::pool<Store<R, S>, R, S>>,
-    public facet_if<S::is_pool && !has<S, unique>, facet::slots<Store<R, S>, R, S>>
+    public facet_if<S::is_pool && !has<S, unique>, facet::slots<Store<R, S>, R, S>>,
+    public facet_if<S::is_partition, facet::grouping<Store<R, S>, R, S>>,
+    public facet_if<S::is_map && has<S, bidirectional>, facet::inverse<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

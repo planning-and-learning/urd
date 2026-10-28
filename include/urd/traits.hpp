@@ -149,6 +149,22 @@ struct structural_sharing : any_sharing
 {
 };
 
+struct any_direction
+{
+};
+/// A map that answers by value too: keys(v) gives the keys that map to v, as a graph gives a vertex's predecessors.
+struct bidirectional : any_direction
+{
+};
+
+struct any_grouping
+{
+};
+/// A partition: its elements fall into disjoint classes; merge joins two classes, find names an element's class.
+struct partition : any_grouping
+{
+};
+
 struct any_tracking
 {
 };
@@ -247,7 +263,9 @@ using guaranteed_roots = type_list<any_order,
                                    any_layering,
                                    any_tracking,
                                    any_handle,
-                                   any_sharing>;
+                                   any_sharing,
+                                   any_grouping,
+                                   any_direction>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

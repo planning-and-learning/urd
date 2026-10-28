@@ -159,8 +159,9 @@ hashed through the vector instead of copied keys.
 ## M3: Frozen CSR multimaps and graphs (patterns 5, 7) — done
 
 `repr::CsrMultiMap` for `Store<key<K>, value<V>, multi, dense, frozen>`, built by a counting sort; `values(key)` on
-every multimap Store; `urd::Graph<Vertex>` with successors and predecessors; survey pins (runir `StaticGraph`, tyr
-effect groups); the rows example shows both. Deferred: edge properties on `Graph` (key a Store by an edge's
+every multimap Store; graphs as `bidirectional` frozen multimaps (`keys(v)` gives predecessors; first a
+combinator `urd::Graph`, replaced by the property); survey pins (runir `StaticGraph`, tyr
+effect groups); the rows example shows both. Deferred: edge properties on graphs (key a Store by an edge's
 position for now), and a non-frozen dense multimap.
 
 
@@ -233,11 +234,13 @@ parent's), layered sorted Stores, and scoped sets.
 
 ## M7: Remaining patterns — done in part
 
-Done: the two-level dense map by nesting (pinned and tested), `urd::Partition`, `urd::BitMatrix`, `urd::Family`,
+Done: the two-level dense map by nesting (pinned and tested), partitions (`Store<key<K>, partition>`, first a class
+`urd::Partition`), `urd::compose::Family`,
 and `change_log` (`repr::ChangeLogged`), each with a test against a model and a sabotage it catches;
 examples/structures.cpp. Not done, for want of a representation worth its weight or a site that needs it now:
 `persistent` (tree sets, immer), `handles` identity (hive, slot map), the `uniform` property that would let a
-nested dense Store be a bit matrix, symmetric or triangular matrices, and `refinable` partitions.
+nested dense Store be a bit tensor of any depth (a first two-dimensional `urd::BitMatrix` was removed for it),
+symmetric or triangular variants, and `refinable` partitions.
 
 
 | Pattern | Approach |

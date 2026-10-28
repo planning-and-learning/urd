@@ -5,6 +5,7 @@
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr.hpp"
 #include "urd/repr/dense.hpp"
+#include "urd/repr/disjoint_sets.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
@@ -94,6 +95,8 @@ template<typename K, typename V>
 using PostingMapOf = repr::PostingMap<K, V>;
 template<typename K, typename V>
 using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
+template<typename K, typename V>
+using BidirectionalCsrOf = repr::BidirectionalCsr<K, V>;
 
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
@@ -155,7 +158,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::RowInterner,
                                               TreeVectorOf,
                                               SlotVector,
-                                              ThreadSafeSlotVector>;
+                                              ThreadSafeSlotVector,
+                                              repr::DisjointSets>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
@@ -167,6 +171,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
                                       CsrMultiMapOf,
+                                      BidirectionalCsrOf,
                                       ScopedMapOf,
                                       LayeredHashMapOf>;
 

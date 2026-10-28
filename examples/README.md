@@ -23,8 +23,8 @@ claims.
 | `interning.cpp` | insertion order and positions: interners that give each element an index, `push_unique` lists |
 | `queues.cpp` | queues: first in first out, last in first out, least first (an open list), reused without allocating |
 | `scopes.cpp` | a scoped symbol table, a layer over a parent's translations, a memo reset by generations |
-| `structures.cpp` | beyond Stores: a partition (union-find), a bit matrix, a family of Stores by type, a change log |
-| `rows.cpp` | Stores of Stores: flattened rows (CSR), a row pool that never frees, three levels |
+| `structures.cpp` | a partition (union-find), a family of Stores by type, a change log |
+| `rows.cpp` | Stores of Stores: flattened rows (CSR), a row pool that never frees, three levels; CSR by key and a graph |
 
 Each prints the requests and the container chosen for each, then uses a few of them. Lines commented with
 "does not compile" show what the properties rule out.

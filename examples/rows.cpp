@@ -1,7 +1,6 @@
 // Rows: Stores of Stores, instead of std::vector<std::vector<…>>. The rows' properties choose the layout.
 
 #include "show.hpp"
-#include "urd/graph.hpp"
 #include "urd/store.hpp"
 
 #include <iostream>
@@ -63,10 +62,10 @@ int main()
     for (const int target : edges.values(2))
         std::cout << ' ' << target;
 
-    // A graph: successors and predecessors, two such Stores.
-    const auto graph = urd::Graph<int>(4, pairs);
+    // A graph: with bidirectional, the keys of a value too, so a vertex's predecessors as well as its successors.
+    const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
     std::cout << "\npredecessors of 0:";
-    for (const int source : graph.predecessors(0))
+    for (const int source : graph.keys(0))
         std::cout << ' ' << source;
     std::cout << '\n';
 }

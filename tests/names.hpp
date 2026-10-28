@@ -214,6 +214,12 @@ struct name<urd::repr::SlotVector<T, ThreadSafe>>
     static constexpr std::string_view id = ThreadSafe ? "thread_safe_slot_vector" : "slot_vector";
     static constexpr std::string_view value = "slot vector (slots that never move, freed ones reused)";
 };
+template<typename K, typename V>
+struct name<urd::repr::BidirectionalCsr<K, V>>
+{
+    static constexpr std::string_view id = "bidirectional_csr";
+    static constexpr std::string_view value = "bidirectional CSR (each key's values and each value's keys together)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

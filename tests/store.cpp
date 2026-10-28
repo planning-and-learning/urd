@@ -3,11 +3,8 @@
 
 #include "urd/store.hpp"
 
-#include "urd/bit_matrix.hpp"
+#include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
-#include "urd/family.hpp"
-#include "urd/graph.hpp"
-#include "urd/partition.hpp"
 
 #include <concepts>
 #include <cstdint>
@@ -421,18 +418,42 @@ TEST(MultiValues, CsrBuildsWhatAMultimapHolds)
     }
 }
 
-// A graph is two CSR Stores: successors and predecessors, each in the order the edges were given.
+// A frozen graph: a multimap from sources to targets that answers by value too, so successors are a vertex's values
+// and predecessors its keys, each in the order the edges were given.
+static_assert(
+    std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>::representation, urd::repr::BidirectionalCsr<int, int>>);
+
+// Built from pairs in any order, the keys of each value are those paired with it, in the order given.
+TEST(Graph, KeysOfAValueAreItsPairsInOrder)
+{
+    auto random = std::mt19937(37);
+    for (int round = 0; round < 200; ++round)
+    {
+        auto pairs = std::vector<std::pair<int, int>>();
+        for (int count = static_cast<int>(random() % 40); count > 0; --count)
+            pairs.emplace_back(static_cast<int>(random() % 12), static_cast<int>(random() % 12));
+        const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
+        for (int target = 0; target < 14; ++target)
+        {
+            auto expected = std::vector<int>();
+            for (const auto& [source, each] : pairs)
+                if (each == target)
+                    expected.push_back(source);
+            ASSERT_TRUE(std::ranges::equal(graph.keys(target), expected)) << "round " << round << ", value " << target;
+        }
+    }
+}
+
 TEST(Graph, GivesSuccessorsAndPredecessors)
 {
     const auto edges = std::vector<std::pair<int, int>> { { 2, 0 }, { 0, 1 }, { 2, 1 }, { 1, 2 }, { 0, 2 } };
-    const auto graph = urd::Graph<int>(4, edges);
-    EXPECT_EQ(graph.num_vertices(), 4U);
-    EXPECT_EQ(graph.num_edges(), 5U);
-    EXPECT_TRUE(std::ranges::equal(graph.successors(0), std::vector<int> { 1, 2 }));
-    EXPECT_TRUE(std::ranges::equal(graph.successors(2), std::vector<int> { 0, 1 }));
-    EXPECT_TRUE(std::ranges::equal(graph.predecessors(1), std::vector<int> { 0, 2 }));
-    EXPECT_TRUE(std::ranges::equal(graph.predecessors(2), std::vector<int> { 1, 0 }));
-    EXPECT_TRUE(graph.successors(3).empty() && graph.predecessors(3).empty());
+    const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(edges.begin(), edges.end());
+    EXPECT_EQ(graph.size(), 5U);
+    EXPECT_TRUE(std::ranges::equal(graph.values(0), std::vector<int> { 1, 2 }));
+    EXPECT_TRUE(std::ranges::equal(graph.values(2), std::vector<int> { 0, 1 }));
+    EXPECT_TRUE(std::ranges::equal(graph.keys(1), std::vector<int> { 0, 2 }));
+    EXPECT_TRUE(std::ranges::equal(graph.keys(2), std::vector<int> { 1, 0 }));
+    EXPECT_TRUE(graph.values(3).empty() && graph.keys(3).empty());
 }
 
 // Scopes undo, latest first, every change made in them: random changes and scopes against a stack of copies.
@@ -534,6 +555,9 @@ TEST(Nested, TwoLevelDenseMap)
     EXPECT_FALSE(relations.at(2).contains(5));
 }
 
+// A partition: union-find over indices, by request.
+static_assert(std::same_as<Store<key<int>, urd::partition>::representation, urd::repr::DisjointSets<int>>);
+
 // A partition answers what a labeling recomputed after each merge answers.
 TEST(Partition, AgreesWithRelabeling)
 {
@@ -541,7 +565,8 @@ TEST(Partition, AgreesWithRelabeling)
     for (int round = 0; round < 50; ++round)
     {
         constexpr std::size_t size = 24;
-        auto partition = urd::Partition<int>(size);
+        auto partition = Store<key<int>, urd::partition>();
+        partition.insert(static_cast<int>(size) - 1);
         auto label = std::vector<std::size_t>(size);
         std::iota(label.begin(), label.end(), std::size_t { 0 });
         for (int step = 0; step < 40; ++step)
@@ -565,67 +590,6 @@ TEST(Partition, AgreesWithRelabeling)
     }
 }
 
-// A bit matrix answers what a matrix of bools answers; uniting rows to a fixpoint gives the transitive closure.
-TEST(BitMatrix, AgreesWithBools)
-{
-    auto random = std::mt19937(23);
-    for (const std::size_t columns : { 1U, 63U, 64U, 65U, 130U })
-    {
-        constexpr std::size_t rows = 9;
-        auto matrix = urd::BitMatrix<int>(rows, columns);
-        auto expected = std::vector<std::vector<bool>>(rows, std::vector<bool>(columns));
-        for (int step = 0; step < 400; ++step)
-        {
-            const auto row = random() % rows;
-            const auto column = random() % columns;
-            const auto other = random() % rows;
-            switch (random() % 4)
-            {
-                case 0:
-                case 1:
-                    matrix.set(static_cast<int>(row), static_cast<int>(column));
-                    expected[row][column] = true;
-                    break;
-                case 2:
-                    matrix.reset(static_cast<int>(row), static_cast<int>(column));
-                    expected[row][column] = false;
-                    break;
-                default:
-                {
-                    bool changed = false;
-                    for (std::size_t each = 0; each < columns; ++each)
-                    {
-                        changed = changed || (expected[other][each] && !expected[row][each]);
-                        expected[row][each] = expected[row][each] || expected[other][each];
-                    }
-                    ASSERT_EQ(matrix.unite_rows(static_cast<int>(row), static_cast<int>(other)), changed);
-                }
-            }
-            for (std::size_t each = 0; each < rows; ++each)
-            {
-                ASSERT_EQ(matrix.count(static_cast<int>(each)), static_cast<std::size_t>(std::ranges::count(expected[each], true)));
-                for (std::size_t column_index = 0; column_index < columns; ++column_index)
-                    ASSERT_EQ(matrix.test(static_cast<int>(each), static_cast<int>(column_index)), expected[each][column_index]);
-            }
-        }
-    }
-
-    // Reachability in 0 -> 1 -> 2 -> 3: unite each row with the rows it reaches until nothing changes.
-    auto reach = urd::BitMatrix<int>(4, 4);
-    for (int vertex = 0; vertex < 3; ++vertex)
-        reach.set(vertex, vertex + 1);
-    for (bool changed = true; changed;)
-    {
-        changed = false;
-        for (int from = 0; from < 4; ++from)
-            for (int to = 0; to < 4; ++to)
-                if (reach.test(from, to))
-                    changed = reach.unite_rows(from, to) || changed;
-    }
-    EXPECT_TRUE(reach.test(0, 3) && !reach.test(3, 0));
-    EXPECT_EQ(reach.count(0), 3U);
-}
-
 namespace
 {
 
@@ -637,7 +601,7 @@ using Interned = Store<key<T>, urd::positional, urd::monotone>;
 // A family holds one Store per type and reaches each by its type.
 TEST(Family, ReachesEachMemberByType)
 {
-    auto repositories = urd::Family<Interned, int, std::string>();
+    auto repositories = urd::compose::Family<Interned, int, std::string>();
     repositories.get<int>().insert(7);
     repositories.get<std::string>().insert("on");
     repositories.get<std::string>().insert("clear");

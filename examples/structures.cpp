@@ -1,9 +1,7 @@
-// Beyond one Store: a partition of indices, a matrix of bits, a family of Stores named by type, and a set that
-// logs what changed, for semi-naive evaluation.
+// A partition of indices, a family of Stores named by type, and a set that logs what changed,
+// for semi-naive evaluation.
 
-#include "urd/bit_matrix.hpp"
-#include "urd/family.hpp"
-#include "urd/partition.hpp"
+#include "urd/compose/family.hpp"
 #include "urd/store.hpp"
 
 #include <exception>
@@ -22,28 +20,14 @@ using Interned = Store<key<T>, urd::positional, urd::monotone>;
 void run()
 {
     // Classes of equal terms: merge what is equal, ask which class each term is in.
-    auto terms = urd::Partition<int>(5);
+    auto terms = Store<key<int>, urd::partition>();
+    terms.insert(4);  // terms 0..4, each in a class of its own
     terms.merge(0, 3);
     terms.merge(3, 4);
     std::cout << "classes: " << terms.classes() << ", 0 and 4 equal: " << std::boolalpha << terms.same(0, 4) << '\n';
 
-    // Reachability by closing a bit matrix: unite each row with the rows it reaches until nothing changes.
-    auto reach = urd::BitMatrix<int>(4, 4);
-    reach.set(0, 1);
-    reach.set(1, 2);
-    reach.set(2, 3);
-    for (bool changed = true; changed;)
-    {
-        changed = false;
-        for (int from = 0; from < 4; ++from)
-            for (int to = 0; to < 4; ++to)
-                if (reach.test(from, to))
-                    changed = reach.unite_rows(from, to) || changed;
-    }
-    std::cout << "0 reaches " << reach.count(0) << " vertices\n";
-
     // One interner per kind of entity, reached by its type.
-    auto repositories = urd::Family<Interned, int, std::string>();
+    auto repositories = urd::compose::Family<Interned, int, std::string>();
     repositories.get<std::string>().insert("on");
     repositories.get<int>().insert(42);
     std::cout << "strings interned: " << repositories.get<std::string>().size() << '\n';

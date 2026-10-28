@@ -68,6 +68,9 @@ if(URD_BUILD_TESTS)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
     target_sources(test_queues PRIVATE tests/allocations.cpp)
 
+    # The include root holds the vocabulary and the entry point only.
+    add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)
+
     # Declarations from the four libraries as Store requests: compiling them is the test.
     add_library(survey OBJECT tests/survey.cpp)
     target_link_libraries(survey PRIVATE urd::urd)

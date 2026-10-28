@@ -164,6 +164,7 @@ using Containers = testing::Types<
     Store<key<int>, urd::positional, urd::monotone>,
     // Frozen multimaps by dense key: compressed sparse rows.
     urd::repr::CsrMultiMap<int, int>,
+    urd::repr::BidirectionalCsr<int, int>,
     Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>,
     // Postings: each key's values together in a hash table.
     urd::repr::PostingMap<int, int>,
@@ -219,8 +220,9 @@ R built(const std::vector<int>& keys)
     if constexpr (map<R>)
     {
         auto pairs = std::vector<std::pair<int, int>>();
+        // Values differ from keys; a bidirectional map looks them up, so they are indices there.
         for (const int key : keys)
-            pairs.emplace_back(key, -key);
+            pairs.emplace_back(key, declares<R, urd::bidirectional> ? 10 * key : -key);
         return R(pairs.begin(), pairs.end());
     }
     else
