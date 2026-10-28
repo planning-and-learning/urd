@@ -32,6 +32,9 @@ namespace urd
 // | shrinkable, kept by value        | erase(e) -> count                                                  |
 // | shrinkable, a sequence           | pop_back, insert(position, e) -> iterator, emplace(position, args) |
 // | a map (names a mapped_type)      | the lookups and erase(e) above take a key; with unique keys, at(k) |
+// | fifo, lifo, by_priority (queues) | in place of all above: default construction, size, empty, push(e), |
+// |                                  | push(e&&), emplace(args), pop; front() for fifo, else top(); clear |
+// |                                  | if shrinkable                                                      |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value                                           |
 //
@@ -144,6 +147,25 @@ concept sequence_removal = requires(R& range, const E& element, std::ranges::ite
     { range.emplace(position, element) } -> std::same_as<std::ranges::iterator_t<R>>;
 };
 
+/// A queue: reached by the order its elements leave in, not iterated.
+template<typename R, typename E, typename Traits>
+concept queue_operations = std::default_initializable<R> && requires(R& queue, const R& constant, const E& element, E&& moved) {
+    { constant.size() } -> std::convertible_to<std::size_t>;
+    { constant.empty() } -> std::same_as<bool>;
+    queue.push(element);
+    queue.push(std::move(moved));
+    queue.emplace(element);
+    queue.pop();
+} && (!has<Traits, shrinkable> || requires(R& queue) { queue.clear(); }) && (has<Traits, fifo> ? requires(const R& constant) {
+                               { constant.front() } -> std::same_as<const E&>;
+                           } : requires(const R& constant) {
+                               { constant.top() } -> std::same_as<const E&>;
+                           });
+
+/// Whether Traits declares an order of leaving: a queue.
+template<typename Traits>
+inline constexpr bool queue_traits = !std::same_as<category_t<Traits, any_access>, any_access>;
+
 }  // namespace detail
 
 namespace detail
@@ -174,7 +196,9 @@ template<typename R,
          typename Traits = container_traits<std::remove_cvref_t<R>>,
          typename E = typename detail::value_of<R>::type,
          typename L = typename detail::lookup_of<R, E>::type>
-concept conforming = detail::basic_container<R, E> && detail::offers_layout<R, Traits> && detail::offers_lookup<R, Traits, L>
-                     && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E> && detail::offers_removal<R, Traits, E, L>;
+concept conforming =
+    (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>)
+    || (!detail::queue_traits<Traits> && detail::basic_container<R, E> && detail::offers_layout<R, Traits> && detail::offers_lookup<R, Traits, L>
+        && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E> && detail::offers_removal<R, Traits, E, L>);
 
 }  // namespace urd

@@ -100,6 +100,22 @@ struct constant_clear : proportional_clear
 {
 };
 
+struct any_access
+{
+};
+/// A queue: elements leave in the order they came (front, push, pop).
+struct fifo : any_access
+{
+};
+/// A stack: the last element pushed leaves first (top, push, pop).
+struct lifo : any_access
+{
+};
+/// A priority queue: the least element by urd::Less leaves first (top, push, pop).
+struct by_priority : any_access
+{
+};
+
 /// Offers no change.
 struct immutable
 {
@@ -176,7 +192,7 @@ struct type_list
 
 /// The roots of the categories a container declares, then those only a Store's request has.
 using guaranteed_roots =
-    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory, any_clear>;
+    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory, any_clear, any_access>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

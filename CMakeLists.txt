@@ -38,7 +38,7 @@ endif()
 
 if(URD_BUILD_EXAMPLES)
     find_package(Threads REQUIRED)
-    foreach(example sets sequences maps rows dense interning)
+    foreach(example sets sequences maps rows dense interning queues)
         add_executable(example_${example} examples/${example}.cpp)
         target_link_libraries(example_${example} PRIVATE urd::urd Threads::Threads)
         target_include_directories(example_${example} PRIVATE "${PROJECT_SOURCE_DIR}/tests")
@@ -58,7 +58,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. The last two count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics)
+    foreach(test store properties rows semantics queues)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -66,6 +66,7 @@ if(URD_BUILD_TESTS)
     endforeach()
     target_sources(test_properties PRIVATE tests/allocations.cpp)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
+    target_sources(test_queues PRIVATE tests/allocations.cpp)
 
     # Declarations from the four libraries as Store requests: compiling them is the test.
     add_library(survey OBJECT tests/survey.cpp)
@@ -80,7 +81,7 @@ if(URD_BUILD_TESTS)
     endforeach()
 
     if(URD_BUILD_EXAMPLES)
-        foreach(example sets sequences maps rows dense interning)
+        foreach(example sets sequences maps rows dense interning queues)
             add_test(NAME example_${example} COMMAND example_${example})
         endforeach()
     endif()
@@ -107,5 +108,5 @@ if(URD_BUILD_TESTS)
         endforeach()
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 21)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 24)
 endif()

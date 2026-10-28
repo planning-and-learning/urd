@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -175,6 +176,29 @@ using Row = Id<RowTag>;
 // bitset: per parameter, a map from objects to dense sets of rows.
 using ObjectPostings = Store<value<Store<key<Object>, value<Store<key<Row>, urd::dense>>>>>;
 static_assert(std::same_as<ObjectPostings::representation::value_type::representation, FlatHashMapOf<Object, Store<key<Row>, urd::dense>>>);
+
+// yggdrasil database/semantics/search/a_star.hpp: OpenList, a binary heap of (f, g, push, vertex) entries in one
+// vector, cleared and reused. Its tie-breaking (larger g first) is an order of its own; here, urd::Less on the
+// members as named.
+struct OpenEntry
+{
+    std::uint32_t f = 0;
+    std::uint32_t g = 0;
+    Vertex vertex;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&OpenEntry::f, &OpenEntry::g, &OpenEntry::vertex> {}; }
+};
+using OpenList = Store<value<OpenEntry>, urd::by_priority, urd::retains>;
+static_assert(std::same_as<OpenList::representation, urd::repr::Heap<OpenEntry>>);
+
+// tyr planning/algorithms/openlists/priority_queue.hpp: std::priority_queue<E, vector<E>, EntryComparator>, the
+// least key first.
+using PriorityOpenList = Store<value<std::pair<double, State>>, urd::by_priority>;
+static_assert(std::same_as<PriorityOpenList::representation, urd::repr::Heap<std::pair<double, State>>>);
+
+// Breadth-first search in tyr and runir: a queue of states, first in, first out.
+using Frontier = Store<value<State>, urd::fifo>;
+static_assert(std::same_as<Frontier::representation, urd::repr::Fifo<State>>);
 
 }  // namespace
 

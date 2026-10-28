@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/interface.hpp"
+#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -438,6 +439,70 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
     }
 }
 
+/// urd::verify for a queue: pushes, pops and clears, after each of which the next element to leave and the size are compared
+/// with a model, the elements in the order pushed.
+template<typename Q>
+std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
+{
+    using E = typename Q::value_type;
+    using Traits = container_traits<Q>;
+    auto model = std::vector<E>();
+    // Which of the model's elements leaves next: the first, the last, or the least (the first of equal ones).
+    const auto next = [&model]
+    {
+        if constexpr (has<Traits, fifo>)
+            return model.begin();
+        else if constexpr (has<Traits, lifo>)
+            return std::prev(model.end());
+        else
+            return std::ranges::min_element(model, Less<E> {});
+    };
+    const auto front = [&queue]() -> const E&
+    {
+        if constexpr (has<Traits, fifo>)
+            return queue.front();
+        else
+            return queue.top();
+    };
+
+    auto random = std::mt19937(seed);
+    auto pick = std::uniform_int_distribution<int>(0, 31);
+    for (int step = 0; step < steps; ++step)
+    {
+        const int drawn = pick(random);
+        auto operation = std::string();
+        // Push more often than pop, so the queue grows and shrinks; now and then clear it.
+        if (has<Traits, shrinkable> && drawn == 31)
+        {
+            operation = "clear";
+            queue.clear();
+            model.clear();
+        }
+        else if (model.empty() || drawn % 5 < 3)
+        {
+            operation = "push " + std::to_string(drawn);
+            if (drawn % 2 == 0)
+                queue.push(E(drawn));
+            else
+                queue.emplace(drawn);
+            model.push_back(E(drawn));
+        }
+        else
+        {
+            operation = "pop";
+            if (!(front() == *next()))
+                return "step " + std::to_string(step) + " (pop): the element leaving is not the one the order says";
+            queue.pop();
+            model.erase(next());
+        }
+        if (static_cast<std::size_t>(queue.size()) != model.size() || queue.empty() != model.empty())
+            return "step " + std::to_string(step) + " (" + operation + "): size() differs from the number of elements";
+        if (!model.empty() && !(front() == *next()))
+            return "step " + std::to_string(step) + " (" + operation + "): the next element to leave is not the one the order says";
+    }
+    return std::nullopt;
+}
+
 /// urd::verify for a conforming R.
 template<typename R>
 std::optional<std::string> run(R& range, unsigned seed, int steps)
@@ -644,12 +709,14 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
 ///
 /// Returns the first violation, naming the step and what broke, or nothing.
 template<typename R>
-    requires std::constructible_from<detail::element_t<R>, int> || detail::map_container<R>
+    requires detail::queue_traits<container_traits<R>> || std::constructible_from<detail::element_t<R>, int> || detail::map_container<R>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
     static_assert(conforming<R>, "urd::verify: R lacks an operation its declared properties require (include/urd/interface.hpp lists them)");
     if constexpr (!conforming<R>)
         return std::nullopt;
+    else if constexpr (detail::queue_traits<container_traits<R>>)
+        return detail::run_queue(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);
     else

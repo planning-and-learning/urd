@@ -8,6 +8,7 @@
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/postings.hpp"
+#include "urd/repr/queues.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
@@ -124,7 +125,10 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::IndexedSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
-                                              repr::RowPool>;
+                                              repr::RowPool,
+                                              repr::Fifo,
+                                              repr::Lifo,
+                                              repr::Heap>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,

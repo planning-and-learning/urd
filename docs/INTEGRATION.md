@@ -187,6 +187,16 @@ A multimap without order or stable references (`Store<key<K>, value<V>, multi>`)
 order, so `values(key)` is a span. Keeping postings in sync when the rows they point to move (a swap-erase) is
 the caller's.
 
+## Queues
+
+A Store with an order of leaving is a queue: `fifo`, `lifo` or `by_priority` (least first by `urd::Less`). It is
+not iterated; it offers `push`, `emplace`, `pop`, `size`, `empty`, `front()` (fifo) or `top()` (the others), and
+`clear` unless it is `monotone`. They resolve to `repr::Fifo` (a deque), `repr::Lifo` and `repr::Heap` (vectors,
+which retain their storage across clears) in `include/urd/repr/queues.hpp`; the standard adaptors lack `clear`,
+which a queue reused per search needs. A queue's container declares its order in `container_traits` and offers
+the operations above in place of a range's (`include/urd/interface.hpp`); tests/queues.cpp checks each against a
+model.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map

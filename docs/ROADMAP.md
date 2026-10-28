@@ -187,7 +187,15 @@ simpler. Sync under swap-erase stays the caller's.
   milestone.
 - **Survey pins:** yggdrasil `JoinIndex` and `KeyIndex`; tyr invariant postings.
 
-## M5: Priority queues (pattern 8)
+## M5: Priority queues (pattern 8) — done
+
+The queue kind: an access category (`fifo`, `lifo`, `by_priority`), the `queue_access` facet (push, emplace, pop,
+front or top, clear), `repr::Fifo`, `repr::Lifo`, `repr::Heap`, written for urd since the standard adaptors have
+no clear; a typed queue test against a model, with retains; survey pins (yggdrasil `OpenList`, tyr's priority
+queue, breadth-first frontiers); compile-fail cases 22–24; examples/queues.cpp. Deferred until a site needs them:
+`monotone_priority` (a bucket queue, for integral priorities), `addressable` (decrease-key through a handle), and
+orders other than `urd::Less` on the element (OpenList breaks ties by larger g, which a request cannot say yet).
+
 
 - **A new kind:** elements are accessed by order of removal, not by key or position.
 - **Category:**

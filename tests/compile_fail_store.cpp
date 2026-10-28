@@ -78,5 +78,14 @@ int main()
 #elif URD_CASE == 21  // an interner's element is its index's: changing it in place would break the lookup
     auto symbols = Store<key<int>, urd::positional> { 1, 2 };
     symbols[0] = 3;
+#elif URD_CASE == 22  // a queue is reached by its front or top, never iterated
+    auto open = Store<value<int>, urd::by_priority>();
+    (void) open.begin();
+#elif URD_CASE == 23  // a queue offers the next element by its order's name: top for a priority queue
+    auto open = Store<value<int>, urd::by_priority>();
+    (void) open.front();
+#elif URD_CASE == 24  // a frozen queue could never pop
+    using S = Store<value<int>, urd::fifo, urd::frozen>;
+    (void) S();
 #endif
 }

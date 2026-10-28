@@ -2,6 +2,7 @@
 
 #include "urd/traits.hpp"
 
+#include <concepts>
 #include <type_traits>
 #include <utility>
 
@@ -69,12 +70,14 @@ struct spec : Properties
 
     static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V>;
     static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
-    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V>;
-    /// Whether its elements can be visited in turn: every kind so far. A queue, reached by its front, or a filter,
-    /// which only answers membership, would not be.
+    /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
+    static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && !std::same_as<category_t<Properties, any_access>, any_access>;
+    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue;
+    /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
+    /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
     /// Whether it knows how many elements it holds: every kind so far. A filter would not.
-    static constexpr bool sized = is_set || is_map || is_sequence;
+    static constexpr bool sized = is_set || is_map || is_sequence || is_queue;
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;
@@ -102,10 +105,11 @@ struct to_spec
     using value_type = typename first_of<value, Ps...>::type;
     static_assert(!std::is_void_v<key_type> || !std::is_void_v<value_type>, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
 
-    // The kind, from one place.
-    using kind = spec<key_type, value_type, properties_of<>>;
-
     using stated = properties_of<Ps...>;
+    // The kind, from one place.
+    using kind = spec<key_type, value_type, properties_of<category_t<stated, any_access>>>;
+    static_assert(!kind::is_queue || (!has<stated, frozen> && !has<stated, positional>),
+                  "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
     static_assert(!kind::is_map || !has<stated, positional>, "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
     static_assert(!has<stated, contiguous, stable_refs> || has<stated, frozen>,
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
@@ -124,6 +128,7 @@ struct to_spec
     // Nothing moves once nothing changes.
     using references = std::conditional_t<has<stated, frozen>, stable_refs, category_t<stated, moving_refs>>;
     // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty.
+    // A queue offers push and pop whenever it may change; clear too unless it is monotone.
     using mutability =
         std::conditional_t<has<stated, frozen>, immutable, std::conditional_t<has<stated, monotone> || has<stated, nonempty>, growable, shrinkable>>;
 

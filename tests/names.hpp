@@ -166,6 +166,24 @@ struct name<urd::repr::PostingMap<K, V>>
     static constexpr std::string_view id = "posting_map";
     static constexpr std::string_view value = "postings (a flat hash table of value vectors)";
 };
+template<typename T>
+struct name<urd::repr::Fifo<T>>
+{
+    static constexpr std::string_view id = "fifo";
+    static constexpr std::string_view value = "queue (a deque, first in first out)";
+};
+template<typename T>
+struct name<urd::repr::Lifo<T>>
+{
+    static constexpr std::string_view id = "lifo";
+    static constexpr std::string_view value = "stack (a vector, last in first out)";
+};
+template<typename T>
+struct name<urd::repr::Heap<T>>
+{
+    static constexpr std::string_view id = "heap";
+    static constexpr std::string_view value = "binary heap (a vector, least first)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

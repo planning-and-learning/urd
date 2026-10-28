@@ -21,6 +21,7 @@ claims.
 | `maps.cpp` | maps: plain, sorted, frozen, multi; `operator[]`, `try_emplace`, `insert_or_assign`, `at` |
 | `dense.cpp` | dense keys (indices): bitset and sparse sets, maps by position, O(1) clears, set algebra |
 | `interning.cpp` | insertion order and positions: interners that give each element an index, `push_unique` lists |
+| `queues.cpp` | queues: first in first out, last in first out, least first (an open list), reused without allocating |
 | `rows.cpp` | Stores of Stores: flattened rows (CSR), a row pool that never frees, three levels |
 
 Each prints the requests and the container chosen for each, then uses a few of them. Lines commented with
@@ -30,11 +31,12 @@ Build and run from the repository root:
 
 ```sh
 cmake -S . -B build/examples -DCMAKE_BUILD_TYPE=Release
-cmake --build build/examples -j8 --target example_sets example_sequences example_maps example_rows example_dense example_interning
+cmake --build build/examples -j8 --target example_sets example_sequences example_maps example_rows example_dense example_interning example_queues
 ./build/examples/example_sets
 ./build/examples/example_sequences
 ./build/examples/example_maps
 ./build/examples/example_rows
 ./build/examples/example_dense
 ./build/examples/example_interning
+./build/examples/example_queues
 ```
