@@ -75,5 +75,8 @@ int main()
         int value;
     };
     (void) Store<key<Opaque>>();
+#elif URD_CASE == 21  // an interner's element is its index's: changing it in place would break the lookup
+    auto symbols = Store<key<int>, urd::positional> { 1, 2 };
+    symbols[0] = 3;
 #endif
 }

@@ -10,7 +10,8 @@
 namespace urd::detail::facet
 {
 
-/// A sequence: its elements by position, changeable in place where the Store's elements are.
+/// Positional (a sequence, or a set with positions, such as an interner): its elements by position, changeable in
+/// place where the Store's elements are.
 template<typename Derived, typename R, typename S>
 class positions
 {
@@ -67,6 +68,9 @@ public:
         assert(!self().empty());
         return *std::prev(self().end());
     }
+
+    /// The position of the element at `it`: in a set, its index; size() for end(), as find gives for an absent one.
+    [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - self().begin()); }
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }

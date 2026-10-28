@@ -156,7 +156,12 @@ using Containers = testing::Types<
     urd::repr::IndexMap<int, int, false>,
     urd::repr::IndexMap<int, int, true>,
     Store<key<int>, value<int>, urd::dense>,
-    Store<key<int>, value<int>, urd::dense, urd::constant_clear>>;
+    Store<key<int>, value<int>, urd::dense, urd::constant_clear>,
+    // Insertion order and positions: interners.
+    urd::repr::IndexedSet<int>,
+    Store<key<int>, urd::insertion_ordered>,
+    Store<key<int>, urd::positional>,
+    Store<key<int>, urd::positional, urd::monotone>>;
 
 template<typename R>
 class Properties : public testing::Test

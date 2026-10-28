@@ -162,6 +162,16 @@ the registry, so only dense requests reach them. Clear cost is a category of its
 clear does not cost what the container's history did. Every set also has `includes`, `intersects`, `|=`, `&=` and
 `-=` (`facet::set_algebra`), on whole words for a bitset.
 
+## Insertion order and interners
+
+`insertion_ordered` is an order beside `sorted`: a new element goes last, the others keep their places. A set
+may also be `positional`: its elements have positions 0..n-1, and `operator[]`, `at`, `front`, `back` and
+`position(iterator)` read them. A positional set keeps insertion order unless it asks to be `sorted`, so an
+element's position is its index: `Store<key<T>, positional, monotone>` is an interner, whose `insert` returns
+the element's iterator (`position` of it is the index) and whose indices never shift. Both resolve to
+`repr::IndexedSet` (`include/urd/repr/indexed.hpp`), a vector plus a flat hash table of positions; erase keeps
+the order and costs O(n).
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map

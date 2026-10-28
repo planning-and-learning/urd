@@ -148,6 +148,12 @@ struct name<urd::repr::IndexMap<K, V, true>>
     static constexpr std::string_view id = "generation_map";
     static constexpr std::string_view value = "generation map (a slot per index, O(1) clear by generation)";
 };
+template<typename T>
+struct name<urd::repr::IndexedSet<T>>
+{
+    static constexpr std::string_view id = "indexed_set";
+    static constexpr std::string_view value = "indexed set (a vector in insertion order, plus a hash table of positions)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

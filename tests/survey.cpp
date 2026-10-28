@@ -135,6 +135,22 @@ static_assert(std::same_as<PatternDatabase::representation, urd::repr::IndexMap<
 using Flagged = Store<key<Vertex>, urd::dense, urd::sorted>;
 static_assert(std::same_as<Flagged::representation, urd::repr::DenseSet<Vertex>>);
 
+// runir graphs/algorithms/color_refinement.hpp: SignatureInterner, a vector of signatures plus an
+// UnorderedMap<Signature, Color> giving each new signature the next color, cleared every round.
+using Signature = std::vector<std::uint32_t>;
+using Signatures = Store<key<Signature>, urd::positional>;
+static_assert(std::same_as<Signatures::representation, urd::repr::IndexedSet<Signature>>);
+
+// loki translators: push_unique(IndexList<T>&, UnorderedSet<View<T>>& seen, value), a list without repeats in the
+// order first seen.
+using Translated = Store<key<Action>, urd::insertion_ordered>;
+static_assert(std::same_as<Translated::representation, urd::repr::IndexedSet<Action>>);
+
+// tyr datalog/policies/annotation.hpp: IndexedAchievers, achievers in a vector plus an UnorderedMap<RuleBinding,
+// size_t> of their indices, only ever added to.
+using Achievers = Store<key<RelationBinding>, urd::positional, urd::monotone>;
+static_assert(std::same_as<Achievers::representation, urd::repr::IndexedSet<RelationBinding>>);
+
 }  // namespace
 
 // Not yet: tyr's postings (vector<UnorderedMap<Index<Object>, dynamic_bitset>>) need postings (M4). The maps

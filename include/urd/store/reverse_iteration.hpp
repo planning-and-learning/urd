@@ -7,7 +7,7 @@
 namespace urd::detail::facet
 {
 
-/// Iterated in an order the request asked for (sorted, or a sequence): backwards too.
+/// Iterated in an order the request asked for (sorted, insertion order, or a sequence): backwards too.
 template<typename Derived, typename R, typename S>
 class reverse_iteration
 {

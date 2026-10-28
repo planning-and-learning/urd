@@ -113,6 +113,22 @@ range is empty. Clear-and-refill favors the dense containers up to 10⁴ element
 faster than the generation map and the sparse set. Their O(1) clear pays off where few of many keys are present, as in
 per-state markings.
 
+## Insertion order (IndexedSet: a vector plus a flat hash table of positions)
+
+ns per element, against the flat hash table.
+
+| workload | n | int: FlatHashSet | int: IndexedSet | Key32: FlatHashSet | Key32: IndexedSet |
+|---|---|---|---|---|---|
+| insert | 10⁴ | 8.8 | 9.8 | 21.5 | 23.2 |
+| insert | 10⁵ | 8.1 | 9.3 | 22.1 | 43.7 |
+| lookup | 10⁵ | 1.3 | 1.7 | 11.3 | 11.5 |
+| clear and refill | 10⁵ | 3.2 | 3.4 | 11.5 | 11.9 |
+| iterate | 10⁵ | 0.7 | 0.1 | 1.0 | 0.1 |
+
+Lookups cost what the hash table costs; iteration is a vector's. Inserting a large key costs twice, since the
+table keeps a copy of each element: a table of positions hashed through the vector would avoid that, if
+interning large keys shows up in a profile.
+
 ## What the orders take from it
 
 - **Unsorted sets and maps: flat hash tables first.** They are fastest at insert, lookup and clear-and-refill at

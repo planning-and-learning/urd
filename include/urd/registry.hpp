@@ -5,6 +5,7 @@
 #include "urd/repr/dense.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
+#include "urd/repr/indexed.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
@@ -39,7 +40,7 @@ using requirement = with_t<S,
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
 /// sequence's duplicates), is a map exactly where S is, and is random-access where S is a sequence. A sequence
-/// kept by value must be sorted, or its positions would mean nothing (an insertion-ordered one is still to come). Where S's elements are Stores (rows), R
+/// kept by value must be sorted, or its positions would mean nothing. Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map && satisfies<container_traits<R>, requirement<S>> && conforming<R>
@@ -101,7 +102,8 @@ struct map_candidates
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
 /// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
 /// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
-/// tables, which declare sparse keys, so only a request for dense keys reaches them. Frozen rows are flattened first; rows
+/// tables, which declare sparse keys, so only a request for dense keys reaches them; the indexed set, after
+/// them too, only a request for insertion order or positions. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
 using element_preference = element_candidates<repr::Jagged,
                                               std::vector,
@@ -112,6 +114,7 @@ using element_preference = element_candidates<repr::Jagged,
                                               FlatSet,
                                               repr::DenseSet,
                                               repr::SparseSet,
+                                              repr::IndexedSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool>;

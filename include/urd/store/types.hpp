@@ -26,7 +26,7 @@ struct store_types
     /// Elements change in place: nothing depends on their values, and the Store may change.
     static constexpr bool writable = !keyed && !has<S, monotone>;
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::iterable && (has<S, sorted> || S::is_sequence);
+    static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::is_sequence);
 
     using value_type = typename S::element_type;
     using key_type = typename S::key_type;

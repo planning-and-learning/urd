@@ -3,6 +3,7 @@
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
 
 #include "urd/repr/dense.hpp"
+#include "urd/repr/indexed.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
@@ -151,6 +152,8 @@ using DenseMap = urd::repr::IndexMap<T, int, false>;
 template<typename T>
 using GenerationMap = urd::repr::IndexMap<T, int, true>;
 template<typename T>
+using IndexedSet = urd::repr::IndexedSet<T>;
+template<typename T>
 using HashSet = std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
 using FlatHashSet = boost::unordered_flat_set<T, urd::Hash<T>, urd::EqualTo<T>>;
@@ -209,6 +212,9 @@ int main(int argc, char** argv)
     add_benchmarks<SparseSet, int>("SparseSet<int>", false);
     add_benchmarks<DenseMap, int>("DenseMap<int>", false);
     add_benchmarks<GenerationMap, int>("GenerationMap<int>", false);
+    // Insertion order: a vector plus a table of positions.
+    add_benchmarks<IndexedSet, int>("IndexedSet<int>", false);
+    add_benchmarks<IndexedSet, Key32>("IndexedSet<Key32>", false);
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();

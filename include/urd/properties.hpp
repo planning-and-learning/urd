@@ -106,12 +106,15 @@ struct to_spec
     using kind = spec<key_type, value_type, properties_of<>>;
 
     using stated = properties_of<Ps...>;
-    static_assert(kind::is_sequence || !has<stated, positional>, "urd::Store: positional identifies elements by position, so it cannot have key<K>");
+    static_assert(!kind::is_map || !has<stated, positional>, "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
     static_assert(!has<stated, contiguous, stable_refs> || has<stated, frozen>,
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
 
     // What the list implies, in place of what it states.
-    using identity = std::conditional_t<kind::is_sequence, positional, by_key>;
+    // A sequence is positional; a set may be too, with its elements in insertion order unless it asks for another
+    // (an interner: each element's position is its index).
+    using identity = std::conditional_t<kind::is_sequence, positional, category_t<stated, by_key>>;
+    using order = std::conditional_t<kind::is_set && has<stated, positional> && !has<stated, sorted>, insertion_ordered, category_t<stated, any_order>>;
     // A set's keys are its contents, each once; a map's keys are each once unless it is a multimap.
     using uniqueness = std::conditional_t<kind::is_set || (kind::is_map && !has<stated, multi>), unique, category_t<stated, duplicates>>;
     // A map has one value per key unless it says multi; a sequence one value per position.
@@ -124,7 +127,7 @@ struct to_spec
     using mutability =
         std::conditional_t<has<stated, frozen>, immutable, std::conditional_t<has<stated, monotone> || has<stated, nonempty>, growable, shrinkable>>;
 
-    using type = spec<key_type, value_type, with_t<stated, identity, uniqueness, multiplicity, keys, references, mutability>>;
+    using type = spec<key_type, value_type, with_t<stated, identity, order, uniqueness, multiplicity, keys, references, mutability>>;
 };
 
 }  // namespace detail

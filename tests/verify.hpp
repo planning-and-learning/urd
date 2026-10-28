@@ -110,7 +110,7 @@ std::optional<std::string> violation(const R& range,
         return "size() differs from the number of elements";
 
     auto expected = model.elements;
-    if (by_value<Traits> && !has<Traits, sorted>)
+    if (by_value<Traits> && !has<Traits, sorted> && !has<Traits, insertion_ordered>)
     {
         std::ranges::sort(contents);
         std::ranges::sort(expected);

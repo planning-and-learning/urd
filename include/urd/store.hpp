@@ -52,7 +52,7 @@ class Store :
     public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
-    public facet_if<S::is_sequence, facet::positions<Store<R, S>, R, S>>,
+    public facet_if<has<S, positional>, facet::positions<Store<R, S>, R, S>>,
     public facet_if<has<S, contiguous>, facet::contiguous_data<Store<R, S>, R, S>>,
     public facet_if<has<S, growable>, facet::capacity<Store<R, S>, R, S>>,
     public facet_if<has<S, growable>, facet::growth<Store<R, S>, R, S>>,

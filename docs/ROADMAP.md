@@ -131,7 +131,16 @@ flag vectors.
 **Decision:** whether a read past the end returns a default or is an error. Recommended: a default under
 `auto_resize` (what `DenseRelationMap` does), and an error under `fixed_size`.
 
-## M2: Interners and insertion-ordered sets (patterns 1, 11)
+## M2: Interners and insertion-ordered sets (patterns 1, 11) — done
+
+`insertion_ordered`, positional sets (insertion order by default, so a position is an index), `position(it)`,
+`repr::IndexedSet` (vector plus flat hash table of positions), survey pins (runir `SignatureInterner`, loki
+`push_unique`, tyr `IndexedAchievers`), examples/interning.cpp. Changes from the plan below: `insert` keeps the
+standard's `pair<iterator, bool>` (`position` turns the iterator into the index); yggdrasil's `IndexedHashSet` is
+not copied, as it is built on its buffers and arenas. Deferred until a site needs them: a concurrent interner
+(tyr's state storages, over `SegmentedVector` for stable references), an insertion-ordered map, and positions
+hashed through the vector instead of copied keys.
+
 
 - **Interner:** `Store<key<T>, positional, monotone>`, the combination that compile-fail case 7 forbids
   today.

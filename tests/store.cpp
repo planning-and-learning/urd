@@ -12,6 +12,7 @@
 #include <map>
 #include <random>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -89,6 +90,14 @@ static_assert(std::same_as<Store<key<int>, urd::dense, urd::constant_clear>::rep
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense>::representation, urd::repr::IndexMap<int, int, false>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear>::representation, urd::repr::IndexMap<int, int, true>>);
 
+// Insertion order and positions: an indexed set. A set that is positional keeps insertion order unless it asks to be
+// sorted, so that an element's position is its index (an interner).
+static_assert(std::same_as<Store<key<int>, urd::insertion_ordered>::representation, urd::repr::IndexedSet<int>>);
+static_assert(std::same_as<Store<key<int>, urd::positional>::representation, urd::repr::IndexedSet<int>>);
+static_assert(urd::has<Store<key<int>, urd::positional>, urd::insertion_ordered, urd::unique>);
+static_assert(std::same_as<Store<key<int>, urd::positional, urd::sorted>::representation, FlatSet<int>>);
+static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional>);
+
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);
@@ -136,6 +145,7 @@ static_assert(can_insert<Store<value<int>, urd::sorted>> && !can_push_back<Store
 // Elements change in place only where no property depends on their values and the Store may change.
 static_assert(can_assign<Store<value<int>>>);
 static_assert(!can_assign<Store<value<int>, urd::sorted>> && !can_assign<Store<value<int>, urd::monotone>>);
+static_assert(!can_assign<Store<key<int>, urd::positional>>);
 // A unique set's insert says whether it inserted; a multiset's does not.
 static_assert(std::same_as<decltype(Store<key<int>>().insert(1).second), bool>);
 static_assert(std::same_as<decltype(Store<value<int>, urd::sorted>().insert(1)), Store<value<int>, urd::sorted>::iterator>);
@@ -285,7 +295,8 @@ using Sets = testing::Types<Store<key<int>>,
                             Store<key<int>, urd::small>,
                             Store<key<int>, urd::stable_refs>,
                             Store<key<int>, urd::dense>,
-                            Store<key<int>, urd::dense, urd::constant_clear>>;
+                            Store<key<int>, urd::dense, urd::constant_clear>,
+                            Store<key<int>, urd::insertion_ordered>>;
 TYPED_TEST_SUITE(SetAlgebra, Sets);
 
 std::vector<int> sorted_copy(const auto& set)
@@ -326,4 +337,18 @@ TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
         EXPECT_EQ(lhs.includes(rhs), std::ranges::includes(a, b));
         EXPECT_EQ((TypeParam(lhs) |= rhs).size(), sorted_copy(TypeParam(lhs) |= rhs).size());
     }
+}
+
+// An interner: each new element gets the next index, which stays its index; a known one keeps its index.
+TEST(Interner, GivesEachElementItsIndex)
+{
+    auto symbols = Store<key<std::string>, urd::positional, urd::monotone>();
+    const auto index = [&symbols](const std::string& symbol) { return symbols.position(symbols.insert(symbol).first); };
+    EXPECT_EQ(index("on"), 0U);
+    EXPECT_EQ(index("clear"), 1U);
+    EXPECT_EQ(index("on"), 0U);
+    EXPECT_EQ(symbols[1], "clear");
+    EXPECT_EQ(symbols.position(symbols.find("clear")), 1U);
+    EXPECT_EQ(symbols.position(symbols.find("holding")), symbols.size());
+    EXPECT_EQ(std::vector<std::string>(symbols.rbegin(), symbols.rend()), (std::vector<std::string> { "clear", "on" }));
 }

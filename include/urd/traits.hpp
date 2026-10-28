@@ -18,6 +18,10 @@ struct any_order
 struct sorted : any_order
 {
 };
+/// In the order they were inserted: a new element goes last, and the others keep their places.
+struct insertion_ordered : any_order
+{
+};
 
 struct duplicates
 {
