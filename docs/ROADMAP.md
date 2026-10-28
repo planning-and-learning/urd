@@ -285,6 +285,22 @@ policies and reuse over new containers.
 6. Later: sorted maps keeping value storage or a bucket queue, borrowed pool rows, order by projection, CSR rebuilt
    in place.
 
+## Generalization (after M9.5)
+
+Containers that repeated one another became one class with a policy; requests resolve as before, the old names
+are aliases:
+
+| Merged | Into | Lines |
+|---|---|---|
+| bit rows | `Jagged` (fixed-shape rows of bits) | the separate class removed |
+| `CsrMultiMap`, `PostingMap` | `GroupedMultiMap<IndexGroups or HashGroups>` | 407 → 405: one interface, not fewer lines |
+| `IndexedSet`, `ConcurrentIndexedSet` | `IndexedSet<…, ThreadSafe>` | 383 → 256 |
+| `Fifo`, `Lifo`, `Heap` | `Queue<T, Order>` | 125 → 108 |
+
+Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a plain sequence cannot promise; and
+`Jagged` with `CsrMultiMap`, which share little more than offsets, while building a `Jagged` of Stores inside
+`urd/repr` would make the representations depend on `Store`.
+
 ## Order and size
 
 | Milestone | Coverage | Size |

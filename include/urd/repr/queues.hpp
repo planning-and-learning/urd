@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -16,91 +18,73 @@
 namespace urd::repr
 {
 
-/// First in, first out, over a std::deque.
-template<typename T>
-class Fifo
+/// Which element leaves first.
+enum class leaving : std::uint8_t
 {
-public:
-    using value_type = T;
-    using size_type = std::size_t;
-
-    [[nodiscard]] size_type size() const { return m_elements.size(); }
-    [[nodiscard]] bool empty() const { return m_elements.empty(); }
-    [[nodiscard]] const T& front() const { return m_elements.front(); }
-    void push(const T& element) { m_elements.push_back(element); }
-    void push(T&& element) { m_elements.push_back(std::move(element)); }
-    template<typename... Args>
-    void emplace(Args&&... args)
-    { m_elements.emplace_back(std::forward<Args>(args)...); }
-    void pop() { m_elements.pop_front(); }
-    void clear() { m_elements.clear(); }
-
-private:
-    std::deque<T> m_elements;
+    first_in,
+    last_in,
+    least,
 };
 
-/// Last in, first out, over a std::vector.
-template<typename T>
-class Lifo
+/// A queue whose elements leave in the order Order says: first in, over a std::deque; last in, over a std::vector;
+/// the least by urd::Less, as a binary heap in a std::vector.
+template<typename T, leaving Order>
+class Queue
 {
+    static constexpr bool fifo = Order == leaving::first_in;
+    using Elements = std::conditional_t<fifo, std::deque<T>, std::vector<T>>;
+
 public:
     using value_type = T;
     using size_type = std::size_t;
 
     [[nodiscard]] size_type size() const { return m_elements.size(); }
     [[nodiscard]] bool empty() const { return m_elements.empty(); }
-    [[nodiscard]] const T& top() const { return m_elements.back(); }
-    void push(const T& element) { m_elements.push_back(element); }
-    void push(T&& element) { m_elements.push_back(std::move(element)); }
+    [[nodiscard]] const T& front() const
+        requires fifo
+    { return m_elements.front(); }
+    [[nodiscard]] const T& top() const
+        requires(!fifo)
+    { return Order == leaving::last_in ? m_elements.back() : m_elements.front(); }
+
+    void push(const T& element) { emplace(element); }
+    void push(T&& element) { emplace(std::move(element)); }
     template<typename... Args>
     void emplace(Args&&... args)
-    { m_elements.emplace_back(std::forward<Args>(args)...); }
-    void pop() { m_elements.pop_back(); }
-    void clear() { m_elements.clear(); }
-    void reserve(size_type count) { m_elements.reserve(count); }
-
-private:
-    std::vector<T> m_elements;
-};
-
-/// The least first by urd::Less: a binary heap in a std::vector.
-template<typename T>
-class Heap
-{
-public:
-    using value_type = T;
-    using size_type = std::size_t;
-
-    [[nodiscard]] size_type size() const { return m_elements.size(); }
-    [[nodiscard]] bool empty() const { return m_elements.empty(); }
-    [[nodiscard]] const T& top() const { return m_elements.front(); }
-    void push(const T& element)
     {
-        m_elements.push_back(element);
-        std::ranges::push_heap(m_elements, greater);
+        m_elements.emplace_back(std::forward<Args>(args)...);
+        if constexpr (Order == leaving::least)
+            std::ranges::push_heap(m_elements, greater);
     }
-    void push(T&& element)
-    {
-        m_elements.push_back(std::move(element));
-        std::ranges::push_heap(m_elements, greater);
-    }
-    template<typename... Args>
-    void emplace(Args&&... args)
-    { push(T(std::forward<Args>(args)...)); }
     void pop()
     {
-        std::ranges::pop_heap(m_elements, greater);
-        m_elements.pop_back();
+        if constexpr (fifo)
+            m_elements.pop_front();
+        else
+        {
+            if constexpr (Order == leaving::least)
+                std::ranges::pop_heap(m_elements, greater);
+            m_elements.pop_back();
+        }
     }
     void clear() { m_elements.clear(); }
-    void reserve(size_type count) { m_elements.reserve(count); }
+    void reserve(size_type count)
+        requires(!fifo)
+    { m_elements.reserve(count); }
 
 private:
     /// The heap algorithms keep the greatest first; reversed, the least.
-    static constexpr auto greater = [](const T& lhs, const T& rhs) { return Less<T> {}(rhs, lhs); };
+    static constexpr auto greater = [](const auto& lhs, const auto& rhs) { return Less<T> {}(rhs, lhs); };
 
-    std::vector<T> m_elements;
+    Elements m_elements;
 };
+
+template<typename T>
+using Fifo = Queue<T, leaving::first_in>;
+template<typename T>
+using Lifo = Queue<T, leaving::last_in>;
+template<typename T>
+using Heap = Queue<T, leaving::least>;
 
 }  // namespace urd::repr
 

@@ -6,6 +6,12 @@ to give them properties; it registers containers that keep their properties by t
 never names one; it asks for properties, and the registry picks the best representation that has them.
 Adding one takes six steps; per container, only its `container_traits` and its place in the registry are written.
 
+Before adding a container, check whether it is a variant of one already there: then it is a policy (a template
+argument) of that one, not a new class. `IndexMap<K, V, Generations, ThreadSafe>`, `IndexedSet<T, Index,
+ThreadSafe>`, `SegmentedVector<…, ThreadSafe>`, `Jagged` (frozen or fixed-shape rows, of elements or of bits),
+`GroupedMultiMap<Groups>` (CSR or postings) and `Queue<T, Order>` (fifo, lifo, least first) are each one class
+whose variants the registry names by alias.
+
 ## 1. Bring in the container
 
 Put it under `include/urd/repr/`. Code taken from elsewhere keeps its copyright header and gets a line
