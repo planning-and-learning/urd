@@ -137,7 +137,8 @@ Stores. Updated as M9 closes gaps.
 | `EffectAtomIndex` | A | frozen CSR per predicate; rebuilding in place: M9 later |
 | `PriorityQueue` | A / B | `by_priority` where the element's order puts the key first; else order by projection |
 | `PredicateAssignmentSet(s)` | A (M9.3) | `Store<key<Rank>, dense, proportional_clear>`; its `BitsetSpan` view stays tyr's |
-| `DenseRelationMap`, `PredicateAnnotationMap`, `NumericIntervalAnnotations` | B | generation clear reusing values, concurrent updates (M9.4) |
+| `DenseRelationMap`, `PredicateAnnotationMap` | A (M9.4) | `Store<key<Rel>, value<Store<key<Row>, value<V>, dense, constant_clear[, concurrent]>>, dense>`; `update`, `read` |
+| `NumericIntervalAnnotations` | B | as above, plus a small set ordered by a projection |
 | `VertexPartitions`, `AdjacencyMatrix`, `PartitionedAdjacencyMatrix` | B | fixed-shape nested bit rows (M9.5) |
 | `DeduplicatedAdjacencyMatrix` | B | borrowed row views of a pool |
 | `CostBuckets`, `PendingPredicateAchievers` | B | sorted map keeping value storage, or a bucket queue |

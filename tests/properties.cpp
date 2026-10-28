@@ -159,6 +159,8 @@ using Containers = testing::Types<
     Store<key<int>, urd::dense, urd::insertion_ordered>,
     urd::repr::IndexMap<int, int, false>,
     urd::repr::IndexMap<int, int, true>,
+    urd::repr::IndexMap<int, int, true, true>,
+    Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>,
     Store<key<int>, value<int>, urd::dense>,
     Store<key<int>, value<int>, urd::dense, urd::constant_clear>,
     // Maps in insertion order: keys in an insertion-ordered set, values beside them.
@@ -515,7 +517,14 @@ TYPED_TEST(Properties, Concurrent)
                 });
         for (auto& thread : threads)
             thread.join();
-        auto contents = std::vector<int>(std::ranges::begin(range), std::ranges::end(range));
+        auto contents = std::vector<int>();
+        for (const auto& element : range)
+        {
+            if constexpr (map<TypeParam>)
+                contents.push_back(element.first);
+            else
+                contents.push_back(element);
+        }
         std::ranges::sort(contents);
         auto expected = std::vector<int>(static_cast<std::size_t>(THREADS) * EACH);
         std::iota(expected.begin(), expected.end(), 0);

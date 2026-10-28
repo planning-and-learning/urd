@@ -278,6 +278,16 @@ struct Witness
 using IndexedAchievers = Store<key<RelationBinding>, value<Witness>, urd::insertion_ordered>;
 static_assert(std::same_as<IndexedAchievers::representation, urd::repr::OrderedMap<urd::repr::IndexedSet<RelationBinding>, Witness>>);
 
+// tyr datalog/policies/annotation_types.hpp: DenseRelationMap<R, Value, ThreadSafe>, (relation, row) -> value,
+// cleared by generation, update(key, f(value, initialized)) reusing stale values, ThreadSafe with a lock per slot:
+// a dense map per relation of dense maps by row. Clearing all costs one clear per relation.
+using RowAnnotations = Store<key<Row>, value<double>, urd::dense, urd::constant_clear>;
+using RelationAnnotations = Store<key<Predicate>, value<RowAnnotations>, urd::dense>;
+static_assert(std::same_as<RowAnnotations::representation, urd::repr::IndexMap<Row, double, true>>);
+static_assert(std::same_as<RelationAnnotations::representation, urd::repr::IndexMap<Predicate, RowAnnotations, false>>);
+using SharedRowAnnotations = Store<key<Row>, value<double>, urd::dense, urd::constant_clear, urd::concurrent>;
+static_assert(std::same_as<SharedRowAnnotations::representation, urd::repr::IndexMap<Row, double, true, true>>);
+
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

@@ -79,6 +79,7 @@ backed by [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
 | `Store<key<int>, value<int>, sorted>` | `std::map` |
 | `Store<key<int>, value<int>, dense>` | `IndexMap` (a slot per index) |
 | `Store<key<int>, value<int>, dense, constant_clear>` | `IndexMap` with generations |
+| `… dense, constant_clear, concurrent` | `IndexMap` with generations and a spin lock per slot |
 | `Store<key<int>, value<int>, insertion_ordered>` | `OrderedMap` (with `dense`: over a `SparseSet`) |
 | `Store<key<int>, value<int>, multi>` | `PostingMap` (flat hash table of value vectors) |
 | `Store<key<int>, value<int>, multi, sorted>` | `std::multimap` |
@@ -110,7 +111,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | references | `stable_refs` | a reference stays valid until its element is removed |
 | layout | `contiguous` | elements next to each other in memory |
 | representation | `canonical` | equal contents, equal representations |
-| threads | `concurrent` | inserts (and, for pools, the operations they offer) from several threads at once |
+| threads | `concurrent` | inserts from several threads at once; for maps also `update` and `read`, for pools the operations they offer |
 | memory | `retains`, `reclaims` | storage freed by erase and clear is kept for reuse, or returned |
 | clear | `proportional_clear` → `constant_clear` | clear costs O(elements present), or O(1) |
 | access | `fifo`, `lifo`, `by_priority` | a queue: reached by front or top, not iterated |
@@ -146,7 +147,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `boost::container::flat_set/map`, multi | O(n) | O(log n) | O(n) | O(n) | O(n), contiguous | n elements; retains |
 | `DenseSet` (bitset) | O(1)\* | O(1) | O(1) | O(U/64); O(n) tracking its words | O(U/64 + n), in order | U bits (+ the words set, tracking); set algebra by words |
 | `SparseSet` | O(1)\* | O(1) | O(1); O(n) keeping order | O(1) for trivial keys | O(n), contiguous | n keys + U positions |
-| `IndexMap` (dense map) | O(1)\* | O(1) | O(1) | O(U); O(1) with generations | O(U), in key order | a slot per index |
+| `IndexMap` (dense map) | O(1)\* | O(1) | O(1) | O(U); O(1) with generations | O(U), in key order | a slot per index (+ a 1-byte lock, thread-safe) |
 | `IndexedSet` | O(1)\*~ | O(1)~ | O(n) (keeps order) | O(capacity) | O(n), contiguous | n elements + a table of positions |
 | `OrderedMap` | as its key set | as its key set | O(n) (keeps order) | as its key set | O(n); keys and values as spans | key set + n values |
 | `PostingMap` (multi) | O(1)\*~ | O(1)~; `values(k)` a span | O(r) per value, O(1)~ per key | O(capacity + n) | O(n) | one vector of values per key |

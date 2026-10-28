@@ -861,3 +861,73 @@ TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
         EXPECT_FALSE(lhs.unite(rhs));
     }
 }
+
+// update hands each value to a function with whether the key had one; read reads it or gives a default. Against a
+// std::map updated by hand, over the map kinds of the merge suite.
+TYPED_TEST(Merge, UpdateAndRead)
+{
+    auto random = std::mt19937(47);
+    auto map = TypeParam();
+    auto expected = std::map<int, int>();
+    for (int step = 0; step < 2000; ++step)
+    {
+        const int key = static_cast<int>(random() % 30);
+        const bool had = expected.contains(key);
+        const auto reported = map.update(key,
+                                         [](int& count, bool held)
+                                         {
+                                             count = held ? count + 1 : 1;
+                                             return held;
+                                         });
+        ASSERT_EQ(reported, had) << "step " << step;
+        expected[key] = had ? expected[key] + 1 : 1;
+        const int probe = static_cast<int>(random() % 32);
+        ASSERT_EQ(map.read(probe, [](int count) { return count; }, -1), expected.contains(probe) ? expected[probe] : -1);
+    }
+}
+
+// A map cleared by generation hands over the value it kept, storage and all: a buffer refilled per round allocates
+// once.
+TEST(Merge, GenerationsReuseValues)
+{
+    auto buffers = Store<key<int>, value<std::vector<int>>, urd::dense, urd::constant_clear>();
+    buffers.update(3, [](std::vector<int>& buffer, bool) { buffer.assign(1000, 7); });
+    buffers.clear();
+    EXPECT_FALSE(buffers.contains(3));
+    buffers.update(3,
+                   [](std::vector<int>& buffer, bool held)
+                   {
+                       EXPECT_FALSE(held);
+                       EXPECT_GE(buffer.capacity(), 1000U);
+                       buffer.clear();
+                   });
+    EXPECT_TRUE(buffers.contains(3));
+    EXPECT_TRUE(buffers.at(3).empty());
+}
+
+// Threads updating and reading the same keys of a thread-safe generation map at once: every update counts.
+TEST(Merge, ThreadsUpdateTogether)
+{
+    auto counts = Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>();
+    static_assert(std::same_as<decltype(counts)::representation, urd::repr::IndexMap<int, int, true, true>>);
+    constexpr int threads = 4;
+    constexpr int rounds = 20000;
+    constexpr int keys = 50;
+    {
+        auto workers = std::vector<std::jthread>();
+        for (int thread = 0; thread < threads; ++thread)
+            workers.emplace_back(
+                [&counts, thread]
+                {
+                    for (int round = 0; round < rounds; ++round)
+                    {
+                        counts.update((round + thread) % keys, [](int& count, bool held) { count = held ? count + 1 : 1; });
+                        (void) counts.read(round % keys, [](int count) { return count; }, 0);
+                    }
+                });
+    }
+    int total = 0;
+    for (int key = 0; key < keys; ++key)
+        total += counts.at(key);
+    EXPECT_EQ(total, threads * rounds);
+}

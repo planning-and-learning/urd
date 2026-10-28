@@ -250,6 +250,12 @@ struct name<urd::repr::DisjointSets<K>>
     static constexpr std::string_view id = "disjoint_sets";
     static constexpr std::string_view value = "disjoint sets (union-find by size, path halving)";
 };
+template<typename K, typename V>
+struct name<urd::repr::IndexMap<K, V, true, true>>
+{
+    static constexpr std::string_view id = "thread_safe_generation_map";
+    static constexpr std::string_view value = "generation map, thread-safe updates (a slot and a spin lock per index)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

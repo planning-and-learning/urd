@@ -2,15 +2,20 @@
 
 #include "urd/elements.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/containers/segmented_vector.hpp"
+#include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -407,19 +412,62 @@ private:
 /// A map from indices to values, a slot per index below the largest key, iterated in key order. With Generations,
 /// each slot carries the generation it was written in, and clear only starts a new one (O(1)): older slots read
 /// as absent and keep their storage. Without, a slot is a std::optional.
-/// Iterating gives each key with a view of its value; values change by key (at, insert_or_assign).
-template<typename K, typename V, bool Generations>
+/// Iterating gives each key with a view of its value; values change by key (at, insert_or_assign, update). With
+/// ThreadSafe (and Generations), the slots lie in a thread-safe SegmentedVector and each has a spin lock: update and
+/// read may run from threads at once; clear, erase, iteration and the rest need no other operation running.
+template<typename K, typename V, bool Generations, bool ThreadSafe = false>
 class IndexMap
 {
     static_assert(indexable<K>, "urd::repr::IndexMap: keys must be indices (urd::index_of)");
+    static_assert(!ThreadSafe || Generations, "urd::repr::IndexMap: thread-safe only with generations");
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
+    struct NoLock
+    {
+        static void lock() noexcept {}
+        static void unlock() noexcept {}
+    };
     struct generation_slot
     {
         std::uint64_t generation = 0;
         V value {};
+        [[no_unique_address]] mutable std::conditional_t<ThreadSafe, SpinMutex, NoLock> lock;
     };
     using slot = std::conditional_t<Generations, generation_slot, std::optional<V>>;
+    using Slots = std::conditional_t<ThreadSafe, SegmentedVector<slot, default_first_segment_size, true>, std::vector<slot>>;
+    /// A count threads may change at once; moving or copying it, like the map, needs no other operation running.
+    struct AtomicCount
+    {
+        std::atomic<std::size_t> value { 0 };
+
+        explicit AtomicCount(std::size_t initial = 0) noexcept : value(initial) {}
+        AtomicCount(const AtomicCount& other) noexcept : value(other.value.load()) {}
+        AtomicCount& operator=(const AtomicCount& other) noexcept
+        {
+            value = other.value.load();
+            return *this;
+        }
+        AtomicCount& operator=(std::size_t count) noexcept
+        {
+            value = count;
+            return *this;
+        }
+        AtomicCount(AtomicCount&& other) noexcept : value(other.value.load()) {}
+        AtomicCount& operator=(AtomicCount&& other) noexcept { return *this = static_cast<const AtomicCount&>(other); }
+        ~AtomicCount() = default;
+        AtomicCount& operator++() noexcept
+        {
+            ++value;
+            return *this;
+        }
+        AtomicCount& operator--() noexcept
+        {
+            --value;
+            return *this;
+        }
+        explicit operator std::size_t() const noexcept { return value.load(); }
+    };
+    using Count = std::conditional_t<ThreadSafe, AtomicCount, std::size_t>;
 
 public:
     class iterator;
@@ -439,11 +487,57 @@ public:
 
     [[nodiscard]] iterator begin() const { return iterator(this, next_from(0)); }
     [[nodiscard]] iterator end() const { return iterator(this, npos); }
-    [[nodiscard]] size_type size() const { return m_count; }
-    [[nodiscard]] bool empty() const { return m_count == 0; }
+    [[nodiscard]] size_type size() const { return static_cast<size_type>(m_count); }
+    [[nodiscard]] bool empty() const { return size() == 0; }
 
     /// Room for keys below `count`.
-    void reserve(size_type count) { m_slots.reserve(count); }
+    void reserve(size_type count)
+    {
+        if constexpr (!ThreadSafe)
+            m_slots.reserve(count);
+    }
+
+    /// Calls update(value, held) with the value of `key`, where held says whether the key had one; where it had not,
+    /// the key has one from now on, and the value handed over is a default one, or with Generations the value the slot
+    /// kept from an earlier generation, storage and all, for update to reuse. Returns what update returns.
+    template<typename Update>
+        requires std::invocable<Update&, V&, bool>
+    decltype(auto) update(const K& key, Update update)
+    {
+        auto& entry = slot_at(index_of<K>::to_index(key));
+        return locked(entry,
+                      [&]() -> decltype(auto)
+                      {
+                          if constexpr (Generations)
+                          {
+                              const bool held = entry.generation == m_generation;
+                              entry.generation = m_generation;
+                              if (!held)
+                                  ++m_count;
+                              return update(entry.value, held);
+                          }
+                          else
+                          {
+                              const bool held = entry.has_value();
+                              if (!held)
+                              {
+                                  entry.emplace();
+                                  ++m_count;
+                              }
+                              return update(*entry, held);
+                          }
+                      });
+    }
+    /// read(value) where `key` has a value, else `missing`.
+    template<typename Read, typename Result>
+        requires std::invocable<Read&, const V&>
+    [[nodiscard]] Result read(const K& key, Read read, Result missing) const
+    {
+        if (!index_of<K>::is_index(key) || index_of<K>::to_index(key) >= m_slots.size())
+            return missing;
+        const auto index = index_of<K>::to_index(key);
+        return locked(m_slots[index], [&] { return present(index) ? Result(read(value(index))) : missing; });
+    }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
@@ -491,23 +585,35 @@ public:
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
     {
         const auto index = index_of<K>::to_index(key);
-        if (present(index))
-            return { iterator(this, index), false };
-        place(index, V(std::forward<Args>(args)...));
-        return { iterator(this, index), true };
+        auto& entry = slot_at(index);
+        const bool inserted = locked(entry,
+                                     [&]
+                                     {
+                                         if (present(index))
+                                             return false;
+                                         place(entry, V(std::forward<Args>(args)...));
+                                         return true;
+                                     });
+        return { iterator(this, index), inserted };
     }
     /// Sets the value for `key`, inserting it where there is none.
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
     {
         const auto index = index_of<K>::to_index(key);
-        if (present(index))
-        {
-            value(index) = std::forward<M>(mapped);
-            return { iterator(this, index), false };
-        }
-        place(index, V(std::forward<M>(mapped)));
-        return { iterator(this, index), true };
+        auto& entry = slot_at(index);
+        const bool inserted = locked(entry,
+                                     [&]
+                                     {
+                                         if (present(index))
+                                         {
+                                             value(index) = std::forward<M>(mapped);
+                                             return false;
+                                         }
+                                         place(entry, V(std::forward<M>(mapped)));
+                                         return true;
+                                     });
+        return { iterator(this, index), inserted };
     }
 
     size_type erase(const K& key)
@@ -624,15 +730,40 @@ private:
             return *present_slot;
         }
     }
-    void place(std::size_t index, V&& mapped)
+    /// Puts a value in an empty slot, under its lock where slots have locks.
+    void place(slot& entry, V&& mapped)
     {
-        if (index >= m_slots.size())
-            m_slots.resize(index + 1);
         if constexpr (Generations)
-            m_slots[index] = { m_generation, std::move(mapped) };
+        {
+            entry.generation = m_generation;
+            entry.value = std::move(mapped);
+        }
         else
-            m_slots[index].emplace(std::move(mapped));
+            entry.emplace(std::move(mapped));
         ++m_count;
+    }
+    /// The slot of `index`, growing to it. Thread-safe slots grow by appends, each under the vector's lock; threads
+    /// growing at once may append more than asked, never fewer.
+    slot& slot_at(std::size_t index)
+    {
+        if constexpr (ThreadSafe)
+            while (m_slots.size() <= index)
+                m_slots.emplace_back();
+        else if (index >= m_slots.size())
+            m_slots.resize(index + 1);
+        return m_slots[index];
+    }
+    /// Runs `body` holding the slot's lock, where slots have locks.
+    template<typename Body>
+    static decltype(auto) locked(const slot& entry, Body body)
+    {
+        if constexpr (ThreadSafe)
+        {
+            const auto guard = std::scoped_lock(entry.lock);
+            return body();
+        }
+        else
+            return body();
     }
     void remove(std::size_t index)
     {
@@ -659,8 +790,8 @@ private:
         return npos;
     }
 
-    std::vector<slot> m_slots;
-    std::size_t m_count = 0;
+    Slots m_slots;
+    Count m_count { 0 };
     std::uint64_t m_generation = 1;  // slots start at 0, so a new slot is absent
 };
 
@@ -699,9 +830,10 @@ struct container_traits<repr::IndexMap<K, V, false>> : properties_of<sorted, uni
 };
 
 /// Clear starts a new generation; stale slots keep their values' storage until written again.
-template<indexable K, typename V>
+template<indexable K, typename V, bool ThreadSafe>
     requires std::default_initializable<V> && std::movable<V>
-struct container_traits<repr::IndexMap<K, V, true>> : properties_of<sorted, unique, dense, shrinkable, retains, constant_clear>
+struct container_traits<repr::IndexMap<K, V, true, ThreadSafe>> :
+    properties_of<sorted, unique, dense, shrinkable, retains, constant_clear, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 

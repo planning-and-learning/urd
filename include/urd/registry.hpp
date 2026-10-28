@@ -106,6 +106,8 @@ template<typename K, typename V>
 using DenseMapOf = repr::IndexMap<K, V, false>;
 template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
+template<typename K, typename V>
+using ThreadSafeGenerationMapOf = repr::IndexMap<K, V, true, true>;
 
 template<typename T>
 using DenseSetOf = repr::DenseSet<T>;
@@ -217,6 +219,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       FlatMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
+                                      ThreadSafeGenerationMapOf,
                                       OrderedMapOf,
                                       DenseOrderedMapOf,
                                       CsrMultiMapOf,

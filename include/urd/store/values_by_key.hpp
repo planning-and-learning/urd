@@ -44,6 +44,33 @@ public:
         requires has<S, growable>
     { return representation().insert_or_assign(key, std::forward<M>(value)); }
 
+    /// Calls update(value, held) on the value of `key`, inserting a default one first where there is none (held is then
+    /// false), and returns what update returns. A map cleared by generation hands over the value it kept from before
+    /// the clear, storage and all, for update to reuse. With concurrent, threads may update at once.
+    template<typename Update>
+        requires std::invocable<Update&, mapped&, bool>
+    decltype(auto) update(const map_key& key, Update update)
+        requires(has<S, growable> && std::default_initializable<mapped>)
+    {
+        if constexpr (requires { representation().update(key, update); })
+            return representation().update(key, update);
+        else
+        {
+            const bool held = !representation().try_emplace(key).second;
+            return update(representation().at(key), held);
+        }
+    }
+    /// read(value) where `key` has a value, else `missing`. With concurrent, safe while others update.
+    template<typename Read, typename Result>
+        requires std::invocable<Read&, const mapped&>
+    [[nodiscard]] Result read(const map_key& key, Read read, Result missing) const
+    {
+        if constexpr (requires { representation().read(key, read, missing); })
+            return representation().read(key, read, missing);
+        else
+            return representation().contains(key) ? Result(read(representation().at(key))) : missing;
+    }
+
     /// Inserts `value` where `key` has none, else replaces the value by combine(value held, value): a hull of
     /// intervals, the lower of two costs. Whether the Store changed, as fixpoints ask.
     template<typename Combine>
