@@ -3,6 +3,7 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/change_logged.hpp"
+#include "urd/repr/concurrent_indexed.hpp"
 #include "urd/repr/csr.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/disjoint_sets.hpp"
@@ -122,6 +123,16 @@ template<typename Row>
 using TreeVectorOf = repr::TreeVectorSet<Row>;
 template<typename Row>
 using TreeBitsetOf = repr::TreeBitsetSet<Row>;
+template<typename Row>
+using RowInternerOf = repr::RowInterner<Row>;
+template<typename Row>
+using ThreadSafeRowInterner = repr::RowInterner<Row, true>;
+template<typename Row>
+using ThreadSafeTreeVectorOf = repr::TreeVectorSet<Row, 4, true>;
+template<typename Row>
+using ThreadSafeTreeBitsetOf = repr::TreeBitsetSet<Row, 4, true>;
+template<typename T>
+using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
@@ -171,9 +182,13 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::Heap,
                                               LayeredHashSet,
                                               ChangeLoggedHashSet,
-                                              repr::RowInterner,
+                                              RowInternerOf,
                                               TreeVectorOf,
                                               TreeBitsetOf,
+                                              ThreadSafeRowInterner,
+                                              ThreadSafeTreeVectorOf,
+                                              ThreadSafeTreeBitsetOf,
+                                              ConcurrentIndexedSet,
                                               SlotVector,
                                               ThreadSafeSlotVector,
                                               repr::DisjointSets>;

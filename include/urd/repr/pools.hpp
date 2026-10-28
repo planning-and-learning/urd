@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/repr/indexed.hpp"
+#include "urd/repr/concurrent_indexed.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -45,7 +45,7 @@ struct RowHandle
 /// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full, in an
 /// indexed set. A row goes in as any range of its elements and is first made a Row, so that the Row's own rules
 /// (a set's order and uniqueness) decide which rows are equal.
-template<typename Row>
+template<typename Row, bool ThreadSafe = false>
 class RowInterner
 {
     using element = std::ranges::range_value_t<Row>;
@@ -118,7 +118,7 @@ private:
         return m_rows[handle.index];
     }
 
-    IndexedSet<std::vector<element>> m_rows;
+    InterningTable<std::vector<element>, ThreadSafe> m_rows;
 };
 
 }  // namespace urd::repr
@@ -127,15 +127,16 @@ namespace urd
 {
 
 /// Rows kept in full, each once; clear keeps the storage.
-template<typename Row>
+template<typename Row, bool ThreadSafe>
     requires hashable<std::vector<std::ranges::range_value_t<Row>>>
-struct container_traits<repr::RowInterner<Row>> : properties_of<handles, unique, shrinkable, retains>
+struct container_traits<repr::RowInterner<Row, ThreadSafe>> :
+    properties_of<handles, unique, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 
 /// Its rows have the properties Row has: they come back as Rows.
-template<typename Row>
-struct element_traits<repr::RowInterner<Row>> : container_traits<Row>
+template<typename Row, bool ThreadSafe>
+struct element_traits<repr::RowInterner<Row, ThreadSafe>> : container_traits<Row>
 {
 };
 

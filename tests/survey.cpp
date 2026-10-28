@@ -247,6 +247,9 @@ using FluentFacts = Store<value<Store<key<Atom>, urd::dense, urd::frozen>>, urd:
 static_assert(std::same_as<FluentFacts::representation, urd::repr::TreeBitsetSet<Store<key<Atom>, urd::dense, urd::frozen>>>);
 using NumericValues = Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>;
 static_assert(std::same_as<NumericValues::representation, urd::repr::TreeVectorSet<Store<value<double>, urd::frozen>>>);
+// The same storages with ThreadSafe, shared by threads that expand states at once.
+using SharedFluentFacts = Store<value<Store<key<Atom>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>;
+static_assert(std::same_as<SharedFluentFacts::representation, urd::repr::TreeBitsetSet<Store<key<Atom>, urd::dense, urd::frozen>, 4, true>>);
 
 }  // namespace
 

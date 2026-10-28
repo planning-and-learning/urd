@@ -17,6 +17,7 @@
 #include <ranges>
 #include <set>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -142,6 +143,9 @@ static_assert((all_conform) (element_candidates<value<Store<value<int>, urd::fro
 static_assert((all_conform) (element_candidates<value<Store<key<int>, urd::dense, urd::frozen>>> {}));
 static_assert((all_conform) (map_candidates<key<int>, value<int>> {}));
 static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {}));
+
+// An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
+static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
 
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
@@ -709,4 +713,37 @@ TEST(Interner, IntegerElementsAreNotPositions)
     EXPECT_EQ(ids.position(ids.find(0U)), 1U);
     EXPECT_EQ(ids.position(ids.find(1U)), 2U);
     EXPECT_EQ(ids.position(ids.find(3U)), ids.size());
+}
+
+// Threads interning overlapping elements at once: each element gets one position, the same for every thread, and
+// positions run 0..n-1 without gaps.
+TEST(Interner, ThreadsAgreeOnPositions)
+{
+    auto symbols = Store<key<int>, urd::positional, urd::monotone, urd::concurrent>();
+    constexpr int threads = 4;
+    constexpr int each = 5000;
+    auto seen = std::vector<std::vector<std::size_t>>(threads, std::vector<std::size_t>(each));
+    {
+        auto workers = std::vector<std::jthread>();
+        for (int thread = 0; thread < threads; ++thread)
+            workers.emplace_back(
+                [&symbols, &seen, thread]
+                {
+                    // Every thread inserts the same elements, each starting at another point.
+                    for (int step = 0; step < each; ++step)
+                    {
+                        const int element = (step + thread * each / threads) % each;
+                        seen[static_cast<std::size_t>(thread)][static_cast<std::size_t>(element)] = symbols.position(symbols.insert(element).first);
+                    }
+                });
+    }
+    EXPECT_EQ(symbols.size(), static_cast<std::size_t>(each));
+    for (int thread = 1; thread < threads; ++thread)
+        EXPECT_EQ(seen[static_cast<std::size_t>(thread)], seen[0]);
+    auto positions = seen[0];
+    std::ranges::sort(positions);
+    for (std::size_t position = 0; position < positions.size(); ++position)
+        ASSERT_EQ(positions[position], position);
+    for (int element = 0; element < each; ++element)
+        ASSERT_EQ(symbols[seen[0][static_cast<std::size_t>(element)]], element);
 }

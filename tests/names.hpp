@@ -149,7 +149,7 @@ struct name<urd::repr::IndexMap<K, V, true>>
     static constexpr std::string_view value = "generation map (a slot per index, O(1) clear by generation)";
 };
 template<typename T>
-struct name<urd::repr::IndexedSet<T>>
+struct name<urd::repr::IndexedSet<T, std::uint32_t>>
 {
     static constexpr std::string_view id = "indexed_set";
     static constexpr std::string_view value = "indexed set (a vector in insertion order, plus a hash table of positions)";
@@ -225,6 +225,12 @@ struct name<urd::repr::TreeBitsetSet<Row, Arity>>
 {
     static constexpr std::string_view id = "tree_bitset_set";
     static constexpr std::string_view value = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
+};
+template<typename T, typename Index>
+struct name<urd::repr::ConcurrentIndexedSet<T, Index>>
+{
+    static constexpr std::string_view id = "concurrent_indexed_set";
+    static constexpr std::string_view value = "concurrent indexed set (segments that never move, a concurrent table of positions)";
 };
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names

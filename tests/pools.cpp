@@ -36,7 +36,10 @@ using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
                                   Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
                                   urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>>,
                                   urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>, 2>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>;
+                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
+                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>,
+                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
+                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>;
 TYPED_TEST_SUITE(Pools, Containers, urd::test::Names);
 
 }  // namespace
@@ -50,6 +53,12 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::han
 // Rows that are sets of indices are bitset trees, with zero subtrees left out.
 static_assert(std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>::representation,
                            urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>>>);
+// Thread-safe where asked: the same pools over concurrent tables.
+static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>::representation,
+                           urd::repr::RowInterner<Store<value<int>, urd::frozen>, true>>);
+static_assert(
+    std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>::representation,
+                 urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>, 4, true>>);
 // A pool is neither iterated nor counted.
 template<typename P>
 concept iterable = requires(P pool) { pool.begin(); };
@@ -182,4 +191,48 @@ TEST(Slots, ThreadSafeSlotsServeThreadsAtOnce)
     }
     EXPECT_EQ(failures, std::vector<int>(threads));
     EXPECT_EQ(pool.size(), static_cast<std::size_t>(threads * (rounds - rounds / 3)));
+}
+
+// Threads inserting the same rows, and rows derived from them, into a shared tree pool at once: every thread gets
+// the same handles, and every row reads back. Run under ThreadSanitizer in CI.
+namespace
+{
+
+template<typename P>
+void expect_threads_agree(int rounds)
+{
+    auto pool = P();
+    constexpr int threads = 4;
+    auto handles = std::vector<std::vector<typename P::handle_type>>(threads);
+    {
+        auto workers = std::vector<std::jthread>();
+        for (int thread = 0; thread < threads; ++thread)
+            workers.emplace_back(
+                [&pool, &handles, rounds, thread]
+                {
+                    auto& mine = handles[static_cast<std::size_t>(thread)];
+                    for (int round = 0; round < rounds; ++round)
+                    {
+                        auto elements = std::vector<int>();
+                        for (int element = 0; element < 40; ++element)
+                            if ((element * 7 + round) % 5 < 2)
+                                elements.push_back(element + round % 3);
+                        mine.push_back(pool.insert(elements));
+                        // Read a row published earlier, while others insert.
+                        if (round > 0)
+                            (void) pool.get(mine[static_cast<std::size_t>(round / 2)]);
+                    }
+                });
+    }
+    for (int thread = 1; thread < threads; ++thread)
+        EXPECT_EQ(handles[static_cast<std::size_t>(thread)], handles[0]);
+}
+
+}  // namespace
+
+TEST(Pools, ThreadsAgreeOnHandles)
+{
+    expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>>(300);
+    expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
+    expect_threads_agree<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
 }

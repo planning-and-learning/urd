@@ -162,6 +162,8 @@ using Containers = testing::Types<
     Store<key<int>, urd::insertion_ordered>,
     Store<key<int>, urd::positional>,
     Store<key<int>, urd::positional, urd::monotone>,
+    urd::repr::ConcurrentIndexedSet<int>,
+    Store<key<int>, urd::positional, urd::monotone, urd::concurrent>,
     // Frozen multimaps by dense key: compressed sparse rows.
     urd::repr::CsrMultiMap<int, int>,
     urd::repr::BidirectionalCsr<int, int>,

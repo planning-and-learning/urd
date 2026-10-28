@@ -2,7 +2,8 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/repr/indexed.hpp"
+#include "urd/repr/concurrent_indexed.hpp"
+#include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
@@ -39,15 +40,18 @@ struct BlockFlip
 
 /// A pool of rows that are sets of indices (Row: a dense Store of keys), each a tree of 32-bit blocks with Arity
 /// children per node. Block i always sits at position i, so changing a block only changes its path to the root; a
-/// handle names the root and the number of blocks up to the last nonzero one, so equal sets have equal handles.
-template<typename Row, std::size_t Arity = 4>
+/// handle names the root and the number of blocks up to the last nonzero one, so equal sets have equal handles. With
+/// ThreadSafe, threads may insert at once, and read rows already inserted while others insert.
+template<typename Row, std::size_t Arity = 4, bool ThreadSafe = false>
     requires(std::has_single_bit(Arity) && Arity >= 2)
 class TreeBitsetSet
 {
     using K = std::ranges::range_value_t<Row>;
     using Block = std::uint32_t;
+    using Bits = BitsetSpan<Block>;
+    using ConstBits = BitsetSpan<const Block>;
     using Children = std::array<std::uint32_t, Arity>;
-    static constexpr std::size_t block_bits = std::numeric_limits<Block>::digits;
+    using Nodes = InterningTable<Children, ThreadSafe>;
     /// The slot of an all-zero subtree of more than one block. A zero block is the value 0.
     static constexpr std::uint32_t zero_subtree = std::numeric_limits<std::uint32_t>::max();
 
@@ -63,14 +67,14 @@ public:
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
     {
-        auto blocks = std::vector<Block>();
+        auto bits = std::vector<std::size_t>();
         for (const auto& element : elements)
-        {
-            const auto bit = index_of<K>::to_index(K(element));
-            if (bit / block_bits >= blocks.size())
-                blocks.resize(bit / block_bits + 1);
-            blocks[bit / block_bits] |= Block { 1 } << (bit % block_bits);
-        }
+            bits.push_back(index_of<K>::to_index(K(element)));
+        const auto width = bits.empty() ? std::size_t { 0 } : std::ranges::max(bits) + 1;
+        auto blocks = std::vector<Block>(Bits::num_blocks(width));
+        auto row = Bits(blocks.data(), width);
+        for (const auto bit : bits)
+            row.set(bit);
         return insert_blocks(blocks);
     }
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
@@ -90,10 +94,10 @@ public:
         auto flips = std::vector<BlockFlip>();
         for (const auto bit : touched)
         {
-            const auto element = index_of<K>::from_index(bit);
-            const bool member = !listed(removed, bit) && (listed(added, bit) || contains(base, element));
-            if (member != contains(base, element))
-                flips.push_back({ static_cast<std::uint32_t>(bit / block_bits), Block { 1 } << (bit % block_bits) });
+            const bool was = contains(base, index_of<K>::from_index(bit));
+            const bool is = !listed(removed, bit) && (listed(added, bit) || was);
+            if (is != was)
+                flips.push_back({ static_cast<std::uint32_t>(Bits::block_index(bit)), Block { 1 } << Bits::block_pos(bit) });
         }
         normalize(flips);
         return insert_flips(base, flips);
@@ -104,22 +108,22 @@ public:
         if (!index_of<K>::is_index(element))
             return false;
         const auto bit = index_of<K>::to_index(element);
-        auto position = static_cast<std::uint32_t>(bit / block_bits);
+        auto position = static_cast<std::uint32_t>(Bits::block_index(bit));
         if (position >= handle.size)
             return false;
-        auto root = handle.root;
+        auto block = handle.root;
         auto size = handle.size;
         while (size > 1)
         {
-            if (root == zero_subtree)
+            if (block == zero_subtree)
                 return false;
             const auto step = tree::chunk<Arity>(size);
             const auto k = position / step;
-            root = m_nodes[root][k];
+            block = m_nodes[block][k];
             position -= k * step;
             size = child_size(size, k);
         }
-        return (root & (Block { 1 } << (bit % block_bits))) != 0;
+        return ConstBits(&block, Bits::Digits).test(Bits::block_pos(bit));
     }
 
     [[nodiscard]] Row get(handle_type handle) const
@@ -131,25 +135,17 @@ public:
     /// How many elements the row holds: the set bits.
     [[nodiscard]] size_type row_size(handle_type handle) const
     {
-        auto count = size_type { 0 };
-        for (const auto block : read_all(handle))
-            count += static_cast<size_type>(std::popcount(block));
-        return count;
+        const auto blocks = read_all(handle);
+        return ConstBits(blocks.data(), blocks.size() * Bits::Digits).count();
     }
     /// The row's elements, in key order, into `out`, which must hold row_size(handle) of them.
     void read(handle_type handle, std::span<K> out) const
     {
-        auto next = out.begin();
         const auto blocks = read_all(handle);
-        for (std::size_t position = 0; position < blocks.size(); ++position)
-            for (auto block = blocks[position]; block != 0; block &= block - 1)
-            {
-                if (next == out.end())
-                    throw std::invalid_argument("urd::repr::TreeBitsetSet::read: the output must hold the row");
-                *next++ = index_of<K>::from_index(position * block_bits + static_cast<std::size_t>(std::countr_zero(block)));
-            }
-        if (next != out.end())
+        const auto row = ConstBits(blocks.data(), blocks.size() * Bits::Digits);
+        if (out.size() != row.count())
             throw std::invalid_argument("urd::repr::TreeBitsetSet::read: the output must hold the row");
+        std::ranges::transform(set_bit_indices(row), out.begin(), [](std::size_t bit) { return index_of<K>::from_index(bit); });
     }
 
     // The rows, as their blocks, as yggdrasil's TreeBitsetSet offers them.
@@ -262,8 +258,7 @@ private:
     class BaseCursor
     {
     public:
-        BaseCursor(const IndexedSet<Children>& nodes, handle_type base) : m_nodes(&nodes), m_base_size(base.size)
-        { m_path[0] = Frame { base.root, 0, base.size }; }
+        BaseCursor(const Nodes& nodes, handle_type base) : m_nodes(&nodes), m_base_size(base.size) { m_path[0] = Frame { base.root, 0, base.size }; }
 
         /// The subtree of the base covering exactly [offset, offset + size), or nothing if the base has none. Ranges
         /// inside all-zero subtrees, or beyond the base, are zero.
@@ -303,7 +298,7 @@ private:
             { return offset <= other_offset && other_offset + other_size <= offset + size; }
         };
 
-        const IndexedSet<Children>* m_nodes;
+        const Nodes* m_nodes;
         std::uint32_t m_base_size;
         std::array<Frame, std::numeric_limits<std::uint32_t>::digits + 2> m_path {};  // bounded by the tree's height
         std::size_t m_depth = 0;
@@ -390,7 +385,7 @@ private:
             read_recursive(node[k], blocks.subspan(offset, child_size(size, k)));
     }
 
-    IndexedSet<Children> m_nodes;
+    Nodes m_nodes;
 };
 
 }  // namespace urd::repr
@@ -399,14 +394,15 @@ namespace urd
 {
 
 /// Rows that are sets of indices, sharing equal subtrees; clear keeps the table's storage.
-template<typename Row, std::size_t Arity>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
     requires indexable<std::ranges::range_value_t<Row>> && has<traits_t<Row>, unique, dense>
-struct container_traits<repr::TreeBitsetSet<Row, Arity>> : properties_of<handles, unique, structural_sharing, shrinkable, retains>
+struct container_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> :
+    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 
-template<typename Row, std::size_t Arity>
-struct element_traits<repr::TreeBitsetSet<Row, Arity>> : container_traits<Row>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct element_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> : container_traits<Row>
 {
 };
 

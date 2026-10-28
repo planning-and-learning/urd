@@ -2,7 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/repr/indexed.hpp"
+#include "urd/repr/concurrent_indexed.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/traits.hpp"
 
@@ -78,8 +78,9 @@ struct TreeHandle
 /// A pool of sequence rows (Row: a Store of values, or a vector), each a balanced tree with Arity children per node,
 /// whose leaves are the row's values and whose nodes are interned: equal subtrees are stored once, across all rows.
 /// Values with the size of a child index and a unique representation are stored inline in the child slots, so they
-/// need no leaf table. A row written in a few positions shares all but those positions' paths to the root.
-template<typename Row, std::size_t Arity = 4>
+/// need no leaf table. A row written in a few positions shares all but those positions' paths to the root. With
+/// ThreadSafe, threads may insert at once, and read rows already inserted while others insert.
+template<typename Row, std::size_t Arity = 4, bool ThreadSafe = false>
     requires(std::has_single_bit(Arity) && Arity >= 2)
 class TreeVectorSet
 {
@@ -87,7 +88,7 @@ class TreeVectorSet
     using Children = std::array<std::uint32_t, Arity>;
     // Unique object representations make bitwise identity agree with equality (rules out float, padding).
     static constexpr bool inline_leaves = std::has_unique_object_representations_v<T> && sizeof(T) == sizeof(std::uint32_t);
-    using Leaves = std::conditional_t<inline_leaves, tree::NoLeaves, IndexedSet<T>>;
+    using Leaves = std::conditional_t<inline_leaves, tree::NoLeaves, InterningTable<T, ThreadSafe>>;
 
 public:
     using value_type = Row;
@@ -212,7 +213,7 @@ private:
     }
 
     [[no_unique_address]] Leaves m_leaves;
-    IndexedSet<Children> m_nodes;
+    InterningTable<Children, ThreadSafe> m_nodes;
 };
 
 }  // namespace urd::repr
@@ -221,14 +222,15 @@ namespace urd
 {
 
 /// Rows of hashable values, sharing equal subtrees; clear keeps the tables' storage.
-template<typename Row, std::size_t Arity>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
     requires hashable<std::ranges::range_value_t<Row>> && (!by_value<traits_t<Row>>)
-struct container_traits<repr::TreeVectorSet<Row, Arity>> : properties_of<handles, unique, structural_sharing, shrinkable, retains>
+struct container_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> :
+    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 
-template<typename Row, std::size_t Arity>
-struct element_traits<repr::TreeVectorSet<Row, Arity>> : container_traits<Row>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct element_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> : container_traits<Row>
 {
 };
 
