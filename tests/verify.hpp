@@ -503,7 +503,7 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
     return std::nullopt;
 }
 
-/// urd::verify for a pool: inserts of random rows (short, over few values, so that equal rows recur) and clears.
+/// urd::verify for a pool: inserts of random rows, of rows written from earlier ones, (short, over few values, so that equal rows recur) and clears.
 /// After each, every handle given so far is checked: equal rows have equal handles, others different ones, and each
 /// handle gives its row back, by get and by read. Rows are compared as the row type keeps them (a set's in order).
 template<typename P>
@@ -536,6 +536,27 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 rows.clear();
                 handles.clear();
                 cleared = true;
+            }
+        }
+        constexpr bool sequence_rows = !by_value<traits_t<Row>>;
+        const auto base = rows.empty() ? rows.size() : static_cast<std::size_t>(random() % rows.size());
+        if constexpr (sequence_rows)
+        {
+            // Now and then a row written from an earlier one: some of its positions, in order, get new values.
+            if (!cleared && base < rows.size() && !rows[base].empty() && step % 3 == 0)
+            {
+                operation = "insert by writes";
+                auto writes = std::vector<typename P::write_type>();
+                auto row = rows[base];
+                for (std::size_t position = 0; position < row.size(); ++position)
+                    if (random() % 3 == 0)
+                    {
+                        writes.push_back({ position, E(pick(random)) });
+                        row[position] = writes.back().value;
+                    }
+                handles.push_back(pool.insert(handles[base], std::span<const typename P::write_type>(writes)));
+                rows.push_back(row);
+                cleared = true;  // done with this step's insert
             }
         }
         if (!cleared)

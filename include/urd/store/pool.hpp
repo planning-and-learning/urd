@@ -1,7 +1,10 @@
 #pragma once
 
+#include "urd/repr/pools.hpp"
 #include "urd/store/types.hpp"
 
+#include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <initializer_list>
 #include <ranges>
@@ -16,16 +19,30 @@ template<typename Derived, typename R, typename S>
 class pool
 {
     using row_element = std::ranges::range_value_t<typename S::element_type>;
+    /// Rows that are sequences take writes by position.
+    static constexpr bool sequence_rows = !by_value<traits_t<typename S::element_type>>;
 
 public:
     using handle_type = typename R::handle_type;
     using row_type = typename S::element_type;
+    /// A change to a sequence row: its value at a position.
+    using write_type = Write<row_element>;
 
     /// The handle of the row with these elements: an earlier handle where an equal row is stored.
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
     { return representation().insert(elements); }
     handle_type insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
+    /// The handle of the row `base` with `writes` applied: sorted by position, each position once and within the row.
+    /// A pool that shares structure stores only what changed.
+    handle_type insert(handle_type base, std::span<const Write<row_element>> writes)
+        requires sequence_rows
+    {
+        assert(std::ranges::is_sorted(writes, {}, &Write<row_element>::position));
+        assert(std::ranges::adjacent_find(writes, {}, &Write<row_element>::position) == writes.end());
+        assert(writes.empty() || writes.back().position < row_size(base));
+        return representation().insert(base, writes);
+    }
 
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }

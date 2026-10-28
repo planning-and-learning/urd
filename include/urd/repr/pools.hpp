@@ -11,9 +11,24 @@
 #include <numeric>
 #include <ranges>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 // Pools: rows identified by the handles insert gives, equal rows by equal handles.
+
+namespace urd
+{
+
+/// A change to a row of a pool: the value at `position` becomes `value`. A pool of sequence rows takes a sorted
+/// span of them, with unique positions, to insert a row that differs from another in few positions.
+template<typename T>
+struct Write
+{
+    std::size_t position = 0;
+    T value {};
+};
+
+}  // namespace urd
 
 namespace urd::repr
 {
@@ -38,6 +53,7 @@ class RowInterner
 public:
     using value_type = Row;
     using handle_type = RowHandle;
+    using write_type = Write<element>;
     using size_type = std::size_t;
 
     RowInterner() = default;
@@ -50,6 +66,15 @@ public:
         return handle_type { static_cast<std::uint32_t>(found - m_rows.begin()) };
     }
 
+    /// The row `base` with `writes` applied (sorted, unique positions within it), stored in full.
+    handle_type insert(handle_type base, std::span<const write_type> writes)
+    {
+        auto row = stored(base);
+        for (const auto& write : writes)
+            row.at(write.position) = write.value;
+        return insert(row);
+    }
+
     [[nodiscard]] Row get(handle_type handle) const
     {
         const auto& row = stored(handle);
@@ -59,17 +84,18 @@ public:
     /// Copies the row's elements into `out`, which must hold row_size(handle) of them.
     void read(handle_type handle, std::span<element> out) const
     {
-        assert(out.size() == row_size(handle));
+        if (out.size() != row_size(handle))
+            throw std::invalid_argument("urd::repr::RowInterner::read: the output must hold the row");
         std::ranges::copy(stored(handle), out.begin());
     }
 
-    /// The bytes the rows' elements take, not counting the table's overhead.
+    /// The bytes its storage takes: the rows' elements, their vectors, and the table.
     [[nodiscard]] size_type memory_usage() const
     {
         return std::accumulate(m_rows.begin(),
                                m_rows.end(),
-                               size_type { 0 },
-                               [](size_type total, const auto& row) { return total + row.size() * sizeof(element); });
+                               m_rows.memory_usage(),
+                               [](size_type total, const auto& row) { return total + row.capacity() * sizeof(element); });
     }
     void reserve(size_type count) { m_rows.reserve(count); }
     void clear() { m_rows.clear(); }
@@ -78,7 +104,7 @@ private:
     [[nodiscard]] const std::vector<element>& stored(handle_type handle) const
     {
         assert(handle.index < m_rows.size());
-        return m_rows.begin()[handle.index];
+        return m_rows[handle.index];
     }
 
     IndexedSet<std::vector<element>> m_rows;

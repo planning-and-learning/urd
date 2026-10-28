@@ -10,6 +10,7 @@
 #include "urd/partition.hpp"
 
 #include <concepts>
+#include <cstdint>
 #include <functional>
 #include <gtest/gtest.h>
 #include <iterator>
@@ -685,4 +686,37 @@ TEST(ChangeLog, HoldsTheDifferenceSinceItWasCleared)
         ASSERT_EQ(std::set<int>(facts.removed().begin(), facts.removed().end()), std::set<int>(removed.begin(), removed.end())) << "step " << step;
         ASSERT_EQ(facts.removed().size(), removed.size());
     }
+}
+
+// An interner's table hashes through its own elements: copies and moves each keep theirs, and a moved-from interner
+// starts empty and works.
+TEST(Interner, CopiesAndMovesKeepTheirOwnIndex)
+{
+    using Symbols = Store<key<std::string>, urd::positional>;
+    auto symbols = Symbols { "on", "clear" };
+    auto copy = symbols;
+    copy.insert("holding");
+    EXPECT_FALSE(symbols.contains("holding"));
+    auto moved = std::move(symbols);
+    EXPECT_EQ(moved.position(moved.find("clear")), 1U);
+    symbols.clear();  // a moved-from Store is valid; clearing it is how code reuses one
+    symbols.insert("empty");
+    EXPECT_EQ(symbols.size(), 1U);
+    EXPECT_EQ(symbols.position(symbols.find("empty")), 0U);
+    EXPECT_FALSE(moved.contains("empty"));
+    copy = moved;
+    EXPECT_FALSE(copy.contains("holding"));
+    EXPECT_EQ(copy.position(copy.find("clear")), 1U);
+}
+
+// Integer elements of the same width as the positions the table holds are never taken for positions.
+TEST(Interner, IntegerElementsAreNotPositions)
+{
+    auto ids = Store<key<std::uint32_t>, urd::positional>();
+    for (const std::uint32_t id : { 2U, 0U, 1U, 0U, 7U })
+        ids.insert(id);
+    EXPECT_EQ(ids.size(), 4U);
+    EXPECT_EQ(ids.position(ids.find(0U)), 1U);
+    EXPECT_EQ(ids.position(ids.find(1U)), 2U);
+    EXPECT_EQ(ids.position(ids.find(3U)), ids.size());
 }

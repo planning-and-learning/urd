@@ -38,7 +38,7 @@ namespace urd
 // |                                  | if shrinkable                                                      |
 // | handles (pools)                  | in place of all above: insert(span of a row's elements) -> handle, |
 // |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
-// |                                  | shrinkable                                                         |
+// |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value                                           |
 //
@@ -177,7 +177,11 @@ concept pool_operations =
            constant.read(handle, out);
            { constant.memory_usage() } -> std::convertible_to<std::size_t>;
            requires std::equality_comparable<typename R::handle_type>;
-       } && (!has<Traits, shrinkable> || requires(R& pool) { pool.clear(); });
+       } && (!has<Traits, shrinkable> || requires(R& pool) {
+           pool.clear();
+       }) && (by_value<traits_t<typename R::value_type>> || requires(R& pool, const typename R::handle_type& handle, std::span<const typename R::write_type> writes) {
+           { pool.insert(handle, writes) } -> std::same_as<typename R::handle_type>;
+       });
 
 /// Whether Traits declares an order of leaving: a queue.
 template<typename Traits>

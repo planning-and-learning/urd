@@ -18,6 +18,7 @@
 #include "urd/repr/sequence.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
+#include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -95,6 +96,8 @@ using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
+template<typename Row>
+using TreeVectorOf = repr::TreeVectorSet<Row>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
@@ -144,7 +147,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::Heap,
                                               LayeredHashSet,
                                               ChangeLoggedHashSet,
-                                              repr::RowInterner>;
+                                              repr::RowInterner,
+                                              TreeVectorOf>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
