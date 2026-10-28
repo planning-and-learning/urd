@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -28,6 +29,15 @@ template<typename V>
 struct value
 {
     using type = V;
+};
+
+/// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
+/// pointer (&Node::cost) or a stateless lambda ([](const Node& n) { return std::tuple(n.f, -n.g); }). Ties fall back
+/// to the element's own order where it has one.
+template<auto P>
+struct order_by
+{
+    static constexpr auto projection = P;
 };
 
 /// How long each row of a fixed_shape Store is, in order: what such a Store is built from.
@@ -74,7 +84,28 @@ consteval bool is_tag()
 }
 
 template<typename P>
-inline constexpr bool is_property = is_tag<P>() || is_a<key, P> || is_a<value, P>;
+inline constexpr bool is_order_by = false;
+template<auto P>
+inline constexpr bool is_order_by<order_by<P>> = true;
+
+/// The comparator of the first order_by<P> among Ps for elements T, else void.
+template<typename T, typename... Ps>
+struct order_of
+{
+    using type = void;
+};
+template<typename T, auto P, typename... Ps>
+struct order_of<T, order_by<P>, Ps...>
+{
+    using type = ProjectedLess<T, P>;
+};
+template<typename T, typename P, typename... Ps>
+struct order_of<T, P, Ps...> : order_of<T, Ps...>
+{
+};
+
+template<typename P>
+inline constexpr bool is_property = is_tag<P>() || is_a<key, P> || is_a<value, P> || is_order_by<P>;
 
 /// P's number, where P is a tag; tag::count for key<K> and value<V>.
 template<typename P>
@@ -91,11 +122,13 @@ consteval tag tag_of()
 /// A Store's request in canonical form: its key and value types (void where absent), and the tags that say more than
 /// their category's root, in the order of urd::tag. Whatever order the properties were listed in, equal requests give
 /// equal specs, and so equal Store types; compilers print the tags by name.
-template<typename K, typename V, tag... Tags>
+template<typename K, typename V, typename Order, tag... Tags>
 struct spec
 {
     using key_type = K;
     using value_type = V;
+    /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
+    using order_type = Order;
 
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
     static constexpr bool declared = true;
@@ -204,8 +237,8 @@ consteval listed_tags non_roots(const property_set& properties)
     }
     return result;
 }
-template<typename K, typename V, listed_tags Listed, std::size_t... I>
-spec<K, V, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positions*/);
+template<typename K, typename V, typename Order, listed_tags Listed, std::size_t... I>
+spec<K, V, Order, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positions*/);
 
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
 template<typename... Ps>
@@ -248,8 +281,19 @@ struct to_spec
     static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
 
+    /// What order_by orders: keys, or a sequence's or queue's values.
+    using ordered_type = std::conditional_t<keyed, key_type, value_type>;
+    static constexpr bool ordered_by = (is_order_by<Ps> || ...);
+    static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
+    static_assert(!ordered_by || stated.has(tag::sorted) || stated.has(tag::by_priority),
+                  "urd::Store: order_by<P> orders a sorted Store or a by_priority queue; ask for one of them too");
+    static_assert(!ordered_by || !keyed || stated.has(tag::multi) || orderable<ordered_type>,
+                  "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
+                  "(else two keys with equal P(key) would be one)");
+    using order_type = typename order_of<ordered_type, Ps...>::type;
+
     static constexpr listed_tags listed = non_roots(implied(stated, of));
-    using type = decltype(detail::spec_of<key_type, value_type, listed>(std::make_index_sequence<listed.count> {}));
+    using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
 };
 
 }  // namespace detail

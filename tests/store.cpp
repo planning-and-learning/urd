@@ -20,6 +20,7 @@
 #include <span>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -1065,4 +1066,67 @@ TEST(Merge, ThreadsUpdateHashedKeysTogether)
     for (int key = 0; key < keys; ++key)
         total += counts.at(std::to_string(key));
     EXPECT_EQ(total, threads * rounds);
+}
+
+// Ordered by a projection: a node's cost, ties by the node itself; a priority queue by (f, larger g first).
+namespace
+{
+struct Node
+{
+    int id;
+    int f;
+    int g;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Node::id> {}; }
+};
+}  // namespace
+
+TEST(OrderBy, SortsByTheProjectionAndBreaksTiesByTheElement)
+{
+    using ByF = Store<key<Node>, urd::sorted, urd::order_by<&Node::f>>;
+    static_assert(std::same_as<ByF::representation, std::set<Node, urd::ProjectedLess<Node, &Node::f>>>);
+    auto nodes = ByF { Node { 1, 5, 0 }, Node { 2, 3, 0 }, Node { 3, 5, 0 }, Node { 4, 1, 0 } };
+    auto ids = std::vector<int>();
+    for (const auto& node : nodes)
+        ids.push_back(node.id);
+    EXPECT_EQ(ids, (std::vector<int> { 4, 2, 1, 3 }));
+    EXPECT_EQ(nodes.size(), 4U);
+    EXPECT_TRUE(nodes.contains(Node { 3, 5, 0 }));
+}
+
+TEST(OrderBy, MapsOrderTheirKeysByTheProjection)
+{
+    auto costs = Store<key<Node>, value<std::string>, urd::sorted, urd::order_by<&Node::f>>();
+    costs.insert_or_assign(Node { 1, 9, 0 }, "late");
+    costs.insert_or_assign(Node { 2, 2, 0 }, "early");
+    EXPECT_EQ(costs.begin()->second, "early");
+}
+
+TEST(OrderBy, PriorityQueuePopsByTheProjection)
+{
+    using Open = Store<value<Node>, urd::by_priority, urd::order_by<[](const Node& node) { return std::tuple(node.f, -node.g); }>>;
+    auto open = Open();
+    open.push(Node { 1, 4, 1 });
+    open.push(Node { 2, 4, 3 });
+    open.push(Node { 3, 2, 0 });
+    auto ids = std::vector<int>();
+    while (!open.empty())
+    {
+        ids.push_back(open.top().id);
+        open.pop();
+    }
+    EXPECT_EQ(ids, (std::vector<int> { 3, 2, 1 }));
+}
+
+// A queue's elements need no order of their own where a projection gives one.
+TEST(OrderBy, QueueOfUnorderedElements)
+{
+    struct Task
+    {
+        int cost;
+        std::string name;
+    };
+    auto tasks = Store<value<Task>, urd::by_priority, urd::order_by<&Task::cost>>();
+    tasks.push(Task { 7, "b" });
+    tasks.push(Task { 2, "a" });
+    EXPECT_EQ(tasks.top().name, "a");
 }

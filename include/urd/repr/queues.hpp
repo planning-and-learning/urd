@@ -27,8 +27,8 @@ enum class leaving : std::uint8_t
 };
 
 /// A queue whose elements leave in the order Order says: first in, over a std::deque; last in, over a std::vector;
-/// the least by urd::Less, as a binary heap in a std::vector.
-template<typename T, leaving Order>
+/// the least by Compare (urd::Less, or the order a request gave), as a binary heap in a std::vector.
+template<typename T, leaving Order, typename Compare = Less<T>>
 class Queue
 {
     static constexpr bool fifo = Order == leaving::first_in;
@@ -74,7 +74,7 @@ public:
 
 private:
     /// The heap algorithms keep the greatest first; reversed, the least.
-    static constexpr auto greater = [](const auto& lhs, const auto& rhs) { return Less<T> {}(rhs, lhs); };
+    static constexpr auto greater = [](const auto& lhs, const auto& rhs) { return Compare {}(rhs, lhs); };
 
     Elements m_elements;
 };
@@ -101,8 +101,9 @@ struct container_traits<repr::Lifo<T>> : properties_of<lifo, shrinkable, retains
 {
 };
 
-template<orderable T>
-struct container_traits<repr::Heap<T>> : properties_of<by_priority, shrinkable, retains>
+template<typename T, typename C>
+    requires natural_order<C, T>
+struct container_traits<repr::Queue<T, repr::leaving::least, C>> : properties_of<by_priority, shrinkable, retains>
 {
 };
 

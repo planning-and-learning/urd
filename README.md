@@ -139,6 +139,7 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<key<K>, change_log>` | `ChangeLogged` flat hash set |
 | `Store<key<I>, partition>` | `DisjointSets` (union-find) |
 | `Store<value<T>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
+| `Store<value<T>, by_priority, order_by<&T::cost>>` | `Heap` by the cost; `sorted` Stores take `order_by` too |
 | `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
 | rows (Stores as elements) | see [Nesting](#elements-any-type-any-depth) |
 
@@ -176,6 +177,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | multiplicity | `functional`, `multi` | one value per key, or many (a multimap) |
 | identity | `positional` | elements identified by position (sequences, and sets with positions) |
 | workload | `small` | a few elements: picks compact containers, never changes a guarantee |
+| order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map): a member pointer or a stateless lambda; ties by the element's own order |
 
 The kind of a Store follows from its arguments: `key<K>` is a set, `key<K>, value<V>` a map, `value<V>` a sequence;
 an access tag makes a value Store a queue, `handles` a pool, `partition` a key Store a partition.

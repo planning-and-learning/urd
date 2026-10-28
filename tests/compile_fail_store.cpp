@@ -99,5 +99,15 @@ int main()
 #elif URD_CASE == 27  // a pool's rows are values; a key would identify them otherwise
     using S = Store<key<int>, urd::handles>;
     (void) S();
+#elif URD_CASE == 28  // order_by orders a sorted Store or a priority queue; an unordered set has no order to change
+    using S = Store<key<std::pair<int, int>>, urd::order_by<&std::pair<int, int>::first>>;
+    (void) S();
+#elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
+    struct Unordered
+    {
+        int cost;
+    };
+    using S = Store<key<Unordered>, urd::sorted, urd::order_by<&Unordered::cost>>;
+    (void) S();
 #endif
 }

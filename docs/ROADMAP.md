@@ -307,7 +307,10 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    and `parallel_flat_hash_map` (16 shards, a mutex each) for concurrent sets and maps by hashed keys, which had no
    representation before; `update` and `read` through the table's own locked calls, in the facet. gtl's B-trees
    are left out (`btree_map` lacks `insert_or_assign`) until a benchmark asks for them.
-2. Order by projection (`order_by<P>`).
+2. Order by projection — done: `order_by<P>` (a member pointer or a stateless lambda; a tuple gives tie-breaks, such
+   as larger g first) on sorted Stores and priority queues. `urd::ProjectedLess<T, P>` compares `P(element)`, then the
+   element where it has an order; unique keys must have one, or two with equal `P` would be one. A request with
+   `order_by` chooses among the comparator-taking containers only, instantiated with it; others are unaffected.
 3. `addressable` (via `handles`) and `monotone_priority` (a bucket queue for integral priorities).
 4. Rebuilding a frozen Store in place (`assign`).
 5. Nested fixed shapes, and `reset` with a cost policy.

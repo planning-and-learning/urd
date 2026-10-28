@@ -27,9 +27,42 @@ concept orderable = OrderedByLess<T> && EqualityComparableByEqualTo<T>;
 template<typename T>
 concept hashable = Hashable<T> && EqualityComparableByEqualTo<T>;
 
-/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses.
+/// What order_by<P> means: T ordered by P(T) under urd::Less, ties by T itself where T is ordered. P is a member
+/// pointer or a stateless callable.
+template<typename T, auto P>
+struct ProjectedLess
+{
+    constexpr bool operator()(const T& lhs, const T& rhs) const
+    {
+        using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const T&>>;
+        // Projected twice rather than held: a member is projected for free, and holding a reference to what a
+        // callable returns could outlive it.
+        if (Less<Projected> {}(std::invoke(P, lhs), std::invoke(P, rhs)))
+            return true;
+        if (Less<Projected> {}(std::invoke(P, rhs), std::invoke(P, lhs)))
+            return false;
+        if constexpr (OrderedByLess<T>)
+            return Less<T> {}(lhs, rhs);
+        else
+            return false;
+    }
+};
+
+namespace detail
+{
+
 template<typename C, typename T>
-concept natural_order = orderable<T> && (std::same_as<C, Less<T>> || (std::same_as<C, std::less<T>> && std::totally_ordered<T>) );
+inline constexpr bool is_projected_less = false;
+template<typename T, auto P>
+inline constexpr bool is_projected_less<ProjectedLess<T, P>, T> = true;
+
+}  // namespace detail
+
+/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses; or the
+/// order a request gave by order_by.
+template<typename C, typename T>
+concept natural_order =
+    (orderable<T> && (std::same_as<C, Less<T>> || (std::same_as<C, std::less<T>> && std::totally_ordered<T>) )) || detail::is_projected_less<C, T>;
 
 /// H and E hash and compare T as a hash table needs: urd's, or the standard's where T has them.
 template<typename H, typename E, typename T>

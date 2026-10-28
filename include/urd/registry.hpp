@@ -234,6 +234,35 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       LayeredHashMapOf,
                                       ParallelHashMapOf>;
 
+/// The containers that take a comparator, in order of preference (as in the lists above): where a request gives
+/// order_by, only they can serve it, instantiated with its comparator.
+template<template<typename, typename> class... Cs>
+struct ordered_element_candidates
+{
+};
+template<template<typename, typename, typename> class... Cs>
+struct ordered_map_candidates
+{
+};
+template<typename T, typename C>
+using TreeSetBy = std::set<T, C>;
+template<typename T, typename C>
+using FlatSetBy = boost::container::flat_set<T, C>;
+template<typename T, typename C>
+using FlatMultiSetBy = boost::container::flat_multiset<T, C>;
+template<typename T, typename C>
+using HeapBy = repr::Queue<T, repr::leaving::least, C>;
+template<typename K, typename V, typename C>
+using TreeMapBy = std::map<K, V, C>;
+template<typename K, typename V, typename C>
+using TreeMultiMapBy = std::multimap<K, V, C>;
+template<typename K, typename V, typename C>
+using FlatMapBy = boost::container::flat_map<K, V, C>;
+template<typename K, typename V, typename C>
+using FlatMultiMapBy = boost::container::flat_multimap<K, V, C>;
+using ordered_element_preference = ordered_element_candidates<TreeSetBy, FlatMultiSetBy, FlatSetBy, HeapBy>;
+using ordered_map_preference = ordered_map_candidates<TreeMapBy, TreeMultiMapBy, FlatMultiMapBy, FlatMapBy>;
+
 template<typename... Lists>
 struct join
 {
@@ -261,6 +290,16 @@ template<typename S, template<typename, typename> class... Cs>
 struct instantiated<S, map_candidates<Cs...>>
 {
     using type = type_list<Cs<typename S::key_type, typename S::mapped_type>...>;
+};
+template<typename S, template<typename, typename> class... Cs>
+struct instantiated<S, ordered_element_candidates<Cs...>>
+{
+    using type = type_list<Cs<typename S::element_type, typename S::order_type>...>;
+};
+template<typename S, template<typename, typename, typename> class... Cs>
+struct instantiated<S, ordered_map_candidates<Cs...>>
+{
+    using type = type_list<Cs<typename S::key_type, typename S::mapped_type, typename S::order_type>...>;
 };
 
 /// Node-based: it keeps references stable by allocating every element on its own.
@@ -315,10 +354,14 @@ struct choose_in<S, type_list<Rs...>> : first_serving<S, Rs...>
                   "the pool needs a new representation for it");
 };
 
+/// The candidates for spec S: the comparator-taking ones where it gives order_by, else all.
+template<typename S>
+using candidates_for = std::conditional_t<std::is_void_v<typename S::order_type>,
+                                          std::conditional_t<S::is_map, instantiated<S, map_preference>, instantiated<S, element_preference>>,
+                                          std::conditional_t<S::is_map, instantiated<S, ordered_map_preference>, instantiated<S, ordered_element_preference>>>;
+
 /// The representation for spec S: the first registered container that serves it, in the order for S.
 template<typename S>
-using choose = choose_in<
-    S,
-    typename ordered_for<S, typename std::conditional_t<S::is_map, instantiated<S, map_preference>, instantiated<S, element_preference>>::type>::type>;
+using choose = choose_in<S, typename ordered_for<S, typename candidates_for<S>::type>::type>;
 
 }  // namespace urd::detail

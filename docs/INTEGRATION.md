@@ -223,6 +223,16 @@ order, so `values(key)` is a span. Both multimaps are one class, `GroupedMultiMa
 kept (`IndexGroups`, `HashGroups`): a third way to keep them is a policy, not a new multimap. Keeping postings in sync when the rows they point to move (a swap-erase) is
 the caller's.
 
+## Order by a projection
+
+`order_by<P>` orders a sorted Store or a priority queue by `P(element)` (`P(key)` for maps): `P` is a member pointer
+or a stateless lambda, and a tuple orders by several fields (`std::tuple(n.f, -n.g)`: least f, then largest g).
+Ties fall back to the element's own order, so a sorted set still holds every distinct element; unique keys
+must therefore be orderable, while a queue's elements need no order of their own. The comparator,
+`urd::ProjectedLess<T, P>`, is part of the spec, and only containers that take a comparator are candidates for it
+(`ordered_element_preference`, `ordered_map_preference` in the registry): a container with a comparator joins
+those lists to serve projected orders too.
+
 ## Queues
 
 A Store with an order of leaving is a queue: `fifo`, `lifo` or `by_priority` (least first by `urd::Less`). It is
