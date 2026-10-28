@@ -132,6 +132,23 @@ struct layered : any_layering
 {
 };
 
+struct any_handle
+{
+};
+/// A pool: each element is identified by a handle that insert gives, and equal elements get equal handles. Not
+/// iterated or counted.
+struct handles : any_handle
+{
+};
+
+struct any_sharing
+{
+};
+/// Parts that are equal across elements (rows) are stored once.
+struct structural_sharing : any_sharing
+{
+};
+
 struct any_tracking
 {
 };
@@ -228,7 +245,9 @@ using guaranteed_roots = type_list<any_order,
                                    any_access,
                                    any_scope,
                                    any_layering,
-                                   any_tracking>;
+                                   any_tracking,
+                                   any_handle,
+                                   any_sharing>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

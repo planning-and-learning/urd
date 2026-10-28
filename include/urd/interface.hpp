@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstddef>
 #include <ranges>
+#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -35,6 +36,9 @@ namespace urd
 // | fifo, lifo, by_priority (queues) | in place of all above: default construction, size, empty, push(e), |
 // |                                  | push(e&&), emplace(args), pop; front() for fifo, else top(); clear |
 // |                                  | if shrinkable                                                      |
+// | handles (pools)                  | in place of all above: insert(span of a row's elements) -> handle, |
+// |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
+// |                                  | shrinkable                                                         |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value                                           |
 //
@@ -162,6 +166,19 @@ concept queue_operations = std::default_initializable<R> && requires(R& queue, c
                                { constant.top() } -> std::same_as<const E&>;
                            });
 
+/// A pool: rows go in as ranges of their elements and come back by the handle insert gave.
+template<typename R, typename Traits>
+concept pool_operations =
+    std::default_initializable<R>
+    && requires(R& pool, const R& constant, const typename R::handle_type& handle, std::span<const std::ranges::range_value_t<typename R::value_type>> elements, std::span<std::ranges::range_value_t<typename R::value_type>> out) {
+           { pool.insert(elements) } -> std::same_as<typename R::handle_type>;
+           { constant.get(handle) } -> std::same_as<typename R::value_type>;
+           { constant.row_size(handle) } -> std::convertible_to<std::size_t>;
+           constant.read(handle, out);
+           { constant.memory_usage() } -> std::convertible_to<std::size_t>;
+           requires std::equality_comparable<typename R::handle_type>;
+       } && (!has<Traits, shrinkable> || requires(R& pool) { pool.clear(); });
+
 /// Whether Traits declares an order of leaving: a queue.
 template<typename Traits>
 inline constexpr bool queue_traits = !std::same_as<category_t<Traits, any_access>, any_access>;
@@ -196,9 +213,9 @@ template<typename R,
          typename Traits = container_traits<std::remove_cvref_t<R>>,
          typename E = typename detail::value_of<R>::type,
          typename L = typename detail::lookup_of<R, E>::type>
-concept conforming =
-    (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>)
-    || (!detail::queue_traits<Traits> && detail::basic_container<R, E> && detail::offers_layout<R, Traits> && detail::offers_lookup<R, Traits, L>
-        && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E> && detail::offers_removal<R, Traits, E, L>);
+concept conforming = (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>) || (has<Traits, handles> && detail::pool_operations<R, Traits>)
+                     || (!detail::queue_traits<Traits> && !has<Traits, handles> && detail::basic_container<R, E> && detail::offers_layout<R, Traits>
+                         && detail::offers_lookup<R, Traits, L> && detail::offers_values_by_key<R, Traits> && detail::offers_growth<R, Traits, E>
+                         && detail::offers_removal<R, Traits, E, L>);
 
 }  // namespace urd

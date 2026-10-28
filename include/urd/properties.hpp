@@ -72,11 +72,14 @@ struct spec : Properties
     static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
     /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
     static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && !std::same_as<category_t<Properties, any_access>, any_access>;
-    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue;
+    /// Values identified by the handles insert gives (handles): a pool.
+    static constexpr bool is_pool = std::is_void_v<K> && !std::is_void_v<V> && std::same_as<category_t<Properties, any_handle>, handles>;
+    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue && !is_pool;
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: every kind so far. A filter would not.
+    /// Whether it knows how many elements it holds: all but a pool, which may share parts of elements and keep no
+    /// list of them. A filter would not either.
     static constexpr bool sized = is_set || is_map || is_sequence || is_queue;
 
     /// What a key maps to, in a map.
@@ -107,7 +110,10 @@ struct to_spec
 
     using stated = properties_of<Ps...>;
     // The kind, from one place.
-    using kind = spec<key_type, value_type, properties_of<category_t<stated, any_access>>>;
+    using kind = spec<key_type, value_type, properties_of<category_t<stated, any_access>, category_t<stated, any_handle>>>;
+    static_assert(!has<stated, handles> || (std::is_void_v<key_type> && !kind::is_queue && !has<stated, positional> && !has<stated, frozen>),
+                  "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
+                  "position or order");
     static_assert(!kind::is_queue || (!has<stated, frozen> && !has<stated, positional>),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
     static_assert(!kind::is_map || !has<stated, positional>, "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");

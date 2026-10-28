@@ -93,5 +93,11 @@ int main()
     (void) S();
 #elif URD_CASE == 25  // a family reaches only the types it was given
     (void) urd::Family<SetOf, int, long>().get<short>();
+#elif URD_CASE == 26  // a pool is reached by handle, never iterated
+    auto states = Store<value<Store<value<int>, urd::frozen>>, urd::handles>();
+    (void) states.begin();
+#elif URD_CASE == 27  // a pool's rows are values; a key would identify them otherwise
+    using S = Store<key<int>, urd::handles>;
+    (void) S();
 #endif
 }

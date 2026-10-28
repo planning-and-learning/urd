@@ -202,6 +202,12 @@ struct name<urd::repr::ChangeLogged<R>>
     static constexpr std::string_view id = "change_logged";
     static constexpr std::string_view value = "change-logged set (a flat hash set, plus what was added and removed)";
 };
+template<typename Row>
+struct name<urd::repr::RowInterner<Row>>
+{
+    static constexpr std::string_view id = "row_interner";
+    static constexpr std::string_view value = "row interner (each row once, in full)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

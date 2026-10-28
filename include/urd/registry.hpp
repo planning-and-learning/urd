@@ -9,6 +9,7 @@
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/layered.hpp"
+#include "urd/repr/pools.hpp"
 #include "urd/repr/postings.hpp"
 #include "urd/repr/queues.hpp"
 #include "urd/repr/rows.hpp"
@@ -142,7 +143,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::Lifo,
                                               repr::Heap,
                                               LayeredHashSet,
-                                              ChangeLoggedHashSet>;
+                                              ChangeLoggedHashSet,
+                                              repr::RowInterner>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,

@@ -14,6 +14,7 @@
 #include "urd/store/multi_values.hpp"
 #include "urd/store/ordered_lookup.hpp"
 #include "urd/store/ordering.hpp"
+#include "urd/store/pool.hpp"
 #include "urd/store/positions.hpp"
 #include "urd/store/queue_access.hpp"
 #include "urd/store/removal.hpp"
@@ -68,7 +69,8 @@ class Store :
     public facet_if<S::is_queue, facet::queue_access<Store<R, S>, R, S>>,
     public facet_if<has<S, scoped>, facet::scopes<Store<R, S>, R, S>>,
     public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>,
-    public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>
+    public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>,
+    public facet_if<S::is_pool, facet::pool<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

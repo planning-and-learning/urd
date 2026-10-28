@@ -503,6 +503,66 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
     return std::nullopt;
 }
 
+/// urd::verify for a pool: inserts of random rows (short, over few values, so that equal rows recur) and clears.
+/// After each, every handle given so far is checked: equal rows have equal handles, others different ones, and each
+/// handle gives its row back, by get and by read. Rows are compared as the row type keeps them (a set's in order).
+template<typename P>
+std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
+{
+    using Row = typename P::value_type;
+    using E = std::ranges::range_value_t<Row>;
+    using Traits = container_traits<P>;
+    const auto canonical = [](const std::vector<E>& elements)
+    {
+        const auto row = Row(elements.begin(), elements.end());
+        return std::vector<E>(row.begin(), row.end());
+    };
+    auto rows = std::vector<std::vector<E>>();
+    auto handles = std::vector<typename P::handle_type>();
+
+    auto random = std::mt19937(seed);
+    auto pick = std::uniform_int_distribution<int>(0, 3);
+    auto length = std::uniform_int_distribution<int>(0, 6);
+    for (int step = 0; step < steps; ++step)
+    {
+        auto operation = std::string("insert");
+        bool cleared = false;
+        if constexpr (has<Traits, shrinkable>)
+        {
+            if (step % 97 == 96)
+            {
+                operation = "clear";
+                pool.clear();
+                rows.clear();
+                handles.clear();
+                cleared = true;
+            }
+        }
+        if (!cleared)
+        {
+            auto elements = std::vector<E>();
+            for (int count = length(random); count > 0; --count)
+                elements.push_back(E(pick(random)));
+            handles.push_back(pool.insert(elements));
+            rows.push_back(canonical(elements));
+        }
+        const auto label = "step " + std::to_string(step) + " (" + operation + "): ";
+        for (std::size_t each = 0; each < rows.size(); ++each)
+        {
+            const auto got = pool.get(handles[each]);
+            if (!std::ranges::equal(got, rows[each]))
+                return label + "get gives back another row";
+            auto out = std::vector<E>(pool.row_size(handles[each]));
+            pool.read(handles[each], out);
+            if (out != rows[each])
+                return label + "read gives back another row";
+            if (!rows.empty() && (rows[each] == rows.back()) != (handles[each] == handles.back()))
+                return label + "equal rows have different handles, or different rows equal ones";
+        }
+    }
+    return std::nullopt;
+}
+
 /// urd::verify for a conforming R.
 template<typename R>
 std::optional<std::string> run(R& range, unsigned seed, int steps)
@@ -709,7 +769,8 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
 ///
 /// Returns the first violation, naming the step and what broke, or nothing.
 template<typename R>
-    requires detail::queue_traits<container_traits<R>> || std::constructible_from<detail::element_t<R>, int> || detail::map_container<R>
+    requires detail::queue_traits<container_traits<R>> || has<container_traits<R>, handles> || std::constructible_from<detail::element_t<R>, int>
+             || detail::map_container<R>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
     static_assert(conforming<R>, "urd::verify: R lacks an operation its declared properties require (include/urd/interface.hpp lists them)");
@@ -717,6 +778,8 @@ template<typename R>
         return std::nullopt;
     else if constexpr (detail::queue_traits<container_traits<R>>)
         return detail::run_queue(range, seed, steps);
+    else if constexpr (has<container_traits<R>, handles>)
+        return detail::run_pool(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);
     else

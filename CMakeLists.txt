@@ -58,7 +58,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. The last two count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues)
+    foreach(test store properties rows semantics queues pools)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -108,5 +108,5 @@ if(URD_BUILD_TESTS)
         endforeach()
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 25)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 27)
 endif()
