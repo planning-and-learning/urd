@@ -9,6 +9,7 @@
 #include "urd/store/growth.hpp"
 #include "urd/store/iteration.hpp"
 #include "urd/store/lookup.hpp"
+#include "urd/store/multi_values.hpp"
 #include "urd/store/ordered_lookup.hpp"
 #include "urd/store/ordering.hpp"
 #include "urd/store/positions.hpp"
@@ -58,6 +59,7 @@ class Store :
     public facet_if<has<S, growable>, facet::growth<Store<R, S>, R, S>>,
     public facet_if<has<S, shrinkable>, facet::removal<Store<R, S>, R, S>>,
     public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>,
+    public facet_if<S::is_map && !has<S, unique>, facet::multi_values<Store<R, S>, R, S>>,
     public facet_if<S::is_set, facet::set_algebra<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;

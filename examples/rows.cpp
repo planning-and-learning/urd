@@ -1,10 +1,14 @@
 // Rows: Stores of Stores, instead of std::vector<std::vector<…>>. The rows' properties choose the layout.
 
 #include "show.hpp"
+#include "urd/graph.hpp"
 #include "urd/store.hpp"
 
 #include <iostream>
+#include <utility>
+#include <vector>
 
+using urd::key;
 using urd::Store;
 using urd::value;
 
@@ -49,4 +53,20 @@ int main()
     // Three levels, flattened: a slice of slices.
     const auto blocks = Blocks { { { 1 }, { 2, 3 } }, { { 4, 5, 6 } } };
     std::cout << "\nblock 0, row 1, element 1: " << blocks[0][1][1] << '\n';
+
+    // By key instead of position: a frozen multimap with dense keys is CSR too, built from pairs in any order.
+    using Edges = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>;
+    example::show<Edges>("Store<key<int>, value<int>, multi, dense, frozen>     each key's values together");
+    const auto pairs = std::vector<std::pair<int, int>> { { 2, 3 }, { 0, 1 }, { 2, 0 }, { 1, 2 } };
+    const auto edges = Edges(pairs.begin(), pairs.end());
+    std::cout << "values of 2:";
+    for (const int target : edges.values(2))
+        std::cout << ' ' << target;
+
+    // A graph: successors and predecessors, two such Stores.
+    const auto graph = urd::Graph<int>(4, pairs);
+    std::cout << "\npredecessors of 0:";
+    for (const int source : graph.predecessors(0))
+        std::cout << ' ' << source;
+    std::cout << '\n';
 }

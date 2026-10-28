@@ -4,6 +4,7 @@
 #include "urd/store.hpp"
 
 #include "urd/concepts.hpp"
+#include "urd/graph.hpp"
 
 #include <concepts>
 #include <functional>
@@ -11,6 +12,7 @@
 #include <iterator>
 #include <map>
 #include <random>
+#include <ranges>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -97,6 +99,10 @@ static_assert(std::same_as<Store<key<int>, urd::positional>::representation, urd
 static_assert(urd::has<Store<key<int>, urd::positional>, urd::insertion_ordered, urd::unique>);
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::sorted>::representation, FlatSet<int>>);
 static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional>);
+
+// A frozen multimap by dense key: compressed sparse rows, each key's values a span.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>::representation, urd::repr::CsrMultiMap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::sorted>::representation, urd::repr::CsrMultiMap<int, int>>);
 
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
@@ -351,4 +357,57 @@ TEST(Interner, GivesEachElementItsIndex)
     EXPECT_EQ(symbols.position(symbols.find("clear")), 1U);
     EXPECT_EQ(symbols.position(symbols.find("holding")), symbols.size());
     EXPECT_EQ(std::vector<std::string>(symbols.rbegin(), symbols.rend()), (std::vector<std::string> { "clear", "on" }));
+}
+
+// The values of a key, in the order given: a span of a CSR multimap, a view of any other multimap's equal_range.
+TEST(MultiValues, GivesEachKeysValuesInOrder)
+{
+    const auto pairs = std::vector<std::pair<int, int>> { { 2, 20 }, { 0, 1 }, { 2, 21 }, { 0, 2 }, { 2, 22 } };
+    const auto csr = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>(pairs.begin(), pairs.end());
+    const auto tree = Store<key<int>, value<int>, urd::multi, urd::sorted>(pairs.begin(), pairs.end());
+    EXPECT_TRUE(std::ranges::equal(csr.values(2), std::vector<int> { 20, 21, 22 }));
+    EXPECT_TRUE(std::ranges::equal(tree.values(2), std::vector<int> { 20, 21, 22 }));
+    EXPECT_TRUE(std::ranges::equal(csr.values(0), std::vector<int> { 1, 2 }));
+    EXPECT_TRUE(csr.values(1).empty());
+    EXPECT_TRUE(csr.values(7).empty());
+    EXPECT_EQ(csr.size(), 5U);
+}
+
+// Built from pairs in any order, a CSR multimap holds what std::multimap holds, in the same order: frozen
+// containers get no random operations, so their construction is compared here.
+TEST(MultiValues, CsrBuildsWhatAMultimapHolds)
+{
+    auto random = std::mt19937(11);
+    for (int round = 0; round < 200; ++round)
+    {
+        auto pairs = std::vector<std::pair<int, int>>();
+        for (int count = static_cast<int>(random() % 40); count > 0; --count)
+            pairs.emplace_back(static_cast<int>(random() % 12), static_cast<int>(random() % 100));
+        const auto csr = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::sorted>(pairs.begin(), pairs.end());
+        const auto expected = std::multimap<int, int>(pairs.begin(), pairs.end());
+        ASSERT_TRUE(std::ranges::equal(csr, expected, [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first && lhs.second == rhs.second; }));
+        for (int each = -1; each < 14; ++each)
+        {
+            EXPECT_EQ(csr.count(each), expected.count(each));
+            EXPECT_EQ(std::ranges::distance(csr.lower_bound(each), csr.end()), std::ranges::distance(expected.lower_bound(each), expected.end()));
+        }
+        auto backwards = std::vector<int>();
+        for (auto it = csr.end(); it != csr.begin();)
+            backwards.push_back((--it)->first);
+        EXPECT_TRUE(std::ranges::equal(backwards, expected | std::views::keys | std::views::reverse));
+    }
+}
+
+// A graph is two CSR Stores: successors and predecessors, each in the order the edges were given.
+TEST(Graph, GivesSuccessorsAndPredecessors)
+{
+    const auto edges = std::vector<std::pair<int, int>> { { 2, 0 }, { 0, 1 }, { 2, 1 }, { 1, 2 }, { 0, 2 } };
+    const auto graph = urd::Graph<int>(4, edges);
+    EXPECT_EQ(graph.num_vertices(), 4U);
+    EXPECT_EQ(graph.num_edges(), 5U);
+    EXPECT_TRUE(std::ranges::equal(graph.successors(0), std::vector<int> { 1, 2 }));
+    EXPECT_TRUE(std::ranges::equal(graph.successors(2), std::vector<int> { 0, 1 }));
+    EXPECT_TRUE(std::ranges::equal(graph.predecessors(1), std::vector<int> { 0, 2 }));
+    EXPECT_TRUE(std::ranges::equal(graph.predecessors(2), std::vector<int> { 1, 0 }));
+    EXPECT_TRUE(graph.successors(3).empty() && graph.predecessors(3).empty());
 }

@@ -2,6 +2,7 @@
 
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
+#include "urd/repr/csr.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
@@ -81,6 +82,9 @@ using DenseMapOf = repr::IndexMap<K, V, false>;
 template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
 
+template<typename K, typename V>
+using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
+
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
@@ -119,7 +123,7 @@ using element_preference = element_candidates<repr::Jagged,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool>;
 using map_preference =
-    map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf, DenseMapOf, GenerationMapOf>;
+    map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf, DenseMapOf, GenerationMapOf, CsrMultiMapOf>;
 
 template<typename... Lists>
 struct join

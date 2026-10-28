@@ -161,7 +161,10 @@ using Containers = testing::Types<
     urd::repr::IndexedSet<int>,
     Store<key<int>, urd::insertion_ordered>,
     Store<key<int>, urd::positional>,
-    Store<key<int>, urd::positional, urd::monotone>>;
+    Store<key<int>, urd::positional, urd::monotone>,
+    // Frozen multimaps by dense key: compressed sparse rows.
+    urd::repr::CsrMultiMap<int, int>,
+    Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>>;
 
 template<typename R>
 class Properties : public testing::Test

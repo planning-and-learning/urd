@@ -151,6 +151,16 @@ static_assert(std::same_as<Translated::representation, urd::repr::IndexedSet<Act
 using Achievers = Store<key<RelationBinding>, urd::positional, urd::monotone>;
 static_assert(std::same_as<Achievers::representation, urd::repr::IndexedSet<RelationBinding>>);
 
+// tyr planning/lifted/effect_atom_index.hpp: the effect groups of each predicate, written once; where predicates
+// are indices, a frozen multimap by dense key.
+using GroupsByIndex = Store<key<Predicate>, value<Rule>, urd::multi, urd::dense, urd::frozen>;
+static_assert(std::same_as<GroupsByIndex::representation, urd::repr::CsrMultiMap<Predicate, Rule>>);
+
+// runir graphs/static_graph.hpp: StaticGraph, out-edge offsets built by a counting sort over (source, target)
+// pairs. Its out-edges are the successors of urd::Graph, which keeps the in-edges the same way.
+using Successors = Store<key<Vertex>, value<Vertex>, urd::multi, urd::dense, urd::frozen>;
+static_assert(std::same_as<Successors::representation, urd::repr::CsrMultiMap<Vertex, Vertex>>);
+
 }  // namespace
 
 // Not yet: tyr's postings (vector<UnorderedMap<Index<Object>, dynamic_bitset>>) need postings (M4). The maps

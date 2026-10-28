@@ -156,7 +156,13 @@ hashed through the vector instead of copied keys.
 - **Survey pins:** runir `SignatureInterner` and `PropertyMap`; loki `push_unique`; tyr goal atoms.
 - **Example:** `examples/interning.cpp`.
 
-## M3: Frozen CSR multimaps and graphs (patterns 5, 7)
+## M3: Frozen CSR multimaps and graphs (patterns 5, 7) — done
+
+`repr::CsrMultiMap` for `Store<key<K>, value<V>, multi, dense, frozen>`, built by a counting sort; `values(key)` on
+every multimap Store; `urd::Graph<Vertex>` with successors and predecessors; survey pins (runir `StaticGraph`, tyr
+effect groups); the rows example shows both. Deferred: edge properties on `Graph` (key a Store by an edge's
+position for now), and a non-frozen dense multimap.
+
 
 - `Store<key<I>, dense, value<V>, multi, frozen>` resolves to a CSR multimap. It is the jagged array from
   nested Stores, indexed by key.

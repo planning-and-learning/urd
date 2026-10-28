@@ -154,6 +154,12 @@ struct name<urd::repr::IndexedSet<T>>
     static constexpr std::string_view id = "indexed_set";
     static constexpr std::string_view value = "indexed set (a vector in insertion order, plus a hash table of positions)";
 };
+template<typename K, typename V>
+struct name<urd::repr::CsrMultiMap<K, V>>
+{
+    static constexpr std::string_view id = "csr_multimap";
+    static constexpr std::string_view value = "CSR multimap (each key's values together, in key order)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

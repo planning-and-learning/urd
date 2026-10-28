@@ -172,6 +172,14 @@ the element's iterator (`position` of it is the index) and whose indices never s
 `repr::IndexedSet` (`include/urd/repr/indexed.hpp`), a vector plus a flat hash table of positions; erase keeps
 the order and costs O(n).
 
+## Frozen multimaps by dense key, and graphs
+
+`Store<key<K>, value<V>, multi, dense, frozen>` resolves to `repr::CsrMultiMap` (`include/urd/repr/csr.hpp`):
+compressed sparse rows, built at once from pairs in any order by a counting sort that keeps the order of equal
+keys. Every multimap Store has `values(key)`, the values of a key as a range: a `std::span` here, a view of
+`equal_range` elsewhere. `urd::Graph<Vertex>` (`include/urd/graph.hpp`) is two of them over vertices 0..n-1,
+built from (source, target) pairs, with `successors(v)` and `predecessors(v)` as spans.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
