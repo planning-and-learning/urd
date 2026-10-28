@@ -288,6 +288,15 @@ static_assert(std::same_as<RelationAnnotations::representation, urd::repr::Index
 using SharedRowAnnotations = Store<key<Row>, value<double>, urd::dense, urd::constant_clear, urd::concurrent>;
 static_assert(std::same_as<SharedRowAnnotations::representation, urd::repr::IndexMap<Row, double, true, true>>);
 
+// tyr's DeduplicatedAdjacencyMatrix (specific to k-partite graphs, so no urd container of its own) as a composition
+// of general pools: each distinct partition bitset once (a pool of dense-set rows, read back as a BitsetSpan by
+// view), each distinct vertex row once (a pool of rows of those handles), a row handle per vertex.
+using PartitionBitset = Store<key<std::uint32_t>, urd::dense>;
+using PartitionBitsets = Store<value<PartitionBitset>, urd::handles, urd::unique>;
+using DistinctVertexRows = Store<value<Store<value<PartitionBitsets::handle_type>>>, urd::handles, urd::unique>;
+using VertexRows = Store<value<DistinctVertexRows::handle_type>>;
+static_assert(std::same_as<PartitionBitsets::representation, urd::repr::RowInterner<PartitionBitset>>);
+static_assert(std::same_as<decltype(PartitionBitsets().view(PartitionBitsets::handle_type {})), urd::repr::BitsetSpan<const std::uint64_t>>);
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

@@ -335,8 +335,8 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
 M10 is done. A pass after it removed what was tailored to one use: fixed shapes nest at any depth, value recycling
 works over any node-based map (hashed too), and the bucket queue's reliance on its promise is a general trait
 (`relies_on<R>`: the request-only promises a representation needs) rather than a flag of its own. Open gaps found by
-probing nearby requests: a dense concurrent set, an insertion-ordered concurrent map, a concurrent map whose values
-retain.
+probing nearby requests, left until a site needs them (none of the surveyed libraries does): a dense concurrent set,
+an insertion-ordered concurrent map, a concurrent map whose values retain.
 
 ## Order and size
 

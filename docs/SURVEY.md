@@ -142,6 +142,6 @@ Stores. Updated as M9 closes gaps.
 | `VertexPartitions` | A (M9.5, M10.5) | `Store<value<Store<key<Vertex>, dense>>, fixed_shape>`; `reset()` |
 | `AdjacencyMatrix` | A (M10.5) | `Store<value<Store<value<Store<key<Vertex>, dense>>, fixed_shape>>, fixed_shape>`: `rows[v]` is all partitions of v |
 | `PartitionedAdjacencyMatrix` | A / B (M10.5) | as above with each source partition's own row widths, `proportional_clear` for the sparse reset (per vertex, where tyr tracks per vertex and partition); the implicit and static-only pairs stay tyr's |
-| `DeduplicatedAdjacencyMatrix` | A (M10.6) | a pool of dense-set rows (`Store<value<Store<key<Vertex>, dense>>, handles, unique>`, each bitset once, `view(h)` its words) and a fixed-shape table of handles per (vertex, partition) |
+| `DeduplicatedAdjacencyMatrix` | A (M10.6), by composition | specific to k-partite graphs, so no container of its own: a pool of dense-set rows (each partition bitset once, `view(h)` its words), a pool of rows of those handles (each vertex row once), a row handle per vertex (pinned in tests/survey.cpp) |
 | `CostBuckets`, `PendingPredicateAchievers` | A (M10.7) | `Store<key<Cost>, value<Bucket>, sorted>` with a `retains` Bucket (`RecyclingMap`); `min_cost` is `begin()`; the stale-entry rule of pending achievers stays tyr's |
 | Scheduler, state builder, `PerfectAssignmentHash`, k-CKP workspace, statistics, static/fluent pairs | C | hold Stores |
