@@ -147,6 +147,13 @@ static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {})
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
 
+// Maps in insertion order: hashed keys, or dense ones placed by index with O(1) clear; a dense set in insertion order.
+static_assert(std::same_as<Store<key<int>, value<double>, urd::insertion_ordered>::representation, urd::repr::OrderedMap<urd::repr::IndexedSet<int>, double>>);
+static_assert(std::same_as<Store<key<int>, value<double>, urd::dense, urd::insertion_ordered>::representation,
+                           urd::repr::OrderedMap<urd::repr::SparseSet<int, true>, double>>);
+static_assert(urd::has<Store<key<int>, value<double>, urd::dense, urd::insertion_ordered>::representation, urd::constant_clear>);
+static_assert(std::same_as<Store<key<int>, urd::dense, urd::insertion_ordered>::representation, urd::repr::SparseSet<int, true>>);
+
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);
@@ -746,4 +753,21 @@ TEST(Interner, ThreadsAgreeOnPositions)
         ASSERT_EQ(positions[position], position);
     for (int element = 0; element < each; ++element)
         ASSERT_EQ(symbols[seen[0][static_cast<std::size_t>(element)]], element);
+}
+
+// An insertion-ordered map gives its keys and values as spans in insertion order, and an entry's position.
+TEST(Entries, KeysAndValuesInInsertionOrder)
+{
+    auto costs = Store<key<int>, value<double>, urd::dense, urd::insertion_ordered>();
+    costs.try_emplace(7, 1.5);
+    costs.try_emplace(2, 0.5);
+    costs.insert_or_assign(7, 2.5);
+    costs[9] = 4.0;
+    EXPECT_TRUE(std::ranges::equal(costs.keys(), std::vector<int> { 7, 2, 9 }));
+    EXPECT_TRUE(std::ranges::equal(costs.values(), std::vector<double> { 2.5, 0.5, 4.0 }));
+    EXPECT_EQ(costs.position(costs.find(2)), 1U);
+    EXPECT_EQ(costs.position(costs.find(5)), costs.size());
+    costs.erase(7);
+    EXPECT_TRUE(std::ranges::equal(costs.keys(), std::vector<int> { 2, 9 }));
+    EXPECT_EQ(costs.at(9), 4.0);
 }

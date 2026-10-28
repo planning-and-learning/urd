@@ -116,3 +116,29 @@ By coverage per effort:
 6. Insertion-ordered set (11) and scoped symbol table (10).
 7. Later: two-level dense maps (4), bit matrices (14), partitions (13), persistent structures (15), delta
    tracking (16), type-indexed families (18).
+
+## tyr's container classes as requests
+
+An audit (2026-10-28) of tyr's bespoke container classes: can each class, not only its members, be one or a few
+Store requests? A: expressible now. B: expressible once the named gap is closed (M9). C: domain logic that holds
+Stores. Updated as M9 closes gaps.
+
+| Class | Verdict | Request, or the gap |
+|---|---|---|
+| `PredicateFactSet(s)` | A | `Store<key<Row>, dense>` (DenseSet), one per predicate |
+| `FunctionFactSet(s)` | A (M9.1) | `Store<key<Row>, value<Interval>, dense, insertion_ordered>`; merge by hull: M9.2 |
+| `SubstitutionFunction` | A (M9.1) | `Store<key<Parameter>, value<optional<Object>>, dense, insertion_ordered>` |
+| `IndexedAchievers` | A (M9.1) | `Store<key<RuleBinding>, value<Witness>, insertion_ordered>` |
+| `PredicateHeadUpdates`, `FunctionHeadUpdates` | A | `Store<key<Binding>, insertion_ordered>` |
+| `FunctionAssignmentSet(s)` | A | `Store<value<Interval>>` of a fixed length |
+| `RuleCostOverrideStorage` | A | maps to `Cost`, default on a miss |
+| Search nodes | A | `Store<value<SearchNode>, monotone, stable_refs>` |
+| State storages | A | M8 pools |
+| `EffectAtomIndex` | A | frozen CSR per predicate; rebuilding in place: M9 later |
+| `PriorityQueue` | A / B | `by_priority` where the element's order puts the key first; else order by projection |
+| `PredicateAssignmentSet(s)` | B | bitset with touched-word clear and a word view (M9.3) |
+| `DenseRelationMap`, `PredicateAnnotationMap`, `NumericIntervalAnnotations` | B | generation clear reusing values, concurrent updates (M9.4) |
+| `VertexPartitions`, `AdjacencyMatrix`, `PartitionedAdjacencyMatrix` | B | fixed-shape nested bit rows (M9.5) |
+| `DeduplicatedAdjacencyMatrix` | B | borrowed row views of a pool |
+| `CostBuckets`, `PendingPredicateAchievers` | B | sorted map keeping value storage, or a bucket queue |
+| Scheduler, state builder, `PerfectAssignmentHash`, k-CKP workspace, statistics, static/fluent pairs | C | hold Stores |

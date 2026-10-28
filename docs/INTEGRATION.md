@@ -158,6 +158,14 @@ Hash, equality and order then go member by member. Hashing is deterministic (xxH
 std::hash), so a hash table iterates in the same order on every platform. `tests/semantics.cpp` checks the
 laws the containers rely on: equal values hash equally, and Less is a strict weak order agreeing with EqualTo.
 
+## Maps in insertion order
+
+A map with unique keys may ask for `insertion_ordered`: its entries stay in the order their keys were first inserted,
+and `keys()`, `values()` and `position(it)` read them by position (spans). `repr::OrderedMap<Keys, V>` keeps the
+keys in an insertion-ordered set and the values beside them: an `IndexedSet` hashes the keys, a `SparseSet<K, true>`
+(the sparse set with its order kept on erase) places dense ones by index, with O(1) clear for values that need no
+destructor. Erase keeps the order and costs O(n).
+
 ## Dense keys
 
 Keys that are indices 0..n-1 (`urd::index_of`: integers, enums, types identified by one integral member; specialize

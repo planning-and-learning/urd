@@ -11,6 +11,7 @@
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/layered.hpp"
+#include "urd/repr/ordered_map.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/postings.hpp"
 #include "urd/repr/queues.hpp"
@@ -106,6 +107,14 @@ using DenseMapOf = repr::IndexMap<K, V, false>;
 template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
 
+template<typename T>
+using SparseSetOf = repr::SparseSet<T>;
+template<typename T>
+using OrderedSparseSet = repr::SparseSet<T, true>;
+template<typename K, typename V>
+using OrderedMapOf = repr::OrderedMap<repr::IndexedSet<K>, V>;
+template<typename K, typename V>
+using DenseOrderedMapOf = repr::OrderedMap<repr::SparseSet<K, true>, V>;
 template<typename K, typename V>
 using PostingMapOf = repr::PostingMap<K, V>;
 template<typename K, typename V>
@@ -172,8 +181,9 @@ using element_preference = element_candidates<repr::Jagged,
                                               FlatMultiSet,
                                               FlatSet,
                                               repr::DenseSet,
-                                              repr::SparseSet,
+                                              SparseSetOf,
                                               repr::IndexedSet,
+                                              OrderedSparseSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool,
@@ -202,6 +212,8 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       FlatMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
+                                      OrderedMapOf,
+                                      DenseOrderedMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
                                       ScopedMapOf,

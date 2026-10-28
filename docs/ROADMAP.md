@@ -263,6 +263,20 @@ operations, which `DenseSet` uses too. Deltas by writes (value rows) and by adde
 ThreadSanitizer, yggdrasil's tree tests ported; benchmarks in docs/BENCHMARKS.md; examples/states.cpp. Deferred:
 tree pools over rows that are maps, and per-handle generations for slots (stale handles are not detected).
 
+## M9: tyr's container classes as requests
+
+From the audit in docs/SURVEY.md ("tyr's container classes as requests"), with as little new code as possible:
+policies and reuse over new containers.
+
+1. Maps in insertion order — done: `insertion_ordered` on maps, the `entries` facet, `repr::OrderedMap<Keys, V>`
+   over an existing insertion-ordered set, and a `KeepOrder` policy on `SparseSet`.
+2. Merging values and reporting change: `merge(key, value, combine) -> bool`, `unite(other) -> bool`.
+3. A bitset with touched-word clear and a word view.
+4. DenseRelationMap: generation clear that reuses values; concurrent updates.
+5. Fixed-shape nested bit rows (`uniform`, BitTensor).
+6. Later: sorted maps keeping value storage or a bucket queue, borrowed pool rows, order by projection, CSR rebuilt
+   in place.
+
 ## Order and size
 
 | Milestone | Coverage | Size |

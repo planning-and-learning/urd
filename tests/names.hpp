@@ -130,8 +130,8 @@ struct name<urd::repr::DenseSet<K>>
     static constexpr std::string_view id = "dense_set";
     static constexpr std::string_view value = "dense set (a bitset over indices)";
 };
-template<typename K>
-struct name<urd::repr::SparseSet<K>>
+template<typename K, bool KeepOrder>
+struct name<urd::repr::SparseSet<K, KeepOrder>>
 {
     static constexpr std::string_view id = "sparse_set";
     static constexpr std::string_view value = "sparse set (members array plus index positions, O(1) clear)";
@@ -237,6 +237,12 @@ struct name<urd::repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 {
     static constexpr std::string_view id = "tree_vector_set";
     static constexpr std::string_view value = "tree vector set (rows as trees of values, equal subtrees once)";
+};
+template<typename Keys, typename V>
+struct name<urd::repr::OrderedMap<Keys, V>>
+{
+    static constexpr std::string_view id = "ordered_map";
+    static constexpr std::string_view value = "ordered map (keys in an insertion-ordered set, values beside them)";
 };
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names

@@ -251,6 +251,33 @@ static_assert(std::same_as<NumericValues::representation, urd::repr::TreeVectorS
 using SharedFluentFacts = Store<value<Store<key<Atom>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>;
 static_assert(std::same_as<SharedFluentFacts::representation, urd::repr::TreeBitsetSet<Store<key<Atom>, urd::dense, urd::frozen>, 4, true>>);
 
+// tyr datalog/fact_sets.hpp: FunctionFactSet, row -> interval in the order first set: a remap from rows to positions,
+// plus the rows and the intervals by position (get_bindings, get_values); reset forgets all. Merging by hull is an
+// operation on top (step 2).
+struct Interval
+{
+    double lower = 0;
+    double upper = 0;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Interval::lower, &Interval::upper> {}; }
+};
+using FunctionFacts = Store<key<Row>, value<Interval>, urd::dense, urd::insertion_ordered>;
+static_assert(std::same_as<FunctionFacts::representation, urd::repr::OrderedMap<urd::repr::SparseSet<Row, true>, Interval>>);
+
+// tyr formalism/unification/substitution.hpp: SubstitutionFunction, a fixed list of parameters, in order, each bound to
+// an object or not; equal when the same parameters in the same order have the same bindings.
+using Substitution = Store<key<ParameterIndex>, value<std::optional<Object>>, urd::dense, urd::insertion_ordered>;
+static_assert(std::same_as<Substitution::representation, urd::repr::OrderedMap<urd::repr::SparseSet<ParameterIndex, true>, std::optional<Object>>>);
+
+// tyr datalog/policies/annotation.hpp: IndexedAchievers, achievers in a vector plus an UnorderedMap<RuleBinding, size_t>
+// of their positions: a map from bindings to witnesses in insertion order.
+struct Witness
+{
+    double cost = 0;
+};
+using IndexedAchievers = Store<key<RelationBinding>, value<Witness>, urd::insertion_ordered>;
+static_assert(std::same_as<IndexedAchievers::representation, urd::repr::OrderedMap<urd::repr::IndexedSet<RelationBinding>, Witness>>);
+
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

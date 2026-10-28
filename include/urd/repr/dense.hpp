@@ -255,8 +255,9 @@ private:
 
 /// A set of indices as a sparse set (Briggs and Torczon): the members in one array, and for each index its place
 /// in it. Lookup, insert and erase are O(1); clear is O(1) for members that need no destructor; iteration visits
-/// only the members, in no particular order (erase moves the last member into the gap).
-template<typename K>
+/// only the members, in insertion order until an erase moves the last member into the gap. With KeepOrder, erase
+/// shifts the later members instead (O(n)), so the members stay in insertion order.
+template<typename K, bool KeepOrder = false>
 class SparseSet
 {
     static_assert(indexable<K>, "urd::repr::SparseSet: keys must be indices (urd::index_of)");
@@ -353,9 +354,18 @@ public:
 private:
     void erase_at(std::size_t place)
     {
-        m_members[place] = m_members.back();
-        m_places[index_of<K>::to_index(m_members[place])] = place;
-        m_members.pop_back();
+        if constexpr (KeepOrder)
+        {
+            m_members.erase(m_members.begin() + static_cast<difference_type>(place));
+            for (; place < m_members.size(); ++place)
+                m_places[index_of<K>::to_index(m_members[place])] = place;
+        }
+        else
+        {
+            m_members[place] = m_members.back();
+            m_places[index_of<K>::to_index(m_members[place])] = place;
+            m_members.pop_back();
+        }
     }
 
     std::vector<K> m_members;
@@ -634,9 +644,16 @@ struct container_traits<repr::DenseSet<K>> : properties_of<sorted, unique, dense
 };
 
 /// Members in one array; clear only forgets them, which is O(1) where they need no destructor.
-template<indexable K>
-struct container_traits<repr::SparseSet<K>> :
-    properties_of<unique, dense, contiguous, shrinkable, retains, std::conditional_t<std::is_trivially_destructible_v<K>, constant_clear, proportional_clear>>
+/// With KeepOrder, in insertion order.
+template<indexable K, bool KeepOrder>
+struct container_traits<repr::SparseSet<K, KeepOrder>> :
+    properties_of<unique,
+                  dense,
+                  contiguous,
+                  shrinkable,
+                  retains,
+                  std::conditional_t<std::is_trivially_destructible_v<K>, constant_clear, proportional_clear>,
+                  std::conditional_t<KeepOrder, insertion_ordered, any_order>>
 {
 };
 

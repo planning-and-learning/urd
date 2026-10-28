@@ -223,7 +223,8 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
     // Where keys repeat, the standard leaves the order among them to the insert (a hint places an element near
     // it), so the pairs are compared as a multiset; key order is checked below.
     auto expected = model.pairs;
-    if (!has<Traits, sorted> || !has<Traits, unique>)
+    // Compared in order where the map promises one: sorted with unique keys, or insertion order.
+    if (!has<Traits, insertion_ordered> && (!has<Traits, sorted> || !has<Traits, unique>) )
     {
         std::ranges::sort(contents);
         std::ranges::sort(expected);

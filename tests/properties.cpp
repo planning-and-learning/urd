@@ -153,10 +153,17 @@ using Containers = testing::Types<
     Store<key<int>, urd::dense>,
     Store<key<int>, urd::dense, urd::sorted>,
     Store<key<int>, urd::dense, urd::constant_clear>,
+    urd::repr::SparseSet<int, true>,
+    Store<key<int>, urd::dense, urd::insertion_ordered>,
     urd::repr::IndexMap<int, int, false>,
     urd::repr::IndexMap<int, int, true>,
     Store<key<int>, value<int>, urd::dense>,
     Store<key<int>, value<int>, urd::dense, urd::constant_clear>,
+    // Maps in insertion order: keys in an insertion-ordered set, values beside them.
+    urd::repr::OrderedMap<urd::repr::IndexedSet<int>, int>,
+    urd::repr::OrderedMap<urd::repr::SparseSet<int, true>, int>,
+    Store<key<int>, value<int>, urd::insertion_ordered>,
+    Store<key<int>, value<int>, urd::dense, urd::insertion_ordered>,
     // Insertion order and positions: interners.
     urd::repr::IndexedSet<int>,
     Store<key<int>, urd::insertion_ordered>,
