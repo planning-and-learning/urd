@@ -55,6 +55,11 @@ public:
     { return constant().contains(handle, element); }
 
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
+    /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
+    /// its bits. Valid until the pool is cleared.
+    [[nodiscard]] auto view(handle_type handle) const
+        requires requires(const R& rows) { rows.view(handle); }
+    { return constant().view(handle); }
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }

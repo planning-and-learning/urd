@@ -230,7 +230,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 
 | Container | insert a row | insert a delta | read a row | `contains` | memory |
 |---|---|---|---|---|---|
-| `RowInterner` | O(r)~ | O(r)~ (copies the row) | O(r) | O(r) | each distinct row once, in full |
+| `RowInterner` | O(r)~ | O(r)~ (copies the row) | O(r); `view(h)` O(1), no copy | O(r); O(1) for dense rows | each distinct row once, in full; dense-set rows as bitset words |
 | `TreeVectorSet` | O(r)~ | O(k log_A r)~ | O(r) | — | nodes shared across rows: a delta adds about k·log_A r nodes |
 | `TreeBitsetSet` | O(r/32)~ | O(k log_A (r/32))~ | O(r/32 + set bits) | O(log_A (r/32)) | as above; all-zero subtrees take nothing |
 | `SlotVector` | O(1)\* (a freed slot first) | — | O(1) by handle | — | stable slots; erased elements keep their storage |

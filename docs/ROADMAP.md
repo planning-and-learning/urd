@@ -324,7 +324,9 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    `reset()` on fixed-shape Stores; with `proportional_clear`, a `TrackRows` policy on `Jagged` resets only the rows
    handed out to change since the last reset (writes through a row are not seen; handing it out counts). Deeper
    nesting and a uniform stride are left out.
-6. Borrowed rows from pools (`view(h)`), including bit rows stored as words.
+6. Borrowed rows — done: `view(h)` on pools that keep rows in full (`RowInterner`): a span of the row's elements,
+   or for a dense set its `BitsetSpan`; dense-set rows are now stored as their bitset words (trailing zero words
+   dropped, so equal sets stay equal). A view stays valid until the pool is cleared. Tree pools keep `get` and `read`.
 7. Sorted maps that keep erased values' storage (float-keyed cost buckets).
 
 ## Order and size

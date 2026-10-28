@@ -11,7 +11,9 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <random>
+#include <span>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -235,4 +237,56 @@ TEST(Pools, ThreadsAgreeOnHandles)
     expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>>(300);
     expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
     expect_threads_agree<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
+}
+
+// A pool that keeps rows in full lends them out: view(h) is the stored row, a span of its elements or, for rows of
+// dense indices, their bits; views taken early still show their rows after many more inserts.
+TEST(Pools, ViewsLendTheStoredRows)
+{
+    auto random = std::mt19937(53);
+    const auto row = [&random]
+    {
+        auto elements = std::vector<int>(std::uniform_int_distribution<std::size_t>(0, 20)(random));
+        for (auto& each : elements)
+            each = std::uniform_int_distribution<int>(0, 300)(random);
+        return elements;
+    };
+    {
+        auto pool = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+        auto handles = std::vector<decltype(pool)::handle_type>();
+        auto views = std::vector<std::span<const int>>();
+        for (int each = 0; each < 2000; ++each)
+        {
+            handles.push_back(pool.insert(row()));
+            views.push_back(pool.view(handles.back()));
+        }
+        for (std::size_t each = 0; each < handles.size(); ++each)
+        {
+            const auto held = pool.get(handles[each]);
+            ASSERT_TRUE(std::ranges::equal(views[each], held)) << each;
+        }
+    }
+    {
+        using Set = Store<key<int>, urd::dense, urd::frozen>;
+        auto pool = Store<value<Set>, urd::handles, urd::unique>();
+        static_assert(std::same_as<decltype(pool)::representation, urd::repr::RowInterner<Set>>);
+        auto handles = std::vector<decltype(pool)::handle_type>();
+        auto views = std::vector<decltype(pool.view(handles.front()))>();
+        for (int each = 0; each < 2000; ++each)
+        {
+            handles.push_back(pool.insert(row()));
+            views.push_back(pool.view(handles.back()));
+        }
+        for (std::size_t each = 0; each < handles.size(); ++each)
+        {
+            const auto held = pool.get(handles[each]);
+            auto bits = std::vector<int>();
+            const auto& view = views[each];
+            for (auto at = view.find_first(); at != std::remove_cvref_t<decltype(view)>::npos; at = view.find_next(at))
+                bits.push_back(static_cast<int>(at));
+            ASSERT_TRUE(std::ranges::equal(bits, held)) << each;
+        }
+        // Equal sets, whatever their elements' order or repeats, are one row.
+        EXPECT_EQ(pool.insert(std::vector<int> { 5, 3, 3, 200 }), pool.insert(std::vector<int> { 200, 5, 3 }));
+    }
 }

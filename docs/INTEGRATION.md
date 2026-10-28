@@ -306,6 +306,10 @@ iterated nor counted by rows.
   and reads of what is already inserted. The interning tables are then `repr::ConcurrentIndexedSet`, which also
   serves the thread-safe interner `Store<key<T>, positional, monotone, concurrent>`.
 
+A pool that keeps rows in full lends them out: `view(h)` is the stored row without a copy, a span of its elements,
+or for rows of dense indices a `BitsetSpan` over the words they are stored as. The table moves the rows' vectors as
+it grows, never their elements, so a view stays valid until the pool is cleared.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
