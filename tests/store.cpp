@@ -69,7 +69,9 @@ static_assert(std::same_as<Store<key<int>, value<int>>::representation, FlatHash
 static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted>::representation, TreeMapOf<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::small>::representation, FlatHashMapOf<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::frozen>::representation, FlatMapOf<int, int>>);
-static_assert(std::same_as<Store<key<int>, value<int>, urd::multi>::representation, HashMultiMapOf<int, int>>);
+// A multimap is postings: a key's values together, one probe away. Stable references need the node-based table.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi>::representation, urd::repr::PostingMap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::stable_refs>::representation, HashMultiMapOf<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::sorted>::representation, TreeMultiMapOf<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs>::representation, HashMapOf<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::retains>::representation, FlatHashMapOf<int, int>>);
@@ -365,6 +367,13 @@ TEST(MultiValues, GivesEachKeysValuesInOrder)
     const auto pairs = std::vector<std::pair<int, int>> { { 2, 20 }, { 0, 1 }, { 2, 21 }, { 0, 2 }, { 2, 22 } };
     const auto csr = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>(pairs.begin(), pairs.end());
     const auto tree = Store<key<int>, value<int>, urd::multi, urd::sorted>(pairs.begin(), pairs.end());
+    const auto postings = Store<key<int>, value<int>, urd::multi>(pairs.begin(), pairs.end());
+    const auto nodes = Store<key<int>, value<int>, urd::multi, urd::stable_refs>(pairs.begin(), pairs.end());
+    EXPECT_TRUE(std::ranges::equal(postings.values(2), std::vector<int> { 20, 21, 22 }));
+    // std::unordered_multimap keeps equal keys together, in no promised order.
+    auto node_values = std::vector<int>(nodes.values(2).begin(), nodes.values(2).end());
+    std::ranges::sort(node_values);
+    EXPECT_EQ(node_values, (std::vector<int> { 20, 21, 22 }));
     EXPECT_TRUE(std::ranges::equal(csr.values(2), std::vector<int> { 20, 21, 22 }));
     EXPECT_TRUE(std::ranges::equal(tree.values(2), std::vector<int> { 20, 21, 22 }));
     EXPECT_TRUE(std::ranges::equal(csr.values(0), std::vector<int> { 1, 2 }));

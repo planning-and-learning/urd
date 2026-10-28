@@ -161,7 +161,21 @@ static_assert(std::same_as<GroupsByIndex::representation, urd::repr::CsrMultiMap
 using Successors = Store<key<Vertex>, value<Vertex>, urd::multi, urd::dense, urd::frozen>;
 static_assert(std::same_as<Successors::representation, urd::repr::CsrMultiMap<Vertex, Vertex>>);
 
+// yggdrasil database/semantics/join_index.hpp: JoinIndex, UnorderedMultiMap<hash_t, size_t> m_index, the rows of
+// each key hash: postings.
+using JoinPostings = Store<key<std::uint64_t>, value<std::size_t>, urd::multi>;
+static_assert(std::same_as<JoinPostings::representation, urd::repr::PostingMap<std::uint64_t, std::size_t>>);
+
+struct ObjectTag;
+struct RowTag;
+using Object = Id<ObjectTag>;
+using Row = Id<RowTag>;
+
+// tyr invariants: vector<UnorderedMap<Index<Object>, dynamic_bitset>>, per parameter the rows of each object as a
+// bitset: per parameter, a map from objects to dense sets of rows.
+using ObjectPostings = Store<value<Store<key<Object>, value<Store<key<Row>, urd::dense>>>>>;
+static_assert(std::same_as<ObjectPostings::representation::value_type::representation, FlatHashMapOf<Object, Store<key<Row>, urd::dense>>>);
+
 }  // namespace
 
-// Not yet: tyr's postings (vector<UnorderedMap<Index<Object>, dynamic_bitset>>) need postings (M4). The maps
-// further up are keyed by indices too; where their sites say so, they become dense requests.
+// The maps further up are keyed by indices too; where their sites say so, they become dense requests.

@@ -7,6 +7,7 @@
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/postings.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
@@ -83,6 +84,8 @@ template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
 
 template<typename K, typename V>
+using PostingMapOf = repr::PostingMap<K, V>;
+template<typename K, typename V>
 using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 
 template<typename T>
@@ -122,8 +125,17 @@ using element_preference = element_candidates<repr::Jagged,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
                                               repr::RowPool>;
-using map_preference =
-    map_candidates<FlatHashMapOf, HashMapOf, HashMultiMapOf, TreeMapOf, TreeMultiMapOf, FlatMultiMapOf, FlatMapOf, DenseMapOf, GenerationMapOf, CsrMultiMapOf>;
+using map_preference = map_candidates<FlatHashMapOf,
+                                      HashMapOf,
+                                      PostingMapOf,
+                                      HashMultiMapOf,
+                                      TreeMapOf,
+                                      TreeMultiMapOf,
+                                      FlatMultiMapOf,
+                                      FlatMapOf,
+                                      DenseMapOf,
+                                      GenerationMapOf,
+                                      CsrMultiMapOf>;
 
 template<typename... Lists>
 struct join

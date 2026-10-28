@@ -4,6 +4,7 @@
 
 #include "urd/repr/dense.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/postings.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
@@ -143,6 +144,43 @@ void iterate(benchmark::State& state)
     state.SetItemsProcessed(state.iterations() * state.range(0));
 }
 
+/// Postings: n values over n/8 keys, inserted, then each key's values read.
+template<typename C>
+void postings(benchmark::State& state)
+{
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const auto postings_keys = keys<key_t<C>>(n / 8);
+    for (auto _ : state)
+    {
+        auto container = C();
+        for (std::size_t pos = 0; pos < n; ++pos)
+            container.emplace(postings_keys[pos % postings_keys.size()], static_cast<int>(pos));
+        std::int64_t sum = 0;
+        for (const auto& key : postings_keys)
+        {
+            const auto [first, last] = container.equal_range(key);
+            for (auto it = first; it != last; ++it)
+                sum += it->second;
+        }
+        benchmark::DoNotOptimize(sum);
+    }
+    state.SetItemsProcessed(state.iterations() * state.range(0));
+}
+
+template<typename T>
+using PostingMap = urd::repr::PostingMap<T, int>;
+template<typename T>
+using HashMultiMap = std::unordered_multimap<T, int, urd::Hash<T>, urd::EqualTo<T>>;
+template<typename T>
+using TreeMultiMap = std::multimap<T, int, urd::Less<T>>;
+
+template<template<typename> class C, typename T>
+void add_postings(const std::string& name)
+{
+    for (const auto size : { 1'000, 100'000 })
+        benchmark::RegisterBenchmark("postings<" + name + ">", postings<C<T>>)->Arg(size);
+}
+
 template<typename T>
 using DenseSet = urd::repr::DenseSet<T>;
 template<typename T>
@@ -215,6 +253,13 @@ int main(int argc, char** argv)
     // Insertion order: a vector plus a table of positions.
     add_benchmarks<IndexedSet, int>("IndexedSet<int>", false);
     add_benchmarks<IndexedSet, Key32>("IndexedSet<Key32>", false);
+    // Multimaps: postings, several values per key.
+    add_postings<PostingMap, int>("PostingMap<int>");
+    add_postings<HashMultiMap, int>("HashMultiMap<int>");
+    add_postings<TreeMultiMap, int>("TreeMultiMap<int>");
+    add_postings<PostingMap, Key32>("PostingMap<Key32>");
+    add_postings<HashMultiMap, Key32>("HashMultiMap<Key32>");
+    add_postings<TreeMultiMap, Key32>("TreeMultiMap<Key32>");
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();

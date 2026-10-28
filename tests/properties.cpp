@@ -164,7 +164,10 @@ using Containers = testing::Types<
     Store<key<int>, urd::positional, urd::monotone>,
     // Frozen multimaps by dense key: compressed sparse rows.
     urd::repr::CsrMultiMap<int, int>,
-    Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>>;
+    Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>,
+    // Postings: each key's values together in a hash table.
+    urd::repr::PostingMap<int, int>,
+    Store<key<int>, value<int>, urd::multi, urd::stable_refs>>;
 
 template<typename R>
 class Properties : public testing::Test
