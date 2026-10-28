@@ -14,6 +14,7 @@
 #include "urd/repr/parallel.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/queues.hpp"
+#include "urd/repr/recycling.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/scoped.hpp"
 #include "urd/repr/segmented.hpp"
@@ -59,7 +60,7 @@ inline constexpr property_set requirement = []
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
 /// sequence's duplicates), is a map exactly where S is, is a queue exactly where S is, and is random-access where S
 /// is a sequence. A sequence
-/// kept by value must be sorted, or its positions would mean nothing. Where S's elements are Stores (rows), R
+/// kept by value must be sorted, or its positions would mean nothing. Where S's elements (a map's values) are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>)
@@ -69,10 +70,14 @@ concept serves_by_traits = container_traits<R>::declared && detail::satisfies(co
 // instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
 // typed test suites, for every registered container, not again for every request: those interface checks were most
 // of what resolving a request cost the compiler. Positions are the exception, checked where asked for.
+/// What S holds as rows where they are Stores: a map's values, else its elements.
+template<typename S>
+using row_of = std::conditional_t<S::is_map, typename S::mapped_type, typename S::element_type>;
+
 template<typename R, typename S>
 concept serves =
     serves_by_traits<R, S> && (!needs_monotone_priority<R> || has<S, monotone_priority>) && (!has<S, positional> || std::ranges::random_access_range<R>)
-    && (!is_store<typename S::element_type> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<typename S::element_type>>));
+    && (!is_store<row_of<S>> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<row_of<S>>>));
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
@@ -162,6 +167,8 @@ template<typename T>
 using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
 using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
+template<typename K, typename V>
+using RecyclingMapOf = repr::RecyclingMap<K, V>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
@@ -235,6 +242,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       TreeMultiMapOf,
                                       FlatMultiMapOf,
                                       FlatMapOf,
+                                      RecyclingMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
                                       ThreadSafeGenerationMapOf,

@@ -1275,3 +1275,39 @@ TEST(FixedShape, TrackedResetCostsTheRowsHandedOut)
     const auto all = timed(untracked);
     EXPECT_LT(few * 10, all) << "tracked " << few << " ns, untracked " << all << " ns";
 }
+
+// A sorted map whose values are rows that keep their memory: erased keys leave their nodes and values for the next
+// keys, so buckets of a cost queue, emptied and refilled, allocate nothing once warm.
+TEST(Recycling, BucketsRefillWithoutAllocating)
+{
+    using Bucket = Store<key<int>, urd::retains>;
+    using Buckets = Store<key<double>, value<Bucket>, urd::sorted>;
+    static_assert(std::same_as<Buckets::representation, urd::repr::RecyclingMap<double, Bucket>>);
+    // Values that may free their memory stay in a plain tree.
+    static_assert(std::same_as<Store<key<double>, value<Store<key<int>>>, urd::sorted>::representation, TreeMapOf<double, Store<key<int>>>>);
+    auto buckets = Buckets();
+    const auto fill = [&buckets](double cost)
+    {
+        for (int each = 0; each < 100; ++each)
+            buckets[cost].insert(each + static_cast<int>(cost * 1000));
+    };
+    for (int round = 0; round < 3; ++round)
+    {
+        fill(1.0 + round);
+        fill(2.0 + round);
+        buckets.erase(buckets.begin()->first);
+        buckets.erase(buckets.begin()->first);
+    }
+    {
+        const auto counted = urd::test::Counted();
+        fill(7.5);
+        fill(8.5);
+    }
+    if (urd::test::counts_allocations)
+    {
+        EXPECT_EQ(urd::test::allocations(), 0);
+    }
+    EXPECT_EQ(buckets.size(), 2U);
+    EXPECT_EQ(buckets.begin()->first, 7.5);
+    EXPECT_EQ(buckets.at(8.5).size(), 100U);
+}

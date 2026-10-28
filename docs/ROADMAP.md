@@ -327,7 +327,11 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
 6. Borrowed rows — done: `view(h)` on pools that keep rows in full (`RowInterner`): a span of the row's elements,
    or for a dense set its `BitsetSpan`; dense-set rows are now stored as their bitset words (trailing zero words
    dropped, so equal sets stay equal). A view stays valid until the pool is cleared. Tree pools keep `get` and `read`.
-7. Sorted maps that keep erased values' storage (float-keyed cost buckets).
+7. Sorted maps that keep erased values' storage — done: a map's values, where they are Stores, are now checked as
+   rows are (`element_traits` describe them), and `repr::RecyclingMap` (std::map with a free list of erased nodes,
+   their values cleared) serves sorted maps whose values `retain`: buckets emptied and refilled allocate nothing.
+
+M10 is done.
 
 ## Order and size
 

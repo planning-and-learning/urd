@@ -226,6 +226,12 @@ struct name<urd::repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
     static constexpr std::string_view id = "tree_bitset_set";
     static constexpr std::string_view value = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
 };
+template<typename K, typename V>
+struct name<urd::repr::RecyclingMap<K, V>>
+{
+    static constexpr std::string_view id = "recycling_map";
+    static constexpr std::string_view value = "recycling map (std::map that keeps erased nodes and their values for reuse)";
+};
 template<typename T>
 struct name<urd::repr::ParallelHashSet<T>>
 {

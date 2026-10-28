@@ -312,6 +312,10 @@ it grows, never their elements, so a view stays valid until the pool is cleared.
 
 ## Maps
 
+A map's values, where they are Stores, are rows like a sequence's: the representation's `element_traits` say what
+they keep. Most maps free a value when its key goes; `repr::RecyclingMap` keeps the node and the value, cleared, for
+the next key, so `Store<key<K>, value<Row>, sorted>` with a `retains` Row refills without allocating.
+
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
 container names `mapped_type`, which tells the registry it is one; its lookups and `erase` take a key, and
 with unique keys it offers `at`, `try_emplace` and `insert_or_assign` (`include/urd/interface.hpp`). The

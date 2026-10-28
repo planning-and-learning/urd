@@ -98,6 +98,7 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 | … of dense indices | `Store<value<Store<key<I>, dense>>, fixed_shape>` | `Jagged` over one word array | a `BitsetSpan` (one bit per index) |
 | … two levels | `Store<value<Store<value<Store<key<I>, dense>>, fixed_shape>>, fixed_shape>`, built from a `std::vector<row_lengths>` | `Jagged` of `Jagged` | a range of `BitsetSpan`s |
 | reused after removal | `Store<value<Row>, retains>` with a `retains` row | `RowPool` | the row Store, cleared, not freed |
+| map values reused after erase | `Store<key<K>, value<Row>, sorted>` with a `retains` row | `RecyclingMap` | the value Store, cleared, kept with its node |
 | interned, by handle | `Store<value<Row>, handles, unique>` | `RowInterner`, tree pools | the row, read by handle |
 
 `Rows::reference` names what a row is handed out as; code needs no name from `urd/repr`.
@@ -126,6 +127,7 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<value<T>, monotone, stable_refs>` | `SegmentedVector` (thread-safe with `concurrent`) |
 | `Store<key<K>, value<V>>` | `boost::unordered_flat_map` |
 | `Store<key<K>, value<V>, sorted>` | `std::map` |
+| `Store<key<K>, value<Row>, sorted>` with a `retains` Row | `RecyclingMap`: erased keys leave their nodes and values for the next keys |
 | `Store<key<I>, value<V>, dense>` | `IndexMap` (a slot per index) |
 | `Store<key<I>, value<V>, dense, constant_clear>` | `IndexMap` with generations |
 | `… dense, constant_clear, concurrent` | `IndexMap` with generations and a spin lock per slot |
@@ -198,6 +200,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `boost::unordered_flat_set/map` | O(1)\*~ | O(1)~ | O(1)~ | O(capacity) | O(capacity) | ~n/0.875 slots + 1 byte each; retains |
 | `std::unordered_set/map` | O(1)\*~ | O(1)~ | O(1)~ | O(n + buckets) | O(n) | a node per element; stable references |
 | `std::set/map`, multi | O(log n) | O(log n) | O(log n) | O(n) | O(n), in order | a node per element; reclaims |
+| `RecyclingMap` | O(log n), a kept node first | O(log n) | O(log n); keeps the node | O(n) | O(n), in order | erased nodes and their values kept for reuse |
 | `boost::container::flat_set/map`, multi | O(n) | O(log n) | O(n) | O(n) | O(n), contiguous | n elements; retains |
 | `DenseSet` (bitset) | O(1)\* | O(1) | O(1) | O(U/64); O(n) tracking its words | O(U/64 + n), in order | U bits (+ the words set, tracking); set algebra by words |
 | `SparseSet` | O(1)\* | O(1) | O(1); O(n) keeping order | O(1) for trivial keys | O(n), contiguous | n keys + U positions |

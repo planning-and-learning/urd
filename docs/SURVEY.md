@@ -143,5 +143,5 @@ Stores. Updated as M9 closes gaps.
 | `AdjacencyMatrix` | A (M10.5) | `Store<value<Store<value<Store<key<Vertex>, dense>>, fixed_shape>>, fixed_shape>`: `rows[v]` is all partitions of v |
 | `PartitionedAdjacencyMatrix` | A / B (M10.5) | as above with each source partition's own row widths, `proportional_clear` for the sparse reset (per vertex, where tyr tracks per vertex and partition); the implicit and static-only pairs stay tyr's |
 | `DeduplicatedAdjacencyMatrix` | A (M10.6) | a pool of dense-set rows (`Store<value<Store<key<Vertex>, dense>>, handles, unique>`, each bitset once, `view(h)` its words) and a fixed-shape table of handles per (vertex, partition) |
-| `CostBuckets`, `PendingPredicateAchievers` | B | sorted map keeping value storage, or a bucket queue |
+| `CostBuckets`, `PendingPredicateAchievers` | A (M10.7) | `Store<key<Cost>, value<Bucket>, sorted>` with a `retains` Bucket (`RecyclingMap`); `min_cost` is `begin()`; the stale-entry rule of pending achievers stays tyr's |
 | Scheduler, state builder, `PerfectAssignmentHash`, k-CKP workspace, statistics, static/fluent pairs | C | hold Stores |

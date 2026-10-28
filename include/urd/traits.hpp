@@ -654,17 +654,27 @@ inline constexpr bool is_store<detail::Store<R, S>> = true;
 namespace detail
 {
 
-/// What R holds: its value_type where it names one (a queue or pool is no range), else what iterating it gives.
+template<typename R>
+concept names_value_type = requires { typename R::value_type; };
+template<typename R>
+concept names_mapped_type = names_value_type<R> && requires { typename R::mapped_type; };
+
+/// What R holds as rows: a map's values, else its value_type where it names one (a queue or pool is no range), else
+/// what iterating it gives.
 template<typename R>
 struct held
 {
     using type = std::ranges::range_value_t<R>;
 };
-template<typename R>
-    requires requires { typename R::value_type; }
+template<names_value_type R>
 struct held<R>
 {
     using type = typename R::value_type;
+};
+template<names_mapped_type R>
+struct held<R>
+{
+    using type = typename R::mapped_type;
 };
 
 }  // namespace detail
