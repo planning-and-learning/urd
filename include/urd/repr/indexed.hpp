@@ -108,7 +108,7 @@ public:
         m_positions.reserve(count);
     }
     /// The bytes its storage takes: the vector's capacity and the table's slots (with their metadata byte).
-    [[nodiscard]] size_type memory_usage() const { return m_elements->capacity() * sizeof(T) + m_positions.capacity() * (sizeof(Position) + 1); }
+    [[nodiscard]] size_type memory_usage() const { return m_elements->capacity() * sizeof(T) + m_positions.bucket_count() * (sizeof(Position) + 1); }
 
     [[nodiscard]] iterator find(const T& element) const
     {

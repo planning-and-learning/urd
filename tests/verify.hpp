@@ -526,6 +526,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     // Sequence rows over few values, so that equal rows recur; set rows over a range of several blocks.
     auto pick = std::uniform_int_distribution<int>(0, sequence_rows ? 3 : 99);
     auto length = std::uniform_int_distribution<int>(0, sequence_rows ? 6 : 12);
+    auto memory_before = std::size_t { 0 };
     for (int step = 0; step < steps; ++step)
     {
         auto operation = std::string("insert");
@@ -590,6 +591,11 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
             rows.push_back(canonical(elements));
         }
         const auto label = "step " + std::to_string(step) + " (" + operation + "): ";
+        // Inserting stores more or nothing; only clear lowers it.
+        const auto memory = pool.memory_usage();
+        if (operation != "clear" && memory < memory_before)
+            return label + "memory_usage fell without a clear";
+        memory_before = memory;
         for (std::size_t each = 0; each < rows.size(); ++each)
         {
             const auto got = pool.get(handles[each]);

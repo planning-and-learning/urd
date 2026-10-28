@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/traits.hpp"
 
@@ -11,6 +12,7 @@
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -31,8 +33,9 @@ class DenseSet
     static_assert(indexable<K>, "urd::repr::DenseSet: keys must be indices (urd::index_of)");
 
     using word = std::uint64_t;
-    static constexpr std::size_t word_bits = std::numeric_limits<word>::digits;
-    static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
+    using Bits = BitsetSpan<word>;
+    using ConstBits = BitsetSpan<const word>;
+    static constexpr std::size_t npos = Bits::npos;
 
 public:
     class iterator;
@@ -56,11 +59,17 @@ public:
     [[nodiscard]] bool empty() const { return m_count == 0; }
 
     /// Room for keys below `count`.
-    void reserve(size_type count) { m_words.reserve((count + word_bits - 1) / word_bits); }
+    void reserve(size_type count) { m_words.reserve(Bits::num_blocks(count)); }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
-    [[nodiscard]] bool contains(const K& key) const { return index_of<K>::is_index(key) && test(index_of<K>::to_index(key)); }
+    [[nodiscard]] bool contains(const K& key) const
+    {
+        if (!index_of<K>::is_index(key))
+            return false;
+        const auto index = index_of<K>::to_index(key);
+        return index < bits().size() && bits().test(index);
+    }
     [[nodiscard]] iterator lower_bound(const K& key) const
     { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0)); }
     [[nodiscard]] iterator upper_bound(const K& key) const
@@ -70,12 +79,10 @@ public:
     std::pair<iterator, bool> insert(const K& key)
     {
         const auto index = index_of<K>::to_index(key);
-        if (index / word_bits >= m_words.size())
-            m_words.resize(index / word_bits + 1);
-        auto& block = m_words[index / word_bits];
-        const auto bit = word { 1 } << (index % word_bits);
-        const bool inserted = (block & bit) == 0;
-        block |= bit;
+        if (index >= bits().size())
+            m_words.resize(Bits::num_blocks(index + 1));
+        const bool inserted = !bits().test(index);
+        bits().set(index);
         m_count += inserted ? 1 : 0;
         return { iterator(this, index), inserted };
     }
@@ -93,13 +100,13 @@ public:
     {
         if (!contains(key))
             return 0;
-        reset(index_of<K>::to_index(key));
+        remove(index_of<K>::to_index(key));
         return 1;
     }
     iterator erase(const_iterator pos)
     {
         const auto next = next_from(pos.m_index + 1);
-        reset(pos.m_index);
+        remove(pos.m_index);
         return iterator(this, next);
     }
     iterator erase(const_iterator first, const_iterator last)
@@ -110,46 +117,41 @@ public:
     }
     void clear()
     {
-        std::ranges::fill(m_words, word { 0 });
+        bits().reset();
         m_count = 0;
     }
 
-    // Set algebra on whole words, which the Store's set_algebra uses.
+    // Set algebra on whole words, which the Store's set_algebra uses. Sets grow to their largest key, so the
+    // operations apply BitsetSpan to the words both have, and treat the rest of the longer one by itself.
 
     [[nodiscard]] bool includes(const DenseSet& other) const
     {
-        for (std::size_t block = 0; block < other.m_words.size(); ++block)
-            if ((other.m_words[block] & ~word_at(block)) != 0)
-                return false;
-        return true;
+        const auto common = std::min(m_words.size(), other.m_words.size());
+        return other.words_from(common).none() && other.words(common).is_subset_of(words(common));
     }
     [[nodiscard]] bool intersects(const DenseSet& other) const
     {
         const auto common = std::min(m_words.size(), other.m_words.size());
-        for (std::size_t block = 0; block < common; ++block)
-            if ((m_words[block] & other.m_words[block]) != 0)
-                return true;
-        return false;
+        return words(common).intersects(other.words(common));
     }
     DenseSet& operator|=(const DenseSet& other)
     {
         if (other.m_words.size() > m_words.size())
             m_words.resize(other.m_words.size());
-        for (std::size_t block = 0; block < other.m_words.size(); ++block)
-            m_words[block] |= other.m_words[block];
+        words(other.m_words.size()) |= other.words(other.m_words.size());
         return recount();
     }
     DenseSet& operator&=(const DenseSet& other)
     {
-        for (std::size_t block = 0; block < m_words.size(); ++block)
-            m_words[block] &= other.word_at(block);
+        const auto common = std::min(m_words.size(), other.m_words.size());
+        words(common) &= other.words(common);
+        words_from(common).reset();
         return recount();
     }
     DenseSet& operator-=(const DenseSet& other)
     {
         const auto common = std::min(m_words.size(), other.m_words.size());
-        for (std::size_t block = 0; block < common; ++block)
-            m_words[block] &= ~other.m_words[block];
+        words(common) -= other.words(common);
         return recount();
     }
 
@@ -157,10 +159,8 @@ public:
     [[nodiscard]] friend bool operator==(const DenseSet& lhs, const DenseSet& rhs)
     {
         const auto common = std::min(lhs.m_words.size(), rhs.m_words.size());
-        const auto zero = [](word block) { return block == 0; };
-        return lhs.m_count == rhs.m_count && std::equal(lhs.m_words.begin(), lhs.m_words.begin() + static_cast<difference_type>(common), rhs.m_words.begin())
-               && std::all_of(lhs.m_words.begin() + static_cast<difference_type>(common), lhs.m_words.end(), zero)
-               && std::all_of(rhs.m_words.begin() + static_cast<difference_type>(common), rhs.m_words.end(), zero);
+        return lhs.m_count == rhs.m_count && std::ranges::equal(lhs.words(common).blocks(), rhs.words(common).blocks()) && lhs.words_from(common).none()
+               && rhs.words_from(common).none();
     }
 
     /// A key at a time, in key order. Inserting or erasing other keys leaves it valid.
@@ -189,7 +189,7 @@ public:
         }
         iterator& operator--()
         {
-            m_index = m_set->previous_from(m_index == npos ? m_set->m_words.size() * word_bits : m_index);
+            m_index = m_set->previous_from(m_index == npos ? m_set->bits().size() : m_index);
             return *this;
         }
         iterator operator--(int)
@@ -209,43 +209,42 @@ public:
     };
 
 private:
-    [[nodiscard]] word word_at(std::size_t block) const { return block < m_words.size() ? m_words[block] : word { 0 }; }
+    [[nodiscard]] Bits bits() { return Bits(m_words.data(), m_words.size() * Bits::Digits); }
+    [[nodiscard]] ConstBits bits() const { return ConstBits(m_words.data(), m_words.size() * Bits::Digits); }
+    /// The first `count` words, as a bitset.
+    [[nodiscard]] Bits words(std::size_t count) { return Bits(m_words.data(), count * Bits::Digits); }
+    [[nodiscard]] ConstBits words(std::size_t count) const { return ConstBits(m_words.data(), count * Bits::Digits); }
+    /// The words from `first` on, as a bitset.
+    [[nodiscard]] Bits words_from(std::size_t first) { return Bits(std::span<word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
+    [[nodiscard]] ConstBits words_from(std::size_t first) const
+    { return ConstBits(std::span<const word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
+
     DenseSet& recount()
     {
-        m_count = 0;
-        for (const auto block : m_words)
-            m_count += static_cast<std::size_t>(std::popcount(block));
+        m_count = bits().count();
         return *this;
     }
-    [[nodiscard]] bool test(std::size_t index) const
-    { return index / word_bits < m_words.size() && (m_words[index / word_bits] >> (index % word_bits) & word { 1 }) != 0; }
-    void reset(std::size_t index)
+    void remove(std::size_t index)
     {
-        m_words[index / word_bits] &= ~(word { 1 } << (index % word_bits));
+        bits().reset(index);
         --m_count;
     }
     /// The first key at or after `index`, else npos.
     [[nodiscard]] std::size_t next_from(std::size_t index) const
     {
-        for (auto block = index / word_bits; block < m_words.size(); ++block)
-        {
-            const auto bits = m_words[block] & (block == index / word_bits ? ~word { 0 } << (index % word_bits) : ~word { 0 });
-            if (bits != 0)
-                return block * word_bits + static_cast<std::size_t>(std::countr_zero(bits));
-        }
-        return npos;
+        if (index >= bits().size())
+            return npos;
+        return bits().test(index) ? index : bits().find_next(index);
     }
-    /// The last key before `index`, else npos.
+    /// The last key before `index`, else npos. BitsetSpan searches forward only, so this one goes by words.
     [[nodiscard]] std::size_t previous_from(std::size_t index) const
     {
-        for (auto block = index / word_bits + 1; block-- > 0;)
+        for (auto block = std::min(Bits::block_index(index) + 1, m_words.size()); block-- > 0;)
         {
-            if (block >= m_words.size())
-                continue;
-            const auto keep = index % word_bits;
-            const auto bits = m_words[block] & (block == index / word_bits ? (keep == 0 ? word { 0 } : ~word { 0 } >> (word_bits - keep)) : ~word { 0 });
-            if (bits != 0)
-                return block * word_bits + word_bits - 1 - static_cast<std::size_t>(std::countl_zero(bits));
+            const auto keep = block == Bits::block_index(index) ? Bits::block_pos(index) : Bits::Digits;
+            const auto below = keep == Bits::Digits ? m_words[block] : m_words[block] & ((word { 1 } << keep) - 1);
+            if (below != 0)
+                return block * Bits::Digits + Bits::Digits - 1 - static_cast<std::size_t>(std::countl_zero(below));
         }
         return npos;
     }

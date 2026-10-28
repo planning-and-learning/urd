@@ -203,7 +203,7 @@ struct name<urd::repr::ChangeLogged<R>>
     static constexpr std::string_view value = "change-logged set (a flat hash set, plus what was added and removed)";
 };
 template<typename Row>
-struct name<urd::repr::RowInterner<Row>>
+struct name<urd::repr::RowInterner<Row, false>>
 {
     static constexpr std::string_view id = "row_interner";
     static constexpr std::string_view value = "row interner (each row once, in full)";
@@ -220,8 +220,8 @@ struct name<urd::repr::BidirectionalCsr<K, V>>
     static constexpr std::string_view id = "bidirectional_csr";
     static constexpr std::string_view value = "bidirectional CSR (each key's values and each value's keys together)";
 };
-template<typename Row, std::size_t Arity>
-struct name<urd::repr::TreeBitsetSet<Row, Arity>>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct name<urd::repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 {
     static constexpr std::string_view id = "tree_bitset_set";
     static constexpr std::string_view value = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
@@ -231,6 +231,12 @@ struct name<urd::repr::ConcurrentIndexedSet<T, Index>>
 {
     static constexpr std::string_view id = "concurrent_indexed_set";
     static constexpr std::string_view value = "concurrent indexed set (segments that never move, a concurrent table of positions)";
+};
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct name<urd::repr::TreeVectorSet<Row, Arity, ThreadSafe>>
+{
+    static constexpr std::string_view id = "tree_vector_set";
+    static constexpr std::string_view value = "tree vector set (rows as trees of values, equal subtrees once)";
 };
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names

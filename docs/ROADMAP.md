@@ -253,6 +253,16 @@ symmetric or triangular variants, and `refinable` partitions.
 | Type-indexed family (18) | a combinator over Stores, one per type in a tag list; not a Store |
 | Hive and slot map | `handles` identity (from the earlier discussion), for object pools whose objects need stable addresses and reuse |
 
+## M8: Rows shared between states (pattern 15) — done
+
+Pools: the `handles` identity (interning with `unique`, slots without), `structural_sharing`, the `pool` and
+`slots` facets. Representations: `RowInterner`, `TreeVectorSet` and `TreeBitsetSet` (copied from yggdrasil),
+`SlotVector`, `ConcurrentIndexedSet`, each thread-safe with `ThreadSafe`; `BitsetSpan` from yggdrasil for bit
+operations, which `DenseSet` uses too. Deltas by writes (value rows) and by added and removed elements (set rows),
+`contains` along one path. Tests: run_pool and run_slots against the rows given, sharing bounds, threaded tests under
+ThreadSanitizer, yggdrasil's tree tests ported; benchmarks in docs/BENCHMARKS.md; examples/states.cpp. Deferred:
+tree pools over rows that are maps, and per-handle generations for slots (stale handles are not detected).
+
 ## Order and size
 
 | Milestone | Coverage | Size |

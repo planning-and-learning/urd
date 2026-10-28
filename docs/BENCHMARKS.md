@@ -144,6 +144,22 @@ A flat hash table of value vectors probes once per key and reads its values from
 multimap allocates per value. `PostingMap` comes first for multimaps; `std::unordered_multimap` remains for
 `stable_refs`.
 
+## Pools of states (benchmarks/pools.cpp)
+
+20,000 states, each a random earlier one with 3 positions (values) or 3 facts added and 3 removed; inserted, then
+read back (values) or asked one fact (facts). Bytes and time per state.
+
+| rows | flat interner (`handles, unique`) | tree pool (`handles, unique, structural_sharing`) |
+|---|---|---|
+| 100 values | 447 B, 0.33 µs | 166 B, 0.63 µs |
+| 1,000 values | 4,046 B, 2.5 µs | 271 B, 2.1 µs |
+| 1,000 facts, about 10% true | 865 B, 1.5 µs | 136 B, 0.57 µs |
+| 10,000 facts | 4,409 B, 8.6 µs | 271 B, 0.91 µs |
+
+A tree pool stores a successor as the paths to what changed, so its bytes per state hardly grow with the row; the
+flat interner copies the row. For short value rows the trees cost twice the time for a third of the memory; from a
+thousand positions on, and for fact sets at every size, they are smaller and faster.
+
 ## What the orders take from it
 
 - **Unsorted sets and maps: flat hash tables first.** They are fastest at insert, lookup and clear-and-refill at

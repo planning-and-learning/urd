@@ -237,6 +237,26 @@ nothing new: nested dense Stores compose (`Store<key<R>, value<Store<key<Row>, v
 constant_clear>`). A matrix of bits of fixed shape waits for a `uniform` property on nested Stores (any depth,
 `repr::BitTensor`).
 
+## Pools: rows by handle
+
+A Store with `handles` is a pool: `insert` gives a handle, and the element (a row) comes back by it. It is neither
+iterated nor counted by rows.
+
+- `handles, unique`: an interning pool. Equal rows get equal handles, so a handle stands for its row in comparisons
+  and as a key. `get(h)`, `read(h, span)`, `row_size(h)`, `memory_usage()`; a successor goes in as a delta:
+  `insert(base, writes)` for rows of values (`urd::Write{position, value}`), `insert(base, added, removed)` for
+  rows that are sets, which also answer `contains(h, element)`. `repr::RowInterner` stores each row once, in full.
+- With `structural_sharing` the rows are trees whose nodes are interned, so states share what they have in
+  common and a successor costs only the paths to what changed: `repr::TreeVectorSet` for rows of values,
+  `repr::TreeBitsetSet` (32-bit blocks, zero subtrees left out) for rows that are sets of indices. Both are copied
+  from yggdrasil.
+- `handles` without `unique`: a pool of slots, `repr::SlotVector`. Each insert takes a new slot; `erase(h)`
+  frees it for reuse, and `acquire()` hands out a freed element as it was left (a scratch buffer keeps its
+  storage). Slots never move.
+- `concurrent` makes any of them thread-safe (`ThreadSafe` in the representations): inserts from threads at once,
+  and reads of what is already inserted. The interning tables are then `repr::ConcurrentIndexedSet`, which also
+  serves the thread-safe interner `Store<key<T>, positional, monotone, concurrent>`.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
