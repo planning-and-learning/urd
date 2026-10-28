@@ -53,10 +53,15 @@ using requirement = with_t<S,
 /// kept by value must be sorted, or its positions would mean nothing. Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves = container_traits<R>::declared && detail::map_container<R> == S::is_map && satisfies<container_traits<R>, requirement<S>> && conforming<R>
-                 && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
-                 && (!has<S, positional> || std::ranges::random_access_range<R>) && (!S::is_sequence || !by_value<S> || has<S, sorted>)
-                 && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
+concept serves_by_traits = container_traits<R>::declared && satisfies<container_traits<R>, requirement<S>> && by_value<container_traits<R>> == by_value<S>
+                           && has<container_traits<R>, unique> == has<S, unique> && (!S::is_sequence || !by_value<S> || has<S, sorted>);
+// The traits come first: they are partial specializations matched on R's arguments, so checking them instantiates no
+// container. Only the few candidates whose traits fit are instantiated to check their interface. A concept's
+// conjunction stops at the first unmet part, so the order is what keeps a request cheap to compile.
+template<typename R, typename S>
+concept serves =
+    serves_by_traits<R, S> && detail::map_container<R> == S::is_map && conforming<R> && (!has<S, positional> || std::ranges::random_access_range<R>)
+    && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
@@ -216,10 +221,32 @@ template<typename S, typename... Rs>
 struct ordered_for<S, type_list<Rs...>>
 {
     static constexpr bool compact = has<S, frozen> || has<S, small>;
-    using type = std::conditional_t<compact,
-                                    typename join<std::conditional_t<node_based<Rs>, type_list<>, type_list<Rs>>...,
-                                                  std::conditional_t<node_based<Rs>, type_list<Rs>, type_list<>>...>::type,
-                                    type_list<Rs...>>;
+    // The reordered list is built only where it is used: join is the costly part of choosing.
+    using type = typename std::conditional_t<
+        compact,
+        join<std::conditional_t<node_based<Rs>, type_list<>, type_list<Rs>>..., std::conditional_t<node_based<Rs>, type_list<Rs>, type_list<>>...>,
+        std::type_identity<type_list<Rs...>>>::type;
+};
+
+/// The container chosen.
+template<typename R>
+struct chosen
+{
+    static constexpr bool found = true;
+    using type = R;
+};
+
+/// The first of Rs that serves S, checked one by one and no further: of each conditional only the branch taken is
+/// instantiated. Where none serves, a stand-in after the static_assert in choose_in, so that it is the only error.
+template<typename S, typename... Rs>
+struct first_serving
+{
+    static constexpr bool found = false;
+    using type = std::vector<typename S::element_type>;
+};
+template<typename S, typename R, typename... Rs>
+struct first_serving<S, R, Rs...> : std::conditional_t<serves<R, S>, chosen<R>, first_serving<S, Rs...>>
+{
 };
 
 template<typename S, typename List>
@@ -227,24 +254,11 @@ struct choose_in;
 
 /// The first of the containers that serves S.
 template<typename S, typename... Rs>
-struct choose_in<S, type_list<Rs...>>
+struct choose_in<S, type_list<Rs...>> : first_serving<S, Rs...>
 {
-    static constexpr std::size_t count = sizeof...(Rs);
-    static constexpr std::array<bool, count> fits { serves<Rs, S>... };
-    static constexpr std::size_t best = []
-    {
-        std::size_t found = 0;
-        while (found < count && !fits.at(found))
-            ++found;
-        return found;
-    }();
-
-    static_assert(best < count,
+    static_assert(first_serving<S, Rs...>::found,
                   "urd::Store: no representation provides this combination of properties; "
                   "the pool needs a new representation for it");
-
-    // Where none serves, a stand-in after the static_assert, so that it is the only error.
-    using type = std::tuple_element_t<best, std::tuple<Rs..., std::vector<typename S::element_type>>>;
 };
 
 /// The representation for spec S: the first registered container that serves it, in the order for S.
