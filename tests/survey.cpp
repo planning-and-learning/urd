@@ -99,7 +99,43 @@ static_assert(std::same_as<Decompositions::representation, FlatHashMapOf<StaticL
 using Grounded = Store<key<RelationBinding>, value<Axiom>, urd::monotone>;
 static_assert(std::same_as<Grounded::representation, FlatHashMapOf<RelationBinding, Axiom>>);
 
+struct AtomTag;
+struct ActionTag;
+struct StateTag;
+struct VertexTag;
+using Atom = Id<AtomTag>;
+using Action = Id<ActionTag>;
+using State = Id<StateTag>;
+using Vertex = Id<VertexTag>;
+
+/// A search node: its cost and parent.
+struct SearchNode
+{
+    double cost = 0;
+    State parent;
+};
+
+// tyr datalog: PredicateFactSets, the facts of a predicate as a set of atom indices.
+using FactSet = Store<key<Atom>, urd::dense>;
+static_assert(std::same_as<FactSet::representation, urd::repr::DenseSet<Atom>>);
+
+// tyr planning heuristics: FF's markings of actions, cleared for every state.
+using Marked = Store<key<Action>, urd::dense, urd::constant_clear>;
+static_assert(std::same_as<Marked::representation, urd::repr::SparseSet<Action>>);
+
+// tyr and runir search: the node of each state index, as search proceeds.
+using SearchNodes = Store<key<State>, value<SearchNode>, urd::dense>;
+static_assert(std::same_as<SearchNodes::representation, urd::repr::IndexMap<State, SearchNode, false>>);
+
+// tyr heuristics: PatternDatabase, a cost per abstract state, computed once.
+using PatternDatabase = Store<key<State>, value<double>, urd::dense, urd::frozen>;
+static_assert(std::same_as<PatternDatabase::representation, urd::repr::IndexMap<State, double, false>>);
+
+// runir graphs: vector<bool> flags per vertex, as the set of flagged vertices in order.
+using Flagged = Store<key<Vertex>, urd::dense, urd::sorted>;
+static_assert(std::same_as<Flagged::representation, urd::repr::DenseSet<Vertex>>);
+
 }  // namespace
 
-// Not yet: the keys above are dense indices, which M1's dense maps will store as vectors; tyr's postings
-// (vector<UnorderedMap<Index<Object>, dynamic_bitset>>) need dense sets (M1) and postings (M4).
+// Not yet: tyr's postings (vector<UnorderedMap<Index<Object>, dynamic_bitset>>) need postings (M4). The maps
+// further up are keyed by indices too; where their sites say so, they become dense requests.

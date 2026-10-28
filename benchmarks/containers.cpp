@@ -2,6 +2,7 @@
 // hash, equality and order as the registry instantiates them. The numbers
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
 
+#include "urd/repr/dense.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
@@ -142,6 +143,14 @@ void iterate(benchmark::State& state)
 }
 
 template<typename T>
+using DenseSet = urd::repr::DenseSet<T>;
+template<typename T>
+using SparseSet = urd::repr::SparseSet<T>;
+template<typename T>
+using DenseMap = urd::repr::IndexMap<T, int, false>;
+template<typename T>
+using GenerationMap = urd::repr::IndexMap<T, int, true>;
+template<typename T>
 using HashSet = std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
 using FlatHashSet = boost::unordered_flat_set<T, urd::Hash<T>, urd::EqualTo<T>>;
@@ -195,6 +204,11 @@ int main(int argc, char** argv)
     add_benchmarks<FlatHashMap, int>("FlatHashMap<int>", false);
     add_benchmarks<TreeMap, int>("TreeMap<int>", false);
     add_benchmarks<FlatMap, int>("FlatMap<int>", true);
+    // Dense keys: indices 0..2n.
+    add_benchmarks<DenseSet, int>("DenseSet<int>", false);
+    add_benchmarks<SparseSet, int>("SparseSet<int>", false);
+    add_benchmarks<DenseMap, int>("DenseMap<int>", false);
+    add_benchmarks<GenerationMap, int>("GenerationMap<int>", false);
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();

@@ -14,10 +14,12 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
+#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <gtest/gtest.h>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -395,6 +397,67 @@ TYPED_TEST(Properties, Reclaims)
             range.clear();
         }
         EXPECT_GE(deallocations(), COUNT);
+    }
+}
+
+namespace
+{
+
+/// For ClearCost: a key far beyond the 8 present, and how many timings to take the shortest of.
+constexpr int far_key = 1 << 22;
+constexpr int timing_runs = 5;
+
+/// The shortest of `runs` timings of `measured`, in nanoseconds; `prepare` runs before each, untimed.
+template<typename Prepare, typename Measured>
+std::int64_t shortest(int runs, Prepare prepare, Measured measured)
+{
+    auto best = std::numeric_limits<std::int64_t>::max();
+    for (int run = 0; run < runs; ++run)
+    {
+        auto state = prepare();
+        const auto start = std::chrono::steady_clock::now();
+        measured(state);
+        const auto stop = std::chrono::steady_clock::now();
+        best = std::min(best, static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count()));
+    }
+    return best;
+}
+
+}  // namespace
+
+TYPED_TEST(Properties, ClearCost)
+{
+    if constexpr (!declares<TypeParam, urd::proportional_clear> || !declares<TypeParam, urd::shrinkable>)
+        GTEST_SKIP() << "no clear cost declared";
+    else
+    {
+        // 8 keys present, after a history that did or did not reach a large key: clearing must not cost what the
+        // history did. A clear that scans the key range takes far longer after the far key.
+        const auto clear_after = [](bool far)
+        {
+            return shortest(
+                timing_runs,
+                [far]
+                {
+                    auto range = TypeParam();
+                    if (far)
+                    {
+                        add(range, far_key);
+                        if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                            range.erase(far_key);
+                        else
+                            range.pop_back();
+                    }
+                    for (int element = 0; element < 8; ++element)
+                        add(range, element);
+                    return range;
+                },
+                [](TypeParam& range) { range.clear(); });
+        };
+        const auto near_time = clear_after(false);
+        const auto far_time = clear_after(true);
+        constexpr std::int64_t slack = 1000;  // nanoseconds, for the clock
+        EXPECT_LT(far_time, 10 * near_time + slack) << "clear took " << near_time << " ns, after a far key " << far_time << " ns";
     }
 }
 

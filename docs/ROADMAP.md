@@ -84,7 +84,13 @@ const, and values change by key only, as Boost's flat maps would let a key be ov
    - typed-test names that say the container (a name generator over `examples/show.hpp`'s naming, moved
      into `tests/`).
 
-## M1: Dense ID maps and sets (survey patterns 2, 3, 17)
+## M1: Dense ID maps and sets (survey patterns 2, 3, 17) — done
+
+Dense keys (urd::index_of), the clear-cost category, DenseSet, SparseSet, IndexMap with and without generations,
+set algebra on every set, the ClearCost test, survey pins, examples/dense.cpp. Changes from the plan below: no
+extent or partial/total category (the dense containers grow to fit; a total map is a sequence), and DenseSet is
+written for urd rather than copied, since yggdrasil's dynamic bitset is a view over storage it does not own.
+
 
 This is the largest win: the 224 dense-keyed hash containers, `vector<optional<T>>` memos, and most
 markings.

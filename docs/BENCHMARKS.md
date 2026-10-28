@@ -74,6 +74,45 @@ cmake --build build/bench -j8 && build/bench/benchmark_containers --benchmark_mi
 | iterate | 10,000 | 1.6 | 0.8 | 5.7 | **0.1** |
 | iterate | 100,000 | 3.7 | 0.6 | 16.2 | **0.1** |
 
+## Dense keys (int indices 0..2n)
+
+Only a request for dense keys reaches these; the flat hash table, the default otherwise, for comparison.
+
+| set workload | n | FlatHashSet | DenseSet | SparseSet |
+|---|---|---|---|---|
+| insert | 100 | 8.4 | **1.2** | 2.4 |
+| insert | 10,000 | 8.8 | **1.2** | 1.6 |
+| insert | 100,000 | 8.3 | **1.3** | 6.8 |
+| lookup | 100 | 1.1 | 0.6 | **0.6** |
+| lookup | 10,000 | 1.1 | 0.6 | **0.5** |
+| lookup | 100,000 | 1.3 | **0.6** | 1.0 |
+| clear and refill | 100 | 4.2 | 1.1 | **0.9** |
+| clear and refill | 10,000 | 2.6 | 1.2 | **0.9** |
+| clear and refill | 100,000 | 3.1 | **1.2** | 5.2 |
+| iterate | 100 | 0.5 | 3.0 | **0.3** |
+| iterate | 10,000 | 0.7 | 3.1 | **0.3** |
+| iterate | 100,000 | 0.7 | 3.1 | **0.3** |
+
+| map workload | n | FlatHashMap | DenseMap | GenerationMap |
+|---|---|---|---|---|
+| insert | 100 | 9.1 | **1.8** | 2.1 |
+| insert | 10,000 | 9.7 | **1.2** | 1.9 |
+| insert | 100,000 | 9.0 | **5.3** | 8.2 |
+| lookup | 100 | 1.1 | **0.4** | 0.6 |
+| lookup | 10,000 | 1.1 | **0.3** | 0.6 |
+| lookup | 100,000 | 1.4 | **0.4** | 1.0 |
+| clear and refill | 100 | 4.3 | **0.9** | 1.0 |
+| clear and refill | 10,000 | 2.7 | 0.9 | **0.7** |
+| clear and refill | 100,000 | **3.2** | 3.7 | 8.1 |
+| iterate | 100 | **0.5** | 0.8 | 1.1 |
+| iterate | 10,000 | **0.7** | 0.8 | 1.1 |
+| iterate | 100,000 | **0.7** | 0.8 | 1.1 |
+
+Positions beat hashing at insert and lookup, 2 to 7 times. A bitset iterates more slowly, scanning bits where half the
+range is empty. Clear-and-refill favors the dense containers up to 10⁴ elements; at 10⁵ the flat hash table refills
+faster than the generation map and the sparse set. Their O(1) clear pays off where few of many keys are present, as in
+per-state markings.
+
 ## What the orders take from it
 
 - **Unsorted sets and maps: flat hash tables first.** They are fastest at insert, lookup and clear-and-refill at

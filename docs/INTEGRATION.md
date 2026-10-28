@@ -151,6 +151,17 @@ Hash, equality and order then go member by member. Hashing is deterministic (xxH
 std::hash), so a hash table iterates in the same order on every platform. `tests/semantics.cpp` checks the
 laws the containers rely on: equal values hash equally, and Less is a strict weak order agreeing with EqualTo.
 
+## Dense keys
+
+Keys that are indices 0..n-1 (`urd::index_of`: integers, enums, types identified by one integral member; specialize
+it for others) can be stored by position. A request for `dense` keys gets one of the dense containers
+(`include/urd/repr/dense.hpp`): `DenseSet` (a bitset, iterated in key order), `SparseSet` (O(1) clear),
+`IndexMap` (a slot per index, with or without generations for an O(1) clear). They come after the hash tables in
+the registry, so only dense requests reach them. Clear cost is a category of its own: `proportional_clear`
+(time in proportion to the elements present) and `constant_clear` (O(1)); the `ClearCost` typed test checks a
+clear does not cost what the container's history did. Every set also has `includes`, `intersects`, `|=`, `&=` and
+`-=` (`facet::set_algebra`), on whole words for a bitset.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
