@@ -91,6 +91,8 @@ backed by [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
 | `Store<key<int>, partition>` | `DisjointSets` (union-find) |
 | `Store<value<int>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
 | `Store<value<Store<value<int>, frozen>>>` | `Jagged` (CSR rows, any depth) |
+| `Store<value<Store<value<double>>>, fixed_shape>` | `Jagged` with mutable rows (`std::span<double>`) |
+| `Store<value<Store<key<std::size_t>, dense>>, fixed_shape>` | `Jagged` of bit rows (`BitsetSpan`, one word array) |
 | `Store<value<Row>, handles, unique>` | `RowInterner` (each row once, in full) |
 | `Store<value<Row>, handles, unique, structural_sharing>` | `TreeVectorSet` (value rows) / `TreeBitsetSet` (rows of indices) |
 | `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
@@ -120,6 +122,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | scopes, layering | `scoped`, `layered` | changes undone by `pop_scope`; lookups falling through to a parent |
 | tracking | `change_log` | `added()` and `removed()` since `clear_changes()` |
 | grouping, direction | `partition`, `bidirectional` | union-find classes; a map answering `keys(value)` too |
+| shape | `fixed_shape` | rows whose number and lengths are set at construction (`urd::row_lengths`); their contents change in place |
 
 | Requested only | Tags | Effect |
 |---|---|---|
@@ -164,6 +167,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `std::vector` | O(1)\* at the end, O(n) inside | O(1) | O(n) | O(n) | contiguous; retains |
 | `SegmentedVector` | O(1)\* (no element moves) | O(1) | — | O(n) | doubling segments; stable references |
 | `Jagged` (frozen rows) | O(r)\* per row | a row: O(1), a span | — | O(n) | one offsets array per level |
+| `Jagged` (fixed_shape) | built once, O(total length) | a row: O(1), a span or `BitsetSpan`; bit ops O(r/64) | — | — | one array; bit rows ⌈r/64⌉ words each |
 | `Fifo` / `Lifo` | O(1)\* | front / top O(1) | `pop` O(1) | O(n) | deque / vector |
 | `Heap` | O(log n) | `top` O(1) | `pop` O(log n) | O(n) | vector; retains |
 | `DisjointSets` | `insert` O(1)\* | `find`, `same`, `merge` O(α(n))\* | — | O(1) | n parents + n sizes |

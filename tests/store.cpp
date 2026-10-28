@@ -6,6 +6,7 @@
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
 
+#include <algorithm>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -16,6 +17,7 @@
 #include <random>
 #include <ranges>
 #include <set>
+#include <span>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -164,6 +166,14 @@ static_assert(std::same_as<Store<value<Store<value<Store<value<int>, urd::frozen
 static_assert(std::same_as<Store<value<Store<value<Store<value<int>, urd::frozen>>, urd::frozen>>>::representation::value_type::representation,
                            urd::repr::Jagged<Store<value<int>, urd::frozen>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::retains>>, urd::retains>::representation, urd::repr::RowPool<Store<value<int>, urd::retains>>>);
+
+// Rows of bits whose number and lengths are fixed: one array of words, each row a bitset over its part.
+using BitRowSets = Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>;
+static_assert(std::same_as<BitRowSets::representation, urd::repr::Jagged<Store<key<std::size_t>, urd::dense>>>);
+static_assert(std::same_as<BitRowSets::reference, urd::repr::BitsetSpan<std::uint64_t>>);
+template<typename S>
+concept can_change_rows = requires(S rows, typename S::value_type row) { rows.push_back(row); } || requires(S rows) { rows.clear(); };
+static_assert(can_change_rows<Store<value<Store<key<std::size_t>, urd::dense>>>> && !can_change_rows<BitRowSets>);
 
 // Storage kept for reuse, or returned: the containers that do so.
 static_assert(std::same_as<Store<key<int>, urd::retains>::representation, FlatHashSet<int>>);
@@ -930,4 +940,99 @@ TEST(Merge, ThreadsUpdateTogether)
     for (int key = 0; key < keys; ++key)
         total += counts.at(key);
     EXPECT_EQ(total, threads * rounds);
+}
+
+// Rows of bits changed at random, against a vector of bools per row: lengths at and around word boundaries, and
+// rows of equal length combined.
+TEST(FixedShape, ChangeInPlaceLikeVectorsOfBools)
+{
+    const auto lengths = std::vector<std::size_t> { 0, 1, 63, 64, 65, 130, 64, 65, 130 };
+    auto rows = BitRowSets(urd::row_lengths(lengths));
+    auto model = std::vector<std::vector<bool>>();
+    for (const auto length : lengths)
+        model.emplace_back(length, false);
+    auto random = std::mt19937(41);
+    const auto pick = [&random](std::size_t bound) { return std::uniform_int_distribution<std::size_t>(0, bound - 1)(random); };
+    for (int step = 0; step < 5000; ++step)
+    {
+        const auto row = pick(lengths.size());
+        const auto other = pick(lengths.size());
+        const auto action = pick(5);
+        if (model[row].empty())
+            continue;
+        const auto bit = pick(model[row].size());
+        if (action == 0)
+        {
+            rows[row].set(bit);
+            model[row][bit] = true;
+        }
+        else if (action == 1)
+        {
+            rows[row].reset(bit);
+            model[row][bit] = false;
+        }
+        else if (action == 2)
+        {
+            rows[row].flip();
+            model[row].flip();
+        }
+        else if (lengths[row] == lengths[other])
+        {
+            if (action == 3)
+                rows[row] |= std::as_const(rows)[other];
+            else
+                rows[row] -= std::as_const(rows)[other];
+            for (std::size_t each = 0; each < lengths[row]; ++each)
+                model[row][each] = action == 3 ? model[row][each] || model[other][each] : model[row][each] && !model[other][each];
+        }
+        ASSERT_EQ(rows.size(), lengths.size());
+        for (std::size_t each = 0; each < lengths.size(); ++each)
+        {
+            const auto bits = std::as_const(rows)[each];
+            ASSERT_EQ(bits.size(), lengths[each]);
+            ASSERT_EQ(bits.count(), static_cast<std::size_t>(std::ranges::count(model[each], true)));
+            for (std::size_t position = 0; position < lengths[each]; ++position)
+                ASSERT_EQ(bits.test(position), model[each][position]) << "row " << each << " bit " << position;
+        }
+    }
+    auto copy = rows;
+    EXPECT_EQ(copy, rows);
+    if (lengths[5] > 0)
+        copy[5].flip(0);
+    EXPECT_NE(copy, rows);
+}
+
+// Built from sets of indices, each row is as long as its largest index needs.
+TEST(FixedShape, BuildFromSets)
+{
+    using Row = Store<key<std::size_t>, urd::dense>;
+    const auto sets = std::vector<Row> { Row { 3, 70 }, Row {}, Row { 0 } };
+    const auto rows = BitRowSets(sets.begin(), sets.end());
+    ASSERT_EQ(rows.size(), 3U);
+    EXPECT_EQ(rows[0].size(), 71U);
+    EXPECT_EQ(rows[0].count(), 2U);
+    EXPECT_TRUE(rows[0].test(3) && rows[0].test(70));
+    EXPECT_EQ(rows[1].size(), 0U);
+    EXPECT_EQ(rows[2].size(), 1U);
+    EXPECT_TRUE(rows[2].test(0));
+}
+
+// Rows of elements of fixed lengths, changed in place: spans into one array.
+TEST(FixedShape, RowsOfElementsChangeInPlace)
+{
+    using Rows = Store<value<Store<value<double>>>, urd::fixed_shape>;
+    static_assert(std::same_as<Rows::reference, std::span<double>>);
+    auto rows = Rows(urd::row_lengths { 2, 0, 3 });
+    rows[2][1] = 3.5;
+    rows[0][0] = 1.0;
+    const auto& read = rows;
+    EXPECT_EQ(read[0].size(), 2U);
+    EXPECT_EQ(read[1].size(), 0U);
+    EXPECT_EQ(read[2][1], 3.5);
+    EXPECT_EQ(read[0][0], 1.0);
+    EXPECT_EQ(read[2][0], 0.0);
+    auto copy = rows;
+    EXPECT_EQ(copy, rows);
+    copy[2][2] = 1.0;
+    EXPECT_NE(copy, rows);
 }

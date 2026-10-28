@@ -278,7 +278,10 @@ policies and reuse over new containers.
    map hands stale values to `update`; a `ThreadSafe` policy on `IndexMap` (segmented slots, a spin lock each from
    yggdrasil) for `concurrent`. (relation, row) keys are nested dense Stores, so clearing all costs one clear per
    relation rather than one counter.
-5. Fixed-shape nested bit rows (`uniform`, BitTensor).
+5. Fixed-shape rows — done: `fixed_shape` (number and lengths of rows set at construction by `urd::row_lengths`,
+   contents mutable), served by `Jagged`: rows of elements as mutable spans, rows of a dense set as `BitsetSpan`s
+   over one word array (callers name `Rows::reference`). Left out: a `uniform` shape (stride instead of offsets),
+   nested fixed shapes (vertex × partition), and resetting all contents.
 6. Later: sorted maps keeping value storage or a bucket queue, borrowed pool rows, order by projection, CSR rebuilt
    in place.
 

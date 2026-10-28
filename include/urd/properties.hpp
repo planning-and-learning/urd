@@ -8,6 +8,7 @@
 #include <initializer_list>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace urd
 {
@@ -27,6 +28,15 @@ template<typename V>
 struct value
 {
     using type = V;
+};
+
+/// How long each row of a fixed_shape Store is, in order: what such a Store is built from.
+struct row_lengths
+{
+    std::vector<std::size_t> lengths;
+
+    row_lengths(std::initializer_list<std::size_t> each) : lengths(each) {}
+    explicit row_lengths(std::vector<std::size_t> each) : lengths(std::move(each)) {}
 };
 
 namespace detail
@@ -168,7 +178,7 @@ consteval property_set implied(property_set stated, kind of)
         result.put(tag::stable_refs);
     // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty; a queue
     // offers push and pop whenever it may change, clear too unless it is monotone.
-    if (stated.has(tag::frozen))
+    if (stated.has(tag::frozen) || stated.has(tag::fixed_shape))
         result.put(tag::immutable);
     else if (stated.has(tag::monotone) || stated.has(tag::nonempty))
         result.put(tag::growable);
@@ -231,6 +241,9 @@ struct to_spec
                   "position or order");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
+    static_assert(!stated.has(tag::fixed_shape) || (of.sequence && !stated.has(tag::monotone) && is_store<value_type>),
+                  "urd::Store: fixed_shape is a sequence of rows (value<Store<…>>) whose number and lengths never change; its rows' "
+                  "contents do");
     static_assert(!of.map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
     static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");

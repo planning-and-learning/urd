@@ -139,7 +139,8 @@ Stores. Updated as M9 closes gaps.
 | `PredicateAssignmentSet(s)` | A (M9.3) | `Store<key<Rank>, dense, proportional_clear>`; its `BitsetSpan` view stays tyr's |
 | `DenseRelationMap`, `PredicateAnnotationMap` | A (M9.4) | `Store<key<Rel>, value<Store<key<Row>, value<V>, dense, constant_clear[, concurrent]>>, dense>`; `update`, `read` |
 | `NumericIntervalAnnotations` | B | as above, plus a small set ordered by a projection |
-| `VertexPartitions`, `AdjacencyMatrix`, `PartitionedAdjacencyMatrix` | B | fixed-shape nested bit rows (M9.5) |
+| `VertexPartitions` | A (M9.5) | `Store<value<Store<key<Vertex>, dense>>, fixed_shape>`; `reset()` of all rows is left out |
+| `AdjacencyMatrix`, `PartitionedAdjacencyMatrix` | B | one level only (row = vertex × partition); `get_row(vertex)` needs nested fixed shapes |
 | `DeduplicatedAdjacencyMatrix` | B | borrowed row views of a pool |
 | `CostBuckets`, `PendingPredicateAchievers` | B | sorted map keeping value storage, or a bucket queue |
 | Scheduler, state builder, `PerfectAssignmentHash`, k-CKP workspace, statistics, static/fluent pairs | C | hold Stores |

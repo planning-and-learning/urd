@@ -104,6 +104,13 @@ public:
 
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
 
+    /// Rows of these lengths, empty: a fixed_shape Store's only shape.
+    explicit Store(const row_lengths& lengths)
+        requires has<S, fixed_shape>
+        : m_representation(lengths.lengths)
+    {
+    }
+
     void swap(Store& other) noexcept
     {
         using std::swap;
