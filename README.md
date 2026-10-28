@@ -55,47 +55,90 @@ error: no matching function for call to 'Store<std::set<int, ...>, spec<int, voi
 
 Header-only C++20, GPL-3.0.
 
+## Elements: any type, any depth
+
+`key<K>` and `value<V>` take any type, and every Store is itself a type they take. The only demands come from the
+properties, and only on the type they concern:
+
+| What the request says | What the type needs | Given for |
+|---|---|---|
+| keys, unordered (the default) | `hashable` (`urd::Hash`, `urd::EqualTo`) | arithmetic types, enums, strings, ranges and Stores of hashable elements, and any type that names its identifying members |
+| keys, `sorted` (also `by_priority` elements) | `orderable` (`urd::Less`, `urd::EqualTo`) | the same |
+| keys, `dense` | `indexable` (`urd::index_of`) | non-negative integers, enums, types identified by one integral member |
+| values, elements of sequences and queues | nothing | — |
+
+A type names its identifying members once and is then hashable, orderable and comparable, in member order:
+
+```cpp
+struct Edge
+{
+    Vertex from, to;
+    static constexpr auto identifying_members() noexcept { return Members<&Edge::from, &Edge::to> {}; }
+};
+using Edges = Store<key<Edge>>;                    // hashed by (from, to)
+```
+
+**Nesting.** A Store of Stores is written as one: an element, key or value can be another Store, to any depth.
+
+```cpp
+using Tags     = Store<key<std::string>, sorted>;
+using Tagged   = Store<key<Item>, value<Tags>>;                          // a map of sorted sets
+using Families = Store<key<Tags>>;                                       // a set of sets (hashed by contents)
+using Trips    = Store<key<std::string>, value<Store<value<Point>>>>;    // a map of sequences
+using Layers   = Store<value<Store<key<Cell>, value<Store<value<Item>>>>>>;  // sequences of maps of sequences
+```
+
+Most rows are held as Stores, each owning its storage, which every container can hold. Where the outer request
+says how rows live, urd stores them together instead, and hands out a row as a view:
+
+| Rows | Request | Container | A row is |
+|---|---|---|---|
+| never change | `Store<value<Store<value<T>, frozen>>>` (any depth) | `Jagged`: CSR, one array per level | `std::span<const T>`, or a range of the rows below |
+| fixed lengths, changing contents | `Store<value<Store<value<T>>>, fixed_shape>` | `Jagged` built from `urd::row_lengths` | `std::span<T>` |
+| … of dense indices | `Store<value<Store<key<I>, dense>>, fixed_shape>` | `Jagged` over one word array | a `BitsetSpan` (one bit per index) |
+| reused after removal | `Store<value<Row>, retains>` with a `retains` row | `RowPool` | the row Store, cleared, not freed |
+| interned, by handle | `Store<value<Row>, handles, unique>` | `RowInterner`, tree pools | the row, read by handle |
+
+`Rows::reference` names what a row is handed out as; code needs no name from `urd/repr`.
+
 ## What a request resolves to
 
-A selection, as the current registry resolves them (`include/urd/registry.hpp`; the order of candidates there is
-backed by [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
+`K` a key type, `V` a value type, `T` an element type, `I` an index type (`dense`). A selection, as the current
+registry resolves them (`include/urd/registry.hpp`; the order of candidates there is backed by
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
 
 | Request | Container |
 |---|---|
-| `Store<key<int>>` | `boost::unordered_flat_set` (open addressing) |
-| `Store<key<int>, sorted>` | `std::set` |
-| `Store<key<int>, sorted, frozen>` | `boost::container::flat_set` (sorted vector) |
-| `Store<key<int>, stable_refs>` | `std::unordered_set` |
-| `Store<key<int>, dense>` | `DenseSet` (bitset) |
-| `Store<key<int>, dense, proportional_clear>` | `DenseSet` that clears only the words it set |
-| `Store<key<int>, dense, constant_clear>` | `SparseSet` (Briggs–Torczon) |
-| `Store<key<int>, insertion_ordered>` | `IndexedSet` (vector plus a hash table of positions) |
-| `Store<key<std::string>, positional, monotone>` | `IndexedSet`: an interner |
-| `Store<key<std::string>, positional, monotone, concurrent>` | `ConcurrentIndexedSet` |
-| `Store<value<int>>` | `std::vector` |
-| `Store<value<int>, sorted>` | `boost::container::flat_multiset` |
-| `Store<value<int>, monotone, stable_refs>` | `SegmentedVector` (thread-safe with `concurrent`) |
-| `Store<key<int>, value<int>>` | `boost::unordered_flat_map` |
-| `Store<key<int>, value<int>, sorted>` | `std::map` |
-| `Store<key<int>, value<int>, dense>` | `IndexMap` (a slot per index) |
-| `Store<key<int>, value<int>, dense, constant_clear>` | `IndexMap` with generations |
+| `Store<key<K>>` | `boost::unordered_flat_set` (open addressing) |
+| `Store<key<K>, sorted>` | `std::set` |
+| `Store<key<K>, sorted, frozen>` | `boost::container::flat_set` (sorted vector) |
+| `Store<key<K>, stable_refs>` | `std::unordered_set` |
+| `Store<key<I>, dense>` | `DenseSet` (bitset) |
+| `Store<key<I>, dense, proportional_clear>` | `DenseSet` that clears only the words it set |
+| `Store<key<I>, dense, constant_clear>` | `SparseSet` (Briggs–Torczon) |
+| `Store<key<K>, insertion_ordered>` | `IndexedSet` (vector plus a hash table of positions) |
+| `Store<key<K>, positional, monotone>` | `IndexedSet`: an interner, each element gets an index |
+| `Store<key<K>, positional, monotone, concurrent>` | `ConcurrentIndexedSet` |
+| `Store<value<T>>` | `std::vector` |
+| `Store<value<T>, sorted>` | `boost::container::flat_multiset` |
+| `Store<value<T>, monotone, stable_refs>` | `SegmentedVector` (thread-safe with `concurrent`) |
+| `Store<key<K>, value<V>>` | `boost::unordered_flat_map` |
+| `Store<key<K>, value<V>, sorted>` | `std::map` |
+| `Store<key<I>, value<V>, dense>` | `IndexMap` (a slot per index) |
+| `Store<key<I>, value<V>, dense, constant_clear>` | `IndexMap` with generations |
 | `… dense, constant_clear, concurrent` | `IndexMap` with generations and a spin lock per slot |
-| `Store<key<int>, value<int>, insertion_ordered>` | `OrderedMap` (with `dense`: over a `SparseSet`) |
-| `Store<key<int>, value<int>, multi>` | `PostingMap` (flat hash table of value vectors) |
-| `Store<key<int>, value<int>, multi, sorted>` | `std::multimap` |
-| `Store<key<int>, value<int>, multi, dense, frozen>` | `CsrMultiMap` (compressed sparse rows) |
-| `… multi, dense, frozen, bidirectional` | `BidirectionalCsr` (a frozen graph with its in-edges) |
-| `Store<key<int>, value<int>, scoped>` | `ScopedMap` (scopes undone by a log) |
-| `Store<key<int>, value<int>, layered>` | `Layered` flat hash map over a parent |
-| `Store<key<int>, change_log>` | `ChangeLogged` flat hash set |
-| `Store<key<int>, partition>` | `DisjointSets` (union-find) |
-| `Store<value<int>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
-| `Store<value<Store<value<int>, frozen>>>` | `Jagged` (CSR rows, any depth) |
-| `Store<value<Store<value<double>>>, fixed_shape>` | `Jagged` with mutable rows (`std::span<double>`) |
-| `Store<value<Store<key<std::size_t>, dense>>, fixed_shape>` | `Jagged` of bit rows (`BitsetSpan`, one word array) |
-| `Store<value<Row>, handles, unique>` | `RowInterner` (each row once, in full) |
-| `Store<value<Row>, handles, unique, structural_sharing>` | `TreeVectorSet` (value rows) / `TreeBitsetSet` (rows of indices) |
+| `Store<key<K>, value<V>, insertion_ordered>` | `OrderedMap` (with `dense`: over a `SparseSet`) |
+| `Store<key<K>, value<V>, multi>` | `PostingMap` (flat hash table of value vectors) |
+| `Store<key<K>, value<V>, multi, sorted>` | `std::multimap` |
+| `Store<key<I>, value<V>, multi, dense, frozen>` | `CsrMultiMap` (compressed sparse rows) |
+| `Store<key<I>, value<I>, multi, dense, frozen, bidirectional>` | `BidirectionalCsr` (a frozen graph with its in-edges) |
+| `Store<key<K>, value<V>, scoped>` | `ScopedMap` (scopes undone by a log) |
+| `Store<key<K>, value<V>, layered>` | `Layered` flat hash map over a parent |
+| `Store<key<K>, change_log>` | `ChangeLogged` flat hash set |
+| `Store<key<I>, partition>` | `DisjointSets` (union-find) |
+| `Store<value<T>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
 | `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
+| rows (Stores as elements) | see [Nesting](#elements-any-type-any-depth) |
 
 `Store<…>::representation` names the choice, for tests that pin it; code that uses a Store never needs it.
 
