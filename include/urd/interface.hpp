@@ -35,7 +35,8 @@ namespace urd
 // | a map (names a mapped_type)      | the lookups and erase(e) above take a key; with unique keys, at(k) |
 // | fifo, lifo, by_priority (queues) | in place of all above: default construction, size, empty, push(e), |
 // |                                  | push(e&&), emplace(args), pop; front() for fifo, else top(); clear |
-// |                                  | if shrinkable                                                      |
+// |                                  | if shrinkable; with handles, push(e) -> handle, update(h, e),     |
+// |                                  | erase(h)                                                           |
 // | partition                        | in place of all above: insert(k), merge(a, b) -> bool, find(k) -> |
 // |                                  | k, same(a, b), class_size(k), classes(), size; clear if shrinkable |
 // | handles, not unique (slots)      | in place of all above: insert(e) -> handle, [h], size, empty;      |
@@ -170,6 +171,10 @@ concept queue_operations = std::default_initializable<R> && requires(R& queue, c
                                { constant.front() } -> std::same_as<const E&>;
                            } : requires(const R& constant) {
                                { constant.top() } -> std::same_as<const E&>;
+                           }) && (!has<Traits, handles> || requires(R& queue, const E& element, const typename R::handle_type& handle) {
+                               { queue.push(element) } -> std::same_as<typename R::handle_type>;
+                               queue.update(handle, element);
+                               queue.erase(handle);
                            });
 
 /// A pool: rows go in as ranges of their elements and come back by the handle insert gave.

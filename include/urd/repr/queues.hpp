@@ -5,9 +5,12 @@
 #include "urd/traits.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -79,6 +82,183 @@ private:
     Elements m_elements;
 };
 
+/// The least first by Compare, each element reachable by the handle push gave: update moves it to its new place, erase
+/// removes it wherever it is (an indexed binary heap). The handles of removed elements are given out again.
+template<typename T, typename Compare = Less<T>>
+class AddressableHeap
+{
+public:
+    using value_type = T;
+    using size_type = std::size_t;
+    using handle_type = std::size_t;
+
+    [[nodiscard]] size_type size() const { return m_heap.size(); }
+    [[nodiscard]] bool empty() const { return m_heap.empty(); }
+    [[nodiscard]] const T& top() const { return m_slots[m_heap.front()].element; }
+
+    handle_type push(const T& element) { return emplace(element); }
+    handle_type push(T&& element) { return emplace(std::move(element)); }
+    template<typename... Args>
+    handle_type emplace(Args&&... args)
+    {
+        auto handle = m_slots.size();
+        if (m_free.empty())
+            m_slots.push_back(slot { T(std::forward<Args>(args)...), m_heap.size() });
+        else
+        {
+            handle = m_free.back();
+            m_free.pop_back();
+            m_slots[handle] = slot { T(std::forward<Args>(args)...), m_heap.size() };
+        }
+        m_heap.push_back(handle);
+        sift_up(m_heap.size() - 1);
+        return handle;
+    }
+    void pop() { erase(m_heap.front()); }
+    void update(handle_type handle, const T& element)
+    {
+        m_slots[handle].element = element;
+        sift_up(m_slots[handle].position);
+        sift_down(m_slots[handle].position);
+    }
+    void erase(handle_type handle)
+    {
+        const auto at = m_slots[handle].position;
+        const auto last = m_heap.back();
+        m_heap.pop_back();
+        if (at < m_heap.size())
+        {
+            place(at, last);
+            sift_up(at);
+            sift_down(m_slots[last].position);
+        }
+        m_free.push_back(handle);
+    }
+    void clear()
+    {
+        m_heap.clear();
+        m_slots.clear();
+        m_free.clear();
+    }
+    void reserve(size_type count)
+    {
+        m_heap.reserve(count);
+        m_slots.reserve(count);
+    }
+
+private:
+    struct slot
+    {
+        T element;
+        size_type position;
+    };
+
+    [[nodiscard]] bool before(handle_type lhs, handle_type rhs) const { return Compare {}(m_slots[lhs].element, m_slots[rhs].element); }
+    void place(size_type at, handle_type handle)
+    {
+        m_heap[at] = handle;
+        m_slots[handle].position = at;
+    }
+    void sift_up(size_type at)
+    {
+        const auto handle = m_heap[at];
+        while (at > 0 && before(handle, m_heap[(at - 1) / 2]))
+        {
+            place(at, m_heap[(at - 1) / 2]);
+            at = (at - 1) / 2;
+        }
+        place(at, handle);
+    }
+    void sift_down(size_type at)
+    {
+        const auto handle = m_heap[at];
+        for (auto child = 2 * at + 1; child < m_heap.size(); child = 2 * at + 1)
+        {
+            if (child + 1 < m_heap.size() && before(m_heap[child + 1], m_heap[child]))
+                ++child;
+            if (!before(m_heap[child], handle))
+                break;
+            place(at, m_heap[child]);
+            at = child;
+        }
+        place(at, handle);
+    }
+
+    std::vector<handle_type> m_heap;  // handles, as a binary heap by their elements
+    std::vector<slot> m_slots;        // by handle: the element and where its handle is in the heap
+    std::vector<handle_type> m_free;  // handles to give out again
+};
+
+/// The integral priority a bucket queue files an element under: its projection where Compare orders by one, else the
+/// element.
+template<typename T, typename Compare>
+[[nodiscard]] constexpr auto bucket_priority(const T& element)
+{
+    if constexpr (requires { Compare::projection; })
+        return std::invoke(Compare::projection, element);
+    else
+        return element;
+}
+template<typename T, typename Compare>
+using bucket_priority_t = std::remove_cvref_t<decltype(bucket_priority<T, Compare>(std::declval<const T&>()))>;
+
+/// The least first, for integral priorities: a vector of elements per priority, and the least that holds any. A push
+/// below it lowers it, so the order holds whatever is pushed; where pushes never go below the last popped
+/// (monotone_priority), the scan for the next least only moves forward: push O(1), pop amortized O(1) over the range
+/// of priorities. Equal priorities leave last in first. Clear keeps every bucket's storage.
+template<typename T, typename Compare = Less<T>>
+class BucketQueue
+{
+public:
+    using value_type = T;
+    using size_type = std::size_t;
+
+    [[nodiscard]] size_type size() const { return m_size; }
+    [[nodiscard]] bool empty() const { return m_size == 0; }
+    [[nodiscard]] const T& top() const { return m_buckets[m_least].back(); }
+
+    void push(const T& element) { emplace(element); }
+    void push(T&& element) { emplace(std::move(element)); }
+    template<typename... Args>
+    void emplace(Args&&... args)
+    {
+        auto element = T(std::forward<Args>(args)...);
+        const auto priority = index_of(element);
+        if (priority >= m_buckets.size())
+            m_buckets.resize(priority + 1);
+        m_buckets[priority].push_back(std::move(element));
+        if (m_size == 0 || priority < m_least)
+            m_least = priority;
+        ++m_size;
+    }
+    void pop()
+    {
+        m_buckets[m_least].pop_back();
+        if (--m_size > 0)
+            while (m_buckets[m_least].empty())
+                ++m_least;
+    }
+    void clear()
+    {
+        for (auto& bucket : m_buckets)
+            bucket.clear();
+        m_size = 0;
+        m_least = 0;
+    }
+
+private:
+    [[nodiscard]] static size_type index_of(const T& element)
+    {
+        const auto priority = bucket_priority<T, Compare>(element);
+        assert(priority >= 0 && "urd::repr::BucketQueue: priorities are indices, never negative");
+        return static_cast<size_type>(priority);
+    }
+
+    std::vector<std::vector<T>> m_buckets;
+    size_type m_size = 0;
+    size_type m_least = 0;
+};
+
 template<typename T>
 using Fifo = Queue<T, leaving::first_in>;
 template<typename T>
@@ -106,5 +286,20 @@ template<typename T, typename C>
 struct container_traits<repr::Queue<T, repr::leaving::least, C>> : properties_of<by_priority, shrinkable, retains>
 {
 };
+
+template<typename T, typename C>
+    requires natural_order<C, T>
+struct container_traits<repr::AddressableHeap<T, C>> : properties_of<by_priority, handles, shrinkable, retains>
+{
+};
+
+template<typename T, typename C>
+    requires std::integral<repr::bucket_priority_t<T, C>> && natural_order<C, T>
+struct container_traits<repr::BucketQueue<T, C>> : properties_of<by_priority, shrinkable, retains>
+{
+};
+/// It is fast only where pushes never go below the last popped, so it serves only requests that say so.
+template<typename T, typename C>
+inline constexpr bool needs_monotone_priority<repr::BucketQueue<T, C>> = true;
 
 }  // namespace urd

@@ -73,6 +73,8 @@ enum class tag : std::uint8_t
     positional,
     general,
     small,
+    any_priority,
+    monotone_priority,
     count  ///< not a tag: how many there are
 };
 
@@ -400,6 +402,22 @@ struct small : general
     static constexpr tag value = tag::small;
 };
 
+struct any_priority
+{
+    using root = any_priority;
+    static constexpr tag value = tag::any_priority;
+};
+/// A priority queue whose pushes are never below the last popped (Dijkstra with non-negative costs): with integral
+/// priorities, a bucket queue serves it.
+struct monotone_priority : any_priority
+{
+    static constexpr tag value = tag::monotone_priority;
+};
+
+/// Whether representation R relies on monotone_priority, so that it serves only requests that state it.
+template<typename R>
+inline constexpr bool needs_monotone_priority = false;
+
 namespace detail
 {
 
@@ -466,7 +484,9 @@ using all_tags = type_list<any_order,
                            by_key,
                            positional,
                            general,
-                           small>;
+                           small,
+                           any_priority,
+                           monotone_priority>;
 
 inline constexpr std::size_t tag_count = static_cast<std::size_t>(tag::count);
 constexpr std::size_t index(tag of) { return static_cast<std::size_t>(of); }
@@ -501,7 +521,7 @@ inline constexpr std::array guaranteed_roots { tag::any_order,          tag::dup
                                                tag::any_representation, tag::single_threaded, tag::immutable,     tag::any_memory,   tag::any_clear,
                                                tag::any_access,         tag::any_scope,       tag::any_layering,  tag::any_tracking, tag::any_handle,
                                                tag::any_sharing,        tag::any_grouping,    tag::any_direction, tag::any_shape };
-inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::by_key, tag::general };
+inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::by_key, tag::general, tag::any_priority };
 
 constexpr bool in(tag root, const auto& roots)
 {

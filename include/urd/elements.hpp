@@ -32,6 +32,8 @@ concept hashable = Hashable<T> && EqualityComparableByEqualTo<T>;
 template<typename T, auto P>
 struct ProjectedLess
 {
+    static constexpr auto projection = P;
+
     constexpr bool operator()(const T& lhs, const T& rhs) const
     {
         using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const T&>>;

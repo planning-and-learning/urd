@@ -311,7 +311,10 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    as larger g first) on sorted Stores and priority queues. `urd::ProjectedLess<T, P>` compares `P(element)`, then the
    element where it has an order; unique keys must have one, or two with equal `P` would be one. A request with
    `order_by` chooses among the comparator-taking containers only, instantiated with it; others are unaffected.
-3. `addressable` (via `handles`) and `monotone_priority` (a bucket queue for integral priorities).
+3. Priority queues — done: `handles` on a `by_priority` queue (`repr::AddressableHeap`, an indexed binary heap with
+   `update(h, e)` and `erase(h)`; no new tag), and `monotone_priority` (a requested-only tag; `repr::BucketQueue`
+   for integral priorities, chosen only when the request states it). A queue container now serves only queue
+   requests.
 4. Rebuilding a frozen Store in place (`assign`).
 5. Nested fixed shapes, and `reset` with a cost policy.
 6. Borrowed rows from pools (`view(h)`), including bit rows stored as words.

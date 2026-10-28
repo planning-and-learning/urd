@@ -140,6 +140,8 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<key<I>, partition>` | `DisjointSets` (union-find) |
 | `Store<value<T>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
 | `Store<value<T>, by_priority, order_by<&T::cost>>` | `Heap` by the cost; `sorted` Stores take `order_by` too |
+| `Store<value<T>, by_priority, handles>` | `AddressableHeap`: `push` gives a handle; `update(h, e)`, `erase(h)` |
+| `Store<value<I>, by_priority, monotone_priority>` | `BucketQueue` (a bucket per integral priority) |
 | `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
 | rows (Stores as elements) | see [Nesting](#elements-any-type-any-depth) |
 
@@ -163,7 +165,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | memory | `retains`, `reclaims` | storage freed by erase and clear is kept for reuse, or returned |
 | clear | `proportional_clear` → `constant_clear` | clear costs O(elements present), or O(1) |
 | access | `fifo`, `lifo`, `by_priority` | a queue: reached by front or top, not iterated |
-| handles | `handles` | a pool: insert gives a handle; with `unique`, equal rows get equal handles |
+| handles | `handles` | a pool: insert gives a handle; with `unique`, equal rows get equal handles; on a priority queue, push gives a handle to update or erase by |
 | sharing | `structural_sharing` | equal parts of different rows are stored once |
 | scopes, layering | `scoped`, `layered` | changes undone by `pop_scope`; lookups falling through to a parent |
 | tracking | `change_log` | `added()` and `removed()` since `clear_changes()` |
@@ -177,6 +179,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | multiplicity | `functional`, `multi` | one value per key, or many (a multimap) |
 | identity | `positional` | elements identified by position (sequences, and sets with positions) |
 | workload | `small` | a few elements: picks compact containers, never changes a guarantee |
+| priority | `monotone_priority` | a priority queue never pushed below the last popped: integral priorities go to buckets |
 | order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map): a member pointer or a stateless lambda; ties by the element's own order |
 
 The kind of a Store follows from its arguments: `key<K>` is a set, `key<K>, value<V>` a map, `value<V>` a sequence;
@@ -218,6 +221,8 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `Jagged` (fixed_shape) | built once, O(total length) | a row: O(1), a span or `BitsetSpan`; bit ops O(r/64) | — | — | one array; bit rows ⌈r/64⌉ words each |
 | `Fifo` / `Lifo` | O(1)\* | front / top O(1) | `pop` O(1) | O(n) | deque / vector |
 | `Heap` | O(log n) | `top` O(1) | `pop` O(log n) | O(n) | vector; retains |
+| `AddressableHeap` | O(log n) | `top` O(1) | `pop`, `erase(h)`, `update(h, e)` O(log n) | O(n) | heap of handles + a slot per handle; retains |
+| `BucketQueue` | O(1)\* | `top` O(1) | `pop` O(1)\* under monotone pushes | O(range) | a vector per priority; retains |
 | `DisjointSets` | `insert` O(1)\* | `find`, `same`, `merge` O(α(n))\* | — | O(1) | n parents + n sizes |
 
 **Pools** (rows by handle)

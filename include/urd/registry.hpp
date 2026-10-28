@@ -57,20 +57,21 @@ inline constexpr property_set requirement = []
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
-/// sequence's duplicates), is a map exactly where S is, and is random-access where S is a sequence. A sequence
+/// sequence's duplicates), is a map exactly where S is, is a queue exactly where S is, and is random-access where S
+/// is a sequence. A sequence
 /// kept by value must be sorted, or its positions would mean nothing. Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves_by_traits =
-    container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>) && by_value<container_traits<R>> == by_value<S>
-    && has<container_traits<R>, unique> == has<S, unique> && (!S::is_sequence || !by_value<S> || has<S, sorted>);
+concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>)
+                           && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
+                           && (!S::is_sequence || !by_value<S> || has<S, sorted>) && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
 // typed test suites, for every registered container, not again for every request: those interface checks were most
 // of what resolving a request cost the compiler. Positions are the exception, checked where asked for.
 template<typename R, typename S>
 concept serves =
-    serves_by_traits<R, S> && (!has<S, positional> || std::ranges::random_access_range<R>)
+    serves_by_traits<R, S> && (!needs_monotone_priority<R> || has<S, monotone_priority>) && (!has<S, positional> || std::ranges::random_access_range<R>)
     && (!is_store<typename S::element_type> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<typename S::element_type>>));
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
@@ -150,6 +151,10 @@ using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
 using IndexedSetOf = repr::IndexedSet<T>;
 template<typename T>
+using BucketQueueOf = repr::BucketQueue<T>;
+template<typename T>
+using AddressableHeapOf = repr::AddressableHeap<T>;
+template<typename T>
 using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
 using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
@@ -201,7 +206,9 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::RowPool,
                                               repr::Fifo,
                                               repr::Lifo,
+                                              BucketQueueOf,
                                               repr::Heap,
+                                              AddressableHeapOf,
                                               LayeredHashSet,
                                               ChangeLoggedHashSet,
                                               RowInternerOf,
@@ -252,6 +259,10 @@ template<typename T, typename C>
 using FlatMultiSetBy = boost::container::flat_multiset<T, C>;
 template<typename T, typename C>
 using HeapBy = repr::Queue<T, repr::leaving::least, C>;
+template<typename T, typename C>
+using BucketQueueBy = repr::BucketQueue<T, C>;
+template<typename T, typename C>
+using AddressableHeapBy = repr::AddressableHeap<T, C>;
 template<typename K, typename V, typename C>
 using TreeMapBy = std::map<K, V, C>;
 template<typename K, typename V, typename C>
@@ -260,7 +271,7 @@ template<typename K, typename V, typename C>
 using FlatMapBy = boost::container::flat_map<K, V, C>;
 template<typename K, typename V, typename C>
 using FlatMultiMapBy = boost::container::flat_multimap<K, V, C>;
-using ordered_element_preference = ordered_element_candidates<TreeSetBy, FlatMultiSetBy, FlatSetBy, HeapBy>;
+using ordered_element_preference = ordered_element_candidates<TreeSetBy, FlatMultiSetBy, FlatSetBy, BucketQueueBy, HeapBy, AddressableHeapBy>;
 using ordered_map_preference = ordered_map_candidates<TreeMapBy, TreeMultiMapBy, FlatMultiMapBy, FlatMapBy>;
 
 template<typename... Lists>

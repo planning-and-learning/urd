@@ -243,6 +243,12 @@ which a queue reused per search needs. A queue's container declares its order in
 the operations above in place of a range's (`include/urd/interface.hpp`); tests/queues.cpp checks each against a
 model.
 
+With `handles`, a priority queue's `push` returns a handle, and `update(h, e)` and `erase(h)` change or remove that
+element wherever it is (`repr::AddressableHeap`, an indexed binary heap). `monotone_priority` says pushes never go
+below the last popped (Dijkstra with non-negative costs); with integral priorities (the element, or its `order_by`
+projection) it resolves to `repr::BucketQueue`, which pops in order whatever is pushed but is fast only under that
+promise, so it serves only requests that make it (`needs_monotone_priority`).
+
 ## Scopes and layers
 
 `scoped` (a map): `push_scope` opens a scope and `pop_scope` undoes every change made since, latest first, so an

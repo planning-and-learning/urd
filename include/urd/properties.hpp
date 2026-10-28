@@ -140,7 +140,7 @@ struct spec
     /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
     static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_access) != tag::any_access;
     /// Values identified by the handles insert gives (handles): a pool.
-    static constexpr bool is_pool = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_handle) == tag::handles;
+    static constexpr bool is_pool = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_handle) == tag::handles && !is_queue;
     static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue && !is_pool;
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
@@ -261,7 +261,7 @@ struct to_spec
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
     static constexpr bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
-    static constexpr bool pool = !keyed && valued && stated.has(tag::handles);
+    static constexpr bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
     static constexpr kind of { .set = keyed && !valued && !stated.has(tag::partition),
                                .map = keyed && valued,
                                .sequence = !keyed && valued && !queue && !pool,
@@ -269,9 +269,11 @@ struct to_spec
 
     static_assert(!stated.has(tag::partition) || (!valued && !stated.has(tag::frozen)),
                   "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
-    static_assert(!stated.has(tag::handles) || (!keyed && !queue && !stated.has(tag::positional) && !stated.has(tag::frozen)),
+    static_assert(!stated.has(tag::handles) || (!keyed && (!queue || stated.has(tag::by_priority)) && !stated.has(tag::positional) && !stated.has(tag::frozen)),
                   "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
-                  "position or order");
+                  "position or order; a priority queue with handles changes or erases an element by its handle");
+    static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
+                  "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
     static_assert(!stated.has(tag::fixed_shape) || (of.sequence && !stated.has(tag::monotone) && is_store<value_type>),
