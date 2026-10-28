@@ -180,6 +180,13 @@ keys. Every multimap Store has `values(key)`, the values of a key as a range: a 
 `equal_range` elsewhere. `urd::Graph<Vertex>` (`include/urd/graph.hpp`) is two of them over vertices 0..n-1,
 built from (source, target) pairs, with `successors(v)` and `predecessors(v)` as spans.
 
+## Postings
+
+A multimap without order or stable references (`Store<key<K>, value<V>, multi>`) resolves to `repr::PostingMap`
+(`include/urd/repr/postings.hpp`): a flat hash table from each key to the vector of its values, in insertion
+order, so `values(key)` is a span. Keeping postings in sync when the rows they point to move (a swap-erase) is
+the caller's.
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map

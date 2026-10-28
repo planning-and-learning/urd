@@ -129,6 +129,21 @@ Lookups cost what the hash table costs; iteration is a vector's. Inserting a lar
 table keeps a copy of each element: a table of positions hashed through the vector would avoid that, if
 interning large keys shows up in a profile.
 
+## Postings (multimaps: n values over n/8 keys, inserted, then each key's values read)
+
+ns per value.
+
+| keys | n | PostingMap | std::unordered_multimap | std::multimap |
+|---|---|---|---|---|
+| int | 10³ | **12.8** | 24.1 | 21.9 |
+| int | 10⁵ | **13.2** | 32.2 | 113.4 |
+| Key32 | 10³ | **24.7** | 37.5 | 52.6 |
+| Key32 | 10⁵ | **27.2** | 80.5 | 191.4 |
+
+A flat hash table of value vectors probes once per key and reads its values from one array; the node-based
+multimap allocates per value. `PostingMap` comes first for multimaps; `std::unordered_multimap` remains for
+`stable_refs`.
+
 ## What the orders take from it
 
 - **Unsorted sets and maps: flat hash tables first.** They are fastest at insert, lookup and clear-and-refill at

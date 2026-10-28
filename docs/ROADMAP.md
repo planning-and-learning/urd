@@ -173,7 +173,13 @@ position for now), and a non-frozen dense multimap.
   deferred.
 - **Survey pins:** runir `StaticGraph`; tyr `EffectAtomIndex`; yggdrasil `MustPass` sources.
 
-## M4: Hash postings (pattern 6)
+## M4: Hash postings (pattern 6) — done
+
+`repr::PostingMap` (a flat hash table of value vectors) first for multimaps, 2–3 times faster than
+`std::unordered_multimap` on postings (docs/BENCHMARKS.md); survey pins (yggdrasil `JoinIndex`, tyr invariant
+postings as maps of dense sets). yggdrasil's `UnorderedMultiMap` is not copied: the flat table of vectors is
+simpler. Sync under swap-erase stays the caller's.
+
 
 - `Store<key<K>, value<V>, multi>` with sparse keys resolves to yggdrasil's `UnorderedMultiMap` (copy), or
   to `boost::unordered_flat_map<K, row>` with rows from the nested-Store machinery.
