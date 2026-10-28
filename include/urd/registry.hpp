@@ -3,7 +3,6 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/change_logged.hpp"
-#include "urd/repr/concurrent_indexed.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/disjoint_sets.hpp"
 #include "urd/repr/flat.hpp"
@@ -148,6 +147,8 @@ using ThreadSafeTreeBitsetOf = repr::TreeBitsetSet<Row, 4, true>;
 template<typename T>
 using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
+using IndexedSetOf = repr::IndexedSet<T>;
+template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
 using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
@@ -188,7 +189,7 @@ using element_preference = element_candidates<repr::Jagged,
                                               DenseSetOf,
                                               TrackedDenseSet,
                                               SparseSetOf,
-                                              repr::IndexedSet,
+                                              IndexedSetOf,
                                               OrderedSparseSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,

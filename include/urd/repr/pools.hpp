@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/repr/concurrent_indexed.hpp"
+#include "urd/repr/indexed.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

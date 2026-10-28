@@ -422,11 +422,6 @@ class IndexMap
     static_assert(!ThreadSafe || Generations, "urd::repr::IndexMap: thread-safe only with generations");
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
-    struct NoLock
-    {
-        static void lock() noexcept {}
-        static void unlock() noexcept {}
-    };
     struct generation_slot
     {
         std::uint64_t generation = 0;

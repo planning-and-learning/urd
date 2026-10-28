@@ -1,16 +1,22 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/containers/segmented_vector.hpp"
+#include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
+#include <boost/unordered/concurrent_flat_set.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -22,10 +28,16 @@ namespace urd::repr
 /// changes while nothing is erased: an interner. The vector lives on the heap, where the table's hash and equality
 /// find it however the set moves. The registry names it for any element type, so it is an unconstrained template;
 /// its container_traits declare properties only for hashable elements.
-template<typename T, typename Index = std::uint32_t>
+///
+/// With ThreadSafe, threads may insert at once, and read while others insert (an interner shared across threads, the
+/// node table of a thread-safe tree pool): the elements lie in a thread-safe SegmentedVector, whose elements never
+/// move, and a concurrent hash table holds their positions. Looking up is lock-free; an insert of a new element takes
+/// a lock, so positions stay 0..n-1 without gaps. It has no erase; clear, copy and move need no other operation
+/// running.
+template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false>
 class IndexedSet
 {
-    using Elements = std::vector<T>;
+    using Elements = std::conditional_t<ThreadSafe, SegmentedVector<T, default_first_segment_size, true>, std::vector<T>>;
 
     /// A position in the vector, as the table holds it: a type of its own, so that it is never taken for an element,
     /// even where the elements are integers too.
@@ -55,7 +67,9 @@ class IndexedSet
         [[nodiscard]] bool operator()(Position lhs, const T& rhs) const { return EqualTo<T> {}((*elements)[lhs.value], rhs); }
         [[nodiscard]] bool operator()(const T& lhs, const T& rhs) const { return EqualTo<T> {}(lhs, rhs); }
     };
-    using Table = boost::unordered_flat_set<Position, PositionHash, PositionEqual>;
+    using Table = std::conditional_t<ThreadSafe,
+                                     boost::concurrent_flat_set<Position, PositionHash, PositionEqual>,
+                                     boost::unordered_flat_set<Position, PositionHash, PositionEqual>>;
 
 public:
     using iterator = typename Elements::const_iterator;
@@ -78,7 +92,7 @@ public:
             *this = IndexedSet(other);
         return *this;
     }
-    /// The moved-from set keeps a table and vector of its own, empty.
+    /// The moved-from set keeps a table and elements of its own, empty.
     IndexedSet(IndexedSet&& other) noexcept :
         m_elements(std::exchange(other.m_elements, std::make_unique<Elements>())),
         m_positions(std::exchange(other.m_positions, table_for(*other.m_elements)))
@@ -95,43 +109,43 @@ public:
     }
     ~IndexedSet() = default;
 
-    [[nodiscard]] iterator begin() const { return m_elements->begin(); }
-    [[nodiscard]] iterator end() const { return m_elements->end(); }
+    [[nodiscard]] iterator begin() const { return m_elements->cbegin(); }
+    [[nodiscard]] iterator end() const { return m_elements->cend(); }
     [[nodiscard]] size_type size() const { return m_elements->size(); }
-    [[nodiscard]] bool empty() const { return m_elements->empty(); }
-    [[nodiscard]] const T* data() const { return m_elements->data(); }
+    [[nodiscard]] bool empty() const { return size() == 0; }
     [[nodiscard]] const T& operator[](size_type position) const { return (*m_elements)[position]; }
+    [[nodiscard]] const T* data() const
+        requires(!ThreadSafe)
+    { return m_elements->data(); }
 
     void reserve(size_type count)
+        requires(!ThreadSafe)
     {
         m_elements->reserve(count);
         m_positions.reserve(count);
     }
-    /// The bytes its storage takes: the vector's capacity and the table's slots (with their metadata byte).
-    [[nodiscard]] size_type memory_usage() const { return m_elements->capacity() * sizeof(T) + m_positions.bucket_count() * (sizeof(Position) + 1); }
+    /// The bytes its storage takes: the elements' storage, and the table's slots (with their metadata byte; a
+    /// concurrent table counts its elements only, not its slack).
+    [[nodiscard]] size_type memory_usage() const
+    {
+        if constexpr (ThreadSafe)
+            return m_elements->memory_usage() + m_positions.size() * (sizeof(Position) + 1);
+        else
+            return m_elements->capacity() * sizeof(T) + m_positions.bucket_count() * (sizeof(Position) + 1);
+    }
 
     [[nodiscard]] iterator find(const T& element) const
     {
-        const auto found = m_positions.find(element);
-        return found == m_positions.end() ? end() : at(*found);
+        const auto found = position_of(element);
+        return found ? at(*found) : end();
     }
-    [[nodiscard]] size_type count(const T& element) const { return m_positions.contains(element) ? 1 : 0; }
-    [[nodiscard]] bool contains(const T& element) const { return m_positions.contains(element); }
+    [[nodiscard]] size_type count(const T& element) const { return position_of(element) ? 1 : 0; }
+    [[nodiscard]] bool contains(const T& element) const { return position_of(element).has_value(); }
 
-    std::pair<iterator, bool> insert(const T& element)
-    {
-        if (const auto found = m_positions.find(element); found != m_positions.end())
-            return { at(*found), false };
-        m_elements->push_back(element);
-        return appended();
-    }
-    std::pair<iterator, bool> insert(T&& element)
-    {
-        if (const auto found = m_positions.find(element); found != m_positions.end())
-            return { at(*found), false };
-        m_elements->push_back(std::move(element));
-        return appended();
-    }
+    /// The element's position, appending it where it is new. Thread-safe, a lookup first, without a lock; a new
+    /// element is appended and indexed under the lock, looked up again there in case another thread inserted it.
+    std::pair<iterator, bool> insert(const T& element) { return inserted(element); }
+    std::pair<iterator, bool> insert(T&& element) { return inserted(std::move(element)); }
     /// New elements go last, wherever the hint is.
     iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
     template<std::input_iterator InputIt>
@@ -144,17 +158,21 @@ public:
     { return insert(T(std::forward<Args>(args)...)); }
 
     size_type erase(const T& element)
+        requires(!ThreadSafe)
     {
-        const auto found = m_positions.find(element);
-        if (found == m_positions.end())
+        const auto found = position_of(element);
+        if (!found)
             return 0;
         erase(at(*found));
         return 1;
     }
-    iterator erase(const_iterator pos) { return erase(pos, std::next(pos)); }
+    iterator erase(const_iterator pos)
+        requires(!ThreadSafe)
+    { return erase(pos, std::next(pos)); }
     /// Later elements move up to keep the order, so their positions change.
     // ponytail: O(n) per erase, reindexing what follows; an interner never erases.
     iterator erase(const_iterator first, const_iterator last)
+        requires(!ThreadSafe)
     {
         const auto from = static_cast<Index>(first - begin());
         for (auto position = from; position < size(); ++position)
@@ -171,24 +189,52 @@ public:
     }
 
     /// Equal elements in the same order.
-    [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs)
-    { return std::ranges::equal(*lhs.m_elements, *rhs.m_elements, EqualTo<T> {}); }
+    [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs) { return std::ranges::equal(lhs, rhs, EqualTo<T> {}); }
 
 private:
     [[nodiscard]] static Table table_for(const Elements& elements) { return Table(0, PositionHash { &elements }, PositionEqual { &elements }); }
     [[nodiscard]] iterator at(Index position) const { return begin() + static_cast<difference_type>(position); }
-    [[nodiscard]] iterator at(Position position) const { return at(position.value); }
-    /// Indexes the element just appended.
-    std::pair<iterator, bool> appended()
+    [[nodiscard]] std::optional<Index> position_of(const T& element) const
     {
-        const auto position = static_cast<Index>(size() - 1);
+        if constexpr (ThreadSafe)
+        {
+            auto found = std::optional<Index>();
+            m_positions.cvisit(element, [&found](const Position& position) { found = position.value; });
+            return found;
+        }
+        else
+        {
+            const auto found = m_positions.find(element);
+            return found == m_positions.end() ? std::nullopt : std::optional<Index>(found->value);
+        }
+    }
+    template<typename U>
+    std::pair<iterator, bool> inserted(U&& element)
+    {
+        if (const auto found = position_of(element))
+            return { at(*found), false };
+        const auto lock = std::scoped_lock(m_writer);
+        if constexpr (ThreadSafe)
+            if (const auto found = position_of(element))
+                return { at(*found), false };
+        const auto position = static_cast<Index>(size());
+        m_elements->push_back(std::forward<U>(element));
         m_positions.insert(Position { position });
         return { at(position), true };
     }
 
     std::unique_ptr<Elements> m_elements = std::make_unique<Elements>();
     Table m_positions = table_for(*m_elements);
+    [[no_unique_address]] std::conditional_t<ThreadSafe, std::mutex, NoLock> m_writer;
 };
+
+/// An IndexedSet that threads may insert into at once.
+template<typename T, typename Index = std::uint32_t>
+using ConcurrentIndexedSet = IndexedSet<T, Index, true>;
+
+/// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
+template<typename T, bool ThreadSafe>
+using InterningTable = IndexedSet<T, std::uint32_t, ThreadSafe>;
 
 }  // namespace urd::repr
 
@@ -198,6 +244,12 @@ namespace urd
 /// In insertion order, in one array; erase and clear keep the storage of both the array and the table.
 template<hashable T, typename Index>
 struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, contiguous, shrinkable, retains>
+{
+};
+
+/// In insertion order, never moved, only ever added to, by threads at once.
+template<hashable T, typename Index>
+struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, stable_refs, growable, retains, concurrent>
 {
 };
 

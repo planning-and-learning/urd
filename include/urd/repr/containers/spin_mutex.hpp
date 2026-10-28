@@ -71,4 +71,11 @@ public:
     void unlock() noexcept { m_flag.store(false, std::memory_order_release); }
 };
 
+/// A lock that does nothing: where a ThreadSafe policy is off, in place of a mutex, taking no space.
+struct NoLock
+{
+    static void lock() noexcept {}
+    static void unlock() noexcept {}
+};
+
 }  // namespace urd::repr

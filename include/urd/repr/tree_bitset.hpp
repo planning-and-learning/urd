@@ -2,8 +2,8 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/repr/concurrent_indexed.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
