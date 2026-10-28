@@ -25,9 +25,13 @@
 namespace urd::repr
 {
 
+template<typename K, bool KeepOrder = false>
+class SparseSet;
+
 /// A set of indices as a bitset: a bit per key below the largest, iterated in key order. Compact and fast to look
 /// up; iteration takes time in proportion to the largest key, not to the keys present, and so does clear, unless
-/// TrackWords: then the set remembers the words it set and clear zeroes only those.
+/// TrackWords: then the words that are not zero are kept in a SparseSet of their indices, and clear zeroes only
+/// those, at most one per element.
 template<typename K, bool TrackWords = false>
 class DenseSet
 {
@@ -85,7 +89,7 @@ public:
         const bool inserted = !bits().test(index);
         if constexpr (TrackWords)
             if (m_words[Bits::block_index(index)] == 0)
-                m_touched.push_back(Bits::block_index(index));
+                m_touched.insert(Bits::block_index(index));
         bits().set(index);
         m_count += inserted ? 1 : 0;
         return { iterator(this, index), inserted };
@@ -239,7 +243,7 @@ private:
             m_touched.clear();
             for (std::size_t block = 0; block < m_words.size(); ++block)
                 if (m_words[block] != 0)
-                    m_touched.push_back(block);
+                    m_touched.insert(block);
         }
         return *this;
     }
@@ -247,6 +251,9 @@ private:
     {
         bits().reset(index);
         --m_count;
+        if constexpr (TrackWords)
+            if (m_words[Bits::block_index(index)] == 0)
+                m_touched.erase(Bits::block_index(index));
     }
     /// The first key at or after `index`, else npos.
     [[nodiscard]] std::size_t next_from(std::size_t index) const
@@ -274,15 +281,15 @@ private:
 
     std::vector<word> m_words;
     std::size_t m_count = 0;
-    /// The words set since the last clear (each at least once), where TrackWords.
-    [[no_unique_address]] std::conditional_t<TrackWords, std::vector<std::size_t>, NoWords> m_touched;
+    /// The words that are not zero, where TrackWords.
+    [[no_unique_address]] std::conditional_t<TrackWords, SparseSet<std::size_t>, NoWords> m_touched;
 };
 
 /// A set of indices as a sparse set (Briggs and Torczon): the members in one array, and for each index its place
 /// in it. Lookup, insert and erase are O(1); clear is O(1) for members that need no destructor; iteration visits
 /// only the members, in insertion order until an erase moves the last member into the gap. With KeepOrder, erase
 /// shifts the later members instead (O(n)), so the members stay in insertion order.
-template<typename K, bool KeepOrder = false>
+template<typename K, bool KeepOrder>
 class SparseSet
 {
     static_assert(indexable<K>, "urd::repr::SparseSet: keys must be indices (urd::index_of)");
@@ -663,7 +670,7 @@ namespace urd
 {
 
 /// A bit per key: sorted by index, which urd::Less orders as it does indices. Clear zeroes every word, or with
-/// TrackWords only those set since the last clear, at most one per element: time in proportion to the elements.
+/// TrackWords only those not zero, at most one per element: time in proportion to the elements.
 template<indexable K, bool TrackWords>
 struct container_traits<repr::DenseSet<K, TrackWords>> :
     properties_of<sorted, unique, dense, canonical, shrinkable, retains, std::conditional_t<TrackWords, proportional_clear, any_clear>>
