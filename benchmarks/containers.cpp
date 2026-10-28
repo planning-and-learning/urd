@@ -3,8 +3,8 @@
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
 
 #include "urd/repr/dense.hpp"
+#include "urd/repr/grouped.hpp"
 #include "urd/repr/indexed.hpp"
-#include "urd/repr/postings.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"

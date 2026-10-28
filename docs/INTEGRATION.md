@@ -200,7 +200,7 @@ the order and costs O(n).
 
 ## Frozen multimaps by dense key, and graphs
 
-`Store<key<K>, value<V>, multi, dense, frozen>` resolves to `repr::CsrMultiMap` (`include/urd/repr/csr.hpp`):
+`Store<key<K>, value<V>, multi, dense, frozen>` resolves to `repr::CsrMultiMap` (`include/urd/repr/grouped.hpp`):
 compressed sparse rows, built at once from pairs in any order by a counting sort that keeps the order of equal
 keys. Every multimap Store has `values(key)`, the values of a key as a range: a `std::span` here, a view of
 `equal_range` elsewhere. With `bidirectional`, a map answers by value too: `keys(v)` gives the keys that map to
@@ -210,8 +210,9 @@ CSR in each direction): successors are `values(v)`, predecessors `keys(v)`.
 ## Postings
 
 A multimap without order or stable references (`Store<key<K>, value<V>, multi>`) resolves to `repr::PostingMap`
-(`include/urd/repr/postings.hpp`): a flat hash table from each key to the vector of its values, in insertion
-order, so `values(key)` is a span. Keeping postings in sync when the rows they point to move (a swap-erase) is
+(`include/urd/repr/grouped.hpp`): a flat hash table from each key to the vector of its values, in insertion
+order, so `values(key)` is a span. Both multimaps are one class, `GroupedMultiMap`, over how the groups of values are
+kept (`IndexGroups`, `HashGroups`): a third way to keep them is a policy, not a new multimap. Keeping postings in sync when the rows they point to move (a swap-erase) is
 the caller's.
 
 ## Queues
