@@ -24,6 +24,7 @@
 #include "urd/store/reverse_iteration.hpp"
 #include "urd/store/scopes.hpp"
 #include "urd/store/set_algebra.hpp"
+#include "urd/store/shape.hpp"
 #include "urd/store/sizing.hpp"
 #include "urd/store/slots.hpp"
 #include "urd/store/types.hpp"
@@ -78,7 +79,8 @@ class Store :
     public facet_if<S::is_pool && !has<S, unique>, facet::slots<Store<R, S>, R, S>>,
     public facet_if<S::is_partition, facet::grouping<Store<R, S>, R, S>>,
     public facet_if<S::is_map && has<S, insertion_ordered>, facet::entries<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && has<S, bidirectional>, facet::inverse<Store<R, S>, R, S>>
+    public facet_if<S::is_map && has<S, bidirectional>, facet::inverse<Store<R, S>, R, S>>,
+    public facet_if<has<S, fixed_shape>, facet::shape<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 
@@ -121,6 +123,21 @@ public:
     explicit Store(const row_lengths& lengths)
         requires has<S, fixed_shape>
         : m_representation(lengths.lengths)
+    {
+    }
+    /// Rows of rows, empty: for each row, the lengths of its rows.
+    explicit Store(const std::vector<row_lengths>& rows)
+        requires has<S, fixed_shape>
+        :
+        m_representation(
+            [&rows]
+            {
+                auto lengths = std::vector<std::vector<std::size_t>>();
+                lengths.reserve(rows.size());
+                for (const auto& each : rows)
+                    lengths.push_back(each.lengths);
+                return lengths;
+            }())
     {
     }
 

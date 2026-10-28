@@ -319,7 +319,11 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    `assign` where it has one, else a fresh build. Compressed sparse rows rebuild in their arrays (count, offsets,
    place, shift back; no allocation for a rebuild of the same size, checked by counting allocations), and frozen rows
    by clear and append.
-5. Nested fixed shapes, and `reset` with a cost policy.
+5. Nested fixed shapes and reset — done: `fixed_shape` rows of `fixed_shape` rows (two levels: vertex × partition ×
+   bits), built from a `std::vector<row_lengths>`; a row of rows is a range of `BitsetSpan`s over one word array.
+   `reset()` on fixed-shape Stores; with `proportional_clear`, a `TrackRows` policy on `Jagged` resets only the rows
+   handed out to change since the last reset (writes through a row are not seen; handing it out counts). Deeper
+   nesting and a uniform stride are left out.
 6. Borrowed rows from pools (`view(h)`), including bit rows stored as words.
 7. Sorted maps that keep erased values' storage (float-keyed cost buckets).
 

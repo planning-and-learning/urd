@@ -96,6 +96,7 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 | never change | `Store<value<Store<value<T>, frozen>>>` (any depth) | `Jagged`: CSR, one array per level | `std::span<const T>`, or a range of the rows below |
 | fixed lengths, changing contents | `Store<value<Store<value<T>>>, fixed_shape>` | `Jagged` built from `urd::row_lengths` | `std::span<T>` |
 | … of dense indices | `Store<value<Store<key<I>, dense>>, fixed_shape>` | `Jagged` over one word array | a `BitsetSpan` (one bit per index) |
+| … two levels | `Store<value<Store<value<Store<key<I>, dense>>, fixed_shape>>, fixed_shape>`, built from a `std::vector<row_lengths>` | `Jagged` of `Jagged` | a range of `BitsetSpan`s |
 | reused after removal | `Store<value<Row>, retains>` with a `retains` row | `RowPool` | the row Store, cleared, not freed |
 | interned, by handle | `Store<value<Row>, handles, unique>` | `RowInterner`, tree pools | the row, read by handle |
 
@@ -170,7 +171,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | scopes, layering | `scoped`, `layered` | changes undone by `pop_scope`; lookups falling through to a parent |
 | tracking | `change_log` | `added()` and `removed()` since `clear_changes()` |
 | grouping, direction | `partition`, `bidirectional` | union-find classes; a map answering `keys(value)` too |
-| shape | `fixed_shape` | rows whose number and lengths are set at construction (`urd::row_lengths`); their contents change in place |
+| shape | `fixed_shape` | rows whose number and lengths are set at construction (`urd::row_lengths`, or one per row for rows of rows); their contents change in place, and `reset()` sets them back to defaults (with `proportional_clear`, only rows handed out to change since) |
 
 | Requested only | Tags | Effect |
 |---|---|---|

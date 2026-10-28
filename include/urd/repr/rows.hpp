@@ -3,6 +3,7 @@
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/dense.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -29,15 +30,18 @@ namespace urd::repr
 ///
 /// Frozen rows are read-only slices of that storage: a std::span of the innermost elements, or a subrange of the
 /// rows below. Rows that are not frozen (a fixed_shape Store's) keep their lengths and change in place: a mutable
-/// std::span of their elements, or for a dense set a BitsetSpan over its words, a bit per index below its length.
-template<typename Inner>
+/// std::span of their elements, or for a dense set a BitsetSpan over its words, a bit per index below its length; one
+/// level up, a subrange of such rows (vertex × partition × bits). reset() sets every element back to its default;
+/// with TrackRows, only in the rows handed out to change since the last reset (writes through a row are not seen, so
+/// handing it out counts).
+template<typename Inner, bool TrackRows = false>
 class Jagged
 {
     using Si = container_traits<Inner>;
     using T = typename Si::element_type;
     static constexpr bool leaf = !is_store<T>;
-    static constexpr bool writable = leaf && !has<Si, frozen>;
-    static constexpr bool bits = writable && by_value<Si>;
+    static constexpr bool writable = !has<Si, frozen> && (leaf || !has<container_traits<T>, frozen>);
+    static constexpr bool bits = writable && leaf && by_value<Si>;
     using word = std::uint64_t;
     using Data = std::conditional_t<!leaf, Jagged<T>, std::conditional_t<bits, std::vector<word>, std::vector<T>>>;
     template<bool Const>
@@ -49,7 +53,10 @@ public:
     using difference_type = std::ptrdiff_t;
     using const_row = std::
         conditional_t<!leaf, std::ranges::subrange<std::ranges::iterator_t<const Data>>, std::conditional_t<bits, BitsetSpan<const word>, std::span<const T>>>;
-    using row = std::conditional_t<writable, std::conditional_t<bits, BitsetSpan<word>, std::span<T>>, const_row>;
+    using row = std::conditional_t<
+        writable,
+        std::conditional_t<!leaf, std::ranges::subrange<std::ranges::iterator_t<Data>>, std::conditional_t<bits, BitsetSpan<word>, std::span<T>>>,
+        const_row>;
     using iterator = basic_iterator<!writable>;
     using const_iterator = basic_iterator<true>;
 
@@ -80,6 +87,45 @@ public:
         }
         m_data.resize(m_offsets.back());
     }
+    /// Rows of rows: for each row, the lengths of its rows.
+    explicit Jagged(const std::vector<std::vector<size_type>>& shape)
+        requires(writable && !leaf)
+    {
+        auto lengths = std::vector<size_type>();
+        m_offsets.reserve(shape.size() + 1);
+        for (const auto& below : shape)
+        {
+            lengths.insert(lengths.end(), below.begin(), below.end());
+            m_offsets.push_back(m_offsets.back() + below.size());
+        }
+        m_data = Data(lengths);
+    }
+
+    /// Every element back to its default, every bit unset; with TrackRows, in the rows handed out to change since the
+    /// last reset only.
+    void reset()
+        requires writable
+    {
+        if constexpr (TrackRows)
+        {
+            for (const auto pos : m_touched)
+                reset_rows(pos, pos + 1);
+            m_touched.clear();
+        }
+        else
+            reset_rows(0, size());
+    }
+    /// Rows [from, to) back to their defaults.
+    void reset_rows(size_type from, size_type to)
+        requires writable
+    {
+        if constexpr (leaf)
+            std::fill(std::ranges::begin(m_data) + static_cast<difference_type>(m_offsets[from]),
+                      std::ranges::begin(m_data) + static_cast<difference_type>(m_offsets[to]),
+                      typename Data::value_type {});
+        else
+            m_data.reset_rows(m_offsets[from], m_offsets[to]);
+    }
 
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
     [[nodiscard]] const_iterator end() const { return const_iterator(this, static_cast<difference_type>(size())); }
@@ -94,7 +140,11 @@ public:
     [[nodiscard]] const_row operator[](size_type pos) const { return row_at<const_row>(*this, pos); }
     [[nodiscard]] row operator[](size_type pos)
         requires writable
-    { return row_at<row>(*this, pos); }
+    {
+        if constexpr (TrackRows)
+            m_touched.insert(pos);
+        return row_at<row>(*this, pos);
+    }
 
     /// Appends a row: the inner Store, or a range of its elements, which are first put in the order the
     /// row's properties ask for.
@@ -117,6 +167,8 @@ public:
         m_data.clear();
         m_offsets.resize(1);
         m_lengths.clear();
+        if constexpr (TrackRows)
+            m_touched.clear();
     }
 
     template<std::ranges::input_range Row>
@@ -157,8 +209,10 @@ public:
         return begin() + static_cast<difference_type>(from);
     }
 
-    /// Equal rows; bits past a row's length are always unset, so for bits the words say it.
-    [[nodiscard]] friend bool operator==(const Jagged& lhs, const Jagged& rhs) = default;
+    /// Equal rows; bits past a row's length are always unset, so for bits the words say it. Which rows were handed out
+    /// is not part of the contents.
+    [[nodiscard]] friend bool operator==(const Jagged& lhs, const Jagged& rhs)
+    { return lhs.m_offsets == rhs.m_offsets && lhs.m_data == rhs.m_data && lhs.m_lengths == rhs.m_lengths; }
 
 private:
     template<bool Const>
@@ -269,6 +323,11 @@ private:
     Data m_data;
     /// The rows' lengths in bits, where they are bits; else always empty.
     std::vector<size_type> m_lengths;
+    struct NoRows
+    {
+    };
+    /// The rows handed out to change since the last reset, with TrackRows.
+    [[no_unique_address]] std::conditional_t<TrackRows, SparseSet<size_type>, NoRows> m_touched;
 };
 
 /// Rows kept for reuse: removing a row clears it instead of destroying it, so its storage serves the next row,
@@ -372,10 +431,14 @@ template<typename Inner>
 concept flattenable = is_store<Inner> && has<container_traits<Inner>, frozen>
                       && (!is_store<typename container_traits<Inner>::element_type> || !by_value<container_traits<Inner>>);
 
-/// Whether Jagged can hold rows Inner that change in place: rows of elements, as a sequence, or a dense set's bits.
+/// A row Jagged can hold changing in place: a sequence of elements, or a dense set's bits.
+template<typename Row>
+concept fixed_leaf_row = is_store<Row> && !has<container_traits<Row>, frozen> && !is_store<typename container_traits<Row>::element_type>
+                         && (!by_value<container_traits<Row>> || (container_traits<Row>::is_set && has<container_traits<Row>, unique, dense>) );
+/// Whether Jagged can hold rows Inner that change in place: such rows, or fixed-shape rows of them (two levels).
 template<typename Inner>
-concept fixed_rows = is_store<Inner> && !has<container_traits<Inner>, frozen> && !is_store<typename container_traits<Inner>::element_type>
-                     && (!by_value<container_traits<Inner>> || (container_traits<Inner>::is_set && has<container_traits<Inner>, unique, dense>) );
+concept fixed_rows =
+    fixed_leaf_row<Inner> || (is_store<Inner> && has<container_traits<Inner>, fixed_shape> && fixed_leaf_row<typename container_traits<Inner>::element_type>);
 
 }  // namespace detail
 
@@ -393,16 +456,20 @@ struct element_traits<repr::Jagged<Inner>> :
 {
 };
 
-/// Rows of fixed lengths, changed in place.
-template<detail::fixed_rows Inner>
-struct container_traits<repr::Jagged<Inner>> : properties_of<dense, fixed_shape, retains>
+/// Rows of fixed lengths, changed in place; with TrackRows, reset costs what the rows handed out since hold.
+template<detail::fixed_rows Inner, bool TrackRows>
+struct container_traits<repr::Jagged<Inner, TrackRows>> :
+    properties_of<dense, fixed_shape, retains, std::conditional_t<TrackRows, proportional_clear, any_clear>>
 {
 };
 
 /// The rows keep their lengths and their storage; a sequence's elements lie next to each other.
-template<detail::fixed_rows Inner>
-struct element_traits<repr::Jagged<Inner>> :
-    with_t<container_traits<Inner>, std::conditional_t<by_value<container_traits<Inner>>, any_layout, contiguous>, moving_refs, retains>
+template<detail::fixed_rows Inner, bool TrackRows>
+struct element_traits<repr::Jagged<Inner, TrackRows>> :
+    with_t<container_traits<Inner>,
+           std::conditional_t<detail::fixed_leaf_row<Inner> && !by_value<container_traits<Inner>>, contiguous, any_layout>,
+           moving_refs,
+           retains>
 {
 };
 

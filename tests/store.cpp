@@ -8,11 +8,14 @@
 #include "urd/concepts.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <gtest/gtest.h>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <random>
@@ -1183,4 +1186,92 @@ TEST(Assign, RebuildsRowsAndOthers)
     const auto values = std::vector<int> { 9, 4, 4 };
     sorted.assign(values.begin(), values.end());
     EXPECT_EQ(sorted, (Sorted { 4, 9 }));
+}
+
+// Rows of rows of bits (vertex × partition × bits), changed at random against vectors of vectors of bools; reset
+// unsets every bit and keeps the shape.
+TEST(FixedShape, NestedRowsOfBits)
+{
+    using Graph = Store<value<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>, urd::fixed_shape>;
+    static_assert(std::same_as<Graph::representation, urd::repr::Jagged<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>>);
+    const auto shape = std::vector<urd::row_lengths> { { 64, 65, 1 }, { 130 }, {}, { 3, 64 } };
+    auto graph = Graph(shape);
+    auto model = std::vector<std::vector<std::vector<bool>>>();
+    for (const auto& lengths : shape)
+    {
+        auto& partitions = model.emplace_back();
+        for (const auto length : lengths.lengths)
+            partitions.emplace_back(length, false);
+    }
+    auto random = std::mt19937(47);
+    const auto pick = [&random](std::size_t bound) { return std::uniform_int_distribution<std::size_t>(0, bound - 1)(random); };
+    const auto check = [&graph, &model]
+    {
+        const auto& read = graph;
+        ASSERT_EQ(read.size(), model.size());
+        for (std::size_t vertex = 0; vertex < model.size(); ++vertex)
+        {
+            ASSERT_EQ(static_cast<std::size_t>(std::ranges::size(read[vertex])), model[vertex].size());
+            for (std::size_t partition = 0; partition < model[vertex].size(); ++partition)
+            {
+                const auto bits = read[vertex][static_cast<std::ptrdiff_t>(partition)];
+                ASSERT_EQ(bits.size(), model[vertex][partition].size());
+                for (std::size_t bit = 0; bit < bits.size(); ++bit)
+                    ASSERT_EQ(bits.test(bit), model[vertex][partition][bit]) << vertex << " " << partition << " " << bit;
+            }
+        }
+    };
+    for (int step = 0; step < 3000; ++step)
+    {
+        const auto vertex = pick(model.size());
+        if (model[vertex].empty())
+            continue;
+        const auto partition = pick(model[vertex].size());
+        const auto bit = pick(model[vertex][partition].size());
+        const auto value = pick(2) == 0;
+        graph[vertex][static_cast<std::ptrdiff_t>(partition)].set(bit, value);
+        model[vertex][partition][bit] = value;
+        if (step % 100 == 0)
+            check();
+    }
+    check();
+    graph.reset();
+    for (auto& partitions : model)
+        for (auto& bits : partitions)
+            std::fill(bits.begin(), bits.end(), false);
+    check();
+}
+
+// With proportional_clear, reset touches only the rows handed out to change since the last one: a few of many rows
+// reset far faster than all of them, and the rest stay as they were.
+TEST(FixedShape, TrackedResetCostsTheRowsHandedOut)
+{
+    using Row = Store<key<std::size_t>, urd::dense>;
+    using Tracked = Store<value<Row>, urd::fixed_shape, urd::proportional_clear>;
+    using Untracked = Store<value<Row>, urd::fixed_shape>;
+    static_assert(std::same_as<Tracked::representation, urd::repr::Jagged<Row, true>>);
+    static_assert(std::same_as<Untracked::representation, urd::repr::Jagged<Row>>);
+    constexpr std::size_t rows = 100000;
+    const auto lengths = urd::row_lengths(std::vector<std::size_t>(rows, 640));
+    auto tracked = Tracked(lengths);
+    auto untracked = Untracked(lengths);
+    const auto timed = [](auto& store)
+    {
+        auto best = std::numeric_limits<std::int64_t>::max();
+        for (int round = 0; round < 7; ++round)
+        {
+            store[3].set(5);
+            store[rows - 1].set(639);
+            const auto start = std::chrono::steady_clock::now();
+            store.reset();
+            const auto stop = std::chrono::steady_clock::now();
+            best = std::min(best, static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count()));
+            EXPECT_FALSE(std::as_const(store)[3].test(5));
+            EXPECT_FALSE(std::as_const(store)[rows - 1].test(639));
+        }
+        return best;
+    };
+    const auto few = timed(tracked);
+    const auto all = timed(untracked);
+    EXPECT_LT(few * 10, all) << "tracked " << few << " ns, untracked " << all << " ns";
 }

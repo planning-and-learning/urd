@@ -150,6 +150,10 @@ template<typename T>
 using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
 using IndexedSetOf = repr::IndexedSet<T>;
+template<typename Inner>
+using JaggedOf = repr::Jagged<Inner>;
+template<typename Inner>
+using TrackedJaggedOf = repr::Jagged<Inner, true>;
 template<typename T>
 using BucketQueueOf = repr::BucketQueue<T>;
 template<typename T>
@@ -189,7 +193,8 @@ struct map_candidates
 /// tables, which declare sparse keys, so only a request for dense keys reaches them; the indexed set, after
 /// them too, only a request for insertion order or positions. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
-using element_preference = element_candidates<repr::Jagged,
+using element_preference = element_candidates<JaggedOf,
+                                              TrackedJaggedOf,
                                               std::vector,
                                               FlatHashSet,
                                               HashSet,

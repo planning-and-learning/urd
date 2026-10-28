@@ -139,8 +139,9 @@ Stores. Updated as M9 closes gaps.
 | `PredicateAssignmentSet(s)` | A (M9.3) | `Store<key<Rank>, dense, proportional_clear>`; its `BitsetSpan` view stays tyr's |
 | `DenseRelationMap`, `PredicateAnnotationMap` | A (M9.4) | `Store<key<Rel>, value<Store<key<Row>, value<V>, dense, constant_clear[, concurrent]>>, dense>`; `update`, `read` |
 | `NumericIntervalAnnotations` | B | as above, plus a small set ordered by a projection |
-| `VertexPartitions` | A (M9.5) | `Store<value<Store<key<Vertex>, dense>>, fixed_shape>`; `reset()` of all rows is left out |
-| `AdjacencyMatrix`, `PartitionedAdjacencyMatrix` | B | one level only (row = vertex × partition); `get_row(vertex)` needs nested fixed shapes |
+| `VertexPartitions` | A (M9.5, M10.5) | `Store<value<Store<key<Vertex>, dense>>, fixed_shape>`; `reset()` |
+| `AdjacencyMatrix` | A (M10.5) | `Store<value<Store<value<Store<key<Vertex>, dense>>, fixed_shape>>, fixed_shape>`: `rows[v]` is all partitions of v |
+| `PartitionedAdjacencyMatrix` | A / B (M10.5) | as above with each source partition's own row widths, `proportional_clear` for the sparse reset (per vertex, where tyr tracks per vertex and partition); the implicit and static-only pairs stay tyr's |
 | `DeduplicatedAdjacencyMatrix` | B | borrowed row views of a pool |
 | `CostBuckets`, `PendingPredicateAchievers` | B | sorted map keeping value storage, or a bucket queue |
 | Scheduler, state builder, `PerfectAssignmentHash`, k-CKP workspace, statistics, static/fluent pairs | C | hold Stores |
