@@ -44,6 +44,16 @@ public:
         return representation().insert(base, writes);
     }
 
+    /// The handle of the row `base` with `added` put in and then `removed` taken out (rows that are sets). A pool that
+    /// shares structure stores only what changed.
+    handle_type insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
+        requires(!sequence_rows)
+    { return representation().insert(base, added, removed); }
+    /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
+    [[nodiscard]] bool contains(handle_type handle, const row_element& element) const
+        requires(!sequence_rows)
+    { return constant().contains(handle, element); }
+
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.

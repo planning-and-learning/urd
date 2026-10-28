@@ -33,7 +33,10 @@ using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
                                   urd::repr::TreeVectorSet<std::vector<int>>,
                                   urd::repr::TreeVectorSet<std::vector<double>, 2>,
                                   Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
-                                  Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>;
+                                  Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
+                                  urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>>,
+                                  urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>, 2>,
+                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>;
 TYPED_TEST_SUITE(Pools, Containers, urd::test::Names);
 
 }  // namespace
@@ -44,6 +47,9 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::han
 // With it, sequence rows are trees whose equal subtrees are stored once.
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>::representation,
                            urd::repr::TreeVectorSet<Store<value<int>, urd::frozen>>>);
+// Rows that are sets of indices are bitset trees, with zero subtrees left out.
+static_assert(std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>::representation,
+                           urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>>>);
 // A pool is neither iterated nor counted.
 template<typename P>
 concept iterable = requires(P pool) { pool.begin(); };

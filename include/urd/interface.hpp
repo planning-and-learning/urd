@@ -42,7 +42,8 @@ namespace urd
 // |                                  | acquire() if default-constructible; erase(h), clear if shrinkable  |
 // | handles, unique (interning)      | in place of all above: insert(span of a row's elements) -> handle, |
 // |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
-// |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle |
+// |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle;|
+// |                                  | for set rows, insert(h, added, removed) -> handle, contains(h, e)  |
 // | bidirectional (a map)            | keys(v): a range of the keys that map to v                         |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value                                           |
@@ -184,6 +185,9 @@ concept pool_operations =
            requires std::equality_comparable<typename R::handle_type>;
        } && (!has<Traits, shrinkable> || requires(R& pool) {
            pool.clear();
+       }) && (!by_value<traits_t<typename R::value_type>> || requires(R& pool, const R& constant, const typename R::handle_type& handle, std::span<const std::ranges::range_value_t<typename R::value_type>> elements) {
+           { pool.insert(handle, elements, elements) } -> std::same_as<typename R::handle_type>;
+           { constant.contains(handle, elements.front()) } -> std::same_as<bool>;
        }) && (by_value<traits_t<typename R::value_type>> || requires(R& pool, const typename R::handle_type& handle, std::span<const typename R::write_type> writes) {
            { pool.insert(handle, writes) } -> std::same_as<typename R::handle_type>;
        });

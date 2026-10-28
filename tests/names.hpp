@@ -220,6 +220,12 @@ struct name<urd::repr::BidirectionalCsr<K, V>>
     static constexpr std::string_view id = "bidirectional_csr";
     static constexpr std::string_view value = "bidirectional CSR (each key's values and each value's keys together)";
 };
+template<typename Row, std::size_t Arity>
+struct name<urd::repr::TreeBitsetSet<Row, Arity>>
+{
+    static constexpr std::string_view id = "tree_bitset_set";
+    static constexpr std::string_view value = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

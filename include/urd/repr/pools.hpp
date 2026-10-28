@@ -75,6 +75,17 @@ public:
         return insert(row);
     }
 
+    /// The row `base` with `added` put in and then `removed` taken out (rows that are sets), stored in full.
+    handle_type insert(handle_type base, std::span<const element> added, std::span<const element> removed)
+    {
+        auto elements = stored(base);
+        elements.insert(elements.end(), added.begin(), added.end());
+        std::erase_if(elements, [&removed](const element& each) { return std::ranges::find(removed, each) != removed.end(); });
+        return insert(elements);
+    }
+    /// Whether the row of `handle` holds `element` (rows that are sets).
+    [[nodiscard]] bool contains(handle_type handle, const element& value) const { return std::ranges::find(stored(handle), value) != stored(handle).end(); }
+
     [[nodiscard]] Row get(handle_type handle) const
     {
         const auto& row = stored(handle);

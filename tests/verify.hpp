@@ -503,7 +503,8 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
     return std::nullopt;
 }
 
-/// urd::verify for a pool: inserts of random rows, of rows written from earlier ones, (short, over few values, so that equal rows recur) and clears.
+/// urd::verify for a pool: inserts of random rows, of rows written from (or, for sets, added to and removed from)
+/// earlier ones, (short, over few values, so that equal rows recur) and clears.
 /// After each, every handle given so far is checked: equal rows have equal handles, others different ones, and each
 /// handle gives its row back, by get and by read. Rows are compared as the row type keeps them (a set's in order).
 template<typename P>
@@ -520,9 +521,11 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     auto rows = std::vector<std::vector<E>>();
     auto handles = std::vector<typename P::handle_type>();
 
+    constexpr bool sequence_rows = !by_value<traits_t<Row>>;
     auto random = std::mt19937(seed);
-    auto pick = std::uniform_int_distribution<int>(0, 3);
-    auto length = std::uniform_int_distribution<int>(0, 6);
+    // Sequence rows over few values, so that equal rows recur; set rows over a range of several blocks.
+    auto pick = std::uniform_int_distribution<int>(0, sequence_rows ? 3 : 99);
+    auto length = std::uniform_int_distribution<int>(0, sequence_rows ? 6 : 12);
     for (int step = 0; step < steps; ++step)
     {
         auto operation = std::string("insert");
@@ -538,7 +541,6 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 cleared = true;
             }
         }
-        constexpr bool sequence_rows = !by_value<traits_t<Row>>;
         const auto base = rows.empty() ? rows.size() : static_cast<std::size_t>(random() % rows.size());
         if constexpr (sequence_rows)
         {
@@ -556,6 +558,26 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                     }
                 handles.push_back(pool.insert(handles[base], std::span<const typename P::write_type>(writes)));
                 rows.push_back(row);
+                cleared = true;  // done with this step's insert
+            }
+        }
+        else
+        {
+            // Now and then a set derived from an earlier one: some elements added, then some removed.
+            if (!cleared && base < rows.size() && step % 3 == 0)
+            {
+                operation = "insert by added and removed";
+                auto added = std::vector<E>();
+                auto removed = std::vector<E>();
+                for (int count = length(random) / 3; count > 0; --count)
+                    added.push_back(E(pick(random)));
+                for (int count = length(random) / 3; count > 0; --count)
+                    removed.push_back(rows[base].empty() || random() % 2 == 0 ? E(pick(random)) : rows[base][random() % rows[base].size()]);
+                auto elements = rows[base];
+                elements.insert(elements.end(), added.begin(), added.end());
+                std::erase_if(elements, [&removed](const E& each) { return std::ranges::find(removed, each) != removed.end(); });
+                handles.push_back(pool.insert(handles[base], std::span<const E>(added), std::span<const E>(removed)));
+                rows.push_back(canonical(elements));
                 cleared = true;  // done with this step's insert
             }
         }
@@ -579,6 +601,13 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 return label + "read gives back another row";
             if (!rows.empty() && (rows[each] == rows.back()) != (handles[each] == handles.back()))
                 return label + "equal rows have different handles, or different rows equal ones";
+            if constexpr (!sequence_rows)
+                for (int probe = 0; probe < 4; ++probe)
+                {
+                    const auto element = E(pick(random));
+                    if (pool.contains(handles[each], element) != (std::ranges::find(rows[each], element) != rows[each].end()))
+                        return label + "contains answers otherwise than the row";
+                }
         }
     }
     return std::nullopt;

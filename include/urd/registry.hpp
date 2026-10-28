@@ -20,6 +20,7 @@
 #include "urd/repr/slots.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
 #include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
 
@@ -119,6 +120,8 @@ template<typename T>
 using ThreadSafeSlotVector = repr::SlotVector<T, true>;
 template<typename Row>
 using TreeVectorOf = repr::TreeVectorSet<Row>;
+template<typename Row>
+using TreeBitsetOf = repr::TreeBitsetSet<Row>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
@@ -170,6 +173,7 @@ using element_preference = element_candidates<repr::Jagged,
                                               ChangeLoggedHashSet,
                                               repr::RowInterner,
                                               TreeVectorOf,
+                                              TreeBitsetOf,
                                               SlotVector,
                                               ThreadSafeSlotVector,
                                               repr::DisjointSets>;

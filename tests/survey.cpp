@@ -241,6 +241,13 @@ static_assert(std::same_as<decltype(std::declval<Repositories&>().get<Predicate>
 using StateBuilders = Store<value<std::vector<std::uint32_t>>, urd::handles, urd::concurrent>;
 static_assert(std::same_as<StateBuilders::representation, urd::repr::SlotVector<std::vector<std::uint32_t>, true>>);
 
+// tyr planning/{ground,lifted}/state_storage: TreeBitsetSet<uint_t, …, arity 4> for each state's fluent facts and
+// TreeVectorSet<float_t, …, arity 4> for its numeric values: rows interned, equal subtrees shared across states.
+using FluentFacts = Store<value<Store<key<Atom>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>;
+static_assert(std::same_as<FluentFacts::representation, urd::repr::TreeBitsetSet<Store<key<Atom>, urd::dense, urd::frozen>>>);
+using NumericValues = Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>;
+static_assert(std::same_as<NumericValues::representation, urd::repr::TreeVectorSet<Store<value<double>, urd::frozen>>>);
+
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.
