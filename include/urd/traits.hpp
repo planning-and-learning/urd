@@ -132,6 +132,14 @@ struct layered : any_layering
 {
 };
 
+struct any_tracking
+{
+};
+/// Offers added() and removed(): exactly the elements that changed since clear_changes(), for semi-naive evaluation.
+struct change_log : any_tracking
+{
+};
+
 /// Offers no change.
 struct immutable
 {
@@ -219,7 +227,8 @@ using guaranteed_roots = type_list<any_order,
                                    any_clear,
                                    any_access,
                                    any_scope,
-                                   any_layering>;
+                                   any_layering,
+                                   any_tracking>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>

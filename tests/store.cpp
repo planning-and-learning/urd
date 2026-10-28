@@ -3,14 +3,18 @@
 
 #include "urd/store.hpp"
 
+#include "urd/bit_matrix.hpp"
 #include "urd/concepts.hpp"
+#include "urd/family.hpp"
 #include "urd/graph.hpp"
+#include "urd/partition.hpp"
 
 #include <concepts>
 #include <functional>
 #include <gtest/gtest.h>
 #include <iterator>
 #include <map>
+#include <numeric>
 #include <random>
 #include <ranges>
 #include <set>
@@ -112,6 +116,8 @@ static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, u
 static_assert(std::same_as<Store<key<int>, value<int>, urd::scoped>::representation, urd::repr::ScopedMap<int, int>>);
 static_assert(std::same_as<Store<key<int>, urd::layered>::representation, urd::repr::Layered<FlatHashSet<int>>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representation, urd::repr::Layered<FlatHashMapOf<int, int>>>);
+
+static_assert(std::same_as<Store<key<int>, urd::change_log>::representation, urd::repr::ChangeLogged<FlatHashSet<int>>>);
 
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
@@ -509,4 +515,174 @@ TEST(Layered, AnswersFromItselfThenItsParent)
     EXPECT_EQ(std::set<int>(after.begin(), after.end()), (std::set<int> { 3, 4 }));
     after.layer_over(nullptr);
     EXPECT_FALSE(after.contains(1));
+}
+
+// A two-level dense map is two dense Stores nested: cleared at the outer level in O(1), refilled fresh.
+TEST(Nested, TwoLevelDenseMap)
+{
+    using Rows = Store<key<int>, value<double>, urd::dense>;
+    auto relations = Store<key<int>, value<Rows>, urd::dense, urd::constant_clear>();
+    relations[2][5] = 1.5;
+    relations[2][7] = 2.5;
+    relations[0][1] = 0.5;
+    EXPECT_EQ(relations.at(2).size(), 2U);
+    relations.clear();
+    EXPECT_TRUE(relations.empty());
+    relations[2][1] = 3.0;
+    EXPECT_EQ(relations.at(2).size(), 1U);
+    EXPECT_FALSE(relations.at(2).contains(5));
+}
+
+// A partition answers what a labeling recomputed after each merge answers.
+TEST(Partition, AgreesWithRelabeling)
+{
+    auto random = std::mt19937(17);
+    for (int round = 0; round < 50; ++round)
+    {
+        constexpr std::size_t size = 24;
+        auto partition = urd::Partition<int>(size);
+        auto label = std::vector<std::size_t>(size);
+        std::iota(label.begin(), label.end(), std::size_t { 0 });
+        for (int step = 0; step < 40; ++step)
+        {
+            const auto lhs = static_cast<int>(random() % size);
+            const auto rhs = static_cast<int>(random() % size);
+            const auto old = label[static_cast<std::size_t>(rhs)];
+            const auto joined = label[static_cast<std::size_t>(lhs)];
+            EXPECT_EQ(partition.merge(lhs, rhs), old != joined);
+            std::ranges::replace(label, old, joined);
+            for (int each = 0; each < static_cast<int>(size); ++each)
+            {
+                ASSERT_EQ(partition.same(lhs, each), label[static_cast<std::size_t>(lhs)] == label[static_cast<std::size_t>(each)]);
+                ASSERT_EQ(partition.class_size(each), static_cast<std::size_t>(std::ranges::count(label, label[static_cast<std::size_t>(each)])));
+                ASSERT_TRUE(partition.same(partition.find(each), each));
+            }
+            auto distinct = label;
+            std::ranges::sort(distinct);
+            ASSERT_EQ(partition.classes(), static_cast<std::size_t>(std::ranges::distance(distinct.begin(), std::ranges::unique(distinct).begin())));
+        }
+    }
+}
+
+// A bit matrix answers what a matrix of bools answers; uniting rows to a fixpoint gives the transitive closure.
+TEST(BitMatrix, AgreesWithBools)
+{
+    auto random = std::mt19937(23);
+    for (const std::size_t columns : { 1U, 63U, 64U, 65U, 130U })
+    {
+        constexpr std::size_t rows = 9;
+        auto matrix = urd::BitMatrix<int>(rows, columns);
+        auto expected = std::vector<std::vector<bool>>(rows, std::vector<bool>(columns));
+        for (int step = 0; step < 400; ++step)
+        {
+            const auto row = random() % rows;
+            const auto column = random() % columns;
+            const auto other = random() % rows;
+            switch (random() % 4)
+            {
+                case 0:
+                case 1:
+                    matrix.set(static_cast<int>(row), static_cast<int>(column));
+                    expected[row][column] = true;
+                    break;
+                case 2:
+                    matrix.reset(static_cast<int>(row), static_cast<int>(column));
+                    expected[row][column] = false;
+                    break;
+                default:
+                {
+                    bool changed = false;
+                    for (std::size_t each = 0; each < columns; ++each)
+                    {
+                        changed = changed || (expected[other][each] && !expected[row][each]);
+                        expected[row][each] = expected[row][each] || expected[other][each];
+                    }
+                    ASSERT_EQ(matrix.unite_rows(static_cast<int>(row), static_cast<int>(other)), changed);
+                }
+            }
+            for (std::size_t each = 0; each < rows; ++each)
+            {
+                ASSERT_EQ(matrix.count(static_cast<int>(each)), static_cast<std::size_t>(std::ranges::count(expected[each], true)));
+                for (std::size_t column_index = 0; column_index < columns; ++column_index)
+                    ASSERT_EQ(matrix.test(static_cast<int>(each), static_cast<int>(column_index)), expected[each][column_index]);
+            }
+        }
+    }
+
+    // Reachability in 0 -> 1 -> 2 -> 3: unite each row with the rows it reaches until nothing changes.
+    auto reach = urd::BitMatrix<int>(4, 4);
+    for (int vertex = 0; vertex < 3; ++vertex)
+        reach.set(vertex, vertex + 1);
+    for (bool changed = true; changed;)
+    {
+        changed = false;
+        for (int from = 0; from < 4; ++from)
+            for (int to = 0; to < 4; ++to)
+                if (reach.test(from, to))
+                    changed = reach.unite_rows(from, to) || changed;
+    }
+    EXPECT_TRUE(reach.test(0, 3) && !reach.test(3, 0));
+    EXPECT_EQ(reach.count(0), 3U);
+}
+
+namespace
+{
+
+template<typename T>
+using Interned = Store<key<T>, urd::positional, urd::monotone>;
+
+}  // namespace
+
+// A family holds one Store per type and reaches each by its type.
+TEST(Family, ReachesEachMemberByType)
+{
+    auto repositories = urd::Family<Interned, int, std::string>();
+    repositories.get<int>().insert(7);
+    repositories.get<std::string>().insert("on");
+    repositories.get<std::string>().insert("clear");
+    EXPECT_EQ(repositories.get<int>().size(), 1U);
+    EXPECT_EQ(std::as_const(repositories).get<std::string>()[1], "clear");
+    std::size_t total = 0;
+    repositories.for_each([&total](const auto& member) { total += member.size(); });
+    EXPECT_EQ(total, 3U);
+}
+
+// A change log holds exactly the difference between the contents and those when it was last cleared.
+TEST(ChangeLog, HoldsTheDifferenceSinceItWasCleared)
+{
+    auto random = std::mt19937(29);
+    auto facts = Store<key<int>, urd::change_log>();
+    auto reference = std::set<int>();
+    for (int step = 0; step < 2000; ++step)
+    {
+        const int element = static_cast<int>(random() % 20);
+        switch (random() % 10)
+        {
+            case 0:
+                facts.clear_changes();
+                reference = std::set<int>(facts.begin(), facts.end());
+                break;
+            case 1:
+                if (random() % 8 == 0)
+                    facts.clear();
+                break;
+            case 2:
+            case 3:
+            case 4:
+                facts.erase(element);
+                break;
+            default:
+                facts.insert(element);
+                break;
+        }
+        const auto now = std::set<int>(facts.begin(), facts.end());
+        auto added = std::vector<int>();
+        auto removed = std::vector<int>();
+        std::ranges::set_difference(now, reference, std::back_inserter(added));
+        std::ranges::set_difference(reference, now, std::back_inserter(removed));
+        ASSERT_EQ(std::set<int>(facts.added().begin(), facts.added().end()), std::set<int>(added.begin(), added.end())) << "step " << step;
+        ASSERT_EQ(facts.added().size(), added.size());
+        ASSERT_EQ(std::set<int>(facts.removed().begin(), facts.removed().end()), std::set<int>(removed.begin(), removed.end())) << "step " << step;
+        ASSERT_EQ(facts.removed().size(), removed.size());
+    }
 }

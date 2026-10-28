@@ -174,7 +174,10 @@ using Containers = testing::Types<
     urd::repr::Layered<boost::unordered_flat_set<int, std::hash<int>>>,
     urd::repr::Layered<boost::unordered_flat_map<int, int, std::hash<int>>>,
     Store<key<int>, urd::layered>,
-    Store<key<int>, value<int>, urd::layered>>;
+    Store<key<int>, value<int>, urd::layered>,
+    // Change logs.
+    urd::repr::ChangeLogged<boost::unordered_flat_set<int, std::hash<int>>>,
+    Store<key<int>, urd::change_log>>;
 
 template<typename R>
 class Properties : public testing::Test

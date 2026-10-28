@@ -2,6 +2,7 @@
 
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
+#include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/flat.hpp"
@@ -94,6 +95,8 @@ using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
 template<typename T>
+using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
+template<typename T>
 using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
 template<typename K, typename V>
 using LayeredHashMapOf = repr::Layered<FlatHashMapOf<K, V>>;
@@ -138,7 +141,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::Fifo,
                                               repr::Lifo,
                                               repr::Heap,
-                                              LayeredHashSet>;
+                                              LayeredHashSet,
+                                              ChangeLoggedHashSet>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,

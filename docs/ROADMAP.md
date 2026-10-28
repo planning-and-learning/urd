@@ -231,7 +231,14 @@ parent's), layered sorted Stores, and scoped sets.
 - **Memo tables (9):** these become maps with `constant_clear` (M1) or `layered`. A two-generation reset is
   a pair of maps swapped each generation: an example, not a new representation.
 
-## M7: Remaining patterns
+## M7: Remaining patterns — done in part
+
+Done: the two-level dense map by nesting (pinned and tested), `urd::Partition`, `urd::BitMatrix`, `urd::Family`,
+and `change_log` (`repr::ChangeLogged`), each with a test against a model and a sabotage it catches;
+examples/structures.cpp. Not done, for want of a representation worth its weight or a site that needs it now:
+`persistent` (tree sets, immer), `handles` identity (hive, slot map), the `uniform` property that would let a
+nested dense Store be a bit matrix, symmetric or triangular matrices, and `refinable` partitions.
+
 
 | Pattern | Approach |
 |---|---|

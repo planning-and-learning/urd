@@ -1,6 +1,7 @@
 // Store requests and uses that must not compile, checked like compile_fail.cpp: without URD_CASE the file
 // compiles; with URD_CASE=<n>, case n alone must fail.
 
+#include "urd/family.hpp"
 #include "urd/store.hpp"
 
 #include <string>
@@ -8,6 +9,9 @@
 using urd::key;
 using urd::Store;
 using urd::value;
+
+template<typename T>
+using SetOf = Store<key<T>>;
 
 int main()
 {
@@ -87,5 +91,7 @@ int main()
 #elif URD_CASE == 24  // a frozen queue could never pop
     using S = Store<value<int>, urd::fifo, urd::frozen>;
     (void) S();
+#elif URD_CASE == 25  // a family reaches only the types it was given
+    (void) urd::Family<SetOf, int, long>().get<short>();
 #endif
 }

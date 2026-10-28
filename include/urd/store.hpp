@@ -4,6 +4,7 @@
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
 #include "urd/store/capacity.hpp"
+#include "urd/store/changes.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/equality.hpp"
 #include "urd/store/growth.hpp"
@@ -66,7 +67,8 @@ class Store :
     public facet_if<S::is_set, facet::set_algebra<Store<R, S>, R, S>>,
     public facet_if<S::is_queue, facet::queue_access<Store<R, S>, R, S>>,
     public facet_if<has<S, scoped>, facet::scopes<Store<R, S>, R, S>>,
-    public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>
+    public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>,
+    public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

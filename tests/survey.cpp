@@ -3,6 +3,9 @@
 // (identifying_members()), from which urd hashes, compares and orders it: nothing is put into namespace std.
 // It compiles or it does not: there is nothing to run.
 
+#include "urd/bit_matrix.hpp"
+#include "urd/family.hpp"
+#include "urd/partition.hpp"
 #include "urd/store.hpp"
 
 #include <concepts>
@@ -53,6 +56,8 @@ using urd::Store;
 using urd::value;
 
 using urd::detail::FlatHashMapOf;
+template<typename T>
+using FlatHashSetOf = urd::detail::FlatHashSet<T>;
 using urd::detail::TreeMapOf;
 
 // tyr formalism/unification/substitution.hpp: UnorderedMap<ParameterIndex, size_t> m_positions.
@@ -209,6 +214,31 @@ static_assert(std::same_as<Translations::representation, urd::repr::Layered<Flat
 // innermost binding first.
 using Bindings = Store<key<std::string>, value<ParameterIndex>, urd::scoped>;
 static_assert(std::same_as<Bindings::representation, urd::repr::ScopedMap<std::string, ParameterIndex>>);
+
+// tyr DenseRelationMap: (relation, row) -> value, cleared by generation per state. Nested dense maps compose: the
+// outer one cleared in O(1), each relation's row map by position.
+using RowValues = Store<key<RelationBinding>, value<double>, urd::dense>;
+using RelationValues = Store<key<Predicate>, value<RowValues>, urd::dense, urd::constant_clear>;
+static_assert(std::same_as<RelationValues::representation, urd::repr::IndexMap<Predicate, RowValues, true>>);
+static_assert(std::same_as<RowValues::representation, urd::repr::IndexMap<RelationBinding, double, false>>);
+
+// tyr formalism/planning/invariants/constraints.cpp: DisjointSet over term ids, classes of equal terms.
+using TermClasses = urd::Partition<std::size_t>;
+static_assert(std::default_initializable<TermClasses>);
+
+// tyr analysis/static_literal_compatibility.hpp: BinaryCompatibility, rows of one bitset length in one array.
+using Compatibility = urd::BitMatrix<Object, Object>;
+static_assert(std::default_initializable<Compatibility>);
+
+// tyr and runir semi-naive evaluation: the facts of a relation, and those new since the last round.
+using Facts = Store<key<Atom>, urd::change_log>;
+static_assert(std::same_as<Facts::representation, urd::repr::ChangeLogged<FlatHashSetOf<Atom>>>);
+
+// loki TranslationStorage, tyr static and fluent twins: one Store per kind of entity, reached by its type.
+template<typename T>
+using Interned = Store<key<T>, urd::positional, urd::monotone>;
+using Repositories = urd::Family<Interned, Object, Predicate, Action>;
+static_assert(std::same_as<decltype(std::declval<Repositories&>().get<Predicate>()), Interned<Predicate>&>);
 
 }  // namespace
 

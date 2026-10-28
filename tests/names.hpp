@@ -196,6 +196,12 @@ struct name<urd::repr::Layered<R>>
     static constexpr std::string_view id = "layered";
     static constexpr std::string_view value = "layered (its own elements, then a parent's)";
 };
+template<typename R>
+struct name<urd::repr::ChangeLogged<R>>
+{
+    static constexpr std::string_view id = "change_logged";
+    static constexpr std::string_view value = "change-logged set (a flat hash set, plus what was added and removed)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

@@ -210,6 +210,21 @@ through a const Store to avoid that). The parent is not owned: it must outlive t
 `repr::Layered<R>` (`include/urd/repr/layered.hpp`) layers a flat hash table. A memo kept for two generations is
 two maps swapped and cleared per generation (examples/scopes.cpp), not a representation.
 
+## Change logs
+
+`change_log` (a set with unique elements): `added()` and `removed()` are spans of exactly the elements that
+changed since `clear_changes()`; an element added and removed again is in neither. For semi-naive evaluation:
+each round works on `added()`. `repr::ChangeLogged<R>` (`include/urd/repr/change_logged.hpp`) logs into two
+indexed sets.
+
+## Beyond one Store
+
+Some structures are not one Store: `urd::Graph` (M3), `urd::Partition<K>` (union-find over indices,
+`include/urd/partition.hpp`), `urd::BitMatrix<Row, Column>` (rows of one bit length in one array, with
+`unite_rows` for closures, `include/urd/bit_matrix.hpp`) and `urd::Family<F, Ts...>` (one `F<T>` per type,
+reached by `get<T>()`, `include/urd/family.hpp`). A two-level dense map needs nothing new: nested dense Stores
+compose (`Store<key<R>, value<Store<key<Row>, value<V>, dense>>, dense, constant_clear>`).
+
 ## Maps
 
 `key<K>` with `value<V>` makes a map, `multi` a multimap; the elements are `std::pair<const K, V>`. A map
