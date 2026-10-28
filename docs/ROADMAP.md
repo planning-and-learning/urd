@@ -213,7 +213,14 @@ orders other than `urd::Less` on the element (OpenList breaks ties by larger g, 
 - **Tests:** the typed tests compare the pop order with a sorted model.
 - **Survey pins:** yggdrasil `OpenList`; the tyr scheduler; BrFS deques.
 
-## M6: Scoped symbol tables and layering (patterns 10, 9, 15)
+## M6: Scoped symbol tables and layering (patterns 10, 9, 15) — done
+
+`scoped` (`repr::ScopedMap`: an undo log, so pop restores what the scope shadowed) and `layered`
+(`repr::Layered<R>` over a parent Store of the same type); facets `scopes` and `layers`; a random test of scopes
+against saved copies and a test of layer semantics; survey pins (loki `TranslationStorage`, parser bindings);
+examples/scopes.cpp with the two-generation memo. Deferred: a layered interner (positions continuing after the
+parent's), layered sorted Stores, and scoped sets.
+
 
 - **`scoped`:** maps with `push_scope` and `pop_scope`, where lookups find the innermost binding. The
   representation is a vector of `(key, value)` plus a hash map from each key to its stack of bindings. It

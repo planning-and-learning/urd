@@ -8,6 +8,7 @@
 #include "urd/store/equality.hpp"
 #include "urd/store/growth.hpp"
 #include "urd/store/iteration.hpp"
+#include "urd/store/layers.hpp"
 #include "urd/store/lookup.hpp"
 #include "urd/store/multi_values.hpp"
 #include "urd/store/ordered_lookup.hpp"
@@ -16,6 +17,7 @@
 #include "urd/store/queue_access.hpp"
 #include "urd/store/removal.hpp"
 #include "urd/store/reverse_iteration.hpp"
+#include "urd/store/scopes.hpp"
 #include "urd/store/set_algebra.hpp"
 #include "urd/store/sizing.hpp"
 #include "urd/store/types.hpp"
@@ -62,7 +64,9 @@ class Store :
     public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>,
     public facet_if<S::is_map && !has<S, unique>, facet::multi_values<Store<R, S>, R, S>>,
     public facet_if<S::is_set, facet::set_algebra<Store<R, S>, R, S>>,
-    public facet_if<S::is_queue, facet::queue_access<Store<R, S>, R, S>>
+    public facet_if<S::is_queue, facet::queue_access<Store<R, S>, R, S>>,
+    public facet_if<has<S, scoped>, facet::scopes<Store<R, S>, R, S>>,
+    public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

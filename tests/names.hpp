@@ -184,6 +184,18 @@ struct name<urd::repr::Heap<T>>
     static constexpr std::string_view id = "heap";
     static constexpr std::string_view value = "binary heap (a vector, least first)";
 };
+template<typename K, typename V>
+struct name<urd::repr::ScopedMap<K, V>>
+{
+    static constexpr std::string_view id = "scoped_map";
+    static constexpr std::string_view value = "scoped map (a flat hash table, scopes undone by a log)";
+};
+template<typename R>
+struct name<urd::repr::Layered<R>>
+{
+    static constexpr std::string_view id = "layered";
+    static constexpr std::string_view value = "layered (its own elements, then a parent's)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

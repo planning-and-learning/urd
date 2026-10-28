@@ -7,9 +7,11 @@
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/layered.hpp"
 #include "urd/repr/postings.hpp"
 #include "urd/repr/queues.hpp"
 #include "urd/repr/rows.hpp"
+#include "urd/repr/scoped.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
 #include "urd/repr/std_map.hpp"
@@ -89,6 +91,13 @@ using PostingMapOf = repr::PostingMap<K, V>;
 template<typename K, typename V>
 using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 
+template<typename K, typename V>
+using ScopedMapOf = repr::ScopedMap<K, V>;
+template<typename T>
+using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
+template<typename K, typename V>
+using LayeredHashMapOf = repr::Layered<FlatHashMapOf<K, V>>;
+
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
@@ -128,7 +137,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               repr::RowPool,
                                               repr::Fifo,
                                               repr::Lifo,
-                                              repr::Heap>;
+                                              repr::Heap,
+                                              LayeredHashSet>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
@@ -139,7 +149,9 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       FlatMapOf,
                                       DenseMapOf,
                                       GenerationMapOf,
-                                      CsrMultiMapOf>;
+                                      CsrMultiMapOf,
+                                      ScopedMapOf,
+                                      LayeredHashMapOf>;
 
 template<typename... Lists>
 struct join

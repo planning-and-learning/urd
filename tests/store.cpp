@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -105,6 +106,12 @@ static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional
 // A frozen multimap by dense key: compressed sparse rows, each key's values a span.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>::representation, urd::repr::CsrMultiMap<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::sorted>::representation, urd::repr::CsrMultiMap<int, int>>);
+
+// Scopes and layers: a scoped map is a flat hash table with an undo log; a layered Store a flat hash table over a
+// parent.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::scoped>::representation, urd::repr::ScopedMap<int, int>>);
+static_assert(std::same_as<Store<key<int>, urd::layered>::representation, urd::repr::Layered<FlatHashSet<int>>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representation, urd::repr::Layered<FlatHashMapOf<int, int>>>);
 
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
@@ -419,4 +426,87 @@ TEST(Graph, GivesSuccessorsAndPredecessors)
     EXPECT_TRUE(std::ranges::equal(graph.predecessors(1), std::vector<int> { 0, 2 }));
     EXPECT_TRUE(std::ranges::equal(graph.predecessors(2), std::vector<int> { 1, 0 }));
     EXPECT_TRUE(graph.successors(3).empty() && graph.predecessors(3).empty());
+}
+
+// Scopes undo, latest first, every change made in them: random changes and scopes against a stack of copies.
+TEST(Scoped, PopUndoesTheScopesChanges)
+{
+    using Symbols = Store<key<int>, value<int>, urd::scoped>;
+    auto random = std::mt19937(3);
+    for (int round = 0; round < 50; ++round)
+    {
+        auto symbols = Symbols();
+        auto saved = std::vector<std::map<int, int>>();
+        const auto contents = [&symbols] { return std::map<int, int>(symbols.begin(), symbols.end()); };
+        for (int step = 0; step < 300; ++step)
+        {
+            const int key = static_cast<int>(random() % 16);
+            const int value = static_cast<int>(random() % 100);
+            switch (random() % 7)
+            {
+                case 0:
+                    symbols.push_scope();
+                    saved.push_back(contents());
+                    break;
+                case 1:
+                    if (!saved.empty())
+                    {
+                        symbols.pop_scope();
+                        ASSERT_EQ(contents(), saved.back()) << "step " << step;
+                        saved.pop_back();
+                    }
+                    break;
+                case 2:
+                    symbols.erase(key);
+                    break;
+                case 3:
+                    symbols.insert_or_assign(key, value);
+                    break;
+                case 4:
+                    symbols[key] = value;
+                    break;
+                case 5:
+                    symbols.try_emplace(key, value);
+                    break;
+                default:
+                    if (symbols.contains(key))
+                        symbols.at(key) += 1;
+                    break;
+            }
+            ASSERT_EQ(symbols.depth(), saved.size());
+        }
+    }
+}
+
+// A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.
+TEST(Layered, AnswersFromItselfThenItsParent)
+{
+    using Names = Store<key<std::string>, value<int>, urd::layered>;
+    const auto parent = Names { { "on", 0 }, { "clear", 1 } };
+    auto child = Names { { "holding", 2 } };
+    child.layer_over(&parent);
+    EXPECT_TRUE(child.contains("on") && child.contains("holding") && !child.contains("empty"));
+    EXPECT_EQ(child.size(), 1U);
+    EXPECT_EQ(std::as_const(child).at("clear"), 1);
+    EXPECT_FALSE(child.try_emplace("on", 7).second);
+    EXPECT_EQ(std::as_const(child).at("on"), 0);
+    child.insert_or_assign("on", 5);
+    EXPECT_EQ(child.at("on"), 5);
+    EXPECT_EQ(parent.at("on"), 0);
+    EXPECT_EQ(child.erase("clear"), 0U);
+    EXPECT_TRUE(child.contains("clear"));
+    // at() on a layer that may change hands out its own value to change: the parent's is copied up first.
+    child.at("clear") = 3;
+    EXPECT_EQ(child.size(), 3U);
+    EXPECT_EQ(parent.at("clear"), 1);
+
+    using Seen = Store<key<int>, urd::layered>;
+    const auto before = Seen { 1, 2 };
+    auto after = Seen { 3 };
+    after.layer_over(&before);
+    EXPECT_FALSE(after.insert(2).second);
+    EXPECT_TRUE(after.insert(4).second);
+    EXPECT_EQ(std::set<int>(after.begin(), after.end()), (std::set<int> { 3, 4 }));
+    after.layer_over(nullptr);
+    EXPECT_FALSE(after.contains(1));
 }

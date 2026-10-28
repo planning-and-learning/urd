@@ -167,7 +167,14 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>,
     // Postings: each key's values together in a hash table.
     urd::repr::PostingMap<int, int>,
-    Store<key<int>, value<int>, urd::multi, urd::stable_refs>>;
+    Store<key<int>, value<int>, urd::multi, urd::stable_refs>,
+    // Scopes and layers.
+    urd::repr::ScopedMap<int, int>,
+    Store<key<int>, value<int>, urd::scoped>,
+    urd::repr::Layered<boost::unordered_flat_set<int, std::hash<int>>>,
+    urd::repr::Layered<boost::unordered_flat_map<int, int, std::hash<int>>>,
+    Store<key<int>, urd::layered>,
+    Store<key<int>, value<int>, urd::layered>>;
 
 template<typename R>
 class Properties : public testing::Test

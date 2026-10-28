@@ -200,6 +200,16 @@ static_assert(std::same_as<PriorityOpenList::representation, urd::repr::Heap<std
 using Frontier = Store<value<State>, urd::fifo>;
 static_assert(std::same_as<Frontier::representation, urd::repr::Fifo<State>>);
 
+// loki semantic/translator/common.hpp: TranslationStorage, ~40 UnorderedMap<View<T>, View<T>> per repository,
+// with a parent storage whose translations a problem's storage reuses: maps layered over their parent's.
+using Translations = Store<key<Predicate>, value<Predicate>, urd::layered>;
+static_assert(std::same_as<Translations::representation, urd::repr::Layered<FlatHashMapOf<Predicate, Predicate>>>);
+
+// loki and runir parsers: name-to-entity maps per scope (parameters of an action, variables of a quantifier), the
+// innermost binding first.
+using Bindings = Store<key<std::string>, value<ParameterIndex>, urd::scoped>;
+static_assert(std::same_as<Bindings::representation, urd::repr::ScopedMap<std::string, ParameterIndex>>);
+
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

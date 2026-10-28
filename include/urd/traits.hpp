@@ -116,6 +116,22 @@ struct by_priority : any_access
 {
 };
 
+struct any_scope
+{
+};
+/// Offers push_scope and pop_scope: popping undoes every change since the matching push.
+struct scoped : any_scope
+{
+};
+
+struct any_layering
+{
+};
+/// Offers layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.
+struct layered : any_layering
+{
+};
+
 /// Offers no change.
 struct immutable
 {
@@ -191,8 +207,19 @@ struct type_list
 };
 
 /// The roots of the categories a container declares, then those only a Store's request has.
-using guaranteed_roots =
-    type_list<any_order, duplicates, any_keys, moving_refs, any_layout, any_representation, single_threaded, immutable, any_memory, any_clear, any_access>;
+using guaranteed_roots = type_list<any_order,
+                                   duplicates,
+                                   any_keys,
+                                   moving_refs,
+                                   any_layout,
+                                   any_representation,
+                                   single_threaded,
+                                   immutable,
+                                   any_memory,
+                                   any_clear,
+                                   any_access,
+                                   any_scope,
+                                   any_layering>;
 using requested_roots = type_list<may_change, maybe_empty, any_multiplicity, by_key, general>;
 
 template<typename... Lists>
