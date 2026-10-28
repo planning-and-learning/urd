@@ -176,7 +176,9 @@ Every map with unique keys also has `update(key, f)`, which calls `f(value, held
 default one first where there is none (`held` false), and `read(key, f, missing)`. A map cleared by generation
 (`dense, constant_clear`) hands `update` the value it kept from before the clear, storage and all, so buffers are
 reused. With `concurrent`, its slots lie in a thread-safe segmented vector with a spin lock each: `update`, `read`
-and inserts may run from threads at once.
+and inserts may run from threads at once. A concurrent map by hashed keys is gtl's `parallel_flat_hash_map`, registered
+by its traits alone: where a representation changes and reads a key's value under a lock of its own (gtl's
+`lazy_emplace_l` and `if_contains`), the Store's `update` and `read` go through those, so no wrapper renames them.
 
 Fixpoints ask whether a step changed anything. Every map with unique keys has `merge(key, value, combine) -> bool`:
 it inserts where the key has no value, else stores `combine(held, value)` (a hull of intervals, the lower of two

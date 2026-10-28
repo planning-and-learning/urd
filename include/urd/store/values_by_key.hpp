@@ -4,6 +4,8 @@
 #include "urd/store/types.hpp"
 
 #include <concepts>
+#include <optional>
+#include <type_traits>
 #include <utility>
 
 namespace urd::detail::facet
@@ -54,6 +56,8 @@ public:
     {
         if constexpr (requires { representation().update(key, update); })
             return representation().update(key, update);
+        else if constexpr (locks_by_key)
+            return locked_update(key, update);
         else
         {
             const bool held = !representation().try_emplace(key).second;
@@ -67,6 +71,12 @@ public:
     {
         if constexpr (requires { representation().read(key, read, missing); })
             return representation().read(key, read, missing);
+        else if constexpr (locks_by_key)
+        {
+            auto result = std::move(missing);
+            representation().if_contains(key, [&read, &result](const auto& entry) { result = Result(read(entry.second)); });
+            return result;
+        }
         else
             return representation().contains(key) ? Result(read(representation().at(key))) : missing;
     }
@@ -89,6 +99,45 @@ public:
     }
 
 private:
+    /// The representation changes and reads a key's value under a lock of its own, as gtl's sharded tables do with
+    /// lazy_emplace_l and if_contains: update and read then go through them, safe while other threads do the same.
+    static constexpr bool locks_by_key = requires(R& table, const R& constant, const map_key& key) {
+        table.lazy_emplace_l(key, [](auto&) {}, [](const auto&) {});
+        constant.if_contains(key, [](const auto&) {});
+    };
+
+    /// update(value, held) under the key's lock; a new value is built and updated before it goes in, still under it.
+    template<typename Update>
+    auto locked_update(const map_key& key, Update& update)
+    {
+        using Result = std::invoke_result_t<Update&, mapped&, bool>;
+        static_assert(!std::is_reference_v<Result>, "urd::Store::update: a reference would outlive the lock of the key");
+        if constexpr (std::is_void_v<Result>)
+            representation().lazy_emplace_l(
+                key,
+                [&update](auto& entry) { update(entry.second, true); },
+                [&key, &update](const auto& construct)
+                {
+                    auto value = mapped();
+                    update(value, false);
+                    construct(key, std::move(value));
+                });
+        else
+        {
+            auto result = std::optional<Result>();
+            representation().lazy_emplace_l(
+                key,
+                [&update, &result](auto& entry) { result.emplace(update(entry.second, true)); },
+                [&key, &update, &result](const auto& construct)
+                {
+                    auto value = mapped();
+                    result.emplace(update(value, false));
+                    construct(key, std::move(value));
+                });
+            return std::move(*result);
+        }
+    }
+
     [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
     [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
 };

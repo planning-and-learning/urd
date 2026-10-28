@@ -118,6 +118,7 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<key<I>, dense, constant_clear>` | `SparseSet` (Briggs–Torczon) |
 | `Store<key<K>, insertion_ordered>` | `IndexedSet` (vector plus a hash table of positions) |
 | `Store<key<K>, positional, monotone>` | `IndexedSet`: an interner, each element gets an index |
+| `Store<key<K>, concurrent>` | `gtl::parallel_flat_hash_set` (shards, a mutex each) |
 | `Store<key<K>, positional, monotone, concurrent>` | `ConcurrentIndexedSet` |
 | `Store<value<T>>` | `std::vector` |
 | `Store<value<T>, sorted>` | `boost::container::flat_multiset` |
@@ -127,6 +128,7 @@ registry resolves them (`include/urd/registry.hpp`; the order of candidates ther
 | `Store<key<I>, value<V>, dense>` | `IndexMap` (a slot per index) |
 | `Store<key<I>, value<V>, dense, constant_clear>` | `IndexMap` with generations |
 | `… dense, constant_clear, concurrent` | `IndexMap` with generations and a spin lock per slot |
+| `Store<key<K>, value<V>, concurrent>` | `gtl::parallel_flat_hash_map`; `update` and `read` under the key's shard lock |
 | `Store<key<K>, value<V>, insertion_ordered>` | `OrderedMap` (with `dense`: over a `SparseSet`) |
 | `Store<key<K>, value<V>, multi>` | `PostingMap` (flat hash table of value vectors) |
 | `Store<key<K>, value<V>, multi, sorted>` | `std::multimap` |
@@ -202,6 +204,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `Layered` | O(1)\*~ | O(1)~ own + parent | O(1)~ own | O(capacity) | own elements | the parent is not owned |
 | `ChangeLogged` | O(1)\*~ | O(1)~ | O(1)~; O(added) for one added since the reset | O(n) | O(capacity) | + the elements added and removed |
 | `ConcurrentIndexedSet` | O(1)\*~ (new ones under a lock) | O(1)~ without a lock | — | O(capacity) | O(n) | segments that never move |
+| `gtl::parallel_flat_hash_set/map` | O(1)\*~ under one shard's lock | O(1)~ under it | O(1)~ | O(capacity) | O(capacity) | 16 shards, each an open-addressing table |
 
 **Sequences, queues, partitions**
 
@@ -233,7 +236,7 @@ positions on
 
 ```sh
 cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
-cmake --build dependencies-build && cmake --install dependencies-build    # Boost, GoogleTest, Google Benchmark
+cmake --build dependencies-build && cmake --install dependencies-build    # Boost, gtl, GoogleTest, Google Benchmark
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8 && ctest --test-dir build
 ```

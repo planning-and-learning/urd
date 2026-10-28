@@ -226,6 +226,18 @@ struct name<urd::repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
     static constexpr std::string_view id = "tree_bitset_set";
     static constexpr std::string_view value = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
 };
+template<typename T>
+struct name<urd::repr::ParallelHashSet<T>>
+{
+    static constexpr std::string_view id = "parallel_hash_set";
+    static constexpr std::string_view value = "parallel hash set (gtl: shards, each behind its mutex)";
+};
+template<typename K, typename V>
+struct name<urd::repr::ParallelHashMap<K, V>>
+{
+    static constexpr std::string_view id = "parallel_hash_map";
+    static constexpr std::string_view value = "parallel hash map (gtl: shards, each behind its mutex; update and read under it)";
+};
 template<typename T, typename Index>
 struct name<urd::repr::ConcurrentIndexedSet<T, Index>>
 {

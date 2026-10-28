@@ -25,6 +25,11 @@
       "version": "1.18.0",
       "repository": "https://github.com/google/googletest.git",
       "revision": "063de7e9578f82b369302001269680b4b1553359"
+    },
+    "gtl": {
+      "kind": "git",
+      "repository": "https://github.com/greg7mdp/gtl.git",
+      "revision": "f35ce6ff8050e95b837caedb24cd07018f6a3fed"
     }
   }
 }

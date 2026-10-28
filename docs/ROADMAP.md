@@ -301,6 +301,19 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
 `Jagged` with `CsrMultiMap`, which share little more than offsets, while building a `Jagged` of Stores inside
 `urd/repr` would make the representations depend on `Store`.
 
+## M10: gtl, order by projection, priority queues, the remaining row gaps
+
+1. gtl — done: the dependency as yggdrasil installs it (same revision and patches); `gtl::parallel_flat_hash_set`
+   and `parallel_flat_hash_map` (16 shards, a mutex each) for concurrent sets and maps by hashed keys, which had no
+   representation before; `update` and `read` through the table's own locked calls, in the facet. gtl's B-trees
+   are left out (`btree_map` lacks `insert_or_assign`) until a benchmark asks for them.
+2. Order by projection (`order_by<P>`).
+3. `addressable` (via `handles`) and `monotone_priority` (a bucket queue for integral priorities).
+4. Rebuilding a frozen Store in place (`assign`).
+5. Nested fixed shapes, and `reset` with a cost policy.
+6. Borrowed rows from pools (`view(h)`), including bit rows stored as words.
+7. Sorted maps that keep erased values' storage (float-keyed cost buckets).
+
 ## Order and size
 
 | Milestone | Coverage | Size |

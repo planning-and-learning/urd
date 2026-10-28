@@ -11,6 +11,7 @@
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/layered.hpp"
 #include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/queues.hpp"
 #include "urd/repr/rows.hpp"
@@ -149,6 +150,10 @@ using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
 using IndexedSetOf = repr::IndexedSet<T>;
 template<typename T>
+using ParallelHashSetOf = repr::ParallelHashSet<T>;
+template<typename K, typename V>
+using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
+template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
 using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
@@ -205,6 +210,7 @@ using element_preference = element_candidates<repr::Jagged,
                                               ThreadSafeRowInterner,
                                               ThreadSafeTreeVectorOf,
                                               ThreadSafeTreeBitsetOf,
+                                              ParallelHashSetOf,
                                               ConcurrentIndexedSet,
                                               SlotVector,
                                               ThreadSafeSlotVector,
@@ -225,7 +231,8 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
                                       ScopedMapOf,
-                                      LayeredHashMapOf>;
+                                      LayeredHashMapOf,
+                                      ParallelHashMapOf>;
 
 template<typename... Lists>
 struct join

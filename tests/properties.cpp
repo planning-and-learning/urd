@@ -191,7 +191,12 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::layered>,
     // Change logs.
     urd::repr::ChangeLogged<boost::unordered_flat_set<int, std::hash<int>>>,
-    Store<key<int>, urd::change_log>>;
+    Store<key<int>, urd::change_log>,
+    // Sharded hash tables that threads share (gtl).
+    urd::repr::ParallelHashSet<int>,
+    urd::repr::ParallelHashMap<int, int>,
+    Store<key<int>, urd::concurrent>,
+    Store<key<int>, value<int>, urd::concurrent>>;
 
 template<typename R>
 class Properties : public testing::Test

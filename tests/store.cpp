@@ -148,6 +148,10 @@ static_assert((all_conform) (element_candidates<value<Store<key<int>, urd::dense
 static_assert((all_conform) (map_candidates<key<int>, value<int>> {}));
 static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {}));
 
+// Sets and maps shared by threads, by hashed keys: gtl's sharded tables.
+static_assert(std::same_as<Store<key<int>, urd::concurrent>::representation, urd::repr::ParallelHashSet<int>>);
+static_assert(std::same_as<Store<key<std::string>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<std::string, int>>);
+
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
 
@@ -1035,4 +1039,30 @@ TEST(FixedShape, RowsOfElementsChangeInPlace)
     EXPECT_EQ(copy, rows);
     copy[2][2] = 1.0;
     EXPECT_NE(copy, rows);
+}
+
+// Threads updating and reading the same hashed keys of a shared map at once: every update counts.
+TEST(Merge, ThreadsUpdateHashedKeysTogether)
+{
+    auto counts = Store<key<std::string>, value<int>, urd::concurrent>();
+    constexpr int threads = 4;
+    constexpr int rounds = 20000;
+    constexpr int keys = 50;
+    {
+        auto workers = std::vector<std::jthread>();
+        for (int thread = 0; thread < threads; ++thread)
+            workers.emplace_back(
+                [&counts, thread]
+                {
+                    for (int round = 0; round < rounds; ++round)
+                    {
+                        counts.update(std::to_string((round + thread) % keys), [](int& count, bool held) { count = held ? count + 1 : 1; });
+                        (void) counts.read(std::to_string(round % keys), [](int count) { return count; }, 0);
+                    }
+                });
+    }
+    int total = 0;
+    for (int key = 0; key < keys; ++key)
+        total += counts.at(std::to_string(key));
+    EXPECT_EQ(total, threads * rounds);
 }
