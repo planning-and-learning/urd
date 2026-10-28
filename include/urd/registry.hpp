@@ -43,9 +43,15 @@ namespace urd::detail
 /// A frozen Store's elements never move whatever the representation; a sequence's positions are dense
 /// in every representation of a sequence.
 template<typename S>
-using requirement = with_t<S,
-                           std::conditional_t<has<S, frozen>, moving_refs, category_t<S, moving_refs>>,
-                           std::conditional_t<S::is_sequence, any_keys, category_t<S, any_keys>>>;
+inline constexpr property_set requirement = []
+{
+    auto result = S::urd_properties;
+    if (result.has(tag::frozen))
+        result.put(tag::moving_refs);
+    if (S::is_sequence)
+        result.put(tag::any_keys);
+    return result;
+}();
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
@@ -53,15 +59,17 @@ using requirement = with_t<S,
 /// kept by value must be sorted, or its positions would mean nothing. Where S's elements are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves_by_traits = container_traits<R>::declared && satisfies<container_traits<R>, requirement<S>> && by_value<container_traits<R>> == by_value<S>
-                           && has<container_traits<R>, unique> == has<S, unique> && (!S::is_sequence || !by_value<S> || has<S, sorted>);
+concept serves_by_traits =
+    container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>) && by_value<container_traits<R>> == by_value<S>
+    && has<container_traits<R>, unique> == has<S, unique> && (!S::is_sequence || !by_value<S> || has<S, sorted>);
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
 // typed test suites, for every registered container, not again for every request: those interface checks were most
 // of what resolving a request cost the compiler. Positions are the exception, checked where asked for.
 template<typename R, typename S>
-concept serves = serves_by_traits<R, S> && (!has<S, positional> || std::ranges::random_access_range<R>)
-                 && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
+concept serves =
+    serves_by_traits<R, S> && (!has<S, positional> || std::ranges::random_access_range<R>)
+    && (!is_store<typename S::element_type> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<typename S::element_type>>));
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.

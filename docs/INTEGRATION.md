@@ -44,6 +44,13 @@ struct urd::container_traits<std::set<K, std::less<K>, Allocator>>
 
 Claim only what holds for every value of the type and through every operation; step 6 checks it.
 
+Inside, properties are values, not types: each tag carries its number in `urd::tag`, and `properties_of`, `has`,
+`satisfies` and the request rules compute with a `property_set` (one entry per category) by constant evaluation.
+That keeps resolving a request cheap for the compiler. A Store's spec lists the tags that say more than their
+category's root, so a diagnostic reads `spec<int, void, urd::tag::sorted, urd::tag::unique, urd::tag::shrinkable>`.
+A new tag goes into its category's struct list and into `urd::tag`, in the same order (a `static_assert` checks
+it).
+
 Memory is a category too: `retains` (storage that erase and clear free is kept, so refilling to an earlier size
 allocates nothing: vectors, flat sets) or `reclaims` (erase and clear return it: trees). A hash table that
 frees its nodes but keeps its buckets declares neither. No representation yet serves a sequence that

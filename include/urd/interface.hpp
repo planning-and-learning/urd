@@ -219,7 +219,7 @@ concept partition_operations = std::default_initializable<R> && requires(R& grou
 
 /// Whether Traits declares an order of leaving: a queue.
 template<typename Traits>
-inline constexpr bool queue_traits = !std::same_as<category_t<Traits, any_access>, any_access>;
+inline constexpr bool queue_traits = traits_t<Traits>::urd_properties.in(tag::any_access) != tag::any_access;
 
 }  // namespace detail
 
