@@ -240,6 +240,11 @@ using Interned = Store<key<T>, urd::positional, urd::monotone>;
 using Repositories = urd::Family<Interned, Object, Predicate, Action>;
 static_assert(std::same_as<decltype(std::declval<Repositories&>().get<Predicate>()), Interned<Predicate>&>);
 
+// tyr planning/state_repository.hpp: SharedObjectPool<Builder<State>, true>, scratch state builders handed out to
+// successor generation across threads and returned: slots of buffers, acquired as they were left.
+using StateBuilders = Store<value<std::vector<std::uint32_t>>, urd::handles, urd::concurrent>;
+static_assert(std::same_as<StateBuilders::representation, urd::repr::SlotVector<std::vector<std::uint32_t>, true>>);
+
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

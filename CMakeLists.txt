@@ -73,7 +73,7 @@ if(URD_BUILD_TESTS)
     target_link_libraries(survey PRIVATE urd::urd)
 
     # The tests that came with the representations copied from yggdrasil, unchanged but for names.
-    foreach(test segmented_vector unique_object_pool shared_object_pool tree_vector_set)
+    foreach(test segmented_vector tree_vector_set)
         add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)
         add_test(NAME repr_${test} COMMAND test_repr_${test})

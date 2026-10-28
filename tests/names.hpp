@@ -208,6 +208,12 @@ struct name<urd::repr::RowInterner<Row>>
     static constexpr std::string_view id = "row_interner";
     static constexpr std::string_view value = "row interner (each row once, in full)";
 };
+template<typename T, bool ThreadSafe>
+struct name<urd::repr::SlotVector<T, ThreadSafe>>
+{
+    static constexpr std::string_view id = ThreadSafe ? "thread_safe_slot_vector" : "slot_vector";
+    static constexpr std::string_view value = "slot vector (slots that never move, freed ones reused)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

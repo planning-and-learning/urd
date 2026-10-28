@@ -584,6 +584,105 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     return std::nullopt;
 }
 
+/// urd::verify for a pool of slots: inserts, emplaces, acquires, erases, writes through handles and clears. After each,
+/// every live handle reads what was put there, live elements have not moved, and an insert after an erase reuses a
+/// freed slot.
+template<typename P>
+std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
+{
+    using E = typename P::value_type;
+    using Traits = container_traits<P>;
+    using Handle = typename P::handle_type;
+    auto live = std::vector<std::pair<Handle, E>>();
+    auto addresses = std::vector<const E*>();
+    auto freed = std::vector<Handle>();
+
+    auto random = std::mt19937(seed);
+    auto pick = std::uniform_int_distribution<int>(0, 31);
+    for (int step = 0; step < steps; ++step)
+    {
+        const int drawn = pick(random);
+        auto operation = std::string();
+        const auto added = [&](Handle handle, const E& value) -> std::optional<std::string>
+        {
+            if (!freed.empty() && std::ranges::find(freed, handle) == freed.end())
+                return std::string("a slot was freed, but the insert took a new one");
+            std::erase(freed, handle);
+            live.emplace_back(handle, value);
+            addresses.push_back(&std::as_const(pool)[handle]);
+            return std::nullopt;
+        };
+        std::optional<std::string> wrong;
+        if constexpr (has<Traits, shrinkable>)
+        {
+            if (drawn == 31)
+            {
+                operation = "clear";
+                pool.clear();
+                live.clear();
+                addresses.clear();
+                freed.clear();
+            }
+            else if (drawn % 3 == 0 && !live.empty())
+            {
+                const auto victim = static_cast<std::size_t>(drawn) % live.size();
+                operation = "erase";
+                pool.erase(live[victim].first);
+                freed.push_back(live[victim].first);
+                live.erase(live.begin() + static_cast<std::ptrdiff_t>(victim));
+                addresses.erase(addresses.begin() + static_cast<std::ptrdiff_t>(victim));
+            }
+        }
+        if (operation.empty())
+        {
+            if (drawn % 4 == 1 && !live.empty())
+            {
+                operation = "write";
+                const auto target = static_cast<std::size_t>(drawn) % live.size();
+                pool[live[target].first] = E(drawn);
+                live[target].second = E(drawn);
+            }
+            else if (drawn % 4 == 2)
+            {
+                operation = "emplace";
+                wrong = added(pool.emplace(drawn), E(drawn));
+            }
+            else if constexpr (std::default_initializable<E>)
+            {
+                if (drawn % 4 == 3)
+                {
+                    // An acquired slot holds whatever it held; the step writes it, as a user would.
+                    operation = "acquire";
+                    const auto handle = pool.acquire();
+                    pool[handle] = E(drawn);
+                    wrong = added(handle, E(drawn));
+                }
+            }
+            if (operation.empty())
+            {
+                operation = "insert";
+                wrong = added(pool.insert(E(drawn)), E(drawn));
+            }
+        }
+        const auto label = "step " + std::to_string(step) + " (" + operation + "): ";
+        if (wrong)
+            return label + *wrong;
+        if (static_cast<std::size_t>(pool.size()) != live.size())
+            return label + "size() differs from the number of live elements";
+        for (std::size_t each = 0; each < live.size(); ++each)
+        {
+            if (!(std::as_const(pool)[live[each].first] == live[each].second))
+                return label + "a handle reads another value";
+            if (&std::as_const(pool)[live[each].first] != addresses[each])
+                return label + "stable_refs: a live element moved";
+            for (std::size_t other = each + 1; other < live.size(); ++other)
+                if (live[each].first == live[other].first)
+                    return label + "two live elements share a handle";
+        }
+    }
+    return std::nullopt;
+}
+
 /// urd::verify for a conforming R.
 template<typename R>
 std::optional<std::string> run(R& range, unsigned seed, int steps)
@@ -799,8 +898,10 @@ template<typename R>
         return std::nullopt;
     else if constexpr (detail::queue_traits<container_traits<R>>)
         return detail::run_queue(range, seed, steps);
-    else if constexpr (has<container_traits<R>, handles>)
+    else if constexpr (has<container_traits<R>, handles, unique>)
         return detail::run_pool(range, seed, steps);
+    else if constexpr (has<container_traits<R>, handles>)
+        return detail::run_slots(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);
     else

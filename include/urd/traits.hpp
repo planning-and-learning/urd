@@ -379,8 +379,26 @@ inline constexpr bool is_store<detail::Store<R, S>> = true;
 /// What a container guarantees about its elements where they are Stores: the properties a nested Store's rows
 /// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,
 /// as erase and clear do. A container that keeps rows, or stores them flattened, specializes it.
+namespace detail
+{
+
+/// What R holds: its value_type where it names one (a queue or pool is no range), else what iterating it gives.
 template<typename R>
-struct element_traits : with_t<container_traits<std::ranges::range_value_t<R>>, reclaims>
+struct held
+{
+    using type = std::ranges::range_value_t<R>;
+};
+template<typename R>
+    requires requires { typename R::value_type; }
+struct held<R>
+{
+    using type = typename R::value_type;
+};
+
+}  // namespace detail
+
+template<typename R>
+struct element_traits : with_t<container_traits<typename detail::held<R>::type>, reclaims>
 {
 };
 

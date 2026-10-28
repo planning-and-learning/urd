@@ -223,7 +223,7 @@ namespace urd
 /// Rows of hashable values, sharing equal subtrees; clear keeps the tables' storage.
 template<typename Row, std::size_t Arity>
     requires hashable<std::ranges::range_value_t<Row>> && (!by_value<traits_t<Row>>)
-struct container_traits<repr::TreeVectorSet<Row, Arity>> : properties_of<handles, structural_sharing, shrinkable, retains>
+struct container_traits<repr::TreeVectorSet<Row, Arity>> : properties_of<handles, unique, structural_sharing, shrinkable, retains>
 {
 };
 

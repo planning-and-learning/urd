@@ -16,6 +16,7 @@
 #include "urd/repr/scoped.hpp"
 #include "urd/repr/segmented.hpp"
 #include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/repr/tree_vector.hpp"
@@ -96,6 +97,10 @@ using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
+template<typename T>
+using SlotVector = repr::SlotVector<T>;
+template<typename T>
+using ThreadSafeSlotVector = repr::SlotVector<T, true>;
 template<typename Row>
 using TreeVectorOf = repr::TreeVectorSet<Row>;
 template<typename T>
@@ -148,7 +153,9 @@ using element_preference = element_candidates<repr::Jagged,
                                               LayeredHashSet,
                                               ChangeLoggedHashSet,
                                               repr::RowInterner,
-                                              TreeVectorOf>;
+                                              TreeVectorOf,
+                                              SlotVector,
+                                              ThreadSafeSlotVector>;
 using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,

@@ -22,6 +22,7 @@
 #include "urd/store/scopes.hpp"
 #include "urd/store/set_algebra.hpp"
 #include "urd/store/sizing.hpp"
+#include "urd/store/slots.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
 #include "urd/traits.hpp"
@@ -55,7 +56,7 @@ class Store :
     public facet_if<S::iterable, facet::iteration<Store<R, S>, R, S>>,
     public facet_if<std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable), facet::equality<Store<R, S>, R, S>>,
     public facet_if<compares_in_order<R, S>(), facet::ordering<Store<R, S>, R, S>>,
-    public facet_if<store_types<R, S>::keyed, facet::lookup<Store<R, S>, R, S>>,
+    public facet_if<store_types<R, S>::keyed && S::iterable, facet::lookup<Store<R, S>, R, S>>,
     public facet_if<has<S, sorted>, facet::ordered_lookup<Store<R, S>, R, S>>,
     public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
     public facet_if<has<S, positional>, facet::positions<Store<R, S>, R, S>>,
@@ -70,7 +71,8 @@ class Store :
     public facet_if<has<S, scoped>, facet::scopes<Store<R, S>, R, S>>,
     public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>,
     public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>,
-    public facet_if<S::is_pool, facet::pool<Store<R, S>, R, S>>
+    public facet_if<S::is_pool && has<S, unique>, facet::pool<Store<R, S>, R, S>>,
+    public facet_if<S::is_pool && !has<S, unique>, facet::slots<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

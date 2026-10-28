@@ -122,10 +122,10 @@ representation, and the test checks them as defined:
   cannot erase from the middle. Without its mutability (`growable`, not `shrinkable`),
   `Store<value<T>, stable_refs>` would have resolved to it and offered an `erase` it cannot do. Now that request finds no representation (a compile-time error), and
   `Store<value<T>, stable_refs, monotone>` finds it.
-- **Some containers are not stores.** `UniqueObjectPool` and `SharedObjectPool` hand out handles that own
-  recycled objects; they hold no set, map or sequence of contents. They are copied with their tests but not
-  registered: they need their own entry point, or an allocation property for other stores, which is still
-  open.
+- **Object pools are pools of slots.** yggdrasil's `UniqueObjectPool` and `SharedObjectPool` hand out owning,
+  reference-counted handles. urd keeps the part that matters, slots reused once freed: `repr::SlotVector`, a
+  segmented vector plus the indices of freed slots, thread-safe with `ThreadSafe`; the handle is the slot's
+  index, released by `erase`.
 - **The vocabulary grew by one property,** `concurrent`, which the copied container already offered as a
   template parameter.
 

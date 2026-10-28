@@ -53,8 +53,9 @@ restates declarations from the libraries as Store requests.
 | 17 | **Workspace** (any store, reused) | over 600 `clear()` calls with different strategies: generation counter (`DenseRelationMap`), touched list, full fill, epoch stamps, validity flags, swap with an empty container (loses capacity) | `reusable`, with the clear strategy chosen by workload | `retains` keeps storage; `proportional_clear`/`constant_clear` choose the clear strategy |
 | 18 | **Type-indexed family** | loki `TranslationStorage`; tyr static/fluent twins (26 accessor sites); yggdrasil `BuilderStorage` | one Store per type of a tag list | `urd::Family<F, Ts...>`, a combinator: `get<T>()`, `for_each` |
 
-Object pools (`UniqueObjectPool`, `SharedObjectPool`) stay outside: they hand out owning handles and hold
-no contents (see [INTEGRATION.md](INTEGRATION.md)).
+Object pools are pools of slots: `Store<value<T>, handles>` (`repr::SlotVector`, a segmented vector plus the
+indices of freed slots), thread-safe with `concurrent`. yggdrasil's `UniqueObjectPool` and `SharedObjectPool`,
+with their owning, reference-counted handles, are not copied.
 
 ## Auto-resize
 

@@ -78,9 +78,9 @@ struct spec : Properties
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: all but a pool, which may share parts of elements and keep no
-    /// list of them. A filter would not either.
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue;
+    /// Whether it knows how many elements it holds: all but an interning pool (handles, unique), which may share
+    /// parts of its elements and keeps no list of them. A filter would not either.
+    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || (is_pool && !has<Properties, unique>);
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;

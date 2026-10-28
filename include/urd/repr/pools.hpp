@@ -118,7 +118,7 @@ namespace urd
 /// Rows kept in full, each once; clear keeps the storage.
 template<typename Row>
     requires hashable<std::vector<std::ranges::range_value_t<Row>>>
-struct container_traits<repr::RowInterner<Row>> : properties_of<handles, shrinkable, retains>
+struct container_traits<repr::RowInterner<Row>> : properties_of<handles, unique, shrinkable, retains>
 {
 };
 
