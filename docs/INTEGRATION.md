@@ -166,6 +166,11 @@ keys in an insertion-ordered set and the values beside them: an `IndexedSet` has
 (the sparse set with its order kept on erase) places dense ones by index, with O(1) clear for values that need no
 destructor. Erase keeps the order and costs O(n).
 
+Fixpoints ask whether a step changed anything. Every map with unique keys has `merge(key, value, combine) -> bool`:
+it inserts where the key has no value, else stores `combine(held, value)` (a hull of intervals, the lower of two
+costs), and says whether the map changed. Every set has `unite(other) -> bool`, a union that says whether it added
+anything.
+
 ## Dense keys
 
 Keys that are indices 0..n-1 (`urd::index_of`: integers, enums, types identified by one integral member; specialize

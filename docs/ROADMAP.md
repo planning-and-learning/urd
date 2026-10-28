@@ -270,7 +270,8 @@ policies and reuse over new containers.
 
 1. Maps in insertion order — done: `insertion_ordered` on maps, the `entries` facet, `repr::OrderedMap<Keys, V>`
    over an existing insertion-ordered set, and a `KeepOrder` policy on `SparseSet`.
-2. Merging values and reporting change: `merge(key, value, combine) -> bool`, `unite(other) -> bool`.
+2. Merging values and reporting change — done: `merge(key, value, combine) -> bool` on maps with unique keys,
+   `unite(other) -> bool` on sets.
 3. A bitset with touched-word clear and a word view.
 4. DenseRelationMap: generation clear that reuses values; concurrent updates.
 5. Fixed-shape nested bit rows (`uniform`, BitTensor).

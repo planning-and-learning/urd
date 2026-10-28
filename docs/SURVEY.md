@@ -125,8 +125,8 @@ Stores. Updated as M9 closes gaps.
 
 | Class | Verdict | Request, or the gap |
 |---|---|---|
-| `PredicateFactSet(s)` | A | `Store<key<Row>, dense>` (DenseSet), one per predicate |
-| `FunctionFactSet(s)` | A (M9.1) | `Store<key<Row>, value<Interval>, dense, insertion_ordered>`; merge by hull: M9.2 |
+| `PredicateFactSet(s)` | A | `Store<key<Row>, dense>` (DenseSet), one per predicate; `insert(other)` is `unite` |
+| `FunctionFactSet(s)` | A (M9.1, M9.2) | `Store<key<Row>, value<Interval>, dense, insertion_ordered>`; `merge(row, interval, hull)` |
 | `SubstitutionFunction` | A (M9.1) | `Store<key<Parameter>, value<optional<Object>>, dense, insertion_ordered>` |
 | `IndexedAchievers` | A (M9.1) | `Store<key<RuleBinding>, value<Witness>, insertion_ordered>` |
 | `PredicateHeadUpdates`, `FunctionHeadUpdates` | A | `Store<key<Binding>, insertion_ordered>` |

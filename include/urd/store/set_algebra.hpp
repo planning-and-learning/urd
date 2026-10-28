@@ -41,6 +41,14 @@ public:
             std::ranges::for_each(other, [this](const auto& element) { mutable_self().insert(element); });
         return mutable_self();
     }
+    /// Inserts every element of `other`; whether that added any, as fixpoints ask. A union only adds, so the size says.
+    bool unite(const Derived& other)
+        requires has<S, growable>
+    {
+        const auto before = self().size();
+        mutable_self() |= other;
+        return self().size() != before;
+    }
     Derived& operator&=(const Derived& other)
         requires has<S, shrinkable>
     {

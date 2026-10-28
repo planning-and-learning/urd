@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/semantics/equal_to.hpp"
 #include "urd/store/types.hpp"
 
 #include <concepts>
@@ -42,6 +43,23 @@ public:
     std::pair<iterator_type, bool> insert_or_assign(const map_key& key, M&& value)
         requires has<S, growable>
     { return representation().insert_or_assign(key, std::forward<M>(value)); }
+
+    /// Inserts `value` where `key` has none, else replaces the value by combine(value held, value): a hull of
+    /// intervals, the lower of two costs. Whether the Store changed, as fixpoints ask.
+    template<typename Combine>
+        requires std::invocable<Combine&, const mapped&, const mapped&>
+    bool merge(const map_key& key, const mapped& value, Combine combine)
+        requires has<S, growable>
+    {
+        if (representation().try_emplace(key, value).second)
+            return true;
+        auto& held = representation().at(key);
+        auto combined = mapped(combine(std::as_const(held), value));
+        if (EqualTo<mapped> {}(combined, held))
+            return false;
+        held = std::move(combined);
+        return true;
+    }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
