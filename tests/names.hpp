@@ -244,6 +244,12 @@ struct name<urd::repr::OrderedMap<Keys, V>>
     static constexpr std::string_view id = "ordered_map";
     static constexpr std::string_view value = "ordered map (keys in an insertion-ordered set, values beside them)";
 };
+template<typename K>
+struct name<urd::repr::DisjointSets<K>>
+{
+    static constexpr std::string_view id = "disjoint_sets";
+    static constexpr std::string_view value = "disjoint sets (union-find by size, path halving)";
+};
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {
