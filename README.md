@@ -19,6 +19,9 @@ auto next = states.insert(parent, added, removed);  // a successor costs only th
 // costs.lower_bound(n);                            // does not compile: nothing asked for sorted
 ```
 
+`Fact` and `Node` are indices, as `dense` asks: integers, enums, or types identified by one integral member
+(`urd::index_of`). A fact numbered 17 is bit 17 of the bitset.
+
 You write *what* the data is (keys or values, ordered or not, dense indices, frozen, cleared every round, shared
 between threads) instead of *which* container holds it. urd resolves the request at compile time to a container
 from the standard library, Boost or its own `repr`, and gives the Store exactly the interface those properties
