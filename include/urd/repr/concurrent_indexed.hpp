@@ -23,7 +23,7 @@ namespace urd::repr
 {
 
 /// An IndexedSet that threads may insert into at once, and read from while others insert: an interner shared across
-/// threads (tyr's state storages), and the node table of a thread-safe tree pool. The elements lie in a thread-safe
+/// threads, and the node table of a thread-safe tree pool. The elements lie in a thread-safe
 /// SegmentedVector, whose elements never move, and a concurrent hash table holds their positions, hashing and
 /// comparing through it. Looking up is lock-free; an insert of a new element takes a lock, so positions stay 0..n-1
 /// without gaps. Not covered: clear, copy and move, which need no other operation running.

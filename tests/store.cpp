@@ -775,7 +775,7 @@ TEST(Entries, KeysAndValuesInInsertionOrder)
 namespace
 {
 
-/// A closed interval, merged by hull as tyr's function facts are.
+/// A closed interval, merged by hull.
 struct Interval
 {
     double lower = 0;
@@ -821,7 +821,7 @@ TYPED_TEST(Merge, CombinesAndReportsChange)
     EXPECT_EQ(map.size(), expected.size());
 }
 
-// tyr's FunctionFactSet: an interval widened by hull only where it grows.
+// An interval widened by hull only where it grows.
 TEST(Merge, HullOfIntervals)
 {
     auto values = Store<key<int>, value<Interval>, urd::dense, urd::insertion_ordered>();
@@ -832,7 +832,7 @@ TEST(Merge, HullOfIntervals)
     EXPECT_EQ(values.at(3).upper, 2);
 }
 
-// unite says whether the union added anything, as tyr's fact sets' insert(other) does.
+// unite says whether the union added anything.
 TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
 {
     auto random = std::mt19937(43);

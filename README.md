@@ -6,21 +6,36 @@
 #include <urd/store.hpp>
 using namespace urd;
 
-using Facts  = Store<key<Fact>, dense>;                                    // a bitset
-using Open   = Store<value<std::pair<double, Node>>, by_priority>;         // a binary heap, cheapest first
-using Costs  = Store<key<Node>, value<double>, dense, constant_clear>;     // a slot per node, cleared in O(1)
-using States = Store<value<Store<key<Fact>, dense, frozen>>,
-                     handles, unique, structural_sharing>;                 // every state once, sharing subtrees
-using Names  = Store<key<std::string>, positional, monotone>;              // an interner: each name gets an index
+struct User                                                             // an index: one integral member
+{
+    std::uint32_t id;
+    static constexpr auto identifying_members() noexcept { return Members<&User::id> {}; }
+};
 
-auto facts = Facts { on_a_b, clear_c };
-facts.insert(holding_c);                            // the interface its properties allow, in the standard's names
-auto next = states.insert(parent, added, removed);  // a successor costs only the paths to what changed
-// costs.lower_bound(n);                            // does not compile: nothing asked for sorted
+using Names    = Store<key<std::string>, positional, monotone>;         // an interner: each name gets an index
+using Follows  = Store<key<User>, value<User>, multi, dense, frozen, bidirectional>;  // a frozen graph
+using Seen     = Store<key<User>, dense>;                               // a bitset
+using Frontier = Store<value<User>, fifo>;                              // a queue
+using Distance = Store<key<User>, value<int>, dense, constant_clear>;   // cleared per search in O(1)
+
+// Everyone a user reaches by following, breadth first.
+auto follows = Follows(edges.begin(), edges.end());  // built once from (follower, followed) pairs
+auto seen = Seen { start };
+auto frontier = Frontier();
+frontier.push(start);
+while (!frontier.empty())
+{
+    const auto user = frontier.front();
+    frontier.pop();
+    for (const auto next : follows.values(user))     // a span: whom this user follows
+        if (seen.insert(next).second)
+            frontier.push(next);
+}
+// follows.keys(user) gives who follows a user; follows.insert(…) does not compile: frozen.
 ```
 
-`Fact` and `Node` are indices, as `dense` asks: integers, enums, or types identified by one integral member
-(`urd::index_of`). A fact numbered 17 is bit 17 of the bitset.
+`User` is an index, as `dense` asks: integers, enums, or types identified by one integral member (`urd::index_of`).
+User 17 is bit 17 of the bitset.
 
 You write *what* the data is (keys or values, ordered or not, dense indices, frozen, cleared every round, shared
 between threads) instead of *which* container holds it. urd resolves the request at compile time to a container
@@ -38,8 +53,7 @@ error: no matching function for call to 'Store<std::set<int, ...>, spec<int, voi
        urd::tag::unique, urd::tag::shrinkable>>::push_back(int)'
 ```
 
-Header-only C++20, GPL-3.0. Built for the planning and learning libraries yggdrasil, loki, tyr and runir, and
-general enough for others.
+Header-only C++20, GPL-3.0.
 
 ## What a request resolves to
 
@@ -161,8 +175,9 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `TreeBitsetSet` | O(r/32)~ | O(k log_A (r/32))~ | O(r/32 + set bits) | O(log_A (r/32)) | as above; all-zero subtrees take nothing |
 | `SlotVector` | O(1)\* (a freed slot first) | — | O(1) by handle | — | stable slots; erased elements keep their storage |
 
-Measured, not only bounded: for 20,000 search states that each differ from a parent in 3 positions, a tree pool
-takes 136–271 bytes per state against 447–4,409 for rows stored in full, and is faster from a thousand positions on
+Measured, not only bounded: for 20,000 versions of a row that each differ from an earlier one in 3 positions, a tree
+pool takes 136–271 bytes per version against 447–4,409 for rows stored in full, and is faster from a thousand
+positions on
 ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 
 ## Using it
@@ -178,10 +193,9 @@ Link the `urd::urd` target and include `urd/store.hpp`. Requests use only the vo
 `urd/properties.hpp`; what `urd/repr` holds is the representations' business, not code that uses a Store (a check
 keeps containers out of the include root).
 
-- [examples/](examples/): sets, sequences, maps, rows, dense keys, interning, queues, scopes, states, and more.
+- [examples/](examples/): sets, sequences, maps, rows, dense keys, interning, queues, scopes, pools, and more.
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): adding a container (declare its traits, offer what they require,
   register it, test it), and every property and facet in detail.
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md): the measurements behind the choices.
-- [docs/SURVEY.md](docs/SURVEY.md): the data structures of yggdrasil, loki, tyr and runir, and how each is written
-  as a request.
+- [docs/SURVEY.md](docs/SURVEY.md): data structures found in existing code, and how each is written as a request.
 - [docs/ROADMAP.md](docs/ROADMAP.md): what is done and what is next.

@@ -374,7 +374,7 @@ private:
 
 /// A map from indices to values, a slot per index below the largest key, iterated in key order. With Generations,
 /// each slot carries the generation it was written in, and clear only starts a new one (O(1)): older slots read
-/// as absent and keep their storage, as tyr's DenseRelationMap does. Without, a slot is a std::optional.
+/// as absent and keep their storage. Without, a slot is a std::optional.
 /// Iterating gives each key with a view of its value; values change by key (at, insert_or_assign).
 template<typename K, typename V, bool Generations>
 class IndexMap

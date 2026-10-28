@@ -1,5 +1,5 @@
 // Dense keys: indices 0..n-1, stored by position instead of hashed. Facts, markings cleared every round, and costs
-// per state, as a planner keeps them.
+// per state.
 
 #include "show.hpp"
 #include "urd/store.hpp"
@@ -15,7 +15,7 @@ using urd::value;
 namespace
 {
 
-/// An index of a fact, as a planner numbers them; it names its identity, so urd can use it as an index.
+/// An index of a fact; it names its identity, so urd can use it as an index.
 struct Fact
 {
     std::uint32_t value = 0;

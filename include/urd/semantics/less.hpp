@@ -275,7 +275,7 @@ struct Less<T>
     { return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(u, v); }
 };
 
-/// @brief Strong three-way comparison using Yggdrasil's semantic ordering.
+/// @brief Strong three-way comparison using urd's semantic ordering.
 ///
 /// `Less<T>` specializations must provide a total order: if neither value is
 /// less than the other, the values are semantically equal.
