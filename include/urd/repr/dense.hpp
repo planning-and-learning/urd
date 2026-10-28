@@ -26,8 +26,9 @@ namespace urd::repr
 {
 
 /// A set of indices as a bitset: a bit per key below the largest, iterated in key order. Compact and fast to look
-/// up; clear and iteration take time in proportion to the largest key, not to the keys present.
-template<typename K>
+/// up; iteration takes time in proportion to the largest key, not to the keys present, and so does clear, unless
+/// TrackWords: then the set remembers the words it set and clear zeroes only those.
+template<typename K, bool TrackWords = false>
 class DenseSet
 {
     static_assert(indexable<K>, "urd::repr::DenseSet: keys must be indices (urd::index_of)");
@@ -82,6 +83,9 @@ public:
         if (index >= bits().size())
             m_words.resize(Bits::num_blocks(index + 1));
         const bool inserted = !bits().test(index);
+        if constexpr (TrackWords)
+            if (m_words[Bits::block_index(index)] == 0)
+                m_touched.push_back(Bits::block_index(index));
         bits().set(index);
         m_count += inserted ? 1 : 0;
         return { iterator(this, index), inserted };
@@ -117,7 +121,14 @@ public:
     }
     void clear()
     {
-        bits().reset();
+        if constexpr (TrackWords)
+        {
+            for (const auto block : m_touched)
+                m_words[block] = 0;
+            m_touched.clear();
+        }
+        else
+            bits().reset();
         m_count = 0;
     }
 
@@ -222,6 +233,14 @@ private:
     DenseSet& recount()
     {
         m_count = bits().count();
+        if constexpr (TrackWords)
+        {
+            // Set algebra wrote whole words: the words to clear are those not zero now.
+            m_touched.clear();
+            for (std::size_t block = 0; block < m_words.size(); ++block)
+                if (m_words[block] != 0)
+                    m_touched.push_back(block);
+        }
         return *this;
     }
     void remove(std::size_t index)
@@ -249,8 +268,14 @@ private:
         return npos;
     }
 
+    struct NoWords
+    {
+    };
+
     std::vector<word> m_words;
     std::size_t m_count = 0;
+    /// The words set since the last clear (each at least once), where TrackWords.
+    [[no_unique_address]] std::conditional_t<TrackWords, std::vector<std::size_t>, NoWords> m_touched;
 };
 
 /// A set of indices as a sparse set (Briggs and Torczon): the members in one array, and for each index its place
@@ -637,9 +662,11 @@ private:
 namespace urd
 {
 
-/// A bit per key: sorted by index, which urd::Less orders as it does indices; clear zeroes every word.
-template<indexable K>
-struct container_traits<repr::DenseSet<K>> : properties_of<sorted, unique, dense, canonical, shrinkable, retains>
+/// A bit per key: sorted by index, which urd::Less orders as it does indices. Clear zeroes every word, or with
+/// TrackWords only those set since the last clear, at most one per element: time in proportion to the elements.
+template<indexable K, bool TrackWords>
+struct container_traits<repr::DenseSet<K, TrackWords>> :
+    properties_of<sorted, unique, dense, canonical, shrinkable, retains, std::conditional_t<TrackWords, proportional_clear, any_clear>>
 {
 };
 

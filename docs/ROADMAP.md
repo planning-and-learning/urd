@@ -272,7 +272,8 @@ policies and reuse over new containers.
    over an existing insertion-ordered set, and a `KeepOrder` policy on `SparseSet`.
 2. Merging values and reporting change — done: `merge(key, value, combine) -> bool` on maps with unique keys,
    `unite(other) -> bool` on sets.
-3. A bitset with touched-word clear and a word view.
+3. A bitset with touched-word clear — done: a `TrackWords` policy on `DenseSet` (`proportional_clear`, sorted).
+   The borrowed word view is left out: no property can promise a bitset, and the set algebra works by words.
 4. DenseRelationMap: generation clear that reuses values; concurrent updates.
 5. Fixed-shape nested bit rows (`uniform`, BitTensor).
 6. Later: sorted maps keeping value storage or a bucket queue, borrowed pool rows, order by projection, CSR rebuilt

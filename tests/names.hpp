@@ -124,8 +124,8 @@ struct name<urd::repr::RowPool<Inner>>
     static constexpr std::string_view id = "row_pool";
     static constexpr std::string_view value = "row pool (cleared rows are kept for reuse)";
 };
-template<typename K>
-struct name<urd::repr::DenseSet<K>>
+template<typename K, bool TrackWords>
+struct name<urd::repr::DenseSet<K, TrackWords>>
 {
     static constexpr std::string_view id = "dense_set";
     static constexpr std::string_view value = "dense set (a bitset over indices)";

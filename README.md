@@ -67,6 +67,7 @@ backed by [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
 | `Store<key<int>, sorted, frozen>` | `boost::container::flat_set` (sorted vector) |
 | `Store<key<int>, stable_refs>` | `std::unordered_set` |
 | `Store<key<int>, dense>` | `DenseSet` (bitset) |
+| `Store<key<int>, dense, proportional_clear>` | `DenseSet` that clears only the words it set |
 | `Store<key<int>, dense, constant_clear>` | `SparseSet` (Briggs–Torczon) |
 | `Store<key<int>, insertion_ordered>` | `IndexedSet` (vector plus a hash table of positions) |
 | `Store<key<std::string>, positional, monotone>` | `IndexedSet`: an interner |
@@ -143,7 +144,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `std::unordered_set/map` | O(1)\*~ | O(1)~ | O(1)~ | O(n + buckets) | O(n) | a node per element; stable references |
 | `std::set/map`, multi | O(log n) | O(log n) | O(log n) | O(n) | O(n), in order | a node per element; reclaims |
 | `boost::container::flat_set/map`, multi | O(n) | O(log n) | O(n) | O(n) | O(n), contiguous | n elements; retains |
-| `DenseSet` (bitset) | O(1)\* | O(1) | O(1) | O(U/64) | O(U/64 + n), in order | U bits; set algebra by words |
+| `DenseSet` (bitset) | O(1)\* | O(1) | O(1) | O(U/64); O(n) tracking its words | O(U/64 + n), in order | U bits (+ the words set, tracking); set algebra by words |
 | `SparseSet` | O(1)\* | O(1) | O(1); O(n) keeping order | O(1) for trivial keys | O(n), contiguous | n keys + U positions |
 | `IndexMap` (dense map) | O(1)\* | O(1) | O(1) | O(U); O(1) with generations | O(U), in key order | a slot per index |
 | `IndexedSet` | O(1)\*~ | O(1)~ | O(n) (keeps order) | O(capacity) | O(n), contiguous | n elements + a table of positions |

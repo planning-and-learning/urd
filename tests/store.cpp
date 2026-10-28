@@ -95,6 +95,8 @@ static_assert(std::same_as<decltype(*Store<key<int>, value<int>>().begin()), con
 static_assert(std::same_as<Store<key<int>, urd::dense>::representation, urd::repr::DenseSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::dense, urd::sorted>::representation, urd::repr::DenseSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::dense, urd::constant_clear>::representation, urd::repr::SparseSet<int>>);
+// A bitset that clears only the words it set: sorted, cleared in time proportional to its elements.
+static_assert(std::same_as<Store<key<int>, urd::dense, urd::proportional_clear>::representation, urd::repr::DenseSet<int, true>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense>::representation, urd::repr::IndexMap<int, int, false>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear>::representation, urd::repr::IndexMap<int, int, true>>);
 
@@ -352,7 +354,8 @@ using Sets = testing::Types<Store<key<int>>,
                             Store<key<int>, urd::stable_refs>,
                             Store<key<int>, urd::dense>,
                             Store<key<int>, urd::dense, urd::constant_clear>,
-                            Store<key<int>, urd::insertion_ordered>>;
+                            Store<key<int>, urd::insertion_ordered>,
+                            Store<key<int>, urd::dense, urd::proportional_clear>>;
 TYPED_TEST_SUITE(SetAlgebra, Sets);
 
 std::vector<int> sorted_copy(const auto& set)
@@ -392,6 +395,14 @@ TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
         EXPECT_EQ(sorted_copy(TypeParam(lhs) -= rhs), expected);
         EXPECT_EQ(lhs.includes(rhs), std::ranges::includes(a, b));
         EXPECT_EQ((TypeParam(lhs) |= rhs).size(), sorted_copy(TypeParam(lhs) |= rhs).size());
+        // After the algebra, clear leaves nothing behind (a bitset that tracks its words must track theirs too).
+        for (auto result : { TypeParam(lhs) |= rhs, TypeParam(lhs) &= rhs, TypeParam(lhs) -= rhs })
+        {
+            result.clear();
+            EXPECT_TRUE(result.empty() && sorted_copy(result).empty());
+            result.insert(3);
+            EXPECT_EQ(sorted_copy(result), std::vector<int> { 3 });
+        }
     }
 }
 

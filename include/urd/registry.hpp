@@ -108,6 +108,10 @@ template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
 
 template<typename T>
+using DenseSetOf = repr::DenseSet<T>;
+template<typename T>
+using TrackedDenseSet = repr::DenseSet<T, true>;
+template<typename T>
 using SparseSetOf = repr::SparseSet<T>;
 template<typename T>
 using OrderedSparseSet = repr::SparseSet<T, true>;
@@ -180,7 +184,8 @@ using element_preference = element_candidates<repr::Jagged,
                                               TreeSet,
                                               FlatMultiSet,
                                               FlatSet,
-                                              repr::DenseSet,
+                                              DenseSetOf,
+                                              TrackedDenseSet,
                                               SparseSetOf,
                                               repr::IndexedSet,
                                               OrderedSparseSet,

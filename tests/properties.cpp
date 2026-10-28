@@ -153,6 +153,8 @@ using Containers = testing::Types<
     Store<key<int>, urd::dense>,
     Store<key<int>, urd::dense, urd::sorted>,
     Store<key<int>, urd::dense, urd::constant_clear>,
+    urd::repr::DenseSet<int, true>,
+    Store<key<int>, urd::dense, urd::proportional_clear>,
     urd::repr::SparseSet<int, true>,
     Store<key<int>, urd::dense, urd::insertion_ordered>,
     urd::repr::IndexMap<int, int, false>,
