@@ -71,14 +71,16 @@ struct store_access
     { return store.m_representation; }
 };
 
-/// What a Store inherits in place of a facet its properties leave off: nothing. One type per facet, so that
-/// several left-off facets are distinct bases.
-template<typename Facet>
-struct no_facet
+/// A facet where On, else nothing: one empty type per facet, so that several left-off facets are distinct bases. A
+/// partial specialization, not std::conditional over an empty stand-in: one instantiation per facet instead of two,
+/// which adds up over the twenty-odd facets of every Store.
+template<bool On, typename Facet>
+struct facet_if : Facet
 {
 };
-
-template<bool On, typename Facet>
-using facet_if = std::conditional_t<On, Facet, no_facet<Facet>>;
+template<typename Facet>
+struct facet_if<false, Facet>
+{
+};
 
 }  // namespace urd::detail

@@ -117,6 +117,32 @@ static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representa
 
 static_assert(std::same_as<Store<key<int>, urd::change_log>::representation, urd::repr::ChangeLogged<FlatHashSet<int>>>);
 
+// Selection trusts the traits, so every registered container whose traits are declared for an element type must offer
+// what they promise: checked here for the whole registry, for elements, maps and rows.
+template<typename R>
+constexpr bool conforms_where_declared()
+{
+    // Only a declared container is instantiated: an undeclared one may not even be valid for the element type.
+    if constexpr (urd::container_traits<R>::declared)
+        return urd::conforming<R>;
+    else
+        return true;
+}
+template<typename... Rs>
+constexpr bool all_conform(urd::detail::type_list<Rs...> /*candidates*/)
+{ return (conforms_where_declared<Rs>() && ...); }
+template<typename... Ps>
+using element_candidates = typename urd::detail::instantiated<typename urd::detail::to_spec<Ps...>::type, urd::detail::element_preference>::type;
+template<typename... Ps>
+using map_candidates = typename urd::detail::instantiated<typename urd::detail::to_spec<Ps...>::type, urd::detail::map_preference>::type;
+// Called parenthesized: argument-dependent lookup would instantiate every candidate to find associated names.
+static_assert((all_conform) (element_candidates<key<int>> {}));
+static_assert((all_conform) (element_candidates<value<std::string>> {}));
+static_assert((all_conform) (element_candidates<value<Store<value<int>, urd::frozen>>> {}));
+static_assert((all_conform) (element_candidates<value<Store<key<int>, urd::dense, urd::frozen>>> {}));
+static_assert((all_conform) (map_candidates<key<int>, value<int>> {}));
+static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {}));
+
 // Rows: a Store of Stores.
 static_assert(std::same_as<Store<value<Store<value<int>>>>::representation, std::vector<Store<value<int>>>>);
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>>::representation, urd::repr::Jagged<Store<value<int>, urd::frozen>>>);

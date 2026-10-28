@@ -55,13 +55,13 @@ using requirement = with_t<S,
 template<typename R, typename S>
 concept serves_by_traits = container_traits<R>::declared && satisfies<container_traits<R>, requirement<S>> && by_value<container_traits<R>> == by_value<S>
                            && has<container_traits<R>, unique> == has<S, unique> && (!S::is_sequence || !by_value<S> || has<S, sorted>);
-// The traits come first: they are partial specializations matched on R's arguments, so checking them instantiates no
-// container. Only the few candidates whose traits fit are instantiated to check their interface. A concept's
-// conjunction stops at the first unmet part, so the order is what keeps a request cheap to compile.
+// Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
+// instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
+// typed test suites, for every registered container, not again for every request: those interface checks were most
+// of what resolving a request cost the compiler. Positions are the exception, checked where asked for.
 template<typename R, typename S>
-concept serves =
-    serves_by_traits<R, S> && detail::map_container<R> == S::is_map && conforming<R> && (!has<S, positional> || std::ranges::random_access_range<R>)
-    && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
+concept serves = serves_by_traits<R, S> && (!has<S, positional> || std::ranges::random_access_range<R>)
+                 && (!is_store<typename S::element_type> || satisfies<element_traits<R>, requirement<container_traits<typename S::element_type>>>);
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
