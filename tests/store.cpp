@@ -3,6 +3,7 @@
 
 #include "urd/store.hpp"
 
+#include "allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
 
@@ -1129,4 +1130,57 @@ TEST(OrderBy, QueueOfUnorderedElements)
     tasks.push(Task { 7, "b" });
     tasks.push(Task { 2, "a" });
     EXPECT_EQ(tasks.top().name, "a");
+}
+
+// A frozen Store changes only by assign, which rebuilds in the storage held where the representation can: compressed
+// sparse rows rebuilt from pairs of the same size allocate nothing, and hold what a fresh build would.
+TEST(Assign, RebuildsCsrInPlace)
+{
+    using Successors = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>;
+    auto random = std::mt19937(43);
+    const auto pairs = [&random]
+    {
+        auto drawn = std::vector<std::pair<int, int>>();
+        for (int each = 0; each < 500; ++each)
+            drawn.emplace_back(std::uniform_int_distribution<int>(0, 49)(random), each);
+        drawn.emplace_back(49, -1);  // the same key range each time
+        return drawn;
+    };
+    auto graph = Successors();
+    const auto first = pairs();
+    graph.assign(first.begin(), first.end());
+    EXPECT_EQ(graph, Successors(first.begin(), first.end()));
+    for (int round = 0; round < 5; ++round)
+    {
+        const auto next = pairs();
+        {
+            const auto counted = urd::test::Counted();
+            graph.assign(next.begin(), next.end());
+        }
+        if (urd::test::counts_allocations)
+        {
+            EXPECT_EQ(urd::test::allocations(), 0) << "round " << round;
+        }
+        EXPECT_EQ(graph, Successors(next.begin(), next.end())) << "round " << round;
+    }
+    const auto fewer = std::vector<std::pair<int, int>> { { 2, 7 }, { 0, 1 }, { 2, 8 } };
+    graph.assign(fewer.begin(), fewer.end());
+    EXPECT_EQ(graph, Successors(fewer.begin(), fewer.end()));
+    EXPECT_EQ(std::vector<int>(graph.values(2).begin(), graph.values(2).end()), (std::vector<int> { 7, 8 }));
+}
+
+// Frozen rows rebuild in their arrays; a representation without assign is built anew, with the same result.
+TEST(Assign, RebuildsRowsAndOthers)
+{
+    using Rows = Store<value<Store<value<int>, urd::frozen>>, urd::frozen>;
+    using Row = Store<value<int>, urd::frozen>;
+    auto rows = Rows { Row { 1, 2, 3 }, Row { 4 } };
+    const auto next = std::vector<Row> { Row { 5 }, Row {}, Row { 6, 7 } };
+    rows.assign(next.begin(), next.end());
+    EXPECT_EQ(rows, Rows(next.begin(), next.end()));
+    using Sorted = Store<key<int>, urd::sorted, urd::frozen>;
+    auto sorted = Sorted { 3, 1 };
+    const auto values = std::vector<int> { 9, 4, 4 };
+    sorted.assign(values.begin(), values.end());
+    EXPECT_EQ(sorted, (Sorted { 4, 9 }));
 }

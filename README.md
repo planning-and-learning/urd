@@ -174,7 +174,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 
 | Requested only | Tags | Effect |
 |---|---|---|
-| lifecycle | `monotone` → `frozen` | only grows (no erase), or never changes after construction |
+| lifecycle | `monotone` → `frozen` | only grows (no erase), or changes only by `assign(first, last)`, a rebuild (in the storage held where the container can) |
 | emptiness | `nonempty` | at least one element |
 | multiplicity | `functional`, `multi` | one value per key, or many (a multimap) |
 | identity | `positional` | elements identified by position (sequences, and sets with positions) |

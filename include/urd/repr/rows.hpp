@@ -57,7 +57,13 @@ public:
 
     template<std::input_iterator InputIt>
     Jagged(InputIt first, InputIt last)
+    { assign(first, last); }
+
+    /// Rebuilds from rows, in the storage held: clear keeps it.
+    template<std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last)
     {
+        clear();
         std::for_each(first, last, [this](const auto& elements) { this->push_back(elements); });
     }
 

@@ -104,6 +104,19 @@ public:
 
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
 
+    /// Replaces the contents by what a Store built from these elements would hold: the one way a frozen Store
+    /// changes. A representation that rebuilds in place (assign) keeps its storage; any other is built anew.
+    template<std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last)
+    {
+        if constexpr (requires { m_representation.assign(first, last); })
+            m_representation.assign(first, last);
+        else
+            m_representation = representation(first, last);
+        if constexpr (has<S, nonempty>)
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+    }
+
     /// Rows of these lengths, empty: a fixed_shape Store's only shape.
     explicit Store(const row_lengths& lengths)
         requires has<S, fixed_shape>

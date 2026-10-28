@@ -48,6 +48,12 @@ public:
     {
     }
 
+    /// Rebuilds from pairs, in the storage held, where the groups can.
+    template<std::input_iterator InputIt>
+        requires requires(Groups& groups, InputIt first) { groups.assign(first, first); }
+    void assign(InputIt first, InputIt last)
+    { m_groups.assign(first, last); }
+
     [[nodiscard]] iterator begin() const { return iterator(&m_groups, m_groups.begin(), 0).normalized(); }
     [[nodiscard]] iterator end() const { return iterator(&m_groups, m_groups.end(), 0); }
     [[nodiscard]] size_type size() const { return m_groups.count(); }
@@ -231,24 +237,54 @@ public:
 
     template<std::input_iterator InputIt>
     IndexGroups(InputIt first, InputIt last)
+    { assign(first, last); }
+
+    /// Rebuilds from pairs. From a range read twice, with values that can be default-built, in the storage already
+    /// held: count each key's values, sum the counts to offsets, place each value at its key's next offset, then
+    /// shift the offsets back. Otherwise through a copy of the pairs.
+    template<std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last)
     {
-        auto pairs = std::vector<std::pair<std::size_t, V>>();
-        std::for_each(first, last, [&pairs](const auto& pair) { pairs.emplace_back(index_of<K>::to_index(K(pair.first)), V(pair.second)); });
-        auto keys = std::size_t { 0 };
-        for (const auto& pair : pairs)
-            keys = std::max(keys, pair.first + 1);
-        m_offsets.assign(keys + 1, 0);
-        for (const auto& pair : pairs)
-            ++m_offsets[pair.first + 1];
-        std::partial_sum(m_offsets.begin(), m_offsets.end(), m_offsets.begin());
-        // Where each pair goes; then the values in that order.
-        auto next = std::vector<std::size_t>(m_offsets.begin(), m_offsets.end() - 1);
-        auto order = std::vector<std::size_t>(pairs.size());
-        for (std::size_t each = 0; each < pairs.size(); ++each)
-            order[next[pairs[each].first]++] = each;
-        m_values.reserve(pairs.size());
-        for (const auto each : order)
-            m_values.push_back(std::move(pairs[each].second));
+        const auto index = [](const auto& pair) { return index_of<K>::to_index(K(pair.first)); };
+        if constexpr (std::forward_iterator<InputIt> && std::default_initializable<V>)
+        {
+            m_offsets.assign(1, 0);
+            std::for_each(first,
+                          last,
+                          [this, &index](const auto& pair)
+                          {
+                              const auto at = index(pair);
+                              if (at + 2 > m_offsets.size())
+                                  m_offsets.resize(at + 2, 0);
+                              ++m_offsets[at + 1];
+                          });
+            std::partial_sum(m_offsets.begin(), m_offsets.end(), m_offsets.begin());
+            m_values.resize(m_offsets.back());
+            std::for_each(first, last, [this, &index](const auto& pair) { m_values[m_offsets[index(pair)]++] = V(pair.second); });
+            std::shift_right(m_offsets.begin(), m_offsets.end(), 1);
+            m_offsets.front() = 0;
+        }
+        else
+        {
+            auto pairs = std::vector<std::pair<std::size_t, V>>();
+            std::for_each(first, last, [&pairs, &index](const auto& pair) { pairs.emplace_back(index(pair), V(pair.second)); });
+            auto keys = std::size_t { 0 };
+            for (const auto& pair : pairs)
+                keys = std::max(keys, pair.first + 1);
+            m_offsets.assign(keys + 1, 0);
+            for (const auto& pair : pairs)
+                ++m_offsets[pair.first + 1];
+            std::partial_sum(m_offsets.begin(), m_offsets.end(), m_offsets.begin());
+            // Where each pair goes; then the values in that order.
+            auto next = std::vector<std::size_t>(m_offsets.begin(), m_offsets.end() - 1);
+            auto order = std::vector<std::size_t>(pairs.size());
+            for (std::size_t each = 0; each < pairs.size(); ++each)
+                order[next[pairs[each].first]++] = each;
+            m_values.clear();
+            m_values.reserve(pairs.size());
+            for (const auto each : order)
+                m_values.push_back(std::move(pairs[each].second));
+        }
     }
 
     [[nodiscard]] group begin() const { return 0; }

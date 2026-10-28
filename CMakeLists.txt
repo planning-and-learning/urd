@@ -59,7 +59,7 @@ if(URD_BUILD_TESTS)
     find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
-    # nested Stores. The last two count allocations (tests/allocations.cpp replaces operator new).
+    # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
     foreach(test store properties rows semantics queues pools)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
@@ -69,6 +69,7 @@ if(URD_BUILD_TESTS)
     target_sources(test_properties PRIVATE tests/allocations.cpp)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
     target_sources(test_queues PRIVATE tests/allocations.cpp)
+    target_sources(test_store PRIVATE tests/allocations.cpp)
 
     # The include root holds the vocabulary and the entry point only.
     add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)

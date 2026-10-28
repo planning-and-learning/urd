@@ -315,7 +315,10 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
    `update(h, e)` and `erase(h)`; no new tag), and `monotone_priority` (a requested-only tag; `repr::BucketQueue`
    for integral priorities, chosen only when the request states it). A queue container now serves only queue
    requests.
-4. Rebuilding a frozen Store in place (`assign`).
+4. Rebuilding a frozen Store in place — done: `assign(first, last)` on every Store, through the representation's
+   `assign` where it has one, else a fresh build. Compressed sparse rows rebuild in their arrays (count, offsets,
+   place, shift back; no allocation for a rebuild of the same size, checked by counting allocations), and frozen rows
+   by clear and append.
 5. Nested fixed shapes, and `reset` with a cost policy.
 6. Borrowed rows from pools (`view(h)`), including bit rows stored as words.
 7. Sorted maps that keep erased values' storage (float-keyed cost buckets).

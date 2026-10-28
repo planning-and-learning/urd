@@ -215,6 +215,11 @@ keys. Every multimap Store has `values(key)`, the values of a key as a range: a 
 `v`. A frozen graph is `Store<key<V>, value<V>, multi, dense, frozen, bidirectional>` (`repr::BidirectionalCsr`, a
 CSR in each direction): successors are `values(v)`, predecessors `keys(v)`.
 
+A frozen Store changes only by `assign(first, last)`, which leaves it holding what a fresh build would. A
+representation with `assign` rebuilds in the storage it holds: compressed sparse rows count each key's values, sum the
+counts to offsets, place the values and shift the offsets back, so a per-state index rebuilt from pairs of the same
+size allocates nothing.
+
 ## Postings
 
 A multimap without order or stable references (`Store<key<K>, value<V>, multi>`) resolves to `repr::PostingMap`
