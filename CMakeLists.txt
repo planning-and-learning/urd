@@ -143,24 +143,27 @@ if(URD_BUILD_TESTS)
         endforeach()
     endif()
 
-    # Code that must not compile. The control build of each file must compile, so each case fails for its
-    # own reason; the cases are skipped when the control does not build.
+    # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
+    # of a target that links urd (so the cases build nothing and run in parallel under ctest -j). The control
+    # case of each file must compile, so each case fails for its own reason; the cases are skipped when it does not.
     function(urd_compile_fail_cases name source count)
         add_executable(test_${name}_control EXCLUDE_FROM_ALL ${source})
         target_link_libraries(test_${name}_control PRIVATE urd::urd)
-        add_test(
-            NAME ${name}_control
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_${name}_control --config $<CONFIG>
+        set(includes "$<TARGET_PROPERTY:test_${name}_control,INCLUDE_DIRECTORIES>")
+        set(definitions "$<TARGET_PROPERTY:test_${name}_control,COMPILE_DEFINITIONS>")
+        set(compile
+            ${CMAKE_CXX_COMPILER}
+            ${CMAKE_CXX20_STANDARD_COMPILE_OPTION}
+            "$<$<BOOL:${includes}>:-I$<JOIN:${includes},$<SEMICOLON>-I>>"
+            "$<$<BOOL:${definitions}>:-D$<JOIN:${definitions},$<SEMICOLON>-D>>"
+            "$<TARGET_PROPERTY:test_${name}_control,COMPILE_OPTIONS>"
+            -fsyntax-only
+            ${CMAKE_CURRENT_SOURCE_DIR}/${source}
         )
+        add_test(NAME ${name}_control COMMAND ${compile} COMMAND_EXPAND_LISTS)
         set_tests_properties(${name}_control PROPERTIES FIXTURES_SETUP ${name})
         foreach(case RANGE 1 ${count})
-            add_executable(test_${name}_${case} EXCLUDE_FROM_ALL ${source})
-            target_link_libraries(test_${name}_${case} PRIVATE urd::urd)
-            target_compile_definitions(test_${name}_${case} PRIVATE URD_CASE=${case})
-            add_test(
-                NAME ${name}_${case}
-                COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test_${name}_${case} --config $<CONFIG>
-            )
+            add_test(NAME ${name}_${case} COMMAND ${compile} -DURD_CASE=${case} COMMAND_EXPAND_LISTS)
             set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL TRUE FIXTURES_REQUIRED ${name})
         endforeach()
     endfunction()

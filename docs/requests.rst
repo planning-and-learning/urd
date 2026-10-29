@@ -125,7 +125,7 @@ Building and using
    cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
    cmake --build dependencies-build && cmake --install dependencies-build    # Boost, cista, gtl, GoogleTest, Google Benchmark
    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-   cmake --build build -j8 && ctest --test-dir build
+   cmake --build build -j8 && ctest --test-dir build -j8
    cmake --install build --prefix <where>                                    # then find_package(urd) from there
 
 Link ``urd::urd`` and include ``urd/store.hpp``. The target carries Boost 1.89 or later (Container, Unordered,
