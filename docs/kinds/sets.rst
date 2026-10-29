@@ -31,6 +31,9 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
      - ``boost::container::flat_set`` (a sorted vector)
    * - ``Store<key<K>, stable_refs>``
      - ``std::unordered_set``
+   * - ``Store<key<K>, stable_refs, retains>``
+     - ``RecyclingSet`` over ``std::unordered_set`` (over ``std::set`` with ``sorted``): erased nodes are kept for the
+       next elements
    * - ``Store<key<I>, dense>``
      - ``DenseSet`` (a bitset), with ``proportional_clear`` one that clears only the words it set
    * - ``Store<key<I>, dense, constant_clear>``
@@ -271,6 +274,13 @@ n elements, U the key range (largest index + 1); \* amortized, ~ expected.
      - O(n)
      - O(n), in order
      - a node per element; reclaims
+   * - ``RecyclingSet<Set>``
+     - as Set, a kept node first
+     - as Set
+     - as Set; keeps the node
+     - O(n)
+     - as Set
+     - erased nodes kept; stable references, retains
    * - ``boost::container::flat_set``
      - O(n)
      - O(log n)

@@ -206,7 +206,12 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<by_value>>,
     // A sorted map that keeps erased nodes and their values for reuse.
     urd::repr::RecyclingMap<int, int>,
-    urd::repr::RecyclingHashMap<int, int>
+    urd::repr::RecyclingHashMap<int, int>,
+    // Sets that keep erased nodes for reuse.
+    urd::repr::RecyclingHashSet<int>,
+    urd::repr::RecyclingTreeSet<int>,
+    Store<key<int>, urd::stable_refs, urd::retains>,
+    Store<key<int>, urd::sorted, urd::stable_refs, urd::retains>
 #if defined(URD_HAS_GTL)
     ,
     // Sharded hash tables that threads share (gtl).

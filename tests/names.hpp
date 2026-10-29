@@ -257,6 +257,18 @@ struct name<urd::repr::RecyclingMap<K, V>>
     static constexpr std::string_view id = "recycling_map";
     static constexpr std::string_view value = "recycling map (std::map that keeps erased nodes and their values for reuse)";
 };
+template<typename T>
+struct name<urd::repr::RecyclingHashSet<T>>
+{
+    static constexpr std::string_view id = "recycling_hash_set";
+    static constexpr std::string_view value = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
+};
+template<typename T>
+struct name<urd::repr::RecyclingTreeSet<T>>
+{
+    static constexpr std::string_view id = "recycling_tree_set";
+    static constexpr std::string_view value = "recycling tree set (std::set that keeps erased nodes for reuse)";
+};
 template<typename K, typename V>
 struct name<urd::repr::RecyclingHashMap<K, V>>
 {

@@ -2,6 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -9,7 +10,9 @@
 #include <cstddef>
 #include <iterator>
 #include <map>
+#include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -37,7 +40,9 @@ public:
 
     template<std::input_iterator InputIt>
     Recycling(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     /// A value built from `args` for `key` unless it has one; a kept node first, where there is one.
     template<typename... Args>
@@ -70,10 +75,14 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    { return try_emplace(K(pair.first), pair.second); }
+    {
+        return try_emplace(K(pair.first), pair.second);
+    }
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    { return insert(pair).first; }
+    {
+        return insert(pair).first;
+    }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -81,7 +90,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    {
+        return insert(std::pair<K, V>(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
     {
@@ -119,12 +130,100 @@ private:
     std::vector<typename Base::node_type> m_free;
 };
 
+/// A set that keeps erased nodes for reuse: Set (a std::set or std::unordered_set), and the nodes of erased elements,
+/// holding their storage. A new element takes such a node before allocating one, so a set emptied and refilled
+/// allocates nothing once warm, and references to its elements hold as the set's do.
+template<typename Set>
+class RecyclingSet : public Set
+{
+    using Base = Set;
+    using T = typename Set::value_type;
+
+public:
+    using typename Base::const_iterator;
+    using typename Base::iterator;
+    using typename Base::size_type;
+    using typename Base::value_type;
+
+    RecyclingSet() = default;
+
+    template<std::input_iterator InputIt>
+    RecyclingSet(InputIt first, InputIt last)
+    {
+        insert(first, last);
+    }
+
+    std::pair<iterator, bool> insert(const T& element) { return put(element); }
+    std::pair<iterator, bool> insert(T&& element) { return put(std::move(element)); }
+    iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
+    template<std::input_iterator InputIt>
+    void insert(InputIt first, InputIt last)
+    {
+        std::for_each(first, last, [this](const auto& element) { this->insert(T(element)); });
+    }
+    template<typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args)
+    {
+        return insert(T(std::forward<Args>(args)...));
+    }
+
+    size_type erase(const T& element)
+    {
+        const auto found = Base::find(element);
+        if (found == Base::end())
+            return 0;
+        erase(found);
+        return 1;
+    }
+    /// Keeps the node, its storage held.
+    iterator erase(const_iterator pos)
+    {
+        const auto after = std::next(Base::erase(pos, pos));
+        m_free.push_back(Base::extract(pos));
+        return after;
+    }
+    iterator erase(const_iterator first, const_iterator last)
+    {
+        while (first != last)
+            first = erase(first);
+        return Base::erase(first, first);
+    }
+    void clear()
+    {
+        while (!Base::empty())
+            erase(Base::cbegin());
+    }
+
+private:
+    /// Inserts a kept node holding `element` where there is one, else a new one.
+    template<typename U>
+    std::pair<iterator, bool> put(U&& element)
+    {
+        if (const auto found = Base::find(element); found != Base::end())
+            return { found, false };
+        if (m_free.empty())
+            return Base::insert(std::forward<U>(element));
+        auto node = std::move(m_free.back());
+        m_free.pop_back();
+        node.value() = std::forward<U>(element);
+        return { Base::insert(std::move(node)).position, true };
+    }
+
+    std::vector<typename Base::node_type> m_free;
+};
+
 /// A sorted map that keeps erased values for reuse.
 template<typename K, typename V>
 using RecyclingMap = Recycling<std::map<K, V, Less<K>>>;
 /// A hash map that keeps erased values for reuse.
 template<typename K, typename V>
 using RecyclingHashMap = Recycling<std::unordered_map<K, V, Hash<K>, EqualTo<K>>>;
+/// A hash set whose erased nodes are kept for the next elements.
+template<typename T>
+using RecyclingHashSet = RecyclingSet<std::unordered_set<T, Hash<T>, EqualTo<T>>>;
+/// A sorted set whose erased nodes are kept for the next elements.
+template<typename T>
+using RecyclingTreeSet = RecyclingSet<std::set<T, Less<T>>>;
 
 }  // namespace urd::repr
 
@@ -141,6 +240,13 @@ struct container_traits<repr::Recycling<Map>> : with_t<container_traits<Map>, re
 /// Its values keep what they hold when their keys are erased: their own properties, memory included.
 template<typename Map>
 struct element_traits<repr::Recycling<Map>> : container_traits<typename Map::mapped_type>
+{
+};
+
+/// As Set, a node per element, but the erased nodes are kept for the next elements: stable references, retained.
+template<typename Set>
+    requires container_traits<Set>::declared && has<container_traits<Set>, unique> && has<container_traits<Set>, stable_refs>
+struct container_traits<repr::RecyclingSet<Set>> : with_t<container_traits<Set>, retains>
 {
 };
 

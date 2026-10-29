@@ -190,6 +190,10 @@ using ParallelNodeHashSetOf = repr::ParallelNodeHashSet<T>;
 template<typename K, typename V>
 using ParallelNodeHashMapOf = repr::ParallelNodeHashMap<K, V>;
 #endif
+template<typename T>
+using RecyclingHashSetOf = repr::RecyclingHashSet<T>;
+template<typename T>
+using RecyclingTreeSetOf = repr::RecyclingTreeSet<T>;
 template<typename K, typename V>
 using RecyclingHashMapOf = repr::RecyclingHashMap<K, V>;
 template<typename K, typename V>
@@ -261,6 +265,8 @@ using element_preference = element_candidates<JaggedOf,
                                               TreeSet,
                                               FlatMultiSet,
                                               FlatSet,
+                                              RecyclingHashSetOf,
+                                              RecyclingTreeSetOf,
                                               DenseSetOf,
                                               TrackedDenseSet,
                                               SparseSetOf,

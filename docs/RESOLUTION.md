@@ -33,6 +33,8 @@ indexable).
 | `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<int>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<int>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
+| `Store<key<int>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` |
+| `Store<key<int>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` |
 | `Store<key<int>, reclaims>` | unique, reclaims, shrinkable | `set` |
 | `Store<key<int>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` |
 | `Store<key<int>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |
@@ -70,6 +72,8 @@ indexable).
 | `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<std::string>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<std::string>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
+| `Store<key<std::string>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` |
+| `Store<key<std::string>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` |
 | `Store<key<std::string>, reclaims>` | unique, reclaims, shrinkable | `set` |
 | `Store<key<std::string>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` |
 | `Store<key<std::string>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |
@@ -107,6 +111,8 @@ indexable).
 | `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<Id>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<Id>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
+| `Store<key<Id>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` |
+| `Store<key<Id>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` |
 | `Store<key<Id>, reclaims>` | unique, reclaims, shrinkable | `set` |
 | `Store<key<Id>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` |
 | `Store<key<Id>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |

@@ -1401,6 +1401,12 @@ TEST(FixedShape, ThreeLevels)
 }
 
 // Without an order asked for, values that keep their memory get a hash map that recycles: no tree where none is needed.
+// Sets with stable references that keep their storage: the node sets, their erased nodes kept for the next elements.
+static_assert(std::same_as<Store<key<int>, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingHashSet<int>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingTreeSet<int>>);
+// Without stable_refs, retains is the flat containers' already.
+static_assert(std::same_as<Store<key<int>, urd::retains>::representation, boost::unordered_flat_set<int, urd::Hash<int>, urd::EqualTo<int>>>);
+
 TEST(Recycling, UnorderedMapsRecycleToo)
 {
     using Bucket = Store<key<int>, urd::retains>;

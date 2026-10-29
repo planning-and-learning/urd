@@ -53,9 +53,9 @@ urd's own
    * - ``Jagged``, ``RowPool``
      - rows in one array per level; rows kept with their storage for reuse
      - rows (:ref:`rows`)
-   * - ``Recycling``
-     - a map that keeps erased nodes and their values for the next keys
-     - maps of ``retains`` rows
+   * - ``Recycling``, ``RecyclingSet``
+     - a map that keeps erased nodes and their values for the next keys; a node set that keeps erased nodes
+     - maps of ``retains`` rows; sets with ``stable_refs, retains``
    * - ``FlatEntryMap``
      - entries in the order their values give, found by key
      - ``sorted, order_by<P(key, value)>``
