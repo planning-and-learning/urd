@@ -48,7 +48,7 @@ public:
         requires chained
     {
         const auto* layer = static_cast<const Derived*>(this);
-        while (at.value < store_access::representation(*layer).base())
+        while ((at.value) < store_access::representation(*layer).base())
             layer = layer->m_parent;
         return *layer;
     }

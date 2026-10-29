@@ -136,7 +136,7 @@ public:
     [[nodiscard]] bool contains(const T& record) const { return position_of(record).has_value(); }
     [[nodiscard]] const T& operator[](handle_type at) const
     {
-        assert(at.value < m_state->records.size());
+        assert((at.value) < m_state->records.size());
         return *m_state->records[at.value];
     }
     [[nodiscard]] size_type size() const { return m_state->records.size(); }

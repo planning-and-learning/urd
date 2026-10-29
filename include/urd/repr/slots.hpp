@@ -68,7 +68,7 @@ public:
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
     void erase(handle_type handle)
     {
-        assert(handle.value < m_slots.size());
+        assert((handle.value) < m_slots.size());
         const auto lock = std::scoped_lock(m_mutex);
         m_free.push_back(handle.value);
         --m_count;
@@ -76,12 +76,12 @@ public:
 
     [[nodiscard]] const T& operator[](handle_type handle) const
     {
-        assert(handle.value < m_slots.size());
+        assert((handle.value) < m_slots.size());
         return m_slots[handle.value];
     }
     [[nodiscard]] T& operator[](handle_type handle)
     {
-        assert(handle.value < m_slots.size());
+        assert((handle.value) < m_slots.size());
         return m_slots[handle.value];
     }
 

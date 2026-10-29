@@ -350,10 +350,11 @@ private:
     /// The layer that holds `at`: this one, or the ancestor whose range it lies in.
     [[nodiscard]] const LayeredPool& owner(handle_type at) const
     {
+        // handle_type is R's, so `at.value` is a dependent name: parenthesized, or Clang reads `value <` as urd::value<…>.
         const auto* layer = this;
-        while (at.value < layer->m_base)
+        while ((at.value) < layer->m_base)
             layer = layer->m_parent;
-        assert(at.value < layer->size() && "urd::repr::LayeredPool: no element at this index");
+        assert((at.value) < layer->size() && "urd::repr::LayeredPool: no element at this index");
         return *layer;
     }
     [[nodiscard]] handle_type global(handle_type local_at) const noexcept { return handle_type(m_base + local_at.value); }

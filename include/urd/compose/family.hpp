@@ -130,7 +130,7 @@ public:
     template<typename T>
     [[nodiscard]] bool contains(urd::index<T> at) const
     {
-        return !at.is_none() && at.value < get<T>().size();
+        return !at.is_none() && (at.value) < get<T>().size();
     }
     /// Clears every member.
     void clear()
@@ -147,7 +147,7 @@ private:
         if constexpr (chained<T>)
         {
             const auto* family = this;
-            while (at.value < family->template get<T>().base())
+            while ((at.value) < family->template get<T>().base())
                 family = family->m_parent;
             return *family;
         }
