@@ -435,13 +435,16 @@ private:
 /// each slot carries the generation it was written in, and clear only starts a new one (O(1)): older slots read
 /// as absent and keep their storage. Without, a slot is a std::optional.
 /// Iterating gives each key with a view of its value; values change by key (at, insert_or_assign, update). With
-/// ThreadSafe (and Generations), the slots lie in a thread-safe SegmentedVector and each has a spin lock: update and
-/// read may run from threads at once; clear, erase, iteration and the rest need no other operation running.
-template<typename K, typename V, bool Generations, bool ThreadSafe = false>
+/// Stable, the slots lie in a SegmentedVector and never move: what is stable is the value at, operator[] and update
+/// reach and the .second of an iterated entry (the entry itself is built on the fly). With ThreadSafe (which needs
+/// Stable and Generations), the segments are the thread-safe ones and each slot has a spin lock: update and read
+/// may run from threads at once; clear, erase, iteration and the rest need no other operation running.
+template<typename K, typename V, bool Generations, bool ThreadSafe = false, bool Stable = ThreadSafe>
 class IndexMap
 {
     static_assert(indexable<K>, "urd::repr::IndexMap: keys must be indices (urd::index_of)");
     static_assert(!ThreadSafe || Generations, "urd::repr::IndexMap: thread-safe only with generations");
+    static_assert(!ThreadSafe || Stable, "urd::repr::IndexMap: threads share slots that never move (Stable)");
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
     struct generation_slot
@@ -451,7 +454,7 @@ class IndexMap
         [[no_unique_address]] mutable std::conditional_t<ThreadSafe, SpinMutex, NoLock> lock;
     };
     using slot = std::conditional_t<Generations, generation_slot, std::optional<V>>;
-    using Slots = std::conditional_t<ThreadSafe, SegmentedVector<slot, default_first_segment_size, true>, std::vector<slot>>;
+    using Slots = std::conditional_t<Stable, SegmentedVector<slot, default_first_segment_size, ThreadSafe>, std::vector<slot>>;
     /// A count threads may change at once; moving or copying it, like the map, needs no other operation running.
     struct AtomicCount
     {
@@ -509,10 +512,10 @@ public:
     [[nodiscard]] size_type size() const { return static_cast<size_type>(m_count); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 
-    /// Room for keys below `count`.
+    /// Room for keys below `count` (segments grow as keys arrive).
     void reserve(size_type count)
     {
-        if constexpr (!ThreadSafe)
+        if constexpr (!Stable)
             m_slots.reserve(count);
     }
 
@@ -670,7 +673,8 @@ public:
         if constexpr (Generations)
             ++m_generation;
         else
-            std::ranges::for_each(m_slots, [](slot& each) { each.reset(); });
+            for (std::size_t index = 0; index < m_slots.size(); ++index)
+                m_slots[index].reset();
         m_count = 0;
     }
 
@@ -859,17 +863,25 @@ struct container_traits<repr::SparseSet<K, KeepOrder>> :
 };
 
 /// A slot per key, in key order: sorted; erase frees what the value owns (std::optional::reset), clear scans every
-/// slot.
-template<indexable K, typename V>
-struct container_traits<repr::IndexMap<K, V, false>> : properties_of<sorted, unique, dense, shrinkable, retains>
+/// slot. Stable slots never move: the values keep their addresses.
+template<indexable K, typename V, bool Stable>
+struct container_traits<repr::IndexMap<K, V, false, false, Stable>> :
+    properties_of<sorted, unique, dense, shrinkable, retains, std::conditional_t<Stable, stable_refs, moving_refs>>
 {
 };
 
 /// Clear starts a new generation; stale slots keep their values' storage until written again.
-template<indexable K, typename V, bool ThreadSafe>
+template<indexable K, typename V, bool ThreadSafe, bool Stable>
     requires std::default_initializable<V> && std::movable<V>
-struct container_traits<repr::IndexMap<K, V, true, ThreadSafe>> :
-    properties_of<sorted, unique, dense, shrinkable, retains, constant_clear, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
+struct container_traits<repr::IndexMap<K, V, true, ThreadSafe, Stable>> :
+    properties_of<sorted,
+                  unique,
+                  dense,
+                  shrinkable,
+                  retains,
+                  constant_clear,
+                  std::conditional_t<Stable, stable_refs, moving_refs>,
+                  std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 

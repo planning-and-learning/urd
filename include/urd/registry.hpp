@@ -119,7 +119,11 @@ using FlatMultiMapOf = boost::container::flat_multimap<K, V, Less<K>>;
 template<typename K, typename V>
 using DenseMapOf = repr::IndexMap<K, V, false>;
 template<typename K, typename V>
+using StableDenseMapOf = repr::IndexMap<K, V, false, false, true>;
+template<typename K, typename V>
 using GenerationMapOf = repr::IndexMap<K, V, true>;
+template<typename K, typename V>
+using StableGenerationMapOf = repr::IndexMap<K, V, true, false, true>;
 template<typename K, typename V>
 using ThreadSafeGenerationMapOf = repr::IndexMap<K, V, true, true>;
 
@@ -308,7 +312,9 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       RecyclingHashMapOf,
                                       RecyclingMapOf,
                                       DenseMapOf,
+                                      StableDenseMapOf,
                                       GenerationMapOf,
+                                      StableGenerationMapOf,
                                       ThreadSafeGenerationMapOf,
                                       OrderedMapOf,
                                       DenseOrderedMapOf,

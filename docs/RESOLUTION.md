@@ -269,7 +269,8 @@ indexable).
 | `Store<key<int>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` |
 | `Store<key<int>, value<int>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` |
-| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `none` — missing: dense keys in segmented slots; M14 |
+| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` |
+| `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` |
 | `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
@@ -291,7 +292,8 @@ indexable).
 | `Store<key<Id>, value<double>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` |
 | `Store<key<Id>, value<double>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` |
-| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `none` — missing: dense keys in segmented slots; M14 |
+| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` |
+| `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` |
 | `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |

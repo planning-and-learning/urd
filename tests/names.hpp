@@ -144,10 +144,22 @@ struct name<urd::repr::IndexMap<K, V, false>>
     static constexpr std::string_view value = "dense map (a slot per index)";
 };
 template<typename K, typename V>
+struct name<urd::repr::IndexMap<K, V, false, false, true>>
+{
+    static constexpr std::string_view id = "stable_dense_map";
+    static constexpr std::string_view value = "dense map over slots that never move (segments)";
+};
+template<typename K, typename V>
 struct name<urd::repr::IndexMap<K, V, true>>
 {
     static constexpr std::string_view id = "generation_map";
     static constexpr std::string_view value = "generation map (a slot per index, O(1) clear by generation)";
+};
+template<typename K, typename V>
+struct name<urd::repr::IndexMap<K, V, true, false, true>>
+{
+    static constexpr std::string_view id = "stable_generation_map";
+    static constexpr std::string_view value = "generation map over slots that never move (segments)";
 };
 template<typename T>
 struct name<urd::repr::IndexedSet<T, std::uint32_t>>

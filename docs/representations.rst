@@ -35,7 +35,8 @@ urd's own
      - Briggs–Torczon: n keys plus U positions, O(1) clear; optionally in insertion order
      - ``dense, constant_clear``; ``dense, insertion_ordered``
    * - ``IndexMap``
-     - a slot per index; with generations, an O(1) clear; with a spin lock per slot, thread-safe updates
+     - a slot per index; with generations, an O(1) clear; over segments, values that never move; with a spin lock
+       per slot too, thread-safe updates
      - ``dense`` maps
    * - ``IndexedSet``, ``ConcurrentIndexedSet``
      - a vector plus a flat hash table of positions; the concurrent one over segments that never move

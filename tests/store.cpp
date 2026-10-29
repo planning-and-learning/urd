@@ -106,6 +106,10 @@ static_assert(std::same_as<Store<key<int>, urd::dense, urd::constant_clear>::rep
 static_assert(std::same_as<Store<key<int>, urd::dense, urd::proportional_clear>::representation, urd::repr::DenseSet<int, true>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense>::representation, urd::repr::IndexMap<int, int, false>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear>::representation, urd::repr::IndexMap<int, int, true>>);
+// Values that never move: the slots in segments, without the lock the thread-safe map pays.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::stable_refs>::representation, urd::repr::IndexMap<int, int, false, false, true>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::stable_refs>::representation,
+                           urd::repr::IndexMap<int, int, true, false, true>>);
 
 // Insertion order and positions: an indexed set. A set that is positional keeps insertion order unless it asks to be
 // sorted, so that an element's position is its index (an interner).

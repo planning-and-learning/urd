@@ -133,6 +133,10 @@ static_assert(std::same_as<Marked::representation, urd::repr::SparseSet<Action>>
 // tyr and runir search: the node of each state index, as search proceeds.
 using SearchNodes = Store<key<State>, value<SearchNode>, urd::dense>;
 static_assert(std::same_as<SearchNodes::representation, urd::repr::IndexMap<State, SearchNode, false>>);
+// The same where the search keeps pointers to nodes while states are added (gap 5 of docs/SURVEY.md): slots in
+// segments that never move, no lock.
+using PointedNodes = Store<key<State>, value<SearchNode>, urd::dense, urd::stable_refs>;
+static_assert(std::same_as<PointedNodes::representation, urd::repr::IndexMap<State, SearchNode, false, false, true>>);
 
 // tyr heuristics: PatternDatabase, a cost per abstract state, computed once.
 using PatternDatabase = Store<key<State>, value<double>, urd::dense, urd::frozen>;

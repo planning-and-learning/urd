@@ -66,8 +66,6 @@ const std::map<std::string, std::string> notes = {
     { "Store<key<int>, value<int>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
     { "Store<key<std::string>, value<double>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
     { "Store<key<Id>, value<Id>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
-    { "Store<key<int>, value<int>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
-    { "Store<key<Id>, value<double>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
     { "Store<key<int>, value<int>, multi, dense>", "missing: a growable dense multimap; docs/SURVEY.md gap 6, M15" },
     { "Store<key<Id>, value<double>, multi, dense>", "missing: a growable dense multimap; docs/SURVEY.md gap 6, M15" },
     { "Store<value<int>, fifo, retains>", "missing: a ring buffer that keeps its vector on clear; M15" },
