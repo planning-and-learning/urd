@@ -30,7 +30,10 @@ What a container declares and keeps, checked by the typed tests against a refere
      - Keys are indices 0..n-1 (:cpp:struct:`urd::index_of`), stored by position; or few in their range.
    * - references
      - ``stable_refs``
-     - A reference to an element stays valid until the element is removed.
+     - A reference to a stored element stays valid until that element is removed, by whichever path hands it out:
+       an iterator's element, a map's value (``at``, ``operator[]``, ``update``, an entry's ``.second``), a
+       sequence's ``operator[]``, a queue's ``front`` or ``top``, a pool's ``[handle]``. Insert moves no other
+       element; ``erase`` and ``clear`` end only the references to what they remove.
    * - layout
      - ``contiguous``
      - Elements lie next to each other in memory: ``data()``.
@@ -39,8 +42,11 @@ What a container declares and keeps, checked by the typed tests against a refere
      - Equal contents have equal representations (a bitset); such a Store is hashable by its contents.
    * - threads
      - ``concurrent``
-     - Inserts from several threads at once; for maps also ``update`` and ``read``; for pools the operations they
-       offer. Clear, move and destruction need no other operation running.
+     - Threads share the Store: inserts from threads at once, and beside them reads of published elements (inserted
+       before the reading thread started, or by it); for maps also ``update`` and ``read`` on any keys, each value
+       under its own lock, ``at`` only for keys no thread writes; for pools inserts and reads by handle. Erase of
+       another thread's element, ``clear``, iteration, ``reserve``, copy, move and destruction need no other
+       operation running.
    * - memory
      - ``retains``, ``reclaims``
      - Storage freed by erase and clear is kept for reuse, or returned.

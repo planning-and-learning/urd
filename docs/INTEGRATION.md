@@ -126,14 +126,14 @@ representation, and the test checks them as defined:
 
 | Property | Exception |
 |---|---|
-| `stable_refs` | `erase` and `clear` end the references to what they remove |
-| `concurrent` | covers inserts and reads of published elements; `erase`, `clear` and iteration need no other operation running |
+| `stable_refs` | the reference is the one the kind's path hands out (a map's value by `at` or an entry's `.second`, a queue's `front`, a pool's `[index]`); `erase` and `clear` end the references to what they remove |
+| `concurrent` | covers inserts and reads of published elements by the kind's paths (`include/urd/traits.hpp` lists them per kind); erase of another thread's element, `clear`, iteration, `reserve`, copy, move and destruction need no other operation running |
 
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
 - Add the container, and a Store that resolves to it, to the type list in `tests/properties.cpp`. That
   instantiates one typed test per property for it: each declared property is checked through the operations
-  alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address kept
-  through 100000 inserts; retains: no allocation when refilling after a clear or after erasing each element;
+  alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address taken by
+  the kind's path, a map's `at`, a sequence's position, a set's `find`, kept through 100000 inserts; retains: no allocation when refilling after a clear or after erasing each element;
   reclaims: a clear frees each element's storage; contiguous, canonical, unique, nonempty, concurrent
   likewise), and the others are skipped. The test binary counts allocations with its own global operator new. Another typed test runs `urd::verify` (`tests/verify.hpp`): it checks `conforming<R>`, then runs every operation the
   properties require at random (inserts, erases of positions and ranges, clears, assignments where the

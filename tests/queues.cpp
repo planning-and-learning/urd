@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <random>
 #include <utility>
 #include <vector>
@@ -108,6 +109,29 @@ TYPED_TEST(Queues, Retains)
                 queue.push(element);
         }
         EXPECT_EQ(urd::test::allocations(), 0) << "after popping every element";
+    }
+}
+
+// A fifo with stable references: the front stays put while elements queue behind it, and so does the element that
+// becomes the front after a pop.
+TYPED_TEST(Queues, StableRefs)
+{
+    if constexpr (!urd::has<TypeParam, urd::stable_refs> || !has_front<TypeParam>)
+        GTEST_SKIP() << "not declared, or no front";
+    else
+    {
+        auto queue = TypeParam();
+        queue.push(0);
+        queue.push(1);
+        const auto* front = std::addressof(std::as_const(queue).front());
+        for (int element = 2; element < 100000; ++element)
+            queue.push(element);
+        EXPECT_EQ(std::addressof(std::as_const(queue).front()), front);
+        queue.pop();
+        const auto* next = std::addressof(std::as_const(queue).front());
+        for (int element = 0; element < 100000; ++element)
+            queue.push(element);
+        EXPECT_EQ(std::addressof(std::as_const(queue).front()), next);
     }
 }
 

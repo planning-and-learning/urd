@@ -348,13 +348,27 @@ TYPED_TEST(Properties, StableRefs)
         GTEST_SKIP() << "not declared, or nothing changes it";
     else
     {
-        auto range = built<TypeParam>({ -1 });
-        const auto* first = std::addressof(*std::ranges::begin(range));
-        for (int element = 0; element < 100000; ++element)
+        // The reference is taken by the path the kind hands it out: a map's value by at (by find for a multimap), a
+        // sequence's element by position, a set's by find; through iteration where there is nothing else.
+        constexpr int probe = declares<TypeParam, urd::dense> ? 0 : -1;
+        auto range = built<TypeParam>({ probe });
+        const auto reference = [&range, probe]() -> const void*
+        {
+            if constexpr (map<TypeParam> && requires { std::as_const(range).at(probe); })
+                return std::addressof(std::as_const(range).at(probe));
+            else if constexpr (map<TypeParam>)
+                return std::addressof(std::as_const(range).find(probe)->second);
+            else if constexpr (requires { std::as_const(range)[0]; })
+                return std::addressof(std::as_const(range)[0]);
+            else if constexpr (requires { std::as_const(range).find(probe); })
+                return std::addressof(*std::as_const(range).find(probe));
+            else
+                return std::addressof(*std::ranges::begin(range));
+        };
+        const auto* first = reference();
+        for (int element = 1; element <= 100000; ++element)
             add(range, element);
-        const auto found = std::ranges::find(range, -1, key_of);
-        ASSERT_NE(found, std::ranges::end(range));
-        EXPECT_EQ(std::addressof(*found), first);
+        EXPECT_EQ(reference(), first);
     }
 }
 
@@ -586,5 +600,28 @@ struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_
 TEST(Properties, AFalseClaimIsCaught)
 {
     const auto found = urd::verify(ClaimsStableRefs(), 31).value_or("");
+    EXPECT_NE(found.find("stable_refs"), std::string::npos) << found;
+}
+
+namespace
+{
+
+/// A dense map whose slots lie in a vector, wrongly claiming its values never move. Its iteration builds each
+/// entry on the fly, so only a check through the values (not the entries) catches it.
+struct ClaimsStableValues : urd::repr::IndexMap<int, int, false>
+{
+    using IndexMap::IndexMap;
+};
+
+}  // namespace
+
+template<>
+struct urd::container_traits<ClaimsStableValues> : urd::properties_of<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::shrinkable, urd::retains>
+{
+};
+
+TEST(Properties, AFalseClaimAboutValuesIsCaught)
+{
+    const auto found = urd::verify(ClaimsStableValues(), 31).value_or("");
     EXPECT_NE(found.find("stable_refs"), std::string::npos) << found;
 }

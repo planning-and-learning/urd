@@ -135,7 +135,12 @@ struct moving_refs
     using root = moving_refs;
     static constexpr tag value = tag::moving_refs;
 };
-/// A reference to an element stays valid until that element is removed (erase, clear).
+/// A reference to a stored element stays valid until that element is removed, by whichever path the container
+/// hands it out: the element behind an iterator where iteration yields references; a map's value, by at,
+/// operator[], the argument of update and the .second of an iterated entry (not the entry a dense map builds on
+/// the fly); a sequence's operator[], front and back; a queue's front or top, which stays put while others are
+/// pushed and when it is the next element again after pops; a pool's [handle], a record pool's [index]. Insert
+/// never moves another element; erase and clear end only the references to what they remove.
 struct stable_refs : moving_refs
 {
     static constexpr tag value = tag::stable_refs;
@@ -168,8 +173,14 @@ struct single_threaded
     using root = single_threaded;
     static constexpr tag value = tag::single_threaded;
 };
-/// Inserts may run concurrently with each other and with reads of elements already published. Not covered:
-/// erase, clear and iteration, which need no other operation running.
+/// Threads share the container, per kind: sets and sequences take inserts from threads at once, and reads of
+/// published elements (lookups, a position) beside them; maps take insert, try_emplace, insert_or_assign and
+/// update from threads at once on any keys, and read beside them, each key's value under its own lock, so at()
+/// (unlocked) is for keys no thread writes; pools take inserts and reads by handle of published rows at once, and
+/// a layered pool reads a parent no thread changes; slots take insert, acquire, erase and [h] on handles the thread
+/// holds. An element is published to a thread once it was inserted before the thread started, or by the thread
+/// itself. Everything else needs quiescence, no other operation running: erase of another thread's element,
+/// clear, iteration, reserve, memory_usage, copy, move and destruction.
 struct concurrent : single_threaded
 {
     static constexpr tag value = tag::concurrent;

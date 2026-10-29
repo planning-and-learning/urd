@@ -56,6 +56,17 @@ std::vector<const element_t<R>*> addresses(const R& range)
     return result;
 }
 
+/// The addresses of a map's values: what a reference to a mapped value points at, taken through the entries
+/// iteration gives (a dense map builds its entry on the fly; its .second refers to the stored value).
+template<typename R>
+std::vector<const typename R::mapped_type*> value_addresses(const R& range)
+{
+    auto result = std::vector<const typename R::mapped_type*>();
+    for (const auto& entry : range)
+        result.push_back(std::addressof(entry.second));
+    return result;
+}
+
 template<typename R>
 std::ranges::iterator_t<const R> const_at(const R& range, std::size_t pos)
 {
@@ -232,7 +243,7 @@ struct MapModel
 /// The first property a map `range` breaks, as violation() for other containers; `probe` is a key.
 template<typename R, typename Traits, typename K, typename V>
 std::optional<std::string>
-map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::vector<const element_t<R>*>& before, std::size_t size_before, const K& probe)
+map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::vector<const V*>& before, std::size_t size_before, const K& probe)
 {
     auto contents = std::vector<std::pair<K, V>>();
     for (const auto& [key, value] : range)
@@ -267,13 +278,21 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
     if (has<Traits, nonempty> && std::ranges::empty(range))
         return "nonempty: no element left";
 
+    // A map's stable reference is to a value: an insert moves no value, an erase or clear ends only the references
+    // to the values it removes, and at(key) gives the value iteration refers to.
     if constexpr (has<Traits, stable_refs>)
     {
-        const auto after = addresses(range);
-        const auto kept = std::set<const element_t<R>*>(after.begin(), after.end());
-        const auto lost = static_cast<std::size_t>(std::ranges::count_if(before, [&](const auto* address) { return !kept.contains(address); }));
+        const auto after = value_addresses(range);
+        const auto kept = std::set<const V*>(after.begin(), after.end());
+        const auto lost = static_cast<std::size_t>(std::ranges::count_if(before, [&](const V* address) { return !kept.contains(address); }));
         if (lost != (size_before > contents.size() ? size_before - contents.size() : 0))
-            return "stable_refs: an element that was not removed moved";
+            return "stable_refs: a value that was not removed moved";
+        if constexpr (has<Traits, unique> && requires(const R& constant, const K& key) {
+                          { constant.at(key) } -> std::same_as<const V&>;
+                      })
+            for (const auto& entry : range)
+                if (std::addressof(range.at(entry.first)) != std::addressof(entry.second))
+                    return "stable_refs: at(key) and iteration refer to different values";
     }
     if constexpr (has<Traits, contiguous>)
     {
@@ -345,7 +364,7 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
 
         for (int step = 0; step < steps; ++step)
         {
-            const auto before = addresses(range);
+            const auto before = value_addresses(range);
             const auto size_before = std::ranges::size(range);
             const int drawn = pick(random);
             const auto key = K(drawn);
@@ -492,6 +511,10 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
             return queue.top();
     };
 
+    // Where references are stable, an element has one address whenever it is the next to leave: the one seen
+    // when it first was, kept while others queued behind it (a fifo) or hid it and left again (a stack). A heap's
+    // equal elements cannot be told apart, so its next element is not tracked. Aligned with the model.
+    auto placed = std::vector<const E*>();
     auto random = std::mt19937(seed);
     auto pick = std::uniform_int_distribution<int>(0, 31);
     for (int step = 0; step < steps; ++step)
@@ -504,6 +527,7 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
             operation = "clear";
             queue.clear();
             model.clear();
+            placed.clear();
         }
         else if (model.empty() || drawn % 5 < 3)
         {
@@ -513,6 +537,7 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
             else
                 queue.emplace(drawn);
             model.push_back(E(drawn));
+            placed.push_back(nullptr);
         }
         else
         {
@@ -520,12 +545,24 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
             if (!(front() == *next()))
                 return "step " + std::to_string(step) + " (pop): the element leaving is not the one the order says";
             queue.pop();
+            placed.erase(placed.begin() + (next() - model.begin()));
             model.erase(next());
         }
         if (static_cast<std::size_t>(queue.size()) != model.size() || queue.empty() != model.empty())
             return "step " + std::to_string(step) + " (" + operation + "): size() differs from the number of elements";
         if (!model.empty() && !(front() == *next()))
             return "step " + std::to_string(step) + " (" + operation + "): the next element to leave is not the one the order says";
+        if constexpr (has<Traits, stable_refs> && !has<Traits, by_priority>)
+        {
+            if (!model.empty())
+            {
+                auto& place = placed[static_cast<std::size_t>(next() - model.begin())];
+                if (place == nullptr)
+                    place = std::addressof(front());
+                else if (place != std::addressof(front()))
+                    return "step " + std::to_string(step) + " (" + operation + "): stable_refs: the next element to leave moved";
+            }
+        }
     }
     return std::nullopt;
 }
@@ -957,6 +994,8 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
     using Index = typename P::handle_type;
     using Traits = container_traits<P>;
     auto model = std::vector<T>();
+    // Where references are stable, each record's address when it went in; aligned with the model.
+    auto placed = std::vector<const T*>();
     auto random = std::mt19937(seed);
     auto pick = std::uniform_int_distribution<int>(0, 23);
     auto memory_before = std::size_t { 0 };
@@ -970,6 +1009,7 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
             {
                 pool.clear();
                 model.clear();
+                placed.clear();
                 memory_before = 0;
                 cleared = true;
             }
@@ -1003,7 +1043,10 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
             if (step % 4 == 3 && (calls != (result.second ? 1 : 0) || (result.second && given != result.first)))
                 return failed(step, "the factory ran " + std::to_string(calls) + " times, given index " + std::to_string(given.value));
             if (result.second)
+            {
                 model.push_back(record);
+                placed.push_back(std::addressof(pool[result.first]));
+            }
         }
         if (pool.size() != model.size())
             return failed(step, "size " + std::to_string(pool.size()) + ", expected " + std::to_string(model.size()));
@@ -1014,6 +1057,8 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
                 return failed(step, "the record at " + std::to_string(each) + " is not the one inserted");
             if (pool.find(model[each]) != at || !pool.contains(model[each]))
                 return failed(step, "the record at " + std::to_string(each) + " is not found at its index");
+            if (has<Traits, stable_refs> && std::addressof(pool[at]) != placed[each])
+                return failed(step, "stable_refs: the record at " + std::to_string(each) + " moved");
         }
         if (!pool.find(T(1000)).is_none() || pool.contains(T(1000)))
             return failed(step, "a record never inserted is found");
@@ -1046,6 +1091,10 @@ std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps
             chain.push_back(T(drawn));
     leaf.layer_over(&middle);
     const auto base = chain.size();
+    // Where references are stable, each record's address through the leaf when it went in; aligned with the chain.
+    auto placed = std::vector<const T*>();
+    for (std::size_t each = 0; each < base; ++each)
+        placed.push_back(std::addressof(leaf[Index(static_cast<std::uint32_t>(each))]));
     const auto failed = [&](int step, const std::string& what) { return std::optional<std::string>("step " + std::to_string(step) + ": " + what); };
     if (root.layer() != 0 || middle.layer() != 1 || leaf.layer() != 2)
         return failed(-1, "the layers are not numbered 0, 1, 2 along the chain");
@@ -1065,6 +1114,7 @@ std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps
             {
                 leaf.clear();
                 chain.resize(base);
+                placed.resize(base);
                 cleared = true;
             }
         }
@@ -1095,7 +1145,10 @@ std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps
             if (step % 4 == 3 && result.second && given != result.first)
                 return failed(step, "the factory was given another index than the record got");
             if (result.second)
+            {
                 chain.push_back(record);
+                placed.push_back(std::addressof(leaf[result.first]));
+            }
         }
         if (leaf.size() != chain.size() || leaf.base() != base)
             return failed(step, "size " + std::to_string(leaf.size()) + ", expected " + std::to_string(chain.size()));
@@ -1106,6 +1159,8 @@ std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps
                 return failed(step, "the record at " + std::to_string(each) + " is not the chain's");
             if (leaf.find(chain[each]) != at || !leaf.contains(chain[each]))
                 return failed(step, "the record at " + std::to_string(each) + " is not found at its index through the chain");
+            if (has<Traits, stable_refs> && std::addressof(leaf[at]) != placed[each])
+                return failed(step, "stable_refs: the record at " + std::to_string(each) + " moved");
         }
         if (root.size() != 8 || middle.size() != base || leaf.parent_grew())
             return failed(step, "a parent changed");
