@@ -201,6 +201,12 @@ using RecyclingMapOf = repr::RecyclingMap<K, V>;
 template<typename T>
 using ChangeLoggedHashSet = repr::ChangeLogged<FlatHashSet<T>>;
 template<typename T>
+using ChangeLoggedDenseSet = repr::ChangeLogged<TrackedDenseSet<T>>;
+template<typename T>
+using ChangeLoggedTreeSet = repr::ChangeLogged<TreeSet<T>>;
+template<typename T>
+using ChangeLoggedNodeSet = repr::ChangeLogged<HashSet<T>>;
+template<typename T>
 using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
 template<typename K, typename V>
 using LayeredHashMapOf = repr::Layered<FlatHashMapOf<K, V>>;
@@ -284,6 +290,9 @@ using element_preference = element_candidates<JaggedOf,
                                               AddressableHeapOf,
                                               LayeredHashSet,
                                               ChangeLoggedHashSet,
+                                              ChangeLoggedDenseSet,
+                                              ChangeLoggedNodeSet,
+                                              ChangeLoggedTreeSet,
                                               RowInternerOf,
                                               TreeVectorOf,
                                               TreeBitsetOf,

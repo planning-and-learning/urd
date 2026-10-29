@@ -48,7 +48,8 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - ``Store<key<K>, layered>``
      - ``Layered`` over a flat hash set
    * - ``Store<key<K>, change_log>``
-     - ``ChangeLogged`` over a flat hash set
+     - ``ChangeLogged`` over a flat hash set; over a tracked bitset with ``dense``, a tree with ``sorted``, a node
+       set with ``stable_refs``
 
 Template parameters
 -------------------

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 #include <span>
+#include <type_traits>
 #include <utility>
 
 namespace urd::repr
@@ -31,7 +32,9 @@ public:
 
     template<std::input_iterator InputIt>
     ChangeLogged(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     [[nodiscard]] iterator begin() const { return m_elements.begin(); }
     [[nodiscard]] iterator end() const { return m_elements.end(); }
@@ -52,6 +55,24 @@ public:
     [[nodiscard]] iterator find(const value_type& element) const { return m_elements.find(element); }
     [[nodiscard]] size_type count(const value_type& element) const { return m_elements.count(element); }
     [[nodiscard]] bool contains(const value_type& element) const { return m_elements.contains(element); }
+    // The bounds, where R is sorted.
+    [[nodiscard]] iterator lower_bound(const value_type& element) const
+        requires requires(const R& set) { set.lower_bound(element); }
+    {
+        return m_elements.lower_bound(element);
+    }
+    [[nodiscard]] iterator upper_bound(const value_type& element) const
+        requires requires(const R& set) { set.upper_bound(element); }
+    {
+        return m_elements.upper_bound(element);
+    }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const value_type& element) const
+        requires requires(const R& set) { set.equal_range(element); }
+    {
+        return m_elements.equal_range(element);
+    }
+    /// Equal contents, as R compares them; the logs do not count.
+    [[nodiscard]] friend bool operator==(const ChangeLogged& lhs, const ChangeLogged& rhs) { return lhs.m_elements == rhs.m_elements; }
 
     std::pair<iterator, bool> insert(const value_type& element)
     {
@@ -68,7 +89,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(value_type(std::forward<Args>(args)...)); }
+    {
+        return insert(value_type(std::forward<Args>(args)...));
+    }
 
     size_type erase(const value_type& element)
     {
@@ -113,10 +136,12 @@ private:
 namespace urd
 {
 
-/// What R guarantees, with the log.
+/// What R guarantees, with the log. Clear logs every element first, which for a dense set means a pass over its
+/// words (O(U/64), not proportional to the elements), so a dense set's clear cost is not promised.
 template<typename R>
     requires has<container_traits<R>, unique> && (!detail::map_container<R>)
-struct container_traits<repr::ChangeLogged<R>> : with_t<container_traits<R>, change_log>
+struct container_traits<repr::ChangeLogged<R>> :
+    std::conditional_t<has<container_traits<R>, dense>, with_t<container_traits<R>, change_log, any_clear>, with_t<container_traits<R>, change_log>>
 {
 };
 

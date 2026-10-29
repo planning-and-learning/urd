@@ -43,6 +43,8 @@ indexable).
 | `Store<key<int>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<int>, layered>` | unique, layered, shrinkable | `layered` |
 | `Store<key<int>, change_log>` | unique, change_log, shrinkable | `change_logged` |
+| `Store<key<int>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
+| `Store<key<int>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
 | `Store<key<int>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` |
 | `Store<key<int>, monotone>` | unique, growable, monotone | `unordered_flat_set` |
 | `Store<key<int>, sorted, monotone>` | sorted, unique, growable, monotone | `set` |
@@ -82,6 +84,8 @@ indexable).
 | `Store<key<std::string>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<std::string>, layered>` | unique, layered, shrinkable | `layered` |
 | `Store<key<std::string>, change_log>` | unique, change_log, shrinkable | `change_logged` |
+| `Store<key<std::string>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
+| `Store<key<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
 | `Store<key<std::string>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` |
 | `Store<key<std::string>, monotone>` | unique, growable, monotone | `unordered_flat_set` |
 | `Store<key<std::string>, sorted, monotone>` | sorted, unique, growable, monotone | `set` |
@@ -121,6 +125,8 @@ indexable).
 | `Store<key<Id>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<Id>, layered>` | unique, layered, shrinkable | `layered` |
 | `Store<key<Id>, change_log>` | unique, change_log, shrinkable | `change_logged` |
+| `Store<key<Id>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
+| `Store<key<Id>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
 | `Store<key<Id>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` |
 | `Store<key<Id>, monotone>` | unique, growable, monotone | `unordered_flat_set` |
 | `Store<key<Id>, sorted, monotone>` | sorted, unique, growable, monotone | `set` |
@@ -152,7 +158,7 @@ indexable).
 | `Store<key<int>, dense, small>` | unique, dense, shrinkable, small | `dense_set` |
 | `Store<key<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset); docs/SURVEY.md gap 5 |
 | `Store<key<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |
-| `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `none` — missing: ChangeLogged over the dense set; docs/SURVEY.md gap 4, M15 |
+| `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` |
 | `Store<key<int>, partition>` | dense, partition, shrinkable | `disjoint_sets` |
 
 ## Dense sets of Id
@@ -173,7 +179,7 @@ indexable).
 | `Store<key<Id>, dense, small>` | unique, dense, shrinkable, small | `dense_set` |
 | `Store<key<Id>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset); docs/SURVEY.md gap 5 |
 | `Store<key<Id>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |
-| `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `none` — missing: ChangeLogged over the dense set; docs/SURVEY.md gap 4, M15 |
+| `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` |
 | `Store<key<Id>, partition>` | dense, partition, shrinkable | `disjoint_sets` |
 
 ## Keyed by an index

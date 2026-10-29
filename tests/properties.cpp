@@ -200,7 +200,13 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::layered>,
     // Change logs.
     urd::repr::ChangeLogged<boost::unordered_flat_set<int, std::hash<int>>>,
+    urd::repr::ChangeLogged<urd::repr::DenseSet<int, true>>,
+    urd::repr::ChangeLogged<std::set<int, urd::Less<int>>>,
+    urd::repr::ChangeLogged<std::unordered_set<int, urd::Hash<int>, urd::EqualTo<int>>>,
     Store<key<int>, urd::change_log>,
+    Store<key<int>, urd::dense, urd::change_log>,
+    Store<key<int>, urd::sorted, urd::change_log>,
+    Store<key<int>, urd::stable_refs, urd::change_log>,
     // Maps ordered by their values: entries by P(key, value), found by key.
     urd::repr::FlatEntryMap<int, int, urd::EntryLess<int, int, by_value>>,
     Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<by_value>>,

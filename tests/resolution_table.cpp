@@ -58,8 +58,6 @@ const std::map<std::string, std::string> notes = {
     { "Store<key<Id>, dense, concurrent>", "missing: a dense set written by threads (an atomic bitset); docs/SURVEY.md gap 5" },
     { "Store<key<int>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
     { "Store<key<Id>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
-    { "Store<key<int>, dense, change_log>", "missing: ChangeLogged over the dense set; docs/SURVEY.md gap 4, M15" },
-    { "Store<key<Id>, dense, change_log>", "missing: ChangeLogged over the dense set; docs/SURVEY.md gap 4, M15" },
     { "Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, "
       "concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>",
       "missing: the concurrent slot directory (compile-fail case 43)" },

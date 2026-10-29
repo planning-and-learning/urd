@@ -227,6 +227,24 @@ struct name<urd::repr::ChangeLogged<R>>
     static constexpr std::string_view id = "change_logged";
     static constexpr std::string_view value = "change-logged set (a flat hash set, plus what was added and removed)";
 };
+template<typename T>
+struct name<urd::repr::ChangeLogged<urd::repr::DenseSet<T, true>>>
+{
+    static constexpr std::string_view id = "change_logged_dense_set";
+    static constexpr std::string_view value = "change-logged dense set (a bitset, plus what was added and removed)";
+};
+template<typename T>
+struct name<urd::repr::ChangeLogged<std::set<T, urd::Less<T>>>>
+{
+    static constexpr std::string_view id = "change_logged_tree_set";
+    static constexpr std::string_view value = "change-logged tree set (std::set, plus what was added and removed)";
+};
+template<typename T>
+struct name<urd::repr::ChangeLogged<std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>>>
+{
+    static constexpr std::string_view id = "change_logged_node_set";
+    static constexpr std::string_view value = "change-logged node set (std::unordered_set, plus what was added and removed)";
+};
 template<typename Row>
 struct name<urd::repr::RowInterner<Row, false>>
 {

@@ -130,6 +130,12 @@ static_assert(std::same_as<Store<key<int>, urd::layered>::representation, urd::r
 static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representation, urd::repr::Layered<FlatHashMapOf<int, int>>>);
 
 static_assert(std::same_as<Store<key<int>, urd::change_log>::representation, urd::repr::ChangeLogged<FlatHashSet<int>>>);
+// The log over the set the other properties pick: a tracked bitset for dense keys, a tree for sorted, nodes for
+// stable references (gap 4 of docs/SURVEY.md: runir's denotation states, tyr's delta fact sets).
+static_assert(std::same_as<Store<key<int>, urd::dense, urd::change_log>::representation, urd::repr::ChangeLogged<urd::repr::DenseSet<int, true>>>);
+static_assert(std::same_as<Store<key<int>, urd::sorted, urd::change_log>::representation, urd::repr::ChangeLogged<std::set<int, urd::Less<int>>>>);
+static_assert(std::same_as<Store<key<int>, urd::stable_refs, urd::change_log>::representation,
+                           urd::repr::ChangeLogged<std::unordered_set<int, urd::Hash<int>, urd::EqualTo<int>>>>);
 
 // Selection trusts the traits, so every registered container whose traits are declared for an element type must offer
 // what they promise: checked here for the whole registry, for elements, maps and rows.
