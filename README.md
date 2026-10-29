@@ -247,6 +247,9 @@ keys; without it such a request has no representation. Requests use only the voc
 `urd/properties.hpp`; what `urd/repr` holds is the representations' business, not code that uses a Store (a check
 keeps containers out of the include root).
 
+- [docs/](docs/): the reference documentation (Sphinx), one page per kind of Store with its member types, member
+  functions and their complexity, as the standard library documents its containers; built by `cmake --build build
+  --target docs` with `sphinx-build` on the path or in `build/docs-venv` (`pip install -r docs/requirements.txt`).
 - [examples/](examples/): sets, sequences, maps, rows, dense keys, interning, queues, scopes, pools, and more.
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): adding a container (declare its traits, offer what they require,
   register it, test it), and every property and facet in detail.

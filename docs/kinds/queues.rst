@@ -1,0 +1,130 @@
+Queues
+======
+
+.. cpp:namespace:: urd
+
+.. code-block:: cpp
+
+   template<typename T, typename... Properties>
+   using Queue = Store<value<T>, fifo | lifo | by_priority, Properties...>;
+
+.. cpp:class:: Queue
+
+   A queue: ``Store<value<T>, fifo | lifo | by_priority, Properties...>``. The name ``Queue`` stands for the resolved Store type on this page.
+
+.. cpp:namespace:: urd::Queue
+
+A queue is reached by its front or top and never iterated. An access tag makes a value Store a queue.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 44 56
+
+   * - Request
+     - Representation
+   * - ``Store<value<T>, fifo>``
+     - ``Fifo`` (a deque)
+   * - ``Store<value<T>, lifo>``
+     - ``Lifo`` (a vector)
+   * - ``Store<value<T>, by_priority>``
+     - ``Heap`` (a binary heap; the least element leaves first)
+   * - ``Store<value<T>, by_priority, order_by<&T::cost>>``
+     - ``Heap`` by the cost, ties by the element's own order
+   * - ``Store<value<T>, by_priority, handles>``
+     - ``AddressableHeap``: ``push`` gives a handle; ``update(h, e)``, ``erase(h)``
+   * - ``Store<value<I>, by_priority, monotone_priority>``
+     - ``BucketQueue`` (a bucket per integral priority)
+
+Template parameters
+-------------------
+
+``T``
+   Any type; :cpp:concept:`orderable` with ``by_priority`` (or what ``order_by`` projects it to).
+
+Member types
+------------
+
+``value_type`` is ``T``; ``handle_type`` is the representation's handle, with ``handles``.
+
+Member functions
+----------------
+
+Construction (``Store()``, from elements) and capacity (``size``, ``empty``, ``reserve``) are as for :doc:`sets`. A
+queue is not iterated and not compared.
+
+.. cpp:function:: void push(const value_type& element)
+.. cpp:function:: void push(value_type&& element)
+.. cpp:function:: template<typename... Args> void emplace(Args&&... args)
+
+   With ``handles``, ``push`` gives the handle that reaches the element later.
+
+.. cpp:function:: void pop()
+
+   Removes the next element; the Store must not be empty.
+
+.. cpp:function:: const value_type& front() const
+
+   ``fifo``: the element that came first.
+
+.. cpp:function:: const value_type& top() const
+
+   ``lifo``: the element that came last; ``by_priority``: the least by the order.
+
+.. cpp:function:: void clear()
+
+   Shrinkable queues; a ``monotone`` queue empties only by ``pop``.
+
+.. cpp:function:: void update(const handle_type& handle, const value_type& element)
+.. cpp:function:: void erase(const handle_type& handle)
+
+   With ``handles``: replaces the element of ``handle``, which moves to its place in the order; removes it,
+   wherever it is.
+
+Complexity
+----------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 16 16 20 12 10
+
+   * - Representation
+     - push
+     - access
+     - pop / erase
+     - clear
+     - memory
+   * - ``Fifo`` / ``Lifo``
+     - O(1)\*
+     - O(1)
+     - O(1)
+     - O(n)
+     - deque / vector
+   * - ``Heap``
+     - O(log n)
+     - ``top`` O(1)
+     - O(log n)
+     - O(n)
+     - vector; retains
+   * - ``AddressableHeap``
+     - O(log n)
+     - ``top`` O(1)
+     - ``pop``, ``erase(h)``, ``update(h, e)`` O(log n)
+     - O(n)
+     - heap of handles + a slot per handle
+   * - ``BucketQueue``
+     - O(1)\*
+     - ``top`` O(1)
+     - O(1)\* under monotone pushes
+     - O(range)
+     - a vector per priority
+
+Example
+-------
+
+.. code-block:: cpp
+
+   struct Node { double f; State state; static constexpr auto identifying_members() noexcept { return Members<&Node::f, &Node::state> {}; } };
+   using Open = Store<value<Node>, by_priority, order_by<&Node::f>>;
+   auto open = Open();
+   open.push({ 3.5, start });
+   while (!open.empty()) { const auto node = open.top(); open.pop(); /* expand */ }

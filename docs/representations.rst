@@ -1,0 +1,86 @@
+Representations
+===============
+
+.. cpp:namespace:: urd::repr
+
+The containers a Store can resolve to live in ``include/urd/repr``, which code that uses a Store never includes:
+requests use only the vocabulary of ``urd/traits.hpp`` and ``urd/properties.hpp``. Each container declares the
+properties it keeps in ``container_traits``, and the typed tests check every declared property against a reference
+model through thousands of random operations; a deliberately wrong declaration is caught. Adding a container is
+described in :doc:`INTEGRATION`.
+
+The standard library's and Boost's
+----------------------------------
+
+``std::vector``, ``std::set``, ``std::multiset``, ``std::map``, ``std::multimap``, ``std::unordered_set``,
+``std::unordered_map``, ``std::unordered_multimap``, ``boost::unordered_flat_set``, ``boost::unordered_flat_map``,
+``boost::container::flat_set``, ``flat_multiset``, ``flat_map``, ``flat_multimap``, and with gtl
+``gtl::parallel_flat_hash_set`` and ``parallel_flat_hash_map``, each with urd's :cpp:struct:`urd::Hash`,
+:cpp:struct:`urd::EqualTo` and :cpp:struct:`urd::Less`.
+
+urd's own
+---------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 48 30
+
+   * - Container
+     - What it is
+     - Serves
+   * - ``DenseSet``
+     - a bitset over the key range; with word tracking, a clear that touches only the words set
+     - ``dense`` sets
+   * - ``SparseSet``
+     - Briggs–Torczon: n keys plus U positions, O(1) clear; optionally in insertion order
+     - ``dense, constant_clear``; ``dense, insertion_ordered``
+   * - ``IndexMap``
+     - a slot per index; with generations, an O(1) clear; with a spin lock per slot, thread-safe updates
+     - ``dense`` maps
+   * - ``IndexedSet``, ``ConcurrentIndexedSet``
+     - a vector plus a flat hash table of positions; the concurrent one over segments that never move
+     - ``insertion_ordered``, ``positional`` (interners)
+   * - ``OrderedMap``
+     - a key set in insertion order beside its values
+     - ``insertion_ordered`` maps
+   * - ``PostingMap``
+     - a flat hash table of value vectors
+     - ``multi`` maps
+   * - ``CsrMultiMap``, ``BidirectionalCsr``
+     - compressed sparse rows; with the in-edges too
+     - ``multi, dense, frozen`` maps, graphs
+   * - ``Jagged``, ``RowPool``
+     - rows in one array per level; rows kept with their storage for reuse
+     - rows (:ref:`rows`)
+   * - ``Recycling``
+     - a map that keeps erased nodes and their values for the next keys
+     - maps of ``retains`` rows
+   * - ``FlatEntryMap``
+     - entries in the order their values give, found by key
+     - ``sorted, order_by<P(key, value)>``
+   * - ``Queue``, ``AddressableHeap``, ``BucketQueue``
+     - deque, vector or binary heap; a heap of handles; a bucket per priority
+     - queues
+   * - ``RowInterner``, ``TreeVectorSet``, ``TreeBitsetSet``, ``SlotVector``
+     - rows stored once in full; as trees sharing subtrees; slots reused after erase
+     - pools
+   * - ``RecordInterner``, ``ArenaInterner``, ``ByteArena``
+     - records stored once, in an indexed set or serialized into a byte arena
+     - ``flat`` pools
+   * - ``LayeredPool``, ``Layered``
+     - a pool, set or map over a parent
+     - ``layered``
+   * - ``ScopedMap``, ``ChangeLogged``, ``DisjointSets``, ``SegmentedVector``
+     - a map with a log of previous values; a set logging its changes; union-find; a vector of doubling segments
+     - ``scoped``, ``change_log``, ``partition``, ``monotone, stable_refs``
+
+Order of preference
+-------------------
+
+The registry lists the candidates in an order backed by :doc:`BENCHMARKS`: an open-addressing hash table first
+wherever order is not asked for, node-based tables for ``stable_refs``, a tree where order is asked for over
+elements inserted over time, the dense containers after the hash tables (only a request for ``dense`` reaches
+them), the indexed set after them, pools and queues by their kind. Where a request is ``small`` or ``frozen``,
+node-based containers move last. :doc:`RESOLUTION` shows what every request of a grid resolves to; a test audits
+that the chosen container gives no more costly guarantees nobody asked for than another serving one, listing the
+intended exceptions.

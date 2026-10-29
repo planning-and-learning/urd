@@ -69,6 +69,17 @@ if(PROJECT_IS_TOP_LEVEL)
     add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion)
 endif()
 
+# The documentation (docs/, Sphinx): `cmake --build build --target docs` where sphinx-build is found, in
+# build/docs-venv (python3 -m venv build/docs-venv && build/docs-venv/bin/pip install -r docs/requirements.txt) or on the path.
+find_program(URD_SPHINX_BUILD NAMES sphinx-build HINTS "${CMAKE_BINARY_DIR}/docs-venv/bin")
+if(URD_SPHINX_BUILD)
+    add_custom_target(docs
+        COMMAND "${URD_SPHINX_BUILD}" -q -b html "${PROJECT_SOURCE_DIR}/docs" "${CMAKE_BINARY_DIR}/docs/html"
+        COMMENT "Building the documentation into ${CMAKE_BINARY_DIR}/docs/html"
+        VERBATIM
+    )
+endif()
+
 if(URD_BUILD_EXAMPLES)
     find_package(Threads REQUIRED)
     foreach(example sets sequences maps rows dense interning queues scopes structures states)
