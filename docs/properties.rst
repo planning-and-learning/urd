@@ -99,7 +99,8 @@ What a request states and no container declares.
        the storage held where the container can.
    * - emptiness
      - ``nonempty``
-     - At least one element: no default constructor, and construction from elements asserts one.
+     - At least one element: no default constructor, and construction from elements asserts one; a fixed-shape
+       Store asserts a row. A promise about iterated elements: sets, maps and sequences only.
    * - multiplicity
      - ``functional``, ``multi``
      - One value per key, or many (a multimap).

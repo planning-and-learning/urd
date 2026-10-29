@@ -171,11 +171,14 @@ public:
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
-    /// Rows of these lengths, empty: a fixed_shape Store's only shape.
+    /// Rows of these lengths, empty: a fixed_shape Store's only shape. A nonempty one needs a row (a row of length 0
+    /// is a row).
     explicit Store(const row_lengths& lengths)
         requires has<S, fixed_shape>
         : m_representation(lengths.lengths)
     {
+        if constexpr (has<S, nonempty>)
+            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
     }
     /// Rows of rows, empty, at any depth: for each row, the shape of its rows (a std::vector of row lengths for rows
     /// of rows, a std::vector of those one level up).
@@ -183,6 +186,8 @@ public:
         requires(has<S, fixed_shape> && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
     explicit Store(const Shape& rows) : m_representation(rows)
     {
+        if constexpr (has<S, nonempty>)
+            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
     }
 
     void swap(Store& other) noexcept

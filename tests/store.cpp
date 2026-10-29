@@ -1049,6 +1049,18 @@ TEST(FixedShape, BuildFromSets)
 }
 
 // Rows of elements of fixed lengths, changed in place: spans into one array.
+// nonempty through the shape constructors too: a fixed-shape Store is nonempty when it has a row, whatever its length.
+TEST(FixedShape, NonemptyNeedsARow)
+{
+    using Rows = Store<value<Store<value<int>>>, urd::fixed_shape, urd::nonempty>;
+    static_assert(!std::default_initializable<Rows>);
+    EXPECT_FALSE(Rows(urd::row_lengths { 0 }).empty());
+    EXPECT_DEBUG_DEATH((void) Rows(urd::row_lengths {}), "nonempty");
+    using Nested = Store<value<Store<value<Store<value<int>>>, urd::fixed_shape>>, urd::fixed_shape, urd::nonempty>;
+    EXPECT_FALSE(Nested(std::vector<std::vector<std::size_t>> { { 2, 3 } }).empty());
+    EXPECT_DEBUG_DEATH((void) Nested(std::vector<std::vector<std::size_t>> {}), "nonempty");
+}
+
 TEST(FixedShape, RowsOfElementsChangeInPlace)
 {
     using Rows = Store<value<Store<value<double>>>, urd::fixed_shape>;

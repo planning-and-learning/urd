@@ -20,5 +20,7 @@
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
+    // Death tests fork; the threadsafe style re-executes the binary instead, which ThreadSanitizer and threads tolerate.
+    GTEST_FLAG_SET(death_test_style, "threadsafe");
     return RUN_ALL_TESTS();
 }

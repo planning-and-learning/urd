@@ -106,7 +106,7 @@ Shape (``fixed_shape``)
 .. cpp:function:: explicit Sequence(const row_lengths& lengths)
 
    Rows of these lengths, empty: a fixed-shape Store's only shape. Rows of rows take a vector of row lengths per
-   row, at any depth.
+   row, at any depth. With ``nonempty``, at least one row (a row of length 0 is a row), asserted.
 
 .. cpp:function:: void reset()
 
