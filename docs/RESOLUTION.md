@@ -338,6 +338,8 @@ indexable).
 | `Store<value<int>, by_priority>` | by_priority, shrinkable | `heap` |
 | `Store<value<int>, by_priority, handles>` | by_priority, handles, shrinkable | `addressable_heap` |
 | `Store<value<int>, fifo, small>` | fifo, shrinkable, small | `fifo` |
+| `Store<value<int>, fifo, stable_refs>` | stable_refs, fifo, shrinkable | `fifo` |
+| `Store<value<int>, fifo, retains>` | retains, fifo, shrinkable | `none` — missing: a ring buffer that keeps its vector on clear; M15 |
 | `Store<value<int>, by_priority, monotone>` | by_priority, growable, monotone | `heap` |
 
 ## Queues of Id
@@ -349,6 +351,8 @@ indexable).
 | `Store<value<Id>, by_priority>` | by_priority, shrinkable | `heap` |
 | `Store<value<Id>, by_priority, handles>` | by_priority, handles, shrinkable | `addressable_heap` |
 | `Store<value<Id>, fifo, small>` | fifo, shrinkable, small | `fifo` |
+| `Store<value<Id>, fifo, stable_refs>` | stable_refs, fifo, shrinkable | `fifo` |
+| `Store<value<Id>, fifo, retains>` | retains, fifo, shrinkable | `none` — missing: a ring buffer that keeps its vector on clear; M15 |
 | `Store<value<Id>, by_priority, monotone>` | by_priority, growable, monotone | `heap` |
 
 ## Queues ordered by a projection

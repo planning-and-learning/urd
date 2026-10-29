@@ -307,6 +307,8 @@ using queues_of = requests<request<value<T>, fifo>,
                            request<value<T>, by_priority>,
                            request<value<T>, by_priority, handles>,
                            request<value<T>, fifo, small>,
+                           request<value<T>, fifo, stable_refs>,
+                           request<value<T>, fifo, retains>,
                            request<value<T>, by_priority, monotone>>;
 using ordered_queues = requests<request<value<int>, by_priority, monotone_priority>,
                                 request<value<int>, by_priority, order_by<negated>>,

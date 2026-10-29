@@ -271,8 +271,10 @@ using Heap = Queue<T, leaving::least>;
 namespace urd
 {
 
+/// A deque: a push or pop at either end moves no other element, so the front stays put while elements queue
+/// behind it. Not retains: the deque frees its blocks on clear and as pops leave them.
 template<typename T>
-struct container_traits<repr::Fifo<T>> : properties_of<fifo, shrinkable>
+struct container_traits<repr::Fifo<T>> : properties_of<fifo, stable_refs, shrinkable>
 {
 };
 
