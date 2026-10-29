@@ -361,7 +361,7 @@ on 2026-10-29):
 - C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles. Done.
 - B.2. A missing operation names the property that removed it (denial facets). Done.
 
-## M12: the repository pattern as generic Stores — in progress
+## M12: the repository pattern as generic Stores — done
 
 The symbol repositories of yggdrasil, tyr and loki as requests (the plan of 2026-10-29): a strong `index<T>`, a
 `flat` pool of records serialized into a byte arena, a `view<T, C>` of an element by index and context, `layered`
@@ -373,7 +373,7 @@ on pools, a `Family` with a parent, and a dense map of layered pools for relatio
    both thread-safe on request; the `flat` tag; the `records` facet. Done.
 3. `layered` on pools: indices continue after the parent, lookups fall through, views borrow the owning layer. Done.
 4. `compose::Family` with a parent and a layer number, resolving every member type. Done.
-5. Relations: a dense layered map of layered row pools.
+5. Relations: a dense layered map of layered row pools, layered through both levels. Done.
 
 Deferred, named here so they are not re-invented: layered positional sets, lock-free parent lookups, rows of one
 stride and bit-packed widths, a concurrent dense map without generations, erase on interners.

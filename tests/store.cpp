@@ -1460,3 +1460,57 @@ TEST(OrderByValue, TiesGoByKey)
         keys.push_back(key);
     EXPECT_EQ(keys, (std::vector<int> { 2, 4, 1, 3, 5 }));
 }
+
+// Relations as yggdrasil's relation repositories keep them: per predicate, a pool of the rows (tuples of object
+// indices) bound to it, each row once; a phase layers over the previous through both levels: a predicate absent
+// from the layer falls through to the parent's pool, a predicate touched in the layer gets a pool of its own over
+// the parent's pool, with indices continuing after it.
+namespace
+{
+
+struct PredicateTag;
+struct ObjectTag;
+using Object = urd::index<ObjectTag>;
+using Row = Store<value<Object>, urd::frozen>;
+using Rows = Store<value<Row>, urd::handles, urd::unique, urd::monotone, urd::layered>;
+using Relations = Store<key<urd::index<PredicateTag>>, value<Rows>, urd::dense, urd::layered>;
+static_assert(std::same_as<Relations::representation, urd::repr::Layered<urd::repr::IndexMap<urd::index<PredicateTag>, Rows, false>>>);
+
+}  // namespace
+
+TEST(Layered, RelationsLayerThroughBothLevels)
+{
+    const auto on = urd::index<PredicateTag>(0);
+    const auto clear = urd::index<PredicateTag>(1);
+    const auto holding = urd::index<PredicateTag>(2);
+    const auto a = Object(0);
+    const auto b = Object(1);
+    auto domain = Relations();
+    const auto on_ab = domain[on].insert({ a, b });
+    const auto on_ba = domain[on].insert({ b, a });
+    const auto clear_a = domain[clear].insert({ a });
+    EXPECT_EQ(on_ab, urd::index<Row>(0));
+    EXPECT_EQ(on_ba, urd::index<Row>(1));
+    EXPECT_EQ(clear_a, urd::index<Row>(0));
+
+    auto task = Relations();
+    task.layer_over(&domain);
+    EXPECT_TRUE(task.contains(on) && task.contains(clear) && !task.contains(holding));
+    EXPECT_EQ(task.size(), 0U);
+    EXPECT_EQ(std::as_const(task).at(clear).row_size(clear_a), 1U);  // read through: the domain's pool
+    EXPECT_EQ(task[on].insert({ a, b }), on_ab);                     // the domain's row, through the task's own pool over it
+    EXPECT_EQ(task.size(), 1U);                                      // which now exists, layered
+    EXPECT_EQ(task[on].base(), 2U);
+    EXPECT_EQ(task[on].layer(), 1U);
+    const auto on_aa = task[on].insert({ a, a });
+    EXPECT_EQ(on_aa, urd::index<Row>(2));
+    const auto expected = Row { a, b };
+    EXPECT_EQ(task[on].get(on_ab), expected);
+    EXPECT_EQ(task[on].row_size(on_aa), 2U);
+    EXPECT_EQ(std::as_const(domain).at(on).row_size(on_ba), 2U);  // the domain's pool, untouched: still two rows at the branch
+    EXPECT_FALSE(task[on].parent_grew());
+    const auto holding_b = task[holding].insert({ b });  // a predicate new in the task: a root pool of its own
+    EXPECT_EQ(holding_b, urd::index<Row>(0));
+    EXPECT_EQ(task[holding].layer(), 0U);
+    EXPECT_EQ(task.size(), 2U);
+}

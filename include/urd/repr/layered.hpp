@@ -41,8 +41,9 @@ struct mapped_of<R>
 /// A set or map with unique keys that answers lookups from its own elements, then from a parent's, which it does
 /// not own and never changes: a layer over a repository built earlier. It holds, iterates and erases only its own
 /// elements; inserting what the parent has inserts nothing and finds the parent's. In a map, a key's own value
-/// shadows the parent's: insert_or_assign writes its own, and at() copies the parent's value up before handing it
-/// out to change. The parent must outlive the layer and not change while layered over.
+/// shadows the parent's: insert_or_assign writes its own, and at() makes an own value before handing it out to
+/// change, a layer over the parent's where values layer (a map of layered pools layers through both levels), else
+/// a copy of it. The parent must outlive the layer and not change while layered over.
 template<typename R>
 class Layered
 {
@@ -121,12 +122,21 @@ public:
     {
         return m_own.contains(key) || m_parent == nullptr ? m_own.at(key) : m_parent->at(key);
     }
-    /// The own value, copied up from the parent first where only the parent has one.
+    /// The own value: where only the parent has one, a value that layers (a layered Store) is made here as a layer
+    /// over the parent's, else the parent's is copied up first.
     [[nodiscard]] mapped& at(const key_type& key)
         requires is_map
     {
         if (in_parent_only(key))
-            m_own.try_emplace(key, m_parent->at(key));
+        {
+            if constexpr (requires(mapped& own, const mapped* above) { own.layer_over(above); })
+            {
+                m_own.try_emplace(key);
+                m_own.at(key).layer_over(&m_parent->at(key));
+            }
+            else
+                m_own.try_emplace(key, m_parent->at(key));
+        }
         return m_own.at(key);
     }
     template<typename... Args>
@@ -379,10 +389,11 @@ struct element_traits<repr::LayeredPool<R>> : element_traits<R>
 {
 };
 
-/// Its own elements as R holds them, plus the parent's in lookups.
+/// Its own elements as R holds them, plus the parent's in lookups; in no order, since the parent's elements are
+/// not iterated with its own (a dense map's key order holds for each level alone).
 template<typename R>
     requires has<container_traits<R>, unique>
-struct container_traits<repr::Layered<R>> : with_t<container_traits<R>, layered>
+struct container_traits<repr::Layered<R>> : with_t<container_traits<R>, layered, any_order>
 {
 };
 

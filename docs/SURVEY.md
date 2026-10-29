@@ -199,8 +199,8 @@ and the repositories.
 | `RawArrayPool`, `BlockArrayPool`, `BitPackedArrayPool` | B | rows of one length (uniform stride, gap 10), swap-erase, an element width in bits (`BitsetSpan` is width 1) |
 | `UnorderedMultiMap` (`containers/unordered_multi_map.hpp:36`), 14 uses | A | `Store<key<K>, value<V>, multi, retains>`; its `replace(key, old, new)` is part of gap 3 |
 | `FibonacciHeap` (1 use), `UniqueObjectPool` (13), `SharedObjectPool` (0) | A storage, C handles | `by_priority, handles`; `Store<value<T>, handles>` (the storage is a `SlotVector`); the owning handles stay |
-| `BasicSymbolRepository` (`formalism/basic_symbol_repository.hpp:47`), 22 instantiations; `BasicRelationRepository` slots | A for the symbol repositories (M12 step 4: a family of layered flat pools); B for the relation slots | the layered interner (gap 2): positions continuing after a frozen parent's, `find` falling through |
-| `ConcurrentSlotDirectory` (`basic_relation_repository.hpp:172`) | B | a dense concurrent map with get-or-create and stable values, no generations (gap 5) |
+| `BasicSymbolRepository` (`formalism/basic_symbol_repository.hpp:47`), 22 instantiations; `BasicRelationRepository` slots | A (M12: a family of layered flat pools; the relation slots a layered dense map of layered row pools) | the layered interner (gap 2): positions continuing after a frozen parent's, `find` falling through |
+| `ConcurrentSlotDirectory` (`basic_relation_repository.hpp:172`) | B (the single-threaded directory is `Store<key<index<P>>, value<Rows>, dense, layered>` since M12) | a dense concurrent map with get-or-create and stable values, no generations (gap 5) |
 | `Delta` and the six result-plus-delta evaluators, datalog `Table` | A | `Store<key<Row>, change_log>` |
 | `JoinEvaluator`, `SemijoinEvaluator` postings kept in sync under swap-erase (`incremental/join.hpp:22-58`) | B | gap 3 |
 | `TupleIndex`, `IndexedTuples` (`datalog/detail/tuples.hpp:25,130`) | B | secondary indexes on a row Store with O(1) per-posting erase (intrusive doubly linked chains); gap 3 and gap 13 |

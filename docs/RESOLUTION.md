@@ -153,6 +153,9 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` |
 | `Store<key<index<Id>>>` | unique, shrinkable | `unordered_flat_set` |
 | `Store<key<index<Id>>, sorted>` | sorted, unique, shrinkable | `set` |
+| `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, layered, handles, growable, monotone>>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered, shrinkable, functional | `none` |
 
 ## Maps int to int
 
@@ -258,7 +261,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` |
 | `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `none` |
 | `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
-| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `none` |
+| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `none` |
 | `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |
@@ -280,7 +283,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` |
 | `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `none` |
 | `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
-| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `none` |
+| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `none` |
 | `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |

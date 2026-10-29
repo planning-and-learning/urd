@@ -188,6 +188,8 @@ template<typename T>
 using LayeredHashSet = repr::Layered<FlatHashSet<T>>;
 template<typename K, typename V>
 using LayeredHashMapOf = repr::Layered<FlatHashMapOf<K, V>>;
+template<typename K, typename V>
+using LayeredDenseMapOf = repr::Layered<DenseMapOf<K, V>>;
 
 template<typename T>
 using SegmentedVector = repr::SegmentedVector<T>;
@@ -302,7 +304,8 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
                                       ScopedMapOf,
-                                      LayeredHashMapOf>;
+                                      LayeredHashMapOf,
+                                      LayeredDenseMapOf>;
 
 /// The containers that take a comparator, in order of preference (as in the lists above): where a request gives
 /// order_by, only they can serve it, instantiated with its comparator.

@@ -309,8 +309,14 @@ inner binding shadows an outer one until its scope ends; `depth()` counts open s
 Store holds, iterates and erases only its own; inserting what the parent has inserts nothing; in a map, its own
 value shadows the parent's, and `at()` on a layer that may change copies the parent's value up first (read
 through a const Store to avoid that). The parent is not owned: it must outlive the layer and stay unchanged.
-`repr::Layered<R>` (`include/urd/repr/layered.hpp`) layers a flat hash table. A memo kept for two generations is
-two maps swapped and cleared per generation (examples/scopes.cpp), not a representation.
+`repr::Layered<R>` (`include/urd/repr/layered.hpp`) layers a flat hash table, or a dense map (`Store<key<I>,
+value<V>, dense, layered>`, `Layered<IndexMap>`). Where a map's values layer themselves, `at()` on a layer makes
+its own value as a layer over the parent's instead of a copy, so a map of layered pools layers through both levels:
+the relations of a planning task, `Store<key<index<Predicate>>, value<Rows>, dense, layered>` with `Rows` a
+layered pool of rows of object indices, fall through to the previous phase's pool for a predicate the phase did not
+touch, and continue that pool's indices for one it did (`tests/store.cpp`, `RelationsLayerThroughBothLevels`). A
+memo kept for two generations is two maps swapped and cleared per generation (examples/scopes.cpp), not a
+representation.
 
 ### Records stored flat
 

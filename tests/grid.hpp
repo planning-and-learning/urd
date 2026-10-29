@@ -202,11 +202,15 @@ using sets_of = requests<request<key<K>>,
                          request<key<K>, sorted, contiguous, frozen>>;
 using ordered_sets = requests<request<key<int>, sorted, order_by<negated>>, request<key<int>, sorted, frozen, order_by<negated>>>;
 
-using indices = requests<request<key<index<Id>>, dense>,
-                         request<key<index<Id>>, value<int>, dense>,
-                         request<key<index<Id>>, value<int>, dense, constant_clear>,
-                         request<key<index<Id>>>,
-                         request<key<index<Id>>, sorted>>;
+using indices = requests<
+    request<key<index<Id>>, dense>,
+    request<key<index<Id>>, value<int>, dense>,
+    request<key<index<Id>>, value<int>, dense, constant_clear>,
+    request<key<index<Id>>>,
+    request<key<index<Id>>, sorted>,
+    request<key<index<Id>>, value<int>, dense, layered>,
+    request<key<index<Id>>, value<Store<value<Store<value<index<Id>>, frozen>>, handles, unique, monotone, layered>>, dense, layered>,
+    request<key<index<Id>>, value<Store<value<Store<value<index<Id>>, frozen>>, handles, unique, monotone, layered, concurrent>>, dense, layered, concurrent>>;
 
 template<typename I>
 using dense_sets_of = requests<request<key<I>, dense>,
