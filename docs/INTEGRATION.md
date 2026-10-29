@@ -99,8 +99,9 @@ type, `map_preference` for a map taking its key and value types. A container wit
 gets an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order). Nothing
 else is written per container: a request takes the first container in the list that serves it, meaning its
 `container_traits` for the request's elements satisfy the request and it offers the interface a Store for the
-request offers. Where a request is `small` or `frozen`, node-based containers (declaring `stable_refs`) move
-last, as contiguous storage is faster for few or unchanging elements.
+request offers. Where a request is `small` or `frozen`, containers with stable storage (declaring `stable_refs`: a
+node per element, or segments that never move) move last, as contiguous storage is faster for few or unchanging
+elements.
 
 A request no container serves fails in `no_representation_for<spec, culprits<…>, hashable, orderable, indexable>`,
 whose arguments say why: the culprits are the stated tags whose removal, one at a time, would make the request

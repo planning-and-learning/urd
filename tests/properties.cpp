@@ -360,9 +360,9 @@ TYPED_TEST(Properties, StableRefs)
     {
         // The reference is taken by the path the kind hands it out: a map's value by at (by find for a multimap), a
         // sequence's element by position, a set's by find; through iteration where there is nothing else.
-        constexpr int probe = declares<TypeParam, urd::dense> ? 0 : -1;
+        static constexpr int probe = declares<TypeParam, urd::dense> ? 0 : -1;
         auto range = built<TypeParam>({ probe });
-        const auto reference = [&range, probe]() -> const void*
+        const auto reference = [&range]() -> const void*
         {
             if constexpr (map<TypeParam> && requires { std::as_const(range).at(probe); })
                 return std::addressof(std::as_const(range).at(probe));

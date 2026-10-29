@@ -104,13 +104,16 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools registry denials views)
+    foreach(test store properties rows semantics queues pools registry denials views concurrency)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
         set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
     target_sources(test_properties PRIVATE tests/allocations.cpp)
+    # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
+    # positive of its optimizer, not a defect of the code); the other warnings stay on.
+    target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
     target_sources(test_queues PRIVATE tests/allocations.cpp)
     target_sources(test_store PRIVATE tests/allocations.cpp)

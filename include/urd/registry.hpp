@@ -247,7 +247,7 @@ struct map_candidates
 /// Every representation, in order of preference; the first that serves a request is chosen. A container is
 /// registered by adding it to one of these lists; what it can serve, its container_traits say. The order
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
-/// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
+/// at every size, so it comes first wherever order is not asked for; node tables and segments remain for stable_refs;
 /// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
 /// tables, and only a request that promises dense keys reaches them at all (demands_met: a container that stores by
 /// index demands keys that are indices, whatever its place in the list); the indexed set, after them too, only a
@@ -408,11 +408,12 @@ struct instantiated<S, ordered_map_candidates<Cs...>>
     using type = type_list<Cs<typename S::key_type, typename S::mapped_type, typename S::order_type>...>;
 };
 
-/// Node-based: it keeps references stable by allocating every element on its own.
+/// Stable storage: it keeps references stable, by a node per element or by segments that never move. Under
+/// small or frozen these move last, as contiguous storage is faster for few or unchanging elements.
 template<typename R>
-inline constexpr bool node_based = has<container_traits<R>, stable_refs>;
+inline constexpr bool stable_storage = has<container_traits<R>, stable_refs>;
 
-/// The order for S: where elements are few or never change, node-based containers come last, since contiguous
+/// The order for S: where elements are few or never change, containers with stable storage come last, since contiguous
 /// storage is more compact and faster to search and iterate (docs/BENCHMARKS.md); otherwise the lists' order.
 template<typename S, typename List>
 struct ordered_for;
@@ -423,7 +424,7 @@ struct ordered_for<S, type_list<Rs...>>
     // The reordered list is built only where it is used: join is the costly part of choosing.
     using type = typename std::conditional_t<
         compact,
-        join<std::conditional_t<node_based<Rs>, type_list<>, type_list<Rs>>..., std::conditional_t<node_based<Rs>, type_list<Rs>, type_list<>>...>,
+        join<std::conditional_t<stable_storage<Rs>, type_list<>, type_list<Rs>>..., std::conditional_t<stable_storage<Rs>, type_list<Rs>, type_list<>>...>,
         std::type_identity<type_list<Rs...>>>::type;
 };
 

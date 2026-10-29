@@ -39,7 +39,7 @@ public:
     /// The index of an equal record, or none.
     [[nodiscard]] index_type find(const T& record) const { return constant().find(record); }
     [[nodiscard]] bool contains(const T& record) const { return constant().contains(record); }
-    [[nodiscard]] bool contains(index_type at) const { return !at.is_none() && at.value < constant().size(); }
+    [[nodiscard]] bool contains(index_type at) const { return !at.is_none() && (at.value) < constant().size(); }
     [[nodiscard]] const T& operator[](index_type at) const { return constant()[at]; }
     [[nodiscard]] const T& at(index_type at) const
     {

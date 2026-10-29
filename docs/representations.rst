@@ -83,6 +83,7 @@ wherever order is not asked for, node-based tables for ``stable_refs``, a tree w
 elements inserted over time, the dense containers after the hash tables (and only a request that promises
 ``dense`` reaches them at all: a container that stores by index demands keys that are indices, whatever its place
 in the list), the indexed set after them, pools and queues by their kind. Where a request is ``small`` or ``frozen``,
-node-based containers move last. :doc:`RESOLUTION` shows what every request of a grid resolves to; a test audits
+containers with stable storage (a node per element, or segments) move last. :doc:`RESOLUTION` shows what every
+request of a grid resolves to; a test audits
 that the chosen container gives no more costly guarantees nobody asked for than another serving one, listing the
 intended exceptions.
