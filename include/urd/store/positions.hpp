@@ -1,9 +1,11 @@
 #pragma once
 
+#include "urd/index.hpp"
 #include "urd/store/types.hpp"
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <stdexcept>
 
@@ -21,6 +23,34 @@ class positions
     static constexpr bool writable = types::writable;
 
 public:
+    /// A set's elements by index (urd::index<T>): what a positional set mints, and what a view<T, Store> holds.
+    using index_type = urd::index<typename types::value_type>;
+
+    [[nodiscard]] const_reference_type operator[](index_type at) const
+        requires S::is_set
+    {
+        return (*this)[static_cast<std::size_t>(at.value)];
+    }
+    [[nodiscard]] const_reference_type at(index_type at) const
+        requires S::is_set
+    {
+        if (at.is_none())
+            throw std::out_of_range("urd::Store::at: none is no index");
+        return this->at(static_cast<std::size_t>(at.value));
+    }
+    /// The index of the element at `it`.
+    [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
+        requires S::is_set
+    {
+        return index_type(static_cast<std::uint32_t>(position(it)));
+    }
+    /// A view of the element at `at`, through this Store (urd/view.hpp must be included where views are made).
+    [[nodiscard]] auto view(index_type at) const
+        requires S::is_set
+    {
+        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
+        return urd::view<typename types::value_type, Derived>(at, self());
+    }
     [[nodiscard]] const_reference_type operator[](std::size_t pos) const
     {
         assert(pos < self().size());

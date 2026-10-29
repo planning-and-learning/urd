@@ -222,7 +222,27 @@ the element's iterator (`position` of it is the index) and whose indices never s
 `repr::IndexedSet` (`include/urd/repr/indexed.hpp`), a vector plus a flat hash table of positions; erase keeps
 the order and costs O(n).
 
-## Frozen multimaps by dense key, and graphs
+## Indices and views
+
+`urd::index<T>` (`include/urd/index.hpp`) is the index of a T in the Store that numbers Ts: a positional set
+mints one (`index(iterator)`, read back by `operator[]`, `at` and `view`), and a pool's handles are indices too
+(`handle_type` of a row interner is `index<Row>`, of a slot pool `index<T>`; the tree pools keep their own
+handle, since they number nodes, not rows). An index is one 32-bit integer with a `none` value, a different type
+per T that converts to no other, hashable, orderable, and a dense key, so `Store<key<index<T>>, value<V>, dense>`
+keys a table by it and finds `none` absent. Write it `urd::index`: the C library declares a function `index` in
+the global namespace, so an unqualified `index<T>` after `using namespace urd` is ambiguous.
+
+`urd::view<T, C>` (`include/urd/view.hpp`, included where views are made) is a reference to an element held by
+index: the index and a pointer to a context `C` that resolves it, where `resolves<C, T>` means `context[index<T>]`
+gives the record. A positional set resolves its own type, and any type with such an `operator[]` serves, a family
+of Stores for every member type among them. `record()` reads the element; `get<&T::m>()` reads a member resolved
+through the same context (`urd::resolve`): an `index<U>` becomes a `view<U, C>` where the context resolves U, else
+stays an index; a range of indices a range of views; characters a `string_view`; another contiguous range a span;
+a variant the variant of its alternatives resolved. Views compare and hash by index, and by the context's
+`layer()` number where it has one, so that two views of one element from one layer are equal wherever they were
+made, and views from different layers are not. `urd::context_of<T>` names a record type's default context once,
+so `view<T>` needs no second argument, and `urd::view_mixin<T, V>` is where a library adds the named accessors of
+a record, one line each over `get<>`. The denials name `view` for the Stores that have none.
 
 `Store<key<K>, value<V>, multi, dense, frozen>` resolves to `repr::CsrMultiMap` (`include/urd/repr/grouped.hpp`):
 compressed sparse rows, built at once from pairs in any order by a counting sort that keeps the order of equal

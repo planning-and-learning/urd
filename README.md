@@ -68,7 +68,7 @@ properties, and only on the type they concern:
 |---|---|---|
 | keys, unordered (the default) | `hashable` (`urd::Hash`, `urd::EqualTo`) | arithmetic types, enums, strings, ranges, Stores whose contents fix their order (`sorted`, `canonical`, sequences), and any type that names its identifying members |
 | keys, `sorted` (also `by_priority` elements) | `orderable` (`urd::Less`, `urd::EqualTo`) | the same |
-| keys, `dense` | `indexable` (`urd::index_of`) | non-negative integers, enums, types identified by one integral member |
+| keys, `dense` | `indexable` (`urd::index_of`) | non-negative integers, enums, types identified by one integral member, and `urd::index<T>` (what a positional set or a pool mints) |
 | values, elements of sequences and queues | nothing | — |
 
 A type names its identifying members once and is then hashable, orderable and comparable, in member order:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/index.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/traits.hpp"
 
@@ -17,16 +18,6 @@
 
 namespace urd::repr
 {
-
-/// The handle of an element in a SlotVector: its slot. A slot is reused once its element is erased, so a handle is
-/// valid until then. It is one integer, so it can key a dense Store of what goes with the element.
-struct SlotHandle
-{
-    std::uint32_t index = 0;
-
-    friend bool operator==(const SlotHandle&, const SlotHandle&) = default;
-    static constexpr auto identifying_members() noexcept { return Members<&SlotHandle::index> {}; }
-};
 
 /// Elements in slots that never move, with the indices of erased slots kept for reuse: erase anywhere in O(1),
 /// references to the other elements stay valid. An erased element is not destroyed; the slot keeps it, and its
@@ -45,7 +36,9 @@ class SlotVector
 
 public:
     using value_type = T;
-    using handle_type = SlotHandle;
+    /// An element's handle is the index of its slot. A slot is reused once its element is erased, so a handle is valid
+    /// until then; it keys a dense Store of what goes with the element.
+    using handle_type = urd::index<T>;
     using size_type = std::size_t;
 
     SlotVector() = default;
@@ -61,7 +54,9 @@ public:
     }
     template<typename... Args>
     handle_type emplace(Args&&... args)
-    { return insert(T(std::forward<Args>(args)...)); }
+    {
+        return insert(T(std::forward<Args>(args)...));
+    }
     /// A slot to use as it is: an erased element, with whatever it held and the storage it kept (a scratch buffer
     /// reused without allocating), else a new default-constructed one.
     handle_type acquire()
@@ -73,21 +68,21 @@ public:
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
     void erase(handle_type handle)
     {
-        assert(handle.index < m_slots.size());
+        assert(handle.value < m_slots.size());
         const auto lock = std::scoped_lock(m_mutex);
-        m_free.push_back(handle.index);
+        m_free.push_back(handle.value);
         --m_count;
     }
 
     [[nodiscard]] const T& operator[](handle_type handle) const
     {
-        assert(handle.index < m_slots.size());
-        return m_slots[handle.index];
+        assert(handle.value < m_slots.size());
+        return m_slots[handle.value];
     }
     [[nodiscard]] T& operator[](handle_type handle)
     {
-        assert(handle.index < m_slots.size());
-        return m_slots[handle.index];
+        assert(handle.value < m_slots.size());
+        return m_slots[handle.value];
     }
 
     /// How many elements are in use.

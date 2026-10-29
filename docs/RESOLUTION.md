@@ -144,6 +144,16 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `none` |
 | `Store<key<Id>, partition>` | partition, shrinkable | `disjoint_sets` |
 
+## Keyed by an index
+
+| Request | Spec | Representation |
+|---|---|---|
+| `Store<key<index<Id>>, dense>` | unique, dense, shrinkable | `dense_set` |
+| `Store<key<index<Id>>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` |
+| `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` |
+| `Store<key<index<Id>>>` | unique, shrinkable | `unordered_flat_set` |
+| `Store<key<index<Id>>, sorted>` | sorted, unique, shrinkable | `set` |
+
 ## Maps int to int
 
 | Request | Spec | Representation |

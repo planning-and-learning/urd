@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/index.hpp"
 #include "urd/interface.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/indexed.hpp"
@@ -35,15 +36,6 @@ struct Write
 namespace urd::repr
 {
 
-/// The handle of a row in a RowInterner: its position, in the order rows were first inserted.
-struct RowHandle
-{
-    std::uint32_t index = 0;
-
-    friend bool operator==(const RowHandle&, const RowHandle&) = default;
-    static constexpr auto identifying_members() noexcept { return Members<&RowHandle::index> {}; }
-};
-
 /// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full, in an
 /// indexed set. A row goes in as any range of its elements and is first made a Row, so that the Row's own rules
 /// (a set's order and uniqueness) decide which rows are equal. A row of dense indices (a dense set) is stored as its
@@ -63,7 +55,8 @@ class RowInterner
 
 public:
     using value_type = Row;
-    using handle_type = RowHandle;
+    /// A row's handle is its index: its position, in the order rows were first inserted.
+    using handle_type = urd::index<Row>;
     using write_type = Write<element>;
     using size_type = std::size_t;
 
@@ -191,13 +184,13 @@ public:
 private:
     [[nodiscard]] const stored_row& stored(handle_type handle) const
     {
-        assert(handle.index < m_rows.size());
-        return m_rows[handle.index];
+        assert(handle.value < m_rows.size());
+        return m_rows[handle.value];
     }
     handle_type intern(stored_row row)
     {
         const auto [found, inserted] = m_rows.insert(std::move(row));
-        return handle_type { static_cast<std::uint32_t>(found - m_rows.begin()) };
+        return handle_type(static_cast<std::uint32_t>(found - m_rows.begin()));
     }
     /// Sets bit `at`, growing the words to hold it.
     static void set(stored_row& bits, std::size_t at)

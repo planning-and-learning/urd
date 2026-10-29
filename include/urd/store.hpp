@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/index.hpp"
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
@@ -110,6 +111,7 @@ class Store :
     public denial<R, S>::scopes,
     public denial<R, S>::layers,
     public denial<R, S>::changes,
+    public denial<R, S>::view,
     public denial<R, S>::rows,
     public denial<R, S>::acquire,
     public denial<R, S>::grouping,

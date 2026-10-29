@@ -3,6 +3,7 @@
 
 #include "urd/compose/family.hpp"
 #include "urd/store.hpp"
+#include "urd/view.hpp"
 
 #include <string>
 
@@ -116,6 +117,15 @@ int main()
 #elif URD_CASE == 33  // dense alone does not say sorted: the key must ask for the order its hash follows
     using S = Store<key<Store<key<int>, urd::dense, urd::frozen>>>;
     (void) S();
+#elif URD_CASE == 34  // a view needs a context that resolves its index: a hash set has no indices
+    using Items = Store<key<int>>;
+    [[maybe_unused]] auto items = Items { 1 };
+    [[maybe_unused]] auto item = urd::view<int, Items>(urd::index<int>(0), items);
+#elif URD_CASE == 35  // an index of A is no index of B
+    struct A;
+    struct B;
+    auto by_a = Store<key<urd::index<A>>, value<int>, urd::dense>();
+    (void) by_a.contains(urd::index<B>(0));
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

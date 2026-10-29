@@ -89,6 +89,8 @@ std::string type_name()
         return "std::string";
     else if constexpr (std::is_same_v<T, Id>)
         return "Id";
+    else if constexpr (urd::is_index<T>)
+        return "index<" + type_name<typename T::element_type>() + ">";
     else if constexpr (urd::is_store<T>)
         return describe_spec<urd::traits_t<T>>();
     else
@@ -188,6 +190,12 @@ using sets_of = requests<request<key<K>>,
                          request<key<K>, contiguous, frozen>,
                          request<key<K>, sorted, contiguous, frozen>>;
 using ordered_sets = requests<request<key<int>, sorted, order_by<negated>>, request<key<int>, sorted, frozen, order_by<negated>>>;
+
+using indices = requests<request<key<index<Id>>, dense>,
+                         request<key<index<Id>>, value<int>, dense>,
+                         request<key<index<Id>>, value<int>, dense, constant_clear>,
+                         request<key<index<Id>>>,
+                         request<key<index<Id>>, sorted>>;
 
 template<typename I>
 using dense_sets_of = requests<request<key<I>, dense>,
@@ -319,6 +327,7 @@ void for_each_group(F f)
     f("Sets ordered by a projection", ordered_sets {});
     f("Dense sets of int", dense_sets_of<int> {});
     f("Dense sets of Id", dense_sets_of<Id> {});
+    f("Keyed by an index", indices {});
     f("Maps int to int", maps_of<int, int> {});
     f("Maps std::string to double", maps_of<std::string, double> {});
     f("Maps Id to Id", maps_of<Id, Id> {});

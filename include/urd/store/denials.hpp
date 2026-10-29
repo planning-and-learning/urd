@@ -273,14 +273,18 @@ struct no_changes
     void clear_changes(Args&&...);
 };
 template<fixed_string Reason>
+struct no_view
+{
+    template<typename... Args>
+        requires denied<Reason>
+    void view(Args&&...) const;
+};
+template<fixed_string Reason>
 struct no_rows
 {
     template<typename... Args>
         requires denied<Reason>
     void get(Args&&...) const;
-    template<typename... Args>
-        requires denied<Reason>
-    void view(Args&&...) const;
     template<typename... Args>
         requires denied<Reason>
     void row_size(Args&&...) const;
@@ -356,6 +360,7 @@ inline constexpr std::array declares_queue { facet_id::queue_access };
 inline constexpr std::array declares_scopes { facet_id::scopes };
 inline constexpr std::array declares_layers { facet_id::layers };
 inline constexpr std::array declares_changes { facet_id::changes };
+inline constexpr std::array declares_view { facet_id::pool, facet_id::positions };
 inline constexpr std::array declares_rows { facet_id::pool };
 inline constexpr std::array declares_acquire { facet_id::slots };
 inline constexpr std::array declares_grouping { facet_id::grouping };
@@ -480,7 +485,8 @@ struct denial
     using scopes = facet_if<!on::any_on(declares_scopes), no_scopes<"push_scope/pop_scope/depth: ask for scoped">>;
     using layers = facet_if<!on::any_on(declares_layers), no_layers<"layer_over: ask for layered">>;
     using changes = facet_if<!on::any_on(declares_changes), no_changes<"added/removed/clear_changes: ask for change_log">>;
-    using rows = facet_if<!on::any_on(declares_rows), no_rows<"get/view/row_size/memory_usage: only a pool of interned rows (handles, unique)">>;
+    using view = facet_if<!on::any_on(declares_view), no_view<"view: a pool lends a row by handle, a positional set an element by index">>;
+    using rows = facet_if<!on::any_on(declares_rows), no_rows<"get/row_size/memory_usage: only a pool of interned rows (handles, unique)">>;
     using acquire = facet_if<!on::any_on(declares_acquire), no_acquire<"acquire: only a pool of slots (handles without unique)">>;
     using grouping = facet_if<!on::any_on(declares_grouping), no_grouping<"same/class_size/classes: ask for partition">>;
     using reset = facet_if<!on::any_on(declares_reset), no_reset<"reset: ask for fixed_shape">>;

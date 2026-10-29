@@ -361,6 +361,23 @@ on 2026-10-29):
 - C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles. Done.
 - B.2. A missing operation names the property that removed it (denial facets). Done.
 
+## M12: the repository pattern as generic Stores — in progress
+
+The symbol repositories of yggdrasil, tyr and loki as requests (the plan of 2026-10-29): a strong `index<T>`, a
+`flat` pool of records serialized into a byte arena, a `view<T, C>` of an element by index and context, `layered`
+on pools, a `Family` with a parent, and a dense map of layered pools for relation bindings.
+
+1. `urd::index<T>` and `urd::view<T, C>` over a single Store: handles are indices, a positional set mints them and
+   resolves views, members resolve through the context. Done.
+2. Flat record pools: the in-memory interner for trivially copyable records, the cista byte arena for the rest,
+   both thread-safe on request; the `flat` tag; the `records` facet.
+3. `layered` on pools: indices continue after the parent, lookups fall through, views borrow the owning layer.
+4. `compose::Family` with a parent and a layer number, resolving every member type.
+5. Relations: a dense layered map of layered row pools.
+
+Deferred, named here so they are not re-invented: layered positional sets, lock-free parent lookups, rows of one
+stride and bit-packed widths, a concurrent dense map without generations, erase on interners.
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified

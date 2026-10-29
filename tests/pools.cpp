@@ -176,7 +176,7 @@ TEST(Slots, ThreadSafeSlotsServeThreadsAtOnce)
             workers.emplace_back(
                 [&pool, &failures, thread]
                 {
-                    auto mine = std::vector<urd::repr::SlotHandle>();
+                    auto mine = std::vector<typename std::remove_cvref_t<decltype(pool)>::handle_type>();
                     for (int round = 0; round < rounds; ++round)
                     {
                         mine.push_back(pool.insert(thread * rounds + round));

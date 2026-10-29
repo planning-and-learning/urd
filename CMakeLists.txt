@@ -93,7 +93,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools registry denials)
+    foreach(test store properties rows semantics queues pools registry denials views)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -159,7 +159,7 @@ if(URD_BUILD_TESTS)
         set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 33)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 35)
     urd_compile_fail_expects(compile_fail_store 8 "culprits<urd::tag::dense>")
     urd_compile_fail_expects(compile_fail_store 13 "culprits<urd::tag::stable_refs>")
     urd_compile_fail_expects(compile_fail_store 32 "culprits<>, false")
