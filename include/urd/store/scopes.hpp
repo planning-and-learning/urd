@@ -18,6 +18,13 @@ public:
     void pop_scope() { representation().pop_scope(); }
     /// How many scopes are open.
     [[nodiscard]] std::size_t depth() const { return store_access::representation(static_cast<const Derived&>(*this)).depth(); }
+    /// Whether `key` is bound and the innermost open scope bound it (with no scope open, whether it is bound): a
+    /// redeclaration check.
+    template<typename Key>
+    [[nodiscard]] bool bound_in_scope(const Key& key) const
+    {
+        return store_access::representation(static_cast<const Derived&>(*this)).bound_in_scope(key);
+    }
 
 private:
     [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }

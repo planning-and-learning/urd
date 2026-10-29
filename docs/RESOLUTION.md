@@ -213,6 +213,7 @@ indexable).
 | `Store<key<int>, value<int>, reclaims>` | unique, reclaims, shrinkable, functional | `map` |
 | `Store<key<int>, value<int>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` |
 | `Store<key<int>, value<int>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
+| `Store<key<int>, value<int>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<int>, value<int>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<int>, value<int>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
@@ -244,6 +245,7 @@ indexable).
 | `Store<key<std::string>, value<double>, reclaims>` | unique, reclaims, shrinkable, functional | `map` |
 | `Store<key<std::string>, value<double>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` |
 | `Store<key<std::string>, value<double>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
+| `Store<key<std::string>, value<double>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<std::string>, value<double>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<std::string>, value<double>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
@@ -275,6 +277,7 @@ indexable).
 | `Store<key<Id>, value<Id>, reclaims>` | unique, reclaims, shrinkable, functional | `map` |
 | `Store<key<Id>, value<Id>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` |
 | `Store<key<Id>, value<Id>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
+| `Store<key<Id>, value<Id>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<Id>, value<Id>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<Id>, value<Id>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
@@ -313,6 +316,7 @@ indexable).
 | `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` |
 | `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
+| `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
 | `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |
@@ -338,6 +342,7 @@ indexable).
 | `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` |
 | `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
+| `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
 | `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |

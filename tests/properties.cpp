@@ -193,7 +193,11 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::multi, urd::stable_refs>,
     // Scopes and layers.
     urd::repr::ScopedMap<int, int>,
+    urd::repr::ScopedTreeMap<int, int>,
+    urd::repr::ScopedDenseMap<int, int>,
     Store<key<int>, value<int>, urd::scoped>,
+    Store<key<int>, value<int>, urd::sorted, urd::scoped>,
+    Store<key<int>, value<int>, urd::dense, urd::scoped>,
     urd::repr::Layered<boost::unordered_flat_set<int, std::hash<int>>>,
     urd::repr::Layered<boost::unordered_flat_map<int, int, std::hash<int>>>,
     Store<key<int>, urd::layered>,

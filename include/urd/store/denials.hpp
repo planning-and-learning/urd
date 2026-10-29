@@ -251,6 +251,9 @@ struct no_scopes
     template<typename... Args>
         requires denied<Reason>
     void depth(Args&&...) const;
+    template<typename... Args>
+        requires denied<Reason>
+    void bound_in_scope(Args&&...) const;
 };
 template<fixed_string Reason>
 struct no_layers
@@ -484,7 +487,7 @@ struct denial
                            if_t<S::is_sequence,
                                 no_queue<"push/pop/top: a sequence takes push_back; a queue asks for fifo, lifo or by_priority">,
                                 no_queue<"push/pop/top: not a queue; ask for fifo, lifo or by_priority">>>;
-    using scopes = facet_if<!on::any_on(declares_scopes), no_scopes<"push_scope/pop_scope/depth: ask for scoped">>;
+    using scopes = facet_if<!on::any_on(declares_scopes), no_scopes<"push_scope/pop_scope/depth/bound_in_scope: ask for scoped">>;
     using layers = facet_if<!on::any_on(declares_layers), no_layers<"layer_over: ask for layered">>;
     using changes = facet_if<!on::any_on(declares_changes), no_changes<"added/removed/clear_changes: ask for change_log">>;
     using view = facet_if<!on::any_on(declares_view), no_view<"view: a pool lends a row by handle, a positional set an element by index">>;

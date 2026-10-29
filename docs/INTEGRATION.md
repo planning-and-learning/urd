@@ -308,8 +308,10 @@ in `relies_on<R>`, and selection skips it for requests that do not make them.
 ## Scopes and layers
 
 `scoped` (a map): `push_scope` opens a scope and `pop_scope` undoes every change made since, latest first, so an
-inner binding shadows an outer one until its scope ends; `depth()` counts open scopes. `repr::ScopedMap`
-(`include/urd/repr/scoped.hpp`) is a flat hash table plus a log of previous values; `clear` closes every scope.
+inner binding shadows an outer one until its scope ends; `depth()` counts open scopes, and `bound_in_scope(key)`
+says whether the innermost one bound the key (a redeclaration check). `repr::Scoped<Map>`
+(`include/urd/repr/scoped.hpp`) is any unique map plus a log of previous values, registered over a flat hash
+table, a tree (`sorted`) and a dense map (`dense`); `clear` closes every scope.
 
 `layered` (a set or map with unique keys): `layer_over(&parent)` makes lookups find the parent's elements too. The
 Store holds, iterates and erases only its own; inserting what the parent has inserts nothing; in a map, its own

@@ -46,7 +46,8 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
    * - ``Store<key<I>, value<V>, multi, dense, frozen>``
      - ``CsrMultiMap`` (compressed sparse rows); with ``bidirectional`` and ``value<I>``, ``BidirectionalCsr``
    * - ``Store<key<K>, value<V>, scoped>``
-     - ``ScopedMap`` (scopes undone by a log)
+     - ``Scoped`` over a flat hash map (scopes undone by a log); over a tree with ``sorted``, an ``IndexMap`` with
+       ``dense``
    * - ``Store<key<K>, value<V>, layered>``
      - ``Layered`` over a flat hash map; with ``dense``, over an ``IndexMap``
    * - ``Store<key<K>, value<V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
@@ -163,6 +164,11 @@ Scopes (``scoped``)
 .. cpp:function:: std::size_t depth() const
 
    How many scopes are open. ``clear`` closes every scope.
+
+.. cpp:function:: bool bound_in_scope(const key_type& key) const
+
+   Whether ``key`` is bound and the innermost open scope bound it; with no scope open, whether it is bound at all.
+   A redeclaration check: ``bound_in_scope(name)`` before declaring ``name`` in the current block.
 
 Layers (``layered``)
 ^^^^^^^^^^^^^^^^^^^^

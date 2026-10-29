@@ -71,7 +71,7 @@ urd's own
    * - ``LayeredPool``, ``Layered``
      - a pool, set or map over a parent
      - ``layered``
-   * - ``ScopedMap``, ``ChangeLogged`` (over a flat hash, dense, tree or node set), ``DisjointSets``, ``SegmentedVector``
+   * - ``Scoped`` (over a flat hash, tree or dense map), ``ChangeLogged`` (over a flat hash, dense, tree or node set), ``DisjointSets``, ``SegmentedVector``
      - a map with a log of previous values; a set logging its changes; union-find; a vector of doubling segments
      - ``scoped``, ``change_log``, ``partition``, ``monotone, stable_refs``
 

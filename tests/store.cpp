@@ -126,6 +126,9 @@ static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, u
 // Scopes and layers: a scoped map is a flat hash table with an undo log; a layered Store a flat hash table over a
 // parent.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::scoped>::representation, urd::repr::ScopedMap<int, int>>);
+// Scopes over the map the other properties pick: a tree with sorted, a slot per index with dense.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::scoped>::representation, urd::repr::ScopedTreeMap<int, int>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::scoped>::representation, urd::repr::ScopedDenseMap<int, int>>);
 static_assert(std::same_as<Store<key<int>, urd::layered>::representation, urd::repr::Layered<FlatHashSet<int>>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representation, urd::repr::Layered<FlatHashMapOf<int, int>>>);
 
@@ -609,6 +612,28 @@ TEST(Scoped, PopUndoesTheScopesChanges)
             ASSERT_EQ(symbols.depth(), saved.size());
         }
     }
+}
+
+// A binding is in the innermost scope where that scope made it (loki's redeclaration check, gap 12 of docs/SURVEY.md).
+TEST(Scoped, BoundInScopeIsTheInnermostScopesOwn)
+{
+    auto symbols = Store<key<std::string>, value<int>, urd::scoped>();
+    symbols.insert_or_assign("x", 1);
+    EXPECT_TRUE(symbols.bound_in_scope("x"));  // no scope open: bound at all
+    symbols.push_scope();
+    EXPECT_FALSE(symbols.bound_in_scope("x"));  // the outer binding is not this scope's
+    symbols.insert_or_assign("x", 2);
+    symbols.insert_or_assign("y", 3);
+    EXPECT_TRUE(symbols.bound_in_scope("x") && symbols.bound_in_scope("y"));
+    symbols.push_scope();
+    EXPECT_FALSE(symbols.bound_in_scope("y"));
+    symbols.erase("y");
+    EXPECT_FALSE(symbols.bound_in_scope("y"));  // changed here, but not bound
+    symbols.pop_scope();
+    EXPECT_TRUE(symbols.bound_in_scope("y"));
+    symbols.pop_scope();
+    EXPECT_EQ(symbols.at("x"), 1);
+    EXPECT_TRUE(symbols.bound_in_scope("x") && !symbols.contains("y"));
 }
 
 // A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.

@@ -1,8 +1,11 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/dense.hpp"
+#include "urd/repr/std_map.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
+#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -10,6 +13,7 @@
 #include <cassert>
 #include <cstddef>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -18,13 +22,16 @@ namespace urd::repr
 {
 
 /// A map with scopes, for symbol tables: pop_scope undoes every change since the matching push_scope, so a binding
-/// made in a scope shadows an outer one until the scope ends. The bindings in force are a flat hash table; each
-/// change inside a scope first logs the key's previous value (or its absence). The registry names it for any key
-/// type, so it is an unconstrained template; its container_traits declare properties only for hashable keys.
-template<typename K, typename V>
-class ScopedMap
+/// made in a scope shadows an outer one until the scope ends. The bindings in force are Map (a flat hash table, a
+/// tree, a dense map); each change inside a scope first logs the key's previous value (or its absence). The
+/// registry names it for any key type, so it is an unconstrained template; its container_traits declare properties
+/// where Map's do.
+template<typename Map>
+class Scoped
 {
-    using Table = boost::unordered_flat_map<K, V, Hash<K>, EqualTo<K>>;
+    using Table = Map;
+    using K = typename Map::key_type;
+    using V = typename Map::mapped_type;
 
 public:
     using iterator = typename Table::const_iterator;
@@ -35,10 +42,10 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    ScopedMap() = default;
+    Scoped() = default;
 
     template<std::input_iterator InputIt>
-    ScopedMap(InputIt first, InputIt last) : m_table(first, last)
+    Scoped(InputIt first, InputIt last) : m_table(first, last)
     {
     }
 
@@ -65,10 +72,38 @@ public:
     }
     /// How many scopes are open.
     [[nodiscard]] size_type depth() const { return m_scopes.size(); }
+    /// Whether `key` is bound and was bound in the innermost open scope (any scope being open); with none open,
+    /// whether it is bound at all. A redeclaration check: the log since the last push_scope names the keys changed.
+    [[nodiscard]] bool bound_in_scope(const K& key) const
+    {
+        if (!contains(key))
+            return false;
+        if (m_scopes.empty())
+            return true;
+        return std::any_of(m_log.begin() + static_cast<std::ptrdiff_t>(m_scopes.back()),
+                           m_log.end(),
+                           [&key](const auto& entry) { return EqualTo<K> {}(entry.first, key); });
+    }
 
     [[nodiscard]] iterator find(const K& key) const { return m_table.find(key); }
     [[nodiscard]] size_type count(const K& key) const { return m_table.count(key); }
     [[nodiscard]] bool contains(const K& key) const { return m_table.contains(key); }
+    // The bounds, where Map is sorted.
+    [[nodiscard]] iterator lower_bound(const K& key) const
+        requires requires(const Table& table) { table.lower_bound(key); }
+    {
+        return m_table.lower_bound(key);
+    }
+    [[nodiscard]] iterator upper_bound(const K& key) const
+        requires requires(const Table& table) { table.upper_bound(key); }
+    {
+        return m_table.upper_bound(key);
+    }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
+        requires requires(const Table& table) { table.equal_range(key); }
+    {
+        return m_table.equal_range(key);
+    }
     [[nodiscard]] const V& at(const K& key) const { return m_table.at(key); }
     /// The value, to change in place: logged first, as any change.
     [[nodiscard]] V& at(const K& key)
@@ -87,7 +122,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(value_type(std::forward<Args>(args)...)); }
+    {
+        return insert(value_type(std::forward<Args>(args)...));
+    }
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
     {
@@ -143,14 +180,25 @@ private:
     std::vector<std::size_t> m_scopes;
 };
 
+/// Scopes over a flat hash table.
+template<typename K, typename V>
+using ScopedMap = Scoped<boost::unordered_flat_map<K, V, Hash<K>, EqualTo<K>>>;
+/// Scopes over a tree: sorted.
+template<typename K, typename V>
+using ScopedTreeMap = Scoped<std::map<K, V, Less<K>>>;
+/// Scopes over a slot per index: dense keys.
+template<typename K, typename V>
+using ScopedDenseMap = Scoped<IndexMap<K, V, false>>;
+
 }  // namespace urd::repr
 
 namespace urd
 {
 
-/// Bindings in a flat hash table, with scopes undone by a log; erase and clear keep the table's slots.
-template<hashable K, typename V>
-struct container_traits<repr::ScopedMap<K, V>> : properties_of<unique, sparse, shrinkable, scoped>
+/// As Map, with scopes undone by a log.
+template<typename Map>
+    requires container_traits<Map>::declared && has<container_traits<Map>, unique> && detail::map_container<Map>
+struct container_traits<repr::Scoped<Map>> : with_t<container_traits<Map>, scoped>
 {
 };
 

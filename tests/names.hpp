@@ -209,6 +209,18 @@ struct name<urd::repr::ScopedMap<K, V>>
     static constexpr std::string_view id = "scoped_map";
     static constexpr std::string_view value = "scoped map (a flat hash table, scopes undone by a log)";
 };
+template<typename K, typename V>
+struct name<urd::repr::ScopedTreeMap<K, V>>
+{
+    static constexpr std::string_view id = "scoped_tree_map";
+    static constexpr std::string_view value = "scoped tree map (std::map, scopes undone by a log)";
+};
+template<typename K, typename V>
+struct name<urd::repr::ScopedDenseMap<K, V>>
+{
+    static constexpr std::string_view id = "scoped_dense_map";
+    static constexpr std::string_view value = "scoped dense map (a slot per index, scopes undone by a log)";
+};
 template<typename R>
 struct name<urd::repr::LayeredPool<R>>
 {

@@ -148,6 +148,10 @@ using BidirectionalCsrOf = repr::BidirectionalCsr<K, V>;
 
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
+template<typename K, typename V>
+using ScopedTreeMapOf = repr::ScopedTreeMap<K, V>;
+template<typename K, typename V>
+using ScopedDenseMapOf = repr::ScopedDenseMap<K, V>;
 template<typename T>
 using SlotVector = repr::SlotVector<T>;
 template<typename T>
@@ -343,6 +347,8 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
                                       ScopedMapOf,
+                                      ScopedTreeMapOf,
+                                      ScopedDenseMapOf,
                                       LayeredHashMapOf,
                                       LayeredDenseMapOf>;
 
