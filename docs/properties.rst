@@ -117,3 +117,127 @@ What a request states and no container declares.
    * - order
      - ``order_by<P>``
      - See :cpp:class:`urd::order_by`.
+
+Incompatible combinations
+-------------------------
+
+A request is one of three things: served, missing, or incompatible. :doc:`RESOLUTION` shows the first two for a
+grid of requests (a ``none`` row carries a note saying what is missing). The third is a contract no representation
+can keep: ``Store`` rejects it before resolution with a message naming the rule, and a compile-fail case in
+``tests/compile_fail_store.cpp`` pins each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``). The rules
+are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 42 20 8
+
+   * - Request
+     - Why
+     - Instead
+     - Case
+   * - An argument that is no property
+     - Every argument is a ``key<K>``, a ``value<V>``, a tag or ``order_by<P>``.
+     - Wrap the type in ``key`` or ``value``.
+     - 10
+   * - Two ``key<K>`` (or two ``value<V>``)
+     - A Store has one key type and one value type.
+     - A nested Store, or a tuple key.
+     - 9
+   * - Two tags of one category: ``dense, sparse``; ``functional, multi``; ``retains, reclaims``; ``frozen, monotone``;
+       two workloads
+     - One question, two answers.
+     - Keep one.
+     - 4, 5, 14
+   * - ``key<K>, value<V>, positional``
+     - Positions identify a sequence's or set's elements; a map's are identified by key.
+     - Drop ``positional`` (a map), or drop ``value<V>`` (an interner).
+     - 7
+   * - ``contiguous, stable_refs`` without ``frozen``
+     - Contiguous storage moves its elements when it grows.
+     - Add ``frozen``, or drop ``contiguous`` (a node or segmented container).
+     - 6
+   * - ``nonempty`` on a queue or a pool
+     - ``nonempty`` is a promise about iterated elements; a queue empties by ``pop``, a pool by ``erase(handle)``.
+     - Drop it; check ``empty()`` before ``pop``.
+     - 44
+   * - A queue (``fifo``, ``lifo``, ``by_priority``) with ``frozen`` or ``positional``
+     - A queue changes by push and pop and is reached by its front or top.
+     - A sorted set or a sequence.
+     - 24
+   * - ``monotone_priority`` without ``by_priority``
+     - It says how a priority queue is pushed to.
+     - Add ``by_priority``.
+     - 46
+   * - ``handles`` with ``key<K>``, ``positional`` or ``frozen``, or on a ``fifo``/``lifo`` queue
+     - A pool holds ``value<V>`` rows reached by handle; a key, a position or an order would identify them otherwise.
+     - ``key<K>, positional, monotone`` for an interner of keys; ``by_priority, handles`` for an addressable queue.
+     - 27
+   * - ``flat`` outside ``handles, unique``
+     - ``flat`` is how an interning pool stores records.
+     - Add ``handles, unique``, or drop ``flat``.
+     - 37
+   * - ``handles, unique`` over a record that is no range, without ``flat``
+     - A pool of records stores them flat; the request must say so.
+     - Add ``flat``.
+     - 36
+   * - ``partition`` with ``value<V>`` or ``frozen``
+     - A partition groups keys and changes by ``insert`` and ``merge``.
+     - A map from element to group, or drop ``frozen``.
+     - 45
+   * - ``fixed_shape`` on a set, a map, a ``monotone`` sequence, or rows that are no Store
+     - A fixed shape is a sequence of rows (``value<Store<…>>``) whose number and lengths never change.
+     - ``value<Store<…>>``; drop ``monotone``.
+     - 47
+   * - ``order_by<P>`` without ``sorted`` or ``by_priority``
+     - There is no order to change.
+     - Add ``sorted``.
+     - 28
+   * - ``order_by<P>`` on unique keys that are not orderable
+     - Ties under ``P`` are broken by the keys' own order; without one, two keys with equal ``P(key)`` would be one.
+     - Give the key an order, or ask for ``multi``.
+     - 29
+   * - ``order_by<P>`` with a ``P`` that fits neither ``P(element)`` nor a map's ``P(key, value)``
+     - ``P`` takes the element (a map's key), or a map's key and value.
+     - Fix ``P``'s signature.
+     - 31
+
+A second group is rejected by the registry rather than a rule: the request is well formed, but no representation
+serves it and none could. The diagnosis names the culprits, the stated tags whose removal would make the request
+servable.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 42 20 8
+
+   * - Request
+     - Why
+     - Instead
+     - Case
+   * - ``value<V>, stable_refs`` without ``monotone`` or ``frozen``
+     - Erasing from a sequence moves the elements after the erased one.
+     - Add ``monotone`` (a segmented vector), or ``frozen``.
+     - 13
+   * - ``key<std::string>, dense``
+     - Dense keys are indices; a string is none.
+     - A key with ``index_of``, or ``sparse``.
+     - 8
+   * - ``key<Store<…>>`` where the inner Store is unordered, or ``dense`` without ``sorted``
+     - An unordered Store iterates in an order its contents do not fix, so it has no hash.
+     - ``sorted`` or ``canonical`` on the inner Store.
+     - 32, 33
+   * - ``handles, layered`` on a pool of slots
+     - Slots are recycled; nothing continues their handles over a parent.
+     - ``handles, unique, monotone, layered`` (an interning pool).
+     - 40
+   * - ``handles, unique, structural_sharing, layered``
+     - A tree pool numbers nodes, not rows; no layer continues its handles.
+     - Drop ``structural_sharing``.
+     - 41
+   * - ``dense, layered, concurrent`` maps
+     - Missing, not incompatible: the concurrent slot directory is not written yet (see the note in :doc:`RESOLUTION`).
+     - ``dense, layered`` single-threaded, or ``dense, constant_clear, concurrent`` without layers.
+     - 43
+   * - ``key<int>, value<int>, concurrent, retains``
+     - The concurrent tables (gtl) return their storage on ``clear``; no concurrent table retains.
+     - Drop ``retains``, or share a ``dense, constant_clear, concurrent`` map.
+     - grid

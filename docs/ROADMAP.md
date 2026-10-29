@@ -378,6 +378,43 @@ on pools, a `Family` with a parent, and a dense map of layered pools for relatio
 Deferred, named here so they are not re-invented: layered positional sets, lock-free parent lookups, rows of one
 stride and bit-packed widths, a concurrent dense map without generations, erase on interners.
 
+## M13–M15: the audit's order
+
+An audit of revision `814ba83` (docs/codex.summary, 2026-10-29) found two contract failures and asked that the
+property space be deepened rather than widened: every meaningful combination becomes a tested implementation, a
+missing implementation recorded as such, or an incompatible contract rejected with a diagnostic. Its suggested
+order, each item a milestone or half of one:
+
+1. Repair the two contract failures and pin their behavior.
+2. Define reference stability and concurrency precisely for each exposed access path, then complete their useful
+   cross-family combinations.
+3. Separate stable storage, synchronization and generation policies where they are currently coupled.
+4. Complete retention/reclamation and clear-cost combinations, with stronger checks for `constant_clear`.
+5. Expand `change_log` and `scoped` support, then the remaining layering, dense multimap, inverse-access and
+   projection combinations.
+
+**M13 (item 1 and the classification) — done.** `dense` is the one guarantee that is also a demand on the caller:
+a representation declaring it serves only a request promising it (`demands_met`), checked by an absolute rule in the
+registry test over the whole grid; the concurrent sorted and retaining maps by an integer key no longer fall
+through to the generation map. `nonempty` holds through the fixed-shape constructors and is rejected on queues and
+pools (a promise about iterated elements). Every rule of `to_spec` and every registry-level rejection has a
+compile-fail case checking its message, listed in docs/properties.rst, "Incompatible combinations"; every `none`
+row of docs/RESOLUTION.md carries a note saying whether it is missing or incompatible, which the table tool
+requires.
+
+**M14 (items 2 and 3).** Stability and concurrency defined per access path and checked through it (a map's value by
+`at`, a queue's `front`, a pool's `[index]`); a `Stable` policy split from `ThreadSafe` on `IndexedSet`,
+`RecordInterner` and `IndexMap`, so `stable_refs` alone buys no lock; `Fifo` declares `stable_refs`; stable
+concurrent hashed tables through gtl's node tables; the rejections of `sorted, concurrent` (dense excepted), queues
+with `concurrent`, positional `stable_refs` without `monotone`, and `frozen, concurrent`; an operation-pair matrix
+under ThreadSanitizer.
+
+**M15 (items 4 and 5).** `constant_clear` checked against live cardinality; the rejections and recorded gaps of
+retention, clear cost, dense order and by-value maps; `RecyclingSet` (stable retaining sets), `RingFifo` (`fifo,
+retains`); `ChangeLogged` over dense, tree and node sets; `Scoped` generic over its map with tree and dense
+registrations; layered node sets and maps and the layered generation map; `DenseGroups`, the growable dense
+multimap.
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified

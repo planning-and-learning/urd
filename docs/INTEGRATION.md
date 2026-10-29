@@ -106,7 +106,10 @@ A request no container serves fails in `no_representation_for<spec, culprits<…
 whose arguments say why: the culprits are the stated tags whose removal, one at a time, would make the request
 servable (`to_spec::without<tag>` re-runs the rules without one, so dropping `frozen` drops the implied
 `stable_refs` too), and the three booleans say what the key type is where no tag is the culprit. The probes run
-only on failure. Two compile-fail cases check the message (`urd_compile_fail_expects` in `CMakeLists.txt`).
+only on failure. Every rule of `to_spec` and every registry-level rejection has a compile-fail case that checks the
+message, not only the failure (`urd_compile_fail_expects` in `CMakeLists.txt`); docs/properties.rst lists them
+under "Incompatible combinations", so a request is one of three things: served, missing (a `none` row of
+docs/RESOLUTION.md with a note), or incompatible (a message).
 
 What a container needs of its elements belongs in its traits, as constraints with the concepts of
 `include/urd/elements.hpp` (`orderable`, `hashable`, `natural_order`, `natural_hash`): a tree is `sorted` only
@@ -459,11 +462,15 @@ negative key.
 
 Two tests watch the order. `docs/RESOLUTION.md` is generated from a grid of requests (`tests/grid.hpp`) by
 `resolution_table --write docs/RESOLUTION.md` and checked by the `resolution` test, so a change to the registry that
-moves a request shows up as a diff of that file, to be reviewed and committed with the change. The `registry` test
-(`tests/registry.cpp`) audits each request: among the candidates that serve it, the one chosen must give no more
-costly guarantees nobody asked for (storage by index, nodes, locks, generations, a log, a parent, shared parts) than
-another serving one; where the order makes such a choice on purpose, a tree for a sorted set that changes, the
-request is listed there with its reason, and the test also reports when a listed request no longer surprises.
+moves a request shows up as a diff of that file, to be reviewed and committed with the change. A `none` row of that
+file carries a note (`notes` in `tests/resolution_table.cpp`): missing, a representation that could be written, or
+incompatible, a contract none can keep; the tool fails on a `none` row without a note and on a note for a request
+that is served now, so the record of gaps cannot go stale. The `registry` test (`tests/registry.cpp`) audits each
+request: among the candidates that serve it, the one chosen must give no more costly guarantees nobody asked for
+(storage by index, nodes, locks, generations, a log, a parent, shared parts) than another serving one; where the
+order makes such a choice on purpose, a tree for a sorted set that changes, the request is listed there with its
+reason, and the test also reports when a listed request no longer surprises. A second, absolute rule needs no
+comparison: no serving candidate demands `dense` of a request that did not promise it.
 
 ## Nested Stores
 

@@ -173,6 +173,15 @@ int main()
 #elif URD_CASE == 44  // nonempty is a promise about iterated elements: a queue empties by pop
     using S = Store<value<int>, urd::fifo, urd::nonempty>;
     (void) S();
+#elif URD_CASE == 45  // a partition groups keys: no values, and it changes by merge
+    using S = Store<key<int>, value<int>, urd::partition>;
+    (void) S();
+#elif URD_CASE == 46  // monotone_priority says how a priority queue is pushed to: it needs the queue
+    using S = Store<value<int>, urd::monotone_priority>;
+    (void) S();
+#elif URD_CASE == 47  // fixed_shape is a sequence of rows, each a Store
+    using S = Store<value<int>, urd::fixed_shape>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {
