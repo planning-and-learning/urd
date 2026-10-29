@@ -170,6 +170,9 @@ int main()
     using Rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone, urd::layered, urd::concurrent>;
     using S = Store<key<urd::index<Predicate>>, value<Rows>, urd::dense, urd::layered, urd::concurrent>;
     (void) S();
+#elif URD_CASE == 44  // nonempty is a promise about iterated elements: a queue empties by pop
+    using S = Store<value<int>, urd::fifo, urd::nonempty>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

@@ -60,7 +60,9 @@ queue is not iterated and not compared.
 
 .. cpp:function:: void pop()
 
-   Removes the next element; the Store must not be empty.
+   Removes the next element; the Store must not be empty. Offered under ``monotone`` too: pop is how a queue is
+   consumed, and ``monotone`` takes only ``clear`` away. ``nonempty`` is not a queue's to promise, since pop
+   empties it: a request for one is rejected.
 
 .. cpp:function:: const value_type& front() const
 

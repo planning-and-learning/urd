@@ -48,6 +48,8 @@ static_assert(std::same_as<Store<value<int>, urd::by_priority>::representation, 
 // Handles to change or erase an element; integral priorities pushed in order fill buckets; others stay a heap.
 static_assert(std::same_as<Store<value<int>, urd::by_priority, urd::handles>::representation, urd::repr::AddressableHeap<int>>);
 static_assert(std::same_as<Store<value<int>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::BucketQueue<int>>);
+// A monotone queue keeps pop: pop is how a queue is consumed, monotone only takes clear away.
+static_assert(requires(Store<value<int>, urd::by_priority, urd::monotone> queue) { queue.pop(); });
 static_assert(std::same_as<Store<value<double>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::Heap<double>>);
 static_assert(std::same_as<
               Store<value<std::pair<unsigned, int>>, urd::by_priority, urd::monotone_priority, urd::order_by<&std::pair<unsigned, int>::first>>::representation,

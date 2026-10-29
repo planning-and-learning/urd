@@ -308,6 +308,9 @@ struct to_spec
                   "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
+    static_assert(!stated.has(tag::nonempty) || of.set || of.map || of.sequence,
+                  "urd::Store: nonempty is a promise about the elements a set, map or sequence iterates; a queue empties by pop and a "
+                  "pool by erase(handle), so it cannot hold there: drop nonempty, or check empty() before pop");
     static_assert(!stated.has(tag::fixed_shape) || (of.sequence && !stated.has(tag::monotone) && is_store<value_type>),
                   "urd::Store: fixed_shape is a sequence of rows (value<Store<…>>) whose number and lengths never change; its rows' "
                   "contents do");

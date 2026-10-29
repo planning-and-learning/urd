@@ -96,7 +96,8 @@ What a request states and no container declares.
    * - lifecycle
      - ``monotone`` → ``frozen``
      - Only grows (no ``erase``, ``clear``, ``pop_back``), or changes only by ``assign(first, last)``, a rebuild in
-       the storage held where the container can.
+       the storage held where the container can. A monotone queue keeps ``pop``: pop is how a queue is consumed,
+       and ``monotone`` takes only ``clear`` away.
    * - emptiness
      - ``nonempty``
      - At least one element: no default constructor, and construction from elements asserts one; a fixed-shape
