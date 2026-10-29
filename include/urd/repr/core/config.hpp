@@ -51,7 +51,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cista/mode.h>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -116,12 +115,6 @@ struct FloatTolerance<float_t>
         return std::round(value / abs_epsilon) * abs_epsilon;
     }
 };
-
-#ifdef NDEBUG
-static constexpr ::cista::mode CISTA_MODE = ::cista::mode::UNCHECKED;
-#else
-static constexpr ::cista::mode CISTA_MODE = ::cista::mode::NONE;
-#endif
 }  // namespace urd::repr
 
 #endif

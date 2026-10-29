@@ -1,0 +1,15 @@
+# The urd package: a header-only INTERFACE target, urd::urd, and the dependencies it links.
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+# Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables), Boost.Hash2 (xxHash, since 1.89).
+find_dependency(Boost 1.89 CONFIG COMPONENTS container unordered hash2)
+# cista: serialization, for records stored flat.
+find_dependency(cista CONFIG)
+if(@URD_WITH_GTL@)
+    # gtl: the parallel hash tables behind concurrent sets and maps by hashed keys.
+    find_dependency(gtl CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/urdTargets.cmake")
+check_required_components(urd)

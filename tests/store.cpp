@@ -153,11 +153,13 @@ static_assert((all_conform) (element_candidates<value<Store<key<int>, urd::dense
 static_assert((all_conform) (map_candidates<key<int>, value<int>> {}));
 static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {}));
 
-// Sets and maps shared by threads, by hashed keys: gtl's sharded tables.
+// Sets and maps shared by threads, by hashed keys: gtl's sharded tables (a build without gtl has none).
+#if defined(URD_HAS_GTL)
 static_assert(std::same_as<Store<key<int>, urd::concurrent>::representation, urd::repr::ParallelHashSet<int>>);
 static_assert(std::same_as<Store<key<std::string>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<std::string, int>>);
 // By an indexable key too: without dense, a hash table, not a slot per index.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<int, int>>);
+#endif
 
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
@@ -1049,6 +1051,7 @@ TEST(FixedShape, RowsOfElementsChangeInPlace)
 }
 
 // Threads updating and reading the same hashed keys of a shared map at once: every update counts.
+#if defined(URD_HAS_GTL)
 TEST(Merge, ThreadsUpdateHashedKeysTogether)
 {
     auto counts = Store<key<std::string>, value<int>, urd::concurrent>();
@@ -1073,6 +1076,7 @@ TEST(Merge, ThreadsUpdateHashedKeysTogether)
         total += counts.at(std::to_string(key));
     EXPECT_EQ(total, threads * rounds);
 }
+#endif
 
 // Ordered by a projection: a node's cost, ties by the node itself; a priority queue by (f, larger g first).
 namespace

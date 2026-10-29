@@ -12,7 +12,9 @@
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/layered.hpp"
 #include "urd/repr/ordered_map.hpp"
+#if defined(URD_HAS_GTL)
 #include "urd/repr/parallel.hpp"
+#endif
 #include "urd/repr/pools.hpp"
 #include "urd/repr/queues.hpp"
 #include "urd/repr/recycling.hpp"
@@ -163,10 +165,14 @@ template<typename T>
 using BucketQueueOf = repr::BucketQueue<T>;
 template<typename T>
 using AddressableHeapOf = repr::AddressableHeap<T>;
+// gtl's sharded tables, where the build has gtl (URD_WITH_GTL): without them a concurrent set or map by hashed keys
+// has no representation.
+#if defined(URD_HAS_GTL)
 template<typename T>
 using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
 using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
+#endif
 template<typename K, typename V>
 using RecyclingHashMapOf = repr::RecyclingHashMap<K, V>;
 template<typename K, typename V>
@@ -232,7 +238,9 @@ using element_preference = element_candidates<JaggedOf,
                                               ThreadSafeRowInterner,
                                               ThreadSafeTreeVectorOf,
                                               ThreadSafeTreeBitsetOf,
+#if defined(URD_HAS_GTL)
                                               ParallelHashSetOf,
+#endif
                                               ConcurrentIndexedSet,
                                               SlotVector,
                                               ThreadSafeSlotVector,
@@ -241,7 +249,9 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
                                       HashMultiMapOf,
+#if defined(URD_HAS_GTL)
                                       ParallelHashMapOf,
+#endif
                                       TreeMapOf,
                                       TreeMultiMapOf,
                                       FlatMultiMapOf,

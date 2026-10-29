@@ -249,12 +249,16 @@ positions on
 
 ```sh
 cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
-cmake --build dependencies-build && cmake --install dependencies-build    # Boost, gtl, GoogleTest, Google Benchmark
+cmake --build dependencies-build && cmake --install dependencies-build    # Boost, cista, gtl, GoogleTest, Google Benchmark
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8 && ctest --test-dir build
+cmake --install build --prefix <where>                                    # then find_package(urd) from there
 ```
 
-Link the `urd::urd` target and include `urd/store.hpp`. Requests use only the vocabulary of `urd/traits.hpp` and
+Link the `urd::urd` target (`find_package(urd)` after the install, or `urd_DIR=<build>` against the build tree) and
+include `urd/store.hpp`. The target carries its dependencies: Boost 1.89 or later (Container, Unordered, Hash2),
+cista, and with `URD_WITH_GTL` (on by default) gtl, whose sharded tables serve `concurrent` sets and maps by hashed
+keys; without it such a request has no representation. Requests use only the vocabulary of `urd/traits.hpp` and
 `urd/properties.hpp`; what `urd/repr` holds is the representations' business, not code that uses a Store (a check
 keeps containers out of the include root).
 

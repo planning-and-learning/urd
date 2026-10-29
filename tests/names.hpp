@@ -244,6 +244,7 @@ struct name<urd::repr::RecyclingHashMap<K, V>>
     static constexpr std::string_view id = "recycling_hash_map";
     static constexpr std::string_view value = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
 };
+#if defined(URD_HAS_GTL)
 template<typename T>
 struct name<urd::repr::ParallelHashSet<T>>
 {
@@ -256,6 +257,7 @@ struct name<urd::repr::ParallelHashMap<K, V>>
     static constexpr std::string_view id = "parallel_hash_map";
     static constexpr std::string_view value = "parallel hash map (gtl: shards, each behind its mutex; update and read under it)";
 };
+#endif
 template<typename T, typename Index>
 struct name<urd::repr::ConcurrentIndexedSet<T, Index>>
 {

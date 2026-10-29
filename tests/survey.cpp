@@ -372,8 +372,10 @@ static_assert(std::same_as<BitMatrix::representation, urd::repr::Jagged<Store<ke
 // allocated by every worker: a concurrent map, the allocation in update under the shard's lock.
 struct CanonicalGraphTag;
 using CanonicalGraph = Id<CanonicalGraphTag>;
+#if defined(URD_HAS_GTL)
 using Representatives = Store<key<CanonicalGraph>, value<Vertex>, urd::concurrent>;
 static_assert(std::same_as<Representatives::representation, urd::repr::ParallelHashMap<CanonicalGraph, Vertex>>);
+#endif
 
 // runir kr/parser/ext_constructors.hpp, ReferenceTable: a name -> entity map beside a vector of the entities by
 // identifier, six times over; loki builder_declarations.cpp: declarations beside their declaration order.

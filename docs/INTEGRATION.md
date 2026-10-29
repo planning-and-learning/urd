@@ -27,13 +27,19 @@ flags. Copying `SegmentedVector` needed two explicit casts where signed and unsi
 
 A dependency goes into `docs/SOURCES.json` (repository and revision, or archive and checksum) with a recipe
 in `src/<name>/CMakeLists.txt` and its license under `src/<name>/licenses/`, the same setup as yggdrasil's.
-Building `src/` installs everything into `dependencies-install/`, whose headers urd includes as system
-headers:
+Building `src/` installs everything into `dependencies-install/`:
 
 ```sh
 cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
 cmake --build dependencies-build -j8 && cmake --install dependencies-build
 ```
+
+The main build then finds each one as a package (`find_package` in `CMakeLists.txt`, the prefix on
+`CMAKE_PREFIX_PATH`) and links its imported target to `urd::urd`, so a consumer of urd gets it too through
+`cmake/urdConfig.cmake.in`'s `find_dependency`; a new dependency is added in both places. Imported targets' headers
+are system headers, so the warnings cover only urd. gtl is optional (`URD_WITH_GTL`): the registry lists its
+tables under `URD_HAS_GTL`, and so do the tests that name them. A recipe that skips the build when the package is
+already installed (cista's does) keeps an old install until `dependencies-install/lib/cmake/<name>` is removed.
 
 ## 3. Declare its properties: `container_traits<R>`
 

@@ -348,6 +348,19 @@ serves it (one sorted vector, found by a scan; for few entries, as `small` says)
 `NumericIntervalAnnotations`. Left out until a large site needs it: a hash index beside an ordered one
 (Boost.MultiIndex) for many entries.
 
+## Before M12: four prerequisites — in progress
+
+Fixed before any library tries urd, since a migration would hit each in its first hour (the weaknesses discussed
+on 2026-10-29):
+
+- D. Dependencies: cista linked and exported (built without `CISTA_FMT`), gtl optional (`URD_WITH_GTL`), urd
+  installable (`find_package(urd)`, a consumer test against the build tree), Boost 1.89 the minimum. Done.
+- B.1. An unservable request names its culprit tags (`no_representation_for<…, culprits<…>>`).
+- A. A generated resolution table (docs/RESOLUTION.md, checked by a test) and a registry audit that reports a
+  chosen container answering more unasked categories than another serving one.
+- C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles.
+- B.2. A missing operation names the property that removed it (denial facets).
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified

@@ -11,13 +11,19 @@ env:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.compiler }} ${{ matrix.build_type }}
+    name: ${{ matrix.compiler }} ${{ matrix.build_type }}${{ matrix.gtl == 'OFF' && ' without gtl' || '' }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         compiler: [g++, clang++]
         build_type: [Debug, Release]
+        gtl: [ON]
+        include:
+          # Without gtl: no concurrent sets and maps by hashed keys, and the request for one fails as documented.
+          - compiler: g++
+            build_type: Release
+            gtl: OFF
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +44,7 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DURD_WITH_GTL=${{ matrix.gtl }}
 
       - name: Build
         run: cmake --build build

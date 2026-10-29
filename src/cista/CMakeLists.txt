@@ -23,6 +23,9 @@ if (NOT cista_FOUND)
             -DBUILD_SHARED_LIBS=ON
             -DCMAKE_INSTALL_RPATH=${URD_DEPENDENCY_INSTALL_RPATH}
             -DCISTA_INSTALL=ON
+            # Without it the exported target defines CISTA_FMT, and cista's headers then include fmt, which
+            # urd does not carry.
+            -DCISTA_FMT=OFF
     )
 
     message(STATUS "Preparing external project \"cista\" with args:")

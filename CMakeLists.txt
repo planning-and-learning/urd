@@ -17,12 +17,45 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Debug checks the properties urd's types claim." FORCE)
 endif()
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+option(URD_WITH_GTL "Concurrent sets and maps by hashed keys: gtl's parallel hash tables." ON)
+# The superbuild's prefix comes after any prefix the user set, so a consumer may point at its own Boost.
+list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
+# Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2 (xxHash for
+# urd::Hash, in Boost since 1.89); cista (serialization, for records stored flat). All header-only but for
+# Boost.Container's small runtime library.
+find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container unordered hash2)
+find_package(cista REQUIRED CONFIG)
+
 add_library(urd INTERFACE)
 add_library(urd::urd ALIAS urd)
-target_include_directories(urd INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
+target_include_directories(urd INTERFACE
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
 target_compile_features(urd INTERFACE cxx_std_20)
-# The dependencies' headers are system headers, so the build's warnings cover only urd.
-target_include_directories(urd SYSTEM INTERFACE "$<BUILD_INTERFACE:${URD_NATIVE_PREFIX}/include>")
+# Imported targets' headers are system headers, so the build's warnings cover only urd.
+target_link_libraries(urd INTERFACE Boost::container Boost::unordered Boost::hash2 cista::cista)
+if(URD_WITH_GTL)
+    find_package(gtl REQUIRED CONFIG)
+    target_link_libraries(urd INTERFACE gtl::gtl)
+    target_compile_definitions(urd INTERFACE URD_HAS_GTL=1)
+endif()
+
+# The package: find_package(urd) after an install, or against this build tree with urd_DIR=<build>.
+install(DIRECTORY include/urd DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(TARGETS urd EXPORT urdTargets)
+install(EXPORT urdTargets NAMESPACE urd:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd")
+export(EXPORT urdTargets NAMESPACE urd:: FILE "${CMAKE_BINARY_DIR}/urdTargets.cmake")
+configure_package_config_file(cmake/urdConfig.cmake.in "${CMAKE_BINARY_DIR}/urdConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd"
+)
+write_basic_package_version_file("${CMAKE_BINARY_DIR}/urdConfigVersion.cmake" COMPATIBILITY SameMajorVersion)
+install(FILES "${CMAKE_BINARY_DIR}/urdConfig.cmake" "${CMAKE_BINARY_DIR}/urdConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd"
+)
 
 if(PROJECT_IS_TOP_LEVEL)
     # Debug builds check the standard library's preconditions too, such as the bounds of
@@ -115,4 +148,18 @@ if(URD_BUILD_TESTS)
     endfunction()
 
     urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 31)
+    if(NOT URD_WITH_GTL)
+        urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 1)
+    endif()
+
+    # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.
+    add_test(
+        NAME consumer_configure
+        COMMAND ${CMAKE_COMMAND} -S ${PROJECT_SOURCE_DIR}/tests/consumer -B ${CMAKE_BINARY_DIR}/consumer
+                -Durd_DIR=${CMAKE_BINARY_DIR} -DCMAKE_PREFIX_PATH=${URD_NATIVE_PREFIX}
+                -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=$<CONFIG>
+    )
+    set_tests_properties(consumer_configure PROPERTIES FIXTURES_SETUP consumer)
+    add_test(NAME consumer_build COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/consumer)
+    set_tests_properties(consumer_build PROPERTIES FIXTURES_REQUIRED consumer)
 endif()

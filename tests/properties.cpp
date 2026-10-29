@@ -200,12 +200,16 @@ using Containers = testing::Types<
     Store<key<int>, value<int>, urd::sorted, urd::order_by<by_value>>,
     // A sorted map that keeps erased nodes and their values for reuse.
     urd::repr::RecyclingMap<int, int>,
-    urd::repr::RecyclingHashMap<int, int>,
+    urd::repr::RecyclingHashMap<int, int>
+#if defined(URD_HAS_GTL)
+    ,
     // Sharded hash tables that threads share (gtl).
     urd::repr::ParallelHashSet<int>,
     urd::repr::ParallelHashMap<int, int>,
     Store<key<int>, urd::concurrent>,
-    Store<key<int>, value<int>, urd::concurrent>>;
+    Store<key<int>, value<int>, urd::concurrent>
+#endif
+    >;
 
 template<typename R>
 class Properties : public testing::Test
