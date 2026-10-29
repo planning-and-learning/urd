@@ -364,6 +364,14 @@ benchmark.
 The preference lists in `include/urd/registry.hpp` follow `docs/BENCHMARKS.md`, which `benchmarks/` produces
 (Google Benchmark, `-DURD_BUILD_BENCHMARKS=ON`). A change to an order cites a benchmark.
 
+Two tests watch the order. `docs/RESOLUTION.md` is generated from a grid of requests (`tests/grid.hpp`) by
+`resolution_table --write docs/RESOLUTION.md` and checked by the `resolution` test, so a change to the registry that
+moves a request shows up as a diff of that file, to be reviewed and committed with the change. The `registry` test
+(`tests/registry.cpp`) audits each request: among the candidates that serve it, the one chosen must give no more
+costly guarantees nobody asked for (storage by index, nodes, locks, generations, a log, a parent, shared parts) than
+another serving one; where the order makes such a choice on purpose, a tree for a sorted set that changes, the
+request is listed there with its reason, and the test also reports when a listed request no longer surprises.
+
 ## Nested Stores
 
 A Store's elements can be Stores (rows): `Store<value<Store<value<int>, frozen>>>`. The same rules apply one

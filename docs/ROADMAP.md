@@ -355,9 +355,9 @@ on 2026-10-29):
 
 - D. Dependencies: cista linked and exported (built without `CISTA_FMT`), gtl optional (`URD_WITH_GTL`), urd
   installable (`find_package(urd)`, a consumer test against the build tree), Boost 1.89 the minimum. Done.
-- B.1. An unservable request names its culprit tags (`no_representation_for<…, culprits<…>>`).
+- B.1. An unservable request names its culprit tags (`no_representation_for<…, culprits<…>>`). Done.
 - A. A generated resolution table (docs/RESOLUTION.md, checked by a test) and a registry audit that reports a
-  chosen container answering more unasked categories than another serving one.
+  chosen container giving more costly unasked guarantees than another serving one. Done.
 - C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles.
 - B.2. A missing operation names the property that removed it (denial facets).
 

@@ -5,6 +5,7 @@
 
 #include "urd/store.hpp"
 
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -288,6 +289,109 @@ struct name<urd::repr::IndexMap<K, V, true, true>>
     static constexpr std::string_view id = "thread_safe_generation_map";
     static constexpr std::string_view value = "generation map, thread-safe updates (a slot and a spin lock per index)";
 };
+template<typename T, urd::repr::leaving Order, typename Compare>
+struct name<urd::repr::Queue<T, Order, Compare>>
+{
+    static constexpr std::string_view id = Order == urd::repr::leaving::least ? "heap_by" : Order == urd::repr::leaving::first_in ? "fifo_by" : "lifo_by";
+    static constexpr std::string_view value = "queue by a given order";
+};
+template<typename T, typename Compare>
+struct name<urd::repr::AddressableHeap<T, Compare>>
+{
+    static constexpr std::string_view id = "addressable_heap";
+    static constexpr std::string_view value = "addressable heap (push gives a handle to update or erase by)";
+};
+template<typename T, typename Compare>
+struct name<urd::repr::BucketQueue<T, Compare>>
+{
+    static constexpr std::string_view id = "bucket_queue";
+    static constexpr std::string_view value = "bucket queue (a bucket per integral priority)";
+};
+template<typename Inner>
+struct name<urd::repr::Jagged<Inner, true>>
+{
+    static constexpr std::string_view id = "tracked_jagged";
+    static constexpr std::string_view value = "jagged rows that track the rows handed out to change";
+};
+template<typename Row>
+struct name<urd::repr::RowInterner<Row, true>>
+{
+    static constexpr std::string_view id = "thread_safe_row_interner";
+    static constexpr std::string_view value = "row interner, thread-safe";
+};
+template<typename T, typename C, typename A>
+struct name<std::multiset<T, C, A>>
+{
+    static constexpr std::string_view id = "multiset";
+    static constexpr std::string_view value = "std::multiset (balanced tree)";
+};
+
+/// The tags by name, in the order of urd::tag: for printing a request or a spec.
+inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names {
+    "any_order",
+    "sorted",
+    "insertion_ordered",
+    "duplicates",
+    "unique",
+    "any_keys",
+    "dense",
+    "sparse",
+    "moving_refs",
+    "stable_refs",
+    "any_layout",
+    "contiguous",
+    "any_representation",
+    "canonical",
+    "single_threaded",
+    "concurrent",
+    "any_memory",
+    "retains",
+    "reclaims",
+    "any_clear",
+    "proportional_clear",
+    "constant_clear",
+    "any_access",
+    "fifo",
+    "lifo",
+    "by_priority",
+    "any_scope",
+    "scoped",
+    "any_layering",
+    "layered",
+    "any_handle",
+    "handles",
+    "any_sharing",
+    "structural_sharing",
+    "any_direction",
+    "bidirectional",
+    "any_shape",
+    "fixed_shape",
+    "any_grouping",
+    "partition",
+    "any_tracking",
+    "change_log",
+    "immutable",
+    "growable",
+    "shrinkable",
+    "may_change",
+    "monotone",
+    "frozen",
+    "maybe_empty",
+    "nonempty",
+    "any_multiplicity",
+    "functional",
+    "multi",
+    "by_key",
+    "positional",
+    "general",
+    "small",
+    "any_priority",
+    "monotone_priority",
+};
+static_assert(tag_names[urd::detail::index(urd::tag::sorted)] == "sorted" && tag_names[urd::detail::index(urd::tag::concurrent)] == "concurrent"
+              && tag_names[urd::detail::index(urd::tag::monotone_priority)] == "monotone_priority");
+constexpr std::string_view tag_name(urd::tag of) { return tag_names[urd::detail::index(of)]; }
+
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
 {

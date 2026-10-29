@@ -108,49 +108,14 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 
 ## What a request resolves to
 
-`K` a key type, `V` a value type, `T` an element type, `I` an index type (`dense`). A selection, as the current
-registry resolves them (`include/urd/registry.hpp`; the order of candidates there is backed by
-[docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
-
-| Request | Container |
-|---|---|
-| `Store<key<K>>` | `boost::unordered_flat_set` (open addressing) |
-| `Store<key<K>, sorted>` | `std::set` |
-| `Store<key<K>, sorted, frozen>` | `boost::container::flat_set` (sorted vector) |
-| `Store<key<K>, stable_refs>` | `std::unordered_set` |
-| `Store<key<I>, dense>` | `DenseSet` (bitset) |
-| `Store<key<I>, dense, proportional_clear>` | `DenseSet` that clears only the words it set |
-| `Store<key<I>, dense, constant_clear>` | `SparseSet` (Briggs–Torczon) |
-| `Store<key<K>, insertion_ordered>` | `IndexedSet` (vector plus a hash table of positions) |
-| `Store<key<K>, positional, monotone>` | `IndexedSet`: an interner, each element gets an index |
-| `Store<key<K>, concurrent>` | `gtl::parallel_flat_hash_set` (shards, a mutex each) |
-| `Store<key<K>, positional, monotone, concurrent>` | `ConcurrentIndexedSet` |
-| `Store<value<T>>` | `std::vector` |
-| `Store<value<T>, sorted>` | `boost::container::flat_multiset` |
-| `Store<value<T>, monotone, stable_refs>` | `SegmentedVector` (thread-safe with `concurrent`) |
-| `Store<key<K>, value<V>>` | `boost::unordered_flat_map` |
-| `Store<key<K>, value<V>, sorted>` | `std::map` |
-| `Store<key<K>, value<Row>>` with a `retains` Row | `Recycling` hash map (a tree with `sorted`): erased keys leave their nodes and values for the next keys |
-| `Store<key<I>, value<V>, dense>` | `IndexMap` (a slot per index) |
-| `Store<key<I>, value<V>, dense, constant_clear>` | `IndexMap` with generations |
-| `… dense, constant_clear, concurrent` | `IndexMap` with generations and a spin lock per slot |
-| `Store<key<K>, value<V>, concurrent>` | `gtl::parallel_flat_hash_map`; `update` and `read` under the key's shard lock |
-| `Store<key<K>, value<V>, insertion_ordered>` | `OrderedMap` (with `dense`: over a `SparseSet`) |
-| `Store<key<K>, value<V>, multi>` | `PostingMap` (flat hash table of value vectors) |
-| `Store<key<K>, value<V>, multi, sorted>` | `std::multimap` |
-| `Store<key<I>, value<V>, multi, dense, frozen>` | `CsrMultiMap` (compressed sparse rows) |
-| `Store<key<I>, value<I>, multi, dense, frozen, bidirectional>` | `BidirectionalCsr` (a frozen graph with its in-edges) |
-| `Store<key<K>, value<V>, scoped>` | `ScopedMap` (scopes undone by a log) |
-| `Store<key<K>, value<V>, layered>` | `Layered` flat hash map over a parent |
-| `Store<key<K>, change_log>` | `ChangeLogged` flat hash set |
-| `Store<key<I>, partition>` | `DisjointSets` (union-find) |
-| `Store<value<T>, fifo>` / `lifo` / `by_priority` | `Fifo` (deque) / `Lifo` (vector) / `Heap` (binary heap) |
-| `Store<value<T>, by_priority, order_by<&T::cost>>` | `Heap` by the cost; `sorted` Stores take `order_by` too |
-| `Store<key<K>, value<V>, sorted, order_by<[](const K&, const V&) { … }>>` | `FlatEntryMap`: found by key, in the order the values give |
-| `Store<value<T>, by_priority, handles>` | `AddressableHeap`: `push` gives a handle; `update(h, e)`, `erase(h)` |
-| `Store<value<I>, by_priority, monotone_priority>` | `BucketQueue` (a bucket per integral priority) |
-| `Store<value<T>, handles>` | `SlotVector` (stable slots, freed ones reused) |
-| rows (Stores as elements) | see [Nesting](#elements-any-type-any-depth) |
+[docs/RESOLUTION.md](docs/RESOLUTION.md) lists, for a grid of requests over a few element types, the container each
+resolves to (`include/urd/registry.hpp`; the order of candidates there is backed by
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md)). The table is generated from the registry and checked against it by a
+test, so it is what the current registry does, not a description of it. A selection: a set is an open-addressing
+hash table (`boost::unordered_flat_set`), a tree with `sorted`, a sorted vector with `sorted, frozen`, a bitset
+with `dense`; a sequence is a `std::vector`; a map by hashed keys is `boost::unordered_flat_map`, by dense keys an
+`IndexMap` (a slot per index); `fifo`, `lifo` and `by_priority` are a deque, a vector and a binary heap; rows and pools
+are in [Nesting](#elements-any-type-any-depth).
 
 `Store<…>::representation` names the choice, for tests that pin it; code that uses a Store never needs it.
 

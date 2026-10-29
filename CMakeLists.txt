@@ -93,7 +93,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools)
+    foreach(test store properties rows semantics queues pools registry)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -103,6 +103,13 @@ if(URD_BUILD_TESTS)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
     target_sources(test_queues PRIVATE tests/allocations.cpp)
     target_sources(test_store PRIVATE tests/allocations.cpp)
+
+    # The resolution table: docs/RESOLUTION.md is generated from the request grid and checked against the registry.
+    add_executable(resolution_table tests/resolution_table.cpp)
+    target_link_libraries(resolution_table PRIVATE urd::urd)
+    if(URD_WITH_GTL)  # the table documents the full build: without gtl its concurrent rows read none
+        add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
+    endif()
 
     # The include root holds the vocabulary and the entry point only.
     add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)
