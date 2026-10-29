@@ -233,6 +233,24 @@ struct name<urd::repr::Layered<R>>
     static constexpr std::string_view id = "layered";
     static constexpr std::string_view value = "layered (its own elements, then a parent's)";
 };
+template<typename T>
+struct name<urd::repr::Layered<std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>>>
+{
+    static constexpr std::string_view id = "layered_node_set";
+    static constexpr std::string_view value = "layered node set (std::unordered_set over a parent's)";
+};
+template<typename K, typename V>
+struct name<urd::repr::Layered<std::unordered_map<K, V, urd::Hash<K>, urd::EqualTo<K>>>>
+{
+    static constexpr std::string_view id = "layered_node_map";
+    static constexpr std::string_view value = "layered node map (std::unordered_map over a parent's)";
+};
+template<typename K, typename V>
+struct name<urd::repr::Layered<urd::repr::IndexMap<K, V, true>>>
+{
+    static constexpr std::string_view id = "layered_generation_map";
+    static constexpr std::string_view value = "layered generation map (a slot per index, O(1) clear, over a parent's)";
+};
 template<typename R>
 struct name<urd::repr::ChangeLogged<R>>
 {

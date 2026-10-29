@@ -49,7 +49,8 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
      - ``Scoped`` over a flat hash map (scopes undone by a log); over a tree with ``sorted``, an ``IndexMap`` with
        ``dense``
    * - ``Store<key<K>, value<V>, layered>``
-     - ``Layered`` over a flat hash map; with ``dense``, over an ``IndexMap``
+     - ``Layered`` over a flat hash map; over a node map with ``stable_refs``; with ``dense``, over an ``IndexMap``
+       (with generations under ``constant_clear``)
    * - ``Store<key<K>, value<V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
      - ``FlatEntryMap``: found by key, in the order the values give
 

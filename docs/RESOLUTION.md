@@ -42,6 +42,7 @@ indexable).
 | `Store<key<int>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |
 | `Store<key<int>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<int>, layered>` | unique, layered, shrinkable | `layered` |
+| `Store<key<int>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_node_set` |
 | `Store<key<int>, change_log>` | unique, change_log, shrinkable | `change_logged` |
 | `Store<key<int>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
 | `Store<key<int>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
@@ -83,6 +84,7 @@ indexable).
 | `Store<key<std::string>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |
 | `Store<key<std::string>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<std::string>, layered>` | unique, layered, shrinkable | `layered` |
+| `Store<key<std::string>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_node_set` |
 | `Store<key<std::string>, change_log>` | unique, change_log, shrinkable | `change_logged` |
 | `Store<key<std::string>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
 | `Store<key<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
@@ -124,6 +126,7 @@ indexable).
 | `Store<key<Id>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |
 | `Store<key<Id>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |
 | `Store<key<Id>, layered>` | unique, layered, shrinkable | `layered` |
+| `Store<key<Id>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_node_set` |
 | `Store<key<Id>, change_log>` | unique, change_log, shrinkable | `change_logged` |
 | `Store<key<Id>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_tree_set` |
 | `Store<key<Id>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_node_set` |
@@ -216,6 +219,7 @@ indexable).
 | `Store<key<int>, value<int>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<int>, value<int>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<int>, value<int>, layered>` | unique, layered, shrinkable, functional | `layered` |
+| `Store<key<int>, value<int>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_node_map` |
 | `Store<key<int>, value<int>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
 | `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
@@ -248,6 +252,7 @@ indexable).
 | `Store<key<std::string>, value<double>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<std::string>, value<double>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<std::string>, value<double>, layered>` | unique, layered, shrinkable, functional | `layered` |
+| `Store<key<std::string>, value<double>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_node_map` |
 | `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
 | `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
@@ -280,6 +285,7 @@ indexable).
 | `Store<key<Id>, value<Id>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` |
 | `Store<key<Id>, value<Id>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |
 | `Store<key<Id>, value<Id>, layered>` | unique, layered, shrinkable, functional | `layered` |
+| `Store<key<Id>, value<Id>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_node_map` |
 | `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
 | `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
@@ -317,6 +323,7 @@ indexable).
 | `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
+| `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
 | `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |
@@ -343,6 +350,7 @@ indexable).
 | `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` |
 | `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
+| `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
 | `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
 | `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |

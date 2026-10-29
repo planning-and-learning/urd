@@ -46,7 +46,7 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
      - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); with ``stable_refs``, ``parallel_node_hash_set``
        (a node per element); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
    * - ``Store<key<K>, layered>``
-     - ``Layered`` over a flat hash set
+     - ``Layered`` over a flat hash set; over a node set with ``stable_refs``
    * - ``Store<key<K>, change_log>``
      - ``ChangeLogged`` over a flat hash set; over a tracked bitset with ``dense``, a tree with ``sorted``, a node
        set with ``stable_refs``

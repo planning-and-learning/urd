@@ -131,6 +131,11 @@ static_assert(std::same_as<Store<key<int>, value<int>, urd::sorted, urd::scoped>
 static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::scoped>::representation, urd::repr::ScopedDenseMap<int, int>>);
 static_assert(std::same_as<Store<key<int>, urd::layered>::representation, urd::repr::Layered<FlatHashSet<int>>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::layered>::representation, urd::repr::Layered<FlatHashMapOf<int, int>>>);
+// Layers over the set or map the other properties pick: nodes with stable_refs, a generation map with constant_clear.
+static_assert(std::same_as<Store<key<int>, urd::stable_refs, urd::layered>::representation, urd::repr::Layered<HashSet<int>>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::stable_refs, urd::layered>::representation, urd::repr::Layered<HashMapOf<int, int>>>);
+static_assert(std::same_as<Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::layered>::representation,
+                           urd::repr::Layered<urd::repr::IndexMap<int, int, true>>>);
 
 static_assert(std::same_as<Store<key<int>, urd::change_log>::representation, urd::repr::ChangeLogged<FlatHashSet<int>>>);
 // The log over the set the other properties pick: a tracked bitset for dense keys, a tree for sorted, nodes for
