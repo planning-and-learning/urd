@@ -265,9 +265,11 @@ size allocates nothing.
 
 A multimap without order or stable references (`Store<key<K>, value<V>, multi>`) resolves to `repr::PostingMap`
 (`include/urd/repr/grouped.hpp`): a flat hash table from each key to the vector of its values, in insertion
-order, so `values(key)` is a span. Both multimaps are one class, `GroupedMultiMap`, over how the groups of values are
-kept (`IndexGroups`, `HashGroups`): a third way to keep them is a policy, not a new multimap. Keeping postings in sync when the rows they point to move (a swap-erase) is
-the caller's.
+order, so `values(key)` is a span. The multimaps are one class, `GroupedMultiMap`, over how the groups of values are
+kept: `IndexGroups` (frozen compressed sparse rows), `HashGroups` (postings) and `DenseGroups` (a vector of values
+per index, growing: `Store<key<I>, value<V>, multi, dense>`, `repr::DenseMultiMap`); another way to keep them is a
+policy, not a new multimap. Keeping postings in sync when the rows they point to move (a swap-erase) is the
+caller's.
 
 ## Order by a projection
 

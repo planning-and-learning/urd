@@ -50,6 +50,9 @@ urd's own
    * - ``CsrMultiMap``, ``BidirectionalCsr``
      - compressed sparse rows; with the in-edges too
      - ``multi, dense, frozen`` maps, graphs
+   * - ``DenseMultiMap``
+     - a vector of values per index, growing
+     - ``multi, dense`` maps
    * - ``Jagged``, ``RowPool``
      - rows in one array per level; rows kept with their storage for reuse
      - rows (:ref:`rows`)

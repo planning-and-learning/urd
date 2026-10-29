@@ -52,7 +52,9 @@ public:
     template<std::input_iterator InputIt>
         requires requires(Groups& groups, InputIt first) { groups.assign(first, first); }
     void assign(InputIt first, InputIt last)
-    { m_groups.assign(first, last); }
+    {
+        m_groups.assign(first, last);
+    }
 
     [[nodiscard]] iterator begin() const { return iterator(&m_groups, m_groups.begin(), 0).normalized(); }
     [[nodiscard]] iterator end() const { return iterator(&m_groups, m_groups.end(), 0); }
@@ -81,10 +83,14 @@ public:
     }
     [[nodiscard]] iterator lower_bound(const K& key) const
         requires Groups::ordered
-    { return iterator(&m_groups, m_groups.lower_bound(key), 0).normalized(); }
+    {
+        return iterator(&m_groups, m_groups.lower_bound(key), 0).normalized();
+    }
     [[nodiscard]] iterator upper_bound(const K& key) const
         requires Groups::ordered
-    { return iterator(&m_groups, m_groups.upper_bound(key), 0).normalized(); }
+    {
+        return iterator(&m_groups, m_groups.upper_bound(key), 0).normalized();
+    }
 
     /// Appends a value to its key's, from any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
@@ -100,7 +106,9 @@ public:
     template<typename Pair>
         requires Groups::changes
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    { return insert(pair); }
+    {
+        return insert(pair);
+    }
     template<std::input_iterator InputIt>
         requires Groups::changes
     void insert(InputIt first, InputIt last)
@@ -110,11 +118,15 @@ public:
     template<typename... Args>
         requires Groups::changes
     iterator emplace(Args&&... args)
-    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    {
+        return insert(std::pair<K, V>(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
         requires Groups::changes
-    { return m_groups.erase(key); }
+    {
+        return m_groups.erase(key);
+    }
     /// The values after `pos` move up within its key; where it was the key's last, the key leaves.
     iterator erase(const_iterator pos)
         requires Groups::changes
@@ -131,12 +143,16 @@ public:
     }
     void clear()
         requires Groups::changes
-    { m_groups.clear(); }
+    {
+        m_groups.clear();
+    }
 
     /// Where Groups compares; else a Store compares by iterating.
     [[nodiscard]] friend bool operator==(const GroupedMultiMap& lhs, const GroupedMultiMap& rhs)
         requires std::equality_comparable<Groups>
-    { return lhs.m_groups == rhs.m_groups; }
+    {
+        return lhs.m_groups == rhs.m_groups;
+    }
 
     /// A value at a time, a key's together, with its key.
     class iterator
@@ -237,7 +253,9 @@ public:
 
     template<std::input_iterator InputIt>
     IndexGroups(InputIt first, InputIt last)
-    { assign(first, last); }
+    {
+        assign(first, last);
+    }
 
     /// Rebuilds from pairs. From a range read twice, with values that can be default-built, in the storage already
     /// held: count each key's values, sum the counts to offsets, place each value at its key's next offset, then
@@ -299,7 +317,9 @@ public:
 
     /// Equal keys with equal values in the same order, by urd::EqualTo.
     [[nodiscard]] friend bool operator==(const IndexGroups& lhs, const IndexGroups& rhs)
-    { return lhs.m_offsets == rhs.m_offsets && std::ranges::equal(lhs.m_values, rhs.m_values, EqualTo<V> {}); }
+    {
+        return lhs.m_offsets == rhs.m_offsets && std::ranges::equal(lhs.m_values, rhs.m_values, EqualTo<V> {});
+    }
 
 private:
     std::vector<std::size_t> m_offsets { 0 };
@@ -377,9 +397,102 @@ private:
     std::size_t m_count = 0;
 };
 
+/// Groups by key index that grow: a vector of values per index, the rows growing as keys arrive; a group is a key's
+/// index. Append grows a key's row; erasing a key clears its row and keeps it (the storage is retained); erasing a
+/// value moves the ones after it up within its key. Iterated in key order, the empty rows skipped.
+template<typename K, typename V>
+class DenseGroups
+{
+    static_assert(indexable<K>, "urd::repr::DenseGroups: keys must be indices (urd::index_of)");
+
+public:
+    using key_type = K;
+    using mapped_type = V;
+    using group = std::size_t;
+    static constexpr bool ordered = true;
+    static constexpr bool changes = true;
+
+    DenseGroups() = default;
+
+    template<std::input_iterator InputIt>
+    DenseGroups(InputIt first, InputIt last)
+    {
+        std::for_each(first, last, [this](const auto& pair) { this->append(K(pair.first), V(pair.second)); });
+    }
+
+    [[nodiscard]] group begin() const { return 0; }
+    [[nodiscard]] group end() const { return m_rows.size(); }
+    [[nodiscard]] std::size_t count() const { return m_count; }
+    [[nodiscard]] K key(group at) const { return index_of<K>::from_index(at); }
+    [[nodiscard]] std::span<const V> row(group at) const { return m_rows[at]; }
+    [[nodiscard]] group find(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key), end()) : end(); }
+    /// Keys that are no index (a negative integer) come before all.
+    [[nodiscard]] group lower_bound(const K& key) const { return index_of<K>::is_index(key) ? find(key) : begin(); }
+    [[nodiscard]] group upper_bound(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key) + 1, end()) : begin(); }
+
+    /// The group of `key` and the position of the value appended to it; the rows grow to the key.
+    std::pair<group, std::size_t> append(const K& key, V value)
+    {
+        const auto at = index_of<K>::to_index(key);
+        if (at >= m_rows.size())
+            m_rows.resize(at + 1);
+        m_rows[at].push_back(std::move(value));
+        ++m_count;
+        return { at, m_rows[at].size() - 1 };
+    }
+    /// Clears the key's row, keeping its storage.
+    std::size_t erase(const K& key)
+    {
+        const auto at = find(key);
+        if (at == end())
+            return 0;
+        const auto erased = m_rows[at].size();
+        m_rows[at].clear();
+        m_count -= erased;
+        return erased;
+    }
+    /// Where the value after the erased one is: the same place, which the caller normalizes past an emptied row.
+    std::pair<group, std::size_t> erase(group at, std::size_t index)
+    {
+        auto& values = m_rows[at];
+        values.erase(values.begin() + static_cast<std::ptrdiff_t>(index));
+        --m_count;
+        return { at, index };
+    }
+    /// Clears every row, keeping the rows and their storage.
+    void clear()
+    {
+        for (auto& values : m_rows)
+            values.clear();
+        m_count = 0;
+    }
+
+    /// Equal keys with equal values in the same order, by urd::EqualTo; rows beyond the other's are empty.
+    [[nodiscard]] friend bool operator==(const DenseGroups& lhs, const DenseGroups& rhs)
+    {
+        if (lhs.m_count != rhs.m_count)
+            return false;
+        for (group at = 0; at < std::max(lhs.end(), rhs.end()); ++at)
+        {
+            const auto left = at < lhs.end() ? lhs.row(at) : std::span<const V>();
+            const auto right = at < rhs.end() ? rhs.row(at) : std::span<const V>();
+            if (!std::ranges::equal(left, right, EqualTo<V> {}))
+                return false;
+        }
+        return true;
+    }
+
+private:
+    std::vector<std::vector<V>> m_rows;
+    std::size_t m_count = 0;
+};
+
 /// A frozen multimap from indices to values, as compressed sparse rows.
 template<typename K, typename V>
 using CsrMultiMap = GroupedMultiMap<IndexGroups<K, V>>;
+/// A multimap from indices to values that grows: a vector of values per index.
+template<typename K, typename V>
+using DenseMultiMap = GroupedMultiMap<DenseGroups<K, V>>;
 
 /// A multimap as postings: each key's values together in a flat hash table.
 template<typename K, typename V>
@@ -435,6 +548,12 @@ struct container_traits<repr::BidirectionalCsr<K, V>> : with_t<container_traits<
 /// Values grouped by key, in no order of keys; erase and clear free what the removed keys' vectors hold.
 template<hashable K, typename V>
 struct container_traits<repr::PostingMap<K, V>> : properties_of<multi, sparse, shrinkable>
+{
+};
+
+/// A row of values per index, in key order; erase and clear keep the rows and their storage.
+template<indexable K, typename V>
+struct container_traits<repr::DenseMultiMap<K, V>> : properties_of<sorted, multi, dense, shrinkable, retains>
 {
 };
 

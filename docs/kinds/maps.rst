@@ -45,6 +45,8 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
      - ``PostingMap`` (a flat hash table of value vectors); with ``sorted``, ``std::multimap``
    * - ``Store<key<I>, value<V>, multi, dense, frozen>``
      - ``CsrMultiMap`` (compressed sparse rows); with ``bidirectional`` and ``value<I>``, ``BidirectionalCsr``
+   * - ``Store<key<I>, value<V>, multi, dense>``
+     - ``DenseMultiMap``: a vector of values per index, growing; erase and clear keep the rows
    * - ``Store<key<K>, value<V>, scoped>``
      - ``Scoped`` over a flat hash map (scopes undone by a log); over a tree with ``sorted``, an ``IndexMap`` with
        ``dense``
@@ -265,6 +267,13 @@ n elements; U the key range; r a row's length.
      - —
      - O(n + U), in key order
      - n values + U + 1 offsets
+   * - ``DenseMultiMap``
+     - O(1)\*
+     - O(1); ``values(k)`` a span
+     - O(r) per value; a key O(1)
+     - O(U)
+     - O(n + U), in key order
+     - a vector per index; retains
    * - ``ScopedMap``
      - O(1)\*~
      - O(1)~

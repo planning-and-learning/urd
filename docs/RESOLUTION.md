@@ -325,7 +325,7 @@ indexable).
 | `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
 | `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
-| `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
+| `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` |
 | `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |
 | `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` |
 | `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` |
@@ -352,7 +352,7 @@ indexable).
 | `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` |
 | `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` |
-| `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `none` — missing: a growable dense multimap; docs/SURVEY.md gap 6, M15 |
+| `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` |
 | `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` |
 | `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` |
 | `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` |

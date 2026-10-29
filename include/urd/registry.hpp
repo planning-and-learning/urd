@@ -145,6 +145,8 @@ template<typename K, typename V>
 using CsrMultiMapOf = repr::CsrMultiMap<K, V>;
 template<typename K, typename V>
 using BidirectionalCsrOf = repr::BidirectionalCsr<K, V>;
+template<typename K, typename V>
+using DenseMultiMapOf = repr::DenseMultiMap<K, V>;
 
 template<typename K, typename V>
 using ScopedMapOf = repr::ScopedMap<K, V>;
@@ -353,6 +355,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       DenseOrderedMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
+                                      DenseMultiMapOf,
                                       ScopedMapOf,
                                       ScopedTreeMapOf,
                                       ScopedDenseMapOf,

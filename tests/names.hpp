@@ -174,6 +174,12 @@ struct name<urd::repr::CsrMultiMap<K, V>>
     static constexpr std::string_view value = "CSR multimap (each key's values together, in key order)";
 };
 template<typename K, typename V>
+struct name<urd::repr::DenseMultiMap<K, V>>
+{
+    static constexpr std::string_view id = "dense_multimap";
+    static constexpr std::string_view value = "dense multimap (a vector of values per index, growing)";
+};
+template<typename K, typename V>
 struct name<urd::repr::PostingMap<K, V>>
 {
     static constexpr std::string_view id = "posting_map";

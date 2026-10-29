@@ -122,6 +122,8 @@ static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional
 // A frozen multimap by dense key: compressed sparse rows, each key's values a span.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>::representation, urd::repr::CsrMultiMap<int, int>>);
 static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::sorted>::representation, urd::repr::CsrMultiMap<int, int>>);
+// A dense multimap that grows: a vector of values per index (gap 6 of docs/SURVEY.md: runir's graph builders).
+static_assert(std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense>::representation, urd::repr::DenseMultiMap<int, int>>);
 
 // Scopes and layers: a scoped map is a flat hash table with an undo log; a layered Store a flat hash table over a
 // parent.
