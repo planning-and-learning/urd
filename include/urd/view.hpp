@@ -56,6 +56,24 @@ concept a_variant = requires { typename variant_traits<T>::template resolved<int
 template<typename M, typename C>
 [[nodiscard]] decltype(auto) resolve(const M& member, const C& context);
 
+namespace detail
+{
+
+/// A view of `at` through `context`: the context's own view where it makes one (a layered pool or a family points
+/// it at the layer that owns the element), else the pair as it is.
+template<typename U, typename C>
+[[nodiscard]] view<U, C> make_view(urd::index<U> at, const C& context)
+{
+    if constexpr (requires {
+                      { context.view(at) } -> std::same_as<view<U, C>>;
+                  })
+        return context.view(at);
+    else
+        return view<U, C>(at, context);
+}
+
+}  // namespace detail
+
 /// The type resolve(member, context) gives for a member of type M.
 template<typename M, typename C>
 using resolved_t = std::remove_cvref_t<decltype(urd::resolve(std::declval<const M&>(), std::declval<const C&>()))>;
@@ -72,7 +90,8 @@ struct variant_traits<std::variant<Ts...>>
     }
 };
 
-/// A record's member, as a view sees it: an index<U> as a view<U, C> where the context resolves U, else the index;
+/// A record's member, as a view sees it: an index<U> as a view<U, C> where the context resolves U (pointing at the
+/// layer that owns the element, where the context is a layer), else the index;
 /// a range of such indices as a range of views; characters as a string_view; another contiguous range as a span; a
 /// variant as the variant of its alternatives resolved; anything else as it is.
 template<typename M, typename C>
@@ -81,7 +100,7 @@ template<typename M, typename C>
     if constexpr (is_index<M>)
     {
         if constexpr (resolves<C, typename M::element_type>)
-            return view<typename M::element_type, C>(member, context);
+            return detail::make_view(member, context);
         else
             return member;
     }
@@ -96,7 +115,7 @@ template<typename M, typename C>
         if constexpr (std::ranges::contiguous_range<M> && std::same_as<element, char>)
             return std::string_view(std::ranges::data(member), std::ranges::size(member));
         else if constexpr (is_index<element> && resolves<C, typename element::element_type>)
-            return std::views::transform(member, [&context](element at) { return view<typename element::element_type, C>(at, context); });
+            return std::views::transform(member, [&context](element at) { return detail::make_view(at, context); });
         else if constexpr (std::ranges::contiguous_range<M>)
             return std::span<const element>(std::ranges::data(member), std::ranges::size(member));
         else

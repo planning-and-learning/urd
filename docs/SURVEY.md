@@ -199,7 +199,7 @@ and the repositories.
 | `RawArrayPool`, `BlockArrayPool`, `BitPackedArrayPool` | B | rows of one length (uniform stride, gap 10), swap-erase, an element width in bits (`BitsetSpan` is width 1) |
 | `UnorderedMultiMap` (`containers/unordered_multi_map.hpp:36`), 14 uses | A | `Store<key<K>, value<V>, multi, retains>`; its `replace(key, old, new)` is part of gap 3 |
 | `FibonacciHeap` (1 use), `UniqueObjectPool` (13), `SharedObjectPool` (0) | A storage, C handles | `by_priority, handles`; `Store<value<T>, handles>` (the storage is a `SlotVector`); the owning handles stay |
-| `BasicSymbolRepository` (`formalism/basic_symbol_repository.hpp:47`), 22 instantiations; `BasicRelationRepository` slots | B | the layered interner (gap 2): positions continuing after a frozen parent's, `find` falling through |
+| `BasicSymbolRepository` (`formalism/basic_symbol_repository.hpp:47`), 22 instantiations; `BasicRelationRepository` slots | A for the symbol repositories (M12 step 4: a family of layered flat pools); B for the relation slots | the layered interner (gap 2): positions continuing after a frozen parent's, `find` falling through |
 | `ConcurrentSlotDirectory` (`basic_relation_repository.hpp:172`) | B | a dense concurrent map with get-or-create and stable values, no generations (gap 5) |
 | `Delta` and the six result-plus-delta evaluators, datalog `Table` | A | `Store<key<Row>, change_log>` |
 | `JoinEvaluator`, `SemijoinEvaluator` postings kept in sync under swap-erase (`incremental/join.hpp:22-58`) | B | gap 3 |
@@ -228,7 +228,7 @@ member pointers, which is what `urd::Members` consumes.
 
 | Class | Verdict | Request, or the gap |
 |---|---|---|
-| `formalism::Repository`: 40 interners, each layered over the previous phase's (`translator.cpp:139,169`) | B | the layered interner (gap 2); the sorted-unique `IndexList` members are a `canonical` promise on the rows |
+| `formalism::Repository`: 40 interners, each layered over the previous phase's (`translator.cpp:139,169`) | A (M12 step 4: `Family(&parent)` over layered pools) | the layered interner (gap 2); the sorted-unique `IndexList` members are a `canonical` promise on the rows |
 | `TranslationStorage`: 40 `ViewMap<T>` (`translator/common.hpp:101,116-155`) | A maps, C composition | `Store<key<View<T>>, value<View<T>>, monotone>` each, as a `compose::Family` with `for_each`, which removes the two 40-line call lists (`translation_storage.cpp:95-133,148-187`); the first phase's copy of six domain maps is `layered`; `compose_map` is an algorithm |
 | `CopyContext` fields (`copy_context.hpp:36-46`) | A | `variable_bindings` is `scoped` (push and pop, innermost first, `contains` across scopes, iteration of bindings in force: all match `ScopedMap`); `num_quantifications` a map that `retains`; `generated_predicates/axioms` `insertion_ordered` (the merge with fresh seen-sets at `copy_translator_facade.hpp:192-204` becomes one insertion loop); the memos `monotone` maps; `used_predicate_names()` copies a set and unions the domain's names on every generated name: `layered` over a frozen set |
 | `push_unique` (6 sites) and its hand-written variants (`compile_typing_translator.hpp:69-80,186-208,249-253`) | A | `Store<key<View<T>>, insertion_ordered>`, then `assign` into the `IndexList` |

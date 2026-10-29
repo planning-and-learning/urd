@@ -372,7 +372,7 @@ on pools, a `Family` with a parent, and a dense map of layered pools for relatio
 2. Flat record pools: the in-memory interner for trivially copyable records, the cista byte arena for the rest,
    both thread-safe on request; the `flat` tag; the `records` facet. Done.
 3. `layered` on pools: indices continue after the parent, lookups fall through, views borrow the owning layer. Done.
-4. `compose::Family` with a parent and a layer number, resolving every member type.
+4. `compose::Family` with a parent and a layer number, resolving every member type. Done.
 5. Relations: a dense layered map of layered row pools.
 
 Deferred, named here so they are not re-invented: layered positional sets, lock-free parent lookups, rows of one

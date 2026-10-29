@@ -160,6 +160,11 @@ int main()
 #elif URD_CASE == 41  // a tree pool numbers nodes, not rows: no layer continues its handles
     using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::layered>;
     (void) S();
+#elif URD_CASE == 42  // a family resolves the indices of its members' types only
+    template<typename T>
+    using Interned = Store<key<T>, urd::positional, urd::monotone>;
+    struct Unlisted;
+    (void) urd::compose::Family<Interned, int, long>().view(urd::index<Unlisted>(0));
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

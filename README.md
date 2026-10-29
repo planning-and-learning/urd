@@ -109,6 +109,19 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 
 `Rows::reference` names what a row is handed out as; code needs no name from `urd/repr`.
 
+**Repositories.** A record type names its identity and its members; a family of pools, one per record type, interns
+the records, numbers them (`urd::index<T>`, a dense key), layers one phase over the previous, and resolves the
+indices a record holds into views of what they name:
+
+```cpp
+struct Atom { index<Predicate> predicate; flat_vector<index<Term>> terms; /* identifying_members, cista_members */ };
+template<typename T> using Symbols = Store<value<T>, handles, unique, flat, monotone, layered>;
+using Repository = compose::Family<Symbols, Object, Predicate, Term, Atom>;
+auto task = Repository(&domain);                                     // the task's symbols after the domain's
+const auto [atom, fresh] = task.insert(Atom { on, { block, x } });   // index<Atom>; the domain's records are found too
+task.view(atom).get<&Atom::predicate>().get<&Predicate::name>();     // view<Predicate, Repository>, from the layer that owns it
+```
+
 ## What a request resolves to
 
 [docs/RESOLUTION.md](docs/RESOLUTION.md) lists, for a grid of requests over a few element types, the container each

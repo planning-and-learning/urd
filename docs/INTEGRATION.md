@@ -361,7 +361,14 @@ indexed sets.
 
 The include root holds only the vocabulary and `Store` (tests/layout.cmake checks it); containers are in
 `urd/repr`. Compositions that hold Stores and choose no representation of their own are in `urd/compose`:
-`urd::compose::Family<F, Ts...>` keeps one `F<T>` per type, reached by `get<T>()`. A two-level dense map needs
+`urd::compose::Family<F, Ts...>` keeps one `F<T>` per type, reached by `get<T>()`. Where the members number their
+elements (positional sets, pools), the family resolves an index of any member type, `family[index<T>]`, so a
+`view<T, Family>` reads a record and the indices held in it through one context; `insert`, `find` and `contains` go
+to the member for the record's type and speak in indices. Where the members layer, the family layers:
+`Family(&parent)` layers each member over the parent's member of its type, `layer()` numbers the chain from the
+root, and `view(index)` points at the family that owns the element, so the views' identities are (index, layer).
+A repository of symbols is such a family of layered pools of flat records, one phase over the previous
+(`tests/survey.cpp`, `formalism`). A two-level dense map needs
 nothing new: nested dense Stores compose (`Store<key<R>, value<Store<key<Row>, value<V>, dense>>, dense,
 constant_clear>`). A matrix of bits of fixed shape waits for a `uniform` property on nested Stores (any depth,
 `repr::BitTensor`).

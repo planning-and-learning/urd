@@ -4,7 +4,9 @@
 // It compiles or it does not: there is nothing to run.
 
 #include "urd/compose/family.hpp"
+#include "urd/flat.hpp"
 #include "urd/store.hpp"
+#include "urd/view.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -425,3 +427,76 @@ static_assert(std::same_as<TypesByIndex::representation, urd::repr::FlatEntryMap
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.
+
+// The symbol repositories (M12, 2026-10-30): yggdrasil formalism/symbol_repository.hpp, tyr formalism/planning/
+// repository.hpp (BasicSymbolRepository<T, true> over twelve record types), loki formalism::Repository (40 interners,
+// each layered over the previous phase's): a family of layered pools of flat records, one per record type, each
+// phase a family over the previous one. A record is written once, as cista keeps it; the index is urd's; a view is
+// the index and the family that resolves the indices in the record.
+namespace formalism
+{
+
+struct Object
+{
+    urd::flat_string name;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Object::name> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Object::name> {}; }
+};
+template<typename Kind>
+struct Predicate
+{
+    urd::flat_string name;
+    std::uint32_t arity = 0;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Predicate::name, &Predicate::arity> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Predicate::name, &Predicate::arity> {}; }
+};
+struct Variable
+{
+    ParameterIndex parameter;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Variable::parameter> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Variable::parameter> {}; }
+};
+struct Term
+{
+    urd::flat_variant<urd::index<Object>, ParameterIndex> value;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Term::value> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Term::value> {}; }
+};
+struct Static;
+struct Fluent;
+template<typename Kind>
+struct Atom
+{
+    urd::index<Predicate<Kind>> predicate;
+    urd::flat_vector<urd::index<Term>> terms;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Atom::predicate, &Atom::terms> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Atom::predicate, &Atom::terms> {}; }
+};
+
+template<typename T>
+using Symbols = Store<value<T>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered, urd::concurrent>;
+using Repository = urd::compose::Family<Symbols, Object, Predicate<Static>, Predicate<Fluent>, Variable, Term, Atom<Static>, Atom<Fluent>>;
+
+static_assert(std::same_as<Symbols<Atom<Fluent>>::representation, urd::repr::LayeredPool<urd::repr::ArenaInterner<Atom<Fluent>, true>>>);
+static_assert(std::same_as<Symbols<Variable>::representation, urd::repr::LayeredPool<urd::repr::RecordInterner<Variable, true>>>);
+static_assert(urd::resolves<Repository, Atom<Fluent>> && urd::resolves<Repository, Object> && urd::resolves<Repository, Term>);
+static_assert(std::same_as<std::ranges::range_value_t<urd::resolved_t<urd::flat_vector<urd::index<Term>>, Repository>>, urd::view<Term, Repository>>);
+static_assert(std::same_as<urd::resolved_t<urd::flat_variant<urd::index<Object>, ParameterIndex>, Repository>,
+                           std::variant<urd::view<Object, Repository>, ParameterIndex>>);
+
+}  // namespace formalism
+
+// Named accessors, one line each, where tyr's views had get_name() and get_arity(); the repository as the default
+// context, so that view<Predicate<Fluent>> needs no second argument.
+template<typename Kind, typename V>
+struct urd::view_mixin<formalism::Predicate<Kind>, V>
+{
+    [[nodiscard]] auto name() const { return static_cast<const V&>(*this).template get<&formalism::Predicate<Kind>::name>(); }
+    [[nodiscard]] auto arity() const { return static_cast<const V&>(*this).template get<&formalism::Predicate<Kind>::arity>(); }
+};
+template<typename Kind>
+struct urd::context_of<formalism::Predicate<Kind>>
+{
+    using type = formalism::Repository;
+};
+static_assert(std::same_as<urd::view<formalism::Predicate<formalism::Fluent>>, urd::view<formalism::Predicate<formalism::Fluent>, formalism::Repository>>);
