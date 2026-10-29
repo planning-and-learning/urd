@@ -28,6 +28,7 @@ class Queues : public testing::Test
 {
 };
 using Containers = testing::Types<urd::repr::Fifo<int>,
+                                  urd::repr::RingFifo<int>,
                                   urd::repr::Lifo<int>,
                                   urd::repr::Heap<int>,
                                   urd::repr::AddressableHeap<int>,
@@ -36,6 +37,7 @@ using Containers = testing::Types<urd::repr::Fifo<int>,
                                   Store<value<int>, urd::by_priority, urd::monotone_priority>,
                                   Store<value<int>, urd::fifo>,
                                   Store<value<int>, urd::fifo, urd::stable_refs>,
+                                  Store<value<int>, urd::fifo, urd::retains>,
                                   Store<value<int>, urd::lifo>,
                                   Store<value<int>, urd::by_priority>,
                                   Store<value<int>, urd::lifo, urd::retains>>;
@@ -45,8 +47,9 @@ TYPED_TEST_SUITE(Queues, Containers);
 
 // What each request resolves to: a queue for its order.
 static_assert(std::same_as<Store<value<int>, urd::fifo>::representation, urd::repr::Fifo<int>>);
-// A deque keeps the front in place while elements queue behind it.
+// A deque keeps the front in place while elements queue behind it; a ring over one vector keeps its storage.
 static_assert(std::same_as<Store<value<int>, urd::fifo, urd::stable_refs>::representation, urd::repr::Fifo<int>>);
+static_assert(std::same_as<Store<value<int>, urd::fifo, urd::retains>::representation, urd::repr::RingFifo<int>>);
 static_assert(std::same_as<Store<value<int>, urd::lifo>::representation, urd::repr::Lifo<int>>);
 static_assert(std::same_as<Store<value<int>, urd::by_priority>::representation, urd::repr::Heap<int>>);
 // Handles to change or erase an element; integral priorities pushed in order fill buckets; others stay a heap.

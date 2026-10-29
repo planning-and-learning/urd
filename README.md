@@ -211,6 +211,7 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 | `Jagged` (frozen rows) | O(r)\* per row | a row: O(1), a span | — | O(n) | one offsets array per level |
 | `Jagged` (fixed_shape) | built once, O(total length) | a row: O(1), a span or `BitsetSpan`; bit ops O(r/64) | — | — | one array; bit rows ⌈r/64⌉ words each |
 | `Fifo` / `Lifo` | O(1)\* | front / top O(1) | `pop` O(1) | O(n) | deque (stable_refs) / vector (retains) |
+| `RingFifo` | O(1)\* | front O(1) | `pop` O(1) | O(n) | one vector as a ring; retains |
 | `Heap` | O(log n) | `top` O(1) | `pop` O(log n) | O(n) | vector; retains |
 | `AddressableHeap` | O(log n) | `top` O(1) | `pop`, `erase(h)`, `update(h, e)` O(log n) | O(n) | heap of handles + a slot per handle; retains |
 | `BucketQueue` | O(1)\* | `top` O(1) | `pop` O(1)\* under monotone pushes | O(range) | a vector per priority; retains |

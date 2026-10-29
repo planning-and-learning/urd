@@ -186,6 +186,12 @@ struct name<urd::repr::Fifo<T>>
     static constexpr std::string_view value = "queue (a deque, first in first out)";
 };
 template<typename T>
+struct name<urd::repr::RingFifo<T>>
+{
+    static constexpr std::string_view id = "ring_fifo";
+    static constexpr std::string_view value = "ring fifo (one vector used as a ring, kept on pop and clear)";
+};
+template<typename T>
 struct name<urd::repr::Lifo<T>>
 {
     static constexpr std::string_view id = "lifo";

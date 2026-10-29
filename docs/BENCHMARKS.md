@@ -160,6 +160,25 @@ A tree pool stores a successor as the paths to what changed, so its bytes per st
 flat interner copies the row. For short value rows the trees cost twice the time for a third of the memory; from a
 thousand positions on, and for fact sets at every size, they are smaller and faster.
 
+## Queues (fifo: a deque against a ring over one vector)
+
+A frontier of `live` queued elements, then per step two pushes and two pops (`frontier` in `benchmarks/containers.cpp`),
+and a growth from empty to n followed by n pops (`grow`). Nanoseconds per step and per element.
+
+| live or n | `std::deque` (`Fifo`) | `RingFifo` |
+|---|---|---|
+| frontier, 16 live | 3.8 | **3.6** |
+| frontier, 1,000 live | 3.8 | 3.8 |
+| frontier, 100,000 live | **3.8** | 5.0 |
+| frontier, 1,000,000 live | **3.9** | 5.4 |
+| grow to 1,000 | **1.4** | 3.2 |
+| grow to 1,000,000 | **2.2** | 6.7 |
+
+The deque stays first for `fifo`: level with the ring on a small frontier, faster on a large one and at growing,
+and a push never moves an element (`stable_refs`), where the ring copies every queued element when it doubles. The
+ring serves `fifo, retains`, which the deque cannot (it frees its blocks as pops leave them), and `small`, where the
+registry moves containers with stable storage last and the two are level.
+
 ## What the orders take from it
 
 - **Unsorted sets and maps: flat hash tables first.** They are fastest at insert, lookup and clear-and-refill at

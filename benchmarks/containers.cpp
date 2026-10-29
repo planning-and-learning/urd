@@ -5,6 +5,7 @@
 #include "urd/repr/dense.hpp"
 #include "urd/repr/grouped.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/queues.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
@@ -209,6 +210,57 @@ template<typename T>
 using FlatMap = boost::container::flat_map<T, int, urd::Less<T>>;
 
 // Inserting a random order into a sorted vector is O(n²): its insert and refill benchmarks stop at 10⁴.
+/// A fifo frontier: `live` elements queued, then per step two pushes and two pops; time per step.
+template<typename Q>
+void frontier(benchmark::State& state)
+{
+    const auto live = static_cast<int>(state.range(0));
+    auto queue = Q();
+    for (int element = 0; element < live; ++element)
+        queue.push(element);
+    int step = 0;
+    for (auto _ : state)
+    {
+        queue.push(step);
+        queue.push(step + 1);
+        benchmark::DoNotOptimize(queue.front());
+        queue.pop();
+        benchmark::DoNotOptimize(queue.front());
+        queue.pop();
+        ++step;
+    }
+}
+/// A fifo grown from empty to n, then emptied; time per element.
+template<typename Q>
+void grow(benchmark::State& state)
+{
+    const auto count = static_cast<int>(state.range(0));
+    for (auto _ : state)
+    {
+        auto queue = Q();
+        for (int element = 0; element < count; ++element)
+            queue.push(element);
+        while (!queue.empty())
+        {
+            benchmark::DoNotOptimize(queue.front());
+            queue.pop();
+        }
+    }
+    state.SetItemsProcessed(state.iterations() * count);
+}
+template<typename T>
+using Fifo = urd::repr::Fifo<T>;
+template<typename T>
+using RingFifo = urd::repr::RingFifo<T>;
+template<template<typename> class Q>
+void add_queues(const std::string& name)
+{
+    for (const auto live : { 16, 1'000, 100'000, 1'000'000 })
+        benchmark::RegisterBenchmark("frontier<" + name + ">", frontier<Q<int>>)->Arg(live);
+    for (const auto count : { 1'000, 1'000'000 })
+        benchmark::RegisterBenchmark("grow<" + name + ">", grow<Q<int>>)->Arg(count);
+}
+
 constexpr std::array<std::int64_t, 3> sizes { 100, 10'000, 100'000 };
 constexpr std::size_t sizes_for_quadratic_inserts = 2;
 
@@ -260,6 +312,9 @@ int main(int argc, char** argv)
     add_postings<PostingMap, Key32>("PostingMap<Key32>");
     add_postings<HashMultiMap, Key32>("HashMultiMap<Key32>");
     add_postings<TreeMultiMap, Key32>("TreeMultiMap<Key32>");
+    // Queues: a deque against a ring over one vector.
+    add_queues<Fifo>("Fifo<int>");
+    add_queues<RingFifo>("RingFifo<int>");
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();

@@ -70,7 +70,13 @@ struct candidates<S, urd::detail::type_list<Rs...>>
 /// The surprises the registry's order makes on purpose: the request, and the benchmark or reason behind the order.
 const std::string_view tree_for_changing_order =
     "a sorted set or map that changes is a tree (nodes, O(log n) inserts); the flat ones serve only with frozen or small: docs/BENCHMARKS.md";
+const std::string_view deque_for_fifo =
+    "a deque is level with a ring over one vector on a small frontier and faster on a large one and at growing (3.9 against 5.4 ns per "
+    "step with a million queued, 2.2 against 6.7 per element grown), and never moves an element: docs/BENCHMARKS.md; the ring serves "
+    "retains, and small";
 const std::map<std::string, std::string> allowed {
+    { "Store<value<Id>, fifo>", std::string(deque_for_fifo) },
+    { "Store<value<int>, fifo>", std::string(deque_for_fifo) },
     { "Store<key<Id>, sorted, monotone>", std::string(tree_for_changing_order) },
     { "Store<key<Id>, sorted>", std::string(tree_for_changing_order) },
     { "Store<key<Id>, value<Id>, multi, sorted>", std::string(tree_for_changing_order) },

@@ -24,6 +24,8 @@ A queue is reached by its front or top and never iterated. An access tag makes a
      - Representation
    * - ``Store<value<T>, fifo>``
      - ``Fifo`` (a deque); ``stable_refs`` too: the front stays put while elements queue behind it
+   * - ``Store<value<T>, fifo, retains>``
+     - ``RingFifo``: one vector used as a ring, kept on pop and clear
    * - ``Store<value<T>, lifo>``
      - ``Lifo`` (a vector)
    * - ``Store<value<T>, by_priority>``
@@ -101,6 +103,12 @@ Complexity
      - O(1)
      - O(n)
      - deque (stable_refs) / vector (retains)
+   * - ``RingFifo``
+     - O(1)\*
+     - O(1)
+     - O(1)
+     - O(n)
+     - one vector as a ring; retains
    * - ``Heap``
      - O(log n)
      - ``top`` O(1)
