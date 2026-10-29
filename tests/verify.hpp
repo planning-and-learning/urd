@@ -1024,6 +1024,95 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
     return std::nullopt;
 }
 
+/// urd::verify for a layered pool of records: a root holding eight records, a middle layer over it holding four
+/// more, and `leaf` over that, which takes the random inserts of run_records. The chain is the model: the leaf
+/// answers every record of every layer at the index it got there, finds a record held anywhere without adding it,
+/// numbers new ones after the chain, numbers its layer 2, starts its own indices at the chain's size, and after a
+/// clear holds the chain and nothing more.
+template<typename P>
+std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps)
+{
+    using T = typename P::value_type;
+    using Index = typename P::handle_type;
+    auto root = P();
+    auto middle = P();
+    auto chain = std::vector<T>();
+    for (int drawn = 0; drawn < 8; ++drawn)
+        if (root.insert(T(drawn)).second)
+            chain.push_back(T(drawn));
+    middle.layer_over(&root);
+    for (int drawn = 8; drawn < 12; ++drawn)
+        if (middle.insert(T(drawn)).second)
+            chain.push_back(T(drawn));
+    leaf.layer_over(&middle);
+    const auto base = chain.size();
+    const auto failed = [&](int step, const std::string& what) { return std::optional<std::string>("step " + std::to_string(step) + ": " + what); };
+    if (root.layer() != 0 || middle.layer() != 1 || leaf.layer() != 2)
+        return failed(-1, "the layers are not numbered 0, 1, 2 along the chain");
+    if (leaf.base() != base || middle.base() != root.size() || root.base() != 0)
+        return failed(-1, "a layer's indices do not start at its parent's size");
+    if (leaf.size() != base || leaf.parent_grew())
+        return failed(-1, "a fresh layer is not its chain");
+    auto random = std::mt19937(seed);
+    auto pick = std::uniform_int_distribution<int>(0, 23);
+    using Traits = container_traits<P>;
+    for (int step = 0; step < steps; ++step)
+    {
+        bool cleared = false;
+        if constexpr (has<Traits, shrinkable>)
+        {
+            if (step % 97 == 96)
+            {
+                leaf.clear();
+                chain.resize(base);
+                cleared = true;
+            }
+        }
+        if (!cleared)
+        {
+            const auto record = T(pick(random));
+            auto expected = std::optional<std::size_t>();
+            for (std::size_t each = 0; each < chain.size(); ++each)
+                if (EqualTo<T> {}(chain[each], record))
+                    expected = each;
+            auto result = std::pair<Index, bool>();
+            auto given = Index();
+            if (step % 4 == 3)
+                result = leaf.insert(record,
+                                     [&](Index at)
+                                     {
+                                         given = at;
+                                         return T(record);
+                                     });
+            else
+                result = leaf.insert(record);
+            if (result.second == expected.has_value())
+                return failed(step,
+                              "insert reported " + std::string(result.second ? "new" : "held") + " for a record the chain " + (expected ? "holds" : "lacks"));
+            if (result.first.value != (expected ? *expected : chain.size()))
+                return failed(step,
+                              "insert gave index " + std::to_string(result.first.value) + ", expected " + std::to_string(expected ? *expected : chain.size()));
+            if (step % 4 == 3 && result.second && given != result.first)
+                return failed(step, "the factory was given another index than the record got");
+            if (result.second)
+                chain.push_back(record);
+        }
+        if (leaf.size() != chain.size() || leaf.base() != base)
+            return failed(step, "size " + std::to_string(leaf.size()) + ", expected " + std::to_string(chain.size()));
+        for (std::size_t each = 0; each < chain.size(); ++each)
+        {
+            const auto at = Index(static_cast<std::uint32_t>(each));
+            if (!EqualTo<T> {}(leaf[at], chain[each]))
+                return failed(step, "the record at " + std::to_string(each) + " is not the chain's");
+            if (leaf.find(chain[each]) != at || !leaf.contains(chain[each]))
+                return failed(step, "the record at " + std::to_string(each) + " is not found at its index through the chain");
+        }
+        if (root.size() != 8 || middle.size() != base || leaf.parent_grew())
+            return failed(step, "a parent changed");
+    }
+    return std::nullopt;
+}
+
 }  // namespace detail
 
 /// Checks that `range` offers the operations container_traits<R> requires (interface.hpp; a compile-time
@@ -1044,6 +1133,8 @@ template<typename R>
         return std::nullopt;
     else if constexpr (detail::queue_traits<container_traits<R>>)
         return detail::run_queue(range, seed, steps);
+    else if constexpr (has<container_traits<R>, handles, unique, flat, layered>)
+        return detail::run_layered_records(range, seed, steps);
     else if constexpr (has<container_traits<R>, handles, unique, flat>)
         return detail::run_records(range, seed, steps);
     else if constexpr (has<container_traits<R>, handles, unique>)

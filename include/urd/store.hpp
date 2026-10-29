@@ -56,9 +56,14 @@ namespace detail
 /// The first base of a Store: the representation must be defined here. The registry names some only (the arena
 /// interner, whose definition needs cista); the header that defines them is the one to include.
 template<typename R>
+inline constexpr bool defined_representation = requires { sizeof(R); };
+template<typename R>
+inline constexpr bool defined_representation<repr::LayeredPool<R>> = defined_representation<R>;
+template<typename R>
 struct complete_representation
 {
-    static_assert(requires { sizeof(R); }, "urd::Store: the representation is declared but not defined here; records stored flat need #include <urd/flat.hpp>");
+    static_assert(defined_representation<R>,
+                  "urd::Store: the representation is declared but not defined here; records stored flat need #include <urd/flat.hpp>");
 };
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties

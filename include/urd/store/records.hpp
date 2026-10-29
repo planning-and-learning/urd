@@ -51,7 +51,10 @@ public:
     [[nodiscard]] auto view(index_type at) const
     {
         static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
-        return urd::view<T, Derived>(at, static_cast<const Derived&>(*this));
+        if constexpr (has<S, layered>)
+            return urd::view<T, Derived>(at, static_cast<const Derived&>(*this).owner(at));
+        else
+            return urd::view<T, Derived>(at, static_cast<const Derived&>(*this));
     }
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()

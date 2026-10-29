@@ -200,6 +200,18 @@ template<typename T>
 using ArenaInternerOf = repr::ArenaInterner<T>;
 template<typename T>
 using ThreadSafeArenaInterner = repr::ArenaInterner<T, true>;
+template<typename Row>
+using LayeredRowInternerOf = repr::LayeredPool<repr::RowInterner<Row>>;
+template<typename Row>
+using ThreadSafeLayeredRowInterner = repr::LayeredPool<repr::RowInterner<Row, true>>;
+template<typename T>
+using LayeredRecordInternerOf = repr::LayeredPool<repr::RecordInterner<T>>;
+template<typename T>
+using ThreadSafeLayeredRecordInterner = repr::LayeredPool<repr::RecordInterner<T, true>>;
+template<typename T>
+using LayeredArenaInternerOf = repr::LayeredPool<repr::ArenaInterner<T>>;
+template<typename T>
+using ThreadSafeLayeredArenaInterner = repr::LayeredPool<repr::ArenaInterner<T, true>>;
 template<typename T>
 using ConcurrentSegmentedVector = repr::SegmentedVector<T, repr::default_first_segment_size, true>;
 
@@ -256,6 +268,12 @@ using element_preference = element_candidates<JaggedOf,
                                               ArenaInternerOf,
                                               ThreadSafeRecordInterner,
                                               ThreadSafeArenaInterner,
+                                              LayeredRowInternerOf,
+                                              LayeredRecordInternerOf,
+                                              LayeredArenaInternerOf,
+                                              ThreadSafeLayeredRowInterner,
+                                              ThreadSafeLayeredRecordInterner,
+                                              ThreadSafeLayeredArenaInterner,
 #if defined(URD_HAS_GTL)
                                               ParallelHashSetOf,
 #endif

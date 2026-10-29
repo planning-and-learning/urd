@@ -43,7 +43,10 @@ using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
                                   Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
                                   Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>,
                                   Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>;
+                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
+                                  urd::repr::LayeredPool<urd::repr::RowInterner<std::vector<int>>>,
+                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone, urd::layered>,
+                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(Pools, Containers, urd::test::Names);
 
 /// A trivially copyable record: its own block of bytes, interned in memory.
@@ -83,7 +86,11 @@ using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
                                    Store<value<Named>, urd::handles, urd::unique, urd::flat>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::concurrent>>;
+                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::concurrent>,
+                                   urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>,
+                                   urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>,
+                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered>,
+                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
 
 }  // namespace
@@ -93,6 +100,13 @@ static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::f
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::ArenaInterner<Named>>);
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::ArenaInterner<Named, true>>);
+// Layered pools: the same interners over a parent, indices continuing after the parent's.
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered>::representation,
+                           urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>>);
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::layered, urd::concurrent>::representation,
+                           urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>>);
+static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>::representation,
+                           urd::repr::LayeredPool<urd::repr::RowInterner<Store<value<int>, urd::frozen>>>>);
 // A flat pool is counted and read by index, as its records are whole; its handle is the index.
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::handle_type, urd::index<Named>>);
 
@@ -443,4 +457,60 @@ TEST(Records, ViewsResolveFlatMembers)
     const auto whole = urd::view<Item, Shop>(lamp, shop);  // the shop resolves owners too
     EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
     EXPECT_EQ((std::get<urd::view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
+}
+
+TEST(Layered, RowPoolsContinueTheirParent)
+{
+    using Row = Store<value<int>, urd::frozen>;
+    using RowIndex = urd::index<Row>;
+    using Rows = Store<value<Row>, urd::handles, urd::unique, urd::monotone, urd::layered>;
+    auto parent = Rows();
+    const auto first = parent.insert({ 1, 2, 3 });
+    const auto second = parent.insert({ 4 });
+    auto child = Rows();
+    child.layer_over(&parent);
+    EXPECT_EQ(child.base(), 2U);
+    EXPECT_EQ(child.layer(), 1U);
+    EXPECT_EQ(child.insert({ 1, 2, 3 }), first);  // the parent's row, found through the chain
+    const auto third = child.insert({ 5, 6 });
+    EXPECT_EQ(third, RowIndex(2));
+    const auto expected_first = Row { 1, 2, 3 };
+    const auto expected_third = Row { 5, 6 };
+    EXPECT_EQ(child.get(first), expected_first);
+    EXPECT_EQ(child.get(third), expected_third);
+    EXPECT_EQ(child.row_size(second), 1U);
+    EXPECT_EQ(child.view(first).size(), 3U);
+    const auto writes = std::vector<urd::Write<int>> { { 1, 9 } };
+    const auto written = child.insert(first, std::span<const urd::Write<int>>(writes));
+    EXPECT_EQ(written, RowIndex(3));
+    const auto expected_written = Row { 1, 9, 3 };
+    EXPECT_EQ(child.get(written), expected_written);
+    EXPECT_EQ(parent.insert({ 1, 9, 3 }), RowIndex(2));  // the parent knows nothing of it
+    EXPECT_TRUE(child.parent_grew());
+    EXPECT_EQ(child.parent(), &parent);
+}
+
+TEST(Layered, ViewsPointAtTheOwningLayer)
+{
+    using Points = Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::layered>;
+    using PointView = urd::view<Point, Points>;
+    auto root = Points();
+    const auto one = root.insert(Point(1)).first;
+    auto child = Points();
+    child.layer_over(&root);
+    const auto two = child.insert(Point(2)).first;
+    EXPECT_EQ(child.insert(Point(1)).first, one);
+    EXPECT_EQ(&child.owner(one), &root);
+    EXPECT_EQ(&child.owner(two), &child);
+    EXPECT_EQ(child.view(one), root.view(one));  // the same element, whichever layer it was asked of
+    EXPECT_EQ(urd::Hash<PointView> {}(child.view(one)), urd::Hash<PointView> {}(root.view(one)));
+    EXPECT_NE(child.view(two), root.view(one));
+    EXPECT_EQ(child.view(one).get<&Point::x>(), 1);
+    EXPECT_EQ(child.view(two).context().layer(), 1U);
+    EXPECT_EQ(child.view(one).context().layer(), 0U);
+    EXPECT_FALSE(child.contains(urd::index<Point>(2)));
+    child.clear();
+    EXPECT_EQ(child.size(), 1U);
+    EXPECT_FALSE(child.contains(Point(2)));
+    EXPECT_TRUE(child.contains(Point(1)));
 }

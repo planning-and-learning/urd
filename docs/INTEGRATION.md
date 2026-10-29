@@ -333,6 +333,20 @@ which keeps the arena's segments. The records are frozen once stored. With `conc
 from threads at once: lookups without a lock, a new record under the writer lock; clear, move and destruction need
 quiescence. The typed tests run `run_records` (`tests/verify.hpp`) over both.
 
+### Layered pools
+
+A pool may be `layered` too: `Store<value<Record>, handles, unique, flat, layered>` (records) or `Store<value<Row>,
+handles, unique, layered>` (rows), `repr::LayeredPool` over the interner the request would otherwise get. A layer
+branches from a parent by `layer_over(&parent)` while it holds nothing of its own; its indices continue after the
+parent's size at the branch, so an index means the same in every layer below. A lookup answers from the layer,
+then from the parent's chain; an insert finds its record anywhere in the chain before adding it here; reading by
+index goes to the layer that owns it (`owner(index)`), and a `view` made of a layered pool points at that layer, so
+two views of one element from two layers are equal. `layer()` numbers the chain from the root, `base()` is where
+the layer's own indices start, `parent_grew()` tells whether the parent broke the rule that it must not grow after
+the branch, which inserts assert. `clear` forgets the layer's own elements and keeps the chain. The tree pools do
+not layer, since they number nodes, not rows. `run_layered_records` (`tests/verify.hpp`) runs a chain of three
+against its model.
+
 ## Change logs
 
 `change_log` (a set with unique elements): `added()` and `removed()` are spans of exactly the elements that

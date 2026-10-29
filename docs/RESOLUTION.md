@@ -365,6 +365,10 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<value<std::vector<int, std::allocator<int> >>, handles, concurrent>` | concurrent, handles, shrinkable | `thread_safe_slot_vector` |
 | `Store<value<int>, handles>` | handles, shrinkable | `slot_vector` |
 | `Store<value<Id>, handles, stable_refs>` | stable_refs, handles, shrinkable | `slot_vector` |
+| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone, layered>` | unique, layered, handles, growable, monotone | `layered_pool` |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, concurrent, layered, handles, shrinkable | `layered_pool` |
+| `Store<value<int>, handles, layered>` | layered, handles, shrinkable | `none` |
+| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing, shrinkable | `none` |
 
 ## Stores as keys
 
@@ -387,3 +391,5 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat, shrinkable | `thread_safe_record_interner` |
 | `Store<value<Text>, handles, unique, flat>` | unique, handles, flat, shrinkable | `arena_interner` |
 | `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, growable, monotone | `thread_safe_arena_interner` |
+| `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, layered, handles, flat, growable, monotone | `layered_pool` |
+| `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, concurrent, layered, handles, flat, shrinkable | `layered_pool` |

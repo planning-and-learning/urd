@@ -318,7 +318,11 @@ using pools = requests<request<value<Store<value<int>, frozen>>, handles, unique
                        request<value<std::vector<int>>, handles>,
                        request<value<std::vector<int>>, handles, concurrent>,
                        request<value<int>, handles>,
-                       request<value<Id>, handles, stable_refs>>;
+                       request<value<Id>, handles, stable_refs>,
+                       request<value<Store<value<int>, frozen>>, handles, unique, monotone, layered>,
+                       request<value<Store<key<int>, dense, frozen>>, handles, unique, layered, concurrent>,
+                       request<value<int>, handles, layered>,
+                       request<value<Store<value<int>, frozen>>, handles, unique, structural_sharing, layered>>;
 
 using stores_as_keys = requests<request<key<Store<key<int>, sorted, frozen>>>,
                                 request<key<Store<key<int>, sorted, frozen>>, value<int>>,
@@ -332,7 +336,9 @@ using flat_pools = requests<request<value<Id>, handles, unique, flat>,
                             request<value<Id>, handles, unique, flat, monotone>,
                             request<value<Id>, handles, unique, flat, concurrent>,
                             request<value<Text>, handles, unique, flat>,
-                            request<value<Text>, handles, unique, flat, monotone, concurrent>>;
+                            request<value<Text>, handles, unique, flat, monotone, concurrent>,
+                            request<value<Id>, handles, unique, flat, monotone, layered>,
+                            request<value<Text>, handles, unique, flat, layered, concurrent>>;
 
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>

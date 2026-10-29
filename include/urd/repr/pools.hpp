@@ -65,17 +65,17 @@ public:
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
     {
-        const auto row = Row(std::ranges::begin(elements), std::ranges::end(elements));
-        if constexpr (words)
-        {
-            auto bits = stored_row();
-            for (const auto& each : row)
-                set(bits, index_of<element>::to_index(each));
-            return intern(std::move(bits));
-        }
-        else
-            return intern(stored_row(row.begin(), row.end()));
+        return intern(canonical(elements));
     }
+    /// The handle of the row with these elements, or none.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] handle_type find(const Elements& elements) const
+    {
+        const auto found = m_rows.find(canonical(elements));
+        return found == m_rows.end() ? handle_type() : handle_type(static_cast<std::uint32_t>(found - m_rows.begin()));
+    }
+    /// How many distinct rows are stored.
+    [[nodiscard]] size_type size() const { return m_rows.size(); }
 
     /// The row `base` with `writes` applied (sorted, unique positions within it), stored in full.
     handle_type insert(handle_type base, std::span<const write_type> writes)
@@ -182,6 +182,21 @@ public:
     void clear() { m_rows.clear(); }
 
 private:
+    /// The elements as a stored row: as the Row keeps them (a set's in order, once), or as bitset words.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] static stored_row canonical(const Elements& elements)
+    {
+        const auto row = Row(std::ranges::begin(elements), std::ranges::end(elements));
+        if constexpr (words)
+        {
+            auto bits = stored_row();
+            for (const auto& each : row)
+                set(bits, index_of<element>::to_index(each));
+            return bits;
+        }
+        else
+            return stored_row(row.begin(), row.end());
+    }
     [[nodiscard]] const stored_row& stored(handle_type handle) const
     {
         assert(handle.value < m_rows.size());

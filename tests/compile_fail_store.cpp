@@ -154,6 +154,12 @@ int main()
     auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>();
     const auto at = points.insert(Point { 1 }).first;
     points[at].x = 2;
+#elif URD_CASE == 40  // a pool of slots has no layers: nothing continues its handles over a parent
+    using S = Store<value<int>, urd::handles, urd::layered>;
+    (void) S();
+#elif URD_CASE == 41  // a tree pool numbers nodes, not rows: no layer continues its handles
+    using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::layered>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {
