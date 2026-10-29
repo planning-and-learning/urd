@@ -340,6 +340,23 @@ struct to_spec
                   "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
                   "(else two keys with equal P(key) would be one)");
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
+    static_assert(!ordered_by || !stated.has(tag::dense),
+                  "urd::Store: dense keys are stored and iterated by index, so no order_by<P> applies: drop dense, or order the index "
+                  "type itself");
+    static_assert(!ordered_by || !is_entry_less<order_type> || stated.has(tag::small) || stated.has(tag::frozen),
+                  "urd::Store: a map ordered by its values is a flat scan (O(n) insert, lookup by key): ask for small or frozen too, or "
+                  "order by key");
+    static_assert(!(stated.has(tag::dense) && stated.has(tag::reclaims)),
+                  "urd::Store: dense keys are stored by position (a slot per index), so erase returns no storage: reclaims needs sparse "
+                  "keys (a tree or node table)");
+    static_assert(!keyed || !stated.has(tag::constant_clear) || stated.has(tag::dense),
+                  "urd::Store: constant_clear is a generation counter over a slot per index: ask for dense too (a hash table or tree "
+                  "clears in time proportional to its slots: proportional_clear)");
+    static_assert(!(stated.has(tag::layered) && stated.has(tag::sorted)),
+                  "urd::Store: a layer iterates its own elements, not its parent's, so no order holds over both: drop sorted, or iterate "
+                  "the parent separately");
+    static_assert(!(stated.has(tag::partition) && stated.has(tag::concurrent)),
+                  "urd::Store: a partition's merge rewrites parents along two paths: single-threaded");
 
     static constexpr listed_tags listed = non_roots(implied(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));

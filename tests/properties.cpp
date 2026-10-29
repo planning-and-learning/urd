@@ -203,7 +203,7 @@ using Containers = testing::Types<
     Store<key<int>, urd::change_log>,
     // Maps ordered by their values: entries by P(key, value), found by key.
     urd::repr::FlatEntryMap<int, int, urd::EntryLess<int, int, by_value>>,
-    Store<key<int>, value<int>, urd::sorted, urd::order_by<by_value>>,
+    Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<by_value>>,
     // A sorted map that keeps erased nodes and their values for reuse.
     urd::repr::RecyclingMap<int, int>,
     urd::repr::RecyclingHashMap<int, int>

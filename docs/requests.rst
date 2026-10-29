@@ -91,7 +91,12 @@ assertion that names what is wrong.
 * ``nonempty`` is a promise about iterated elements: sets, maps and sequences, not queues or pools.
 * ``concurrent`` goes with hashed or ``dense`` Stores: no concurrent sorted container, no concurrent queue (its
   front moves with ``pop``), and a ``frozen`` Store is read by any number of threads without it.
-* ``order_by`` needs ``sorted`` or ``by_priority``; on unique keys the keys must be orderable, to break ties.
+* ``order_by`` needs ``sorted`` or ``by_priority``; on unique keys the keys must be orderable, to break ties; a
+  ``dense`` Store is iterated by index and takes no ``order_by``; a map ordered by its values is a flat scan, so it
+  asks for ``small`` or ``frozen`` too.
+* ``dense`` with ``reclaims`` has no storage to return (a slot per index); ``constant_clear`` on a set or map needs
+  ``dense`` (a generation counter over slots); ``layered`` with ``sorted`` has no order over both layers; a
+  ``partition`` is single-threaded.
 
 Resolution
 ----------

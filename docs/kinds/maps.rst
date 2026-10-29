@@ -49,7 +49,7 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
      - ``ScopedMap`` (scopes undone by a log)
    * - ``Store<key<K>, value<V>, layered>``
      - ``Layered`` over a flat hash map; with ``dense``, over an ``IndexMap``
-   * - ``Store<key<K>, value<V>, sorted, order_by<[](const K&, const V&) { … }>>``
+   * - ``Store<key<K>, value<V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
      - ``FlatEntryMap``: found by key, in the order the values give
 
 Template parameters

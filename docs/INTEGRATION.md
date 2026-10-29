@@ -281,11 +281,12 @@ must therefore be orderable, while a queue's elements need no order of their own
 those lists to serve projected orders too.
 
 With two arguments, `order_by<P>` orders a map by `P(key, value)`: entries are found by key and come in the order
-their values give, ties by key (`Store<key<Interval>, value<Offer>, sorted, order_by<cheapest>>`). A value then moves
+their values give, ties by key (`Store<key<Interval>, value<Offer>, sorted, small, order_by<cheapest>>`). A value then moves
 its entry, so it changes only through what puts the entry back in order: `update`, `merge`, `insert_or_assign`; the
 Store has no mutable `at` or `operator[]`, and no bounds by key. Representations that order by values declare
 `orders_by_value<R>` and offer `update` in place of a mutable `at`; `repr::FlatEntryMap` keeps few entries in one
-sorted vector, found by a scan.
+sorted vector, found by a scan, so the request must say `small` or `frozen` (a value-ordered map of many changing
+entries is rejected with a message, compile-fail case 55).
 
 ## Queues
 

@@ -104,7 +104,7 @@ int main()
     using S = Store<key<std::pair<int, int>>, urd::order_by<&std::pair<int, int>::first>>;
     (void) S();
 #elif URD_CASE == 30  // a map ordered by its values hands out no value to change: writing through it would break the order
-    using S = Store<key<int>, value<int>, urd::sorted, urd::order_by<[](int, int value) { return value; }>>;
+    using S = Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<[](int, int value) { return value; }>>;
     auto ordered = S();
     ordered.insert_or_assign(1, 2);
     ordered.at(1) = 3;
@@ -193,6 +193,24 @@ int main()
     (void) S();
 #elif URD_CASE == 51  // a frozen Store is read by any number of threads: concurrent asks for inserts it has none of
     using S = Store<key<int>, urd::frozen, urd::concurrent>;
+    (void) S();
+#elif URD_CASE == 52  // dense keys are stored by position: erase returns no storage
+    using S = Store<key<int>, urd::dense, urd::reclaims>;
+    (void) S();
+#elif URD_CASE == 53  // constant_clear is a generation counter over a slot per index: it needs dense keys
+    using S = Store<key<int>, urd::constant_clear>;
+    (void) S();
+#elif URD_CASE == 54  // dense keys are iterated by index: no order_by applies
+    using S = Store<key<int>, urd::dense, urd::sorted, urd::order_by<[](int key) { return -key; }>>;
+    (void) S();
+#elif URD_CASE == 55  // a map ordered by its values is a flat scan: it is for few or frozen entries
+    using S = Store<key<int>, value<int>, urd::sorted, urd::order_by<[](int, int value) { return value; }>>;
+    (void) S();
+#elif URD_CASE == 56  // a layer iterates its own elements, not its parent's: no order holds over both
+    using S = Store<key<int>, urd::layered, urd::sorted>;
+    (void) S();
+#elif URD_CASE == 57  // a partition's merge rewrites parents along two paths: single-threaded
+    using S = Store<key<int>, urd::partition, urd::concurrent>;
     (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered

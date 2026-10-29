@@ -195,6 +195,10 @@ using sets_of = requests<request<key<K>>,
                          request<key<K>, sorted, retains>,
                          request<key<K>, reclaims>,
                          request<key<K>, sorted, reclaims>,
+                         request<key<K>, insertion_ordered, reclaims>,
+                         request<key<K>, scoped>,
+                         request<key<K>, positional, monotone, layered>,
+                         request<key<K>, change_log, concurrent>,
                          request<key<K>, layered>,
                          request<key<K>, change_log>,
                          request<key<K>, nonempty>,
@@ -220,6 +224,8 @@ using dense_sets_of = requests<request<key<I>, dense>,
                                request<key<I>, dense, frozen>,
                                request<key<I>, dense, frozen, sorted>,
                                request<key<I>, dense, constant_clear>,
+                               request<key<I>, dense, sorted, constant_clear>,
+                               request<key<I>, dense, sorted, contiguous, frozen>,
                                request<key<I>, dense, proportional_clear>,
                                request<key<I>, dense, insertion_ordered>,
                                request<key<I>, dense, contiguous>,
@@ -245,6 +251,7 @@ using maps_of = requests<request<key<K>, value<V>>,
                          request<key<K>, value<V>, reclaims>,
                          request<key<K>, value<V>, insertion_ordered>,
                          request<key<K>, value<V>, scoped>,
+                         request<key<K>, value<V>, concurrent, layered>,
                          request<key<K>, value<V>, layered>,
                          request<key<K>, value<V>, concurrent>,
                          request<key<K>, value<V>, stable_refs, concurrent>,
@@ -257,7 +264,9 @@ using maps_of = requests<request<key<K>, value<V>>,
                          request<key<K>, value<Store<value<V>>>>,
                          request<key<K>, value<Store<key<V>>>>>;
 using ordered_maps = requests<request<key<int>, value<int>, sorted, order_by<negated>>,
-                              request<key<int>, value<int>, sorted, order_by<by_value>>,
+                              request<key<int>, value<int>, sorted, small, order_by<by_value>>,
+                              request<key<int>, value<int>, sorted, small, multi, order_by<by_value>>,
+                              request<key<int>, value<int>, sorted, small, stable_refs, order_by<by_value>>,
                               request<key<int>, value<int>, sorted, frozen, order_by<negated>>>;
 
 template<typename I, typename V>
@@ -265,6 +274,7 @@ using dense_maps_of = requests<request<key<I>, value<V>, dense>,
                                request<key<I>, value<V>, dense, sorted>,
                                request<key<I>, value<V>, dense, frozen>,
                                request<key<I>, value<V>, dense, constant_clear>,
+                               request<key<I>, value<V>, dense, contiguous>,
                                request<key<I>, value<V>, dense, constant_clear, concurrent>,
                                request<key<I>, value<V>, dense, insertion_ordered>,
                                request<key<I>, value<V>, dense, stable_refs>,
@@ -276,6 +286,7 @@ using dense_maps_of = requests<request<key<I>, value<V>, dense>,
                                request<key<I>, value<V>, multi, dense, frozen>,
                                request<key<I>, value<V>, multi, dense, frozen, sorted>,
                                request<key<I>, value<I>, multi, dense, frozen, bidirectional>,
+                               request<key<I>, value<I>, multi, dense, bidirectional>,
                                request<key<I>, value<Store<key<I>, dense>>, dense>,
                                request<key<I>, value<Store<key<I>, dense, constant_clear>>, dense, constant_clear>,
                                request<key<I>, value<Store<value<V>, frozen>>, dense, frozen>>;
@@ -286,6 +297,7 @@ using sequences = requests<request<value<int>>,
                            request<value<int>, small>,
                            request<value<int>, nonempty>,
                            request<value<int>, retains>,
+                           request<value<int>, reclaims>,
                            request<value<int>, contiguous>,
                            request<value<int>, monotone>,
                            request<value<int>, stable_refs, monotone>,
@@ -312,6 +324,8 @@ using queues_of = requests<request<value<T>, fifo>,
                            request<value<T>, fifo, small>,
                            request<value<T>, fifo, stable_refs>,
                            request<value<T>, fifo, retains>,
+                           request<value<T>, lifo, constant_clear>,
+                           request<value<T>, by_priority, constant_clear>,
                            request<value<T>, by_priority, monotone>>;
 using ordered_queues = requests<request<value<int>, by_priority, monotone_priority>,
                                 request<value<int>, by_priority, order_by<negated>>,
@@ -341,6 +355,8 @@ using stores_as_keys = requests<request<key<Store<key<int>, sorted, frozen>>>,
                                 request<key<Store<key<int>, sorted>>, sorted>,
                                 request<key<Store<key<int>>>>,
                                 request<key<Store<key<int>, dense, frozen>>>>;
+
+using sparse_partitions = requests<request<key<std::string>, partition>>;
 
 using flat_pools = requests<request<value<Id>, handles, unique, flat>,
                             request<value<Id>, handles, unique, flat, monotone>,
@@ -374,6 +390,7 @@ void for_each_group(F f)
     f("Queues ordered by a projection", ordered_queues {});
     f("Pools", pools {});
     f("Stores as keys", stores_as_keys {});
+    f("Partitions of sparse keys", sparse_partitions {});
     f("Records stored flat", flat_pools {});
 }
 

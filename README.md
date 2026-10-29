@@ -169,7 +169,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | identity | `positional` | elements identified by position (sequences, and sets with positions) |
 | workload | `small` | a few elements: picks compact containers, never changes a guarantee |
 | priority | `monotone_priority` | a priority queue never pushed below the last popped: integral priorities go to buckets |
-| order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map), or a map ordered by `P(key, value)`: a member pointer or a stateless lambda; ties by the element's (the key's) own order. Ordered by values, a map's values change only through `update`, `merge`, `insert_or_assign` |
+| order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map), or a map ordered by `P(key, value)`: a member pointer or a stateless lambda; ties by the element's (the key's) own order. Ordered by values, a map's values change only through `update`, `merge`, `insert_or_assign`, and the request says `small` or `frozen` too (a flat scan) |
 
 The kind of a Store follows from its arguments: `key<K>` is a set, `key<K>, value<V>` a map, `value<V>` a sequence;
 an access tag makes a value Store a queue, `handles` a pool, `partition` a key Store a partition.

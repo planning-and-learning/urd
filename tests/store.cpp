@@ -1480,7 +1480,7 @@ TEST(OrderByValue, KeepsEntriesInTheOrderTheirValuesGive)
 // Entries whose projections tie come in key order, whatever order they were inserted in.
 TEST(OrderByValue, TiesGoByKey)
 {
-    auto ranked = Store<key<int>, value<int>, urd::sorted, urd::order_by<[](int, int score) { return score; }>>();
+    auto ranked = Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<[](int, int score) { return score; }>>();
     for (const int key : { 5, 1, 3, 4, 2 })
         ranked.insert_or_assign(key, key % 2);
     auto keys = std::vector<int>();

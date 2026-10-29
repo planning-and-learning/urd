@@ -225,6 +225,30 @@ are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
      - ``P`` takes the element (a map's key), or a map's key and value.
      - Fix ``P``'s signature.
      - 31
+   * - ``dense`` with ``order_by<P>``
+     - Dense keys are stored and iterated by index; no other order applies.
+     - Drop ``dense``, or order the index type itself.
+     - 54
+   * - A map ordered by its values (``order_by<P(key, value)>``) without ``small`` or ``frozen``
+     - It is a flat scan: O(n) insert, lookup by key.
+     - Add ``small`` or ``frozen``, or order by key.
+     - 55
+   * - ``dense, reclaims``
+     - A slot per index: erase returns no storage.
+     - ``sparse`` keys (a tree or node table), or ``retains``.
+     - 52
+   * - ``constant_clear`` on a set or map without ``dense``
+     - A constant clear is a generation counter over a slot per index; a hash table or tree clears its slots.
+     - Add ``dense``, or accept ``proportional_clear``.
+     - 53
+   * - ``layered, sorted``
+     - A layer iterates its own elements, not its parent's; no order holds over both.
+     - Drop ``sorted``; iterate the parent separately.
+     - 56
+   * - ``partition, concurrent``
+     - A merge rewrites parents along two paths.
+     - Single-threaded; one partition per thread, merged after.
+     - 57
 
 A second group is rejected by the registry rather than a rule: the request is well formed, but no representation
 serves it and none could. The diagnosis names the culprits, the stated tags whose removal would make the request
