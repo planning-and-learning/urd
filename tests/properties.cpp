@@ -545,6 +545,40 @@ TYPED_TEST(Properties, ClearCost)
     }
 }
 
+// A constant clear costs the same with many live elements as with few: a generation counter or a size reset, not
+// a pass over what is present, which proportional_clear allows and constant_clear rules out.
+TYPED_TEST(Properties, ClearCostInLiveElements)
+{
+    if constexpr (!declares<TypeParam, urd::constant_clear> || !declares<TypeParam, urd::shrinkable>)
+        GTEST_SKIP() << "no constant clear declared";
+    else
+    {
+        const auto clear_with = [](int live)
+        {
+            return shortest(
+                timing_runs,
+                [live]
+                {
+                    auto range = TypeParam();
+                    // The same history for both: a far key touched and erased, then the live elements.
+                    add(range, far_key);
+                    if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                        range.erase(far_key);
+                    else
+                        range.pop_back();
+                    for (int element = 0; element < live; ++element)
+                        add(range, element);
+                    return range;
+                },
+                [](TypeParam& range) { range.clear(); });
+        };
+        const auto few = clear_with(8);
+        const auto many = clear_with(8192);
+        constexpr std::int64_t slack = 2000;  // nanoseconds, for the clock
+        EXPECT_LT(many, 10 * few + slack) << "clear took " << few << " ns with 8 elements, " << many << " ns with 8192";
+    }
+}
+
 TYPED_TEST(Properties, Concurrent)
 {
     if constexpr (!declares<TypeParam, urd::concurrent>)
