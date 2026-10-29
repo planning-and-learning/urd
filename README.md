@@ -54,6 +54,7 @@ error: static assertion failed: urd::Store: no representation provides this comb
        culprits<...> above name the tags whose removal, one at a time, would make it servable: ...
 error: no matching function for call to 'Store<std::set<int, ...>, spec<int, void, urd::tag::sorted,
        urd::tag::unique, urd::tag::shrinkable>>::push_back(int)'
+note:  constraints not satisfied: 'denied<"push_back/emplace_back: a keyed Store (a set or a map) takes insert">'
 ```
 
 Header-only C++20, GPL-3.0.

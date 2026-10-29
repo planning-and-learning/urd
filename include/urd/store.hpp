@@ -7,6 +7,7 @@
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
 #include "urd/store/contiguous_data.hpp"
+#include "urd/store/denials.hpp"
 #include "urd/store/entries.hpp"
 #include "urd/store/equality.hpp"
 #include "urd/store/grouping.hpp"
@@ -57,31 +58,63 @@ namespace detail
 /// which its kind and properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
 class Store :
-    public facet_if<S::sized, facet::sizing<Store<R, S>, R, S>>,
-    public facet_if<S::iterable, facet::iteration<Store<R, S>, R, S>>,
-    public facet_if<std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable), facet::equality<Store<R, S>, R, S>>,
-    public facet_if<compares_in_order<R, S>(), facet::ordering<Store<R, S>, R, S>>,
-    public facet_if<store_types<R, S>::keyed && S::iterable, facet::lookup<Store<R, S>, R, S>>,
-    public facet_if<has<S, sorted> && !is_entry_less<typename S::order_type>, facet::ordered_lookup<Store<R, S>, R, S>>,
-    public facet_if<store_types<R, S>::ordered, facet::reverse_iteration<Store<R, S>, R, S>>,
-    public facet_if<has<S, positional>, facet::positions<Store<R, S>, R, S>>,
-    public facet_if<has<S, contiguous>, facet::contiguous_data<Store<R, S>, R, S>>,
-    public facet_if<has<S, growable>, facet::capacity<Store<R, S>, R, S>>,
-    public facet_if<has<S, growable> && S::iterable, facet::growth<Store<R, S>, R, S>>,
-    public facet_if<has<S, shrinkable> && S::iterable, facet::removal<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && has<S, unique>, facet::values_by_key<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && !has<S, unique>, facet::multi_values<Store<R, S>, R, S>>,
-    public facet_if<S::is_set, facet::set_algebra<Store<R, S>, R, S>>,
-    public facet_if<S::is_queue, facet::queue_access<Store<R, S>, R, S>>,
-    public facet_if<has<S, scoped>, facet::scopes<Store<R, S>, R, S>>,
-    public facet_if<has<S, layered>, facet::layers<Store<R, S>, R, S>>,
-    public facet_if<has<S, change_log>, facet::changes<Store<R, S>, R, S>>,
-    public facet_if<S::is_pool && has<S, unique>, facet::pool<Store<R, S>, R, S>>,
-    public facet_if<S::is_pool && !has<S, unique>, facet::slots<Store<R, S>, R, S>>,
-    public facet_if<S::is_partition, facet::grouping<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && has<S, insertion_ordered>, facet::entries<Store<R, S>, R, S>>,
-    public facet_if<S::is_map && has<S, bidirectional>, facet::inverse<Store<R, S>, R, S>>,
-    public facet_if<has<S, fixed_shape>, facet::shape<Store<R, S>, R, S>>
+    public facet_if<facet_switches<R, S>::on(facet_id::sizing), facet::sizing<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::iteration), facet::iteration<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::equality), facet::equality<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::ordering), facet::ordering<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::lookup), facet::lookup<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::ordered_lookup), facet::ordered_lookup<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::reverse_iteration), facet::reverse_iteration<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::positions), facet::positions<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::contiguous_data), facet::contiguous_data<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::capacity), facet::capacity<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::growth), facet::growth<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::removal), facet::removal<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::values_by_key), facet::values_by_key<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::multi_values), facet::multi_values<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::set_algebra), facet::set_algebra<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::queue_access), facet::queue_access<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::scopes), facet::scopes<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::layers), facet::layers<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::changes), facet::changes<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::pool), facet::pool<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::slots), facet::slots<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::grouping), facet::grouping<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::entries), facet::entries<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::inverse), facet::inverse<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::shape), facet::shape<Store<R, S>, R, S>>,
+    // Where a member name is in none of the facets above, a denial stands in: a call then names the property that
+    // rules the operation out (store/denials.hpp).
+    public denial<R, S>::insert,
+    public denial<R, S>::emplace,
+    public denial<R, S>::appending,
+    public denial<R, S>::pop_back,
+    public denial<R, S>::erase,
+    public denial<R, S>::clear,
+    public denial<R, S>::lookup,
+    public denial<R, S>::ordered_lookup,
+    public denial<R, S>::iteration,
+    public denial<R, S>::reverse_iteration,
+    public denial<R, S>::subscript,
+    public denial<R, S>::ends,
+    public denial<R, S>::position,
+    public denial<R, S>::data,
+    public denial<R, S>::reserve,
+    public denial<R, S>::sizing,
+    public denial<R, S>::values_by_key,
+    public denial<R, S>::update,
+    public denial<R, S>::merge,
+    public denial<R, S>::values,
+    public denial<R, S>::keys,
+    public denial<R, S>::queue,
+    public denial<R, S>::scopes,
+    public denial<R, S>::layers,
+    public denial<R, S>::changes,
+    public denial<R, S>::rows,
+    public denial<R, S>::acquire,
+    public denial<R, S>::grouping,
+    public denial<R, S>::reset,
+    public denial<R, S>::set_algebra
 {
     using types = store_types<R, S>;
 

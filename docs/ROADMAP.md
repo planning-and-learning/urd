@@ -348,7 +348,7 @@ serves it (one sorted vector, found by a scan; for few entries, as `small` says)
 `NumericIntervalAnnotations`. Left out until a large site needs it: a hash index beside an ordered one
 (Boost.MultiIndex) for many entries.
 
-## Before M12: four prerequisites — in progress
+## Before M12: four prerequisites — done
 
 Fixed before any library tries urd, since a migration would hit each in its first hour (the weaknesses discussed
 on 2026-10-29):
@@ -359,7 +359,7 @@ on 2026-10-29):
 - A. A generated resolution table (docs/RESOLUTION.md, checked by a test) and a registry audit that reports a
   chosen container giving more costly unasked guarantees than another serving one. Done.
 - C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles. Done.
-- B.2. A missing operation names the property that removed it (denial facets).
+- B.2. A missing operation names the property that removed it (denial facets). Done.
 
 ## After M11: the second pass over the libraries
 

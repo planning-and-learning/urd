@@ -355,9 +355,22 @@ Everything else is a facet, even `sizing` (size, empty), `iteration`, `equality`
 has a facet in `include/urd/store/`, a class with the members those properties allow, which the Store
 inherits where its properties switch it on: `lookup` (kept by value or key), `ordered_lookup` (`sorted`), `reverse_iteration` (an order: `sorted`, or a sequence),
 `positions` (a sequence), `contiguous_data`, `growth`, `removal`, and `values_by_key` (a map with unique keys).
-A new property or kind adds a facet and a line in the Store's list of bases. Each member name lives in one
-facet only, so that calls are never ambiguous between two; facets take their types from `store_types`, as the
-Store is incomplete while they are built. A Store whose facets are off is no larger than its representation.
+A new property or kind adds a facet, a case in `facet_switches` (`store/types.hpp`), and a line in the Store's
+list of bases. Within one Store each member name lives in one facet only, so that calls are never ambiguous
+between two; across kinds a name recurs (`insert` in `growth`, `pool`, `slots` and `grouping`), which the
+denials record per name. Facets take their types from `store_types`, as the Store is incomplete while they are
+built. A Store whose facets are off is no larger than its representation.
+
+**Denials.** Where a facet is off, its names would be missing and a call would fail with "no member named
+insert" and no word on why. `store/denials.hpp` stands in for them: for each group of names, a class declaring
+the same names as function templates constrained by `denied<"reason">`, a concept never satisfied, so the error
+names the reason ("insert: the Store is frozen; it changes only by assign(first, last)") while
+`requires { store.insert(x); }` stays false, as for a missing member. A denial is inherited only where none of the
+facets that declare one of its names is on, since two bases with one name would make its lookup ambiguous; the
+`declares_*` tables say which facets those are, and `tests/denials.cpp` checks every table against the facets, so
+a facet that gains or loses a name fails there. Adding a name to a facet means adding the facet to that name's
+table; adding a facet means a case in `facet_switches` and, for each name it declares, its table. The
+message-checking compile-fail cases (`urd_compile_fail_expects` in `CMakeLists.txt`) pin five of the reasons.
 
 ## Choosing among containers
 

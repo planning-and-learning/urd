@@ -93,7 +93,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools registry)
+    foreach(test store properties rows semantics queues pools registry denials)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
@@ -164,6 +164,12 @@ if(URD_BUILD_TESTS)
     urd_compile_fail_expects(compile_fail_store 13 "culprits<urd::tag::stable_refs>")
     urd_compile_fail_expects(compile_fail_store 32 "culprits<>, false")
     urd_compile_fail_expects(compile_fail_store 33 "culprits<>, false")
+    # A missing operation names the property that rules it out (store/denials.hpp).
+    urd_compile_fail_expects(compile_fail_store 1 "a set has no positions")
+    urd_compile_fail_expects(compile_fail_store 2 "insert: the Store is frozen")
+    urd_compile_fail_expects(compile_fail_store 3 "pop_back: the Store is monotone")
+    urd_compile_fail_expects(compile_fail_store 22 "begin/end: a queue")
+    urd_compile_fail_expects(compile_fail_store 26 "a pool is reached by handle")
     if(NOT URD_WITH_GTL)
         urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 1)
         urd_compile_fail_expects(compile_fail_gtl 1 "URD_WITH_GTL")
