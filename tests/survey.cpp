@@ -322,6 +322,100 @@ using DistinctVertexRows = Store<value<Store<value<PartitionBitsets::handle_type
 using VertexRows = Store<value<DistinctVertexRows::handle_type>>;
 static_assert(std::same_as<PartitionBitsets::representation, urd::repr::RowInterner<PartitionBitset>>);
 static_assert(std::same_as<decltype(PartitionBitsets().view(PartitionBitsets::handle_type {})), urd::repr::BitsetSpan<const std::uint64_t>>);
+
+// The second pass (docs/SURVEY.md, 2026-10-29), on the libraries' newest branches: what the first pass left as a gap
+// and later milestones closed, pinned from the sites that asked for it.
+
+// yggdrasil database/search/a_star.hpp: OpenList, now ordered by f ascending, then larger g, then the later push: a
+// priority queue by a projection (M10.2), its storage kept across searches.
+struct AStarEntry
+{
+    double f = 0;
+    double g = 0;
+    std::uint64_t push = 0;
+    std::uint32_t vertex = 0;
+};
+constexpr auto a_star_order = [](const AStarEntry& entry) { return std::tuple(entry.f, -entry.g, -static_cast<std::int64_t>(entry.push)); };
+using AStarOpenList = Store<value<AStarEntry>, urd::by_priority, urd::retains, urd::order_by<a_star_order>>;
+static_assert(
+    std::same_as<AStarOpenList::representation, urd::repr::Queue<AStarEntry, urd::repr::leaving::least, urd::ProjectedLess<AStarEntry, a_star_order>>>);
+
+// yggdrasil datalog/detail/strata.hpp, WeightedStratum: a heap of candidates by weight with lazy deletion (stale
+// entries skipped on pop); also tyr's ground scheduler and tree repair. With handles, an entry is updated or erased
+// in place instead.
+struct Candidate
+{
+    std::uint32_t row = 0;
+    std::uint64_t priority = 0;
+};
+using Candidates = Store<value<Candidate>, urd::by_priority, urd::handles, urd::order_by<&Candidate::priority>>;
+static_assert(std::same_as<Candidates::representation, urd::repr::AddressableHeap<Candidate, urd::ProjectedLess<Candidate, &Candidate::priority>>>);
+
+// tyr datalog/lifted/scheduler.hpp, TypedRuleSchedulerStratum: the active rules as a hash set, copied into a vector
+// and sorted every iteration for a stable order. A bitset iterates its indices ascending by itself.
+using ActiveRules = Store<key<Rule>, urd::dense, urd::sorted>;
+static_assert(std::same_as<ActiveRules::representation, urd::repr::DenseSet<Rule>>);
+
+// tyr datalog/ground/workspaces/program.hpp, GroundRuleDependencies: per relation, the rules to fire again for each
+// row, built once and never cleared: a frozen multimap per relation, in a frozen dense map.
+using RowRules = Store<key<Row>, value<Rule>, urd::multi, urd::dense, urd::frozen>;
+using RuleDependencies = Store<key<Predicate>, value<RowRules>, urd::dense, urd::frozen>;
+static_assert(std::same_as<RowRules::representation, urd::repr::CsrMultiMap<Row, Rule>>);
+static_assert(std::same_as<RuleDependencies::representation, urd::repr::IndexMap<Predicate, RowRules, false>>);
+
+// tyr analysis/static_literal_compatibility.hpp, kckp.hpp (three strided accessors), runir weisfeiler_leman.hpp and
+// icp/dl/parser.cpp (Warshall closure): bit matrices as rows of a fixed length over one word array.
+using BitMatrix = Store<value<Store<key<Vertex>, urd::dense>>, urd::fixed_shape>;
+static_assert(std::same_as<BitMatrix::representation, urd::repr::Jagged<Store<key<Vertex>, urd::dense>>>);
+
+// runir datasets/equivalence_policies/gi.hpp: an UnorderedMap<SparseGraph, VertexRef> under a mutex, found or
+// allocated by every worker: a concurrent map, the allocation in update under the shard's lock.
+struct CanonicalGraphTag;
+using CanonicalGraph = Id<CanonicalGraphTag>;
+using Representatives = Store<key<CanonicalGraph>, value<Vertex>, urd::concurrent>;
+static_assert(std::same_as<Representatives::representation, urd::repr::ParallelHashMap<CanonicalGraph, Vertex>>);
+
+// runir kr/parser/ext_constructors.hpp, ReferenceTable: a name -> entity map beside a vector of the entities by
+// identifier, six times over; loki builder_declarations.cpp: declarations beside their declaration order.
+using References = Store<key<std::string>, value<Predicate>, urd::insertion_ordered>;
+static_assert(std::same_as<References::representation, urd::repr::OrderedMap<urd::repr::IndexedSet<std::string>, Predicate>>);
+
+// runir datasets/object_graph_color.hpp, ColorRepository: a concurrent symbol repository of three record types.
+template<typename T>
+using SharedInterned = Store<key<T>, urd::positional, urd::monotone, urd::concurrent>;
+using Colors = urd::compose::Family<SharedInterned, Predicate, Object, Vertex>;
+static_assert(std::same_as<SharedInterned<Object>::representation, urd::repr::ConcurrentIndexedSet<Object>>);
+static_assert(std::same_as<decltype(std::declval<Colors&>().get<Object>()), SharedInterned<Object>&>);
+
+// runir kr/dl/semantics/evaluation_workspace.hpp and yggdrasil evaluation/bound.hpp: std::deque chosen so that
+// references stay valid while appending.
+struct KeyIndex
+{
+    std::vector<std::uint32_t> positions;
+};
+using KeyIndexes = Store<value<KeyIndex>, urd::monotone, urd::stable_refs>;
+static_assert(std::same_as<KeyIndexes::representation, urd::repr::SegmentedVector<KeyIndex>>);
+
+// yggdrasil evaluation/incremental_bound.hpp (plans keyed by a vector<bool> of bound variables), tyr seen_bindings
+// (keyed by an IndexList<Object>), loki union types (keyed by a sorted name list): maps keyed by a Store. A sorted
+// Store is orderable, so a sorted map takes it (below); a hashed one needs urd::Hash over a Store, which no header
+// provides yet (docs/SURVEY.md, second pass).
+
+// yggdrasil operators/distance/incremental/distance.hpp: the active sources, compacted by swapping the last one into
+// the erased slot, with a root -> position map: a dense set whose elements lie next to each other.
+using ActiveSources = Store<key<Vertex>, urd::dense, urd::contiguous>;
+static_assert(std::same_as<ActiveSources::representation, urd::repr::SparseSet<Vertex>>);
+
+// loki src/semantic/context.hpp: union types keyed by their sorted member names (std::map<vector<string>, string>),
+// and the type table collected in index order at build time, with M11 an order the map keeps itself.
+using TypeNames = Store<key<std::string>, urd::sorted, urd::frozen>;
+using UnionTypes = Store<key<TypeNames>, value<std::string>, urd::sorted>;
+static_assert(std::same_as<UnionTypes::representation, TreeMapOf<TypeNames, std::string>>);
+struct TypeTag;
+using Type = Id<TypeTag>;
+constexpr auto by_type_index = [](const std::string&, const Type& type) { return type.value; };
+using TypesByIndex = Store<key<std::string>, value<Type>, urd::sorted, urd::small, urd::order_by<by_type_index>>;
+static_assert(std::same_as<TypesByIndex::representation, urd::repr::FlatEntryMap<std::string, Type, urd::EntryLess<std::string, Type, by_type_index>>>);
 }  // namespace
 
 // The maps further up are keyed by indices too; where their sites say so, they become dense requests.

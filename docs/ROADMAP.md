@@ -335,8 +335,8 @@ Kept apart: `RowPool`, whose only job (rows kept for reuse at every level) a pla
 M10 is done. A pass after it removed what was tailored to one use: fixed shapes nest at any depth, value recycling
 works over any node-based map (hashed too), and the bucket queue's reliance on its promise is a general trait
 (`relies_on<R>`: the request-only promises a representation needs) rather than a flag of its own. Open gaps found by
-probing nearby requests, left until a site needs them (none of the surveyed libraries does): a dense concurrent set,
-an insertion-ordered concurrent map, a concurrent map whose values retain.
+probing nearby requests, left until a site needs them: a dense concurrent set (the second survey pass found three
+sites, docs/SURVEY.md gap 5), an insertion-ordered concurrent map, a concurrent map whose values retain.
 
 ## M11: maps ordered by their values
 
@@ -347,6 +347,25 @@ only through `update`, `merge` and `insert_or_assign` (no mutable `at` or `opera
 serves it (one sorted vector, found by a scan; for few entries, as `small` says). Covers tyr's
 `NumericIntervalAnnotations`. Left out until a large site needs it: a hash index beside an ordered one
 (Boost.MultiIndex) for many entries.
+
+## After M11: the second pass over the libraries
+
+A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified
+the tyr audit, found every class in loki and runir expressible or domain logic but for the gaps below, and ranked what
+is left by the sites it unlocks. Candidates for the next milestones, in that order; each is small:
+
+1. A Store as a hashed key (`urd::Hash` over a Store; the README already promises it). Gap 1.
+2. The layered interner, M6's deferred item: loki's 40 repositories, yggdrasil's 22. Gap 2.
+3. `erase(h)` on `RowInterner` reporting the moved handle, `replace` on multimaps: yggdrasil's row sets and the postings
+   kept in sync over them. Gap 3.
+4. `ChangeLogged` over `DenseSet` and over fixed-shape bit rows: runir's incremental evaluators, tyr's delta fact sets.
+   Gap 4.
+5. `dense, stable_refs` and `dense, concurrent` without generations: search nodes in three libraries, the novelty table,
+   the concurrent slot directory. Gap 5.
+6. A growable dense multimap (M3's deferral) and the dynamic graph over it. Gap 6.
+
+Then decrease-key by key, insertion order over two-level dense keys, edge-indexed `bidirectional`, the uniform stride,
+ties by arrival, innermost-scope membership (gaps 7 to 12), as sites ask.
 
 ## Order and size
 

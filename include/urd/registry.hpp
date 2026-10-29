@@ -199,7 +199,8 @@ struct map_candidates
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
 /// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
 /// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
-/// tables, which declare sparse keys, so only a request for dense keys reaches them; the indexed set, after
+/// tables (the concurrent one among them, or a concurrent map by an indexable key would get a dense slot per
+/// index), which declare sparse keys, so only a request for dense keys reaches them; the indexed set, after
 /// them too, only a request for insertion order or positions. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
 using element_preference = element_candidates<JaggedOf,
@@ -240,6 +241,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
                                       HashMultiMapOf,
+                                      ParallelHashMapOf,
                                       TreeMapOf,
                                       TreeMultiMapOf,
                                       FlatMultiMapOf,
@@ -254,8 +256,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       CsrMultiMapOf,
                                       BidirectionalCsrOf,
                                       ScopedMapOf,
-                                      LayeredHashMapOf,
-                                      ParallelHashMapOf>;
+                                      LayeredHashMapOf>;
 
 /// The containers that take a comparator, in order of preference (as in the lists above): where a request gives
 /// order_by, only they can serve it, instantiated with its comparator.

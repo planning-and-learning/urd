@@ -156,6 +156,8 @@ static_assert((all_conform) (map_candidates<key<std::string>, value<double>> {})
 // Sets and maps shared by threads, by hashed keys: gtl's sharded tables.
 static_assert(std::same_as<Store<key<int>, urd::concurrent>::representation, urd::repr::ParallelHashSet<int>>);
 static_assert(std::same_as<Store<key<std::string>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<std::string, int>>);
+// By an indexable key too: without dense, a hash table, not a slot per index.
+static_assert(std::same_as<Store<key<int>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<int, int>>);
 
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
