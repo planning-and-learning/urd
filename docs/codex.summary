@@ -221,3 +221,31 @@ Suggested order:
 Extend the existing grid and property-test machinery. Record intentional
 incompatibilities explicitly instead of treating every Cartesian product as a
 feature that must be implemented.
+
+Status (2026-10-29, M13 to M15 of docs/ROADMAP.md):
+
+1. Repaired and pinned: dense is a demand in selection (demands_met), the
+   fixed-shape constructors assert nonempty, nonempty is rejected on queues
+   and pools. Every rule of to_spec and every registry-level rejection has a
+   compile-fail case checking its message (docs/properties.rst, "Incompatible
+   combinations"); every none row of docs/RESOLUTION.md carries a note saying
+   whether it is missing or incompatible, which the table tool requires.
+2. Stability and concurrency are defined per access path (traits.hpp) and
+   checked through those paths; tests/concurrency.cpp runs the operation-pair
+   matrix under ThreadSanitizer, which found the interners' find comparing an
+   iterator with a moving end(). Fifo declares stable_refs; gtl's node tables
+   serve stable_refs with concurrent; RecyclingSet serves stable_refs with
+   retains. Rejected: sorted with concurrent (dense excepted), concurrent
+   queues, positional stable_refs without monotone, frozen with concurrent.
+3. A Stable policy is split from ThreadSafe on IndexedSet, RecordInterner and
+   IndexMap: stable_refs alone buys no lock, with or without generations.
+4. constant_clear is checked against live cardinality; RingFifo serves fifo
+   with retains; dense with reclaims and constant_clear without dense are
+   rejected; the remaining retention and clear cells are recorded as missing.
+5. ChangeLogged over dense, tree and node sets; Scoped over trees and dense
+   maps with bound_in_scope; layers over node sets, node maps and the
+   generation map; DenseGroups, the growable dense multimap. Recorded as
+   missing: the dynamic bidirectional graph, scoped sets, a concurrent change
+   log, layered interners, the generation-stamped bitset; rejected: order_by
+   on dense keys, value-ordered maps without small or frozen, layered with
+   sorted.

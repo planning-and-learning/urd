@@ -413,11 +413,17 @@ concurrent slot directory (a `dense, concurrent` map without generations); concu
 insertion-ordered map; a tombstoned insertion-ordered set for `stable_refs` without `monotone`; concurrent writes
 into a fixed shape.
 
-**M15 (items 4 and 5).** `constant_clear` checked against live cardinality; the rejections and recorded gaps of
-retention, clear cost, dense order and by-value maps; `RecyclingSet` (stable retaining sets), `RingFifo` (`fifo,
-retains`); `ChangeLogged` over dense, tree and node sets; `Scoped` generic over its map with tree and dense
-registrations; layered node sets and maps and the layered generation map; `DenseGroups`, the growable dense
-multimap.
+**M15 (items 4 and 5) — done.** `constant_clear` checked against live cardinality (sabotaged clears fail it);
+six rejections (dense with reclaims, constant_clear without dense, order_by on dense, value-ordered maps without
+small or frozen, layered with sorted, partition with concurrent) and every remaining feasible cell recorded in the
+grid with a note; `RecyclingSet` (stable references that keep their storage), `RingFifo` (`fifo, retains`, the
+deque kept for plain `fifo` by benchmark); `ChangeLogged` over dense, tree and node sets (gap 4's dense half);
+`Scoped` generic over its map, with tree and dense scopes and `bound_in_scope` (gap 12); layers over node sets,
+node maps and the generation map; `DenseGroups`, the growable dense multimap (gap 6's multimap half). Deferred,
+named here: the generation-stamped bitset (`dense, sorted, constant_clear`); layered interners continuing their
+parent's positions; a concurrent change log; scoped sets; `Bidirectional` over `DenseGroups` (the dynamic graph)
+and `assign` to freeze it; a partition over hashed keys; change logging of fixed-shape bit rows; `erase(handle)`
+on interners, reporting the moved handle.
 
 ## After M11: the second pass over the libraries
 
