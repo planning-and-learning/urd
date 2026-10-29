@@ -102,6 +102,12 @@ else is written per container: a request takes the first container in the list t
 request offers. Where a request is `small` or `frozen`, node-based containers (declaring `stable_refs`) move
 last, as contiguous storage is faster for few or unchanging elements.
 
+A request no container serves fails in `no_representation_for<spec, culprits<…>, hashable, orderable, indexable>`,
+whose arguments say why: the culprits are the stated tags whose removal, one at a time, would make the request
+servable (`to_spec::without<tag>` re-runs the rules without one, so dropping `frozen` drops the implied
+`stable_refs` too), and the three booleans say what the key type is where no tag is the culprit. The probes run
+only on failure. Two compile-fail cases check the message (`urd_compile_fail_expects` in `CMakeLists.txt`).
+
 What a container needs of its elements belongs in its traits, as constraints with the concepts of
 `include/urd/elements.hpp` (`orderable`, `hashable`, `natural_order`, `natural_hash`): a tree is `sorted` only
 for orderable keys, so a request for a sorted set of keys urd cannot order is not served by it.

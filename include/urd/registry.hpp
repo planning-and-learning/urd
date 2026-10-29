@@ -3,6 +3,7 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/repr/change_logged.hpp"
+#include "urd/repr/core/dependent_false.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/repr/disjoint_sets.hpp"
 #include "urd/repr/entry_ordered.hpp"
@@ -61,14 +62,16 @@ inline constexpr property_set requirement = []
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
 /// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
-/// sequence's duplicates), is a map exactly where S is, is a queue exactly where S is, and is random-access where S
+/// sequence's duplicates), is reached by handle exactly where S is (a pool offers no iteration), is a map exactly
+/// where S is, is a queue exactly where S is, and is random-access where S
 /// is a sequence. A sequence
 /// kept by value must be sorted, or its positions would mean nothing. Where S's elements (a map's values) are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>)
                            && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
-                           && (!S::is_sequence || !by_value<S> || has<S, sorted>) && queue_traits<container_traits<R>> == S::is_queue;
+                           && has<container_traits<R>, handles> == has<S, handles> && (!S::is_sequence || !by_value<S> || has<S, sorted>)
+                           && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
 // typed test suites, for every registered container, not again for every request: those interface checks were most
@@ -389,13 +392,10 @@ struct first_serving<S, R, Rs...> : std::conditional_t<serves<R, S>, chosen<R>, 
 template<typename S, typename List>
 struct choose_in;
 
-/// The first of the containers that serves S.
+/// The first of the containers that serves S, if any (found).
 template<typename S, typename... Rs>
 struct choose_in<S, type_list<Rs...>> : first_serving<S, Rs...>
 {
-    static_assert(first_serving<S, Rs...>::found,
-                  "urd::Store: no representation provides this combination of properties; "
-                  "the pool needs a new representation for it");
 };
 
 /// The candidates for spec S: the comparator-taking ones where it gives order_by (those ordered by values too where
@@ -412,5 +412,64 @@ using candidates_for = std::conditional_t<
 /// The representation for spec S: the first registered container that serves it, in the order for S.
 template<typename S>
 using choose = choose_in<S, typename ordered_for<S, typename candidates_for<S>::type>::type>;
+
+/// The tags of an unservable request whose removal, one at a time, would make it servable: what to drop, or what the
+/// pool lacks a representation for. Named in the error for such a request.
+template<tag... Ts>
+struct culprits
+{
+};
+
+/// The static assertion a request no representation serves fails with. Its arguments say why: the spec, the culprit
+/// tags, and whether the key (a sequence's or queue's element) is hashable, orderable and indexable, for when no tag
+/// is the culprit but the type is.
+template<typename S, typename Culprits, bool KeyHashable, bool KeyOrderable, bool KeyIndexable>
+struct no_representation_for
+{
+#if !defined(URD_HAS_GTL)
+    static_assert(!has<S, concurrent> || S::is_sequence || S::is_pool,
+                  "urd::Store: a concurrent set or map by hashed keys is gtl's sharded table; this build has URD_WITH_GTL=OFF");
+#endif
+    static_assert(repr::dependent_false<S>::value,
+                  "urd::Store: no representation provides this combination of properties. The culprits<...> above name the tags "
+                  "whose removal, one at a time, would make it servable: drop one, or add a representation for them. No "
+                  "culprit named: the key type lacks what the request needs (hashable, orderable, indexable: the booleans "
+                  "above), or two of the tags clash");
+    /// A stand-in, so that the assertion is the only error.
+    using type = std::vector<typename S::element_type>;
+};
+
+template<typename Request, std::size_t... I>
+consteval listed_tags culprits_of(std::index_sequence<I...> /*positions*/)
+{
+    auto result = listed_tags {};
+    ((choose<typename Request::template without<Request::stated_tags.tags[I]>>::found ? void(result.tags[result.count++] = Request::stated_tags.tags[I]) :
+                                                                                        void()),
+     ...);
+    return result;
+}
+template<typename Request, listed_tags Found, std::size_t... I>
+consteval auto diagnosis(std::index_sequence<I...> /*positions*/)
+{
+    using spec = typename Request::type;
+    using probe = std::conditional_t<std::is_void_v<typename spec::key_type>, typename spec::element_type, typename spec::key_type>;
+    return std::type_identity<no_representation_for<spec, culprits<Found.tags[I]...>, hashable<probe>, orderable<probe>, indexable<probe>>> {};
+}
+/// The diagnosis of a request (a to_spec) no representation serves; its type is reached only then.
+template<typename Request>
+struct unservable
+{
+    static constexpr listed_tags found = culprits_of<Request>(std::make_index_sequence<Request::stated_tags.count> {});
+    using type = typename decltype(diagnosis<Request, found>(std::make_index_sequence<found.count> {}))::type::type;
+};
+
+/// The representation for a request (a to_spec), or where none serves it, the diagnosis: the culprit probes run only
+/// then.
+template<typename Request>
+struct resolution
+{
+    using spec = typename Request::type;
+    using type = typename std::conditional_t<choose<spec>::found, choose<spec>, unservable<Request>>::type;
+};
 
 }  // namespace urd::detail

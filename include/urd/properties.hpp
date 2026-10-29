@@ -208,6 +208,14 @@ struct kind
     bool queue = false;
 };
 
+/// The kind a request is, from whether it has a key, a value, and the tags that make a queue or a pool.
+consteval kind kind_of(const property_set& stated, bool keyed, bool valued)
+{
+    const bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
+    const bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
+    return { .set = keyed && !valued && !stated.has(tag::partition), .map = keyed && valued, .sequence = !keyed && valued && !queue && !pool, .queue = queue };
+}
+
 /// The request rules: what the list implies, in place of what it states.
 consteval property_set implied(property_set stated, kind of)
 {
@@ -283,10 +291,7 @@ struct to_spec
     static constexpr bool valued = !std::is_void_v<value_type>;
     static constexpr bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
     static constexpr bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
-    static constexpr kind of { .set = keyed && !valued && !stated.has(tag::partition),
-                               .map = keyed && valued,
-                               .sequence = !keyed && valued && !queue && !pool,
-                               .queue = queue };
+    static constexpr kind of = kind_of(stated, keyed, valued);
 
     static_assert(!stated.has(tag::partition) || (!valued && !stated.has(tag::frozen)),
                   "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
@@ -317,6 +322,19 @@ struct to_spec
 
     static constexpr listed_tags listed = non_roots(implied(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
+
+    /// The tags the request states (the roots left out), to probe one at a time where no representation serves it.
+    static constexpr listed_tags stated_tags = non_roots(stated);
+    /// What the request implies without `Reset` (its category back at its root, the rules applied again, so that
+    /// without frozen the implied stable_refs goes too).
+    template<tag Reset>
+    static constexpr listed_tags listed_without =
+        non_roots(implied(property_set(stated).put(root_of(Reset)), kind_of(property_set(stated).put(root_of(Reset)), keyed, valued)));
+    /// The spec of the request without `Reset`: what it would resolve to then. It runs none of the checks above; it is
+    /// for finding which tag an unservable request fails by.
+    template<tag Reset>
+    using without =
+        decltype(detail::spec_of<key_type, value_type, order_type, listed_without<Reset>>(std::make_index_sequence<listed_without<Reset>.count> {}));
 };
 
 }  // namespace detail

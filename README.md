@@ -49,6 +49,9 @@ hand-rolling a structure, and errors say what is wrong:
 
 ```
 error: static assertion failed: urd::Store: two properties answer the same question (dense and sparse, ...)
+In instantiation of 'no_representation_for<spec<std::string, void, ..., urd::tag::dense, ...>, culprits<urd::tag::dense>, ...>'
+error: static assertion failed: urd::Store: no representation provides this combination of properties. The
+       culprits<...> above name the tags whose removal, one at a time, would make it servable: ...
 error: no matching function for call to 'Store<std::set<int, ...>, spec<int, void, urd::tag::sorted,
        urd::tag::unique, urd::tag::shrinkable>>::push_back(int)'
 ```

@@ -150,7 +150,7 @@ template<typename... Ps>
 struct resolve
 {
     using spec_type = typename to_spec<Ps...>::type;
-    using type = Store<typename choose<spec_type>::type, spec_type>;
+    using type = Store<typename resolution<to_spec<Ps...>>::type, spec_type>;
 };
 
 }  // namespace detail

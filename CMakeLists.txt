@@ -147,9 +147,17 @@ if(URD_BUILD_TESTS)
         endforeach()
     endfunction()
 
+    # A case that must fail with a given message: the error's text, not only the failure, is the test.
+    function(urd_compile_fail_expects name case regex)
+        set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
+    endfunction()
+
     urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 31)
+    urd_compile_fail_expects(compile_fail_store 8 "culprits<urd::tag::dense>")
+    urd_compile_fail_expects(compile_fail_store 13 "culprits<urd::tag::stable_refs>")
     if(NOT URD_WITH_GTL)
         urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 1)
+        urd_compile_fail_expects(compile_fail_gtl 1 "URD_WITH_GTL")
     endif()
 
     # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.
