@@ -47,8 +47,8 @@ public:
     }
     [[nodiscard]] handle_type find(const T& record) const
     {
-        const auto found = m_records.find(record);
-        return found == m_records.end() ? handle_type() : at(found);
+        const auto found = m_records.position(record);
+        return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
     [[nodiscard]] bool contains(const T& record) const { return m_records.contains(record); }
     [[nodiscard]] const T& operator[](handle_type at) const { return m_records[at.value]; }

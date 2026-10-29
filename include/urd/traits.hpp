@@ -179,8 +179,10 @@ struct single_threaded
 /// (unlocked) is for keys no thread writes; pools take inserts and reads by handle of published rows at once, and
 /// a layered pool reads a parent no thread changes; slots take insert, acquire, erase and [h] on handles the thread
 /// holds. An element is published to a thread once it was inserted before the thread started, or by the thread
-/// itself. Everything else needs quiescence, no other operation running: erase of another thread's element,
-/// clear, iteration, reserve, memory_usage, copy, move and destruction.
+/// itself. A lookup beside inserts is contains, count, or find's result used as an element; comparing find's
+/// iterator with end() races with the size, which another thread's insert moves. Everything else needs quiescence,
+/// no other operation running: erase of another thread's element, clear, iteration, reserve, memory_usage, copy,
+/// move and destruction.
 struct concurrent : single_threaded
 {
     static constexpr tag value = tag::concurrent;

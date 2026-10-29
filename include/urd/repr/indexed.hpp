@@ -152,6 +152,13 @@ public:
         const auto found = position_of(element);
         return found ? at(*found) : end();
     }
+    /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
+    /// with end() races with the size, which another thread's insert moves between the two calls.
+    [[nodiscard]] std::optional<size_type> position(const T& element) const
+    {
+        const auto found = position_of(element);
+        return found ? std::optional<size_type>(static_cast<size_type>(*found)) : std::nullopt;
+    }
     [[nodiscard]] size_type count(const T& element) const { return position_of(element) ? 1 : 0; }
     [[nodiscard]] bool contains(const T& element) const { return position_of(element).has_value(); }
 

@@ -44,9 +44,10 @@ What a container declares and keeps, checked by the typed tests against a refere
      - ``concurrent``
      - Threads share the Store: inserts from threads at once, and beside them reads of published elements (inserted
        before the reading thread started, or by it); for maps also ``update`` and ``read`` on any keys, each value
-       under its own lock, ``at`` only for keys no thread writes; for pools inserts and reads by handle. Erase of
-       another thread's element, ``clear``, iteration, ``reserve``, copy, move and destruction need no other
-       operation running.
+       under its own lock, ``at`` only for keys no thread writes; for pools inserts and reads by handle. A lookup
+       beside inserts is ``contains`` or ``count`` (``find``'s iterator compared with ``end()`` races with the
+       size). Erase of another thread's element, ``clear``, iteration, ``reserve``, copy, move and destruction need
+       no other operation running.
    * - memory
      - ``retains``, ``reclaims``
      - Storage freed by erase and clear is kept for reuse, or returned.

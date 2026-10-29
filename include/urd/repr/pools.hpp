@@ -71,8 +71,8 @@ public:
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
     {
-        const auto found = m_rows.find(canonical(elements));
-        return found == m_rows.end() ? handle_type() : handle_type(static_cast<std::uint32_t>(found - m_rows.begin()));
+        const auto found = m_rows.position(canonical(elements));
+        return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
@@ -199,7 +199,7 @@ private:
     }
     [[nodiscard]] const stored_row& stored(handle_type handle) const
     {
-        assert(handle.value < m_rows.size());
+        assert((handle.value) < m_rows.size());
         return m_rows[handle.value];
     }
     handle_type intern(stored_row row)
