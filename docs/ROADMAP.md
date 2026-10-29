@@ -384,8 +384,8 @@ A second reading of the four libraries on their newest branches (docs/SURVEY.md,
 the tyr audit, found every class in loki and runir expressible or domain logic but for the gaps below, and ranked what
 is left by the sites it unlocks. Candidates for the next milestones, in that order; each is small:
 
-1. A Store as a hashed key (`urd::Hash` over a Store; the README already promises it). Gap 1.
-2. The layered interner, M6's deferred item: loki's 40 repositories, yggdrasil's 22. Gap 2.
+1. A Store as a hashed key (`urd::Hash` over a Store; the README already promises it). Gap 1. Done (prerequisite C).
+2. The layered interner, M6's deferred item: loki's 40 repositories, yggdrasil's 22. Gap 2. Done (M12).
 3. `erase(h)` on `RowInterner` reporting the moved handle, `replace` on multimaps: yggdrasil's row sets and the postings
    kept in sync over them. Gap 3.
 4. `ChangeLogged` over `DenseSet` and over fixed-shape bit rows: runir's incremental evaluators, tyr's delta fact sets.
