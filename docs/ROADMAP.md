@@ -402,12 +402,16 @@ compile-fail case checking its message, listed in docs/properties.rst, "Incompat
 row of docs/RESOLUTION.md carries a note saying whether it is missing or incompatible, which the table tool
 requires.
 
-**M14 (items 2 and 3).** Stability and concurrency defined per access path and checked through it (a map's value by
-`at`, a queue's `front`, a pool's `[index]`); a `Stable` policy split from `ThreadSafe` on `IndexedSet`,
-`RecordInterner` and `IndexMap`, so `stable_refs` alone buys no lock; `Fifo` declares `stable_refs`; stable
-concurrent hashed tables through gtl's node tables; the rejections of `sorted, concurrent` (dense excepted), queues
-with `concurrent`, positional `stable_refs` without `monotone`, and `frozen, concurrent`; an operation-pair matrix
-under ThreadSanitizer.
+**M14 (items 2 and 3) — done.** Stability and concurrency defined per access path and checked through it (a map's
+value by `at` or an entry's `.second`, a queue's `front`, a pool's `[index]`); a `Stable` policy split from
+`ThreadSafe` on `IndexedSet`, `RecordInterner` and `IndexMap`, so `stable_refs` alone buys no lock; `Fifo` declares
+`stable_refs`; stable concurrent hashed tables through gtl's node tables; the rejections of `sorted, concurrent`
+(dense excepted), queues with `concurrent`, positional `stable_refs` without `monotone`, and `frozen, concurrent`;
+an operation-pair matrix under ThreadSanitizer (tests/concurrency.cpp), which found the interners' `find` comparing
+an iterator with a moving `end()`. Deferred, named here: an atomic dense set for `dense, concurrent` sets; the
+concurrent slot directory (a `dense, concurrent` map without generations); concurrent postings; a concurrent
+insertion-ordered map; a tombstoned insertion-ordered set for `stable_refs` without `monotone`; concurrent writes
+into a fixed shape.
 
 **M15 (items 4 and 5).** `constant_clear` checked against live cardinality; the rejections and recorded gaps of
 retention, clear cost, dense order and by-value maps; `RecyclingSet` (stable retaining sets), `RingFifo` (`fifo,

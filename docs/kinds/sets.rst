@@ -299,6 +299,13 @@ n elements, U the key range (largest index + 1); \* amortized, ~ expected.
      - O(capacity)
      - O(n), contiguous
      - n elements + a table of positions
+   * - ``StableIndexedSet``
+     - O(1)\*~
+     - O(1)~
+     - —
+     - O(capacity)
+     - O(n)
+     - segments that never move; no lock
    * - ``ConcurrentIndexedSet``
      - O(1)\*~ (new ones under a lock)
      - O(1)~ without a lock
@@ -313,6 +320,13 @@ n elements, U the key range (largest index + 1); \* amortized, ~ expected.
      - O(capacity)
      - O(capacity)
      - 16 shards
+   * - ``gtl::parallel_node_hash_set``
+     - O(1)\*~ under one shard's lock
+     - O(1)~ under it
+     - O(1)~
+     - O(capacity)
+     - O(capacity)
+     - 16 shards, a node per element; stable references
    * - ``ChangeLogged``
      - O(1)\*~
      - O(1)~

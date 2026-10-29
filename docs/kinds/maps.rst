@@ -229,7 +229,7 @@ n elements; U the key range; r a row's length.
      - O(1)
      - O(U); O(1) with generations
      - O(U), in key order
-     - a slot per index (+ a lock byte, thread-safe)
+     - a slot per index; in segments with ``stable_refs`` (+ a lock byte, thread-safe)
    * - ``OrderedMap``
      - as its key set
      - as its key set
@@ -272,6 +272,13 @@ n elements; U the key range; r a row's length.
      - O(capacity)
      - O(capacity)
      - 16 shards
+   * - ``gtl::parallel_node_hash_map``
+     - O(1)\*~ under a shard's lock
+     - O(1)~ under it
+     - O(1)~
+     - O(capacity)
+     - O(capacity)
+     - 16 shards; a node per entry, stable references
 
 .. _rows:
 
