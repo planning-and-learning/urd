@@ -212,8 +212,12 @@ using Containers = testing::Types<
     // Sharded hash tables that threads share (gtl).
     urd::repr::ParallelHashSet<int>,
     urd::repr::ParallelHashMap<int, int>,
+    urd::repr::ParallelNodeHashSet<int>,
+    urd::repr::ParallelNodeHashMap<int, int>,
     Store<key<int>, urd::concurrent>,
-    Store<key<int>, value<int>, urd::concurrent>
+    Store<key<int>, value<int>, urd::concurrent>,
+    Store<key<int>, urd::stable_refs, urd::concurrent>,
+    Store<key<int>, value<int>, urd::stable_refs, urd::concurrent>
 #endif
     >;
 

@@ -15,7 +15,7 @@ The standard library's and Boost's
 ``std::vector``, ``std::set``, ``std::multiset``, ``std::map``, ``std::multimap``, ``std::unordered_set``,
 ``std::unordered_map``, ``std::unordered_multimap``, ``boost::unordered_flat_set``, ``boost::unordered_flat_map``,
 ``boost::container::flat_set``, ``flat_multiset``, ``flat_map``, ``flat_multimap``, and with gtl
-``gtl::parallel_flat_hash_set`` and ``parallel_flat_hash_map``, each with urd's :cpp:struct:`urd::Hash`,
+``gtl::parallel_flat_hash_set``, ``parallel_flat_hash_map`` and their node-based twins, each with urd's :cpp:struct:`urd::Hash`,
 :cpp:struct:`urd::EqualTo` and :cpp:struct:`urd::Less`.
 
 urd's own

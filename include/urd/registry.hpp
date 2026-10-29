@@ -185,6 +185,10 @@ template<typename T>
 using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
 using ParallelHashMapOf = repr::ParallelHashMap<K, V>;
+template<typename T>
+using ParallelNodeHashSetOf = repr::ParallelNodeHashSet<T>;
+template<typename K, typename V>
+using ParallelNodeHashMapOf = repr::ParallelNodeHashMap<K, V>;
 #endif
 template<typename K, typename V>
 using RecyclingHashMapOf = repr::RecyclingHashMap<K, V>;
@@ -293,6 +297,7 @@ using element_preference = element_candidates<JaggedOf,
                                               ThreadSafeLayeredArenaInterner,
 #if defined(URD_HAS_GTL)
                                               ParallelHashSetOf,
+                                              ParallelNodeHashSetOf,
 #endif
                                               ConcurrentIndexedSet,
                                               SlotVector,
@@ -304,6 +309,7 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       HashMultiMapOf,
 #if defined(URD_HAS_GTL)
                                       ParallelHashMapOf,
+                                      ParallelNodeHashMapOf,
 #endif
                                       TreeMapOf,
                                       TreeMultiMapOf,

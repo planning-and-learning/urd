@@ -29,6 +29,13 @@ using ParallelHashSet = gtl::parallel_flat_hash_set<T, Hash<T>, EqualTo<T>, std:
 template<typename K, typename V>
 using ParallelHashMap = gtl::parallel_flat_hash_map<K, V, Hash<K>, EqualTo<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>;
 
+/// The same tables with a node per element: a rehash moves the nodes' pointers, not the elements, so references
+/// hold while threads insert.
+template<typename T>
+using ParallelNodeHashSet = gtl::parallel_node_hash_set<T, Hash<T>, EqualTo<T>, std::allocator<T>, shard_bits, std::mutex>;
+template<typename K, typename V>
+using ParallelNodeHashMap = gtl::parallel_node_hash_map<K, V, Hash<K>, EqualTo<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>;
+
 }  // namespace urd::repr
 
 namespace urd
@@ -46,6 +53,19 @@ struct container_traits<gtl::parallel_flat_hash_set<T, H, E, A, N, std::mutex, A
 template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename Aux>
     requires natural_hash<H, E, K>
 struct container_traits<gtl::parallel_flat_hash_map<K, V, H, E, A, N, std::mutex, Aux>> : properties_of<unique, sparse, shrinkable, concurrent>
+{
+};
+
+/// A node per element: references hold through inserts from threads at once.
+template<typename T, typename H, typename E, typename A, std::size_t N, typename Aux>
+    requires natural_hash<H, E, T>
+struct container_traits<gtl::parallel_node_hash_set<T, H, E, A, N, std::mutex, Aux>> : properties_of<unique, sparse, stable_refs, shrinkable, concurrent>
+{
+};
+
+template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename Aux>
+    requires natural_hash<H, E, K>
+struct container_traits<gtl::parallel_node_hash_map<K, V, H, E, A, N, std::mutex, Aux>> : properties_of<unique, sparse, stable_refs, shrinkable, concurrent>
 {
 };
 

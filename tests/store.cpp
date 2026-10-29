@@ -165,6 +165,10 @@ static_assert(std::same_as<Store<key<int>, urd::concurrent>::representation, urd
 static_assert(std::same_as<Store<key<std::string>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<std::string, int>>);
 // By an indexable key too: without dense, a hash table, not a slot per index.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<int, int>>);
+// Stability with concurrency on hashed keys: the node tables, whose elements a rehash leaves in place.
+static_assert(std::same_as<Store<key<int>, urd::stable_refs, urd::concurrent>::representation, urd::repr::ParallelNodeHashSet<int>>);
+static_assert(
+    std::same_as<Store<key<std::string>, value<int>, urd::stable_refs, urd::concurrent>::representation, urd::repr::ParallelNodeHashMap<std::string, int>>);
 #else
 // Without gtl there is no concurrent map by hashed keys, and a dense slot per index is no stand-in: a container that
 // stores by index demands keys that are indices, which this request never promised.

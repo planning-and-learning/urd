@@ -40,7 +40,8 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - ``Store<key<K>, positional, monotone, stable_refs>``
      - ``StableIndexedSet``: the elements in segments that never move, no lock
    * - ``Store<key<K>, concurrent>``
-     - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
+     - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); with ``stable_refs``, ``parallel_node_hash_set``
+       (a node per element); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
    * - ``Store<key<K>, layered>``
      - ``Layered`` over a flat hash set
    * - ``Store<key<K>, change_log>``

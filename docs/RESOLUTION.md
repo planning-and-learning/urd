@@ -30,6 +30,7 @@ indexable).
 | `Store<key<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<int>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
+| `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<int>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<int>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
 | `Store<key<int>, reclaims>` | unique, reclaims, shrinkable | `set` |
@@ -62,6 +63,7 @@ indexable).
 | `Store<key<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<std::string>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
+| `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<std::string>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<std::string>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
 | `Store<key<std::string>, reclaims>` | unique, reclaims, shrinkable | `set` |
@@ -94,6 +96,7 @@ indexable).
 | `Store<key<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<Id>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
+| `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` |
 | `Store<key<Id>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
 | `Store<key<Id>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` |
 | `Store<key<Id>, reclaims>` | unique, reclaims, shrinkable | `set` |
@@ -184,6 +187,7 @@ indexable).
 | `Store<key<int>, value<int>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<int>, value<int>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
 | `Store<key<int>, value<int>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<int>, value<int>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |
@@ -213,6 +217,7 @@ indexable).
 | `Store<key<std::string>, value<double>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<std::string>, value<double>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
 | `Store<key<std::string>, value<double>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<std::string>, value<double>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |
@@ -242,6 +247,7 @@ indexable).
 | `Store<key<Id>, value<Id>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<Id>, value<Id>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` |
 | `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |
 | `Store<key<Id>, value<Id>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<Id>, value<Id>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |

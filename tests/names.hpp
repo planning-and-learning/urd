@@ -276,6 +276,18 @@ struct name<urd::repr::ParallelHashMap<K, V>>
     static constexpr std::string_view id = "parallel_hash_map";
     static constexpr std::string_view value = "parallel hash map (gtl: shards, each behind its mutex; update and read under it)";
 };
+template<typename T>
+struct name<urd::repr::ParallelNodeHashSet<T>>
+{
+    static constexpr std::string_view id = "parallel_node_hash_set";
+    static constexpr std::string_view value = "parallel node hash set (gtl: shards behind mutexes, a node per element that never moves)";
+};
+template<typename K, typename V>
+struct name<urd::repr::ParallelNodeHashMap<K, V>>
+{
+    static constexpr std::string_view id = "parallel_node_hash_map";
+    static constexpr std::string_view value = "parallel node hash map (gtl: shards behind mutexes, a node per entry that never moves)";
+};
 #endif
 template<typename T, typename Index>
 struct name<urd::repr::StableIndexedSet<T, Index>>

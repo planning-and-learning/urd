@@ -37,7 +37,8 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
        ``.second`` of an iterated entry); with ``constant_clear, concurrent``, a spin lock per slot too. Only a
        request that says ``dense`` gets it: a slot per index demands keys that are indices
    * - ``Store<key<K>, value<V>, concurrent>``
-     - ``gtl::parallel_flat_hash_map``; ``update`` and ``read`` under the key's shard lock
+     - ``gtl::parallel_flat_hash_map``; ``update`` and ``read`` under the key's shard lock; with ``stable_refs``,
+       ``parallel_node_hash_map`` (a node per entry)
    * - ``Store<key<K>, value<V>, insertion_ordered>``
      - ``OrderedMap`` (over a ``SparseSet`` with ``dense``)
    * - ``Store<key<K>, value<V>, multi>``
