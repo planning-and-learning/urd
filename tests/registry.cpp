@@ -42,6 +42,8 @@ struct candidate
     std::string_view id;
     bool serves;
     int uninvited;
+    /// Whether the representation stores by index: a demand on the keys, not a guarantee alone.
+    bool demands_dense;
 };
 
 /// Whether R serves S, read in a class template: a function template with R deduced makes GCC instantiate R itself
@@ -57,7 +59,12 @@ struct candidates;
 template<typename S, typename... Rs>
 struct candidates<S, urd::detail::type_list<Rs...>>
 {
-    static std::vector<candidate> list() { return { candidate { urd::test::name<Rs>::id, serving<Rs, S>::value, uninvited<S, Rs>() }... }; }
+    static std::vector<candidate> list()
+    {
+        return {
+            candidate { urd::test::name<Rs>::id, serving<Rs, S>::value, uninvited<S, Rs>(), urd::container_traits<Rs>::urd_properties.has(urd::tag::dense) }...
+        };
+    }
 };
 
 /// The surprises the registry's order makes on purpose: the request, and the benchmark or reason behind the order.
@@ -123,4 +130,29 @@ TEST(Registry, TheChosenCandidateAnswersNoMoreThanAnotherServingOne)
         EXPECT_TRUE(allowed.contains(request)) << request << ": " << what;
     for (const auto& [request, reason] : allowed)
         EXPECT_TRUE(violations.contains(request)) << request << " no longer surprises; drop it from the allowed list (" << reason << ")";
+}
+
+// The guarantee that is also a demand: a container that stores by index needs the keys it was promised. Selection
+// enforces it (serves_by_traits, include/urd/registry.hpp); this checks it stays enforced for every request of the
+// grid and every candidate the registry would accept, so that a change to selection or to a container's traits that
+// lets a dense container take a request with open keys is caught here before it reaches a user. Spelled out rather
+// than through demands_met, so that it is no tautology against the function it guards.
+TEST(Registry, NoServingCandidateDemandsWhatTheRequestDidNotPromise)
+{
+    int requests = 0;
+    urd::test::for_each_group(
+        [&](const char* /*title*/, auto list)
+        {
+            urd::test::for_each_request(list,
+                                        [&]<typename R>(std::type_identity<R>)
+                                        {
+                                            using S = typename R::spec;
+                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            ++requests;
+                                            for (const auto& each : candidates<S, List>::list())
+                                                EXPECT_TRUE(!each.serves || !each.demands_dense || S::urd_properties.has(urd::tag::dense))
+                                                    << R::describe() << ": " << each.id << " stores by index, but the request did not promise dense keys";
+                                        });
+        });
+    EXPECT_GT(requests, 150);
 }

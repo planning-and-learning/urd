@@ -32,7 +32,7 @@ A map holds one value per key (``functional``, implied) or many (``multi``: a mu
    * - ``Store<key<K>, value<Row>>`` with a ``retains`` row
      - ``Recycling`` hash map (a tree with ``sorted``): erased keys leave their nodes and values for the next keys
    * - ``Store<key<I>, value<V>, dense>``
-     - ``IndexMap`` (a slot per index); with ``constant_clear``, with generations; with ``concurrent`` too, a spin lock per slot
+     - ``IndexMap`` (a slot per index); with ``constant_clear``, with generations; with ``concurrent`` too, a spin lock per slot. Only a request that says ``dense`` gets it: a slot per index demands keys that are indices
    * - ``Store<key<K>, value<V>, concurrent>``
      - ``gtl::parallel_flat_hash_map``; ``update`` and ``read`` under the key's shard lock
    * - ``Store<key<K>, value<V>, insertion_ordered>``

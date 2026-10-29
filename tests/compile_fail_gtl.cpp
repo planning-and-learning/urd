@@ -5,6 +5,9 @@
 #if URD_CASE == 1  // a concurrent set by hashed keys needs gtl
 using Shared = urd::Store<urd::key<int>, urd::concurrent>;
 Shared shared;
+#elif URD_CASE == 2  // a concurrent map by an integer key too: a dense slot per index is no stand-in, its keys were not promised
+using Counts = urd::Store<urd::key<int>, urd::value<int>, urd::concurrent>;
+Counts counts;
 #endif
 
 int main() {}

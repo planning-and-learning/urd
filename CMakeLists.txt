@@ -182,8 +182,9 @@ if(URD_BUILD_TESTS)
     urd_compile_fail_expects(compile_fail_store 22 "begin/end: a queue")
     urd_compile_fail_expects(compile_fail_store 26 "a pool is reached by handle")
     if(NOT URD_WITH_GTL)
-        urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 1)
+        urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 2)
         urd_compile_fail_expects(compile_fail_gtl 1 "URD_WITH_GTL")
+        urd_compile_fail_expects(compile_fail_gtl 2 "URD_WITH_GTL")
     endif()
 
     # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.

@@ -161,7 +161,13 @@ static_assert(std::same_as<Store<key<int>, urd::concurrent>::representation, urd
 static_assert(std::same_as<Store<key<std::string>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<std::string, int>>);
 // By an indexable key too: without dense, a hash table, not a slot per index.
 static_assert(std::same_as<Store<key<int>, value<int>, urd::concurrent>::representation, urd::repr::ParallelHashMap<int, int>>);
+#else
+// Without gtl there is no concurrent map by hashed keys, and a dense slot per index is no stand-in: a container that
+// stores by index demands keys that are indices, which this request never promised.
+static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, urd::concurrent>::type>::found);
 #endif
+// gtl's table keeps no storage for reuse, and a dense map may not stand in for it (its keys were not promised).
+static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, urd::concurrent, urd::retains>::type>::found);
 
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);

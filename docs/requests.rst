@@ -92,9 +92,12 @@ Resolution
 ----------
 
 The registry (``include/urd/registry.hpp``) lists the containers in an order backed by :doc:`BENCHMARKS`; the first
-whose declared traits satisfy every property of the request, and whose interface matches the request's kind (kept
-by value where the request is, unique, by handle, flat, a map, a queue exactly where the request is), is chosen.
-:doc:`RESOLUTION` is generated from the registry and checked by a test.
+whose declared traits satisfy every property of the request, whose demands the request meets, and whose interface
+matches the request's kind (kept by value where the request is, unique, by handle, flat, a map, a queue exactly
+where the request is), is chosen. A declared guarantee the request left open is free, with one exception: ``dense``
+is also a demand, since a container that stores by index needs keys that are indices, so a dense container serves
+only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
+and checked by a test, and a second test checks that no serving candidate demands what a request did not promise.
 
 A request no container serves fails with a static assertion whose instantiation names the culprits: the stated
 tags whose removal, one at a time, would make it servable, and whether the key type is hashable, orderable and

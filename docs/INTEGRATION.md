@@ -449,6 +449,14 @@ benchmark.
 The preference lists in `include/urd/registry.hpp` follow `docs/BENCHMARKS.md`, which `benchmarks/` produces
 (Google Benchmark, `-DURD_BUILD_BENCHMARKS=ON`). A change to an order cites a benchmark.
 
+A declared guarantee the request left open is free: a request that did not ask for `stable_refs` may receive a
+node-based table. One guarantee is also a demand on the caller, `dense`: a container that stores by index needs
+keys that are indices, its storage grows with the largest key, and a negative key is no index at all. So
+`demands_met` (`include/urd/traits.hpp`) lets a dense container serve only a request that promises `dense`,
+whatever its place in the list; a partition promises it by rule. Before that rule, a concurrent map by an integer
+key with `sorted` or `retains` silently fell through to the thread-safe generation map and asserted on the first
+negative key.
+
 Two tests watch the order. `docs/RESOLUTION.md` is generated from a grid of requests (`tests/grid.hpp`) by
 `resolution_table --write docs/RESOLUTION.md` and checked by the `resolution` test, so a change to the registry that
 moves a request shows up as a diff of that file, to be reviewed and committed with the change. The `registry` test

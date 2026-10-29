@@ -62,7 +62,8 @@ inline constexpr property_set requirement = []
 }();
 /// Whether representation R can serve spec S: it declares its properties and has S's for its elements (a set
 /// of elements without operator< is not sorted), and the interface a Store for S offers: it places elements as
-/// S does (by value or where they are put), is unique exactly where S is (a unique container would drop a
+/// S does (by value or where they are put), demands nothing S left open (a dense container needs the keys it was
+/// promised), is unique exactly where S is (a unique container would drop a
 /// sequence's duplicates), is reached by handle exactly where S is (a pool offers no iteration), stores records flat
 /// exactly where S asks (records come back by index), is a map exactly
 /// where S is, is a queue exactly where S is, and is random-access where S
@@ -71,9 +72,10 @@ inline constexpr property_set requirement = []
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>)
-                           && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, unique> == has<S, unique>
-                           && has<container_traits<R>, handles> == has<S, handles> && has<container_traits<R>, flat> == has<S, flat>
-                           && (!S::is_sequence || !by_value<S> || has<S, sorted>) && queue_traits<container_traits<R>> == S::is_queue;
+                           && detail::demands_met(container_traits<R>::urd_properties, S::urd_properties) && by_value<container_traits<R>> == by_value<S>
+                           && has<container_traits<R>, unique> == has<S, unique> && has<container_traits<R>, handles> == has<S, handles>
+                           && has<container_traits<R>, flat> == has<S, flat> && (!S::is_sequence || !by_value<S> || has<S, sorted>)
+                           && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
 // typed test suites, for every registered container, not again for every request: those interface checks were most
@@ -233,9 +235,9 @@ struct map_candidates
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
 /// at every size, so it comes first wherever order is not asked for; node-based tables remain for stable_refs;
 /// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
-/// tables (the concurrent one among them, or a concurrent map by an indexable key would get a dense slot per
-/// index), which declare sparse keys, so only a request for dense keys reaches them; the indexed set, after
-/// them too, only a request for insertion order or positions. Frozen rows are flattened first; rows
+/// tables, and only a request that promises dense keys reaches them at all (demands_met: a container that stores by
+/// index demands keys that are indices, whatever its place in the list); the indexed set, after them too, only a
+/// request for insertion order or positions. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
 using element_preference = element_candidates<JaggedOf,
                                               TrackedJaggedOf,

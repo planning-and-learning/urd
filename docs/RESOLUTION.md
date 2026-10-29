@@ -123,7 +123,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` |
 | `Store<key<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` |
 | `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `none` |
-| `Store<key<int>, partition>` | partition, shrinkable | `disjoint_sets` |
+| `Store<key<int>, partition>` | dense, partition, shrinkable | `disjoint_sets` |
 
 ## Dense sets of Id
 
@@ -142,7 +142,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<Id>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` |
 | `Store<key<Id>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` |
 | `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `none` |
-| `Store<key<Id>, partition>` | partition, shrinkable | `disjoint_sets` |
+| `Store<key<Id>, partition>` | dense, partition, shrinkable | `disjoint_sets` |
 
 ## Keyed by an index
 
@@ -177,6 +177,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<int>, value<int>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<int>, value<int>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<int>, value<int>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` |
 | `Store<key<int>, value<int>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<int>, value<int>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |
 | `Store<key<int>, value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` |
@@ -205,6 +206,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<std::string>, value<double>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<std::string>, value<double>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` |
 | `Store<key<std::string>, value<double>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<std::string>, value<double>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |
 | `Store<key<std::string>, value<Store<value<double>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` |
@@ -233,6 +235,7 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<Id>, value<Id>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` |
 | `Store<key<Id>, value<Id>, layered>` | unique, layered, shrinkable, functional | `layered` |
 | `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` |
+| `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` |
 | `Store<key<Id>, value<Id>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` |
 | `Store<key<Id>, value<Id>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` |
 | `Store<key<Id>, value<Store<value<Id>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` |

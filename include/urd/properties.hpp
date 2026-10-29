@@ -234,8 +234,8 @@ consteval property_set implied(property_set stated, kind of)
     // A map has one value per key unless it says multi; a sequence one value per position.
     if ((of.map && !stated.has(tag::multi)) || of.sequence)
         result.put(tag::functional);
-    // Positions are 0..n-1.
-    if (of.sequence)
+    // Positions are 0..n-1; a partition's classes are over indices.
+    if (of.sequence || stated.has(tag::partition))
         result.put(tag::dense);
     // Nothing moves once nothing changes.
     if (stated.has(tag::frozen))

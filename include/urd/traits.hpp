@@ -602,6 +602,14 @@ constexpr bool promises(const property_set& stated, const property_set& needed)
     return true;
 }
 
+/// Whether `declared` demands nothing `requested` left open. dense is the one guaranteed category whose declaration
+/// also asks something of callers: a container that stores by index needs keys that are indices (its storage grows
+/// with the largest key, and a negative key is no index at all), so a representation that declares dense serves only
+/// a request that promises dense. Every other guarantee (stable_refs, concurrent, constant_clear, ...) costs the
+/// container, never the caller: a request that leaves it open may receive it (the registry audit watches that it
+/// does not pay for it needlessly).
+constexpr bool demands_met(const property_set& declared, const property_set& requested) { return !declared.has(tag::dense) || requested.has(tag::dense); }
+
 template<typename P>
 concept a_tag = requires {
     typename P::root;
