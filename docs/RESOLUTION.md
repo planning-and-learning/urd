@@ -355,3 +355,15 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<value<std::vector<int, std::allocator<int> >>, handles, concurrent>` | concurrent, handles, shrinkable | `thread_safe_slot_vector` |
 | `Store<value<int>, handles>` | handles, shrinkable | `slot_vector` |
 | `Store<value<Id>, handles, stable_refs>` | stable_refs, handles, shrinkable | `slot_vector` |
+
+## Stores as keys
+
+| Request | Spec | Representation |
+|---|---|---|
+| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>>` | unique, shrinkable | `unordered_flat_set` |
+| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>, value<int>>` | unique, shrinkable, functional | `unordered_flat_map` |
+| `Store<key<Store<key<int>, sorted, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `unordered_flat_set` |
+| `Store<key<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable | `unordered_flat_set` |
+| `Store<key<Store<key<int>, sorted, unique, shrinkable>>, sorted>` | sorted, unique, shrinkable | `set` |
+| `Store<key<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable | `none` |
+| `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `none` |

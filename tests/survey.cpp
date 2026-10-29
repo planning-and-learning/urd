@@ -399,9 +399,13 @@ using KeyIndexes = Store<value<KeyIndex>, urd::monotone, urd::stable_refs>;
 static_assert(std::same_as<KeyIndexes::representation, urd::repr::SegmentedVector<KeyIndex>>);
 
 // yggdrasil evaluation/incremental_bound.hpp (plans keyed by a vector<bool> of bound variables), tyr seen_bindings
-// (keyed by an IndexList<Object>), loki union types (keyed by a sorted name list): maps keyed by a Store. A sorted
-// Store is orderable, so a sorted map takes it (below); a hashed one needs urd::Hash over a Store, which no header
-// provides yet (docs/SURVEY.md, second pass).
+// (keyed by an IndexList<Object>), loki union types (keyed by a sorted name list): maps keyed by a Store. A Store
+// whose contents fix its order (sorted here: a bitset in key order) is hashable, so a hashed map takes it; a sorted
+// Store is orderable too, so a sorted map takes it (below).
+using SeedPlan = Store<key<std::uint32_t>, urd::dense, urd::frozen, urd::sorted>;
+using SeedPlans = Store<key<SeedPlan>, value<std::uint32_t>>;
+static_assert(std::same_as<SeedPlan::representation, urd::repr::DenseSet<std::uint32_t>>
+              && std::same_as<SeedPlans::representation, FlatHashMapOf<SeedPlan, std::uint32_t>>);
 
 // yggdrasil operators/distance/incremental/distance.hpp: the active sources, compacted by swapping the last one into
 // the erased slot, with a root -> position map: a dense set whose elements lie next to each other.

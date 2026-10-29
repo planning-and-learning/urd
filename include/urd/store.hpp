@@ -3,6 +3,7 @@
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry.hpp"
+#include "urd/semantics/hash.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
 #include "urd/store/contiguous_data.hpp"
@@ -172,6 +173,27 @@ inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;
 template<typename R, typename S>
 struct container_traits<detail::Store<R, S>> : S
 {
+};
+
+/// Hashed by its contents where they fix the order its elements come in: sorted, canonical, or a sequence (positions
+/// are contents). An unordered Store iterates in an order its contents do not determine, so it has no Hash and cannot
+/// be a hashed key: ask for sorted (or canonical) on the inner Store. Equality is the facet's (equality.hpp), which
+/// compares in that order, so equal Stores hash equally.
+template<typename R, typename S>
+    requires(S::iterable && (has<S, sorted> || has<S, canonical> || S::is_sequence))
+struct Hash<detail::Store<R, S>>
+{
+    /// The representation's own hash where it has one (a bitset hashes its words).
+    hash_t operator()(const detail::Store<R, S>& store) const
+        requires Hashable<R>
+    {
+        return Hash<R> {}(detail::store_access::representation(store));
+    }
+    hash_t operator()(const detail::Store<R, S>& store) const
+        requires(!Hashable<R> && Hashable<std::ranges::range_value_t<const detail::Store<R, S>>>)
+    {
+        return urd::hash_range(store);
+    }
 };
 
 }  // namespace urd

@@ -5,6 +5,7 @@
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/config.hpp"
+#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -81,9 +82,13 @@ public:
         return index < bits().size() && bits().test(index);
     }
     [[nodiscard]] iterator lower_bound(const K& key) const
-    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0)); }
+    {
+        return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0));
+    }
     [[nodiscard]] iterator upper_bound(const K& key) const
-    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key) + 1) : next_from(0)); }
+    {
+        return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key) + 1) : next_from(0));
+    }
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const { return { lower_bound(key), upper_bound(key) }; }
 
     std::pair<iterator, bool> insert(const K& key)
@@ -107,7 +112,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(K(std::forward<Args>(args)...)); }
+    {
+        return insert(K(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
     {
@@ -175,6 +182,15 @@ public:
         return recount();
     }
 
+    /// The words up to the last one with a bit set: equal sets have equal ones, however many words each holds.
+    [[nodiscard]] std::span<const word> significant_words() const noexcept
+    {
+        auto count = m_words.size();
+        while (count > 0 && m_words[count - 1] == 0)
+            --count;
+        return std::span<const word>(m_words.data(), count);
+    }
+
     /// Equal keys; how many words each holds does not matter.
     [[nodiscard]] friend bool operator==(const DenseSet& lhs, const DenseSet& rhs)
     {
@@ -237,7 +253,9 @@ private:
     /// The words from `first` on, as a bitset.
     [[nodiscard]] Bits words_from(std::size_t first) { return Bits(std::span<word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
     [[nodiscard]] ConstBits words_from(std::size_t first) const
-    { return ConstBits(std::span<const word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
+    {
+        return ConstBits(std::span<const word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits);
+    }
 
     DenseSet& recount()
     {
@@ -329,7 +347,9 @@ public:
     }
 
     [[nodiscard]] iterator find(const K& key) const
-    { return contains(key) ? begin() + static_cast<difference_type>(m_places[index_of<K>::to_index(key)]) : end(); }
+    {
+        return contains(key) ? begin() + static_cast<difference_type>(m_places[index_of<K>::to_index(key)]) : end();
+    }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
     [[nodiscard]] bool contains(const K& key) const
     {
@@ -358,7 +378,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(K(std::forward<Args>(args)...)); }
+    {
+        return insert(K(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
     {
@@ -478,7 +500,9 @@ public:
 
     template<std::input_iterator InputIt>
     IndexMap(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     [[nodiscard]] iterator begin() const { return iterator(this, next_from(0)); }
     [[nodiscard]] iterator end() const { return iterator(this, npos); }
@@ -538,9 +562,13 @@ public:
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
     [[nodiscard]] bool contains(const K& key) const { return index_of<K>::is_index(key) && present(index_of<K>::to_index(key)); }
     [[nodiscard]] iterator lower_bound(const K& key) const
-    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0)); }
+    {
+        return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0));
+    }
     [[nodiscard]] iterator upper_bound(const K& key) const
-    { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key) + 1) : next_from(0)); }
+    {
+        return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key) + 1) : next_from(0));
+    }
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const { return { lower_bound(key), upper_bound(key) }; }
 
     [[nodiscard]] const V& at(const K& key) const
@@ -563,10 +591,14 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    { return try_emplace(K(pair.first), pair.second); }
+    {
+        return try_emplace(K(pair.first), pair.second);
+    }
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    { return insert(pair).first; }
+    {
+        return insert(pair).first;
+    }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -574,7 +606,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    {
+        return insert(std::pair<K, V>(std::forward<Args>(args)...));
+    }
     /// Inserts a value built from `args` unless `key` has one.
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
@@ -801,6 +835,13 @@ template<indexable K, bool TrackWords>
 struct container_traits<repr::DenseSet<K, TrackWords>> :
     properties_of<sorted, unique, dense, canonical, shrinkable, retains, std::conditional_t<TrackWords, proportional_clear, any_clear>>
 {
+};
+
+/// Hashed by its words, up to the last one set: as its == compares.
+template<indexable K, bool TrackWords>
+struct Hash<repr::DenseSet<K, TrackWords>>
+{
+    hash_t operator()(const repr::DenseSet<K, TrackWords>& set) const noexcept { return urd::hash_range(set.significant_words()); }
 };
 
 /// Members in one array; clear only forgets them, which is O(1) where they need no destructor.

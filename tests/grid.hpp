@@ -301,6 +301,14 @@ using pools = requests<request<value<Store<value<int>, frozen>>, handles, unique
                        request<value<int>, handles>,
                        request<value<Id>, handles, stable_refs>>;
 
+using stores_as_keys = requests<request<key<Store<key<int>, sorted, frozen>>>,
+                                request<key<Store<key<int>, sorted, frozen>>, value<int>>,
+                                request<key<Store<key<int>, dense, frozen, sorted>>>,
+                                request<key<Store<value<int>, frozen>>>,
+                                request<key<Store<key<int>, sorted>>, sorted>,
+                                request<key<Store<key<int>>>>,
+                                request<key<Store<key<int>, dense, frozen>>>>;
+
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>
 void for_each_group(F f)
@@ -322,6 +330,7 @@ void for_each_group(F f)
     f("Queues of Id", queues_of<Id> {});
     f("Queues ordered by a projection", ordered_queues {});
     f("Pools", pools {});
+    f("Stores as keys", stores_as_keys {});
 }
 
 }  // namespace urd::test

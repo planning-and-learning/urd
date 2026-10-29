@@ -358,7 +358,7 @@ on 2026-10-29):
 - B.1. An unservable request names its culprit tags (`no_representation_for<…, culprits<…>>`). Done.
 - A. A generated resolution table (docs/RESOLUTION.md, checked by a test) and a registry audit that reports a
   chosen container giving more costly unasked guarantees than another serving one. Done.
-- C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles.
+- C. `Hash` over Stores whose contents fix their order (sorted, canonical, sequences): a set of sets compiles. Done.
 - B.2. A missing operation names the property that removed it (denial facets).
 
 ## After M11: the second pass over the libraries

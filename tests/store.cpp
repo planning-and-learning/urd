@@ -140,7 +140,9 @@ constexpr bool conforms_where_declared()
 }
 template<typename... Rs>
 constexpr bool all_conform(urd::detail::type_list<Rs...> /*candidates*/)
-{ return (conforms_where_declared<Rs>() && ...); }
+{
+    return (conforms_where_declared<Rs>() && ...);
+}
 template<typename... Ps>
 using element_candidates = typename urd::detail::instantiated<typename urd::detail::to_spec<Ps...>::type, urd::detail::element_preference>::type;
 template<typename... Ps>
@@ -194,6 +196,16 @@ static_assert(std::same_as<Store<key<int>, urd::sorted, urd::retains>::represent
 static_assert(std::same_as<Store<value<int>, urd::retains>::representation, std::vector<int>>);
 static_assert(std::same_as<Store<key<int>, urd::reclaims>::representation, TreeSet<int>>);
 static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::representation, TreeSet<int>>);
+
+// Stores as hashed keys: those whose contents fix their order (sorted, canonical, sequences) hash by them; an
+// unordered one does not, since its iteration order is not its contents' (compile-fail cases 32 and 33).
+static_assert(urd::hashable<Store<key<int>, urd::sorted, urd::frozen>> && urd::hashable<Store<key<int>, urd::dense, urd::sorted>>
+              && urd::hashable<Store<value<int>>> && urd::hashable<Store<value<int>, urd::frozen>>);
+static_assert(!urd::hashable<Store<key<int>>> && !urd::hashable<Store<key<int>, urd::dense, urd::constant_clear>>);
+using SortedKey = Store<key<int>, urd::sorted, urd::frozen>;
+static_assert(std::same_as<Store<key<SortedKey>, value<int>>::representation, FlatHashMapOf<SortedKey, int>>);
+using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;
+static_assert(std::same_as<Store<key<BitKey>>::representation, FlatHashSet<BitKey>>);
 
 // Only what was asked for: a set that reclaims is a tree, which is sorted, but it was not asked to be sorted, so it
 // is not.
@@ -1048,6 +1060,26 @@ TEST(FixedShape, RowsOfElementsChangeInPlace)
     EXPECT_EQ(copy, rows);
     copy[2][2] = 1.0;
     EXPECT_NE(copy, rows);
+}
+
+// Stores as hashed keys: found whatever order the key was built in, and whatever storage a bitset grew to.
+TEST(Hash, StoresAsKeys)
+{
+    auto plans = Store<key<SortedKey>, value<int>>();
+    plans.insert({ SortedKey { 3, 1, 2 }, 7 });
+    EXPECT_EQ(plans.at(SortedKey { 1, 2, 3 }), 7);
+    EXPECT_FALSE(plans.contains(SortedKey { 1, 2 }));
+
+    auto grown = Store<key<int>, urd::dense, urd::sorted> { 1, 2 };
+    grown.insert(200);
+    grown.erase(200);
+    const auto small = Store<key<int>, urd::dense, urd::sorted> { 1, 2 };
+    EXPECT_EQ(grown, small);
+    using Key = Store<key<int>, urd::dense, urd::sorted>;
+    EXPECT_EQ(urd::Hash<Key> {}(grown), urd::Hash<Key> {}(small));
+    auto seen = Store<key<Key>>();
+    seen.insert(grown);
+    EXPECT_TRUE(seen.contains(small));
 }
 
 // Threads updating and reading the same hashed keys of a shared map at once: every update counts.

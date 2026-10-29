@@ -81,6 +81,7 @@ const std::map<std::string, std::string> allowed {
     { "Store<key<std::string>, value<double>, multi, sorted>", std::string(tree_for_changing_order) },
     { "Store<key<std::string>, value<double>, sorted>", std::string(tree_for_changing_order) },
     { "Store<key<std::string>, value<double>, sorted, monotone>", std::string(tree_for_changing_order) },
+    { "Store<key<Store<key<int>, sorted, unique, shrinkable>>, sorted>", std::string(tree_for_changing_order) },
 };
 
 }  // namespace

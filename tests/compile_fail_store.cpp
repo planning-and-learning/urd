@@ -110,6 +110,12 @@ int main()
 #elif URD_CASE == 31  // a set has no values to order by
     using S = Store<key<int>, urd::sorted, urd::order_by<[](int key, int value) { return key + value; }>>;
     (void) S();
+#elif URD_CASE == 32  // an unordered Store iterates in no order its contents fix, so it is no hashed key
+    using S = Store<key<Store<key<int>>>>;
+    (void) S();
+#elif URD_CASE == 33  // dense alone does not say sorted: the key must ask for the order its hash follows
+    using S = Store<key<Store<key<int>, urd::dense, urd::frozen>>>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

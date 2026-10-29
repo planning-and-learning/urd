@@ -65,7 +65,7 @@ properties, and only on the type they concern:
 
 | What the request says | What the type needs | Given for |
 |---|---|---|
-| keys, unordered (the default) | `hashable` (`urd::Hash`, `urd::EqualTo`) | arithmetic types, enums, strings, ranges and Stores of hashable elements, and any type that names its identifying members |
+| keys, unordered (the default) | `hashable` (`urd::Hash`, `urd::EqualTo`) | arithmetic types, enums, strings, ranges, Stores whose contents fix their order (`sorted`, `canonical`, sequences), and any type that names its identifying members |
 | keys, `sorted` (also `by_priority` elements) | `orderable` (`urd::Less`, `urd::EqualTo`) | the same |
 | keys, `dense` | `indexable` (`urd::index_of`) | non-negative integers, enums, types identified by one integral member |
 | values, elements of sequences and queues | nothing | — |
@@ -86,7 +86,7 @@ using Edges = Store<key<Edge>>;                    // hashed by (from, to)
 ```cpp
 using Tags     = Store<key<std::string>, sorted>;
 using Tagged   = Store<key<Item>, value<Tags>>;                          // a map of sorted sets
-using Families = Store<key<Tags>>;                                       // a set of sets (hashed by contents)
+using Families = Store<key<Tags>>;                                       // a set of sets (hashed by contents: Tags is sorted)
 using Trips    = Store<key<std::string>, value<Store<value<Point>>>>;    // a map of sequences
 using Layers   = Store<value<Store<key<Cell>, value<Store<value<Item>>>>>>;  // sequences of maps of sequences
 ```

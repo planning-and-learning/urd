@@ -159,7 +159,11 @@ representation, and the test checks them as defined:
 What a container needs of its elements comes from `urd::Hash`, `urd::EqualTo` and `urd::Less`
 (`include/urd/semantics/`, copied from yggdrasil): `hashable` and `orderable` in `include/urd/elements.hpp`,
 and the registry instantiates every hashed or ordered container with them. They cover numbers, enums,
-strings and the standard's composites (pairs, tuples, arrays, vectors, optionals, variants, spans). A type of
+strings and the standard's composites (pairs, tuples, arrays, vectors, optionals, variants, spans), and Stores
+whose contents fix the order their elements come in: `sorted`, `canonical` (a bitset hashes its words, up to the
+last one set), or a sequence (`Hash<Store>` in `include/urd/store.hpp`, over the representation's own hash where
+it has one, else `hash_range` over the elements). An unordered Store has no `Hash`, since equal ones could
+iterate in different orders; a request keyed by one fails with no culprit tag and `hashable` false. A type of
 your own becomes a key by naming its identity, with nothing in namespace std:
 
 ```cpp

@@ -6,6 +6,7 @@
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
+#include "urd/store.hpp"
 
 #include <array>
 #include <cstdint>
@@ -69,6 +70,11 @@ T random_value(std::mt19937& random)
         return { random_value<int>(random), random_value<double>(random) };
     else if constexpr (std::same_as<T, std::array<int, 2>>)
         return { random_value<int>(random), random_value<int>(random) };
+    else if constexpr (urd::is_store<T>)
+    {
+        const auto elements = random_value<std::vector<int>>(random);
+        return T(elements.begin(), elements.end());
+    }
     else
         return Atom { random_value<int>(random), random_value<std::vector<int>>(random) };
 }
@@ -82,7 +88,10 @@ using Types = testing::Types<int,
                              std::pair<int, std::string>,
                              std::tuple<int, double>,
                              std::array<int, 2>,
-                             Atom>;
+                             Atom,
+                             // Stores whose contents fix their order: a sorted set, a bitset.
+                             urd::Store<urd::key<int>, urd::sorted, urd::frozen>,
+                             urd::Store<urd::key<int>, urd::dense, urd::sorted>>;
 
 template<typename T>
 class Semantics : public testing::Test
