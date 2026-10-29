@@ -23,6 +23,7 @@
 #include "urd/store/pool.hpp"
 #include "urd/store/positions.hpp"
 #include "urd/store/queue_access.hpp"
+#include "urd/store/records.hpp"
 #include "urd/store/removal.hpp"
 #include "urd/store/reverse_iteration.hpp"
 #include "urd/store/scopes.hpp"
@@ -52,6 +53,14 @@ namespace urd
 namespace detail
 {
 
+/// The first base of a Store: the representation must be defined here. The registry names some only (the arena
+/// interner, whose definition needs cista); the header that defines them is the one to include.
+template<typename R>
+struct complete_representation
+{
+    static_assert(requires { sizeof(R); }, "urd::Store: the representation is declared but not defined here; records stored flat need #include <urd/flat.hpp>");
+};
+
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
 /// allow (interface.hpp), and container_traits reports S's properties, not the representation's, so code cannot
 /// come to rely on what it never asked for. The Store itself holds only what every Store has, whatever its
@@ -59,6 +68,7 @@ namespace detail
 /// which its kind and properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
 class Store :
+    public complete_representation<R>,
     public facet_if<facet_switches<R, S>::on(facet_id::sizing), facet::sizing<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::iteration), facet::iteration<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::equality), facet::equality<Store<R, S>, R, S>>,
@@ -79,6 +89,7 @@ class Store :
     public facet_if<facet_switches<R, S>::on(facet_id::layers), facet::layers<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::changes), facet::changes<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::pool), facet::pool<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::records), facet::records<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::slots), facet::slots<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::grouping), facet::grouping<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::entries), facet::entries<Store<R, S>, R, S>>,

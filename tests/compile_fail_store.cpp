@@ -126,6 +126,34 @@ int main()
     struct B;
     auto by_a = Store<key<urd::index<A>>, value<int>, urd::dense>();
     (void) by_a.contains(urd::index<B>(0));
+#elif URD_CASE == 36  // a pool of records (no range of elements) stores them flat: it must say so
+    struct Point
+    {
+        int x = 0;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
+    };
+    using S = Store<value<Point>, urd::handles, urd::unique>;
+    (void) S();
+#elif URD_CASE == 37  // flat is how an interning pool stores records, not a property of a set
+    using S = Store<key<int>, urd::flat>;
+    (void) S();
+#elif URD_CASE == 38  // a record with a std::string is neither trivially copyable nor serializable: nothing stores it flat
+    struct Note
+    {
+        std::string text;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Note::text> {}; }
+    };
+    using S = Store<value<Note>, urd::handles, urd::unique, urd::flat>;
+    (void) S();
+#elif URD_CASE == 39  // a stored record is frozen: read by index, never written through it
+    struct Point
+    {
+        int x = 0;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
+    };
+    auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>();
+    const auto at = points.insert(Point { 1 }).first;
+    points[at].x = 2;
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

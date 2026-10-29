@@ -7,6 +7,7 @@
 #include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <ranges>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -168,7 +169,8 @@ struct spec
     static constexpr bool iterable = is_set || is_map || is_sequence;
     /// Whether it knows how many elements it holds: all but an interning pool (handles, unique), which may share
     /// parts of its elements and keeps no list of them. A filter would not either.
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !urd_properties.has(tag::unique));
+    static constexpr bool sized =
+        is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && (!urd_properties.has(tag::unique) || urd_properties.has(tag::flat)));
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;
@@ -298,6 +300,10 @@ struct to_spec
     static_assert(!stated.has(tag::handles) || (!keyed && (!queue || stated.has(tag::by_priority)) && !stated.has(tag::positional) && !stated.has(tag::frozen)),
                   "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
                   "position or order; a priority queue with handles changes or erases an element by its handle");
+    static_assert(!stated.has(tag::flat) || (pool && stated.has(tag::unique)),
+                  "urd::Store: flat stores each record of an interning pool as one block of bytes; ask for handles and unique too");
+    static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || std::ranges::input_range<value_type>,
+                  "urd::Store: a pool of records (value<V>, V no range of elements) stores them flat: ask for flat");
     static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
                   "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),

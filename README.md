@@ -104,6 +104,7 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 | reused after removal | `Store<value<Row>, retains>` with a `retains` row | `RowPool` | the row Store, cleared, not freed |
 | map values reused after erase | `Store<key<K>, value<Row>>` with a `retains` row (`sorted` or not) | `Recycling<std::unordered_map>` / `Recycling<std::map>` | the value Store, cleared, kept with its node |
 | interned, by handle | `Store<value<Row>, handles, unique>` | `RowInterner`, tree pools | the row, read by handle |
+| records, each one block of bytes | `Store<value<Record>, handles, unique, flat>` | `RecordInterner` (trivially copyable records), `ArenaInterner` (serialized by cista; `<urd/flat.hpp>`) | the record, read by `index<Record>` |
 
 `Rows::reference` names what a row is handed out as; code needs no name from `urd/repr`.
 
@@ -144,6 +145,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | tracking | `change_log` | `added()` and `removed()` since `clear_changes()` |
 | grouping, direction | `partition`, `bidirectional` | union-find classes; a map answering `keys(value)` too |
 | shape | `fixed_shape` | rows whose number and lengths are set at construction (`urd::row_lengths`, or one per row for rows of rows); their contents change in place, and `reset()` sets them back to defaults (with `proportional_clear`, only rows handed out to change since) |
+| packing | `flat` | each record of an interning pool is one self-contained block of bytes (trivially copyable, or serialized by cista), frozen once stored and read by `index<Record>` |
 
 | Requested only | Tags | Effect |
 |---|---|---|

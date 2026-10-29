@@ -312,6 +312,27 @@ through a const Store to avoid that). The parent is not owned: it must outlive t
 `repr::Layered<R>` (`include/urd/repr/layered.hpp`) layers a flat hash table. A memo kept for two generations is
 two maps swapped and cleared per generation (examples/scopes.cpp), not a representation.
 
+### Records stored flat
+
+A pool of records, `Store<value<Record>, handles, unique, flat>`, interns whole records instead of rows: a record is
+any type that names its identity (`identifying_members`), and `flat` says each is stored as one block of bytes.
+A trivially copyable record is such a block already and goes into `repr::RecordInterner` (an indexed set); any
+other must be serializable by cista, naming its members in `cista_members()` and holding its sequences and text as
+`urd::flat_vector<T>`, `urd::flat_string` and `urd::flat_variant<Ts…>` (`include/urd/flat.hpp`, which also gives
+their hash and equality), and goes into `repr::ArenaInterner`: the record is serialized into a byte arena
+(`repr::ByteArena`, segments that never move) and read back in place, so the stored record's vectors point inside
+its block. The registry names the arena interner through a declaration only; the Store that holds one needs
+`<urd/flat.hpp>` included, which an assertion says. A request for a pool of records that are no range of elements
+must say `flat`, and `flat` goes with `handles, unique` only.
+
+A flat pool is counted and read by index: `insert(record)` gives `pair<index<Record>, bool>`, an equal record its
+index again; `insert(key, make)` runs `make(index)` with the index reserved, for a record that holds its own index
+(it must give a record equal to the key); `find(record)` is the index or `none`; `contains` takes a record or an
+index; `operator[]`, `at` and `view` read by index; `memory_usage`, `size`, `empty`, and `clear` where shrinkable,
+which keeps the arena's segments. The records are frozen once stored. With `concurrent` both interners take inserts
+from threads at once: lookups without a lock, a new record under the writer lock; clear, move and destruction need
+quiescence. The typed tests run `run_records` (`tests/verify.hpp`) over both.
+
 ## Change logs
 
 `change_log` (a set with unique elements): `added()` and `removed()` are spans of exactly the elements that

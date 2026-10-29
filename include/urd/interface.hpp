@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/index.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
@@ -41,6 +42,9 @@ namespace urd
 // |                                  | k, same(a, b), class_size(k), classes(), size; clear if shrinkable |
 // | handles, not unique (slots)      | in place of all above: insert(e) -> handle, [h], size, empty;      |
 // |                                  | acquire() if default-constructible; erase(h), clear if shrinkable  |
+// | handles, unique, flat (records)  | in place of all above: insert(record) -> pair<index, bool>, find(r) |
+// |                                  | -> index, contains(r), [index] -> const record&, size, memory_usage;|
+// |                                  | clear if shrinkable                                                |
 // | handles, unique (interning)      | in place of all above: insert(span of a row's elements) -> handle, |
 // |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
 // |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle;|
@@ -207,6 +211,19 @@ concept pool_operations =
            { pool.insert(handle, writes) } -> std::same_as<typename R::handle_type>;
        });
 
+/// A pool of records stored flat (handles, unique, flat): insert gives the record's index and whether it was new, find
+/// and contains look a record up, the record comes back by index, and the pool counts its records.
+template<typename R, typename Traits>
+concept record_pool_operations =
+    std::default_initializable<R> && requires(R& pool, const R& constant, const typename R::value_type& record, urd::index<typename R::value_type> at) {
+        { pool.insert(record) } -> std::same_as<std::pair<urd::index<typename R::value_type>, bool>>;
+        { constant.find(record) } -> std::same_as<urd::index<typename R::value_type>>;
+        { constant.contains(record) } -> std::same_as<bool>;
+        { constant[at] } -> std::same_as<const typename R::value_type&>;
+        { constant.size() } -> std::convertible_to<std::size_t>;
+        { constant.memory_usage() } -> std::convertible_to<std::size_t>;
+    } && (!has<Traits, shrinkable> || requires(R& pool) { pool.clear(); });
+
 /// A pool of slots (handles without unique): each insert gives a new handle, the element is reached by it, and erase
 /// frees it.
 template<typename R, typename Traits>
@@ -279,7 +296,8 @@ template<typename R,
          typename L = typename detail::lookup_of<R, E>::type>
 concept conforming =
     (detail::queue_traits<Traits> && detail::queue_operations<R, E, Traits>) || (has<Traits, partition> && detail::partition_operations<R, Traits>)
-    || (has<Traits, handles, unique> && detail::pool_operations<R, Traits>)
+    || (has<Traits, handles, unique, flat> && detail::record_pool_operations<R, Traits>)
+    || (has<Traits, handles, unique> && !has<Traits, flat> && detail::pool_operations<R, Traits>)
     || (has<Traits, handles> && !has<Traits, unique> && detail::slot_operations<R, Traits>)
     || (!detail::queue_traits<Traits> && !has<Traits, handles> && !has<Traits, partition> && detail::basic_container<R, E> && detail::offers_layout<R, Traits>
         && detail::offers_lookup<R, Traits, L> && detail::offers_values_by_key<R, Traits> && detail::offers_inverse<R, Traits>

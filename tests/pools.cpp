@@ -2,7 +2,9 @@
 // random inserts and clears: equal rows get equal handles, and every handle gives its row back.
 
 #include "names.hpp"
+#include "urd/flat.hpp"
 #include "urd/store.hpp"
+#include "urd/view.hpp"
 #include "verify.hpp"
 
 #include <algorithm>
@@ -44,7 +46,67 @@ using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
                                   Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>;
 TYPED_TEST_SUITE(Pools, Containers, urd::test::Names);
 
+/// A trivially copyable record: its own block of bytes, interned in memory.
+struct Point
+{
+    int x = 0;
+    int y = 0;
+
+    Point() = default;
+    explicit Point(int drawn) : x(drawn % 5), y(drawn / 5) {}
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
+};
+/// A record with a string: serialized by cista into the arena.
+struct Named
+{
+    urd::flat_string name;
+    std::uint32_t arity = 0;
+
+    Named() = default;
+    explicit Named(int drawn) : name(std::string_view(std::string(static_cast<std::size_t>(drawn % 4), 'a'))), arity(static_cast<std::uint32_t>(drawn / 4)) {}
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
+};
+static_assert(std::is_trivially_copyable_v<Point> && !std::is_trivially_copyable_v<Named>);
+
+template<typename P>
+class Records : public testing::Test
+{
+};
+using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
+                                   urd::repr::RecordInterner<Point, true>,
+                                   urd::repr::ArenaInterner<Named>,
+                                   urd::repr::ArenaInterner<Named, true>,
+                                   urd::repr::ArenaInterner<Point>,
+                                   Store<value<Point>, urd::handles, urd::unique, urd::flat>,
+                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone>,
+                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
+                                   Store<value<Named>, urd::handles, urd::unique, urd::flat>,
+                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::concurrent>>;
+TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
+
 }  // namespace
+
+// Records stored flat: trivially copyable ones in memory, the others serialized into an arena; thread-safe on request.
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::RecordInterner<Point>>);
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::ArenaInterner<Named>>);
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::ArenaInterner<Named, true>>);
+// A flat pool is counted and read by index, as its records are whole; its handle is the index.
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::handle_type, urd::index<Named>>);
+
+TYPED_TEST(Records, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
+
+TYPED_TEST(Records, KeepsEachDistinctRecordOnceThroughRandomOperations)
+{
+    for (unsigned seed = 0; seed < 32; ++seed)
+    {
+        auto pool = TypeParam();
+        const auto found = urd::verify(std::move(pool), seed, 300);
+        EXPECT_FALSE(found) << found.value_or("");
+    }
+}
 
 // Without structural_sharing, each row is stored once, in full.
 static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>::representation,
@@ -289,4 +351,96 @@ TEST(Pools, ViewsLendTheStoredRows)
         // Equal sets, whatever their elements' order or repeats, are one row.
         EXPECT_EQ(pool.insert(std::vector<int> { 5, 3, 3, 200 }), pool.insert(std::vector<int> { 200, 5, 3 }));
     }
+}
+
+namespace
+{
+
+template<typename P>
+void expect_threads_agree_on_records(int rounds)
+{
+    auto pool = P();
+    constexpr int threads = 4;
+    auto indices = std::vector<std::vector<typename P::handle_type>>(threads);
+    {
+        auto workers = std::vector<std::jthread>();
+        for (int thread = 0; thread < threads; ++thread)
+            workers.emplace_back(
+                [&pool, &indices, rounds, thread]
+                {
+                    auto& mine = indices[static_cast<std::size_t>(thread)];
+                    for (int round = 0; round < rounds; ++round)
+                    {
+                        const auto record = typename P::record_type((round * 7) % 40);
+                        if (round % 4 == 3)
+                            mine.push_back(pool.insert(record, [&record](typename P::handle_type) { return record; }).first);
+                        else
+                            mine.push_back(pool.insert(record).first);
+                        // Read a record published earlier, while others insert.
+                        if (round > 0)
+                            (void) pool[mine[static_cast<std::size_t>(round / 2)]];
+                    }
+                });
+    }
+    for (int thread = 1; thread < threads; ++thread)
+        EXPECT_EQ(indices[static_cast<std::size_t>(thread)], indices[0]);
+}
+
+/// A record whose members are what views resolve: text, indices, a variant.
+struct Owner
+{
+    urd::flat_string name;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Owner::name> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Owner::name> {}; }
+};
+struct Item
+{
+    urd::flat_string name;
+    urd::flat_vector<urd::index<Owner>> owners;
+    urd::flat_variant<urd::index<Owner>, int> alternative;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
+};
+using Owners = Store<value<Owner>, urd::handles, urd::unique, urd::flat, urd::monotone>;
+using Items = Store<value<Item>, urd::handles, urd::unique, urd::flat, urd::monotone>;
+struct Shop
+{
+    Owners owners;
+    Items items;
+
+    [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
+    [[nodiscard]] const Item& operator[](urd::index<Item> at) const { return items[at]; }
+};
+
+}  // namespace
+
+TEST(Records, ThreadsAgreeOnIndices)
+{
+    expect_threads_agree_on_records<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>>(300);
+    expect_threads_agree_on_records<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>>(300);
+}
+
+TEST(Records, ViewsResolveFlatMembers)
+{
+    auto shop = Shop();
+    auto owner = Owner();
+    owner.name = urd::flat_string(std::string_view("ann"));
+    const auto ann = shop.owners.insert(owner).first;
+    auto item = Item();
+    item.name = urd::flat_string(std::string_view("lamp"));
+    item.owners.push_back(ann);
+    item.alternative = ann;
+    const auto lamp = shop.items.insert(item).first;
+    EXPECT_EQ(shop.items.insert(item).first, lamp);
+    EXPECT_EQ(shop.items.find(item), lamp);
+    EXPECT_TRUE(shop.items.contains(lamp));
+
+    const auto alone = shop.items.view(lamp);  // the Store resolves items only
+    EXPECT_EQ(alone.get<&Item::name>(), "lamp");
+    EXPECT_EQ(alone.get<&Item::owners>()[0], ann);
+    EXPECT_EQ(std::get<urd::index<Owner>>(alone.get<&Item::alternative>()), ann);
+
+    const auto whole = urd::view<Item, Shop>(lamp, shop);  // the shop resolves owners too
+    EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
+    EXPECT_EQ((std::get<urd::view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
 }

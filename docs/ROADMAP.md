@@ -370,7 +370,7 @@ on pools, a `Family` with a parent, and a dense map of layered pools for relatio
 1. `urd::index<T>` and `urd::view<T, C>` over a single Store: handles are indices, a positional set mints them and
    resolves views, members resolve through the context. Done.
 2. Flat record pools: the in-memory interner for trivially copyable records, the cista byte arena for the rest,
-   both thread-safe on request; the `flat` tag; the `records` facet.
+   both thread-safe on request; the `flat` tag; the `records` facet. Done.
 3. `layered` on pools: indices continue after the parent, lookups fall through, views borrow the owning layer.
 4. `compose::Family` with a parent and a layer number, resolving every member type.
 5. Relations: a dense layered map of layered row pools.

@@ -194,7 +194,7 @@ and the repositories.
 |---|---|---|
 | `SegmentedVector` (`containers/segmented_vector.hpp:50`), 14 uses | A | `Store<value<T>, monotone, stable_refs[, concurrent]>`; `emplace_back_with_index(factory)` (a factory run with the reserved index inside the lock) is the one operation without a counterpart |
 | `IndexedHashSet` (`containers/indexed_hash_set.hpp:52`), 39 uses | A | `Store<key<Data<T>>, positional, monotone[, concurrent]>` |
-| `buffer::IndexedHashSet`, `SegmentedBuffer` (`buffer/`) | B | an interner whose elements live serialized in a byte arena: a storage policy outside urd's vocabulary; leave |
+| `buffer::IndexedHashSet`, `SegmentedBuffer` (`buffer/`) | A (M12 step 2) | an interner whose elements live serialized in a byte arena: a storage policy outside urd's vocabulary; leave |
 | `RawArraySet`, `RawVectorSet`, `BlockArraySet` (37 + 14 `VertexSet` uses; `Builder<Relation>` is one) | A / B | `Store<value<Store<value<T>, frozen>>, handles, unique[, concurrent]>`, `view(h)`; **B for `erase(h)`**: the swap-in that reports which handle moved, so that postings over the rows can follow (gap 3) |
 | `RawArrayPool`, `BlockArrayPool`, `BitPackedArrayPool` | B | rows of one length (uniform stride, gap 10), swap-erase, an element width in bits (`BitsetSpan` is width 1) |
 | `UnorderedMultiMap` (`containers/unordered_multi_map.hpp:36`), 14 uses | A | `Store<key<K>, value<V>, multi, retains>`; its `replace(key, old, new)` is part of gap 3 |

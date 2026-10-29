@@ -58,11 +58,15 @@ std::vector<const element_t<R>*> addresses(const R& range)
 
 template<typename R>
 std::ranges::iterator_t<const R> const_at(const R& range, std::size_t pos)
-{ return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos)); }
+{
+    return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos));
+}
 
 template<typename R>
 std::size_t position_of(const R& range, const std::ranges::iterator_t<const R>& it)
-{ return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it)); }
+{
+    return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it));
+}
 
 /// What a container's contents must be after the same operations: placed by value as Traits says (in sorted
 /// order, each element once), or where they were put.
@@ -938,6 +942,90 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
 
 }  // namespace detail
 
+namespace detail
+{
+
+/// urd::verify for a pool of records stored flat: inserts of records drawn from a small universe (so that equal ones
+/// recur), every fourth through a factory given the reserved index, and clears. After each, the pool holds exactly
+/// the distinct records given, in first-insertion order under indices 0..n-1: each comes back by its index, is found
+/// at it, and is contained; an absent one is found at none; a re-insert gives the index it has and no insertion;
+/// the factory runs once where the record was new and with the index it got; memory never falls but on clear.
+template<typename P>
+std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
+{
+    using T = typename P::value_type;
+    using Index = typename P::handle_type;
+    using Traits = container_traits<P>;
+    auto model = std::vector<T>();
+    auto random = std::mt19937(seed);
+    auto pick = std::uniform_int_distribution<int>(0, 23);
+    auto memory_before = std::size_t { 0 };
+    const auto failed = [&](int step, const std::string& what) { return std::optional<std::string>("step " + std::to_string(step) + ": " + what); };
+    for (int step = 0; step < steps; ++step)
+    {
+        bool cleared = false;
+        if constexpr (has<Traits, shrinkable>)
+        {
+            if (step % 97 == 96)
+            {
+                pool.clear();
+                model.clear();
+                memory_before = 0;
+                cleared = true;
+            }
+        }
+        if (!cleared)
+        {
+            const auto record = T(pick(random));
+            auto expected = std::optional<std::size_t>();
+            for (std::size_t each = 0; each < model.size(); ++each)
+                if (EqualTo<T> {}(model[each], record))
+                    expected = each;
+            auto result = std::pair<Index, bool>();
+            int calls = 0;
+            auto given = Index();
+            if (step % 4 == 3)
+                result = pool.insert(record,
+                                     [&](Index at)
+                                     {
+                                         ++calls;
+                                         given = at;
+                                         return T(record);
+                                     });
+            else
+                result = pool.insert(record);
+            if (result.second == expected.has_value())
+                return failed(step,
+                              "insert reported " + std::string(result.second ? "new" : "held") + " for a record the model " + (expected ? "holds" : "lacks"));
+            if (result.first.value != (expected ? *expected : model.size()))
+                return failed(step,
+                              "insert gave index " + std::to_string(result.first.value) + ", expected " + std::to_string(expected ? *expected : model.size()));
+            if (step % 4 == 3 && (calls != (result.second ? 1 : 0) || (result.second && given != result.first)))
+                return failed(step, "the factory ran " + std::to_string(calls) + " times, given index " + std::to_string(given.value));
+            if (result.second)
+                model.push_back(record);
+        }
+        if (pool.size() != model.size())
+            return failed(step, "size " + std::to_string(pool.size()) + ", expected " + std::to_string(model.size()));
+        for (std::size_t each = 0; each < model.size(); ++each)
+        {
+            const auto at = Index(static_cast<std::uint32_t>(each));
+            if (!EqualTo<T> {}(pool[at], model[each]))
+                return failed(step, "the record at " + std::to_string(each) + " is not the one inserted");
+            if (pool.find(model[each]) != at || !pool.contains(model[each]))
+                return failed(step, "the record at " + std::to_string(each) + " is not found at its index");
+        }
+        if (!pool.find(T(1000)).is_none() || pool.contains(T(1000)))
+            return failed(step, "a record never inserted is found");
+        if (pool.memory_usage() < memory_before)
+            return failed(step, "memory_usage fell without a clear");
+        memory_before = pool.memory_usage();
+    }
+    return std::nullopt;
+}
+
+}  // namespace detail
+
 /// Checks that `range` offers the operations container_traits<R> requires (interface.hpp; a compile-time
 /// error otherwise) and keeps every declared property through them. It runs `steps` random operations on small
 /// integers, each operation R's properties require, from inserts to erases of positions and ranges, and after
@@ -956,6 +1044,8 @@ template<typename R>
         return std::nullopt;
     else if constexpr (detail::queue_traits<container_traits<R>>)
         return detail::run_queue(range, seed, steps);
+    else if constexpr (has<container_traits<R>, handles, unique, flat>)
+        return detail::run_records(range, seed, steps);
     else if constexpr (has<container_traits<R>, handles, unique>)
         return detail::run_pool(range, seed, steps);
     else if constexpr (has<container_traits<R>, handles>)

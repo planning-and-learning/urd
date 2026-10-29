@@ -34,6 +34,8 @@ struct index
 
     friend constexpr auto operator<=>(const index&, const index&) = default;
     static constexpr auto identifying_members() noexcept { return Members<&index::value> {}; }
+    /// For records stored flat: cista serializes an index by its value.
+    static constexpr auto cista_members() noexcept { return Members<&index::value> {}; }
 };
 
 /// An index is a dense key; none is no index, so a lookup of it finds nothing.

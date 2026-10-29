@@ -9,6 +9,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace urd
@@ -37,10 +38,18 @@ concept numbered = requires(const C& context) {
     { context.layer() } -> std::convertible_to<std::size_t>;
 };
 
+}  // namespace detail
+
+/// How a view resolves a variant: `resolved<C>` is the variant of the alternatives resolved through C, and `visit`
+/// applies a function to the alternative held. Given for std::variant here, for a flat variant in urd/flat.hpp.
+template<typename V>
+struct variant_traits;
+
+namespace detail
+{
+
 template<typename T>
-inline constexpr bool is_variant = false;
-template<typename... Ts>
-inline constexpr bool is_variant<std::variant<Ts...>> = true;
+concept a_variant = requires { typename variant_traits<T>::template resolved<int>; };
 
 }  // namespace detail
 
@@ -51,18 +60,17 @@ template<typename M, typename C>
 template<typename M, typename C>
 using resolved_t = std::remove_cvref_t<decltype(urd::resolve(std::declval<const M&>(), std::declval<const C&>()))>;
 
-namespace detail
+template<typename... Ts>
+struct variant_traits<std::variant<Ts...>>
 {
-
-template<typename V, typename C>
-struct resolved_variant;
-template<typename... Ts, typename C>
-struct resolved_variant<std::variant<Ts...>, C>
-{
-    using type = std::variant<resolved_t<Ts, C>...>;
+    template<typename C>
+    using resolved = std::variant<resolved_t<Ts, C>...>;
+    template<typename F>
+    static decltype(auto) visit(F&& function, const std::variant<Ts...>& held)
+    {
+        return std::visit(std::forward<F>(function), held);
+    }
 };
-
-}  // namespace detail
 
 /// A record's member, as a view sees it: an index<U> as a view<U, C> where the context resolves U, else the index;
 /// a range of such indices as a range of views; characters as a string_view; another contiguous range as a span; a
@@ -77,10 +85,10 @@ template<typename M, typename C>
         else
             return member;
     }
-    else if constexpr (detail::is_variant<M>)
+    else if constexpr (detail::a_variant<M>)
     {
-        using resolved = typename detail::resolved_variant<M, C>::type;
-        return std::visit([&context](const auto& alternative) -> resolved { return resolved(urd::resolve(alternative, context)); }, member);
+        using resolved = typename variant_traits<M>::template resolved<C>;
+        return variant_traits<M>::visit([&context](const auto& alternative) -> resolved { return resolved(urd::resolve(alternative, context)); }, member);
     }
     else if constexpr (std::ranges::input_range<M>)
     {

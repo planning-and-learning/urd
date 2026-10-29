@@ -377,3 +377,13 @@ identified by one integral member (hashable, orderable, indexable).
 | `Store<key<Store<key<int>, sorted, unique, shrinkable>>, sorted>` | sorted, unique, shrinkable | `set` |
 | `Store<key<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable | `none` |
 | `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `none` |
+
+## Records stored flat
+
+| Request | Spec | Representation |
+|---|---|---|
+| `Store<value<Id>, handles, unique, flat>` | unique, handles, flat, shrinkable | `record_interner` |
+| `Store<value<Id>, handles, unique, flat, monotone>` | unique, handles, flat, growable, monotone | `record_interner` |
+| `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat, shrinkable | `thread_safe_record_interner` |
+| `Store<value<Text>, handles, unique, flat>` | unique, handles, flat, shrinkable | `arena_interner` |
+| `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, growable, monotone | `thread_safe_arena_interner` |

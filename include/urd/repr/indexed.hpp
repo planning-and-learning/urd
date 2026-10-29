@@ -83,7 +83,9 @@ public:
 
     template<std::input_iterator InputIt>
     IndexedSet(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     IndexedSet(const IndexedSet& other) : IndexedSet(other.begin(), other.end()) {}
     IndexedSet& operator=(const IndexedSet& other)
@@ -116,7 +118,9 @@ public:
     [[nodiscard]] const T& operator[](size_type position) const { return (*m_elements)[position]; }
     [[nodiscard]] const T* data() const
         requires(!ThreadSafe)
-    { return m_elements->data(); }
+    {
+        return m_elements->data();
+    }
 
     void reserve(size_type count)
         requires(!ThreadSafe)
@@ -155,7 +159,27 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(T(std::forward<Args>(args)...)); }
+    {
+        return insert(T(std::forward<Args>(args)...));
+    }
+    /// The position of `key`, appending what `make(position)` gives where it is new: the factory runs under the
+    /// writer lock with the position reserved, for an element that holds its own position, and must give an element
+    /// equal to `key`. It must not touch this set.
+    template<std::invocable<std::size_t> Factory>
+    std::pair<iterator, bool> insert_with(const T& key, Factory make)
+    {
+        if (const auto found = position_of(key))
+            return { at(*found), false };
+        const auto lock = std::scoped_lock(m_writer);
+        if constexpr (ThreadSafe)
+            if (const auto found = position_of(key))
+                return { at(*found), false };
+        const auto position = static_cast<Index>(size());
+        m_elements->push_back(make(static_cast<std::size_t>(position)));
+        assert(EqualTo<T> {}((*m_elements)[position], key) && "urd::repr::IndexedSet::insert_with: the factory must give an element equal to the key");
+        m_positions.insert(Position { position });
+        return { at(position), true };
+    }
 
     size_type erase(const T& element)
         requires(!ThreadSafe)
@@ -168,7 +192,9 @@ public:
     }
     iterator erase(const_iterator pos)
         requires(!ThreadSafe)
-    { return erase(pos, std::next(pos)); }
+    {
+        return erase(pos, std::next(pos));
+    }
     /// Later elements move up to keep the order, so their positions change.
     // ponytail: O(n) per erase, reindexing what follows; an interner never erases.
     iterator erase(const_iterator first, const_iterator last)

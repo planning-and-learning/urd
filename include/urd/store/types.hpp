@@ -88,6 +88,7 @@ enum class facet_id : std::uint8_t
     layers,
     changes,
     pool,
+    records,
     slots,
     grouping,
     entries,
@@ -143,7 +144,9 @@ struct facet_switches
             case facet_id::changes:
                 return has<S, change_log>;
             case facet_id::pool:
-                return S::is_pool && has<S, unique>;
+                return S::is_pool && has<S, unique> && !has<S, flat>;
+            case facet_id::records:
+                return S::is_pool && has<S, unique> && has<S, flat>;
             case facet_id::slots:
                 return S::is_pool && !has<S, unique>;
             case facet_id::grouping:

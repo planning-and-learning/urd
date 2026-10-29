@@ -159,7 +159,7 @@ if(URD_BUILD_TESTS)
         set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 35)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 39)
     urd_compile_fail_expects(compile_fail_store 8 "culprits<urd::tag::dense>")
     urd_compile_fail_expects(compile_fail_store 13 "culprits<urd::tag::stable_refs>")
     urd_compile_fail_expects(compile_fail_store 32 "culprits<>, false")

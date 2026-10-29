@@ -54,6 +54,8 @@ enum class tag : std::uint8_t
     bidirectional,
     any_shape,
     fixed_shape,
+    any_packing,
+    flat,
     any_grouping,
     partition,
     any_tracking,
@@ -294,6 +296,18 @@ struct fixed_shape : any_shape
     static constexpr tag value = tag::fixed_shape;
 };
 
+struct any_packing
+{
+    using root = any_packing;
+    static constexpr tag value = tag::any_packing;
+};
+/// Each element is one self-contained block of bytes, with no part of its own on the heap: trivially copyable, or
+/// serialized as a whole. Such elements are frozen once stored, and are read by index.
+struct flat : any_packing
+{
+    static constexpr tag value = tag::flat;
+};
+
 struct any_grouping
 {
     using root = any_grouping;
@@ -462,6 +476,8 @@ using all_tags = type_list<any_order,
                            bidirectional,
                            any_shape,
                            fixed_shape,
+                           any_packing,
+                           flat,
                            any_grouping,
                            partition,
                            any_tracking,
@@ -503,10 +519,14 @@ struct tag_table
 };
 template<typename Tag, typename... Ts>
 consteval std::array<bool, tag_count> at_least_row(type_list<Ts...> /*tags*/)
-{ return { std::is_base_of_v<Ts, Tag>... }; }
+{
+    return { std::is_base_of_v<Ts, Tag>... };
+}
 template<typename... Ts>
 consteval tag_table make_tag_table(type_list<Ts...> tags)
-{ return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } }; }
+{
+    return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } };
+}
 inline constexpr tag_table tags = make_tag_table(all_tags {});
 
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
@@ -516,7 +536,7 @@ constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][
 inline constexpr std::array guaranteed_roots { tag::any_order,          tag::duplicates,      tag::any_keys,      tag::moving_refs,  tag::any_layout,
                                                tag::any_representation, tag::single_threaded, tag::immutable,     tag::any_memory,   tag::any_clear,
                                                tag::any_access,         tag::any_scope,       tag::any_layering,  tag::any_tracking, tag::any_handle,
-                                               tag::any_sharing,        tag::any_grouping,    tag::any_direction, tag::any_shape };
+                                               tag::any_sharing,        tag::any_grouping,    tag::any_direction, tag::any_shape,    tag::any_packing };
 inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::by_key, tag::general, tag::any_priority };
 
 constexpr bool in(tag root, const auto& roots)

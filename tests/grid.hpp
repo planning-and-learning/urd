@@ -6,6 +6,7 @@
 // here. Nothing instantiates a Store: a request's spec and its resolution read only traits.
 
 #include "names.hpp"
+#include "urd/flat.hpp"
 #include "urd/store.hpp"
 
 #include <cstdint>
@@ -26,6 +27,14 @@ struct Id
 {
     std::uint32_t id = 0;
     static constexpr auto identifying_members() noexcept { return urd::Members<&Id::id> {}; }
+};
+
+/// A record with text: serialized into the arena where stored flat.
+struct Text
+{
+    urd::flat_string text;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Text::text> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Text::text> {}; }
 };
 
 /// Projections for order_by: by the negated element, and a map's entries by their values.
@@ -91,6 +100,8 @@ std::string type_name()
         return "Id";
     else if constexpr (urd::is_index<T>)
         return "index<" + type_name<typename T::element_type>() + ">";
+    else if constexpr (std::is_same_v<T, Text>)
+        return "Text";
     else if constexpr (urd::is_store<T>)
         return describe_spec<urd::traits_t<T>>();
     else
@@ -317,6 +328,12 @@ using stores_as_keys = requests<request<key<Store<key<int>, sorted, frozen>>>,
                                 request<key<Store<key<int>>>>,
                                 request<key<Store<key<int>, dense, frozen>>>>;
 
+using flat_pools = requests<request<value<Id>, handles, unique, flat>,
+                            request<value<Id>, handles, unique, flat, monotone>,
+                            request<value<Id>, handles, unique, flat, concurrent>,
+                            request<value<Text>, handles, unique, flat>,
+                            request<value<Text>, handles, unique, flat, monotone, concurrent>>;
+
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>
 void for_each_group(F f)
@@ -340,6 +357,7 @@ void for_each_group(F f)
     f("Queues ordered by a projection", ordered_queues {});
     f("Pools", pools {});
     f("Stores as keys", stores_as_keys {});
+    f("Records stored flat", flat_pools {});
 }
 
 }  // namespace urd::test

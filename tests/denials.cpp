@@ -119,6 +119,12 @@ using Partition = Store<key<int>, urd::partition>;
 using Ordered = Store<key<int>, value<int>, urd::insertion_ordered>;
 using Graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>;
 using Shaped = Store<value<Store<value<int>>>, urd::fixed_shape>;
+struct Point
+{
+    int x = 0;
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
+};
+using Records = Store<value<Point>, urd::handles, urd::unique, urd::flat>;
 
 template<facet_id Id, typename Facet>
 struct entry
@@ -156,6 +162,7 @@ using facets = urd::detail::type_list<URD_TEST_FACET(sizing, Set),
                                       URD_TEST_FACET(layers, Layered),
                                       URD_TEST_FACET(changes, Logged),
                                       URD_TEST_FACET(pool, Pool),
+                                      URD_TEST_FACET(records, Records),
                                       URD_TEST_FACET(slots, Slots),
                                       URD_TEST_FACET(grouping, Partition),
                                       URD_TEST_FACET(entries, Ordered),

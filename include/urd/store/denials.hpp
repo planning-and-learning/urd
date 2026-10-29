@@ -335,17 +335,19 @@ struct no_set_algebra
 
 /// Which facets declare each group of names: where any of them is on, the group's denial stays off. tests/denials.cpp
 /// checks these against the facets, so a facet that gains or loses a name is caught.
-inline constexpr std::array declares_insert { facet_id::growth, facet_id::pool, facet_id::slots, facet_id::grouping };
+inline constexpr std::array declares_insert { facet_id::growth, facet_id::pool, facet_id::records, facet_id::slots, facet_id::grouping };
 inline constexpr std::array declares_emplace { facet_id::growth, facet_id::queue_access, facet_id::slots };
 inline constexpr std::array declares_appending { facet_id::growth };
 inline constexpr std::array declares_pop_back { facet_id::removal };
 inline constexpr std::array declares_erase { facet_id::removal, facet_id::queue_access, facet_id::slots };
-inline constexpr std::array declares_clear { facet_id::removal, facet_id::queue_access, facet_id::pool, facet_id::slots, facet_id::grouping };
-inline constexpr std::array declares_lookup { facet_id::lookup, facet_id::grouping, facet_id::pool };
+inline constexpr std::array declares_clear {
+    facet_id::removal, facet_id::queue_access, facet_id::pool, facet_id::records, facet_id::slots, facet_id::grouping
+};
+inline constexpr std::array declares_lookup { facet_id::lookup, facet_id::grouping, facet_id::pool, facet_id::records };
 inline constexpr std::array declares_ordered_lookup { facet_id::ordered_lookup };
 inline constexpr std::array declares_iteration { facet_id::iteration };
 inline constexpr std::array declares_reverse_iteration { facet_id::reverse_iteration };
-inline constexpr std::array declares_subscript { facet_id::positions, facet_id::values_by_key, facet_id::slots };
+inline constexpr std::array declares_subscript { facet_id::positions, facet_id::values_by_key, facet_id::slots, facet_id::records };
 inline constexpr std::array declares_ends { facet_id::positions, facet_id::queue_access };
 inline constexpr std::array declares_position { facet_id::positions, facet_id::entries };
 inline constexpr std::array declares_data { facet_id::contiguous_data };
@@ -360,8 +362,8 @@ inline constexpr std::array declares_queue { facet_id::queue_access };
 inline constexpr std::array declares_scopes { facet_id::scopes };
 inline constexpr std::array declares_layers { facet_id::layers };
 inline constexpr std::array declares_changes { facet_id::changes };
-inline constexpr std::array declares_view { facet_id::pool, facet_id::positions };
-inline constexpr std::array declares_rows { facet_id::pool };
+inline constexpr std::array declares_view { facet_id::pool, facet_id::positions, facet_id::records };
+inline constexpr std::array declares_rows { facet_id::pool, facet_id::records };
 inline constexpr std::array declares_acquire { facet_id::slots };
 inline constexpr std::array declares_grouping { facet_id::grouping };
 inline constexpr std::array declares_reset { facet_id::shape };

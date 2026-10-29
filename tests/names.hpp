@@ -313,6 +313,30 @@ struct name<urd::repr::Jagged<Inner, true>>
     static constexpr std::string_view id = "tracked_jagged";
     static constexpr std::string_view value = "jagged rows that track the rows handed out to change";
 };
+template<typename T>
+struct name<urd::repr::RecordInterner<T, false>>
+{
+    static constexpr std::string_view id = "record_interner";
+    static constexpr std::string_view value = "record interner (trivially copyable records in an indexed set)";
+};
+template<typename T>
+struct name<urd::repr::RecordInterner<T, true>>
+{
+    static constexpr std::string_view id = "thread_safe_record_interner";
+    static constexpr std::string_view value = "record interner, thread-safe";
+};
+template<typename T>
+struct name<urd::repr::ArenaInterner<T, false>>
+{
+    static constexpr std::string_view id = "arena_interner";
+    static constexpr std::string_view value = "arena interner (records serialized by cista into a byte arena)";
+};
+template<typename T>
+struct name<urd::repr::ArenaInterner<T, true>>
+{
+    static constexpr std::string_view id = "thread_safe_arena_interner";
+    static constexpr std::string_view value = "arena interner, thread-safe";
+};
 template<typename Row>
 struct name<urd::repr::RowInterner<Row, true>>
 {
@@ -366,6 +390,8 @@ inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names 
     "bidirectional",
     "any_shape",
     "fixed_shape",
+    "any_packing",
+    "flat",
     "any_grouping",
     "partition",
     "any_tracking",
