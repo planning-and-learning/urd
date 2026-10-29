@@ -85,7 +85,12 @@ assertion that names what is wrong.
 * A queue changes by ``push`` and ``pop`` and cannot be ``frozen`` or ``positional``; ``monotone_priority`` needs
   ``by_priority``.
 * ``fixed_shape`` is a sequence of rows (``value<Store<...>>``) that is not ``monotone``.
-* ``contiguous`` with ``stable_refs`` needs ``frozen``: contiguous storage moves its elements when it grows.
+* ``contiguous`` with ``stable_refs`` needs ``frozen``: contiguous storage moves its elements when it grows; a
+  sequence or a ``positional`` set with ``stable_refs`` needs ``monotone`` or ``frozen``: erasing or inserting at a
+  position moves the elements after it.
+* ``nonempty`` is a promise about iterated elements: sets, maps and sequences, not queues or pools.
+* ``concurrent`` goes with hashed or ``dense`` Stores: no concurrent sorted container, no concurrent queue (its
+  front moves with ``pop``), and a ``frozen`` Store is read by any number of threads without it.
 * ``order_by`` needs ``sorted`` or ``by_priority``; on unique keys the keys must be orderable, to break ties.
 
 Resolution

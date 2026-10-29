@@ -148,7 +148,8 @@ representation, and the test checks them as defined:
 
 - **Registration needs operations, not only properties.** `SegmentedVector` keeps references stable but
   cannot erase from the middle. Without its mutability (`growable`, not `shrinkable`),
-  `Store<value<T>, stable_refs>` would have resolved to it and offered an `erase` it cannot do. Now that request finds no representation (a compile-time error), and
+  `Store<value<T>, stable_refs>` would have resolved to it and offered an `erase` it cannot do. Now a rule rejects
+  that request with a message (erasing at a position moves the elements after it; compile-fail case 13), and
   `Store<value<T>, stable_refs, monotone>` finds it.
 - **Object pools are pools of slots.** yggdrasil's `UniqueObjectPool` and `SharedObjectPool` hand out owning,
   reference-counted handles. urd keeps the part that matters, slots reused once freed: `repr::SlotVector`, a

@@ -317,6 +317,18 @@ struct to_spec
     static_assert(!of.map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
     static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
+    static_assert(!((of.sequence || stated.has(tag::positional)) && stated.has(tag::stable_refs)) || stated.has(tag::monotone),
+                  "urd::Store: erasing or inserting at a position moves the elements after it: stable_refs on a sequence or a "
+                  "positional set needs monotone, append only, or frozen");
+    static_assert(!(stated.has(tag::sorted) && stated.has(tag::concurrent)) || stated.has(tag::dense),
+                  "urd::Store: no concurrent sorted container: threads share a hashed (concurrent) or dense Store; keep sorted and "
+                  "synchronize outside, or drop sorted");
+    static_assert(!queue || !stated.has(tag::concurrent),
+                  "urd::Store: a queue is reached by its front or top, which pop moves: no queue is concurrent; guard it with a mutex, "
+                  "or share a positional, monotone set");
+    static_assert(!(stated.has(tag::frozen) && stated.has(tag::concurrent)),
+                  "urd::Store: a frozen Store never changes, so any number of threads may read it; concurrent asks for inserts "
+                  "from threads at once, which it has none of: drop concurrent");
 
     /// What order_by orders: keys, or a sequence's or queue's values.
     using ordered_type = std::conditional_t<keyed, key_type, value_type>;

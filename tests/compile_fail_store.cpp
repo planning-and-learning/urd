@@ -182,6 +182,18 @@ int main()
 #elif URD_CASE == 47  // fixed_shape is a sequence of rows, each a Store
     using S = Store<value<int>, urd::fixed_shape>;
     (void) S();
+#elif URD_CASE == 48  // no concurrent sorted container: threads share a hashed or a dense Store
+    using S = Store<key<int>, value<int>, urd::sorted, urd::concurrent>;
+    (void) S();
+#elif URD_CASE == 49  // a queue is reached by its front or top, which pop moves: no queue is concurrent
+    using S = Store<value<int>, urd::fifo, urd::concurrent>;
+    (void) S();
+#elif URD_CASE == 50  // inserting at a position moves the elements after it: a positional set with stable_refs needs monotone
+    using S = Store<key<int>, urd::positional, urd::stable_refs>;
+    (void) S();
+#elif URD_CASE == 51  // a frozen Store is read by any number of threads: concurrent asks for inserts it has none of
+    using S = Store<key<int>, urd::frozen, urd::concurrent>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

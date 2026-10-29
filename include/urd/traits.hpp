@@ -370,7 +370,8 @@ struct monotone : may_change
 {
     static constexpr tag value = tag::monotone;
 };
-/// No change after construction.
+/// No change after construction (assign rebuilds it whole): any number of threads may read it between rebuilds,
+/// so concurrent, which is about inserts from threads at once, is not asked of it.
 struct frozen : monotone
 {
     static constexpr tag value = tag::frozen;

@@ -70,7 +70,6 @@ const std::map<std::string, std::string> notes = {
     { "Store<key<Id>, value<double>, multi, dense>", "missing: a growable dense multimap; docs/SURVEY.md gap 6, M15" },
     { "Store<value<int>, fifo, retains>", "missing: a ring buffer that keeps its vector on clear; M15" },
     { "Store<value<Id>, fifo, retains>", "missing: a ring buffer that keeps its vector on clear; M15" },
-    { "Store<value<int>, stable_refs>", "incompatible: erasing from a sequence moves the elements after it (compile-fail case 13)" },
     { "Store<value<int>, handles, layered>", "incompatible: slots are recycled, so no layer continues their handles (compile-fail case 40)" },
     { "Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>",
       "incompatible: a tree pool numbers nodes, not rows (compile-fail case 41)" },

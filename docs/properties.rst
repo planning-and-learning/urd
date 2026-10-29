@@ -102,8 +102,8 @@ What a request states and no container declares.
    * - lifecycle
      - ``monotone`` → ``frozen``
      - Only grows (no ``erase``, ``clear``, ``pop_back``), or changes only by ``assign(first, last)``, a rebuild in
-       the storage held where the container can. A monotone queue keeps ``pop``: pop is how a queue is consumed,
-       and ``monotone`` takes only ``clear`` away.
+       the storage held where the container can; a frozen Store is read by any number of threads between rebuilds.
+       A monotone queue keeps ``pop``: pop is how a queue is consumed, and ``monotone`` takes only ``clear`` away.
    * - emptiness
      - ``nonempty``
      - At least one element: no default constructor, and construction from elements asserts one; a fixed-shape
@@ -162,6 +162,24 @@ are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
      - Contiguous storage moves its elements when it grows.
      - Add ``frozen``, or drop ``contiguous`` (a node or segmented container).
      - 6
+   * - ``value<V>, stable_refs`` or ``positional, stable_refs`` without ``monotone``
+     - Erasing or inserting at a position moves the elements after it.
+     - Add ``monotone`` (a segmented vector, an interner over segments) or ``frozen``.
+     - 13, 50
+   * - ``sorted, concurrent`` without ``dense``
+     - No concurrent sorted container: threads share a hashed table or a dense Store (a slot per index is in key
+       order).
+     - Drop ``sorted`` and synchronize outside, or ask for ``dense``.
+     - 48
+   * - A queue with ``concurrent``
+     - A queue is reached by its front or top, which ``pop`` moves.
+     - Guard the queue with a mutex, or share a ``positional, monotone`` set.
+     - 49
+   * - ``frozen, concurrent``
+     - A frozen Store never changes, so any number of threads read it; ``concurrent`` asks for inserts from threads
+       at once, which it has none of.
+     - Drop ``concurrent``.
+     - 51
    * - ``nonempty`` on a queue or a pool
      - ``nonempty`` is a promise about iterated elements; a queue empties by ``pop``, a pool by ``erase(handle)``.
      - Drop it; check ``empty()`` before ``pop``.
@@ -219,10 +237,6 @@ servable.
      - Why
      - Instead
      - Case
-   * - ``value<V>, stable_refs`` without ``monotone`` or ``frozen``
-     - Erasing from a sequence moves the elements after the erased one.
-     - Add ``monotone`` (a segmented vector), or ``frozen``.
-     - 13
    * - ``key<std::string>, dense``
      - Dense keys are indices; a string is none.
      - A key with ``index_of``, or ``sparse``.

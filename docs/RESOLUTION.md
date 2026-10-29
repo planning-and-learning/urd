@@ -320,7 +320,6 @@ indexable).
 | `Store<value<int>, stable_refs, monotone>` | dense, stable_refs, growable, monotone, functional, positional | `segmented_vector` |
 | `Store<value<int>, stable_refs, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` |
 | `Store<value<int>, monotone, concurrent>` | dense, concurrent, growable, monotone, functional, positional | `concurrent_segmented_vector` |
-| `Store<value<int>, stable_refs>` | dense, stable_refs, shrinkable, functional, positional | `none` — incompatible: erasing from a sequence moves the elements after it (compile-fail case 13) |
 | `Store<value<std::string>>` | dense, shrinkable, functional, positional | `vector` |
 | `Store<value<Id>, sorted>` | sorted, dense, shrinkable, functional, positional | `flat_multiset` |
 | `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>>` | dense, shrinkable, functional, positional | `vector` |
