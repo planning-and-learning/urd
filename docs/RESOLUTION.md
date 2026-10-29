@@ -27,6 +27,7 @@ indexable).
 | `Store<key<int>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` |
 | `Store<key<int>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` |
 | `Store<key<int>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` |
+| `Store<key<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<int>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
 | `Store<key<int>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
@@ -58,6 +59,7 @@ indexable).
 | `Store<key<std::string>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` |
 | `Store<key<std::string>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` |
 | `Store<key<std::string>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` |
+| `Store<key<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<std::string>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
 | `Store<key<std::string>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
@@ -89,6 +91,7 @@ indexable).
 | `Store<key<Id>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` |
 | `Store<key<Id>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` |
 | `Store<key<Id>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` |
+| `Store<key<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` |
 | `Store<key<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` |
 | `Store<key<Id>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` |
 | `Store<key<Id>, retains>` | unique, retains, shrinkable | `unordered_flat_set` |
@@ -402,6 +405,7 @@ indexable).
 |---|---|---|
 | `Store<value<Id>, handles, unique, flat>` | unique, handles, flat, shrinkable | `record_interner` |
 | `Store<value<Id>, handles, unique, flat, monotone>` | unique, handles, flat, growable, monotone | `record_interner` |
+| `Store<value<Id>, handles, unique, flat, stable_refs>` | unique, stable_refs, handles, flat, shrinkable | `stable_record_interner` |
 | `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat, shrinkable | `thread_safe_record_interner` |
 | `Store<value<Text>, handles, unique, flat>` | unique, handles, flat, shrinkable | `arena_interner` |
 | `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, growable, monotone | `thread_safe_arena_interner` |

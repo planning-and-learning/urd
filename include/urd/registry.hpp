@@ -164,6 +164,8 @@ template<typename T>
 using ConcurrentIndexedSet = repr::ConcurrentIndexedSet<T>;
 template<typename T>
 using IndexedSetOf = repr::IndexedSet<T>;
+template<typename T>
+using StableIndexedSet = repr::StableIndexedSet<T>;
 template<typename Inner>
 using JaggedOf = repr::Jagged<Inner>;
 template<typename Inner>
@@ -199,6 +201,8 @@ using SegmentedVector = repr::SegmentedVector<T>;
 template<typename T>
 using RecordInternerOf = repr::RecordInterner<T>;
 template<typename T>
+using StableRecordInterner = repr::RecordInterner<T, false, true>;
+template<typename T>
 using ThreadSafeRecordInterner = repr::RecordInterner<T, true>;
 template<typename T>
 using ArenaInternerOf = repr::ArenaInterner<T>;
@@ -210,6 +214,8 @@ template<typename Row>
 using ThreadSafeLayeredRowInterner = repr::LayeredPool<repr::RowInterner<Row, true>>;
 template<typename T>
 using LayeredRecordInternerOf = repr::LayeredPool<repr::RecordInterner<T>>;
+template<typename T>
+using StableLayeredRecordInterner = repr::LayeredPool<repr::RecordInterner<T, false, true>>;
 template<typename T>
 using ThreadSafeLayeredRecordInterner = repr::LayeredPool<repr::RecordInterner<T, true>>;
 template<typename T>
@@ -251,6 +257,7 @@ using element_preference = element_candidates<JaggedOf,
                                               TrackedDenseSet,
                                               SparseSetOf,
                                               IndexedSetOf,
+                                              StableIndexedSet,
                                               OrderedSparseSet,
                                               SegmentedVector,
                                               ConcurrentSegmentedVector,
@@ -270,11 +277,13 @@ using element_preference = element_candidates<JaggedOf,
                                               ThreadSafeTreeBitsetOf,
                                               RecordInternerOf,
                                               ArenaInternerOf,
+                                              StableRecordInterner,
                                               ThreadSafeRecordInterner,
                                               ThreadSafeArenaInterner,
                                               LayeredRowInternerOf,
                                               LayeredRecordInternerOf,
                                               LayeredArenaInternerOf,
+                                              StableLayeredRecordInterner,
                                               ThreadSafeLayeredRowInterner,
                                               ThreadSafeLayeredRecordInterner,
                                               ThreadSafeLayeredArenaInterner,

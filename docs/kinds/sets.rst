@@ -37,6 +37,8 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
      - ``SparseSet`` (Briggs–Torczon)
    * - ``Store<key<K>, insertion_ordered>``, ``positional``
      - ``IndexedSet`` (a vector plus a hash table of positions); with ``monotone``, an interner
+   * - ``Store<key<K>, positional, monotone, stable_refs>``
+     - ``StableIndexedSet``: the elements in segments that never move, no lock
    * - ``Store<key<K>, concurrent>``
      - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
    * - ``Store<key<K>, layered>``

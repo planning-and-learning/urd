@@ -71,6 +71,15 @@ struct Named
     static constexpr auto identifying_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
     static constexpr auto cista_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
 };
+/// A trivially copyable record without cista_members: only the in-memory interners store it.
+struct Plain
+{
+    int x = 0;
+
+    Plain() = default;
+    explicit Plain(int drawn) : x(drawn) {}
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Plain::x> {}; }
+};
 static_assert(std::is_trivially_copyable_v<Point> && !std::is_trivially_copyable_v<Named>);
 
 template<typename P>
@@ -78,6 +87,7 @@ class Records : public testing::Test
 {
 };
 using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
+                                   urd::repr::RecordInterner<Point, false, true>,
                                    urd::repr::RecordInterner<Point, true>,
                                    urd::repr::ArenaInterner<Named>,
                                    urd::repr::ArenaInterner<Named, true>,
@@ -85,10 +95,13 @@ using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
+                                   Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs>,
                                    Store<value<Named>, urd::handles, urd::unique, urd::flat>,
                                    Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::concurrent>,
                                    urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>,
+                                   urd::repr::LayeredPool<urd::repr::RecordInterner<Point, false, true>>,
                                    urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>,
+                                   Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs, urd::layered>,
                                    Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered>,
                                    Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
@@ -98,6 +111,13 @@ TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
 // Records stored flat: trivially copyable ones in memory, the others serialized into an arena; thread-safe on request.
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::RecordInterner<Point>>);
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);
+// Records that never move, without the lock: the interner over segments; a record cista can serialize takes the
+// arena, which never moves a block either.
+static_assert(
+    std::same_as<Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs>::representation, urd::repr::RecordInterner<Plain, false, true>>);
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::stable_refs>::representation, urd::repr::ArenaInterner<Point>>);
+static_assert(std::same_as<Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs, urd::layered>::representation,
+                           urd::repr::LayeredPool<urd::repr::RecordInterner<Plain, false, true>>>);
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::ArenaInterner<Named>>);
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::ArenaInterner<Named, true>>);
 // Layered pools: the same interners over a parent, indices continuing after the parent's.

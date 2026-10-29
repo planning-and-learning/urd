@@ -1075,12 +1075,14 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
 /// numbers new ones after the chain, numbers its layer 2, starts its own indices at the chain's size, and after a
 /// clear holds the chain and nothing more.
 template<typename P>
-std::optional<std::string> run_layered_records(P& leaf, unsigned seed, int steps)
+std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int steps)
 {
     using T = typename P::value_type;
     using Index = typename P::handle_type;
     auto root = P();
     auto middle = P();
+    // The leaf is a local, declared after its parents, so that it never outlives them.
+    auto leaf = std::move(fresh);
     auto chain = std::vector<T>();
     for (int drawn = 0; drawn < 8; ++drawn)
         if (root.insert(T(drawn)).second)

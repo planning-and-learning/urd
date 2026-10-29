@@ -29,15 +29,17 @@ namespace urd::repr
 /// find it however the set moves. The registry names it for any element type, so it is an unconstrained template;
 /// its container_traits declare properties only for hashable elements.
 ///
-/// With ThreadSafe, threads may insert at once, and read while others insert (an interner shared across threads, the
-/// node table of a thread-safe tree pool): the elements lie in a thread-safe SegmentedVector, whose elements never
-/// move, and a concurrent hash table holds their positions. Looking up is lock-free; an insert of a new element takes
-/// a lock, so positions stay 0..n-1 without gaps. It has no erase; clear, copy and move need no other operation
-/// running.
-template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false>
+/// With Stable, the elements lie in a SegmentedVector, whose elements never move, so a reference to one holds while
+/// others are inserted; it has no erase (positions would shift) and no data(). With ThreadSafe (which needs Stable),
+/// threads may insert at once, and read while others insert (an interner shared across threads, the node table of a
+/// thread-safe tree pool): the segments are the thread-safe ones and a concurrent hash table holds the positions.
+/// Looking up is lock-free; an insert of a new element takes a lock, so positions stay 0..n-1 without gaps. Clear,
+/// copy and move need no other operation running.
+template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe>
 class IndexedSet
 {
-    using Elements = std::conditional_t<ThreadSafe, SegmentedVector<T, default_first_segment_size, true>, std::vector<T>>;
+    static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
+    using Elements = std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>;
 
     /// A position in the vector, as the table holds it: a type of its own, so that it is never taken for an element,
     /// even where the elements are integers too.
@@ -117,25 +119,32 @@ public:
     [[nodiscard]] bool empty() const { return size() == 0; }
     [[nodiscard]] const T& operator[](size_type position) const { return (*m_elements)[position]; }
     [[nodiscard]] const T* data() const
-        requires(!ThreadSafe)
+        requires(!Stable)
     {
         return m_elements->data();
     }
 
     void reserve(size_type count)
-        requires(!ThreadSafe)
+        requires(!Stable)
     {
         m_elements->reserve(count);
         m_positions.reserve(count);
     }
-    /// The bytes its storage takes: the elements' storage, and the table's slots (with their metadata byte; a
-    /// concurrent table counts its elements only, not its slack).
+    /// The bytes its storage takes: the elements' storage (segments, or the vector's capacity), and the table's
+    /// slots (with their metadata byte; a concurrent table counts its elements only, not its slack).
     [[nodiscard]] size_type memory_usage() const
     {
+        const auto elements = [this]
+        {
+            if constexpr (Stable)
+                return m_elements->memory_usage();
+            else
+                return m_elements->capacity() * sizeof(T);
+        }();
         if constexpr (ThreadSafe)
-            return m_elements->memory_usage() + m_positions.size() * (sizeof(Position) + 1);
+            return elements + m_positions.size() * (sizeof(Position) + 1);
         else
-            return m_elements->capacity() * sizeof(T) + m_positions.bucket_count() * (sizeof(Position) + 1);
+            return elements + m_positions.bucket_count() * (sizeof(Position) + 1);
     }
 
     [[nodiscard]] iterator find(const T& element) const
@@ -182,7 +191,7 @@ public:
     }
 
     size_type erase(const T& element)
-        requires(!ThreadSafe)
+        requires(!Stable)
     {
         const auto found = position_of(element);
         if (!found)
@@ -191,14 +200,14 @@ public:
         return 1;
     }
     iterator erase(const_iterator pos)
-        requires(!ThreadSafe)
+        requires(!Stable)
     {
         return erase(pos, std::next(pos));
     }
     /// Later elements move up to keep the order, so their positions change.
     // ponytail: O(n) per erase, reindexing what follows; an interner never erases.
     iterator erase(const_iterator first, const_iterator last)
-        requires(!ThreadSafe)
+        requires(!Stable)
     {
         const auto from = static_cast<Index>(first - begin());
         for (auto position = from; position < size(); ++position)
@@ -254,9 +263,12 @@ private:
     [[no_unique_address]] std::conditional_t<ThreadSafe, std::mutex, NoLock> m_writer;
 };
 
+/// An IndexedSet whose elements never move: an interner that hands out references.
+template<typename T, typename Index = std::uint32_t>
+using StableIndexedSet = IndexedSet<T, Index, false, true>;
 /// An IndexedSet that threads may insert into at once.
 template<typename T, typename Index = std::uint32_t>
-using ConcurrentIndexedSet = IndexedSet<T, Index, true>;
+using ConcurrentIndexedSet = IndexedSet<T, Index, true, true>;
 
 /// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
 template<typename T, bool ThreadSafe>
@@ -273,7 +285,13 @@ struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_or
 {
 };
 
-/// In insertion order, never moved, only ever added to, by threads at once.
+/// In insertion order, never moved, only ever added to; clear keeps the segments.
+template<hashable T, typename Index>
+struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, stable_refs, growable, retains>
+{
+};
+
+/// The same, by threads at once.
 template<hashable T, typename Index>
 struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, stable_refs, growable, retains, concurrent>
 {

@@ -266,6 +266,12 @@ struct name<urd::repr::ParallelHashMap<K, V>>
 };
 #endif
 template<typename T, typename Index>
+struct name<urd::repr::StableIndexedSet<T, Index>>
+{
+    static constexpr std::string_view id = "stable_indexed_set";
+    static constexpr std::string_view value = "stable indexed set (segments that never move, a hash table of positions; no lock)";
+};
+template<typename T, typename Index>
 struct name<urd::repr::ConcurrentIndexedSet<T, Index>>
 {
     static constexpr std::string_view id = "concurrent_indexed_set";
@@ -324,6 +330,12 @@ struct name<urd::repr::RecordInterner<T, false>>
 {
     static constexpr std::string_view id = "record_interner";
     static constexpr std::string_view value = "record interner (trivially copyable records in an indexed set)";
+};
+template<typename T>
+struct name<urd::repr::RecordInterner<T, false, true>>
+{
+    static constexpr std::string_view id = "stable_record_interner";
+    static constexpr std::string_view value = "record interner over segments that never move (no lock)";
 };
 template<typename T>
 struct name<urd::repr::RecordInterner<T, true>>

@@ -171,6 +171,8 @@ static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, ur
 
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>::representation, urd::repr::ConcurrentIndexedSet<int>>);
+// Elements that never move, without the lock: stability alone buys no synchronization.
+static_assert(std::same_as<Store<key<int>, urd::positional, urd::monotone, urd::stable_refs>::representation, urd::repr::StableIndexedSet<int>>);
 
 // Maps in insertion order: hashed keys, or dense ones placed by index with O(1) clear; a dense set in insertion order.
 static_assert(std::same_as<Store<key<int>, value<double>, urd::insertion_ordered>::representation, urd::repr::OrderedMap<urd::repr::IndexedSet<int>, double>>);

@@ -30,6 +30,8 @@ records are frozen once stored.
      - ``RecordInterner``: an indexed set of the records
    * - the same, any other record
      - ``ArenaInterner``: serialized by cista into a byte arena that never moves a block (``urd/flat.hpp`` must be included where the Store is used)
+   * - ``RecordInterner`` with ``stable_refs``
+     - the records in segments that never move, no lock (the arena never moves a block, so it has ``stable_refs`` already)
    * - either with ``concurrent``
      - the same, thread-safe: lookups without a lock, a new record under the writer lock
    * - either with ``layered``

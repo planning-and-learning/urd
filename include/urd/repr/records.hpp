@@ -20,10 +20,13 @@ template<typename T>
 concept flat_record = hashable<T> && requires { T::cista_members(); };
 
 /// A pool of trivially copyable records, each distinct one once, in an indexed set: a record is its own block of
-/// bytes already. Thread-safe where ThreadSafe: lookups without a lock, a new record appended under one.
-template<typename T, bool ThreadSafe = false>
+/// bytes already. With Stable the records lie in segments that never move, so [index] hands out references that
+/// hold; thread-safe where ThreadSafe (which needs Stable): lookups without a lock, a new record appended under one.
+template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe>
 class RecordInterner
 {
+    using Records = IndexedSet<T, std::uint32_t, ThreadSafe, Stable>;
+
 public:
     using value_type = T;
     using handle_type = urd::index<T>;
@@ -55,12 +58,9 @@ public:
     void clear() { m_records.clear(); }
 
 private:
-    [[nodiscard]] handle_type at(typename IndexedSet<T, std::uint32_t, ThreadSafe>::iterator it) const
-    {
-        return handle_type(static_cast<std::uint32_t>(it - m_records.begin()));
-    }
+    [[nodiscard]] handle_type at(typename Records::iterator it) const { return handle_type(static_cast<std::uint32_t>(it - m_records.begin())); }
 
-    IndexedSet<T, std::uint32_t, ThreadSafe> m_records;
+    Records m_records;
 };
 
 /// A pool of records serialized by cista into a byte arena, each distinct one once: the stored record is one block
@@ -74,16 +74,16 @@ class ArenaInterner;
 namespace urd
 {
 
-/// Records that are blocks of bytes already, kept whole in an array (moved as it grows, unless thread-safe).
-template<typename T, bool ThreadSafe>
+/// Records that are blocks of bytes already, kept whole in an array (moved as it grows) or in segments (Stable).
+template<typename T, bool ThreadSafe, bool Stable>
     requires(std::is_trivially_copyable_v<T> && hashable<T>)
-struct container_traits<repr::RecordInterner<T, ThreadSafe>> :
+struct container_traits<repr::RecordInterner<T, ThreadSafe, Stable>> :
     properties_of<handles,
                   unique,
                   flat,
                   shrinkable,
                   retains,
-                  std::conditional_t<ThreadSafe, stable_refs, moving_refs>,
+                  std::conditional_t<Stable, stable_refs, moving_refs>,
                   std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
