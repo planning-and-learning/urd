@@ -272,7 +272,7 @@ struct any_handle
     static constexpr tag value = tag::any_handle;
 };
 /// A pool: each element is identified by a handle that insert gives, and equal elements get equal handles. Not
-/// iterated or counted.
+/// iterated; counted, with handles 0..size()-1, unless it has structural_sharing (handles name shared nodes there).
 struct handles : any_handle
 {
     static constexpr tag value = tag::handles;
@@ -536,14 +536,10 @@ struct tag_table
 };
 template<typename Tag, typename... Ts>
 consteval std::array<bool, tag_count> at_least_row(type_list<Ts...> /*tags*/)
-{
-    return { std::is_base_of_v<Ts, Tag>... };
-}
+{ return { std::is_base_of_v<Ts, Tag>... }; }
 template<typename... Ts>
 consteval tag_table make_tag_table(type_list<Ts...> tags)
-{
-    return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } };
-}
+{ return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } }; }
 inline constexpr tag_table tags = make_tag_table(all_tags {});
 
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
@@ -695,7 +691,7 @@ struct fixed_string
 {
     std::array<char, N> text {};
 
-    consteval fixed_string(const char (&literal)[N]) { std::copy_n(literal, N, text.begin()); }
+    consteval fixed_string(const char (&literal)[N]) { std::ranges::copy(literal, text.begin()); }
 
     [[nodiscard]] constexpr const char* c_str() const noexcept { return text.data(); }
 };

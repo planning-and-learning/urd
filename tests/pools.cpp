@@ -164,13 +164,44 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::han
 static_assert(
     std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>::representation,
                  urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>, 4, true>>);
-// A pool is neither iterated nor counted.
+// A pool is not iterated: it is reached by handle. It is counted, its handles 0..size()-1, unless it shares nodes
+// between rows (structural_sharing), where handles name nodes and no list of rows is kept.
 template<typename P>
 concept iterable = requires(P pool) { pool.begin(); };
 template<typename P>
 concept sized = requires(P pool) { pool.size(); };
 static_assert(!iterable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
-              && !sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>);
+              && sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
+              && !sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>);
+
+// find gives the handle insert would, without storing; size counts distinct rows, and a new row gets handle size().
+TEST(Pools, FindAndSizeWithoutSharing)
+{
+    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+    EXPECT_FALSE(rows.find({ 1, 2 }).has_value());
+    EXPECT_TRUE(rows.empty());
+    const auto before = rows.size();
+    const auto first = rows.insert({ 1, 2 });
+    EXPECT_EQ(first.value, before);
+    EXPECT_EQ(rows.insert({ 1, 2 }), first);
+    EXPECT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.find(std::vector { 1, 2 }), first);
+    EXPECT_FALSE(rows.find({ 2, 1 }).has_value());
+}
+
+// A pool that shares nodes finds what it can build from them: the rows inserted, and their parts.
+TEST(Pools, FindWithSharing)
+{
+    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>();
+    const auto whole = rows.insert({ 1, 2, 3, 4, 5, 6, 7, 8 });
+    const auto memory = rows.memory_usage();
+    EXPECT_EQ(rows.find({ 1, 2, 3, 4, 5, 6, 7, 8 }), whole);
+    EXPECT_TRUE(rows.find({ 1, 2, 3, 4 }).has_value());  // the first half is a node of the whole
+    EXPECT_FALSE(rows.find({ 4, 3, 2, 1 }).has_value());
+    EXPECT_EQ(rows.memory_usage(), memory);
+    EXPECT_EQ(rows.find({ 1, 2, 3, 4 }), rows.insert({ 1, 2, 3, 4 }));
+    EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing
+}
 
 TYPED_TEST(Pools, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
@@ -414,7 +445,7 @@ void expect_threads_agree_on_records(int rounds)
                     {
                         const auto record = typename P::record_type((round * 7) % 40);
                         if (round % 4 == 3)
-                            mine.push_back(pool.insert(record, [&record](typename P::handle_type) { return record; }).first);
+                            mine.push_back(pool.insert(record, [&record](typename P::handle_type) { return typename P::record_type(record); }).first);
                         else
                             mine.push_back(pool.insert(record).first);
                         // Read a record published earlier, while others insert.

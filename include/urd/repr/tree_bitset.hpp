@@ -67,16 +67,17 @@ public:
 
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
+    { return insert_blocks(blocks_of(elements)); }
+    /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
+    /// already, as a row or as a part of a longer one (all-zero parts and one-block rows need none). Else none.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
     {
-        auto bits = std::vector<std::size_t>();
-        for (const auto& element : elements)
-            bits.push_back(index_of<K>::to_index(K(element)));
-        const auto width = bits.empty() ? std::size_t { 0 } : std::ranges::max(bits) + 1;
-        auto blocks = std::vector<Block>(Bits::num_blocks(width));
-        auto row = Bits(blocks.data(), width);
-        for (const auto bit : bits)
-            row.set(bit);
-        return insert_blocks(blocks);
+        const auto blocks = blocks_of(elements);
+        if (blocks.empty())
+            return handle_type {};
+        const auto root = find_recursive(blocks);
+        return root ? std::optional(handle_type { *root, static_cast<std::uint32_t>(blocks.size()) }) : std::nullopt;
     }
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
     /// from blocks at a changed length, to the root are rebuilt.
@@ -214,9 +215,7 @@ public:
 private:
     static constexpr std::uint32_t zero(std::uint32_t size) { return size == 1 ? 0 : zero_subtree; }
     static constexpr std::uint32_t child_size(std::uint32_t size, std::uint32_t k)
-    {
-        return std::min(tree::chunk<Arity>(size), size - k * tree::chunk<Arity>(size));
-    }
+    { return std::min(tree::chunk<Arity>(size), size - k * tree::chunk<Arity>(size)); }
     static Children unused_children()
     {
         auto children = Children {};
@@ -231,6 +230,21 @@ private:
         return blocks;
     }
 
+    /// The blocks of the row holding `elements`, up to its last nonzero block.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] static std::vector<Block> blocks_of(const Elements& elements)
+    {
+        auto bits = std::vector<std::size_t>();
+        for (const auto& element : elements)
+            bits.push_back(index_of<K>::to_index(K(element)));
+        const auto width = bits.empty() ? std::size_t { 0 } : std::ranges::max(bits) + 1;
+        auto blocks = std::vector<Block>(Bits::num_blocks(width));
+        auto row = Bits(blocks.data(), width);
+        for (const auto bit : bits)
+            row.set(bit);
+        return blocks;
+    }
+
     /// Stores the node of a subtree covering `size` blocks, unless all its children are zero.
     std::uint32_t insert_node(const Children& children, std::uint32_t size)
     {
@@ -240,6 +254,31 @@ private:
             {
                 const auto found = m_nodes.insert(children).first;
                 return static_cast<std::uint32_t>(found - m_nodes.begin());
+            }
+        return zero_subtree;
+    }
+
+    /// insert_recursive's root for `blocks`, looked up instead of stored: none where a node is missing.
+    [[nodiscard]] std::optional<std::uint32_t> find_recursive(std::span<const Block> blocks) const
+    {
+        assert(!blocks.empty());
+        if (blocks.size() == 1)
+            return blocks.front();
+        const auto size = static_cast<std::uint32_t>(blocks.size());
+        auto children = unused_children();
+        for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += tree::chunk<Arity>(size))
+        {
+            const auto child = find_recursive(blocks.subspan(offset, child_size(size, k)));
+            if (!child)
+                return std::nullopt;
+            children[k] = *child;
+        }
+        const auto count = tree::num_children<Arity>(size);
+        for (std::uint32_t k = 0; k < count; ++k)
+            if (children[k] != zero(child_size(size, k)))
+            {
+                const auto found = m_nodes.position(children);
+                return found ? std::optional(static_cast<std::uint32_t>(*found)) : std::nullopt;
             }
         return zero_subtree;
     }
@@ -298,9 +337,7 @@ private:
             std::uint32_t size = 0;
 
             [[nodiscard]] bool contains(std::uint32_t other_offset, std::uint32_t other_size) const
-            {
-                return offset <= other_offset && other_offset + other_size <= offset + size;
-            }
+            { return offset <= other_offset && other_offset + other_size <= offset + size; }
         };
 
         const Nodes* m_nodes;

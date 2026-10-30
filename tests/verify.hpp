@@ -69,15 +69,11 @@ std::vector<const typename R::mapped_type*> value_addresses(const R& range)
 
 template<typename R>
 std::ranges::iterator_t<const R> const_at(const R& range, std::size_t pos)
-{
-    return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos));
-}
+{ return std::ranges::next(std::ranges::begin(range), static_cast<std::ranges::range_difference_t<R>>(pos)); }
 
 template<typename R>
 std::size_t position_of(const R& range, const std::ranges::iterator_t<const R>& it)
-{
-    return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it));
-}
+{ return static_cast<std::size_t>(std::ranges::distance(std::ranges::begin(range), it)); }
 
 /// What a container's contents must be after the same operations: placed by value as Traits says (in sorted
 /// order, each element once), or where they were put.
@@ -584,6 +580,15 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     };
     auto rows = std::vector<std::vector<E>>();
     auto handles = std::vector<typename P::handle_type>();
+    // The handle of an equal row, or none, whether the pool says none by an empty optional or by index's none.
+    const auto find = [&pool](const std::vector<E>& elements) -> std::optional<typename P::handle_type>
+    {
+        const auto found = pool.find(elements);
+        if constexpr (requires { found.is_none(); })
+            return found.is_none() ? std::nullopt : std::optional(found);
+        else
+            return found;
+    };
 
     constexpr bool sequence_rows = !by_value<traits_t<Row>>;
     auto random = std::mt19937(seed);
@@ -678,6 +683,29 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                     if (pool.contains(handles[each], element) != (std::ranges::find(rows[each], element) != rows[each].end()))
                         return label + "contains answers otherwise than the row";
                 }
+            if (find(rows[each]) != handles[each])
+                return label + "find misses a stored row, or gives another handle";
+        }
+        // find stores nothing; without structural_sharing it finds only rows inserted, and the handles are
+        // 0..size()-1, one per distinct row.
+        auto probe = std::vector<E>();
+        for (int count = length(random); count > 0; --count)
+            probe.push_back(E(pick(random)));
+        const auto found = find(probe);
+        if (pool.memory_usage() != memory)
+            return label + "find stored something";
+        if constexpr (!has<Traits, structural_sharing>)
+        {
+            const auto inserted = std::ranges::find(rows, canonical(probe));
+            if (found.has_value() != (inserted != rows.end()) || (found && *found != handles[static_cast<std::size_t>(inserted - rows.begin())]))
+                return label + "find answers otherwise than the rows inserted";
+            auto distinct = rows;
+            std::ranges::sort(distinct);
+            const auto count = static_cast<std::size_t>(std::ranges::distance(distinct.begin(), std::ranges::unique(distinct).begin()));
+            if (pool.size() != count)
+                return label + "size is not the number of distinct rows";
+            if (std::ranges::any_of(handles, [&pool](const auto handle) { return handle.value >= pool.size(); }))
+                return label + "a handle is not below size()";
         }
     }
     return std::nullopt;
