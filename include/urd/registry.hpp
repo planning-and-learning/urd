@@ -11,7 +11,7 @@
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/grouped_fwd.hpp"
 #include "urd/repr/indexed_fwd.hpp"
-#include "urd/repr/layered.hpp"
+#include "urd/repr/layered_fwd.hpp"
 #include "urd/repr/ordered_map_fwd.hpp"
 #if defined(URD_HAS_GTL)
 #include "urd/repr/parallel.hpp"
@@ -21,7 +21,7 @@
 #include "urd/repr/records_fwd.hpp"
 #include "urd/repr/recycling_fwd.hpp"
 #include "urd/repr/rows_fwd.hpp"
-#include "urd/repr/scoped.hpp"
+#include "urd/repr/scoped_fwd.hpp"
 #include "urd/repr/segmented_fwd.hpp"
 #include "urd/repr/sequence.hpp"
 #include "urd/repr/std_map.hpp"

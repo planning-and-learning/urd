@@ -1,19 +1,13 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/repr/dense_fwd.hpp"
-#include "urd/repr/std_map.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/repr/scoped_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
-#include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <cassert>
 #include <cstddef>
 #include <iterator>
-#include <map>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -180,31 +174,9 @@ private:
     std::vector<std::size_t> m_scopes;
 };
 
-/// Scopes over a flat hash table.
-template<typename K, typename V>
-using ScopedMap = Scoped<boost::unordered_flat_map<K, V, Hash<K>, EqualTo<K>>>;
-/// Scopes over a tree: sorted.
-template<typename K, typename V>
-using ScopedTreeMap = Scoped<std::map<K, V, Less<K>>>;
-/// Scopes over a slot per index: dense keys.
-template<typename K, typename V>
-using ScopedDenseMap = Scoped<IndexMap<K, V, false>>;
-
 }  // namespace urd::repr
 
 namespace urd
 {
-
-/// As Map, with scopes undone by a log.
-template<typename Map>
-    requires container_traits<Map>::declared && has<container_traits<Map>, unique, functional>
-struct container_traits<repr::Scoped<Map>> : with_t<container_traits<Map>, scoped>
-{
-};
-template<typename Map>
-struct parts<repr::Scoped<Map>>
-{
-    using type = detail::type_list<Map>;
-};
 
 }  // namespace urd

@@ -238,12 +238,6 @@ struct container_traits<detail::Store<R, S>> : S
 {
 };
 
-/// The representations whose family has no header yet are defined by this header (traits.hpp, defined_in).
-template<>
-struct include<"urd/store.hpp">
-{
-};
-
 // A Store's semantics as an element of another Store, Hash, EqualTo and Less, are decided by its request S alone:
 // whether a Store hashes, compares or orders is asked while the outer Store is resolved, where the inner's
 // representation is named but not yet defined. Only the bodies touch R, and they are instantiated where the Store

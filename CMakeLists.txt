@@ -187,8 +187,8 @@ if(URD_BUILD_TESTS)
     # The bare include (urd/store.hpp and nothing else) and the survey, a file holding many Stores.
     add_executable(test_budget_bare_control EXCLUDE_FROM_ALL tests/budget/bare.cpp)
     target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
-    urd_budget(bare test_budget_bare_control tests/budget/bare.cpp 400 400)
-    urd_budget(survey survey tests/survey.cpp 1100 950)
+    urd_budget(bare test_budget_bare_control tests/budget/bare.cpp 210 210)
+    urd_budget(survey survey tests/survey.cpp 720 650)
 
     # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
     # of a target that links urd (so the cases build nothing and run in parallel under ctest -j). The control
@@ -255,7 +255,7 @@ if(URD_BUILD_TESTS)
     urd_compile_fail_expects(compile_fail_store 22 "begin/end: a queue")
     urd_compile_fail_expects(compile_fail_store 26 "a pool is reached by handle")
     # A Store whose family header is missing names it (store.hpp, complete_representation).
-    urd_compile_fail_cases(compile_fail_include tests/compile_fail_include.cpp 9)
+    urd_compile_fail_cases(compile_fail_include tests/compile_fail_include.cpp 13)
     if(URD_WITH_GTL)  # the parallel family exists only with gtl; without, its case has nothing to leave out
         urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/use/parallel[.]hpp\"")
     else()
@@ -269,6 +269,10 @@ if(URD_BUILD_TESTS)
     urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/use/nodes[.]hpp\"")
     urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/use/queues[.]hpp\"")
     urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/use/pools[.]hpp\"")
+    urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/use/hash[.]hpp\".*include<.*\"urd/use/layers[.]hpp\"")
+    urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/use/scopes[.]hpp\"")
+    urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/use/hash[.]hpp\"")
+    urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/use/nodes[.]hpp\"")
     if(NOT URD_WITH_GTL)
         urd_compile_fail_cases(compile_fail_gtl tests/compile_fail_gtl.cpp 2)
         urd_compile_fail_expects(compile_fail_gtl 1 "URD_WITH_GTL")

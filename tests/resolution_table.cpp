@@ -42,6 +42,9 @@ void families_of(std::vector<std::string>& into)
     auto header = std::string(urd::defined_in<R>.c_str());
     header = header.substr(header.rfind('/') + 1);
     header = header.substr(0, header.rfind('.'));
+    if (header == "all")
+        throw std::runtime_error("a registered representation names no family header (urd::defined_in, beside its declaration): "
+                                 + std::string(urd::test::name<R>::id));
     if (std::find(into.begin(), into.end(), header) == into.end())
         into.push_back(header);
 }
@@ -155,8 +158,8 @@ std::string generate()
            "against the registry by the `resolution` test: a change to `include/urd/registry.hpp` that moves a request shows up\n"
            "here. Each row is a request as written, the properties its spec holds (what the request implies beyond what it\n"
            "states), the representation chosen, and the family header (`urd/use/<family>.hpp`) a file holding such a Store\n"
-           "includes (`store`: defined by urd/store.hpp itself, until the family has its header). A request is one of three\n"
-           "things: served; `none` and missing, a\n"
+           "includes, a wrapper's part first. This table is built with no family header included: resolving completes nothing.\n"
+           "A request is one of three things: served; `none` and missing, a\n"
            "representation that could be written (its note says which); or incompatible, a contract no representation can\n"
            "keep, which `Store` rejects with a message (the rules are listed in docs/properties.rst, \"Incompatible\n"
            "combinations\"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`\n"
