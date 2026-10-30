@@ -264,3 +264,11 @@ tag hierarchy and tests/names.hpp and checked by a test. Cost classes and
 workload hints are deferred: lookup cost follows from the order, iteration
 over the key range from dense and sparse, an erase class waits for
 swap-erase on interners.
+
+Status (2026-10-30, M18): a Store offers an operation wherever every
+representation serving its request does it at the best cost. Interning
+pools find rows without inserting; pools without structural_sharing are
+counted and erase by moving the last row in, reporting the moved handle
+(SURVEY gap 3). Queues iterate; insertion-ordered sets have positions;
+sorted sets and maps have front and back; change logs answer was_added.
+Scoped equality compares tables, layered Stores have no ==.

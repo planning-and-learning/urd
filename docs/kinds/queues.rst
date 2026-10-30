@@ -14,7 +14,7 @@ Queues
 
 .. cpp:namespace:: urd::Queue
 
-A queue is reached by its front or top and never iterated. An access tag makes a value Store a queue.
+A queue is reached by its front or top, and visited by iteration (not a bucket queue). An access tag makes a value Store a queue.
 
 .. list-table::
    :header-rows: 1
@@ -52,13 +52,19 @@ Member functions
 ----------------
 
 Construction (``Store()``, from elements) and capacity (``size``, ``empty``, ``reserve``) are as for :doc:`sets`. A
-queue is not iterated and not compared.
+queue is not compared: a heap's order is no part of its contents.
+
+.. cpp:function:: const_iterator begin() const
+.. cpp:function:: const_iterator end() const
+
+   The elements in the order pushed (``fifo``, ``lifo``), or in no particular order (``by_priority``), O(n). Not with
+   ``monotone_priority``: a bucket queue would visit the bucket of every priority in its range.
 
 .. cpp:function:: void push(const value_type& element)
 .. cpp:function:: void push(value_type&& element)
 .. cpp:function:: template<typename... Args> void emplace(Args&&... args)
 
-   With ``handles``, ``push`` gives the handle that reaches the element later.
+   With ``handles``, ``push`` and ``emplace`` give the handle that reaches the element later.
 
 .. cpp:function:: void pop()
 
@@ -67,8 +73,9 @@ queue is not iterated and not compared.
    empties it: a request for one is rejected.
 
 .. cpp:function:: const value_type& front() const
+.. cpp:function:: const value_type& back() const
 
-   ``fifo``: the element that came first.
+   ``fifo``: the element that came first, and the one that came last.
 
 .. cpp:function:: const value_type& top() const
 
@@ -83,6 +90,10 @@ queue is not iterated and not compared.
 
    With ``handles``: replaces the element of ``handle``, which moves to its place in the order; removes it,
    wherever it is.
+
+.. cpp:function:: const value_type& operator[](const handle_type& handle) const
+
+   With ``handles``: the element of ``handle``, wherever it is in the order, O(1).
 
 Complexity
 ----------

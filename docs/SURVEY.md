@@ -315,7 +315,7 @@ matrices three ways.
 |---|---|---|---|
 | 1 | **A Store as a hashed key.** Done (2026-10-30): `Hash<Store>` for Stores whose contents fix their order (sorted, canonical, sequences); an unordered Store stays unhashable, by design | yggdrasil `incremental_bound.hpp:156` (plans by a bit vector), `goal_search.hpp:116` (memo by a sorted row); tyr `seen_bindings`; loki union keys in hashed form; every "set of sets" | `Hash<Store>` by `hash_range` over its elements (a map's entries), `EqualTo` through its `operator==`; a pin in `tests/store.cpp` |
 | 2 | **Layered interner**: positions continuing after a frozen parent's, `find` falling through | loki's 40 repositories, one layer per translation phase and per task; yggdrasil's 22 `BasicSymbolRepository` instantiations and the per-relation slots; `GoalHeuristic::m_states` (ids counting across a clear) | `Layered<IndexedSet>` whose positions add the parent's size (ROADMAP M6's deferred item) |
-| 3 | **Swap-erase on interned rows, reported**: `erase(h)` on `RowInterner` that moves the last row in and returns the moved handle; `replace(key, old, new)` on `multi` Stores. Recorded (M15): the operation's shape is `std::optional<handle_type> erase(handle_type)`, the moved handle or none; own milestone, as interners are `unique` and `monotone` today | yggdrasil: 37 `RawArraySet` sites (`Builder<Relation>` among them), the join and semijoin postings, `ProjectionEvaluator`, `Counts` | the two operations; every sync becomes two calls |
+| 3 | **Swap-erase on interned rows, reported**. Done (M18, 2026-10-30) for the erase: `std::optional<handle_type> erase(handle_type)` on row pools without `structural_sharing`, `monotone`, `concurrent` or `layered`; `replace` needs no operation of its own (find, erase, insert: O(r), as yggdrasil's chain scan). Was: `erase(h)` on `RowInterner` that moves the last row in and returns the moved handle; `replace(key, old, new)` on `multi` Stores. Recorded (M15): the operation's shape is `std::optional<handle_type> erase(handle_type)`, the moved handle or none; own milestone, as interners are `unique` and `monotone` today | yggdrasil: 37 `RawArraySet` sites (`Builder<Relation>` among them), the join and semijoin postings, `ProjectionEvaluator`, `Counts` | the two operations; every sync becomes two calls |
 | 4 | **`change_log` over dense sets and fixed-shape bit rows** | runir `DenotationState` and its ~12 evaluators; tyr `FactsWorkspace`'s fact sets plus delta fact sets | the dense half done (M15, 2026-10-29): `Store<key<I>, dense, change_log>` is `ChangeLogged` over the tracked bitset (sorted and tree sets too); for bit rows, `assign_row` recording changed bits by XOR of words, or a logging row proxy, remains |
 | 5 | **Dense keys with stable references or concurrent growth**, no generations | search nodes: tyr 3, runir 2 (`dense, stable_refs`); tyr `ProgramWorkspace` rule workspaces; tyr `DynamicNoveltyTable` and yggdrasil `ConcurrentSlotDirectory` (dense concurrent); tyr `FDRContext` | `dense, stable_refs` done (M14, 2026-10-29): `IndexMap` over segmented slots without the lock, with or without generations; `DenseSet` with atomic `fetch_or` for `dense, concurrent` and the concurrent slot directory (a dense concurrent map without generations) remain |
 | 6 | **Growable dense multimap, dynamic bidirectional graph** | runir `StaticGraphBuilder`, `DynamicGraph`, `GeneratedSentences`; yggdrasil's incremental `DistanceGraph` + `m_reverse` | the multimap half done (M15, 2026-10-29): `Store<key<I>, value<V>, multi, dense>` is `GroupedMultiMap<DenseGroups>`, a vector of values per index; the dynamic bidirectional graph (`Bidirectional` over `DenseGroups`) and `assign` to freeze remain |
@@ -331,3 +331,42 @@ matrices three ways.
 Found by the pins, and fixed: a `concurrent` map by an indexable key (`Store<key<int>, value<V>, concurrent>`) resolved
 to the thread-safe generation `IndexMap`, a slot per index, because the parallel hash map stood after the dense containers
 in the registry; it now stands among the hash tables, and `tests/store.cpp` pins it.
+
+## Third pass: yggdrasil re-read (2026-10-30)
+
+yggdrasil `dev-fix-point` at d5fa32f with its uncommitted datalog changes, read in full in `database/datalog`, the
+evaluation layer (`evaluation`, `operators`, `relation`, `query`, `optimization`, `search`) and `containers`. What
+it changed here: M18 (docs/ROADMAP.md), and the notes below.
+
+**Corrections to the second pass.**
+- The datalog `Table` is not `Store<key<Row>, change_log>`: it is four row sets (`current`, `added`, `removed`,
+  `frontier`) that share secondary indexes chosen at run time; `removed` is written apart from `current` (DRed), and
+  the old version is the read `current − added + removed`.
+- `AggregateStratum`'s counted multiset is `Store<key<uint_t>, value<size_t>, sorted>` (a tree map);
+  `Store<value<uint_t>, sorted>` resolves to a flat multiset with O(n) insert and erase.
+- `UnorderedMultiMap` is chained entries with a free list, which allocate nothing after warm-up; the request
+  `Store<key<K>, value<V>, multi, retains>` resolves to `boost::container::flat_multimap` (sorted, O(n) insert), and
+  plain `multi` to `PostingMap`, which frees its per-key vectors on clear (gap N1 below).
+- `GoalHeuristic`'s state ids need no layered interner (the id is a map value from a counter); `WeightedStratum`'s
+  heap needs no handles (lazy deletion); `DistanceGraph` with its reverse is two dense multimaps today.
+- Use counts: `SegmentedVector` has no use outside the containers, `IndexedHashSet` three, `BasicSymbolRepository`
+  21 instantiations. The tree sets, block and bit-packed pools, the relation repository and `ConcurrentSlotDirectory`
+  are used only in yggdrasil's tests (gap 5 has no yggdrasil site). An insert with a factory given the reserved index
+  exists (`insert_with`, `LayeredPool::insert(key, make)`), and `buffer::IndexedHashSet` is `ArenaInterner`.
+
+**New gaps**, ranked by sites:
+
+| # | Gap | Sites | Smallest addition |
+|---|---|---|---|
+| N1 | **Postings that keep their storage** across clears | the 7 hash-postings declarations, rebuilt per join or index rebuild | a `retains` `PostingMap` (keep each key's vector), or chained entries with a free list |
+| N2 | **Clear and rederive under a change log is O(n²)**: `ChangeLogged` erases from an order-keeping `IndexedSet` per reinsert | the snapshot-and-diff in `recursive.cpp`, `weighted.cpp`, `evaluator.cpp` | an unordered log (swap-erase), or `assign(first, last)` on a `change_log` Store recording the diff |
+| N3 | **A change log on maps**, and its interface as a relation: `contains(span)` and positional rows on `added()`/`removed()` (`was_added` landed in M18) | `ProjectionEvaluator`'s counts over a logged relation; every Delta consumer (`RelationViewConcept`) | `ChangeLogged` over maps; a positional variant |
+| N4 | **Rows of one width in one arena, found by span without allocating** (gap 10 and gap 14 together) | `RawArraySet`'s 37 sites | `RowInterner` over flat storage, `find` by a probe range |
+| N5 | **A dense map with packed values and swap-erase** (`Store<key<V>, value<T>, dense, contiguous>` is none) | `DistanceEvaluator`'s active sources | `OrderedMap` over `SparseSet` with unordered swap-erase |
+| N6 | **A partition over hashed keys** (`RESOLUTION.md` said no site asks) | `estimation.cpp:33-47` | `DisjointSets` over an interner |
+| N7 | Hashed sets and postings that clear in proportion to their elements | `frontier`, cleared per round and per settled row | measure first |
+
+Found in yggdrasil, not urd's: `Executor::m_keys` is sized from `program.rules` alone (`executor.hpp:22-27`), but the
+same executor runs `GoalSearch`'s target rules, whose `first_achievers` join two rules' literals; such a rule can
+index past it.
+
