@@ -341,9 +341,10 @@ entries is rejected with a message, compile-fail case 55).
 
 ## Queues
 
-A Store with an order of leaving is a queue: `fifo`, `lifo` or `by_priority` (least first by `urd::Less`). It is
-not iterated; it offers `push`, `emplace`, `pop`, `size`, `empty`, `front()` (fifo) or `top()` (the others), and
-`clear` unless it is `monotone`. They resolve to `repr::Fifo` (a deque), `repr::Lifo` and `repr::Heap` (vectors,
+A Store with an order of leaving is a queue: `fifo`, `lifo` or `by_priority` (least first by `urd::Less`). It offers
+`push`, `emplace`, `pop`, `size`, `empty`, `front()` and `back()` (fifo) or `top()` (the others), `clear` unless it is
+`monotone`, and `begin`/`end`: in the order pushed, or for a priority queue in none (a bucket queue, which would visit
+its whole priority range, is not iterated). It is not compared. They resolve to `repr::Fifo` (a deque), `repr::Lifo` and `repr::Heap` (vectors,
 which retain their storage across clears) in `include/urd/repr/queues.hpp`; the standard adaptors lack `clear`,
 which a queue reused per search needs. A queue's container declares its order in `container_traits` and offers
 the operations above in place of a range's (`include/urd/interface.hpp`); tests/queues.cpp checks each against a
@@ -441,8 +442,10 @@ constant_clear>`). A matrix of bits of fixed shape waits for a `uniform` propert
 
 ## Pools: rows by handle
 
-A Store with `handles` is a pool: `insert` gives a handle, and the element (a row) comes back by it. It is neither
-iterated nor counted by rows.
+A Store with `handles` is a pool: `insert` gives a handle, and the element (a row) comes back by it. It is not
+iterated; without `structural_sharing` it is counted, its handles 0..size()-1, and `find(row)` gives the handle insert
+would without storing. A row pool without `structural_sharing`, `monotone`, `concurrent` or `layered` erases by moving
+its last row into the hole and reporting which handle moved.
 
 - `handles, unique`: an interning pool. Equal rows get equal handles, so a handle stands for its row in comparisons
   and as a key. `get(h)`, `read(h, span)`, `row_size(h)`, `memory_usage()`; a successor goes in as a delta:
@@ -479,7 +482,7 @@ changes values by key only, since Boost's flat maps would let a key be overwritt
 
 `Store` holds only what every Store has, whatever its representation: construction from elements and swap.
 Everything else is a facet, even `sizing` (size, empty), `iteration`, `equality` and `ordering` (== and <=>), and
-`capacity` (reserve): every kind so far has them, but a queue would not iterate and a filter would not count. Each group of properties
+`capacity` (reserve): every kind so far has them, but a filter would not count. Each group of properties
 has a facet in `include/urd/store/`, a class with the members those properties allow, which the Store
 inherits where its properties switch it on: `lookup` (kept by value or key), `ordered_lookup` (`sorted`), `reverse_iteration` (an order: `sorted`, or a sequence),
 `positions` (a sequence), `contiguous_data`, `growth`, `removal`, and `values_by_key` (a map with unique keys).
@@ -488,6 +491,14 @@ list of bases. Within one Store each member name lives in one facet only, so tha
 between two; across kinds a name recurs (`insert` in `growth`, `pool`, `slots` and `grouping`), which the
 denials record per name. Facets take their types from `store_types`, as the Store is incomplete while they are
 built. A Store whose facets are off is no larger than its representation.
+
+Which operations a request gets follows one rule: a Store offers an operation wherever every representation that
+can serve its request performs it at the best cost there is for it, and nowhere else. A pool without
+`structural_sharing` is served by `RowInterner` alone, which counts its rows in O(1), so it has `size()`; a tree pool
+cannot count its rows without a list of them, so it has not. Where a request rules an operation out, a denial (or a
+denied overload in the facet that declares the name) says which property does, and a compile-fail case pins it. A
+new representation that cannot do an offered operation optimally must not serve those requests, or the rule moves
+the operation off them.
 
 **Denials.** Where a facet is off, its names would be missing and a call would fail with "no member named
 insert" and no word on why. `store/denials.hpp` stands in for them: for each group of names, a class declaring

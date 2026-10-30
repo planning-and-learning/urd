@@ -96,6 +96,13 @@ Member functions
    A :cpp:class:`view\<Record, Store\> <urd::view>` of the record through this Store; of a layered pool, through the layer that
    owns it.
 
+.. cpp:function:: std::size_t count(const record_type& record) const
+.. cpp:function:: const_iterator begin() const
+.. cpp:function:: const_iterator end() const
+
+   The records in index order, O(n). Not where ``layered``: there each record is reached through the layer that owns
+   it, so walk the indices.
+
 .. cpp:function:: std::size_t size() const
 .. cpp:function:: bool empty() const
 .. cpp:function:: std::size_t memory_usage() const

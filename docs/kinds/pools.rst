@@ -16,9 +16,10 @@ Pools
 
 .. cpp:namespace:: urd::Pool
 
-A pool is reached by handle, neither iterated nor counted (an interning pool may share parts of its rows). A handle
-is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in full numbers them in the order first inserted; a tree pool
-keeps a handle of its own.
+A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in
+full numbers them 0..size()-1, a new row taking ``size()``, so a pool without ``structural_sharing`` is counted and walked
+by its handles. A pool with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them:
+it has a handle of its own, and no ``size``.
 
 .. list-table::
    :header-rows: 1
@@ -64,6 +65,25 @@ Member functions: interning pools (``handles, unique``)
 .. cpp:function:: handle_type insert(std::initializer_list<element> elements)
 
    The handle of the row with these elements: an earlier handle where an equal row is stored.
+
+.. cpp:function:: template<std::ranges::input_range Elements> std::optional<handle_type> find(const Elements& elements) const
+.. cpp:function:: std::optional<handle_type> find(std::initializer_list<element> elements) const
+
+   The handle ``insert(elements)`` would give, where inserting would store nothing; else none. Without
+   ``structural_sharing``, an equal row inserted before. A tree pool also finds a row it can build from the nodes it
+   holds, such as a part of a longer row.
+
+.. cpp:function:: std::size_t size() const
+.. cpp:function:: bool empty() const
+
+   Without ``structural_sharing``: the distinct rows, whose handles are 0..size()-1. A row is new where ``insert`` gives
+   handle ``size()`` as it was before.
+
+.. cpp:function:: std::optional<handle_type> erase(handle_type handle)
+
+   Without ``structural_sharing``, ``monotone``, ``concurrent`` or ``layered``: erases the row by moving the last row
+   into its place, which then has ``handle``; gives the handle the moved row had, or none where the erased row was the
+   last. The moved row's views stay valid. Whatever keeps handles (postings over the rows, counts) follows the move.
 
 .. cpp:function:: handle_type insert(handle_type base, std::span<const write_type> writes)
 
@@ -142,19 +162,19 @@ r a row's length; k the changes in a delta; A the tree arity (4).
      - ``contains``
      - memory
    * - ``RowInterner``
-     - O(r)~
+     - O(r)~; ``find`` O(r)~, ``erase`` O(r)~ (hashes the moved row), ``size`` O(1)
      - O(r)~ (copies the row)
      - O(r); ``view(h)`` O(1)
      - O(r); O(1) for dense rows
      - each distinct row once, in full
    * - ``TreeVectorSet``
-     - O(r)~
+     - O(r)~; ``find`` O(r)~
      - O(k log\ :sub:`A` r)~
      - O(r)
      - —
      - nodes shared across rows: a delta adds about k·log\ :sub:`A` r nodes
    * - ``TreeBitsetSet``
-     - O(r/32)~
+     - O(r/32)~; ``find`` O(r/32)~
      - O(k log\ :sub:`A` (r/32))~
      - O(r/32 + set bits)
      - O(log\ :sub:`A` (r/32))

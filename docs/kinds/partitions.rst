@@ -14,7 +14,8 @@ Partitions
 
 .. cpp:namespace:: urd::Partition
 
-A partition groups indices into disjoint classes, reached by ``merge`` and ``find``. It is not iterated.
+A partition groups indices into disjoint classes, reached by ``merge`` and ``find``. It is not iterated: enumerating a
+class would need a link per element that every partition would pay for.
 
 Template parameters
 -------------------
@@ -36,6 +37,10 @@ Member functions
 .. cpp:function:: key_type find(const key_type& element) const
 
    The element that names the class of ``element``.
+
+.. cpp:function:: bool contains(const key_type& element) const
+
+   Whether ``element`` is an element: its index is below ``size()``. O(1).
 
 .. cpp:function:: bool same(const key_type& lhs, const key_type& rhs) const
 .. cpp:function:: std::size_t class_size(const key_type& element) const

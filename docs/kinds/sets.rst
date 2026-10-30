@@ -183,8 +183,11 @@ Set algebra
    Inserts every element of ``other``; whether that added any, as fixpoints ask. Two bitsets do all three by
    words.
 
-Positions (``positional``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Positions (``positional``, and ``insertion_ordered``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every insertion-ordered set is kept in one array, so it has positions whether the request names them or not (not with
+``reclaims``).
 
 .. cpp:function:: const_reference operator[](std::size_t pos) const
 .. cpp:function:: const_reference at(std::size_t pos) const
@@ -205,6 +208,13 @@ Positions (``positional``)
 
    A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/view.hpp`` included).
 
+Least and greatest (``sorted``, not ``dense``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``front()`` and ``back()``, as above, give a sorted set's least and greatest elements (a map's entries with the least
+and greatest keys), O(1) in a tree or a sorted array; the Store must not be empty. Dense keys find their first by a
+scan of the key range, so a dense set reads ``*begin()`` where that cost is meant.
+
 Layers (``layered``)
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -212,7 +222,7 @@ Layers (``layered``)
 
    Lookups find ``parent``'s elements too, from now on; ``nullptr`` ends it. The Store holds, iterates and erases
    only its own elements; inserting what the parent has inserts nothing. The parent is not owned: it must outlive
-   the layer and stay unchanged.
+   the layer and stay unchanged. A layered Store has no ``==``: its contents include its parent's.
 
 .. cpp:function:: const Set* parent() const noexcept
 
@@ -225,6 +235,11 @@ Change log (``change_log``)
    Exactly the elements that changed since ``clear_changes()``; an element added and removed again is in neither.
    Semi-naive evaluation works on ``added()`` each round.
 
+.. cpp:function:: bool was_added(const value_type& element) const
+.. cpp:function:: bool was_removed(const value_type& element) const
+
+   Whether ``element`` is among ``added()``, or ``removed()``: O(1) expected.
+
 .. cpp:function:: void clear_changes()
 
 Comparison
@@ -232,7 +247,8 @@ Comparison
 
 .. cpp:function:: friend bool operator==(const Set& lhs, const Set& rhs)
 
-   Equal contents: by the representation's ``==`` where it has one, else element by element in iteration order.
+   Equal contents: by the representation's ``==`` where it has one, else element by element in iteration order. Not
+   where ``layered``.
 
 .. cpp:function:: friend auto operator<=>(const Set& lhs, const Set& rhs)
 

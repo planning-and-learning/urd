@@ -162,7 +162,8 @@ Scopes (``scoped``)
 .. cpp:function:: void pop_scope()
 
    Opens a scope; undoes every change made since the matching ``push_scope``, latest first, so an inner binding
-   shadows an outer one until its scope ends.
+   shadows an outer one until its scope ends. Two scoped maps compare equal by the bindings in force, whatever scopes
+   are open.
 
 .. cpp:function:: std::size_t depth() const
 
@@ -176,7 +177,7 @@ Scopes (``scoped``)
 Layers (``layered``)
 ^^^^^^^^^^^^^^^^^^^^
 
-As for sets, and in a map a key's own value shadows the parent's: ``insert_or_assign`` writes its own, and ``at()``
+As for sets (no ``==``), and in a map a key's own value shadows the parent's: ``insert_or_assign`` writes its own, and ``at()``
 on a layer that may change makes an own value before handing it out: a layer over the parent's value where values
 layer themselves (a map of layered pools layers through both levels, see :doc:`records`), else a copy of it. Read
 through a const Store to avoid that.

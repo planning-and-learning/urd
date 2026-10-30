@@ -14,10 +14,11 @@ docs/ROADMAP.md). The rest is deferred, for these reasons:
   they fill their range, or they are few in it. Containers that iterate over the key range (`DenseSet`, `IndexMap`)
   are chosen only for `dense` keys, where the range is about n.
 - **Erase** (`log_erase` → `constant_erase`): the only class that draws a real line, between positional or
-  insertion-ordered storage (O(n) erase that keeps order) and everything else. It has no site of its own. It comes
-  with gap 3 of docs/SURVEY.md (swap-erase on interners, `std::optional<handle_type> erase(handle_type)`), where
-  `positional, constant_erase` is the first request to need it, or with the tombstoned insertion-ordered set
-  deferred in M14.
+  insertion-ordered storage (O(n) erase that keeps order) and everything else. It has no site of its own. Gap 3 of
+  docs/SURVEY.md landed without it (M18): a row pool's swap-erase follows from the request (no
+  `structural_sharing`, `monotone`, `concurrent` or `layered`), so no tag had to ask for it. The class comes, if
+  ever, with a set that must erase in O(1) and keep positions, such as the tombstoned insertion-ordered set deferred
+  in M14.
 - **Workload hints** (`large`, `read_mostly`, `iterate_often`): none has a benchmark showing it changes the best
   choice. `iterate_often` restates `contiguous`, and `large` is the default order. A hint is added only with such a
   benchmark in docs/BENCHMARKS.md.

@@ -157,7 +157,7 @@ declare the guarantees in `container_traits`; the rest only a request states.
 | threads | `concurrent` | inserts from several threads at once; for maps also `update` and `read`, for pools the operations they offer |
 | memory | `retains`, `reclaims` | storage freed by erase and clear is kept for reuse, or returned |
 | clear | `proportional_clear` → `constant_clear` | clear costs O(elements present), or O(1) |
-| access | `fifo`, `lifo`, `by_priority` | a queue: reached by front or top, not iterated |
+| access | `fifo`, `lifo`, `by_priority` | a queue: reached by front or top; iterated in the order pushed, or a priority queue in none (not a bucket queue) |
 | handles | `handles` | a pool: insert gives a handle; with `unique`, equal rows get equal handles; on a priority queue, push gives a handle to update or erase by |
 | sharing | `structural_sharing` | equal parts of different rows are stored once |
 | scopes, layering | `scoped`, `layered` | changes undone by `pop_scope`; lookups falling through to a parent |
@@ -226,9 +226,9 @@ n elements; U the key range (largest index + 1); r a row's length; k the changes
 
 | Container | insert a row | insert a delta | read a row | `contains` | memory |
 |---|---|---|---|---|---|
-| `RowInterner` | O(r)~ | O(r)~ (copies the row) | O(r); `view(h)` O(1), no copy | O(r); O(1) for dense rows | each distinct row once, in full; dense-set rows as bitset words |
-| `TreeVectorSet` | O(r)~ | O(k log_A r)~ | O(r) | — | nodes shared across rows: a delta adds about k·log_A r nodes |
-| `TreeBitsetSet` | O(r/32)~ | O(k log_A (r/32))~ | O(r/32 + set bits) | O(log_A (r/32)) | as above; all-zero subtrees take nothing |
+| `RowInterner` | O(r)~; `find` O(r)~; `erase(h)` O(r)~, the last row moving in; `size` O(1) | O(r)~ (copies the row) | O(r); `view(h)` O(1), no copy | O(r); O(1) for dense rows | each distinct row once, in full; dense-set rows as bitset words |
+| `TreeVectorSet` | O(r)~; `find` O(r)~ | O(k log_A r)~ | O(r) | — | nodes shared across rows: a delta adds about k·log_A r nodes |
+| `TreeBitsetSet` | O(r/32)~; `find` O(r/32)~ | O(k log_A (r/32))~ | O(r/32 + set bits) | O(log_A (r/32)) | as above; all-zero subtrees take nothing |
 | `SlotVector` | O(1)\* (a freed slot first) | — | O(1) by handle | — | stable slots; erased elements keep their storage |
 
 Measured, not only bounded: for 20,000 versions of a row that each differ from an earlier one in 3 positions, a tree

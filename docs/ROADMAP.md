@@ -460,6 +460,34 @@ already settled by the order (hashed or `sorted`), iteration over the key range 
 class (`constant_erase`) separates only positional and insertion-ordered storage, and comes with gap 3 (swap-erase on
 interners), which is its first use. Hints beyond `small` wait for a benchmark in which one changes the best choice.
 
+## M18: interfaces as expressive as they can be optimal — done
+
+The rule: a Store offers an operation wherever every representation that can serve its request performs it at the
+best cost there is for it (docs/INTEGRATION.md, "The Store's facets"). A re-reading of yggdrasil (2026-10-30,
+docs/SURVEY.md) found unique pools breaking it, and an audit of every facet and denial against it found the rest:
+
+- Correctness: two scoped hash maps with equal bindings compared unequal (equality fell back to iteration order);
+  `Scoped` compares its tables now, and a layered Store, whose contents include its parent's, has no `==`.
+  `emplace` on a priority queue with handles gives the handle.
+- Pools: `find(row)` on every interning pool (the tree pools gained a find that mirrors their insert); `size()` on
+  every pool without `structural_sharing`, whose handles are 0..size()-1; swap-erase on row pools, reporting the
+  handle that moved (gap 3), where the handles are positions no thread reads and no layer continues.
+- Gated too narrowly: positions on insertion-ordered sets; `front`/`back` on sorted sets and maps that are not dense;
+  `was_added`/`was_removed` on change logs; `count` on record pools.
+- With a small new member: iteration of queues (in the order pushed; a priority queue in none); `back()` on fifo
+  queues; reading an element of a priority queue by its handle; `contains` on partitions; iteration of record pools
+  that are not layered. Operations ruled out by a property say which (compile-fail cases 58 to 68).
+
+Not done, with the reason:
+- iteration of slot pools (it needs a live bit per slot) and of bucket queues (O(priority range));
+- enumerating a partition's classes (a link per element that every partition would pay for);
+- a total `size()` on layered sets and maps (own and parent elements may overlap);
+- `data()` on vectors and indexed sets that did not ask for `contiguous` (it would bind such requests to contiguous
+  servers).
+
+Found and left, costs offered that are not the best: `Scoped::at()` logs a copy on every access inside a scope;
+`erase_if` on flat sets is O(n²).
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified

@@ -56,7 +56,7 @@ What a container declares and keeps, checked by the typed tests against a refere
      - ``clear`` costs O(elements present), or O(1).
    * - access
      - ``fifo``, ``lifo``, ``by_priority``
-     - A queue: reached by ``front`` or ``top``, not iterated.
+     - A queue: reached by ``front`` or ``top``; iterated in the order pushed, or a priority queue in none.
    * - handles
      - ``handles``
      - A pool: ``insert`` gives an :cpp:struct:`urd::index`; with ``unique`` equal rows get equal handles; on a
