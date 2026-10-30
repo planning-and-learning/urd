@@ -37,4 +37,13 @@ struct container_traits<std::unordered_multimap<K, V, H, E, Allocator>> : proper
 {
 };
 
+template<typename K, typename V, typename C, typename Allocator>
+inline constexpr auto defined_in<std::map<K, V, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+template<typename K, typename V, typename C, typename Allocator>
+inline constexpr auto defined_in<std::multimap<K, V, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+template<typename K, typename V, typename H, typename E, typename Allocator>
+inline constexpr auto defined_in<std::unordered_map<K, V, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+template<typename K, typename V, typename H, typename E, typename Allocator>
+inline constexpr auto defined_in<std::unordered_multimap<K, V, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+
 }  // namespace urd

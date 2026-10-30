@@ -19,6 +19,15 @@
 #if URD_CASE != 6 && defined(URD_HAS_GTL)
 #include <urd/use/parallel.hpp>
 #endif
+#if URD_CASE != 7
+#include <urd/use/nodes.hpp>
+#endif
+#if URD_CASE != 8
+#include <urd/use/queues.hpp>
+#endif
+#if URD_CASE != 9
+#include <urd/use/pools.hpp>
+#endif
 
 #include <string>
 
@@ -53,4 +62,14 @@ int main()
     auto shared = urd::Store<urd::key<int>, urd::concurrent>();
     (void) shared.size();
 #endif
+    // nodes: std::set is the standard's, its marker urd/use/nodes.hpp's
+    auto tree = urd::Store<urd::key<int>, urd::sorted, urd::reclaims>();
+    (void) tree.size();
+    // queues: the deque queue, by urd/use/queues.hpp
+    auto fifo = urd::Store<urd::value<int>, urd::fifo>();
+    (void) fifo.size();
+    // pools: the row interner, by urd/use/pools.hpp (its rows' family, sequences, is included)
+    using Row = urd::Store<urd::value<int>, urd::frozen>;
+    auto rows = urd::Store<urd::value<Row>, urd::handles, urd::unique>();
+    (void) rows;
 }

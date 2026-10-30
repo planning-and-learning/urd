@@ -16,19 +16,16 @@
 #if defined(URD_HAS_GTL)
 #include "urd/repr/parallel.hpp"
 #endif
-#include "urd/repr/pools.hpp"
-#include "urd/repr/queues.hpp"
+#include "urd/repr/pools_fwd.hpp"
+#include "urd/repr/queues_fwd.hpp"
 #include "urd/repr/records_fwd.hpp"
-#include "urd/repr/recycling.hpp"
+#include "urd/repr/recycling_fwd.hpp"
 #include "urd/repr/rows_fwd.hpp"
 #include "urd/repr/scoped.hpp"
 #include "urd/repr/segmented_fwd.hpp"
 #include "urd/repr/sequence.hpp"
-#include "urd/repr/slots.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
-#include "urd/repr/tree_bitset.hpp"
-#include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
 
 #include <array>

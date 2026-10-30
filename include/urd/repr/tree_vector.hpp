@@ -4,6 +4,7 @@
 #include "urd/interface.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"
+#include "urd/repr/pools_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -80,7 +81,7 @@ struct TreeHandle
 /// Values with the size of a child index and a unique representation are stored inline in the child slots, so they
 /// need no leaf table. A row written in a few positions shares all but those positions' paths to the root. With
 /// ThreadSafe, threads may insert at once, and read rows already inserted while others insert.
-template<typename Row, std::size_t Arity = 4, bool ThreadSafe = false>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
     requires(std::has_single_bit(Arity) && Arity >= 2)
 class TreeVectorSet
 {
@@ -222,18 +223,5 @@ private:
 
 namespace urd
 {
-
-/// Rows of hashable values, sharing equal subtrees; clear keeps the tables' storage.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires hashable<detail::row_element_t<Row>> && (!by_value<traits_t<Row>>)
-struct container_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> :
-    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
-
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct element_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> : container_traits<Row>
-{
-};
 
 }  // namespace urd

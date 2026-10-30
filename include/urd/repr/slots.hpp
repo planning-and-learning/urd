@@ -3,6 +3,7 @@
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
+#include "urd/repr/pools_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <atomic>
@@ -23,7 +24,7 @@ namespace urd::repr
 /// references to the other elements stay valid. An erased element is not destroyed; the slot keeps it, and its
 /// storage, until an insert assigns over it or acquire hands it out as it is. With ThreadSafe, inserts, acquires
 /// and erases of different handles may run concurrently, and with reads of elements not erased.
-template<typename T, bool ThreadSafe = false>
+template<typename T, bool ThreadSafe>
 class SlotVector
 {
     struct NoMutex
@@ -130,12 +131,5 @@ private:
 
 namespace urd
 {
-
-/// Slots never move and are reused, not freed; with ThreadSafe, the operations above run concurrently.
-template<typename T, bool ThreadSafe>
-struct container_traits<repr::SlotVector<T, ThreadSafe>> :
-    properties_of<handles, stable_refs, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
 }  // namespace urd

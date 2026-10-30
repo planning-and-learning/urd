@@ -5,6 +5,7 @@
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"
+#include "urd/repr/pools_fwd.hpp"
 #include "urd/repr/tree_vector.hpp"
 #include "urd/traits.hpp"
 
@@ -42,7 +43,7 @@ struct BlockFlip
 /// children per node. Block i always sits at position i, so changing a block only changes its path to the root; a
 /// handle names the root and the number of blocks up to the last nonzero one, so equal sets have equal handles. With
 /// ThreadSafe, threads may insert at once, and read rows already inserted while others insert.
-template<typename Row, std::size_t Arity = 4, bool ThreadSafe = false>
+template<typename Row, std::size_t Arity, bool ThreadSafe>
     requires(std::has_single_bit(Arity) && Arity >= 2)
 class TreeBitsetSet
 {
@@ -396,18 +397,5 @@ private:
 
 namespace urd
 {
-
-/// Rows that are sets of indices, sharing equal subtrees; clear keeps the table's storage.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires indexable<detail::row_element_t<Row>> && has<traits_t<Row>, unique, dense>
-struct container_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> :
-    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
-
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct element_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> : container_traits<Row>
-{
-};
 
 }  // namespace urd

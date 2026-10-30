@@ -33,4 +33,11 @@ struct container_traits<std::unordered_set<T, H, E, Allocator>> : properties_of<
 {
 };
 
+template<typename T, typename C, typename Allocator>
+inline constexpr auto defined_in<std::set<T, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+template<typename T, typename C, typename Allocator>
+inline constexpr auto defined_in<std::multiset<T, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+template<typename T, typename H, typename E, typename Allocator>
+inline constexpr auto defined_in<std::unordered_set<T, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+
 }  // namespace urd

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/queues_fwd.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -23,17 +24,9 @@
 namespace urd::repr
 {
 
-/// Which element leaves first.
-enum class leaving : std::uint8_t
-{
-    first_in,
-    last_in,
-    least,
-};
-
 /// A queue whose elements leave in the order Order says: first in, over a std::deque; last in, over a std::vector;
 /// the least by Compare (urd::Less, or the order a request gave), as a binary heap in a std::vector.
-template<typename T, leaving Order, typename Compare = Less<T>>
+template<typename T, leaving Order, typename Compare>
 class Queue
 {
     static constexpr bool fifo = Order == leaving::first_in;
@@ -92,7 +85,7 @@ private:
 
 /// The least first by Compare, each element reachable by the handle push gave: update moves it to its new place, erase
 /// removes it wherever it is (an indexed binary heap). The handles of removed elements are given out again.
-template<typename T, typename Compare = Less<T>>
+template<typename T, typename Compare>
 class AddressableHeap
 {
 public:
@@ -197,21 +190,6 @@ private:
     std::vector<handle_type> m_free;  // handles to give out again
 };
 
-/// The integral priority a bucket queue files an element under: its projection where Compare orders by one, else the
-/// element. A type computation, so that asking it of an element completes nothing.
-template<typename T, typename Compare>
-struct bucket_priority_of
-{
-    using type = T;
-};
-template<typename T, typename Compare>
-    requires requires { Compare::projection; }
-struct bucket_priority_of<T, Compare>
-{
-    using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
-};
-template<typename T, typename Compare>
-using bucket_priority_t = typename bucket_priority_of<T, Compare>::type;
 template<typename T, typename Compare>
 [[nodiscard]] constexpr bucket_priority_t<T, Compare> bucket_priority(const T& element)
 {
@@ -225,7 +203,7 @@ template<typename T, typename Compare>
 /// below it lowers it, so the order holds whatever is pushed; where pushes never go below the last popped
 /// (monotone_priority), the scan for the next least only moves forward: push O(1), pop amortized O(1) over the range
 /// of priorities. Equal priorities leave last in first. Clear keeps every bucket's storage.
-template<typename T, typename Compare = Less<T>>
+template<typename T, typename Compare>
 class BucketQueue
 {
 public:
@@ -348,55 +326,9 @@ private:
     size_type m_count = 0;
 };
 
-template<typename T>
-using Fifo = Queue<T, leaving::first_in>;
-template<typename T>
-using Lifo = Queue<T, leaving::last_in>;
-template<typename T>
-using Heap = Queue<T, leaving::least>;
-
 }  // namespace urd::repr
 
 namespace urd
 {
-
-/// A deque: a push or pop at either end moves no other element, so the front stays put while elements queue
-/// behind it. Not retains: the deque frees its blocks on clear and as pops leave them.
-template<typename T>
-struct container_traits<repr::Fifo<T>> : properties_of<fifo, stable_refs, shrinkable>
-{
-};
-
-template<typename T>
-struct container_traits<repr::Lifo<T>> : properties_of<lifo, shrinkable, retains>
-{
-};
-
-/// A ring over one vector: pop and clear keep it.
-template<typename T>
-struct container_traits<repr::RingFifo<T>> : properties_of<fifo, shrinkable, retains>
-{
-};
-
-template<typename T, typename C>
-    requires natural_order<C, T>
-struct container_traits<repr::Queue<T, repr::leaving::least, C>> : properties_of<by_priority, shrinkable, retains>
-{
-};
-
-template<typename T, typename C>
-    requires natural_order<C, T>
-struct container_traits<repr::AddressableHeap<T, C>> : properties_of<by_priority, handles, shrinkable, retains>
-{
-};
-
-template<typename T, typename C>
-    requires std::integral<repr::bucket_priority_t<T, C>> && natural_order<C, T>
-struct container_traits<repr::BucketQueue<T, C>> : properties_of<by_priority, shrinkable, retains>
-{
-};
-/// It is fast only where pushes never go below the last popped, so it serves only requests that say so.
-template<typename T, typename C>
-inline constexpr detail::property_set relies_on<repr::BucketQueue<T, C>> = detail::property_set::of({ tag::monotone_priority });
 
 }  // namespace urd

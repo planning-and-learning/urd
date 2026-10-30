@@ -5,6 +5,7 @@
 #include "urd/interface.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/pools_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -30,7 +31,7 @@ namespace urd::repr
 /// view(h) hands out the stored row without copying: a span of its elements, or a BitsetSpan over its words. Each row
 /// keeps its storage while others are inserted (the table moves the rows' vectors, never their elements), so a view
 /// stays valid until the pool is cleared.
-template<typename Row, bool ThreadSafe = false>
+template<typename Row, bool ThreadSafe>
 class RowInterner
 {
     using element = std::ranges::range_value_t<Row>;
@@ -208,19 +209,5 @@ private:
 
 namespace urd
 {
-
-/// Rows kept in full, each once; clear keeps the storage.
-template<typename Row, bool ThreadSafe>
-    requires hashable<std::vector<detail::row_element_t<Row>>>
-struct container_traits<repr::RowInterner<Row, ThreadSafe>> :
-    properties_of<handles, unique, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
-
-/// Its rows have the properties Row has: they come back as Rows.
-template<typename Row, bool ThreadSafe>
-struct element_traits<repr::RowInterner<Row, ThreadSafe>> : container_traits<Row>
-{
-};
 
 }  // namespace urd
