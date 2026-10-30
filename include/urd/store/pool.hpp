@@ -5,10 +5,13 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <optional>
 #include <ranges>
 #include <span>
+#include <type_traits>
 
 namespace urd::detail::facet
 {
@@ -31,9 +34,7 @@ public:
     /// The handle of the row with these elements: an earlier handle where an equal row is stored.
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
-    {
-        return representation().insert(elements);
-    }
+    { return representation().insert(elements); }
     handle_type insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
     /// The handle of the row `base` with `writes` applied: sorted by position, each position once and within the row.
     /// A pool that shares structure stores only what changed.
@@ -50,24 +51,33 @@ public:
     /// shares structure stores only what changed.
     handle_type insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
         requires(!sequence_rows)
-    {
-        return representation().insert(base, added, removed);
-    }
+    { return representation().insert(base, added, removed); }
     /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
     [[nodiscard]] bool contains(handle_type handle, const row_element& element) const
         requires(!sequence_rows)
+    { return constant().contains(handle, element); }
+
+    /// The handle insert(elements) would give, where inserting would store nothing; else none. Without
+    /// structural_sharing that is an equal row inserted before. A pool with structural_sharing also finds a row it can
+    /// build from the nodes it holds (a part of a longer row), which inserting would then not store either.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
     {
-        return constant().contains(handle, element);
+        const auto found = constant().find(elements);
+        if constexpr (std::same_as<std::remove_const_t<decltype(found)>, std::optional<handle_type>>)
+            return found;
+        else
+            return found.is_none() ? std::nullopt : std::optional(found);
     }
+    [[nodiscard]] std::optional<handle_type> find(std::initializer_list<row_element> elements) const
+    { return find(std::span<const row_element>(elements.begin(), elements.size())); }
 
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
     /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
     /// its bits. Valid until the pool is cleared.
     [[nodiscard]] auto view(handle_type handle) const
         requires requires(const R& rows) { rows.view(handle); }
-    {
-        return constant().view(handle);
-    }
+    { return constant().view(handle); }
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
@@ -76,9 +86,7 @@ public:
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
         requires has<S, shrinkable>
-    {
-        representation().clear();
-    }
+    { representation().clear(); }
 
 private:
     [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }

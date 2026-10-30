@@ -167,10 +167,10 @@ struct spec
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: all but an interning pool (handles, unique), which may share
-    /// parts of its elements and keeps no list of them. A filter would not either.
-    static constexpr bool sized =
-        is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && (!urd_properties.has(tag::unique) || urd_properties.has(tag::flat)));
+    /// Whether it knows how many elements it holds: all but a pool with structural_sharing, which shares parts of its
+    /// rows and keeps no list of them. A filter would not either. Every other pool counts its rows in O(1), and its
+    /// handles are 0..size()-1: a row inserted new gets handle size().
+    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !urd_properties.has(tag::structural_sharing));
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;

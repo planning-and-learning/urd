@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -107,6 +108,17 @@ public:
         const auto size = static_cast<std::uint32_t>(values.size());
         return values.empty() ? handle_type {} : handle_type { insert_recursive(values), size };
     }
+    /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
+    /// already, as a row or as a part of a longer one (an empty or one-element row needs none). Else none.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
+    {
+        const auto values = std::vector<T>(std::ranges::begin(elements), std::ranges::end(elements));
+        if (values.empty())
+            return handle_type {};
+        const auto root = find_recursive(values);
+        return root ? std::optional(handle_type { *root, static_cast<std::uint32_t>(values.size()) }) : std::nullopt;
+    }
 
     /// The row `base` with `writes` applied, which are sorted by unique position within it. Only the paths from
     /// the written positions to the root are rebuilt.
@@ -153,12 +165,19 @@ private:
             return position_of(m_leaves, m_leaves.insert(value).first);
     }
     std::uint32_t insert_node(const Children& children) { return position_of(m_nodes, m_nodes.insert(children).first); }
+    [[nodiscard]] std::optional<std::uint32_t> find_leaf(const T& value) const
+    {
+        if constexpr (inline_leaves)
+            return std::bit_cast<std::uint32_t>(value);
+        else
+            return narrow(m_leaves.position(value));
+    }
+    [[nodiscard]] static std::optional<std::uint32_t> narrow(std::optional<std::size_t> position)
+    { return position ? std::optional(static_cast<std::uint32_t>(*position)) : std::nullopt; }
     /// The position of `it` in `set`, taken after the insert that gave `it` (which may have moved the elements).
     template<typename Set>
     [[nodiscard]] static std::uint32_t position_of(const Set& set, typename Set::const_iterator it)
-    {
-        return static_cast<std::uint32_t>(it - set.begin());
-    }
+    { return static_cast<std::uint32_t>(it - set.begin()); }
 
     std::uint32_t insert_recursive(std::span<const T> values)
     {
@@ -173,6 +192,27 @@ private:
         for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += step)
             children[k] = insert_recursive(values.subspan(offset, std::min(step, size - offset)));
         return insert_node(children);
+    }
+
+    /// insert_recursive's root for `values`, looked up instead of stored: none where a node is missing.
+    [[nodiscard]] std::optional<std::uint32_t> find_recursive(std::span<const T> values) const
+    {
+        assert(!values.empty());
+        if (values.size() == 1)
+            return find_leaf(values.front());
+
+        const auto size = static_cast<std::uint32_t>(values.size());
+        const auto step = tree::chunk<Arity>(size);
+        auto children = Children {};
+        children.fill(tree::unused_child);
+        for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += step)
+        {
+            const auto child = find_recursive(values.subspan(offset, std::min(step, size - offset)));
+            if (!child)
+                return std::nullopt;
+            children[k] = *child;
+        }
+        return narrow(m_nodes.position(children));
     }
 
     /// Rebuilds the subtree `base_root` covering [offset, offset + size) with `writes` applied.

@@ -474,7 +474,8 @@ struct denial
         facet_if<!on::any_on(declares_position), no_position<"position: the Store has no positions; ask for positional (a set) or insertion_ordered (a map)">>;
     using data = facet_if<!on::any_on(declares_data), no_data<"data: the Store's elements are not contiguous; ask for contiguous">>;
     using reserve = facet_if<!on::any_on(declares_reserve), no_reserve<"reserve: the Store does not grow (frozen, or fixed_shape)">>;
-    using sizing = facet_if<!on::any_on(declares_sizing), no_sizing<"size/empty: an interning pool shares parts of its rows and keeps no count of them">>;
+    using sizing =
+        facet_if<!on::any_on(declares_sizing), no_sizing<"size/empty: a pool with structural_sharing shares parts of its rows and keeps no list of them">>;
     using values_by_key = facet_if<!on::any_on(declares_values_by_key),
                                    if_t<is_multi,
                                         no_values_by_key<"try_emplace/insert_or_assign/read: a multimap has many values per key; insert and values(key)">,
