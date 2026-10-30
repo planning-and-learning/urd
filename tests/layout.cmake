@@ -7,12 +7,13 @@ cmake_minimum_required(VERSION 3.21)
 set(allowed_files concepts.hpp elements.hpp flat.hpp index.hpp interface.hpp properties.hpp registry.hpp store.hpp traits.hpp view.hpp)
 set(allowed_directories compose repr semantics store use)
 
-# The resolution table is built from declarations alone: its sources include no family header and no repr header.
+# The resolution and vocabulary tables are built from declarations alone: their sources include no family header and no
+# repr header.
 # Were selection to complete a representation, the table would stop compiling; this keeps the proof honest.
-foreach(source tests/resolution_table.cpp tests/grid.hpp tests/names.hpp)
+foreach(source tests/resolution_table.cpp tests/vocabulary_table.cpp tests/generated.hpp tests/grid.hpp tests/names.hpp)
     file(READ "${ROOT}/${source}" text)
     if(text MATCHES "#include [\"<]urd/(use|repr)/")
-        message(FATAL_ERROR "${source}: the resolution table resolves with declarations only; it includes no urd/use or urd/repr header (tests/layout.cmake)")
+        message(FATAL_ERROR "${source}: the generated tables build from declarations only; it includes no urd/use or urd/repr header (tests/layout.cmake)")
     endif()
 endforeach()
 

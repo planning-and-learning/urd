@@ -400,7 +400,9 @@ struct name<urd::repr::IndexMap<K, V, true, true>>
 template<typename T, urd::repr::leaving Order, typename Compare>
 struct name<urd::repr::Queue<T, Order, Compare>>
 {
-    static constexpr std::string_view id = Order == urd::repr::leaving::least ? "heap_by" : Order == urd::repr::leaving::first_in ? "fifo_by" : "lifo_by";
+    static constexpr std::string_view id = Order == urd::repr::leaving::least    ? std::string_view("heap_by") :
+                                           Order == urd::repr::leaving::first_in ? std::string_view("fifo_by") :
+                                                                                   std::string_view("lifo_by");
     static constexpr std::string_view value = "queue by a given order";
 };
 template<typename T, typename Compare>
@@ -531,6 +533,112 @@ inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names 
 static_assert(tag_names[urd::detail::index(urd::tag::sorted)] == "sorted" && tag_names[urd::detail::index(urd::tag::concurrent)] == "concurrent"
               && tag_names[urd::detail::index(urd::tag::monotone_priority)] == "monotone_priority");
 constexpr std::string_view tag_name(urd::tag of) { return tag_names[urd::detail::index(of)]; }
+
+/// What a tag is to the one who writes a request, for share/urd/vocabulary.json (tests/vocabulary_table.cpp):
+/// - guarantee: a container declares it, a request may ask for it;
+/// - demand: the caller states it about its data, and a container may rely on it (dense: demands_met);
+/// - kind: it makes the Store a queue, a pool or a partition;
+/// - request: only a request states it, the Store's interface enforces it;
+/// - hint: it reorders the candidates, never changes a guarantee.
+/// The description follows the tag's comment in urd/traits.hpp; the phrases are ways a need is put in plain words.
+/// A category's root has an empty entry: it promises nothing and is never written.
+struct tag_entry
+{
+    std::string_view role;
+    std::string_view description;
+    std::array<std::string_view, 4> phrases;
+};
+
+/// In the order of urd::tag, as tag_names.
+inline constexpr std::array<tag_entry, urd::detail::tag_count> tag_vocabulary { {
+    {},  // any_order
+    { "guarantee", "Iterated in ascending order by urd::Less.", { "sorted", "in order", "ordered by key", "range queries" } },
+    { "guarantee", "Iterated in the order elements were first inserted.", { "insertion order", "first come first listed", "keeps the order added" } },
+    {},  // duplicates
+    { "guarantee", "No two elements are equal.", { "no duplicates", "distinct", "each at most once" } },
+    {},  // any_keys
+    { "demand", "The keys are 0..n-1, or nearly so: indices filling their range.", { "ids", "indices", "vertices numbered 0..n-1", "small key range" } },
+    { "demand", "The keys are few compared to their range.", { "few keys in a large range", "scattered keys", "arbitrary keys" } },
+    {},  // moving_refs
+    { "guarantee",
+      "A reference to an element stays valid until that element is removed.",
+      { "pointers stay valid", "stable addresses", "references survive inserts" } },
+    {},  // any_layout
+    { "guarantee", "The elements lie next to each other in memory.", { "contiguous", "cache friendly", "as a span", "one array" } },
+    {},  // any_representation
+    { "guarantee", "Equal contents have equal representations.", { "canonical", "same contents same bytes", "hashable by contents" } },
+    {},  // single_threaded
+    { "guarantee",
+      "Threads share it: inserts from several threads at once, and the reads each kind allows beside them.",
+      { "thread safe", "shared between threads", "parallel inserts" } },
+    {},  // any_memory
+    { "guarantee", "Storage freed by erase and clear is kept for reuse.", { "no reallocation when refilled", "reuse memory", "keeps capacity" } },
+    { "guarantee", "Erase and clear return the storage of what they remove.", { "frees memory", "shrinks", "gives memory back" } },
+    {},  // any_clear
+    { "guarantee", "Clear takes time in proportion to the elements present.", { "cheap clear", "cleared often" } },
+    { "guarantee", "Clear takes constant time, as with a generation counter.", { "reset every round", "cleared per search", "O(1) clear" } },
+    {},  // any_access
+    { "kind", "A queue: elements leave in the order they came.", { "queue", "fifo", "breadth first", "worklist" } },
+    { "kind", "A stack: the last element pushed leaves first.", { "stack", "lifo", "depth first" } },
+    { "kind", "A priority queue: the least element leaves first.", { "priority queue", "heap", "best first", "open list" } },
+    {},  // any_scope
+    { "guarantee", "push_scope and pop_scope: popping undoes every change since the matching push.", { "nested scopes", "undo on backtrack", "symbol table" } },
+    {},  // any_layering
+    { "guarantee",
+      "layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.",
+      { "falls through to a parent", "overlay", "phase over phase" } },
+    {},  // any_handle
+    { "kind",
+      "A pool: insert gives a handle; with unique, equal elements get equal handles.",
+      { "interning", "handles", "deduplicated rows", "hash consing" } },
+    {},  // any_sharing
+    { "guarantee", "Parts that are equal across rows are stored once.", { "rows differing in a few places", "persistent", "shared structure" } },
+    {},  // any_direction
+    { "guarantee", "A map that answers by value too: keys(v) gives the keys that map to v.", { "predecessors", "reverse edges", "inverse map" } },
+    {},  // any_shape
+    { "guarantee", "Rows whose number and lengths are set at construction; only their contents change.", { "fixed rows", "matrix", "table of known shape" } },
+    {},  // any_packing
+    { "guarantee",
+      "Each record is one self-contained block of bytes, frozen once stored and read by index.",
+      { "flat records", "serialized", "one block per record" } },
+    {},  // any_grouping
+    { "kind", "A partition: elements fall into disjoint classes that merge joins.", { "union find", "disjoint sets", "equivalence classes" } },
+    {},  // any_tracking
+    { "guarantee", "added() and removed(): the elements changed since clear_changes().", { "delta", "what changed", "semi-naive evaluation" } },
+    {},  // immutable
+    { "guarantee", "Offers insert.", { "grows" } },
+    { "guarantee", "Offers insert, erase and clear.", { "add and remove" } },
+    {},  // may_change
+    { "request", "Only grows: nothing is ever removed.", { "append only", "only grows", "never erased" } },
+    { "request", "No change after construction; assign rebuilds it whole.", { "built once", "read only", "immutable after building" } },
+    {},  // maybe_empty
+    { "request", "At least one element.", { "never empty", "nonempty" } },
+    {},  // any_multiplicity
+    { "request", "At most one value per key: a map.", { "map", "one value per key", "lookup table" } },
+    { "request", "Any number of values per key: a multimap.", { "multimap", "many values per key", "adjacency lists" } },
+    {},  // by_key
+    { "request", "Identified by position 0..n-1, in order.", { "by position", "numbered as inserted", "interner" } },
+    {},  // general
+    { "hint", "A few elements, or a few at a time: compact containers first.", { "few elements", "small", "tiny" } },
+    {},  // any_priority
+    { "demand", "A priority queue never pushed below the last popped.", { "dijkstra", "non-negative lengths", "event simulation" } },
+} };
+// An entry for every tag that is no root, and none for a root: a tag added without its entry, or an entry out of
+// place, fails here.
+static_assert(
+    []
+    {
+        for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
+        {
+            const auto of = static_cast<urd::tag>(each);
+            if (tag_vocabulary[each].role.empty() != (urd::detail::root_of(of) == of))
+                return false;
+        }
+        return true;
+    }(),
+    "tag_vocabulary: an entry per tag that is no root, in the order of urd::tag");
+static_assert(tag_vocabulary[urd::detail::index(urd::tag::sorted)].description.starts_with("Iterated in ascending")
+              && tag_vocabulary[urd::detail::index(urd::tag::monotone_priority)].role == "demand");
 
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
