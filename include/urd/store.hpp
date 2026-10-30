@@ -55,17 +55,22 @@ namespace urd
 namespace detail
 {
 
-/// The first base of a Store: the representation must be defined here. The registry names some only (the arena
-/// interner, whose definition needs cista); the header that defines them is the one to include.
+/// The first base of a Store: the representation must be defined here. The registry only declares representations;
+/// the header of R's family, urd/use/<family>.hpp (defined_in<R>), defines them and marks that it was included.
+/// Checked by the marker, never by completing R, and for a wrapper's parts first, so that one compile names every
+/// header missing. Both compilers print the header's path in the failed condition: urd::include<"urd/use/...">.
+template<typename List>
+struct complete_parts;
 template<typename R>
-inline constexpr bool defined_representation = requires { sizeof(R); };
-template<typename R>
-inline constexpr bool defined_representation<repr::LayeredPool<R>> = defined_representation<R>;
-template<typename R>
-struct complete_representation
+struct complete_representation : complete_parts<typename parts<R>::type>
 {
-    static_assert(defined_representation<R>,
-                  "urd::Store: the representation is declared but not defined here; records stored flat need #include <urd/flat.hpp>");
+    static_assert(included<defined_in<R>> || repr::dependent_false<include<defined_in<R>>>::value,
+                  "urd::Store: the representation's family is not included here: #include the header that urd::include<\"...\"> names "
+                  "in this error (urd/use/all.hpp has every family)");
+};
+template<typename... Ps>
+struct complete_parts<type_list<Ps...>> : complete_representation<Ps>...
+{
 };
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
@@ -230,6 +235,12 @@ inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>
 struct container_traits<detail::Store<R, S>> : S
+{
+};
+
+/// The representations whose family has no header yet are defined by this header (traits.hpp, defined_in).
+template<>
+struct include<"urd/store.hpp">
 {
 };
 

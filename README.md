@@ -104,7 +104,7 @@ says how rows live, urd stores them together instead, and hands out a row as a v
 | reused after removal | `Store<value<Row>, retains>` with a `retains` row | `RowPool` | the row Store, cleared, not freed |
 | map values reused after erase | `Store<key<K>, value<Row>>` with a `retains` row (`sorted` or not) | `Recycling<std::unordered_map>` / `Recycling<std::map>` | the value Store, cleared, kept with its node |
 | interned, by handle | `Store<value<Row>, handles, unique>` | `RowInterner`, tree pools | the row, read by handle |
-| records, each one block of bytes | `Store<value<Record>, handles, unique, flat>` | `RecordInterner` (trivially copyable records), `ArenaInterner` (serialized by cista; `<urd/flat.hpp>`) | the record, read by `index<Record>` |
+| records, each one block of bytes | `Store<value<Record>, handles, unique, flat>` | `RecordInterner` (trivially copyable records), `ArenaInterner` (serialized by cista; `<urd/use/records.hpp>`) | the record, read by `index<Record>` |
 | over a parent pool | `Store<value<Record>, handles, unique, flat, layered>` (rows too) | `LayeredPool` over the interner: indices continue after the parent's, lookups fall through | the record, from the layer that owns it |
 
 `Rows::reference` names what a row is handed out as; code needs no name from `urd/repr`.

@@ -201,5 +201,10 @@ template<typename Map>
 struct container_traits<repr::Scoped<Map>> : with_t<container_traits<Map>, scoped>
 {
 };
+template<typename Map>
+struct parts<repr::Scoped<Map>>
+{
+    using type = detail::type_list<Map>;
+};
 
 }  // namespace urd

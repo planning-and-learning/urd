@@ -3,6 +3,7 @@
 // numbers back docs/BENCHMARKS.md.
 
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 
 #include <benchmark/benchmark.h>
 #include <cstddef>

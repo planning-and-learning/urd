@@ -5,6 +5,7 @@
 #include "allocations.hpp"
 #include "names.hpp"
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 
 #include <cstddef>
 #include <gtest/gtest.h>

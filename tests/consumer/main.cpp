@@ -1,5 +1,6 @@
 // What a consumer of the package needs: the urd::urd target, and with it Boost, cista and, where configured, gtl.
 #include <urd/store.hpp>
+#include <urd/use/all.hpp>
 
 int main()
 {

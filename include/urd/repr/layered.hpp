@@ -386,6 +386,11 @@ struct container_traits<repr::LayeredPool<R>> : with_t<container_traits<R>, laye
 {
 };
 template<typename R>
+struct parts<repr::LayeredPool<R>>
+{
+    using type = detail::type_list<R>;
+};
+template<typename R>
 struct element_traits<repr::LayeredPool<R>> : element_traits<R>
 {
 };
@@ -396,6 +401,11 @@ template<typename R>
     requires has<container_traits<R>, unique>
 struct container_traits<repr::Layered<R>> : with_t<container_traits<R>, layered, any_order>
 {
+};
+template<typename R>
+struct parts<repr::Layered<R>>
+{
+    using type = detail::type_list<R>;
 };
 
 }  // namespace urd

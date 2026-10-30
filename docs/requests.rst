@@ -140,8 +140,8 @@ Building and using
 
 Link ``urd::urd`` and include ``urd/store.hpp``. The target carries Boost 1.89 or later (Container, Unordered,
 Hash2), cista, and with ``URD_WITH_GTL`` (on by default) gtl, whose sharded tables serve ``concurrent`` sets and maps
-by hashed keys. ``urd/flat.hpp`` is included where records stored flat are defined, ``urd/view.hpp`` where views
-are made, ``urd/compose/family.hpp`` for families.
+by hashed keys. ``urd/flat.hpp`` is included where records stored flat are defined, ``urd/use/records.hpp`` where
+a pool of them is held, ``urd/view.hpp`` where views are made, ``urd/compose/family.hpp`` for families.
 
 This documentation is built with Sphinx:
 

@@ -7,6 +7,7 @@
 #include "names.hpp"
 #include "urd/flat.hpp"
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 
 #include <algorithm>
 #include <cstddef>

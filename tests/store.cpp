@@ -6,6 +6,7 @@
 #include "allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
+#include "urd/use/all.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -237,8 +238,9 @@ static_assert(!urd::hashable<Store<key<int>>> && !urd::hashable<Store<key<int>, 
 // Compared and ordered by their request alone: any iterable Store compares equal by contents; one iterated in an
 // order its request fixes (sorted, insertion_ordered, a sequence) is ordered, so it can be a sorted key.
 static_assert(urd::EqualityComparableByEqualTo<Store<key<int>>> && urd::EqualityComparableByEqualTo<Store<value<int>>>);
-static_assert(urd::orderable<Store<key<int>, urd::sorted>> && urd::orderable<Store<value<int>>> && urd::orderable<Store<key<int>, urd::positional, urd::monotone>>
-              && !urd::orderable<Store<key<int>>> && !urd::orderable<Store<value<int>, urd::fifo>>);
+static_assert(urd::orderable<Store<key<int>, urd::sorted>> && urd::orderable<Store<value<int>>>
+              && urd::orderable<Store<key<int>, urd::positional, urd::monotone>> && !urd::orderable<Store<key<int>>>
+              && !urd::orderable<Store<value<int>, urd::fifo>>);
 using SortedKey = Store<key<int>, urd::sorted, urd::frozen>;
 static_assert(std::same_as<Store<key<SortedKey>, value<int>>::representation, FlatHashMapOf<SortedKey, int>>);
 using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;

@@ -7,6 +7,7 @@
 #include "names.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 #include "verify.hpp"
 
 #include <algorithm>

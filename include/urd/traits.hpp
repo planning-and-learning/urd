@@ -688,7 +688,40 @@ struct container_traits : properties_of<>
 namespace detail
 {
 
+/// A string literal as a template argument: a header's path, or the reason a denied operation is denied.
+template<std::size_t N>
+struct fixed_string
+{
+    std::array<char, N> text {};
+
+    consteval fixed_string(const char (&literal)[N]) { std::copy_n(literal, N, text.begin()); }
+
+    [[nodiscard]] constexpr const char* c_str() const noexcept { return text.data(); }
+};
+
 }  // namespace detail
+
+// The registry declares representations and does not define them: a file pays for the definitions of the families
+// it holds Stores of, by including urd/use/<family>.hpp. That a family is included is told by a marker that header
+// defines, never by looking at a representation (completing a wrapper of an undefined part is an error, not a
+// false); a Store whose family is absent names the header to include in its error (store.hpp).
+
+/// Declared only; urd/use/<family>.hpp defines include<"urd/use/<family>.hpp">.
+template<detail::fixed_string Header>
+struct include;
+/// Whether the header's marker is defined here.
+template<detail::fixed_string Header>
+inline constexpr bool included = requires { sizeof(include<Header>); };
+/// The header that defines representation R, specialized beside R's declaration in its repr/X_fwd.hpp. Until every
+/// family has its header, a representation that names none is defined by urd/store.hpp itself.
+template<typename R>
+inline constexpr auto defined_in = detail::fixed_string("urd/store.hpp");
+/// The representations a wrapper holds, whose headers are needed too (Layered<R>: R; Scoped<Map>: Map; ...).
+template<typename R>
+struct parts
+{
+    using type = detail::type_list<>;
+};
 
 namespace detail
 {

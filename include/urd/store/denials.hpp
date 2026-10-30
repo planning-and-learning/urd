@@ -19,16 +19,8 @@ namespace urd::detail
 // facet of the Store declares any of its names, since two bases declaring one name would make its lookup ambiguous;
 // the tables below say which facets declare which names, and tests/denials.cpp checks them against the facets.
 
-/// A string literal as a template argument: the reason a denied operation is denied.
-template<std::size_t N>
-struct fixed_string
-{
-    std::array<char, N> text {};
-
-    consteval fixed_string(const char (&literal)[N]) { std::copy_n(literal, N, text.begin()); }
-};
-
-/// Never satisfied: a member constrained by it exists for the diagnostic alone.
+/// Never satisfied: a member constrained by it exists for the diagnostic alone; Reason is a fixed_string
+/// (traits.hpp), the reason a denied operation is denied.
 template<fixed_string Reason>
 concept denied = false;
 

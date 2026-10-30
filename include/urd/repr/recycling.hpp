@@ -236,6 +236,11 @@ template<typename Map>
 struct container_traits<repr::Recycling<Map>> : with_t<container_traits<Map>, retains>
 {
 };
+template<typename Map>
+struct parts<repr::Recycling<Map>>
+{
+    using type = detail::type_list<Map>;
+};
 
 /// Its values keep what they hold when their keys are erased: their own properties, memory included.
 template<typename K, typename V, typename C, typename Allocator>
@@ -252,6 +257,11 @@ template<typename Set>
     requires container_traits<Set>::declared && has<container_traits<Set>, unique> && has<container_traits<Set>, stable_refs>
 struct container_traits<repr::RecyclingSet<Set>> : with_t<container_traits<Set>, retains>
 {
+};
+template<typename Set>
+struct parts<repr::RecyclingSet<Set>>
+{
+    using type = detail::type_list<Set>;
 };
 
 }  // namespace urd

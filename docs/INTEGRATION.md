@@ -348,8 +348,9 @@ other must be serializable by cista, naming its members in `cista_members()` and
 `urd::flat_vector<T>`, `urd::flat_string` and `urd::flat_variant<Ts…>` (`include/urd/flat.hpp`, which also gives
 their hash and equality), and goes into `repr::ArenaInterner`: the record is serialized into a byte arena
 (`repr::ByteArena`, segments that never move) and read back in place, so the stored record's vectors point inside
-its block. The registry names the arena interner through a declaration only; the Store that holds one needs
-`<urd/flat.hpp>` included, which an assertion says. A request for a pool of records that are no range of elements
+its block. The registry names both interners through declarations only (`repr/records_fwd.hpp`); the Store that
+holds one needs the records family, `<urd/use/records.hpp>`, included, which the error of a Store without it
+names. A request for a pool of records that are no range of elements
 must say `flat`, and `flat` goes with `handles, unique` only.
 
 A flat pool is counted and read by index: `insert(record)` gives `pair<index<Record>, bool>`, an equal record its

@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
 
-# The include tree's root holds the vocabulary and the entry point only; containers live in urd/repr (which downstream
-# code does not include) and compositions of Stores in urd/compose. A new root header must be added here on purpose.
+# The include tree's root holds the headers a user names in an include line (store.hpp, index.hpp, view.hpp, flat.hpp)
+# and the resolution pipeline (concepts, elements, interface, properties, registry, traits). Containers live in
+# urd/repr (declared by the registry, defined by the family headers in urd/use, which downstream code includes),
+# compositions of Stores in urd/compose. A new root header must be added here on purpose.
 set(allowed_files concepts.hpp elements.hpp flat.hpp index.hpp interface.hpp properties.hpp registry.hpp store.hpp traits.hpp view.hpp)
-set(allowed_directories compose repr semantics store)
+set(allowed_directories compose repr semantics store use)
 
 file(GLOB entries RELATIVE "${ROOT}/include/urd" "${ROOT}/include/urd/*")
 foreach(entry IN LISTS entries)

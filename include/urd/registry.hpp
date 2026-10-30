@@ -18,7 +18,7 @@
 #endif
 #include "urd/repr/pools.hpp"
 #include "urd/repr/queues.hpp"
-#include "urd/repr/records.hpp"
+#include "urd/repr/records_fwd.hpp"
 #include "urd/repr/recycling.hpp"
 #include "urd/repr/rows.hpp"
 #include "urd/repr/scoped.hpp"

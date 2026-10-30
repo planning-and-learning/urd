@@ -144,5 +144,10 @@ struct container_traits<repr::ChangeLogged<R>> :
     std::conditional_t<has<container_traits<R>, dense>, with_t<container_traits<R>, change_log, any_clear>, with_t<container_traits<R>, change_log>>
 {
 };
+template<typename R>
+struct parts<repr::ChangeLogged<R>>
+{
+    using type = detail::type_list<R>;
+};
 
 }  // namespace urd

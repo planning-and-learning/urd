@@ -5,6 +5,7 @@
 #include "urd/store/denials.hpp"
 
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 
 #include <array>
 #include <cstddef>

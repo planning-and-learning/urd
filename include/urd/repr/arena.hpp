@@ -8,7 +8,7 @@
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
-#include "urd/repr/records.hpp"
+#include "urd/repr/records_fwd.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 

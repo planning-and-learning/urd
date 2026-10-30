@@ -4,6 +4,7 @@
 #include "urd/compose/family.hpp"
 #include "urd/flat.hpp"
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 #include "urd/view.hpp"
 
 #include <concepts>

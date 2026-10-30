@@ -29,7 +29,7 @@ records are frozen once stored.
    * - ``Store<value<Record>, handles, unique, flat>``, a trivially copyable record
      - ``RecordInterner``: an indexed set of the records
    * - the same, any other record
-     - ``ArenaInterner``: serialized by cista into a byte arena that never moves a block (``urd/flat.hpp`` must be included where the Store is used)
+     - ``ArenaInterner``: serialized by cista into a byte arena that never moves a block
    * - ``RecordInterner`` with ``stable_refs``
      - the records in segments that never move, no lock (the arena never moves a block, so it has ``stable_refs`` already)
    * - either with ``concurrent``
@@ -37,9 +37,13 @@ records are frozen once stored.
    * - either with ``layered``
      - ``LayeredPool`` over it
 
+Either pool is the records family: ``urd/use/records.hpp`` is included where the Store is held, ``urd/flat.hpp``
+where a flat record is written.
+
 .. code-block:: cpp
 
    #include <urd/flat.hpp>
+   #include <urd/use/records.hpp>
    struct Predicate
    {
        urd::flat_string name;

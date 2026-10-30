@@ -1,10 +1,9 @@
 #pragma once
 
 // Records stored flat: the cista containers a record is written with, under urd's names, their hash and equality,
-// how a view resolves them, and the arena interner that stores such records. Include it where flat records are
-// defined or stored; a request's resolution needs it not.
+// and how a view resolves them. Include it where flat records are defined; the pools that store them are the
+// records family, urd/use/records.hpp, included where such a Store is held.
 
-#include "urd/repr/arena.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/view.hpp"
