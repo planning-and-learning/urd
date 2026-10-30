@@ -733,6 +733,80 @@ TEST(ChangeLog, WasAddedAndWasRemoved)
     EXPECT_TRUE(facts.was_added(3) && !facts.was_added(2) && facts.was_removed(1) && !facts.was_removed(3));
 }
 
+// A queue visits its elements: in the order pushed (fifo, lifo), or in no particular order (by priority).
+TEST(Queues, IterateTheirElements)
+{
+    const auto pushed = std::vector { 4, 1, 3, 1 };
+    auto fifo = Store<value<int>, urd::fifo>();
+    auto ring = Store<value<int>, urd::fifo, urd::retains>();
+    auto lifo = Store<value<int>, urd::lifo>();
+    auto heap = Store<value<int>, urd::by_priority>();
+    auto handled = Store<value<int>, urd::by_priority, urd::handles>();
+    for (const auto each : pushed)
+    {
+        fifo.push(each);
+        ring.push(each);
+        lifo.push(each);
+        heap.push(each);
+        handled.push(each);
+    }
+    fifo.pop();
+    ring.pop();
+    EXPECT_TRUE(std::ranges::equal(fifo, std::vector { 1, 3, 1 }));
+    EXPECT_TRUE(std::ranges::equal(ring, std::vector { 1, 3, 1 }));
+    EXPECT_EQ(fifo.back(), 1);
+    EXPECT_EQ(ring.back(), 1);
+    EXPECT_TRUE(std::ranges::equal(lifo, pushed));
+    const auto sorted = [](const auto& queue)
+    {
+        auto elements = std::vector<int>(queue.begin(), queue.end());
+        std::ranges::sort(elements);
+        return elements;
+    };
+    EXPECT_EQ(sorted(heap), (std::vector { 1, 1, 3, 4 }));
+    EXPECT_EQ(sorted(handled), (std::vector { 1, 1, 3, 4 }));
+}
+template<typename S>
+concept iterates = requires(const S& store) { store.begin(); };
+static_assert(iterates<Store<value<int>, urd::fifo>> && !iterates<Store<value<int>, urd::by_priority, urd::monotone_priority>>);
+
+// A priority queue with handles reads an element by its handle, wherever it is in the order.
+TEST(Queues, ReadByHandle)
+{
+    auto queue = Store<value<int>, urd::by_priority, urd::handles>();
+    const auto five = queue.push(5);
+    queue.push(1);
+    EXPECT_EQ(queue[five], 5);
+    queue.update(five, 0);
+    EXPECT_EQ(queue[five], 0);
+}
+
+// A partition says whether a key is an element.
+TEST(Partition, Contains)
+{
+    auto classes = Store<key<int>, urd::partition>();
+    classes.insert(3);
+    EXPECT_TRUE(classes.contains(0) && classes.contains(3) && !classes.contains(4));
+}
+
+// A pool of records visits them in index order.
+TEST(Records, Iterate)
+{
+    struct Name
+    {
+        int id = 0;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
+    };
+    auto names = Store<value<Name>, urd::handles, urd::unique, urd::flat>();
+    names.insert(Name { 7 });
+    names.insert(Name { 2 });
+    names.insert(Name { 7 });
+    auto ids = std::vector<int>();
+    for (const auto& name : names)
+        ids.push_back(name.id);
+    EXPECT_EQ(ids, (std::vector { 7, 2 }));
+}
+
 // A pool of records counts a record as a set does: once, or not at all.
 TEST(Records, Count)
 {

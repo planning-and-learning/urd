@@ -24,6 +24,37 @@
 namespace urd::repr
 {
 
+/// The elements of a queue from position 0 to size() - 1, each read through the queue's at_position (a ring's slot, a
+/// heap's handle): for queues whose elements are not one range already.
+template<typename Q>
+class PositionIterator
+{
+public:
+    using value_type = typename Q::value_type;
+    using difference_type = std::ptrdiff_t;
+
+    PositionIterator() = default;
+    PositionIterator(const Q* queue, std::size_t position) : m_queue(queue), m_position(position) {}
+
+    [[nodiscard]] const value_type& operator*() const { return m_queue->at_position(m_position); }
+    PositionIterator& operator++()
+    {
+        ++m_position;
+        return *this;
+    }
+    PositionIterator operator++(int)
+    {
+        auto before = *this;
+        ++m_position;
+        return before;
+    }
+    friend bool operator==(const PositionIterator&, const PositionIterator&) = default;
+
+private:
+    const Q* m_queue = nullptr;
+    std::size_t m_position = 0;
+};
+
 /// A queue whose elements leave in the order Order says: first in, over a std::deque; last in, over a std::vector;
 /// the least by Compare (urd::Less, or the order a request gave), as a binary heap in a std::vector.
 template<typename T, leaving Order, typename Compare>
@@ -40,14 +71,16 @@ public:
     [[nodiscard]] bool empty() const { return m_elements.empty(); }
     [[nodiscard]] const T& front() const
         requires fifo
-    {
-        return m_elements.front();
-    }
+    { return m_elements.front(); }
+    [[nodiscard]] const T& back() const
+        requires fifo
+    { return m_elements.back(); }
+    /// The elements in the order pushed (first in, last in), or in no particular order (the least first).
+    [[nodiscard]] auto begin() const { return m_elements.cbegin(); }
+    [[nodiscard]] auto end() const { return m_elements.cend(); }
     [[nodiscard]] const T& top() const
         requires(!fifo)
-    {
-        return Order == leaving::last_in ? m_elements.back() : m_elements.front();
-    }
+    { return Order == leaving::last_in ? m_elements.back() : m_elements.front(); }
 
     void push(const T& element) { emplace(element); }
     void push(T&& element) { emplace(std::move(element)); }
@@ -72,9 +105,7 @@ public:
     void clear() { m_elements.clear(); }
     void reserve(size_type count)
         requires(!fifo)
-    {
-        m_elements.reserve(count);
-    }
+    { m_elements.reserve(count); }
 
 private:
     /// The heap algorithms keep the greatest first; reversed, the least.
@@ -96,6 +127,11 @@ public:
     [[nodiscard]] size_type size() const { return m_heap.size(); }
     [[nodiscard]] bool empty() const { return m_heap.empty(); }
     [[nodiscard]] const T& top() const { return m_slots[m_heap.front()].element; }
+    /// The element of `handle`, which must be in the queue.
+    [[nodiscard]] const T& operator[](handle_type handle) const { return m_slots[handle].element; }
+    /// The elements in no particular order.
+    [[nodiscard]] PositionIterator<AddressableHeap> begin() const { return { this, 0 }; }
+    [[nodiscard]] PositionIterator<AddressableHeap> end() const { return { this, m_heap.size() }; }
 
     handle_type push(const T& element) { return emplace(element); }
     handle_type push(T&& element) { return emplace(std::move(element)); }
@@ -148,11 +184,14 @@ public:
     }
 
 private:
+    friend class PositionIterator<AddressableHeap>;
     struct slot
     {
         T element;
         size_type position;
     };
+
+    [[nodiscard]] const T& at_position(size_type position) const { return m_slots[m_heap[position]].element; }
 
     [[nodiscard]] bool before(handle_type lhs, handle_type rhs) const { return Compare {}(m_slots[lhs].element, m_slots[rhs].element); }
     void place(size_type at, handle_type handle)
@@ -271,8 +310,16 @@ public:
     [[nodiscard]] const T& front() const
     {
         assert(!empty() && "urd::repr::RingFifo::front: the queue is empty");
-        return *m_ring[m_head];
+        return at_position(0);
     }
+    [[nodiscard]] const T& back() const
+    {
+        assert(!empty() && "urd::repr::RingFifo::back: the queue is empty");
+        return at_position(m_count - 1);
+    }
+    /// The elements in the order pushed.
+    [[nodiscard]] PositionIterator<RingFifo> begin() const { return { this, 0 }; }
+    [[nodiscard]] PositionIterator<RingFifo> end() const { return { this, m_count }; }
 
     void push(const T& element) { emplace(element); }
     void push(T&& element) { emplace(std::move(element)); }
@@ -308,6 +355,14 @@ public:
     }
 
 private:
+    friend class PositionIterator<RingFifo>;
+    /// The element `position` places after the head.
+    [[nodiscard]] const T& at_position(size_type position) const
+    {
+        assert(position < m_count);
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access): the m_count slots from the head on each hold an element
+        return *m_ring[slot(position)];
+    }
     /// The slot `offset` elements after the head.
     [[nodiscard]] size_type slot(size_type offset) const { return (m_head + offset) & (m_ring.size() - 1); }
     void grow() { unroll(std::max<size_type>(4, 2 * m_ring.size())); }

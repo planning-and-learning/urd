@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <utility>
@@ -59,6 +60,24 @@ public:
     [[nodiscard]] const value_type& top() const
         requires(!has<S, fifo>)
     { return representation().top(); }
+    /// The last element in: where the first in leaves first, the other end of the queue.
+    [[nodiscard]] const value_type& back() const
+        requires has<S, fifo>
+    { return representation().back(); }
+    template<typename... Args>
+        requires(!has<S, fifo>) && denied<"back: only a fifo queue has a back; a stack or a priority queue is reached by top">
+    void back(Args&&...) const;
+    /// The element of `handle`, wherever it is in the order: O(1).
+    template<typename Handle = handle_type>
+        requires has<S, handles>
+    [[nodiscard]] const value_type& operator[](const Handle& handle) const
+    { return representation()[handle]; }
+    template<typename... Args>
+        requires(!has<S, handles>) && denied<"operator[]: a queue is reached by its front or top; ask for handles to read an element by its handle">
+    void operator[](Args&&...) const;
+    template<typename... Args>
+        requires denied<"at: a queue with handles reads an element by operator[](handle); others by front or top">
+    void at(Args&&...) const;
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }

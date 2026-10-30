@@ -109,7 +109,10 @@ struct facet_switches
             case facet_id::sizing:
                 return S::sized;
             case facet_id::iteration:
-                return S::iterable;
+                // A queue visits its elements in the order pushed, or a priority queue in none; not a bucket queue
+                // (monotone_priority), which would visit every priority's bucket. Iterated so, a queue is still no
+                // range for the facets that read S::iterable (equality, growth, removal).
+                return S::iterable || (S::is_queue && !has<S, monotone_priority>);
             case facet_id::equality:
                 // A layered Store's contents include its parent's, which neither its == nor its iteration covers.
                 return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>;

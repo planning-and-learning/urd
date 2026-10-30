@@ -68,14 +68,16 @@ template<typename Q>
 concept clearable = requires(Q queue) { queue.clear(); };
 static_assert(clearable<Store<value<int>, urd::by_priority>> && !clearable<Store<value<int>, urd::by_priority, urd::monotone>>);
 static_assert(urd::has<Store<value<int>, urd::by_priority, urd::retains>, urd::retains>);
-// A queue is not iterated or indexed; it offers the adaptors' names for its order.
+// A queue offers the adaptors' names for its order.
 template<typename Q>
 concept iterable = requires(Q queue) { queue.begin(); };
 template<typename Q>
 concept has_front = requires(Q queue) { queue.front(); };
 template<typename Q>
 concept has_top = requires(Q queue) { queue.top(); };
-static_assert(!iterable<Store<value<int>, urd::fifo>> && has_front<Store<value<int>, urd::fifo>> && !has_top<Store<value<int>, urd::fifo>>);
+// Iterated in the order pushed; a bucket queue is not, as it would visit every priority's bucket.
+static_assert(iterable<Store<value<int>, urd::fifo>> && !iterable<Store<value<int>, urd::by_priority, urd::monotone_priority>>
+              && has_front<Store<value<int>, urd::fifo>> && !has_top<Store<value<int>, urd::fifo>>);
 static_assert(has_top<Store<value<int>, urd::by_priority>> && !has_front<Store<value<int>, urd::by_priority>>);
 
 TYPED_TEST(Queues, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }

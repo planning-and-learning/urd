@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <cstddef>
@@ -21,6 +22,11 @@ public:
     bool merge(const key& lhs, const key& rhs) { return representation().merge(lhs, rhs); }
     /// The element that names the class of `element`.
     [[nodiscard]] key find(const key& element) const { return constant().find(element); }
+    /// Whether `element` is an element of some class.
+    [[nodiscard]] bool contains(const key& element) const { return constant().contains(element); }
+    template<typename... Args>
+        requires denied<"count: a partition holds each element once; contains tells whether it does">
+    void count(Args&&...) const;
     [[nodiscard]] bool same(const key& lhs, const key& rhs) const { return constant().same(lhs, rhs); }
     [[nodiscard]] std::size_t class_size(const key& element) const { return constant().class_size(element); }
     /// How many classes there are.

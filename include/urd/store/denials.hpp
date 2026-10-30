@@ -355,9 +355,9 @@ inline constexpr std::array declares_clear {
 };
 inline constexpr std::array declares_lookup { facet_id::lookup, facet_id::grouping, facet_id::pool, facet_id::records };
 inline constexpr std::array declares_ordered_lookup { facet_id::ordered_lookup };
-inline constexpr std::array declares_iteration { facet_id::iteration };
+inline constexpr std::array declares_iteration { facet_id::iteration, facet_id::records };
 inline constexpr std::array declares_reverse_iteration { facet_id::reverse_iteration };
-inline constexpr std::array declares_subscript { facet_id::positions, facet_id::values_by_key, facet_id::slots, facet_id::records };
+inline constexpr std::array declares_subscript { facet_id::positions, facet_id::values_by_key, facet_id::slots, facet_id::records, facet_id::queue_access };
 inline constexpr std::array declares_ends { facet_id::positions, facet_id::queue_access, facet_id::sorted_ends };
 inline constexpr std::array declares_position { facet_id::positions, facet_id::entries };
 inline constexpr std::array declares_data { facet_id::contiguous_data };
@@ -450,14 +450,15 @@ struct denial
                                     if_t<has<S, sorted>,
                                          no_ordered_lookup<"lower_bound/upper_bound/equal_range: a map ordered by its values is found by key only">,
                                          no_ordered_lookup<"lower_bound/upper_bound/equal_range: the Store is not sorted; ask for sorted">>>;
-    using iteration = facet_if<!on::any_on(declares_iteration),
-                               if_t<S::is_queue,
-                                    no_iteration<"begin/end: a queue is reached by its front or top, not iterated">,
-                                    if_t<S::is_pool,
-                                         no_iteration<"begin/end: a pool is reached by handle (get, view), not iterated">,
-                                         if_t<S::is_partition,
-                                              no_iteration<"begin/end: a partition answers find, same and classes, and is not iterated">,
-                                              no_iteration<"begin/end: not offered by this kind of Store">>>>>;
+    using iteration =
+        facet_if<!on::any_on(declares_iteration),
+                 if_t<S::is_queue,
+                      no_iteration<"begin/end: a bucket queue (monotone_priority) would visit the bucket of every priority in its range; it is reached by top">,
+                      if_t<S::is_pool,
+                           no_iteration<"begin/end: a pool is reached by handle (get, view), not iterated">,
+                           if_t<S::is_partition,
+                                no_iteration<"begin/end: a partition answers find, same and classes, and is not iterated">,
+                                no_iteration<"begin/end: not offered by this kind of Store">>>>>;
     using reverse_iteration = facet_if<!on::any_on(declares_reverse_iteration),
                                        if_t<S::iterable,
                                             no_reverse_iteration<"rbegin/rend: the Store has no order to reverse; ask for sorted or insertion_ordered">,
