@@ -445,6 +445,21 @@ Deferred: C++20 modules, which would make the parsing a one-time cost once the t
 `tests/properties.cpp` by kind (145 s and 2.4 GB on GCC, instantiation of a hundred Stores, which no include split
 touches).
 
+## M17: the vocabulary — done
+
+`share/urd/vocabulary.json` gives each tag in plain words, for people and for tools that write requests (the search
+tool of `claude.search.md` reads it): its category, its role (a guarantee containers declare, a promise the caller makes
+about its data, a kind of Store, a request the interface enforces, or a hint that only reorders candidates), one line
+on its meaning, a few phrases a need is stated in, what it implies and what it excludes. Role, description and phrases
+are written by hand in `tag_vocabulary` (`tests/names.hpp`, a `static_assert` requires an entry per tag); category,
+implies and excludes come from the tag hierarchy; `vocabulary_table --check` (the `vocabulary` test) holds the file to
+both and rejects a role that does not match its category.
+
+Considered and deferred (`claude.properties.md`): cost classes as guarantees and workload hints. Lookup cost is
+already settled by the order (hashed or `sorted`), iteration over the key range by `dense` and `sparse`; an erase
+class (`constant_erase`) separates only positional and insertion-ordered storage, and comes with gap 3 (swap-erase on
+interners), which is its first use. Hints beyond `small` wait for a benchmark in which one changes the best choice.
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified
