@@ -175,9 +175,7 @@ constexpr bool conforms_where_declared()
 }
 template<typename... Rs>
 constexpr bool all_conform(urd::detail::type_list<Rs...> /*candidates*/)
-{
-    return (conforms_where_declared<Rs>() && ...);
-}
+{ return (conforms_where_declared<Rs>() && ...); }
 template<typename... Ps>
 using element_candidates = typename urd::detail::instantiated<typename urd::detail::to_spec<Ps...>::type, urd::detail::element_preference>::type;
 template<typename... Ps>
@@ -662,6 +660,40 @@ TEST(Scoped, BoundInScopeIsTheInnermostScopesOwn)
     symbols.pop_scope();
     EXPECT_EQ(symbols.at("x"), 1);
     EXPECT_TRUE(symbols.bound_in_scope("x") && !symbols.contains("y"));
+}
+
+// Equal bindings compare equal, whatever order the tables iterate in: one table grew large and shrank back, the
+// other never grew, so their slots differ.
+TEST(Scoped, EqualBindingsCompareEqual)
+{
+    using Symbols = Store<key<int>, value<int>, urd::scoped>;
+    auto grown = Symbols();
+    for (int key = 0; key < 4096; ++key)
+        grown.insert_or_assign(key, key);
+    for (int key = 4096 - 1; key >= 0; --key)
+        if (key % 512 != 0)
+            grown.erase(key);
+    auto small = Symbols();
+    for (int key = 4096 - 512; key >= 0; key -= 512)
+        small.insert_or_assign(key, key);
+    small.push_scope();  // open scopes do not count: only the bindings in force
+    EXPECT_FALSE(std::ranges::equal(grown, small));
+    EXPECT_TRUE(grown == small);
+    small.insert_or_assign(0, 1);
+    EXPECT_FALSE(grown == small);
+}
+
+// A layered Store has no ==: its contents include its parent's (store/denials.hpp names why).
+static_assert(!std::equality_comparable<Store<key<int>, urd::layered>> && std::equality_comparable<Store<key<int>>>);
+
+// A priority queue with handles gives the handle from emplace as from push, to update the element later.
+TEST(Queues, EmplaceGivesTheHandle)
+{
+    auto queue = Store<value<int>, urd::by_priority, urd::handles>();
+    const auto handle = queue.emplace(5);
+    queue.push(3);
+    queue.update(handle, 1);
+    EXPECT_EQ(queue.top(), 1);
 }
 
 // A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.

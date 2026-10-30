@@ -226,6 +226,9 @@ int main()
 #elif URD_CASE == 57  // a partition's merge rewrites parents along two paths: single-threaded
     using S = Store<key<int>, urd::partition, urd::concurrent>;
     (void) S();
+#elif URD_CASE == 58  // a layered Store's contents include its parent's: no ==
+    using S = Store<key<int>, urd::layered>;
+    (void) (S() == S());
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

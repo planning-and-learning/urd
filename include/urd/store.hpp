@@ -139,7 +139,8 @@ class Store :
     public denial<R, S>::acquire,
     public denial<R, S>::grouping,
     public denial<R, S>::reset,
-    public denial<R, S>::set_algebra
+    public denial<R, S>::set_algebra,
+    public denial<R, S>::equality
 {
     using types = store_types<R, S>;
 
@@ -276,9 +277,7 @@ template<typename R, typename S>
 struct Less<detail::Store<R, S>>
 {
     bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const
-    {
-        return std::ranges::lexicographical_compare(lhs, rhs, Less<typename S::element_type> {});
-    }
+    { return std::ranges::lexicographical_compare(lhs, rhs, Less<typename S::element_type> {}); }
 };
 
 }  // namespace urd

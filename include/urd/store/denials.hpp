@@ -327,6 +327,15 @@ struct no_set_algebra
         requires denied<Reason>
     void unite(Args&&...);
 };
+template<fixed_string Reason>
+struct no_equality
+{
+    // A hidden friend, as the equality facet's operator== is: found by argument-dependent lookup on a Store alone.
+    template<typename T>
+        requires denied<Reason>
+    friend bool operator==(const T& /*lhs*/, const T& /*rhs*/)
+    { return false; }
+};
 
 /// Which facets declare each group of names: where any of them is on, the group's denial stays off. tests/denials.cpp
 /// checks these against the facets, so a facet that gains or loses a name is caught.
@@ -488,6 +497,9 @@ struct denial
     using grouping = facet_if<!on::any_on(declares_grouping), no_grouping<"same/class_size/classes: ask for partition">>;
     using reset = facet_if<!on::any_on(declares_reset), no_reset<"reset: ask for fixed_shape">>;
     using set_algebra = facet_if<!on::any_on(declares_set_algebra), no_set_algebra<"includes/intersects/unite: only a set (key<K> without value<V>)">>;
+    // Only where a property rules equality out: a Store whose elements cannot be compared has no == for that reason.
+    using equality = facet_if<!on::on(facet_id::equality) && has<S, layered>,
+                              no_equality<"operator==: a layered Store's contents include its parent's; compare what each layer holds instead">>;
 };
 
 }  // namespace urd::detail

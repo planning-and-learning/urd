@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <iterator>
 #include <optional>
@@ -47,6 +48,10 @@ public:
     [[nodiscard]] iterator end() const { return m_table.end(); }
     [[nodiscard]] size_type size() const { return m_table.size(); }
     [[nodiscard]] bool empty() const { return m_table.empty(); }
+    /// Equal bindings in force: the table decides, whatever order it iterates in and whatever scopes are open.
+    [[nodiscard]] friend bool operator==(const Scoped& lhs, const Scoped& rhs)
+        requires std::equality_comparable<Table>
+    { return lhs.m_table == rhs.m_table; }
 
     /// Opens a scope: the changes from here on are undone by the matching pop_scope.
     void push_scope() { m_scopes.push_back(m_log.size()); }
@@ -85,19 +90,13 @@ public:
     // The bounds, where Map is sorted.
     [[nodiscard]] iterator lower_bound(const K& key) const
         requires requires(const Table& table) { table.lower_bound(key); }
-    {
-        return m_table.lower_bound(key);
-    }
+    { return m_table.lower_bound(key); }
     [[nodiscard]] iterator upper_bound(const K& key) const
         requires requires(const Table& table) { table.upper_bound(key); }
-    {
-        return m_table.upper_bound(key);
-    }
+    { return m_table.upper_bound(key); }
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
         requires requires(const Table& table) { table.equal_range(key); }
-    {
-        return m_table.equal_range(key);
-    }
+    { return m_table.equal_range(key); }
     [[nodiscard]] const V& at(const K& key) const { return m_table.at(key); }
     /// The value, to change in place: logged first, as any change.
     [[nodiscard]] V& at(const K& key)
@@ -116,9 +115,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(value_type(std::forward<Args>(args)...));
-    }
+    { return insert(value_type(std::forward<Args>(args)...)); }
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
     {
