@@ -33,8 +33,8 @@ public:
     decltype(auto) push(const value_type& element) { return representation().push(element); }
     decltype(auto) push(value_type&& element) { return representation().push(std::move(element)); }
     template<typename... Args>
-    void emplace(Args&&... args)
-    { representation().emplace(std::forward<Args>(args)...); }
+    decltype(auto) emplace(Args&&... args)
+    { return representation().emplace(std::forward<Args>(args)...); }
     /// Removes the next element; the Store must not be empty.
     void pop() { representation().pop(); }
     /// Removes every element; a monotone queue never empties but by pop.

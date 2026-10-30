@@ -110,7 +110,8 @@ struct facet_switches
             case facet_id::iteration:
                 return S::iterable;
             case facet_id::equality:
-                return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable);
+                // A layered Store's contents include its parent's, which neither its == nor its iteration covers.
+                return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>;
             case facet_id::ordering:
                 return compares_in_order<R, S>();
             case facet_id::lookup:
@@ -178,14 +179,10 @@ struct store_access
 {
     template<typename Store>
     static auto& representation(Store& store)
-    {
-        return store.m_representation;
-    }
+    { return store.m_representation; }
     template<typename Store>
     static const auto& representation(const Store& store)
-    {
-        return store.m_representation;
-    }
+    { return store.m_representation; }
 };
 
 /// A facet where On, else nothing: one empty type per facet, so that several left-off facets are distinct bases. A
