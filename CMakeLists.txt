@@ -107,13 +107,15 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools registry denials views concurrency complexity)
+    foreach(test store properties rows semantics queues pools registry denials views concurrency complexity complexity_verify)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
         add_test(NAME ${test} COMMAND test_${test})
         set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
     target_sources(test_properties PRIVATE tests/allocations.cpp)
+    # The registry's claims are derived in benchmarks/comparisons.hpp.
+    target_include_directories(test_registry PRIVATE benchmarks tests)
     # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
     # positive of its optimizer, not a defect of the code); the other warnings stay on.
     target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
@@ -136,6 +138,12 @@ if(URD_BUILD_TESTS)
     add_executable(complexity_table tests/complexity_table.cpp)
     target_link_libraries(complexity_table PRIVATE urd::urd)
     add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
+
+    # The registry's claims: benchmarks/comparisons.json lists each comparison and the benchmark cells it reads.
+    add_executable(comparison_table benchmarks/comparison_table.cpp)
+    target_link_libraries(comparison_table PRIVATE urd::urd)
+    target_include_directories(comparison_table PRIVATE tests)
+    add_test(NAME comparisons COMMAND comparison_table --check ${PROJECT_SOURCE_DIR}/benchmarks/comparisons.json)
 
     # The include root holds the vocabulary and the entry point only.
     add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)

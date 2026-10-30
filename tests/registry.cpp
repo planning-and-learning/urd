@@ -4,6 +4,7 @@
 
 #include "urd/registry.hpp"
 
+#include "comparisons.hpp"
 #include "grid.hpp"
 
 #include <array>
@@ -161,4 +162,55 @@ TEST(Registry, NoServingCandidateDemandsWhatTheRequestDidNotPromise)
                                         });
         });
     EXPECT_GT(requests, 150);
+}
+
+// The claims the registry makes, derived from the costs (benchmarks/comparisons.hpp): none in the wrong order, and every
+// trade-off with its reason. A trade-off is measured too (benchmarks/record.py); the reason says why the chosen one
+// is the default all the same.
+namespace
+{
+
+const std::map<std::string, std::string, std::less<>> trade_offs {
+    { "flat_set > recycling_tree_set", "a sorted vector inserts and erases in O(n) where a tree takes O(log n), in under a third of the memory; it is chosen only for small or frozen requests, where it is also faster to search and iterate" },
+    { "flat_set > indexed_set", "a frozen contiguous set: binary search in O(log n) against a hash lookup, for a sorted array without a table of positions" },
+    { "dense_set > sparse_set", "a bitset clears and iterates in O(U/64) where a sparse set takes O(1) and O(n), in U bits against two words per index; constant_clear asks for the sparse set" },
+    { "dense_set > ordered_sparse_set", "as dense_set > sparse_set; insertion_ordered asks for the ordered one" },
+    { "tracked_dense_set > sparse_set", "proportional_clear: the bitset clears the words it touched, about O(n/64), in U bits against two words per index" },
+    { "tracked_dense_set > ordered_sparse_set", "as tracked_dense_set > sparse_set" },
+    { "dense_map > generation_map", "a slot per index clears in O(U) where generations clear in O(1), at a generation per slot and a check on every lookup; constant_clear asks for generations" },
+    { "dense_map > stable_generation_map", "as dense_map > generation_map" },
+    { "dense_map > thread_safe_generation_map", "as dense_map > generation_map" },
+    { "dense_map > layered_generation_map", "as dense_map > generation_map" },
+    { "stable_dense_map > stable_generation_map", "as dense_map > generation_map" },
+    { "stable_dense_map > thread_safe_generation_map", "as dense_map > generation_map" },
+    { "layered > layered_generation_map", "as dense_map > generation_map, layered" },
+    { "dense_map > ordered_map", "a slot per index against keys in insertion order with values beside them: O(1) erase and less memory, for an O(U) clear and iteration; insertion_ordered asks for the ordered map" },
+    { "posting_map > unordered_multimap", "a vector of values per key: erasing a key is O(its values), and the values of a key are one span; nodes erase in O(1) each" },
+    { "posting_map > multimap", "a vector of values per key: O(1) insert and lookup against O(log n), erasing a key O(its values)" },
+    { "posting_map > flat_multimap", "a vector of values per key: O(1) insert and lookup against O(n) and O(log n), erasing a key O(its values)" },
+    { "vector > row_pool", "a vector of rows erases in O(n) where a row pool keeps the row for reuse in O(1), at a kept row per erased one; retains asks for the pool" },
+    { "jagged > vector", "frozen rows in one array per level, a row appended in O(its length), against a vector of row Stores each owning its storage" },
+    { "row_interner > tree_vector_set", "each row in full, read in O(1), against shared nodes read in O(r); structural_sharing asks for the tree" },
+    { "row_interner > tree_bitset_set", "as row_interner > tree_vector_set, for bit rows" },
+    { "thread_safe_row_interner > tree_vector_set", "as row_interner > tree_vector_set" },
+};
+
+}  // namespace
+
+TEST(Registry, EveryClaimIsSettledMeasuredOrReasoned)
+{
+    auto used = std::set<std::string>();
+    for (const auto& [id, found] : urd::test::all_comparisons())
+    {
+        EXPECT_NE(found.result, urd::test::outcome::wrong_order)
+            << id << ": " << found.other << " grows slower and takes no more memory than " << found.chosen
+            << " (tests/complexity.hpp); reorder the registry, or correct the costs (" << found.requests.front() << ")";
+        if (found.result != urd::test::outcome::trade_off)
+            continue;
+        const auto pair = found.chosen + " > " + found.other;
+        used.insert(pair);
+        EXPECT_TRUE(trade_offs.contains(pair)) << pair << ": a trade-off (" << id << ") with no reason in trade_offs (tests/registry.cpp)";
+    }
+    for (const auto& [pair, reason] : trade_offs)
+        EXPECT_TRUE(used.contains(pair)) << pair << " is no trade-off any more; drop its reason (" << reason << ")";
 }

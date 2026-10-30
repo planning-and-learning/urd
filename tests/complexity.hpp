@@ -2,7 +2,7 @@
 
 // What each operation costs each representation, as data: the complexity sections of docs/kinds/*.rst are written
 // from it (share/urd/complexity.json, tests/complexity_table.cpp), the registry's choices are classified by it
-// (tests/comparisons.hpp), and tests/complexity_verify.cpp checks it by counting the work done.
+// (benchmarks/comparisons.hpp), and tests/complexity_verify.cpp checks it by counting the work done.
 
 #include "names.hpp"
 #include "urd/store/types.hpp"
@@ -87,6 +87,8 @@ inline constexpr cost lin_capacity { .grows = growth::linear, .of = in::capacity
 inline constexpr cost lin_row_e { .grows = growth::linear, .of = in::row, .expected = true };
 inline constexpr cost lin_row_t { .grows = growth::linear, .of = in::row, .timed = true };
 inline constexpr cost lin_changes { .grows = growth::linear, .of = in::changes };
+inline constexpr cost lin_changes_t { .grows = growth::linear, .of = in::changes, .timed = true };
+inline constexpr cost nlog_changes { .grows = growth::n_log_n, .of = in::changes };
 inline constexpr cost part { .as_part = true };
 }  // namespace costs
 
@@ -285,7 +287,7 @@ inline constexpr auto cost_table = []
         { "dense_multimap", iterate, lin_keys },
         { "posting_map", insert, one_ae },
         { "posting_map", lookup, one_e },
-        { "posting_map", erase, lin_row_e },
+        { "posting_map", erase, lin_row_t },
         { "posting_map", clear, lin_capacity },
         { "posting_map", iterate, lin_nt },
         { "disjoint_sets", lookup, one_at },
@@ -302,7 +304,7 @@ inline constexpr auto cost_table = []
         { "concurrent_segmented_vector", insert, one_a },
         { "concurrent_segmented_vector", iterate, lin_nt },
         { "concurrent_segmented_vector", access, one_t },
-        { "row_pool", insert, one_a },
+        { "row_pool", insert, one_at },
         { "row_pool", erase, one_t },
         { "row_pool", clear, lin_nt },
         { "row_pool", iterate, lin_nt },
@@ -359,23 +361,23 @@ inline constexpr auto cost_table = []
         { "tree_vector_set", insert_row, lin_row_e },
         { "tree_vector_set", find_row, lin_row_e },
         { "tree_vector_set", access, lin_row_t },
-        { "tree_bitset_set", insert_row, lin_row_e },
-        { "tree_bitset_set", find_row, lin_row_e },
+        { "tree_bitset_set", insert_row, lin_row_t },
+        { "tree_bitset_set", find_row, lin_row_t },
         { "tree_bitset_set", access, lin_row_t },
-        { "record_interner", insert_row, lin_row_e },
-        { "record_interner", find_row, lin_row_e },
+        { "record_interner", insert_row, lin_row_t },
+        { "record_interner", find_row, lin_row_t },
         { "record_interner", access, one_t },
-        { "stable_record_interner", insert_row, lin_row_e },
-        { "stable_record_interner", find_row, lin_row_e },
+        { "stable_record_interner", insert_row, lin_row_t },
+        { "stable_record_interner", find_row, lin_row_t },
         { "stable_record_interner", access, one_t },
-        { "thread_safe_record_interner", insert_row, lin_row_e },
-        { "thread_safe_record_interner", find_row, lin_row_e },
+        { "thread_safe_record_interner", insert_row, lin_row_t },
+        { "thread_safe_record_interner", find_row, lin_row_t },
         { "thread_safe_record_interner", access, one_t },
-        { "arena_interner", insert_row, lin_row_e },
-        { "arena_interner", find_row, lin_row_e },
+        { "arena_interner", insert_row, lin_row_t },
+        { "arena_interner", find_row, lin_row_t },
         { "arena_interner", access, one_t },
-        { "thread_safe_arena_interner", insert_row, lin_row_e },
-        { "thread_safe_arena_interner", find_row, lin_row_e },
+        { "thread_safe_arena_interner", insert_row, lin_row_t },
+        { "thread_safe_arena_interner", find_row, lin_row_t },
         { "thread_safe_arena_interner", access, one_t },
         { "slot_vector", insert_row, one_at },
         { "slot_vector", access, one_t },
@@ -461,14 +463,14 @@ inline constexpr auto cost_table = []
         { "scoped_tree_map", erase, log_n },
         { "scoped_tree_map", clear, lin_nt },
         { "scoped_tree_map", iterate, lin_nt },
-        { "scoped_tree_map", scope, lin_changes },
+        { "scoped_tree_map", scope, nlog_changes },
         { "scoped_dense_map", insert, one_at },
         { "scoped_dense_map", lookup, one_t },
         { "scoped_dense_map", ordered_lookup, lin_keys },
         { "scoped_dense_map", erase, one_t },
         { "scoped_dense_map", clear, lin_keys },
         { "scoped_dense_map", iterate, lin_keys },
-        { "scoped_dense_map", scope, lin_changes },
+        { "scoped_dense_map", scope, lin_changes_t },
         // A map whose keys are a set of its own (an interner, or a sparse set), the values beside them in order.
         { "ordered_map", insert, part },
         { "ordered_map", lookup, part },
@@ -483,83 +485,88 @@ struct memory_note
 {
     std::string_view representation;
     std::string_view holds;
+    /// Machine words per element, the element itself counting 1 (per key or slot for dense keys, which fill their
+    /// range); what it adds to its part's where plus_part. Rough by design: it orders representations whose costs
+    /// grow apart (benchmarks/comparisons.hpp), and benchmarks/record.py checks it against measured bytes within 2x.
+    double words = 1;
+    bool plus_part = false;
 };
 inline constexpr auto memory_table = std::to_array<memory_note>({
-    { "unordered_flat_set", "~n/0.875 slots + 1 byte each; retains" },
-    { "unordered_flat_map", "~n/0.875 slots + 1 byte each; retains" },
-    { "parallel_hash_set", "16 shards of open addressing, a lock each" },
-    { "parallel_hash_map", "16 shards of open addressing, a lock each" },
-    { "parallel_node_hash_set", "16 shards, a node per element; stable references" },
-    { "parallel_node_hash_map", "16 shards, a node per entry; stable references" },
-    { "unordered_set", "a node per element + buckets; stable references" },
-    { "unordered_map", "a node per entry + buckets; stable references" },
-    { "unordered_multimap", "a node per entry + buckets; stable references" },
-    { "set", "a node per element; reclaims" },
-    { "map", "a node per entry; reclaims" },
-    { "multimap", "a node per entry; reclaims" },
-    { "flat_set", "n elements in one array; retains" },
-    { "flat_multiset", "n elements in one array; retains" },
-    { "flat_map", "n entries in one array; retains" },
-    { "flat_multimap", "n entries in one array; retains" },
-    { "flat_entry_map", "n entries in one array; for few" },
-    { "indexed_set", "n elements in order + a table of positions" },
-    { "stable_indexed_set", "segments that never move + a table of positions" },
-    { "concurrent_indexed_set", "segments that never move + a table of positions; new elements under a lock" },
-    { "dense_set", "U bits" },
-    { "tracked_dense_set", "U bits + the indices of the words in use" },
-    { "sparse_set", "n members + U positions" },
-    { "ordered_sparse_set", "n members in insertion order + U positions" },
-    { "dense_map", "a slot per index" },
-    { "stable_dense_map", "a slot per index, in segments that never move" },
-    { "generation_map", "a slot and a generation per index" },
-    { "stable_generation_map", "a slot and a generation per index, in segments that never move" },
-    { "thread_safe_generation_map", "a slot, a generation and a lock byte per index, in segments" },
-    { "csr_multimap", "n values + U + 1 offsets" },
-    { "bidirectional_csr", "n values + U + 1 offsets, both ways" },
-    { "dense_multimap", "a vector per index; retains" },
-    { "posting_map", "a vector of values per key" },
-    { "disjoint_sets", "a parent and a size per element" },
-    { "vector", "one array; retains" },
-    { "segmented_vector", "doubling segments; stable references" },
-    { "concurrent_segmented_vector", "doubling segments; stable references; appends from threads" },
-    { "row_pool", "rows kept with their storage" },
-    { "jagged", "one offsets array per level" },
-    { "tracked_jagged", "one array, + the rows handed out to change" },
-    { "fifo", "a deque; stable references" },
-    { "ring_fifo", "one vector as a ring; retains" },
-    { "lifo", "a vector; retains" },
-    { "heap", "a vector as a binary heap; retains" },
-    { "heap_by", "a vector as a binary heap; retains" },
-    { "addressable_heap", "a heap of handles + a slot per handle" },
-    { "bucket_queue", "a vector per priority" },
-    { "row_interner", "each distinct row once, in full" },
-    { "thread_safe_row_interner", "each distinct row once, in full; inserts under a lock" },
-    { "tree_vector_set", "nodes shared across rows: a delta adds about k log r nodes" },
-    { "tree_bitset_set", "nodes shared across rows; all-zero subtrees take nothing" },
-    { "record_interner", "each distinct record once, as one block of bytes" },
-    { "stable_record_interner", "each distinct record once, in segments that never move" },
-    { "thread_safe_record_interner", "each distinct record once; inserts under a lock" },
-    { "arena_interner", "each distinct record once, serialized into an arena" },
-    { "thread_safe_arena_interner", "each distinct record once, serialized; inserts under a lock" },
-    { "slot_vector", "stable slots; freed slots reused first" },
-    { "thread_safe_slot_vector", "stable slots; freed slots reused first, under a lock" },
-    { "layered", "its own elements; the parent is not owned" },
-    { "layered_node_set", "its own elements in nodes; the parent is not owned" },
-    { "layered_node_map", "its own entries in nodes; the parent is not owned" },
-    { "layered_generation_map", "its own slots; the parent is not owned" },
-    { "layered_pool", "its own rows, indices after the parent's" },
-    { "change_logged", "+ the elements added and removed" },
-    { "change_logged_dense_set", "+ the elements added and removed" },
-    { "change_logged_tree_set", "+ the elements added and removed" },
-    { "change_logged_node_set", "+ the elements added and removed" },
-    { "recycling_hash_set", "erased nodes kept for reuse" },
-    { "recycling_tree_set", "erased nodes kept for reuse" },
-    { "recycling_hash_map", "erased nodes and their values kept for reuse" },
-    { "recycling_map", "erased nodes and their values kept for reuse" },
-    { "scoped_map", "+ a log entry per change; pop_scope undoes them" },
-    { "scoped_tree_map", "+ a log entry per change; pop_scope undoes them" },
-    { "scoped_dense_map", "+ a log entry per change; pop_scope undoes them" },
-    { "ordered_map", "its key set + n values in order" },
+    { "unordered_flat_set", "~n/0.875 slots + 1 byte each; retains", 1.3 },
+    { "unordered_flat_map", "~n/0.875 slots + 1 byte each; retains", 1.3 },
+    { "parallel_hash_set", "16 shards of open addressing, a lock each", 1.3 },
+    { "parallel_hash_map", "16 shards of open addressing, a lock each", 1.3 },
+    { "parallel_node_hash_set", "16 shards, a node per element; stable references", 3 },
+    { "parallel_node_hash_map", "16 shards, a node per entry; stable references", 3 },
+    { "unordered_set", "a node per element + buckets; stable references", 4 },
+    { "unordered_map", "a node per entry + buckets; stable references", 4 },
+    { "unordered_multimap", "a node per entry + buckets; stable references", 4 },
+    { "set", "a node per element; reclaims", 5 },
+    { "map", "a node per entry; reclaims", 5 },
+    { "multimap", "a node per entry; reclaims", 5 },
+    { "flat_set", "n elements in one array; retains", 1.5 },
+    { "flat_multiset", "n elements in one array; retains", 1.5 },
+    { "flat_map", "n entries in one array; retains", 1.5 },
+    { "flat_multimap", "n entries in one array; retains", 1.5 },
+    { "flat_entry_map", "n entries in one array; for few", 1.5 },
+    { "indexed_set", "n elements in order + a table of positions", 2.5 },
+    { "stable_indexed_set", "segments that never move + a table of positions", 2.5 },
+    { "concurrent_indexed_set", "segments that never move + a table of positions; new elements under a lock", 2.6 },
+    { "dense_set", "U bits", 0.016 },
+    { "tracked_dense_set", "U bits + the indices of the words in use", 0.03 },
+    { "sparse_set", "n members + U positions", 2 },
+    { "ordered_sparse_set", "n members in insertion order + U positions", 2 },
+    { "dense_map", "a slot per index", 1.2 },
+    { "stable_dense_map", "a slot per index, in segments that never move", 1.3 },
+    { "generation_map", "a slot and a generation per index", 1.6 },
+    { "stable_generation_map", "a slot and a generation per index, in segments that never move", 1.7 },
+    { "thread_safe_generation_map", "a slot, a generation and a lock byte per index, in segments", 1.8 },
+    { "csr_multimap", "n values + U + 1 offsets", 1.2 },
+    { "bidirectional_csr", "n values + U + 1 offsets, both ways", 2.4 },
+    { "dense_multimap", "a vector per index; retains", 4 },
+    { "posting_map", "a vector of values per key", 4 },
+    { "disjoint_sets", "a parent and a size per element", 2 },
+    { "vector", "one array; retains", 1.5 },
+    { "segmented_vector", "doubling segments; stable references", 1.5 },
+    { "concurrent_segmented_vector", "doubling segments; stable references; appends from threads", 1.6 },
+    { "row_pool", "rows kept with their storage", 4 },
+    { "jagged", "one offsets array per level", 1.2 },
+    { "tracked_jagged", "one array, + the rows handed out to change", 1.3 },
+    { "fifo", "a deque; stable references", 1.2 },
+    { "ring_fifo", "one vector as a ring; retains", 1.5 },
+    { "lifo", "a vector; retains", 1.5 },
+    { "heap", "a vector as a binary heap; retains", 1.5 },
+    { "heap_by", "a vector as a binary heap; retains", 1.5 },
+    { "addressable_heap", "a heap of handles + a slot per handle", 3 },
+    { "bucket_queue", "a vector per priority", 2 },
+    { "row_interner", "each distinct row once, in full", 2.5 },
+    { "thread_safe_row_interner", "each distinct row once, in full; inserts under a lock", 2.6 },
+    { "tree_vector_set", "nodes shared across rows: a delta adds about k log r nodes", 1 },
+    { "tree_bitset_set", "nodes shared across rows; all-zero subtrees take nothing", 0.05 },
+    { "record_interner", "each distinct record once, as one block of bytes", 2.5 },
+    { "stable_record_interner", "each distinct record once, in segments that never move", 2.6 },
+    { "thread_safe_record_interner", "each distinct record once; inserts under a lock", 2.7 },
+    { "arena_interner", "each distinct record once, serialized into an arena", 2.5 },
+    { "thread_safe_arena_interner", "each distinct record once, serialized; inserts under a lock", 2.7 },
+    { "slot_vector", "stable slots; freed slots reused first", 1.5 },
+    { "thread_safe_slot_vector", "stable slots; freed slots reused first, under a lock", 1.6 },
+    { "layered", "its own elements; the parent is not owned", 0, true },
+    { "layered_node_set", "its own elements in nodes; the parent is not owned", 4 },
+    { "layered_node_map", "its own entries in nodes; the parent is not owned", 4 },
+    { "layered_generation_map", "its own slots; the parent is not owned", 1.6 },
+    { "layered_pool", "its own rows, indices after the parent's", 0, true },
+    { "change_logged", "+ the elements added and removed", 1, true },
+    { "change_logged_dense_set", "+ the elements added and removed", 1.03 },
+    { "change_logged_tree_set", "+ the elements added and removed", 6 },
+    { "change_logged_node_set", "+ the elements added and removed", 5 },
+    { "recycling_hash_set", "erased nodes kept for reuse", 4.5 },
+    { "recycling_tree_set", "erased nodes kept for reuse", 5.5 },
+    { "recycling_hash_map", "erased nodes and their values kept for reuse", 4.5 },
+    { "recycling_map", "erased nodes and their values kept for reuse", 5.5 },
+    { "scoped_map", "+ a log entry per change; pop_scope undoes them", 2.3 },
+    { "scoped_tree_map", "+ a log entry per change; pop_scope undoes them", 6 },
+    { "scoped_dense_map", "+ a log entry per change; pop_scope undoes them", 2.2 },
+    { "ordered_map", "its key set + n values in order", 1, true },
 });
 
 /// The cost of `what` in the representation named `representation`, unresolved (as_part stays as_part); none where it
@@ -587,6 +594,23 @@ struct first_part<urd::repr::OrderedMap<Keys, V>, urd::detail::type_list<>>
 {
     using type = Keys;
 };
+
+/// The memory of R in words per element (memory_table), a wrapper's added to its part's; none where undeclared.
+template<typename R>
+constexpr std::optional<double> words_of()
+{
+    for (const auto& each : memory_table)
+        if (each.representation == name<R>::id)
+        {
+            if (!each.plus_part)
+                return each.words;
+            if constexpr (requires { typename first_part<R>::type; })
+                if (const auto part = words_of<typename first_part<R>::type>())
+                    return *part + each.words;
+            return std::nullopt;
+        }
+    return std::nullopt;
+}
 
 /// The cost of `what` in R, with what a wrapper passes on resolved to its part.
 template<typename R>
