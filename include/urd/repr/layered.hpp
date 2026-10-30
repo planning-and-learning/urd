@@ -108,9 +108,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(value_type(std::forward<Args>(args)...));
-    }
+    { return insert(value_type(std::forward<Args>(args)...)); }
 
     /// Own elements only: the parent's stay.
     size_type erase(const key_type& key) { return m_own.erase(key); }
@@ -120,9 +118,7 @@ public:
 
     [[nodiscard]] const mapped& at(const key_type& key) const
         requires is_map
-    {
-        return m_own.contains(key) || m_parent == nullptr ? m_own.at(key) : m_parent->at(key);
-    }
+    { return m_own.contains(key) || m_parent == nullptr ? m_own.at(key) : m_parent->at(key); }
     /// The own value: where only the parent has one, a value that layers (a layered Store) is made here as a layer
     /// over the parent's, else the parent's is copied up first.
     [[nodiscard]] mapped& at(const key_type& key)
@@ -151,9 +147,7 @@ public:
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)
         requires is_map
-    {
-        return m_own.insert_or_assign(key, std::forward<M>(value));
-    }
+    { return m_own.insert_or_assign(key, std::forward<M>(value)); }
 
 private:
     /// The parent's element with the key of `element`, where only the parent has one.
@@ -260,9 +254,7 @@ public:
     }
     [[nodiscard]] bool contains(const T& record) const
         requires(!row_pool)
-    {
-        return !find(record).is_none();
-    }
+    { return !find(record).is_none(); }
     [[nodiscard]] const T& operator[](handle_type at) const
         requires(!row_pool)
     {
@@ -272,17 +264,19 @@ public:
 
     // Rows.
 
+    /// The handle, and whether the row was stored now: in this layer, as no layer of the chain held it.
     template<std::ranges::input_range Elements>
-    handle_type insert(const Elements& elements)
+    std::pair<handle_type, bool> insert(const Elements& elements)
         requires row_pool
     {
         if (const auto at = find(elements); !at.is_none())
-            return at;
+            return { at, false };
         assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
-        return global(m_own.insert(elements));
+        const auto [own, stored] = m_own.insert(elements);
+        return { global(own), stored };
     }
     /// The row `base` with `writes` applied, stored here where new.
-    handle_type insert(handle_type base, std::span<const write_type> writes)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
         requires row_pool && requires(R& own, handle_type at, std::span<const write_type> some) { own.insert(at, some); }
     {
         auto row = elements_of(base);
@@ -291,7 +285,7 @@ public:
         return insert(row);
     }
     /// The row `base` with `added` put in and `removed` taken out, stored here where new.
-    handle_type insert(handle_type base, std::span<const element> added, std::span<const element> removed)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const element> added, std::span<const element> removed)
         requires row_pool
     {
         auto row = elements_of(base);

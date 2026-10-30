@@ -174,19 +174,19 @@ static_assert(!iterable<Store<value<Store<value<int>, urd::frozen>>, urd::handle
               && sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
               && !sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>);
 
-// find gives the handle insert would, without storing; size counts distinct rows, and a new row gets handle size().
-TEST(Pools, FindAndSizeWithoutSharing)
+// insert says whether it stored the row, as a set's does; find gives the handle insert would, or none, without
+// storing; size counts distinct rows.
+TEST(Pools, InsertFindAndSizeWithoutSharing)
 {
     auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
-    EXPECT_FALSE(rows.find({ 1, 2 }).has_value());
+    EXPECT_TRUE(rows.find({ 1, 2 }).is_none());
     EXPECT_TRUE(rows.empty());
-    const auto before = rows.size();
-    const auto first = rows.insert({ 1, 2 });
-    EXPECT_EQ(first.value, before);
-    EXPECT_EQ(rows.insert({ 1, 2 }), first);
+    const auto [first, stored] = rows.insert({ 1, 2 });
+    EXPECT_TRUE(stored);
+    EXPECT_EQ(rows.insert({ 1, 2 }), std::pair(first, false));
     EXPECT_EQ(rows.size(), 1U);
     EXPECT_EQ(rows.find(std::vector { 1, 2 }), first);
-    EXPECT_FALSE(rows.find({ 2, 1 }).has_value());
+    EXPECT_TRUE(rows.find({ 2, 1 }).is_none());
 }
 
 // Erase moves the last row into the erased one's handle and says which handle it had, so whatever keeps handles
@@ -194,17 +194,17 @@ TEST(Pools, FindAndSizeWithoutSharing)
 TEST(Pools, EraseMovesTheLastRowIn)
 {
     auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
-    const auto a = rows.insert({ 1 });
-    const auto b = rows.insert({ 2 });
-    const auto c = rows.insert({ 3 });
+    const auto a = rows.insert({ 1 }).first;
+    const auto b = rows.insert({ 2 }).first;
+    const auto c = rows.insert({ 3 }).first;
     EXPECT_EQ(rows.erase(a), c);  // {3} moves into a's handle
     EXPECT_EQ(rows.size(), 2U);
     EXPECT_TRUE(std::ranges::equal(rows.get(a), std::vector { 3 }));
     EXPECT_EQ(rows.find({ 3 }), a);
-    EXPECT_FALSE(rows.find({ 1 }).has_value());
-    EXPECT_EQ(rows.erase(b), std::nullopt);  // the last row: nothing moves
+    EXPECT_TRUE(rows.find({ 1 }).is_none());
+    EXPECT_TRUE(rows.erase(b).is_none());  // the last row: nothing moves
     EXPECT_EQ(rows.size(), 1U);
-    EXPECT_EQ(rows.insert({ 2 }).value, 1U);  // a new row gets handle size()
+    EXPECT_EQ(rows.insert({ 2 }), std::pair(b, true));  // stored again, at the next handle
 }
 template<typename P>
 concept erasable = requires(P pool, typename P::handle_type handle) { pool.erase(handle); };
@@ -218,14 +218,15 @@ static_assert(erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles
 TEST(Pools, FindWithSharing)
 {
     auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>();
-    const auto whole = rows.insert({ 1, 2, 3, 4, 5, 6, 7, 8 });
+    const auto [whole, stored] = rows.insert({ 1, 2, 3, 4, 5, 6, 7, 8 });
+    EXPECT_TRUE(stored);
     const auto memory = rows.memory_usage();
     EXPECT_EQ(rows.find({ 1, 2, 3, 4, 5, 6, 7, 8 }), whole);
-    EXPECT_TRUE(rows.find({ 1, 2, 3, 4 }).has_value());  // the first half is a node of the whole
-    EXPECT_FALSE(rows.find({ 4, 3, 2, 1 }).has_value());
+    EXPECT_FALSE(rows.find({ 1, 2, 3, 4 }).is_none());  // the first half is a node of the whole
+    EXPECT_TRUE(rows.find({ 4, 3, 2, 1 }).is_none());
     EXPECT_EQ(rows.memory_usage(), memory);
-    EXPECT_EQ(rows.find({ 1, 2, 3, 4 }), rows.insert({ 1, 2, 3, 4 }));
-    EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing
+    EXPECT_EQ(rows.insert({ 1, 2, 3, 4 }), std::pair(rows.find({ 1, 2, 3, 4 }), false));
+    EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing, and says so
 }
 
 TYPED_TEST(Pools, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
@@ -243,10 +244,10 @@ TYPED_TEST(Pools, GivesEqualRowsEqualHandlesThroughRandomOperations)
 TEST(Pools, SetRowsAreEqualInAnyOrder)
 {
     auto facts = Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique>();
-    const auto first = facts.insert({ 3, 1, 4 });
-    const auto second = facts.insert(std::vector<int> { 4, 3, 1, 1 });
+    const auto first = facts.insert({ 3, 1, 4 }).first;
+    const auto second = facts.insert(std::vector<int> { 4, 3, 1, 1 }).first;
     EXPECT_EQ(first, second);
-    EXPECT_NE(first, facts.insert({ 3, 1 }));
+    EXPECT_NE(first, facts.insert({ 3, 1 }).first);
     EXPECT_EQ(facts.row_size(first), 3U);
     EXPECT_TRUE(facts.get(first).contains(4));
 }
@@ -260,7 +261,7 @@ TEST(Pools, WritesShareAllButTheirPaths)
         auto pool = urd::repr::TreeVectorSet<std::vector<std::uint32_t>>();
         auto values = std::vector<std::uint32_t>(size);
         std::ranges::generate(values, [&random] { return static_cast<std::uint32_t>(random() % 1000); });
-        const auto base = pool.insert(values);
+        const auto base = pool.insert(values).first;
         const auto levels = (static_cast<std::size_t>(std::bit_width(size)) + 1) / 2 + 1;  // ⌈log₄ size⌉ + 1, generously
         for (int round = 0; round < 20; ++round)
         {
@@ -269,12 +270,12 @@ TEST(Pools, WritesShareAllButTheirPaths)
                 if (random() % 50 == 0)
                     writes.push_back({ position, static_cast<std::uint32_t>(random()) });
             const auto before = pool.num_nodes();
-            const auto written = pool.insert(base, writes);
+            const auto written = pool.insert(base, writes).first;
             EXPECT_LE(pool.num_nodes() - before, writes.size() * levels);
             auto expected = values;
             for (const auto& write : writes)
                 expected[write.position] = write.value;
-            EXPECT_EQ(written, pool.insert(expected));
+            EXPECT_EQ(written, pool.insert(expected).first);
         }
     }
 }
@@ -378,7 +379,7 @@ void expect_threads_agree(int rounds)
                         for (int element = 0; element < 40; ++element)
                             if ((element * 7 + round) % 5 < 2)
                                 elements.push_back(element + round % 3);
-                        mine.push_back(pool.insert(elements));
+                        mine.push_back(pool.insert(elements).first);
                         // Read a row published earlier, while others insert.
                         if (round > 0)
                             (void) pool.get(mine[static_cast<std::size_t>(round / 2)]);
@@ -416,7 +417,7 @@ TEST(Pools, ViewsLendTheStoredRows)
         auto views = std::vector<std::span<const int>>();
         for (int each = 0; each < 2000; ++each)
         {
-            handles.push_back(pool.insert(row()));
+            handles.push_back(pool.insert(row()).first);
             views.push_back(pool.view(handles.back()));
         }
         for (std::size_t each = 0; each < handles.size(); ++each)
@@ -433,7 +434,7 @@ TEST(Pools, ViewsLendTheStoredRows)
         auto views = std::vector<decltype(pool.view(handles.front()))>();
         for (int each = 0; each < 2000; ++each)
         {
-            handles.push_back(pool.insert(row()));
+            handles.push_back(pool.insert(row()).first);
             views.push_back(pool.view(handles.back()));
         }
         for (std::size_t each = 0; each < handles.size(); ++each)
@@ -446,7 +447,7 @@ TEST(Pools, ViewsLendTheStoredRows)
             ASSERT_TRUE(std::ranges::equal(bits, held)) << each;
         }
         // Equal sets, whatever their elements' order or repeats, are one row.
-        EXPECT_EQ(pool.insert(std::vector<int> { 5, 3, 3, 200 }), pool.insert(std::vector<int> { 200, 5, 3 }));
+        EXPECT_EQ(pool.insert(std::vector<int> { 5, 3, 3, 200 }).first, pool.insert(std::vector<int> { 200, 5, 3 }).first);
     }
 }
 
@@ -548,14 +549,14 @@ TEST(Layered, RowPoolsContinueTheirParent)
     using RowIndex = urd::index<Row>;
     using Rows = Store<value<Row>, urd::handles, urd::unique, urd::monotone, urd::layered>;
     auto parent = Rows();
-    const auto first = parent.insert({ 1, 2, 3 });
-    const auto second = parent.insert({ 4 });
+    const auto first = parent.insert({ 1, 2, 3 }).first;
+    const auto second = parent.insert({ 4 }).first;
     auto child = Rows();
     child.layer_over(&parent);
     EXPECT_EQ(child.base(), 2U);
     EXPECT_EQ(child.layer(), 1U);
-    EXPECT_EQ(child.insert({ 1, 2, 3 }), first);  // the parent's row, found through the chain
-    const auto third = child.insert({ 5, 6 });
+    EXPECT_EQ(child.insert({ 1, 2, 3 }), std::pair(first, false));  // the parent's row, found through the chain
+    const auto third = child.insert({ 5, 6 }).first;
     EXPECT_EQ(third, RowIndex(2));
     const auto expected_first = Row { 1, 2, 3 };
     const auto expected_third = Row { 5, 6 };
@@ -564,11 +565,11 @@ TEST(Layered, RowPoolsContinueTheirParent)
     EXPECT_EQ(child.row_size(second), 1U);
     EXPECT_EQ(child.view(first).size(), 3U);
     const auto writes = std::vector<urd::Write<int>> { { 1, 9 } };
-    const auto written = child.insert(first, std::span<const urd::Write<int>>(writes));
+    const auto written = child.insert(first, std::span<const urd::Write<int>>(writes)).first;
     EXPECT_EQ(written, RowIndex(3));
     const auto expected_written = Row { 1, 9, 3 };
     EXPECT_EQ(child.get(written), expected_written);
-    EXPECT_EQ(parent.insert({ 1, 9, 3 }), RowIndex(2));  // the parent knows nothing of it
+    EXPECT_EQ(parent.insert({ 1, 9, 3 }).first, RowIndex(2));  // the parent knows nothing of it
     EXPECT_TRUE(child.parent_grew());
     EXPECT_EQ(child.parent(), &parent);
 }

@@ -13,10 +13,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
-#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 // Pools: rows identified by the handles insert gives, equal rows by equal handles.
@@ -50,8 +50,9 @@ public:
 
     RowInterner() = default;
 
+    /// The handle of the row with these elements, and whether it was stored now (no equal row was held).
     template<std::ranges::input_range Elements>
-    handle_type insert(const Elements& elements)
+    std::pair<handle_type, bool> insert(const Elements& elements)
     { return intern(canonical(elements)); }
     /// The handle of the row with these elements, or none.
     template<std::ranges::input_range Elements>
@@ -64,7 +65,7 @@ public:
     [[nodiscard]] size_type size() const { return m_rows.size(); }
 
     /// The row `base` with `writes` applied (sorted, unique positions within it), stored in full.
-    handle_type insert(handle_type base, std::span<const write_type> writes)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
         requires(!words)
     {
         auto row = stored(base);
@@ -74,7 +75,7 @@ public:
     }
 
     /// The row `base` with `added` put in and then `removed` taken out (rows that are sets), stored in full.
-    handle_type insert(handle_type base, std::span<const element> added, std::span<const element> removed)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const element> added, std::span<const element> removed)
     {
         if constexpr (words)
         {
@@ -168,13 +169,13 @@ public:
     void clear() { m_rows.clear(); }
     /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
     /// Gives the handle the moved row had, or none where `handle` was the last. Views of the moved row stay valid.
-    std::optional<handle_type> erase(handle_type handle)
+    handle_type erase(handle_type handle)
         requires(!ThreadSafe)
     {
         assert((handle.value) < m_rows.size());
         const auto last = handle_type(static_cast<std::uint32_t>(m_rows.size() - 1));
         m_rows.swap_erase(handle.value);
-        return handle == last ? std::nullopt : std::optional(last);
+        return handle == last ? handle_type() : last;
     }
 
 private:
@@ -198,10 +199,10 @@ private:
         assert((handle.value) < m_rows.size());
         return m_rows[handle.value];
     }
-    handle_type intern(stored_row row)
+    std::pair<handle_type, bool> intern(stored_row row)
     {
         const auto [found, inserted] = m_rows.insert(std::move(row));
-        return handle_type(static_cast<std::uint32_t>(found - m_rows.begin()));
+        return { handle_type(static_cast<std::uint32_t>(found - m_rows.begin())), inserted };
     }
     /// Sets bit `at`, growing the words to hold it.
     static void set(stored_row& bits, std::size_t at)

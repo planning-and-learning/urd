@@ -45,10 +45,11 @@ namespace urd
 // | handles, unique, flat (records)  | in place of all above: insert(record) -> pair<index, bool>, find(r) |
 // |                                  | -> index, contains(r), [index] -> const record&, size, memory_usage;|
 // |                                  | clear if shrinkable                                                |
-// | handles, unique (interning)      | in place of all above: insert(span of a row's elements) -> handle, |
-// |                                  | get(h) -> row, row_size(h), read(h, span), memory_usage; clear if  |
-// |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> handle;|
-// |                                  | for set rows, insert(h, added, removed) -> handle, contains(h, e)  |
+// | handles, unique (interning)      | in place of all above: insert(span of a row's elements) ->         |
+// |                                  | pair<handle, bool>, find(span) -> handle (none if absent), get(h)  |
+// |                                  | -> row, row_size(h), read(h, span), memory_usage; clear if         |
+// |                                  | shrinkable; for sequence rows, insert(h, span of writes) -> pair;  |
+// |                                  | for set rows, insert(h, added, removed) -> pair, contains(h, e)    |
 // | bidirectional (a map)            | keys(v): a range of the keys that map to v                         |
 // | growable map with unique keys    | try_emplace(k, v), insert_or_assign(k, v) -> pair<iterator, bool>; |
 // |                                  | at(k) -> a mutable value; ordered by its values (orders_by_value), |
@@ -201,7 +202,8 @@ template<typename R, typename Traits>
 concept pool_operations =
     std::default_initializable<R>
     && requires(R& pool, const R& constant, const typename R::handle_type& handle, std::span<const std::ranges::range_value_t<typename R::value_type>> elements, std::span<std::ranges::range_value_t<typename R::value_type>> out) {
-           { pool.insert(elements) } -> std::same_as<typename R::handle_type>;
+           { pool.insert(elements) } -> std::same_as<std::pair<typename R::handle_type, bool>>;
+           { constant.find(elements) } -> std::same_as<typename R::handle_type>;
            { constant.get(handle) } -> std::same_as<typename R::value_type>;
            { constant.row_size(handle) } -> std::convertible_to<std::size_t>;
            constant.read(handle, out);
@@ -210,10 +212,10 @@ concept pool_operations =
        } && (!has<Traits, shrinkable> || requires(R& pool) {
            pool.clear();
        }) && (!by_value<traits_t<typename R::value_type>> || requires(R& pool, const R& constant, const typename R::handle_type& handle, std::span<const std::ranges::range_value_t<typename R::value_type>> elements) {
-           { pool.insert(handle, elements, elements) } -> std::same_as<typename R::handle_type>;
+           { pool.insert(handle, elements, elements) } -> std::same_as<std::pair<typename R::handle_type, bool>>;
            { constant.contains(handle, elements.front()) } -> std::same_as<bool>;
        }) && (by_value<traits_t<typename R::value_type>> || requires(R& pool, const typename R::handle_type& handle, std::span<const typename R::write_type> writes) {
-           { pool.insert(handle, writes) } -> std::same_as<typename R::handle_type>;
+           { pool.insert(handle, writes) } -> std::same_as<std::pair<typename R::handle_type, bool>>;
        });
 
 /// A pool of records stored flat (handles, unique, flat): insert gives the record's index and whether it was new, find

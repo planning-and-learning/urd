@@ -19,6 +19,7 @@
 #include <span>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 // Rows as balanced trees whose nodes are interned, so equal subtrees of different rows are stored once. Copied
@@ -73,6 +74,10 @@ struct TreeHandle
     std::uint32_t root = 0;
     std::uint32_t size = 0;
 
+    /// No row's handle: an empty row is {0, 0}, and every other row has a size.
+    [[nodiscard]] static constexpr TreeHandle none() noexcept { return { tree::unused_child, 0 }; }
+    [[nodiscard]] constexpr bool is_none() const noexcept { return root == tree::unused_child && size == 0; }
+
     friend bool operator==(const TreeHandle&, const TreeHandle&) = default;
     static constexpr auto identifying_members() noexcept { return Members<&TreeHandle::root, &TreeHandle::size> {}; }
 };
@@ -100,34 +105,43 @@ public:
 
     static constexpr std::size_t arity = Arity;
 
+    /// The handle of the row, and whether inserting it stored a node (find would have given none).
     template<std::ranges::input_range Elements>
-    handle_type insert(const Elements& elements)
+    std::pair<handle_type, bool> insert(const Elements& elements)
     {
         // A sequence row is its elements as given: nothing to put in order first.
         const auto values = std::vector<T>(std::ranges::begin(elements), std::ranges::end(elements));
         const auto size = static_cast<std::uint32_t>(values.size());
-        return values.empty() ? handle_type {} : handle_type { insert_recursive(values), size };
+        if (values.empty())
+            return { handle_type {}, false };
+        auto stored = false;
+        const auto root = insert_recursive(values, stored);
+        return { handle_type { root, size }, stored };
     }
     /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
     /// already, as a row or as a part of a longer one (an empty or one-element row needs none). Else none.
     template<std::ranges::input_range Elements>
-    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
+    [[nodiscard]] handle_type find(const Elements& elements) const
     {
         const auto values = std::vector<T>(std::ranges::begin(elements), std::ranges::end(elements));
         if (values.empty())
             return handle_type {};
         const auto root = find_recursive(values);
-        return root ? std::optional(handle_type { *root, static_cast<std::uint32_t>(values.size()) }) : std::nullopt;
+        return root ? handle_type { *root, static_cast<std::uint32_t>(values.size()) } : handle_type::none();
     }
 
     /// The row `base` with `writes` applied, which are sorted by unique position within it. Only the paths from
     /// the written positions to the root are rebuilt.
-    handle_type insert(handle_type base, std::span<const write_type> writes)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
     {
         assert(std::ranges::is_sorted(writes, {}, &write_type::position));
         assert(std::ranges::adjacent_find(writes, {}, &write_type::position) == writes.end());
         assert(writes.empty() || writes.back().position < base.size);
-        return base.size == 0 ? base : handle_type { insert_writes_recursive(base.root, 0, base.size, writes), base.size };
+        if (base.size == 0)
+            return { base, false };
+        auto stored = false;
+        const auto root = insert_writes_recursive(base.root, 0, base.size, writes, stored);
+        return { handle_type { root, base.size }, stored };
     }
 
     [[nodiscard]] Row get(handle_type handle) const
@@ -157,14 +171,21 @@ public:
     }
 
 private:
-    std::uint32_t insert_leaf(const T& value)
+    // The inserts below set `stored` where they store a leaf or a node: per call, so threads never share it.
+    std::uint32_t insert_leaf(const T& value, bool& stored)
     {
         if constexpr (inline_leaves)
             return std::bit_cast<std::uint32_t>(value);
         else
-            return position_of(m_leaves, m_leaves.insert(value).first);
+            return stored_at(m_leaves, m_leaves.insert(value), stored);
     }
-    std::uint32_t insert_node(const Children& children) { return position_of(m_nodes, m_nodes.insert(children).first); }
+    std::uint32_t insert_node(const Children& children, bool& stored) { return stored_at(m_nodes, m_nodes.insert(children), stored); }
+    template<typename Set>
+    static std::uint32_t stored_at(const Set& set, std::pair<typename Set::const_iterator, bool> inserted, bool& stored)
+    {
+        stored = stored || inserted.second;
+        return position_of(set, inserted.first);
+    }
     [[nodiscard]] std::optional<std::uint32_t> find_leaf(const T& value) const
     {
         if constexpr (inline_leaves)
@@ -179,19 +200,19 @@ private:
     [[nodiscard]] static std::uint32_t position_of(const Set& set, typename Set::const_iterator it)
     { return static_cast<std::uint32_t>(it - set.begin()); }
 
-    std::uint32_t insert_recursive(std::span<const T> values)
+    std::uint32_t insert_recursive(std::span<const T> values, bool& stored)
     {
         assert(!values.empty());
         if (values.size() == 1)
-            return insert_leaf(values.front());
+            return insert_leaf(values.front(), stored);
 
         const auto size = static_cast<std::uint32_t>(values.size());
         const auto step = tree::chunk<Arity>(size);
         auto children = Children {};
         children.fill(tree::unused_child);
         for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += step)
-            children[k] = insert_recursive(values.subspan(offset, std::min(step, size - offset)));
-        return insert_node(children);
+            children[k] = insert_recursive(values.subspan(offset, std::min(step, size - offset)), stored);
+        return insert_node(children, stored);
     }
 
     /// insert_recursive's root for `values`, looked up instead of stored: none where a node is missing.
@@ -216,13 +237,13 @@ private:
     }
 
     /// Rebuilds the subtree `base_root` covering [offset, offset + size) with `writes` applied.
-    std::uint32_t insert_writes_recursive(std::uint32_t base_root, std::uint32_t offset, std::uint32_t size, std::span<const write_type> writes)
+    std::uint32_t insert_writes_recursive(std::uint32_t base_root, std::uint32_t offset, std::uint32_t size, std::span<const write_type> writes, bool& stored)
     {
         assert(size > 0);
         if (writes.empty())
             return base_root;
         if (size == 1)
-            return insert_leaf(writes.front().value);
+            return insert_leaf(writes.front().value, stored);
 
         auto children = m_nodes[base_root];
         const auto step = tree::chunk<Arity>(size);
@@ -230,10 +251,10 @@ private:
         {
             const auto child_size = std::min(step, offset + size - child_offset);
             const auto split = std::ranges::lower_bound(writes, std::size_t { child_offset } + child_size, {}, &write_type::position) - writes.begin();
-            children[k] = insert_writes_recursive(children[k], child_offset, child_size, writes.first(static_cast<std::size_t>(split)));
+            children[k] = insert_writes_recursive(children[k], child_offset, child_size, writes.first(static_cast<std::size_t>(split)), stored);
             writes = writes.subspan(static_cast<std::size_t>(split));
         }
-        return insert_node(children);
+        return insert_node(children, stored);
     }
 
     void read_recursive(std::uint32_t root, std::span<T> values) const

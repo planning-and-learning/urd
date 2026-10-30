@@ -20,6 +20,7 @@
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 // Sets of indices as bitsets, each a balanced tree of 32-bit blocks whose nodes are interned, so that equal subtrees
@@ -65,23 +66,24 @@ public:
 
     // The rows, as their elements.
 
+    /// The handle of the row, and whether inserting it stored a node (find would have given none).
     template<std::ranges::input_range Elements>
-    handle_type insert(const Elements& elements)
-    { return insert_blocks(blocks_of(elements)); }
+    std::pair<handle_type, bool> insert(const Elements& elements)
+    { return store_blocks(blocks_of(elements)); }
     /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
     /// already, as a row or as a part of a longer one (all-zero parts and one-block rows need none). Else none.
     template<std::ranges::input_range Elements>
-    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
+    [[nodiscard]] handle_type find(const Elements& elements) const
     {
         const auto blocks = blocks_of(elements);
         if (blocks.empty())
             return handle_type {};
         const auto root = find_recursive(blocks);
-        return root ? std::optional(handle_type { *root, static_cast<std::uint32_t>(blocks.size()) }) : std::nullopt;
+        return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : handle_type::none();
     }
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
     /// from blocks at a changed length, to the root are rebuilt.
-    handle_type insert(handle_type base, std::span<const K> added, std::span<const K> removed)
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const K> added, std::span<const K> removed)
     {
         // Each element once, by its index: whether it ends up in the row decides whether its bit flips.
         auto touched = std::vector<std::size_t>();
@@ -102,7 +104,7 @@ public:
                 flips.push_back({ static_cast<std::uint32_t>(Bits::block_index(bit)), Block { 1 } << Bits::block_pos(bit) });
         }
         normalize(flips);
-        return insert_flips(base, flips);
+        return store_flips(base, flips);
     }
     /// Whether the row of `handle` holds `element`, read along one path, not by reading the row.
     [[nodiscard]] bool contains(handle_type handle, const K& element) const
@@ -153,35 +155,9 @@ public:
     // The rows, as their blocks, as yggdrasil's TreeBitsetSet offers them.
 
     /// The handle of the row with these blocks, whose last block must not be zero.
-    handle_type insert_blocks(std::span<const Block> blocks)
-    {
-        if (!blocks.empty() && blocks.back() == Block { 0 })
-            throw std::invalid_argument("urd::repr::TreeBitsetSet::insert_blocks: the last block must not be zero");
-        const auto size = static_cast<std::uint32_t>(blocks.size());
-        return blocks.empty() ? handle_type {} : handle_type { insert_recursive(blocks), size };
-    }
+    handle_type insert_blocks(std::span<const Block> blocks) { return store_blocks(blocks).first; }
     /// The row `base` with `flips` applied, sorted by unique position; trimmed to its last nonzero block.
-    handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips)
-    {
-        assert(std::ranges::is_sorted(flips, {}, &BlockFlip::position));
-        assert(std::ranges::adjacent_find(flips, {}, &BlockFlip::position) == flips.end());
-
-        const auto upper = flips.empty() ? base.size : std::max(base.size, flips.back().position + 1);
-        if (upper == 0)
-            return handle_type {};
-
-        auto cursor = BaseCursor(m_nodes, base);
-        const auto root = insert_delta_recursive(cursor, false, zero(upper), 0, upper, flips);
-        const auto size = trimmed_size(root, upper);
-        if (size == upper)
-            return handle_type { root, size };
-        if (size == 0)
-            return handle_type {};
-
-        // Cleared trailing blocks: rebuild the right spine for the shorter size, reusing all other subtrees.
-        auto trimmed = BaseCursor(m_nodes, handle_type { root, upper });
-        return handle_type { insert_delta_recursive(trimmed, false, zero(size), 0, size, {}), size };
-    }
+    handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips).first; }
     /// The row's blocks into `blocks`, which must hold handle.size of them.
     void read_blocks(handle_type handle, std::span<Block> blocks) const
     {
@@ -245,14 +221,56 @@ private:
         return blocks;
     }
 
+    /// insert_blocks and insert_flips, with whether they stored a node. `stored` is per call: threads never share it.
+    std::pair<handle_type, bool> store_blocks(std::span<const Block> blocks)
+    {
+        if (!blocks.empty() && blocks.back() == Block { 0 })
+            throw std::invalid_argument("urd::repr::TreeBitsetSet::insert_blocks: the last block must not be zero");
+        const auto size = static_cast<std::uint32_t>(blocks.size());
+        if (blocks.empty())
+            return { handle_type {}, false };
+        auto stored = false;
+        const auto root = insert_recursive(blocks, stored);
+        return { handle_type { root, size }, stored };
+    }
+    std::pair<handle_type, bool> store_flips(handle_type base, std::span<const BlockFlip> flips)
+    {
+        assert(std::ranges::is_sorted(flips, {}, &BlockFlip::position));
+        assert(std::ranges::adjacent_find(flips, {}, &BlockFlip::position) == flips.end());
+
+        const auto upper = flips.empty() ? base.size : std::max(base.size, flips.back().position + 1);
+        if (upper == 0)
+            return { handle_type {}, false };
+
+        auto stored = false;
+        auto spine = FreshSpine();
+        auto cursor = BaseCursor(m_nodes, base);
+        const auto root = insert_delta_recursive(cursor, false, zero(upper), 0, upper, flips, stored, &spine);
+        const auto size = trimmed_size(root, upper);
+        if (size == upper)
+            return { handle_type { root, size }, stored };
+        if (size == 0)
+            return { handle_type {}, false };
+
+        // Cleared trailing blocks: rebuild the right spine for the shorter size, reusing all other subtrees. The first
+        // pass stored the untrimmed row's spine, which the row does not keep: what this one stores says whether the row
+        // is new, or else whether its root is a node the first pass stored (a fresh node of the row has fresh
+        // ancestors up to the root, and the root covers offset 0).
+        auto trimmed = BaseCursor(m_nodes, handle_type { root, upper });
+        auto rebuilt = false;
+        const auto shorter = insert_delta_recursive(trimmed, false, zero(size), 0, size, {}, rebuilt, nullptr);
+        return { handle_type { shorter, size }, rebuilt || (size > 1 && spine.holds(shorter)) };
+    }
+
     /// Stores the node of a subtree covering `size` blocks, unless all its children are zero.
-    std::uint32_t insert_node(const Children& children, std::uint32_t size)
+    std::uint32_t insert_node(const Children& children, std::uint32_t size, bool& stored)
     {
         const auto count = tree::num_children<Arity>(size);
         for (std::uint32_t k = 0; k < count; ++k)
             if (children[k] != zero(child_size(size, k)))
             {
-                const auto found = m_nodes.insert(children).first;
+                const auto [found, inserted] = m_nodes.insert(children);
+                stored = stored || inserted;
                 return static_cast<std::uint32_t>(found - m_nodes.begin());
             }
         return zero_subtree;
@@ -283,7 +301,7 @@ private:
         return zero_subtree;
     }
 
-    std::uint32_t insert_recursive(std::span<const Block> blocks)
+    std::uint32_t insert_recursive(std::span<const Block> blocks, bool& stored)
     {
         assert(!blocks.empty());
         if (blocks.size() == 1)
@@ -291,8 +309,8 @@ private:
         const auto size = static_cast<std::uint32_t>(blocks.size());
         auto children = unused_children();
         for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += tree::chunk<Arity>(size))
-            children[k] = insert_recursive(blocks.subspan(offset, child_size(size, k)));
-        return insert_node(children, size);
+            children[k] = insert_recursive(blocks.subspan(offset, child_size(size, k)), stored);
+        return insert_node(children, size, stored);
     }
 
     /// Finds subtrees of a base row for the ranges that insert_delta_recursive visits. These arrive in depth-first
@@ -346,6 +364,24 @@ private:
         std::size_t m_depth = 0;
     };
 
+    /// The nodes a delta stored at offset 0, one per level at most: the only ones a trimmed row's root can be.
+    struct FreshSpine
+    {
+        std::array<std::uint32_t, std::numeric_limits<std::uint32_t>::digits + 2> nodes {};
+        std::size_t count = 0;
+
+        void add(std::uint32_t node)
+        {
+            assert(count < nodes.size());
+            nodes[count++] = node;
+        }
+        [[nodiscard]] bool holds(std::uint32_t node) const
+        {
+            const auto used = std::span(nodes).first(count);
+            return std::ranges::find(used, node) != used.end();
+        }
+    };
+
     /// Builds the subtree for [offset, offset + size) of the new row. `base_root` covers the same range in the base
     /// where `base_known`; otherwise it is looked up through `base`.
     std::uint32_t insert_delta_recursive(BaseCursor& base,
@@ -353,7 +389,9 @@ private:
                                          std::uint32_t base_root,
                                          std::uint32_t offset,
                                          std::uint32_t size,
-                                         std::span<const BlockFlip> flips)
+                                         std::span<const BlockFlip> flips,
+                                         bool& stored,
+                                         FreshSpine* spine)
     {
         assert(size > 0);
         if (!base_known)
@@ -382,10 +420,16 @@ private:
         {
             const auto child_blocks = child_size(size, k);
             const auto split = std::ranges::lower_bound(flips, child_offset + child_blocks, {}, &BlockFlip::position) - flips.begin();
-            children[k] = insert_delta_recursive(base, base_known, children[k], child_offset, child_blocks, flips.first(static_cast<std::size_t>(split)));
+            children[k] =
+                insert_delta_recursive(base, base_known, children[k], child_offset, child_blocks, flips.first(static_cast<std::size_t>(split)), stored, spine);
             flips = flips.subspan(static_cast<std::size_t>(split));
         }
-        return insert_node(children, size);
+        auto fresh = false;
+        const auto node = insert_node(children, size, fresh);
+        stored = stored || fresh;
+        if (fresh && spine != nullptr && offset == 0)
+            spine->add(node);
+        return node;
     }
 
     /// The number of blocks up to and including the last nonzero block of the subtree.

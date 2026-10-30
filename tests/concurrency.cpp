@@ -284,7 +284,7 @@ TYPED_TEST(ConcurrentRowPools, EqualRowsGetEqualHandlesAcrossThreads)
         [&pool, &handles](int thread)
         {
             for (int step = 0; step < count; ++step)
-                handles[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)] = pool.insert(row_of(step));
+                handles[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)] = pool.insert(row_of(step)).first;
         });
     for (int thread = 1; thread < threads; ++thread)
         EXPECT_EQ(handles[static_cast<std::size_t>(thread)], handles[0]);
@@ -301,7 +301,7 @@ TYPED_TEST(ConcurrentRowPools, ReadsByHandleOfPublishedRowsBesideInserts)
     for (int step = 0; step < published; ++step)
     {
         const auto elements = row_of(step);
-        early.push_back(pool.insert(elements));
+        early.push_back(pool.insert(elements).first);
         rows.emplace_back(elements.begin(), elements.end());
     }
     auto wrong = std::vector<int>(threads);
