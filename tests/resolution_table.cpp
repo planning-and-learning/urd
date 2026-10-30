@@ -42,7 +42,7 @@ void families_of(std::vector<std::string>& into)
     auto header = std::string(urd::defined_in<R>.c_str());
     header = header.substr(header.rfind('/') + 1);
     header = header.substr(0, header.rfind('.'));
-    if (header == "all")
+    if (header == "<unnamed>")
         throw std::runtime_error("a registered representation names no family header (urd::defined_in, beside its declaration): "
                                  + std::string(urd::test::name<R>::id));
     if (std::find(into.begin(), into.end(), header) == into.end())

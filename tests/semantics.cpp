@@ -7,7 +7,8 @@
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/store.hpp"
-#include "urd/use/all.hpp"
+#include "urd/use/contiguous.hpp"
+#include "urd/use/dense.hpp"
 
 #include <array>
 #include <cstdint>

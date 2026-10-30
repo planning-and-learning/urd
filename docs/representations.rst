@@ -57,9 +57,6 @@ gives each request's family.
    * - ``urd/use/parallel.hpp``
      - gtl's sharded tables; only with ``URD_WITH_GTL``
      - gtl
-   * - ``urd/use/all.hpp``
-     - every family
-     - everything
 
 The standard library's and Boost's
 ----------------------------------

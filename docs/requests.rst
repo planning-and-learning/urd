@@ -144,8 +144,9 @@ by hashed keys.
 
 ``urd/store.hpp`` declares every representation and defines none: it costs the vocabulary and the resolution, and
 stays as cheap as containers are added. A file includes the families it holds Stores of, ``urd/use/<family>.hpp``
-(:doc:`representations` lists them; ``urd/use/all.hpp`` has every one), and a Store whose family is missing fails
-to compile with the header's path in the error. The resolution table (``docs/RESOLUTION.md``) names each request's
+(:doc:`representations` lists them), and a Store whose family is missing fails to compile with the header's path in
+the error. No header includes every family: the records family alone brings cista's serialization, which only a
+file holding such a pool should pay for. The resolution table (``docs/RESOLUTION.md``) names each request's
 family. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
 ``urd/compose/family.hpp`` for families of Stores.
 

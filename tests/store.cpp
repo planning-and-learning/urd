@@ -1,12 +1,26 @@
 // A Store resolves the same request to the same type in any order, to the representation its properties and
 // workload select, offers what was asked for, and behaves like the reference container under random use.
 
+// Every family: this file checks that every registered candidate offers what its traits declare.
 #include "urd/store.hpp"
+
+#include "urd/use/contiguous.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/layers.hpp"
+#include "urd/use/nodes.hpp"
+#include "urd/use/pools.hpp"
+#include "urd/use/queues.hpp"
+#include "urd/use/records.hpp"
+#include "urd/use/scopes.hpp"
+#include "urd/use/sequences.hpp"
+#if defined(URD_HAS_GTL)
+#include "urd/use/parallel.hpp"
+#endif
 
 #include "allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
-#include "urd/use/all.hpp"
 
 #include <algorithm>
 #include <chrono>

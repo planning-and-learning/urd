@@ -131,7 +131,7 @@ first; a file that holds a Store without its family fails with the header in the
 
 ```text
 GCC:   error: static assertion failed: urd::Store: the representation's family is not included here: #include the
-       header that urd::include<"..."> names in this error (urd/use/all.hpp has every family)
+       header that urd::include<"..."> names in this error (docs/RESOLUTION.md names each request's)
        note: ‘(((bool)urd::included<urd::detail::fixed_string<18>{std::array<char, 18>{"urd/use/dense.hpp"}}>) || …)’
        evaluates to false
 Clang: error: static assertion failed due to requirement 'included<defined_in<urd::repr::DenseSet<int>>> ||

@@ -7,7 +7,15 @@
 #include "names.hpp"
 #include "urd/flat.hpp"
 #include "urd/store.hpp"
-#include "urd/use/all.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/layers.hpp"
+#if defined(URD_HAS_GTL)
+#include "urd/use/parallel.hpp"
+#endif
+#include "urd/use/pools.hpp"
+#include "urd/use/records.hpp"
+#include "urd/use/sequences.hpp"
 
 #include <algorithm>
 #include <cstddef>

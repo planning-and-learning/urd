@@ -66,7 +66,7 @@ struct complete_representation : complete_parts<typename parts<R>::type>
 {
     static_assert(included<defined_in<R>> || repr::dependent_false<include<defined_in<R>>>::value,
                   "urd::Store: the representation's family is not included here: #include the header that urd::include<\"...\"> names "
-                  "in this error (urd/use/all.hpp has every family)");
+                  "in this error (docs/RESOLUTION.md names each request's)");
 };
 template<typename... Ps>
 struct complete_parts<type_list<Ps...>> : complete_representation<Ps>...

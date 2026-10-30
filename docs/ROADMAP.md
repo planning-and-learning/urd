@@ -428,7 +428,8 @@ on interners, reporting the moved handle.
 ## M16: zero-overhead includes — done
 
 `urd/store.hpp` declares every representation and defines none: a file pays for the definitions of the families it
-holds Stores of, by including `urd/use/<family>.hpp` (eleven families, cut by what they pull in, and `all.hpp`); a
+holds Stores of, by including `urd/use/<family>.hpp` (eleven families, cut by what they pull in, and no header
+for all of them: the records family alone brings cista); a
 Store whose family is missing fails with the header's path in the error, a wrapper's part before the wrapper. Before
 it could, selection had to stop looking inside candidates and nested Stores: `positional` and `functional` became
 declared properties, `element_traits` a marker whose default the registry computes from the request, a Store's

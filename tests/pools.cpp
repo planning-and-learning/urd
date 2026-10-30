@@ -1,10 +1,16 @@
 // Pools: rows identified by the handles insert gives. Each pool is checked against the rows it was given through
 // random inserts and clears: equal rows get equal handles, and every handle gives its row back.
 
+#include "urd/use/pools.hpp"
+
 #include "names.hpp"
 #include "urd/flat.hpp"
 #include "urd/store.hpp"
-#include "urd/use/all.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/layers.hpp"
+#include "urd/use/nodes.hpp"
+#include "urd/use/records.hpp"
+#include "urd/use/sequences.hpp"
 #include "urd/view.hpp"
 #include "verify.hpp"
 

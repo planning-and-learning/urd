@@ -4,7 +4,9 @@
 
 ```cpp
 #include <urd/store.hpp>
-#include <urd/use/all.hpp>   // or only the families these Stores need: dense, hash, queues
+#include <urd/use/dense.hpp>   // the families these Stores resolve to: dense keys,
+#include <urd/use/hash.hpp>    // an interner,
+#include <urd/use/queues.hpp>  // a queue
 using namespace urd;
 
 struct User                                                             // an index: one integral member
@@ -251,7 +253,9 @@ keys; without it such a request has no representation.
 so including it stays cheap as containers are added (a budget test holds it under 210 MB). A file pays for the
 definitions of the families it holds Stores of, by including `urd/use/<family>.hpp`; a Store whose family is
 missing fails to compile with the header's path in the error (`urd::include<"urd/use/dense.hpp">`), and
-[docs/RESOLUTION.md](docs/RESOLUTION.md) names each request's family. Code that uses a Store names no
+[docs/RESOLUTION.md](docs/RESOLUTION.md) names each request's family. There is no header that includes every
+family, on purpose: the records family alone brings cista's serialization, which only a file holding such a pool
+should pay for. Code that uses a Store names no
 representation: requests use only the vocabulary of `urd/traits.hpp` and `urd/properties.hpp`; what `urd/repr` holds
 is the representations' business (a check keeps containers out of the include root).
 
@@ -268,7 +272,6 @@ is the representations' business (a check keeps containers out of the include ro
 | `urd/use/scopes.hpp` | the scoped map, with the family of the map it scopes | nothing |
 | `urd/use/layers.hpp` | layered sets, maps and pools, with the family of what is layered | nothing |
 | `urd/use/parallel.hpp` | gtl's sharded tables (`concurrent` by hashed keys); only with `URD_WITH_GTL` | gtl |
-| `urd/use/all.hpp` | every family | everything |
 
 Beside these: `urd/flat.hpp` where a record stored flat is written (the cista containers under urd's names),
 `urd/view.hpp` where views are made, `urd/compose/family.hpp` for families of Stores.

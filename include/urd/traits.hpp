@@ -714,10 +714,10 @@ struct include;
 template<detail::fixed_string Header>
 inline constexpr bool included = requires { sizeof(include<Header>); };
 /// The header that defines representation R, specialized beside R's declaration in its repr/X_fwd.hpp. A
-/// representation that names none falls back to the header of every family, which resolution_table --check rejects
-/// for anything the registry chooses: every registered representation names its family.
+/// representation that names none has no header; resolution_table --check rejects that for anything the registry
+/// chooses, so every registered representation names its family.
 template<typename R>
-inline constexpr auto defined_in = detail::fixed_string("urd/use/all.hpp");
+inline constexpr auto defined_in = detail::fixed_string("urd/use/<unnamed>.hpp");
 /// The representations a wrapper holds, whose headers are needed too (Layered<R>: R; Scoped<Map>: Map; ...).
 template<typename R>
 struct parts

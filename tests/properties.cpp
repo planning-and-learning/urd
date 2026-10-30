@@ -7,7 +7,16 @@
 #include "names.hpp"
 #include "urd/repr/dense.hpp"
 #include "urd/store.hpp"
-#include "urd/use/all.hpp"
+#include "urd/use/contiguous.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/layers.hpp"
+#include "urd/use/nodes.hpp"
+#if defined(URD_HAS_GTL)
+#include "urd/use/parallel.hpp"
+#endif
+#include "urd/use/scopes.hpp"
+#include "urd/use/sequences.hpp"
 #include "verify.hpp"
 
 #include <algorithm>
