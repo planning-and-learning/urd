@@ -1,5 +1,7 @@
 #pragma once
 
+#include "urd/semantics/concepts.hpp"
+
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -684,16 +686,7 @@ struct container_traits : properties_of<>
 namespace detail
 {
 
-template<typename R, typename S>
-class Store;
-
 }  // namespace detail
-
-/// Whether R is a Store.
-template<typename R>
-inline constexpr bool is_store = false;
-template<typename R, typename S>
-inline constexpr bool is_store<detail::Store<R, S>> = true;
 
 /// What a container guarantees about its elements where they are Stores: the properties a nested Store's rows
 /// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,

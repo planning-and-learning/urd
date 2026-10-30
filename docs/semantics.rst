@@ -17,12 +17,17 @@ What a container needs of its elements comes from three function objects, with n
 .. cpp:struct:: template<typename T> EqualTo
 
    ``bool operator()(const T&, const T&) const``: equality agreeing with :cpp:struct:`Hash`; for floating point,
-   NaN equals NaN. Transparent (``is_transparent``) where the hash is.
+   NaN equals NaN. Transparent (``is_transparent``) where the hash is. Given for any iterable Store (equal contents,
+   as its ``==`` compares them).
 
 .. cpp:struct:: template<typename T> Less
 
    ``bool operator()(const T&, const T&) const``: a strict weak order agreeing with :cpp:struct:`EqualTo`,
-   lexicographic over members and ranges.
+   lexicographic over members and ranges. Given for Stores iterated in an order their request fixes (``sorted``,
+   ``insertion_ordered``, sequences), so such a Store can be a sorted key.
+
+Which of the three a Store has is decided by its request, never by its representation: a Store named as another
+Store's element is resolved before its representation is defined.
 
 A type names its identity once and is then hashable, comparable and ordered, in member order:
 

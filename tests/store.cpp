@@ -234,6 +234,11 @@ static_assert(std::same_as<Store<key<int>, urd::sorted, urd::reclaims>::represen
 static_assert(urd::hashable<Store<key<int>, urd::sorted, urd::frozen>> && urd::hashable<Store<key<int>, urd::dense, urd::sorted>>
               && urd::hashable<Store<value<int>>> && urd::hashable<Store<value<int>, urd::frozen>>);
 static_assert(!urd::hashable<Store<key<int>>> && !urd::hashable<Store<key<int>, urd::dense, urd::constant_clear>>);
+// Compared and ordered by their request alone: any iterable Store compares equal by contents; one iterated in an
+// order its request fixes (sorted, insertion_ordered, a sequence) is ordered, so it can be a sorted key.
+static_assert(urd::EqualityComparableByEqualTo<Store<key<int>>> && urd::EqualityComparableByEqualTo<Store<value<int>>>);
+static_assert(urd::orderable<Store<key<int>, urd::sorted>> && urd::orderable<Store<value<int>>> && urd::orderable<Store<key<int>, urd::positional, urd::monotone>>
+              && !urd::orderable<Store<key<int>>> && !urd::orderable<Store<value<int>, urd::fifo>>);
 using SortedKey = Store<key<int>, urd::sorted, urd::frozen>;
 static_assert(std::same_as<Store<key<SortedKey>, value<int>>::representation, FlatHashMapOf<SortedKey, int>>);
 using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;
@@ -1126,6 +1131,24 @@ TEST(FixedShape, RowsOfElementsChangeInPlace)
     EXPECT_EQ(copy, rows);
     copy[2][2] = 1.0;
     EXPECT_NE(copy, rows);
+}
+
+// Stores as sorted keys: ordered lexicographically by their elements, equal by contents.
+TEST(Less, StoresAsKeys)
+{
+    using Inner = Store<key<int>, urd::sorted>;
+    const auto less = urd::Less<Inner> {};
+    EXPECT_TRUE(less(Inner { 1, 2 }, Inner { 1, 3 }));
+    EXPECT_TRUE(less(Inner { 1, 2 }, Inner { 1, 2, 3 }));
+    EXPECT_FALSE(less(Inner { 2, 1 }, Inner { 1, 2 }));
+    EXPECT_TRUE(urd::EqualTo<Inner> {}(Inner { 2, 1 }, Inner { 1, 2 }));
+
+    auto by_contents = Store<key<Inner>, urd::sorted>();
+    by_contents.insert(Inner { 3 });
+    by_contents.insert(Inner { 1, 2 });
+    by_contents.insert(Inner { 2, 1 });
+    EXPECT_EQ(by_contents.size(), 2u);
+    EXPECT_EQ(*by_contents.begin(), (Inner { 1, 2 }));
 }
 
 // Stores as hashed keys: found whatever order the key was built in, and whatever storage a bitset grew to.

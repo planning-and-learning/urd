@@ -51,6 +51,20 @@ struct Hash;
 template<typename T>
 struct Less;
 
+namespace detail
+{
+template<typename R, typename S>
+class Store;
+}
+
+/// Whether T is a Store. Known from its name alone, so that what a Store's semantics are (Hash, EqualTo, Less) is
+/// decided by its request and never by completing it: a Store's representation is defined only where the Store is
+/// held, not where it is named as another Store's element.
+template<typename T>
+inline constexpr bool is_store = false;
+template<typename R, typename S>
+inline constexpr bool is_store<detail::Store<R, S>> = true;
+
 /// The members that identify a record, as member pointers:
 /// `static constexpr auto identifying_members() noexcept { return urd::Members<&Data::a, &Data::b> {}; }`.
 template<auto... Ms>
@@ -66,13 +80,13 @@ template<auto... Ms>
 inline constexpr bool is_members_v<Members<Ms...>> = true;
 }  // namespace detail
 
-/// @brief T lists its identifying members as a Members type.
+/// @brief T lists its identifying members as a Members type. A Store never does: asking would complete it.
 template<typename T>
-concept MemberIdentified = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
+concept MemberIdentified = !is_store<T> && requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
 
 /// @brief T has a function that returns the members that identify it.
 template<typename T>
-concept FunctionIdentified = !MemberIdentified<T> && requires(const T a) {
+concept FunctionIdentified = !is_store<T> && !MemberIdentified<T> && requires(const T a) {
     { a.identifying_members() };
 };
 
