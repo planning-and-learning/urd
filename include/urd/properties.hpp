@@ -74,12 +74,19 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 {
 };
 
-/// Whether P is a tag a Store may be asked for. Mutability is not one: it follows from frozen and monotone.
+/// Whether a request may state tags of `of`'s category. Mutability is not one: it follows from frozen and monotone.
+constexpr bool statable(tag of)
+{
+    const auto root = root_of(of);
+    return (in(root, guaranteed_roots) && root != tag::immutable) || in(root, requested_roots);
+}
+
+/// Whether P is a tag a Store may be asked for (statable).
 template<typename P>
 consteval bool is_tag()
 {
     if constexpr (a_tag<P>)
-        return (is_guarantee<P> && root_of(P::value) != tag::immutable) || is_request_only<P>;
+        return statable(P::value);
     else
         return false;
 }

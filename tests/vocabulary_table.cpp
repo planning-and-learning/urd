@@ -4,9 +4,10 @@
 //     vocabulary_table --write share/urd/vocabulary.json
 //     vocabulary_table --check share/urd/vocabulary.json     (the `vocabulary` test)
 //
-// One line per tag. Role, description and phrases are written by hand; category, implies and excludes come from the
-// tag hierarchy, so they cannot drift from it. A request holds one tag per category: a tag excludes every other of its
-// category, even one it implies (frozen and monotone).
+// One line per tag, then one per category and one per theme. Role, description, phrases, themes and questions are
+// written by hand; category, implies, excludes and statable come from the tag hierarchy, so they cannot drift from it.
+// A request holds one tag per category: a tag excludes every other of its category, even one it implies (frozen and
+// monotone).
 
 #include "generated.hpp"
 #include "names.hpp"
@@ -53,6 +54,9 @@ std::string tags_where(urd::tag of, Keep keep)
     return result + "]";
 }
 
+/// The entry of `of`'s category.
+const urd::test::category_entry& category_of(urd::tag of) { return urd::test::category_vocabulary[urd::detail::index(root_of(of))]; }
+
 /// Guarantees, kinds and demands on the keys are questions containers answer; requests and hints are asked only.
 void check_role(urd::tag of, std::string_view role)
 {
@@ -86,7 +90,29 @@ std::string generate()
         out += "{\"tag\": " + quoted(urd::test::tag_name(of)) + ", \"category\": " + quoted(urd::test::tag_name(root_of(of)))
                + ", \"role\": " + quoted(entry.role) + ", \"description\": " + quoted(entry.description) + ", \"phrases\": " + phrases
                + ", \"implies\": " + tags_where(of, [of](urd::tag other) { return at_least(of, other); })
-               + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == root_of(of); }) + "}";
+               + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == root_of(of); })
+               + ", \"theme\": " + quoted(category_of(of).theme) + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false") + "}";
+    }
+    out += "\n], \"categories\": [\n";
+    first = true;
+    for (std::size_t each = 0; each < tag_count; ++each)
+    {
+        const auto of = static_cast<urd::tag>(each);
+        if (root_of(of) != of)
+            continue;
+        out += first ? "  " : ",\n  ";
+        first = false;
+        out += "{\"category\": " + quoted(urd::test::tag_name(of)) + ", \"theme\": " + quoted(category_of(of).theme)
+               + ", \"question\": " + quoted(category_of(of).question) + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false")
+               + ", \"tags\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == of; }) + "}";
+    }
+    out += "\n], \"themes\": [\n";
+    first = true;
+    for (const auto& theme : urd::test::theme_vocabulary)
+    {
+        out += first ? "  " : ",\n  ";
+        first = false;
+        out += "{\"theme\": " + quoted(theme.id) + ", \"title\": " + quoted(theme.title) + ", \"summary\": " + quoted(theme.summary) + "}";
     }
     return out + "\n]}\n";
 }

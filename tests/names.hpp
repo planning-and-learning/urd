@@ -5,6 +5,7 @@
 
 #include "urd/store.hpp"
 
+#include <algorithm>
 #include <array>
 #include <map>
 #include <set>
@@ -639,6 +640,116 @@ static_assert(
     "tag_vocabulary: an entry per tag that is no root, in the order of urd::tag");
 static_assert(tag_vocabulary[urd::detail::index(urd::tag::sorted)].description.starts_with("Iterated in ascending")
               && tag_vocabulary[urd::detail::index(urd::tag::monotone_priority)].role == "demand");
+
+/// The themes, the areas a reader may care about: they group the categories and have no rules of their own.
+struct theme_entry
+{
+    std::string_view id;
+    std::string_view title;
+    std::string_view summary;
+};
+
+/// In the order a request is best thought through: what the Store is and what the data is like decide the most.
+inline constexpr std::array<theme_entry, 6> theme_vocabulary { {
+    { "kind", "What it is", "Whether the Store is a set, map or sequence, a queue, a pool or a partition, and how it is reached." },
+    { "data", "What the data is like", "Promises about the elements: which keys, duplicates, emptiness, priorities, how many." },
+    { "order", "Order", "In which order the elements are iterated, and whether they are reached by position." },
+    { "change", "Change over time", "Whether the Store changes after building, how it is cleared, and what it remembers of changes." },
+    { "memory", "Memory and layout", "Where elements live: stable references, one array, packed records, shared rows, freed memory." },
+    { "threads", "Threads", "Whether several threads change the Store at once." },
+} };
+
+/// A category to the one who writes a request: its theme and the question its tags answer. Whether a request may
+/// state its tags comes from the code (urd::detail::statable).
+struct category_entry
+{
+    std::string_view theme;
+    std::string_view question;
+};
+
+/// In the order of urd::tag: an entry per root, none for a tag that is no root.
+inline constexpr std::array<category_entry, urd::detail::tag_count> category_vocabulary { {
+    { "order", "In which order is it iterated?" },  // any_order
+    {},
+    {},
+    { "data", "Duplicates allowed?" },  // duplicates
+    {},
+    { "data", "Which keys?" },  // any_keys
+    {},
+    {},
+    { "memory", "Do references stay valid?" },  // moving_refs
+    {},
+    { "memory", "One array?" },  // any_layout
+    {},
+    { "memory", "Same contents, same bytes?" },  // any_representation
+    {},
+    { "threads", "Shared between threads?" },  // single_threaded
+    {},
+    { "memory", "What happens to freed memory?" },  // any_memory
+    {},
+    {},
+    { "change", "How is it cleared?" },  // any_clear
+    {},
+    {},
+    { "kind", "How are elements taken out?" },  // any_access
+    {},
+    {},
+    {},
+    { "change", "Nested scopes?" },  // any_scope
+    {},
+    { "change", "Layered over a parent?" },  // any_layering
+    {},
+    { "kind", "Reached by handle?" },  // any_handle
+    {},
+    { "memory", "Rows share structure?" },  // any_sharing
+    {},
+    { "kind", "Looked up both ways?" },  // any_direction
+    {},
+    { "kind", "Rows of a fixed shape?" },  // any_shape
+    {},
+    { "memory", "Records packed flat?" },  // any_packing
+    {},
+    { "kind", "Groups of keys?" },  // any_grouping
+    {},
+    { "change", "Tracks what changed?" },  // any_tracking
+    {},
+    { "change", "Grows or shrinks? (follows from monotone and frozen)" },  // immutable
+    {},
+    {},
+    { "change", "Does it change after building?" },  // may_change
+    {},
+    {},
+    { "data", "Can it be empty?" },  // maybe_empty
+    {},
+    { "kind", "Values per key?" },  // any_multiplicity
+    {},
+    {},
+    { "order", "Reached by position?" },  // by_key
+    {},
+    { "data", "How many elements?" },  // general
+    {},
+    { "data", "How do priorities move?" },  // any_priority
+    {},
+} };
+// An entry for every root and none for another tag, each naming a theme: a category added without its entry, or an
+// entry out of place, fails here.
+static_assert(
+    []
+    {
+        for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
+        {
+            const auto of = static_cast<urd::tag>(each);
+            const auto& entry = category_vocabulary[each];
+            if (entry.question.empty() != (urd::detail::root_of(of) != of))
+                return false;
+            if (!entry.question.empty() && std::ranges::none_of(theme_vocabulary, [&](const theme_entry& theme) { return theme.id == entry.theme; }))
+                return false;
+        }
+        return true;
+    }(),
+    "category_vocabulary: an entry per root, naming a theme of theme_vocabulary, in the order of urd::tag");
+static_assert(category_vocabulary[urd::detail::index(urd::tag::any_keys)].question == "Which keys?"
+              && category_vocabulary[urd::detail::index(urd::tag::single_threaded)].theme == "threads");
 
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names
