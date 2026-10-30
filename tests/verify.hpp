@@ -580,14 +580,14 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     };
     auto rows = std::vector<std::vector<E>>();
     auto handles = std::vector<typename P::handle_type>();
-    // The handle of an equal row, or none, whether the pool says none by an empty optional or by index's none.
-    const auto find = [&pool](const std::vector<E>& elements) -> std::optional<typename P::handle_type>
+    const auto find = [&pool](const std::vector<E>& elements) { return pool.find(elements); };
+    // An insert stored something exactly where find gave none just before it.
+    auto flag_wrong = false;
+    const auto record = [&](std::pair<typename P::handle_type, bool> inserted, std::vector<E> row, bool absent)
     {
-        const auto found = pool.find(elements);
-        if constexpr (requires { found.is_none(); })
-            return found.is_none() ? std::nullopt : std::optional(found);
-        else
-            return found;
+        flag_wrong = flag_wrong || inserted.second != absent;
+        handles.push_back(inserted.first);
+        rows.push_back(std::move(row));
     };
 
     constexpr bool sequence_rows = !by_value<traits_t<Row>>;
@@ -622,8 +622,8 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 const auto erased_row = rows[static_cast<std::size_t>(std::ranges::find(handles, victim) - handles.begin())];
                 const auto last = typename P::handle_type(static_cast<std::uint32_t>(pool.size() - 1));
                 const auto moved = pool.erase(victim);
-                if (moved != (victim == last ? std::nullopt : std::optional(last)))
-                    return "step " + std::to_string(step) + " (erase): erase gives another handle than the last row's";
+                if (moved != (victim == last ? typename P::handle_type() : last))
+                    return "step " + std::to_string(step) + " (erase): erase gives another handle than the last row's, or none where it moved";
                 for (std::size_t each = rows.size(); each-- > 0;)
                     if (handles[each] == victim)
                     {
@@ -631,9 +631,9 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                         handles.erase(handles.begin() + static_cast<std::ptrdiff_t>(each));
                     }
                 for (auto& handle : handles)
-                    if (moved && handle == *moved)
+                    if (!moved.is_none() && handle == moved)
                         handle = victim;
-                if (find(erased_row))
+                if (!find(erased_row).is_none())
                     return "step " + std::to_string(step) + " (erase): the erased row is still found";
                 cleared = true;  // done with this step's change
             }
@@ -653,8 +653,8 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                         writes.push_back({ position, E(pick(random)) });
                         row[position] = writes.back().value;
                     }
-                handles.push_back(pool.insert(handles[base], std::span<const typename P::write_type>(writes)));
-                rows.push_back(row);
+                const bool absent = find(row).is_none();
+                record(pool.insert(handles[base], std::span<const typename P::write_type>(writes)), row, absent);
                 cleared = true;  // done with this step's insert
             }
         }
@@ -673,8 +673,8 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 auto elements = rows[base];
                 elements.insert(elements.end(), added.begin(), added.end());
                 std::erase_if(elements, [&removed](const E& each) { return std::ranges::find(removed, each) != removed.end(); });
-                handles.push_back(pool.insert(handles[base], std::span<const E>(added), std::span<const E>(removed)));
-                rows.push_back(canonical(elements));
+                const bool absent = find(elements).is_none();
+                record(pool.insert(handles[base], std::span<const E>(added), std::span<const E>(removed)), canonical(elements), absent);
                 cleared = true;  // done with this step's insert
             }
         }
@@ -683,10 +683,12 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
             auto elements = std::vector<E>();
             for (int count = length(random); count > 0; --count)
                 elements.push_back(E(pick(random)));
-            handles.push_back(pool.insert(elements));
-            rows.push_back(canonical(elements));
+            const bool absent = find(elements).is_none();
+            record(pool.insert(elements), canonical(elements), absent);
         }
         const auto label = "step " + std::to_string(step) + " (" + operation + "): ";
+        if (flag_wrong)
+            return label + "insert says it stored something where find held the row, or the reverse";
         // Inserting stores more or nothing; only clear lowers it.
         const auto memory = pool.memory_usage();
         if (operation != "clear" && operation != "erase" && memory < memory_before)
@@ -724,7 +726,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         if constexpr (!has<Traits, structural_sharing>)
         {
             const auto inserted = std::ranges::find(rows, canonical(probe));
-            if (found.has_value() != (inserted != rows.end()) || (found && *found != handles[static_cast<std::size_t>(inserted - rows.begin())]))
+            if (found.is_none() != (inserted == rows.end()) || (!found.is_none() && found != handles[static_cast<std::size_t>(inserted - rows.begin())]))
                 return label + "find answers otherwise than the rows inserted";
             auto distinct = rows;
             std::ranges::sort(distinct);

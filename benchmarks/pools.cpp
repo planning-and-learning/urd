@@ -43,7 +43,7 @@ void value_states(benchmark::State& state)
         auto first = std::vector<std::uint32_t>(width);
         for (auto& value : first)
             value = random() % values;
-        auto handles = std::vector<typename Pool::handle_type> { pool.insert(first) };
+        auto handles = std::vector<typename Pool::handle_type> { pool.insert(first).first };
         handles.reserve(states);
         for (std::size_t each = 1; each < states; ++each)
         {
@@ -51,7 +51,7 @@ void value_states(benchmark::State& state)
             for (int change = 0; change < changes; ++change)
                 writes.push_back(
                     { (width / changes) * static_cast<std::size_t>(change) + random() % (width / changes), static_cast<std::uint32_t>(random() % values) });
-            handles.push_back(pool.insert(handles[random() % handles.size()], std::span<const urd::Write<std::uint32_t>>(writes)));
+            handles.push_back(pool.insert(handles[random() % handles.size()], std::span<const urd::Write<std::uint32_t>>(writes)).first);
         }
         auto row = std::vector<std::uint32_t>(width);
         for (const auto handle : handles)
@@ -76,7 +76,7 @@ void fact_states(benchmark::State& state)
         for (std::uint32_t fact = 0; fact < width; ++fact)
             if (random() % true_share == 0)
                 first.push_back(fact);
-        auto handles = std::vector<typename Pool::handle_type> { pool.insert(first) };
+        auto handles = std::vector<typename Pool::handle_type> { pool.insert(first).first };
         handles.reserve(states);
         for (std::size_t each = 1; each < states; ++each)
         {
@@ -87,7 +87,8 @@ void fact_states(benchmark::State& state)
                 added.push_back(random() % width);
                 removed.push_back(random() % width);
             }
-            handles.push_back(pool.insert(handles[random() % handles.size()], std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed)));
+            handles.push_back(
+                pool.insert(handles[random() % handles.size()], std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed)).first);
         }
         std::size_t total = 0;
         for (const auto handle : handles)

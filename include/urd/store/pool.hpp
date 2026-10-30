@@ -6,13 +6,11 @@
 
 #include <algorithm>
 #include <cassert>
-#include <concepts>
 #include <cstddef>
 #include <initializer_list>
-#include <optional>
 #include <ranges>
 #include <span>
-#include <type_traits>
+#include <utility>
 
 namespace urd::detail::facet
 {
@@ -36,14 +34,15 @@ public:
     /// A change to a sequence row: its value at a position.
     using write_type = Write<row_element>;
 
-    /// The handle of the row with these elements: an earlier handle where an equal row is stored.
+    /// The handle of the row with these elements, and whether the insert stored anything: false where find would have
+    /// given the handle, as an equal row is held (or, with structural_sharing, every node of it is).
     template<std::ranges::input_range Elements>
-    handle_type insert(const Elements& elements)
+    std::pair<handle_type, bool> insert(const Elements& elements)
     { return representation().insert(elements); }
-    handle_type insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
-    /// The handle of the row `base` with `writes` applied: sorted by position, each position once and within the row.
-    /// A pool that shares structure stores only what changed.
-    handle_type insert(handle_type base, std::span<const Write<row_element>> writes)
+    std::pair<handle_type, bool> insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
+    /// The row `base` with `writes` applied: sorted by position, each position once and within the row. A pool that
+    /// shares structure stores only what changed.
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const Write<row_element>> writes)
         requires sequence_rows
     {
         assert(std::ranges::is_sorted(writes, {}, &Write<row_element>::position));
@@ -52,9 +51,9 @@ public:
         return representation().insert(base, writes);
     }
 
-    /// The handle of the row `base` with `added` put in and then `removed` taken out (rows that are sets). A pool that
-    /// shares structure stores only what changed.
-    handle_type insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
+    /// The row `base` with `added` put in and then `removed` taken out (rows that are sets). A pool that shares
+    /// structure stores only what changed.
+    std::pair<handle_type, bool> insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
         requires(!sequence_rows)
     { return representation().insert(base, added, removed); }
     /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
@@ -62,19 +61,13 @@ public:
         requires(!sequence_rows)
     { return constant().contains(handle, element); }
 
-    /// The handle insert(elements) would give, where inserting would store nothing; else none. Without
-    /// structural_sharing that is an equal row inserted before. A pool with structural_sharing also finds a row it can
-    /// build from the nodes it holds (a part of a longer row), which inserting would then not store either.
+    /// The handle insert(elements) would give, where inserting would store nothing; else none (handle.is_none()).
+    /// Without structural_sharing that is an equal row inserted before. A pool with structural_sharing also finds a row
+    /// it can build from the nodes it holds (a part of a longer row), which inserting would then not store either.
     template<std::ranges::input_range Elements>
-    [[nodiscard]] std::optional<handle_type> find(const Elements& elements) const
-    {
-        const auto found = constant().find(elements);
-        if constexpr (std::same_as<std::remove_const_t<decltype(found)>, std::optional<handle_type>>)
-            return found;
-        else
-            return found.is_none() ? std::nullopt : std::optional(found);
-    }
-    [[nodiscard]] std::optional<handle_type> find(std::initializer_list<row_element> elements) const
+    [[nodiscard]] handle_type find(const Elements& elements) const
+    { return constant().find(elements); }
+    [[nodiscard]] handle_type find(std::initializer_list<row_element> elements) const
     { return find(std::span<const row_element>(elements.begin(), elements.size())); }
 
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
@@ -91,7 +84,7 @@ public:
     /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
     /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
     /// row's views stay valid, the erased row's do not.
-    std::optional<handle_type> erase(handle_type handle)
+    handle_type erase(handle_type handle)
         requires(erasable)
     { return representation().erase(handle); }
     // Where erase is ruled out, the reason: the denial for erase stays off, since this facet declares the name.

@@ -37,19 +37,20 @@ void run()
 
     // A state and its successors: the parent with facts added and removed.
     auto states = FactStates();
-    const auto initial = states.insert({ 1, 4, 9, 400 });
+    const auto initial = states.insert({ 1, 4, 9, 400 }).first;
     const auto added = std::vector<std::uint32_t> { 5 };
     const auto removed = std::vector<std::uint32_t> { 4 };
-    const auto next = states.insert(initial, std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed));
-    const auto again = states.insert({ 1, 5, 9, 400 });
-    std::cout << "\nthe successor and the same facts listed afresh are one state: " << std::boolalpha << (next == again) << '\n';
+    const auto next = states.insert(initial, std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed)).first;
+    const auto [again, stored] = states.insert({ 1, 5, 9, 400 });
+    std::cout << "\nthe successor and the same facts listed afresh are one state: " << std::boolalpha << (next == again) << " (stored again: " << stored
+              << ")\n";
     std::cout << "the successor holds fact 5: " << states.contains(next, 5) << ", fact 4: " << states.contains(next, 4) << '\n';
 
     // Numeric values, a few written per successor.
     auto values = ValueStates();
-    const auto start = values.insert(std::vector<double>(1000, 0.0));
+    const auto start = values.insert(std::vector<double>(1000, 0.0)).first;
     const auto writes = std::vector<urd::Write<double>> { { 17, 2.5 } };
-    const auto moved = values.insert(start, std::span<const urd::Write<double>>(writes));
+    const auto moved = values.insert(start, std::span<const urd::Write<double>>(writes)).first;
     std::cout << "two states of 1000 values take " << values.memory_usage() << " bytes; value 17 of the second: " << values.get(moved)[17] << '\n';
 
     // Scratch buffers handed out per successor and returned: acquire gives a freed one back with its storage.

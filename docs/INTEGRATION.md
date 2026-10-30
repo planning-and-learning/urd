@@ -442,9 +442,10 @@ constant_clear>`). A matrix of bits of fixed shape waits for a `uniform` propert
 
 ## Pools: rows by handle
 
-A Store with `handles` is a pool: `insert` gives a handle, and the element (a row) comes back by it. It is not
-iterated; without `structural_sharing` it is counted, its handles 0..size()-1, and `find(row)` gives the handle insert
-would without storing. A row pool without `structural_sharing`, `monotone`, `concurrent` or `layered` erases by moving
+A Store with `handles` is a pool: `insert` gives a handle, and the element (a row) comes back by it. An interning pool's
+insert gives `pair<handle, bool>`, as a set's gives `pair<iterator, bool>`, the bool saying it stored something; `find(row)`
+gives the handle insert would without storing, or the handle type's none. It is not iterated; without
+`structural_sharing` it is counted, its handles 0..size()-1. A row pool without `structural_sharing`, `monotone`, `concurrent` or `layered` erases by moving
 its last row into the hole and reporting which handle moved.
 
 - `handles, unique`: an interning pool. Equal rows get equal handles, so a handle stands for its row in comparisons

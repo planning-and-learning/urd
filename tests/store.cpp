@@ -1754,9 +1754,9 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     const auto a = Object(0);
     const auto b = Object(1);
     auto domain = Relations();
-    const auto on_ab = domain[on].insert({ a, b });
-    const auto on_ba = domain[on].insert({ b, a });
-    const auto clear_a = domain[clear].insert({ a });
+    const auto on_ab = domain[on].insert({ a, b }).first;
+    const auto on_ba = domain[on].insert({ b, a }).first;
+    const auto clear_a = domain[clear].insert({ a }).first;
     EXPECT_EQ(on_ab, urd::index<Row>(0));
     EXPECT_EQ(on_ba, urd::index<Row>(1));
     EXPECT_EQ(clear_a, urd::index<Row>(0));
@@ -1766,18 +1766,18 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_TRUE(task.contains(on) && task.contains(clear) && !task.contains(holding));
     EXPECT_EQ(task.size(), 0U);
     EXPECT_EQ(std::as_const(task).at(clear).row_size(clear_a), 1U);  // read through: the domain's pool
-    EXPECT_EQ(task[on].insert({ a, b }), on_ab);                     // the domain's row, through the task's own pool over it
+    EXPECT_EQ(task[on].insert({ a, b }), std::pair(on_ab, false));   // the domain's row, through the task's own pool over it
     EXPECT_EQ(task.size(), 1U);                                      // which now exists, layered
     EXPECT_EQ(task[on].base(), 2U);
     EXPECT_EQ(task[on].layer(), 1U);
-    const auto on_aa = task[on].insert({ a, a });
+    const auto on_aa = task[on].insert({ a, a }).first;
     EXPECT_EQ(on_aa, urd::index<Row>(2));
     const auto expected = Row { a, b };
     EXPECT_EQ(task[on].get(on_ab), expected);
     EXPECT_EQ(task[on].row_size(on_aa), 2U);
     EXPECT_EQ(std::as_const(domain).at(on).row_size(on_ba), 2U);  // the domain's pool, untouched: still two rows at the branch
     EXPECT_FALSE(task[on].parent_grew());
-    const auto holding_b = task[holding].insert({ b });  // a predicate new in the task: a root pool of its own
+    const auto holding_b = task[holding].insert({ b }).first;  // a predicate new in the task: a root pool of its own
     EXPECT_EQ(holding_b, urd::index<Row>(0));
     EXPECT_EQ(task[holding].layer(), 0U);
     EXPECT_EQ(task.size(), 2U);

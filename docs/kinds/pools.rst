@@ -17,9 +17,10 @@ Pools
 .. cpp:namespace:: urd::Pool
 
 A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in
-full numbers them 0..size()-1, a new row taking ``size()``, so a pool without ``structural_sharing`` is counted and walked
-by its handles. A pool with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them:
-it has a handle of its own, and no ``size``.
+full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
+with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its
+own, and no ``size``. Every handle type has a none value (``is_none()``), which ``find`` and ``erase`` give where there is
+no row to name, as a pool of records does.
 
 .. list-table::
    :header-rows: 1
@@ -61,13 +62,14 @@ Member types
 Member functions: interning pools (``handles, unique``)
 --------------------------------------------------------
 
-.. cpp:function:: template<std::ranges::input_range Elements> handle_type insert(const Elements& elements)
-.. cpp:function:: handle_type insert(std::initializer_list<element> elements)
+.. cpp:function:: template<std::ranges::input_range Elements> std::pair<handle_type, bool> insert(const Elements& elements)
+.. cpp:function:: std::pair<handle_type, bool> insert(std::initializer_list<element> elements)
 
-   The handle of the row with these elements: an earlier handle where an equal row is stored.
+   The handle of the row with these elements, and whether the insert stored anything: ``false`` where an equal row is
+   held (with ``structural_sharing``, where every node of it is), exactly where ``find`` would have given the handle.
 
-.. cpp:function:: template<std::ranges::input_range Elements> std::optional<handle_type> find(const Elements& elements) const
-.. cpp:function:: std::optional<handle_type> find(std::initializer_list<element> elements) const
+.. cpp:function:: template<std::ranges::input_range Elements> handle_type find(const Elements& elements) const
+.. cpp:function:: handle_type find(std::initializer_list<element> elements) const
 
    The handle ``insert(elements)`` would give, where inserting would store nothing; else none. Without
    ``structural_sharing``, an equal row inserted before. A tree pool also finds a row it can build from the nodes it
@@ -76,21 +78,20 @@ Member functions: interning pools (``handles, unique``)
 .. cpp:function:: std::size_t size() const
 .. cpp:function:: bool empty() const
 
-   Without ``structural_sharing``: the distinct rows, whose handles are 0..size()-1. A row is new where ``insert`` gives
-   handle ``size()`` as it was before.
+   Without ``structural_sharing``: the distinct rows, whose handles are 0..size()-1.
 
-.. cpp:function:: std::optional<handle_type> erase(handle_type handle)
+.. cpp:function:: handle_type erase(handle_type handle)
 
    Without ``structural_sharing``, ``monotone``, ``concurrent`` or ``layered``: erases the row by moving the last row
    into its place, which then has ``handle``; gives the handle the moved row had, or none where the erased row was the
    last. The moved row's views stay valid. Whatever keeps handles (postings over the rows, counts) follows the move.
 
-.. cpp:function:: handle_type insert(handle_type base, std::span<const write_type> writes)
+.. cpp:function:: std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
 
    Sequence rows: the row ``base`` with ``writes`` applied (sorted by position, each once and within the row). A
    pool that shares structure stores only what changed.
 
-.. cpp:function:: handle_type insert(handle_type base, std::span<const element> added, std::span<const element> removed)
+.. cpp:function:: std::pair<handle_type, bool> insert(handle_type base, std::span<const element> added, std::span<const element> removed)
 
    Rows that are sets: ``base`` with ``added`` put in and then ``removed`` taken out.
 

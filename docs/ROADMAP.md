@@ -472,6 +472,8 @@ docs/SURVEY.md) found unique pools breaking it, and an audit of every facet and 
 - Pools: `find(row)` on every interning pool (the tree pools gained a find that mirrors their insert); `size()` on
   every pool without `structural_sharing`, whose handles are 0..size()-1; swap-erase on row pools, reporting the
   handle that moved (gap 3), where the handles are positions no thread reads and no layer continues.
+  Pools answer as record pools and sets do: every insert gives `pair<handle, bool>` (whether it stored the row), and
+  `find` and `erase` give the handle type's none where there is no row to name (`TreeHandle` gained one).
 - Gated too narrowly: positions on insertion-ordered sets; `front`/`back` on sorted sets and maps that are not dense;
   `was_added`/`was_removed` on change logs; `count` on record pools.
 - With a small new member: iteration of queues (in the order pushed; a priority queue in none); `back()` on fifo
