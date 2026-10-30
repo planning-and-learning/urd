@@ -71,7 +71,7 @@ void check_role(urd::tag of, std::string_view role)
 std::string generate()
 {
     auto out = std::string("{\"generated_by\": \"vocabulary_table --write share/urd/vocabulary.json, from urd/traits.hpp and tests/names.hpp\", "
-                           "\"incompatible\": \"docs/properties.rst, Incompatible combinations\", \"tags\": [\n");
+                           "\"incompatible\": \"docs/language/index.rst, Incompatible combinations\", \"tags\": [\n");
     bool first = true;
     for (std::size_t each = 0; each < tag_count; ++each)
     {

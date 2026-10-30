@@ -7,7 +7,7 @@ states), the representation chosen, and the family header (`urd/use/<family>.hpp
 includes, a wrapper's part first. This table is built with no family header included: resolving completes nothing.
 A request is one of three things: served; `none` and missing, a
 representation that could be written (its note says which); or incompatible, a contract no representation can
-keep, which `Store` rejects with a message (the rules are listed in docs/properties.rst, "Incompatible
+keep, which `Store` rejects with a message (the rules are listed in docs/language/index.rst, "Incompatible
 combinations"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`
 with its culprits' compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,
 indexable).
