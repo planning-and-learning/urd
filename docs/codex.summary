@@ -257,3 +257,10 @@ in the error. Selection reads traits and template arguments only (proved by
 resolution_table, built without any definition), and a Store's semantics as
 an element follow from its request. Bare include: 1.36 s, 250 MB -> 0.89 s,
 167 MB (GCC); a budget test holds it.
+
+Status (2026-10-30, M17): share/urd/vocabulary.json describes every tag
+(category, role, meaning, phrases, implies, excludes), generated from the
+tag hierarchy and tests/names.hpp and checked by a test. Cost classes and
+workload hints are deferred: lookup cost follows from the order, iteration
+over the key range from dense and sparse, an erase class waits for
+swap-erase on interners.

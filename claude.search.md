@@ -32,14 +32,16 @@ The same engine is offered three ways:
    - `members`: what the Store offers, read from which facets are on. For example `insert`, `erase`, `lower_bound`,
      `values(k)`, `update`, `merge`, `push`/`pop`/`top`, `view(h)`, `reset()`. Generate these from the facet gates
      (one compile per request in the generator), not by hand;
-   - `costs`: the declared cost classes (claude.properties.md); until those land, the rows from the README cost
-     tables, kept in one table the generator reads;
-   - `header`: the family header to include, once claude.compile-opt.md lands.
-2. **The vocabulary.** `share/urd/vocabulary.json` (claude.properties.md step 5), one entry per tag:
+   - `costs`: the rows from the README cost tables, kept in one table the generator reads (cost classes as
+     guarantees are deferred: docs/ROADMAP.md, M17);
+   - `header`: the family header to include (docs/RESOLUTION.md names it since M16).
+2. **The vocabulary.** `share/urd/vocabulary.json`, landed (M17; `vocabulary_table`, the `vocabulary` test), one
+   entry per tag:
    - category;
+   - role: guarantee, demand (a promise about the data), kind, request or hint;
    - what it guarantees or asks;
    - plain-language phrases;
-   - what it implies and what it conflicts with.
+   - what it implies and what it excludes (every other tag of its category).
 3. **The compiler,** for requests outside the grid: a syntax-only compile of a two-line file, the way the
    compile-fail tests already run.
 
@@ -50,8 +52,8 @@ All of them answer as JSON for agents, or as text for people.
 - **`search <need>`.** The need is tags (`dense constant_clear`), plain words (`ids, reset every round`), or both.
   1. Words become tags through the vocabulary's phrases: deterministic keyword and phrase matching, no model in the
      loop.
-  2. Return the served requests whose specs contain those tags, ranked by fewest extra tags, then by cost class,
-     then by the registry's order.
+  2. Return the served requests whose specs contain those tags, ranked by fewest extra tags, then by the
+     registry's order.
   3. Each result shows the request as it must be written, the representation, members, costs and header.
 - **`resolve <request>`.**
   1. Look the request up in the index. If it is missing there, compile it.
@@ -106,7 +108,7 @@ All of them answer as JSON for agents, or as text for people.
 2. The `urd-search` CLI with `resolve`, `members` and `explain` over the index, and compile fallback with the safe
    template.
 3. `neighbours` with edit distances and explanations; its tests over the missing and incompatible rows.
-4. `search`, first by tags, then by phrases once `vocabulary.json` exists (claude.properties.md step 5).
+4. `search`, by tags and by the phrases of `vocabulary.json`.
 5. The MCP server over the CLI; a short guide for Claude Code and Codex configuration.
 6. The skill: workflow text plus generated tables. A hook example (syntax-only compile of the changed file, with
    `neighbours` on rejection).

@@ -130,7 +130,9 @@ task.view(atom).get<&Atom::predicate>().get<&Predicate::name>();     // view<Pre
 [docs/RESOLUTION.md](docs/RESOLUTION.md) lists, for a grid of requests over a few element types, the container each
 resolves to (`include/urd/registry.hpp`; the order of candidates there is backed by
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md)). The table is generated from the registry and checked against it by a
-test, so it is what the current registry does, not a description of it. A selection: a set is an open-addressing
+test, so it is what the current registry does, not a description of it. Each tag's category, role (a guarantee, a
+promise about the data, a kind, a request, a hint), meaning, plain-language phrases and exclusions are in
+[share/urd/vocabulary.json](share/urd/vocabulary.json), generated and checked the same way. A selection: a set is an open-addressing
 hash table (`boost::unordered_flat_set`), a tree with `sorted`, a sorted vector with `sorted, frozen`, a bitset
 with `dense`; a sequence is a `std::vector`; a map by hashed keys is `boost::unordered_flat_map`, by dense keys an
 `IndexMap` (a slot per index); `fifo`, `lifo` and `by_priority` are a deque, a vector and a binary heap; rows and pools
@@ -168,8 +170,8 @@ declare the guarantees in `container_traits`; the rest only a request states.
 |---|---|---|
 | lifecycle | `monotone` → `frozen` | only grows (no erase), or changes only by `assign(first, last)`, a rebuild (in the storage held where the container can) |
 | emptiness | `nonempty` | at least one element |
-| multiplicity | `functional`, `multi` | one value per key, or many (a multimap) |
-| identity | `positional` | elements identified by position (sequences, and sets with positions) |
+| multiplicity | `functional`, `multi` | one value per key, or many (a multimap); maps also declare `functional`, which selection reads |
+| identity | `positional` | elements identified by position (sequences, and sets with positions); such containers also declare it, which selection reads |
 | workload | `small` | a few elements: picks compact containers, never changes a guarantee |
 | priority | `monotone_priority` | a priority queue never pushed below the last popped: integral priorities go to buckets |
 | order | `order_by<P>` | a sorted Store or priority queue ordered by `P(element)` (`P(key)` in a map), or a map ordered by `P(key, value)`: a member pointer or a stateless lambda; ties by the element's (the key's) own order. Ordered by values, a map's values change only through `update`, `merge`, `insert_or_assign`, and the request says `small` or `frozen` too (a flat scan) |
