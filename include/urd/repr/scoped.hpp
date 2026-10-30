@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/repr/dense.hpp"
+#include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"

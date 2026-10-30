@@ -3,6 +3,7 @@
 
 #include "urd/compose/family.hpp"
 #include "urd/store.hpp"
+#include "urd/use/all.hpp"
 
 #include <exception>
 #include <iostream>

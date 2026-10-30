@@ -5,6 +5,7 @@
 #include "urd/repr/dense.hpp"
 #include "urd/repr/grouped.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/postings.hpp"
 #include "urd/repr/queues.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"

@@ -4,6 +4,7 @@
 #include "urd/interface.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/dense.hpp"
+#include "urd/repr/rows_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -34,8 +35,7 @@ namespace urd::repr
 /// level up, a subrange of such rows, and so on at any depth. reset() sets every element back to its default;
 /// with TrackRows, only in the rows handed out to change since the last reset (writes through a row are not seen, so
 /// handing it out counts).
-template<typename Inner, bool TrackRows = false>
-class Jagged;
+/// Declared, with its traits, in urd/repr/rows_fwd.hpp.
 
 /// The shape a Jagged of fixed rows is built from: for rows of elements, their lengths; one level up, for each row,
 /// the shape of its rows; and so on.
@@ -453,82 +453,5 @@ private:
 
 namespace urd
 {
-
-namespace detail
-{
-
-/// Whether Jagged can hold rows Inner: frozen rows, of elements or (at a deeper level) of rows in order.
-template<typename Inner>
-concept flattenable = is_store<Inner> && has<container_traits<Inner>, frozen>
-                      && (!is_store<typename container_traits<Inner>::element_type> || !by_value<container_traits<Inner>>);
-
-/// Whether Jagged can hold rows Inner that change in place: rows of elements, as a sequence, or a dense set's bits;
-/// or fixed-shape rows of such rows, at any depth.
-template<typename Inner>
-consteval bool holds_fixed_rows()
-{
-    if constexpr (!is_store<Inner>)
-        return false;
-    else
-    {
-        using traits = container_traits<Inner>;
-        using below = typename traits::element_type;
-        if constexpr (has<traits, frozen>)
-            return false;
-        else if constexpr (!is_store<below>)
-            return !by_value<traits> || (traits::is_set && has<traits, unique, dense>);
-        else
-            return has<traits, fixed_shape> && holds_fixed_rows<below>();
-    }
-}
-template<typename Inner>
-concept fixed_rows = holds_fixed_rows<Inner>();
-
-}  // namespace detail
-
-/// Rows in one array: appends at the end, and erase and clear keep the storage at every level.
-template<detail::flattenable Inner>
-struct container_traits<repr::Jagged<Inner>> : properties_of<dense, positional, shrinkable, retains, proportional_clear>
-{
-};
-
-/// The rows are frozen, their elements move when rows before them are inserted or erased, and their storage is
-/// kept; innermost rows lie next to each other.
-template<detail::flattenable Inner>
-struct element_traits<repr::Jagged<Inner>> :
-    with_t<container_traits<Inner>, std::conditional_t<is_store<typename container_traits<Inner>::element_type>, any_layout, contiguous>, moving_refs, retains>
-{
-};
-
-/// Rows of fixed lengths, changed in place; with TrackRows, reset costs what the rows handed out since hold.
-template<detail::fixed_rows Inner, bool TrackRows>
-struct container_traits<repr::Jagged<Inner, TrackRows>> :
-    properties_of<dense, positional, fixed_shape, retains, std::conditional_t<TrackRows, proportional_clear, any_clear>>
-{
-};
-
-/// The rows keep their lengths and their storage; a sequence's elements lie next to each other.
-template<detail::fixed_rows Inner, bool TrackRows>
-struct element_traits<repr::Jagged<Inner, TrackRows>> :
-    with_t<container_traits<Inner>,
-           std::conditional_t<!is_store<typename container_traits<Inner>::element_type> && !by_value<container_traits<Inner>>, contiguous, any_layout>,
-           moving_refs,
-           retains>
-{
-};
-
-/// Rows that can be cleared are kept for reuse.
-template<typename Inner>
-    requires(is_store<Inner> && has<container_traits<Inner>, shrinkable>)
-struct container_traits<repr::RowPool<Inner>> : properties_of<dense, positional, contiguous, shrinkable, retains, proportional_clear>
-{
-};
-
-/// The rows keep what they hold when removed: their own properties, memory included.
-template<typename Inner>
-    requires(is_store<Inner> && has<container_traits<Inner>, shrinkable>)
-struct element_traits<repr::RowPool<Inner>> : container_traits<Inner>
-{
-};
 
 }  // namespace urd

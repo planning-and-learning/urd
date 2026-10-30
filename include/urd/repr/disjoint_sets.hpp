@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/disjoint_sets_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -99,11 +100,5 @@ private:
 
 namespace urd
 {
-
-/// Indices in classes; clear keeps the storage.
-template<indexable K>
-struct container_traits<repr::DisjointSets<K>> : properties_of<partition, dense, shrinkable, retains>
-{
-};
 
 }  // namespace urd

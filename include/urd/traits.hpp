@@ -2,6 +2,7 @@
 
 #include "urd/semantics/concepts.hpp"
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -764,6 +765,12 @@ template<typename V>
 inline constexpr bool trivially_destructible = std::is_trivially_destructible_v<V>;
 template<typename R, typename S>
 inline constexpr bool trivially_destructible<Store<R, S>> = false;
+
+/// Whether a V is its own block of bytes (copied by memcpy). A Store owns storage, so never.
+template<typename V>
+inline constexpr bool trivially_copyable = std::is_trivially_copyable_v<V>;
+template<typename R, typename S>
+inline constexpr bool trivially_copyable<Store<R, S>> = false;
 
 /// Whether V is iterated as a range of elements. A Store is where its request says so (a set, map or sequence).
 template<typename V>

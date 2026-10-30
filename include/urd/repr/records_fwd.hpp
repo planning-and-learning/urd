@@ -13,9 +13,9 @@ namespace urd::repr
 {
 
 /// A record cista can serialize into the arena: hashable (its identity), and naming its members for cista
-/// (cista_members() gives urd::Members<&T::a, …>).
+/// (cista_members() gives urd::Members<&T::a, …>). Never a Store, which asking would complete.
 template<typename T>
-concept flat_record = hashable<T> && requires { T::cista_members(); };
+concept flat_record = !is_store<T> && hashable<T> && requires { T::cista_members(); };
 
 /// A pool of trivially copyable records, each distinct one once, in an indexed set (urd/repr/records.hpp).
 template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe>
@@ -32,7 +32,7 @@ namespace urd
 
 /// Records that are blocks of bytes already, kept whole in an array (moved as it grows) or in segments (Stable).
 template<typename T, bool ThreadSafe, bool Stable>
-    requires(std::is_trivially_copyable_v<T> && hashable<T>)
+    requires(detail::trivially_copyable<T> && hashable<T>)
 struct container_traits<repr::RecordInterner<T, ThreadSafe, Stable>> :
     properties_of<handles,
                   unique,

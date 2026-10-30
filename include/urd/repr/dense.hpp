@@ -5,6 +5,7 @@
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/config.hpp"
+#include "urd/repr/dense_fwd.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
@@ -31,14 +32,11 @@
 namespace urd::repr
 {
 
-template<typename K, bool KeepOrder = false>
-class SparseSet;
-
 /// A set of indices as a bitset: a bit per key below the largest, iterated in key order. Compact and fast to look
 /// up; iteration takes time in proportion to the largest key, not to the keys present, and so does clear, unless
 /// TrackWords: then the words that are not zero are kept in a SparseSet of their indices, and clear zeroes only
 /// those, at most one per element.
-template<typename K, bool TrackWords = false>
+template<typename K, bool TrackWords>
 class DenseSet
 {
     static_assert(indexable<K>, "urd::repr::DenseSet: keys must be indices (urd::index_of)");
@@ -439,7 +437,7 @@ private:
 /// reach and the .second of an iterated entry (the entry itself is built on the fly). With ThreadSafe (which needs
 /// Stable and Generations), the segments are the thread-safe ones and each slot has a spin lock: update and read
 /// may run from threads at once; clear, erase, iteration and the rest need no other operation running.
-template<typename K, typename V, bool Generations, bool ThreadSafe = false, bool Stable = ThreadSafe>
+template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
 class IndexMap
 {
     static_assert(indexable<K>, "urd::repr::IndexMap: keys must be indices (urd::index_of)");
@@ -832,59 +830,5 @@ private:
 
 namespace urd
 {
-
-/// A bit per key: sorted by index, which urd::Less orders as it does indices. Clear zeroes every word, or with
-/// TrackWords only those not zero, at most one per element: time in proportion to the elements.
-template<indexable K, bool TrackWords>
-struct container_traits<repr::DenseSet<K, TrackWords>> :
-    properties_of<sorted, unique, dense, canonical, shrinkable, retains, std::conditional_t<TrackWords, proportional_clear, any_clear>>
-{
-};
-
-/// Hashed by its words, up to the last one set: as its == compares.
-template<indexable K, bool TrackWords>
-struct Hash<repr::DenseSet<K, TrackWords>>
-{
-    hash_t operator()(const repr::DenseSet<K, TrackWords>& set) const noexcept { return urd::hash_range(set.significant_words()); }
-};
-
-/// Members in one array; clear only forgets them, which is O(1) where they need no destructor.
-/// With KeepOrder, in insertion order.
-template<indexable K, bool KeepOrder>
-struct container_traits<repr::SparseSet<K, KeepOrder>> :
-    properties_of<unique,
-                  dense,
-                  positional,
-                  contiguous,
-                  shrinkable,
-                  retains,
-                  std::conditional_t<std::is_trivially_destructible_v<K>, constant_clear, proportional_clear>,
-                  std::conditional_t<KeepOrder, insertion_ordered, any_order>>
-{
-};
-
-/// A slot per key, in key order: sorted; erase frees what the value owns (std::optional::reset), clear scans every
-/// slot. Stable slots never move: the values keep their addresses.
-template<indexable K, typename V, bool Stable>
-struct container_traits<repr::IndexMap<K, V, false, false, Stable>> :
-    properties_of<sorted, unique, functional, dense, shrinkable, retains, std::conditional_t<Stable, stable_refs, moving_refs>>
-{
-};
-
-/// Clear starts a new generation; stale slots keep their values' storage until written again.
-template<indexable K, typename V, bool ThreadSafe, bool Stable>
-    requires detail::slot_value<V>
-struct container_traits<repr::IndexMap<K, V, true, ThreadSafe, Stable>> :
-    properties_of<sorted,
-                  unique,
-                  functional,
-                  dense,
-                  shrinkable,
-                  retains,
-                  constant_clear,
-                  std::conditional_t<Stable, stable_refs, moving_refs>,
-                  std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
 }  // namespace urd

@@ -149,55 +149,55 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, dense>` | unique, dense, shrinkable | `dense_set` | store |
-| `Store<key<int>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | store |
-| `Store<key<int>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | store |
-| `Store<key<int>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | store |
-| `Store<key<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | store |
+| `Store<key<int>, dense>` | unique, dense, shrinkable | `dense_set` | dense |
+| `Store<key<int>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | dense |
+| `Store<key<int>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | dense |
+| `Store<key<int>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | dense |
+| `Store<key<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | dense |
 | `Store<key<int>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<int>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | store |
-| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | store |
-| `Store<key<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | store |
-| `Store<key<int>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | store |
-| `Store<key<int>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | store |
+| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | dense |
+| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | dense |
+| `Store<key<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | dense |
+| `Store<key<int>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense |
+| `Store<key<int>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense |
 | `Store<key<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset); docs/SURVEY.md gap 5 |  |
 | `Store<key<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` | store |
-| `Store<key<int>, partition>` | dense, partition, shrinkable | `disjoint_sets` | store |
+| `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` | dense + store |
+| `Store<key<int>, partition>` | dense, partition, shrinkable | `disjoint_sets` | dense |
 
 ## Dense sets of Id
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>, dense>` | unique, dense, shrinkable | `dense_set` | store |
-| `Store<key<Id>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | store |
-| `Store<key<Id>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | store |
-| `Store<key<Id>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | store |
-| `Store<key<Id>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | store |
+| `Store<key<Id>, dense>` | unique, dense, shrinkable | `dense_set` | dense |
+| `Store<key<Id>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | dense |
+| `Store<key<Id>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | dense |
+| `Store<key<Id>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | dense |
+| `Store<key<Id>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | dense |
 | `Store<key<Id>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<Id>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | store |
-| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | store |
-| `Store<key<Id>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | store |
-| `Store<key<Id>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | store |
-| `Store<key<Id>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | store |
+| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | dense |
+| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | dense |
+| `Store<key<Id>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | dense |
+| `Store<key<Id>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense |
+| `Store<key<Id>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense |
 | `Store<key<Id>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset); docs/SURVEY.md gap 5 |  |
 | `Store<key<Id>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` | store |
-| `Store<key<Id>, partition>` | dense, partition, shrinkable | `disjoint_sets` | store |
+| `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_dense_set` | dense + store |
+| `Store<key<Id>, partition>` | dense, partition, shrinkable | `disjoint_sets` | dense |
 
 ## Keyed by an index
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<index<Id>>, dense>` | unique, dense, shrinkable | `dense_set` | store |
-| `Store<key<index<Id>>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | store |
+| `Store<key<index<Id>>, dense>` | unique, dense, shrinkable | `dense_set` | dense |
+| `Store<key<index<Id>>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | dense |
 | `Store<key<index<Id>>>` | unique, shrinkable | `unordered_flat_set` | store |
 | `Store<key<index<Id>>, sorted>` | sorted, unique, shrinkable | `set` | store |
-| `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | store |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, layered, handles, growable, monotone>>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | store |
+| `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | dense + store |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, layered, handles, growable, monotone>>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | dense + store |
 | `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered, shrinkable, functional | `none` — missing: the concurrent slot directory (compile-fail case 43) |  |
 
 ## Maps int to int
@@ -209,10 +209,10 @@ indexable).
 | `Store<key<int>, value<int>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | store |
 | `Store<key<int>, value<int>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | store |
 | `Store<key<int>, value<int>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | store |
-| `Store<key<int>, value<int>, multi>` | shrinkable, multi | `posting_map` | store |
+| `Store<key<int>, value<int>, multi>` | shrinkable, multi | `posting_map` | hash |
 | `Store<key<int>, value<int>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | store |
 | `Store<key<int>, value<int>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | store |
-| `Store<key<int>, value<int>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | store |
+| `Store<key<int>, value<int>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | hash |
 | `Store<key<int>, value<int>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | store |
 | `Store<key<int>, value<int>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | store |
 | `Store<key<int>, value<int>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | store |
@@ -242,10 +242,10 @@ indexable).
 | `Store<key<std::string>, value<double>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | store |
 | `Store<key<std::string>, value<double>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | store |
 | `Store<key<std::string>, value<double>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | store |
-| `Store<key<std::string>, value<double>, multi>` | shrinkable, multi | `posting_map` | store |
+| `Store<key<std::string>, value<double>, multi>` | shrinkable, multi | `posting_map` | hash |
 | `Store<key<std::string>, value<double>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | store |
 | `Store<key<std::string>, value<double>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | store |
-| `Store<key<std::string>, value<double>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | store |
+| `Store<key<std::string>, value<double>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | hash |
 | `Store<key<std::string>, value<double>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | store |
 | `Store<key<std::string>, value<double>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | store |
 | `Store<key<std::string>, value<double>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | store |
@@ -275,10 +275,10 @@ indexable).
 | `Store<key<Id>, value<Id>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | store |
 | `Store<key<Id>, value<Id>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | store |
 | `Store<key<Id>, value<Id>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | store |
-| `Store<key<Id>, value<Id>, multi>` | shrinkable, multi | `posting_map` | store |
+| `Store<key<Id>, value<Id>, multi>` | shrinkable, multi | `posting_map` | hash |
 | `Store<key<Id>, value<Id>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | store |
 | `Store<key<Id>, value<Id>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | store |
-| `Store<key<Id>, value<Id>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | store |
+| `Store<key<Id>, value<Id>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | hash |
 | `Store<key<Id>, value<Id>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | store |
 | `Store<key<Id>, value<Id>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | store |
 | `Store<key<Id>, value<Id>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | store |
@@ -313,84 +313,84 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<int>, value<int>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<int>, value<int>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | store |
-| `Store<key<int>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | store |
+| `Store<key<int>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<int>, value<int>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<int>, value<int>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | dense |
+| `Store<key<int>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | dense |
 | `Store<key<int>, value<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable, functional | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
-| `Store<key<int>, value<int>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | store |
-| `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` | store |
-| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | store |
-| `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | store |
-| `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | store |
-| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | store |
-| `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | store |
-| `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | store |
-| `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | store |
-| `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | store |
-| `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | store |
-| `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | store |
-| `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | store |
+| `Store<key<int>, value<int>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | dense |
+| `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` | dense |
+| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | dense |
+| `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | dense |
+| `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | dense |
+| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | dense + store |
+| `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | dense + store |
+| `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | dense + store |
+| `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | dense |
+| `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | dense |
+| `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | dense |
+| `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | dense |
+| `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | dense |
 | `Store<key<int>, value<int>, multi, dense, bidirectional>` | dense, bidirectional, shrinkable, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups); docs/SURVEY.md gap 6, after M15 |  |
-| `Store<key<int>, value<Store<key<int>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<int>, value<Store<key<int>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | store |
-| `Store<key<int>, value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | store |
+| `Store<key<int>, value<Store<key<int>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<int>, value<Store<key<int>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | dense |
+| `Store<key<int>, value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | dense |
 
 ## Dense maps Id to double
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>, value<double>, dense>` | unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<Id>, value<double>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<Id>, value<double>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | store |
-| `Store<key<Id>, value<double>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | store |
+| `Store<key<Id>, value<double>, dense>` | unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<Id>, value<double>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<Id>, value<double>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | dense |
+| `Store<key<Id>, value<double>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | dense |
 | `Store<key<Id>, value<double>, dense, contiguous>` | unique, dense, contiguous, shrinkable, functional | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
-| `Store<key<Id>, value<double>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | store |
-| `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` | store |
-| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | store |
-| `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | store |
-| `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | store |
-| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | store |
-| `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | store |
-| `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | store |
-| `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | store |
-| `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | store |
-| `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | store |
-| `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | store |
-| `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | store |
+| `Store<key<Id>, value<double>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | dense |
+| `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `ordered_map` | dense |
+| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | dense |
+| `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | dense |
+| `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | dense |
+| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered` | dense + store |
+| `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | dense + store |
+| `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | dense + store |
+| `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | dense |
+| `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | dense |
+| `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | dense |
+| `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | dense |
+| `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | dense |
 | `Store<key<Id>, value<Id>, multi, dense, bidirectional>` | dense, bidirectional, shrinkable, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups); docs/SURVEY.md gap 6, after M15 |  |
-| `Store<key<Id>, value<Store<key<Id>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | store |
-| `Store<key<Id>, value<Store<key<Id>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | store |
-| `Store<key<Id>, value<Store<value<double>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | store |
+| `Store<key<Id>, value<Store<key<Id>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | dense |
+| `Store<key<Id>, value<Store<key<Id>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | dense |
+| `Store<key<Id>, value<Store<value<double>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | dense |
 
 ## Sequences
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<int>>` | dense, shrinkable, functional, positional | `vector` | store |
+| `Store<value<int>>` | dense, shrinkable, functional, positional | `vector` | sequences |
 | `Store<value<int>, sorted>` | sorted, dense, shrinkable, functional, positional | `flat_multiset` | store |
-| `Store<value<int>, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | store |
-| `Store<value<int>, small>` | dense, shrinkable, functional, positional, small | `vector` | store |
-| `Store<value<int>, nonempty>` | dense, growable, nonempty, functional, positional | `vector` | store |
-| `Store<value<int>, retains>` | dense, retains, shrinkable, functional, positional | `vector` | store |
+| `Store<value<int>, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | sequences |
+| `Store<value<int>, small>` | dense, shrinkable, functional, positional, small | `vector` | sequences |
+| `Store<value<int>, nonempty>` | dense, growable, nonempty, functional, positional | `vector` | sequences |
+| `Store<value<int>, retains>` | dense, retains, shrinkable, functional, positional | `vector` | sequences |
 | `Store<value<int>, reclaims>` | dense, reclaims, shrinkable, functional, positional | `none` — missing: a vector returns its storage only whole (shrink_to_fit); a sequence returning storage per erase is a deque of blocks |  |
-| `Store<value<int>, contiguous>` | dense, contiguous, shrinkable, functional, positional | `vector` | store |
-| `Store<value<int>, monotone>` | dense, growable, monotone, functional, positional | `vector` | store |
-| `Store<value<int>, stable_refs, monotone>` | dense, stable_refs, growable, monotone, functional, positional | `segmented_vector` | store |
-| `Store<value<int>, stable_refs, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | store |
-| `Store<value<int>, monotone, concurrent>` | dense, concurrent, growable, monotone, functional, positional | `concurrent_segmented_vector` | store |
-| `Store<value<std::string>>` | dense, shrinkable, functional, positional | `vector` | store |
+| `Store<value<int>, contiguous>` | dense, contiguous, shrinkable, functional, positional | `vector` | sequences |
+| `Store<value<int>, monotone>` | dense, growable, monotone, functional, positional | `vector` | sequences |
+| `Store<value<int>, stable_refs, monotone>` | dense, stable_refs, growable, monotone, functional, positional | `segmented_vector` | sequences |
+| `Store<value<int>, stable_refs, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | sequences |
+| `Store<value<int>, monotone, concurrent>` | dense, concurrent, growable, monotone, functional, positional | `concurrent_segmented_vector` | sequences |
+| `Store<value<std::string>>` | dense, shrinkable, functional, positional | `vector` | sequences |
 | `Store<value<Id>, sorted>` | sorted, dense, shrinkable, functional, positional | `flat_multiset` | store |
-| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>>` | dense, shrinkable, functional, positional | `vector` | store |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | store |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, frozen>` | dense, stable_refs, frozen, functional, positional | `jagged` | store |
-| `Store<value<Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | store |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>>` | dense, shrinkable, functional, positional | `jagged` | store |
-| `Store<value<Store<value<int>, dense, retains, shrinkable, functional, positional>>, retains>` | dense, retains, shrinkable, functional, positional | `row_pool` | store |
-| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | store |
-| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | store |
-| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape, proportional_clear>` | dense, proportional_clear, fixed_shape, functional, positional | `tracked_jagged` | store |
-| `Store<value<Store<value<Store<key<int>, unique, dense, shrinkable>>, dense, fixed_shape, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | store |
+| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>>` | dense, shrinkable, functional, positional | `vector` | sequences |
+| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | sequences |
+| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, frozen>` | dense, stable_refs, frozen, functional, positional | `jagged` | sequences |
+| `Store<value<Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | sequences |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>>` | dense, shrinkable, functional, positional | `jagged` | sequences |
+| `Store<value<Store<value<int>, dense, retains, shrinkable, functional, positional>>, retains>` | dense, retains, shrinkable, functional, positional | `row_pool` | sequences |
+| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | sequences |
+| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | sequences |
+| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape, proportional_clear>` | dense, proportional_clear, fixed_shape, functional, positional | `tracked_jagged` | sequences |
+| `Store<value<Store<value<Store<key<int>, unique, dense, shrinkable>>, dense, fixed_shape, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | sequences |
 
 ## Queues of int
 
