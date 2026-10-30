@@ -46,6 +46,8 @@ endif()
 
 # The package: find_package(urd) after an install, or against this build tree with urd_DIR=<build>.
 install(DIRECTORY include/urd DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# The tags in plain words, for tools that write requests (share/urd/vocabulary.json, generated and checked by a test).
+install(FILES share/urd/vocabulary.json DESTINATION "${CMAKE_INSTALL_DATADIR}/urd")
 install(TARGETS urd EXPORT urdTargets)
 install(EXPORT urdTargets NAMESPACE urd:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd")
 export(EXPORT urdTargets NAMESPACE urd:: FILE "${CMAKE_BINARY_DIR}/urdTargets.cmake")
@@ -124,6 +126,10 @@ if(URD_BUILD_TESTS)
     if(URD_WITH_GTL)  # the table documents the full build: without gtl its concurrent rows read none
         add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
     endif()
+    # The vocabulary: share/urd/vocabulary.json is generated from the tags and their entries, and checked against them.
+    add_executable(vocabulary_table tests/vocabulary_table.cpp)
+    target_link_libraries(vocabulary_table PRIVATE urd::urd)
+    add_test(NAME vocabulary COMMAND vocabulary_table --check ${PROJECT_SOURCE_DIR}/share/urd/vocabulary.json)
 
     # The include root holds the vocabulary and the entry point only.
     add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)
