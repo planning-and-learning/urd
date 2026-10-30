@@ -155,7 +155,9 @@ private:
     /// The position of `it` in `set`, taken after the insert that gave `it` (which may have moved the elements).
     template<typename Set>
     [[nodiscard]] static std::uint32_t position_of(const Set& set, typename Set::const_iterator it)
-    { return static_cast<std::uint32_t>(it - set.begin()); }
+    {
+        return static_cast<std::uint32_t>(it - set.begin());
+    }
 
     std::uint32_t insert_recursive(std::span<const T> values)
     {
@@ -223,7 +225,7 @@ namespace urd
 
 /// Rows of hashable values, sharing equal subtrees; clear keeps the tables' storage.
 template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires hashable<std::ranges::range_value_t<Row>> && (!by_value<traits_t<Row>>)
+    requires hashable<detail::row_element_t<Row>> && (!by_value<traits_t<Row>>)
 struct container_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> :
     properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {

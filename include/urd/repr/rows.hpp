@@ -81,7 +81,9 @@ public:
 
     template<std::input_iterator InputIt>
     Jagged(InputIt first, InputIt last)
-    { assign(first, last); }
+    {
+        assign(first, last);
+    }
 
     /// Rebuilds from rows, in the storage held: clear keeps it.
     template<std::input_iterator InputIt>
@@ -148,10 +150,14 @@ public:
     [[nodiscard]] const_iterator end() const { return const_iterator(this, static_cast<difference_type>(size())); }
     [[nodiscard]] iterator begin()
         requires writable
-    { return iterator(this, 0); }
+    {
+        return iterator(this, 0);
+    }
     [[nodiscard]] iterator end()
         requires writable
-    { return iterator(this, static_cast<difference_type>(size())); }
+    {
+        return iterator(this, static_cast<difference_type>(size()));
+    }
     [[nodiscard]] size_type size() const { return m_offsets.size() - 1; }
 
     [[nodiscard]] const_row operator[](size_type pos) const { return row_at<const_row>(*this, pos); }
@@ -167,7 +173,9 @@ public:
     /// row's properties ask for.
     template<std::ranges::input_range Row>
     void push_back(const Row& elements)
-    { insert(end(), elements); }
+    {
+        insert(end(), elements);
+    }
     template<std::ranges::input_range Row>
     row emplace_back(const Row& elements)
     {
@@ -208,7 +216,9 @@ public:
     }
     template<std::ranges::input_range Row>
     iterator emplace(const_iterator pos, const Row& elements)
-    { return insert(pos, elements); }
+    {
+        return insert(pos, elements);
+    }
 
     iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
     iterator erase(const_iterator first, const_iterator last)
@@ -229,7 +239,9 @@ public:
     /// Equal rows; bits past a row's length are always unset, so for bits the words say it. Which rows were handed out
     /// is not part of the contents.
     [[nodiscard]] friend bool operator==(const Jagged& lhs, const Jagged& rhs)
-    { return lhs.m_offsets == rhs.m_offsets && lhs.m_data == rhs.m_data && lhs.m_lengths == rhs.m_lengths; }
+    {
+        return lhs.m_offsets == rhs.m_offsets && lhs.m_data == rhs.m_data && lhs.m_lengths == rhs.m_lengths;
+    }
 
 private:
     template<bool Const>
@@ -250,7 +262,9 @@ private:
         /// Rows to change convert to rows to read.
         operator basic_iterator<true>() const
             requires(!Const)
-        { return { m_rows, m_index }; }
+        {
+            return { m_rows, m_index };
+        }
 
         reference operator*() const { return (*m_rows)[static_cast<size_type>(m_index)]; }
         reference operator[](difference_type n) const { return *(*this + n); }
@@ -474,7 +488,7 @@ concept fixed_rows = holds_fixed_rows<Inner>();
 
 /// Rows in one array: appends at the end, and erase and clear keep the storage at every level.
 template<detail::flattenable Inner>
-struct container_traits<repr::Jagged<Inner>> : properties_of<dense, shrinkable, retains, proportional_clear>
+struct container_traits<repr::Jagged<Inner>> : properties_of<dense, positional, shrinkable, retains, proportional_clear>
 {
 };
 
@@ -489,7 +503,7 @@ struct element_traits<repr::Jagged<Inner>> :
 /// Rows of fixed lengths, changed in place; with TrackRows, reset costs what the rows handed out since hold.
 template<detail::fixed_rows Inner, bool TrackRows>
 struct container_traits<repr::Jagged<Inner, TrackRows>> :
-    properties_of<dense, fixed_shape, retains, std::conditional_t<TrackRows, proportional_clear, any_clear>>
+    properties_of<dense, positional, fixed_shape, retains, std::conditional_t<TrackRows, proportional_clear, any_clear>>
 {
 };
 
@@ -506,7 +520,7 @@ struct element_traits<repr::Jagged<Inner, TrackRows>> :
 /// Rows that can be cleared are kept for reuse.
 template<typename Inner>
     requires(is_store<Inner> && has<container_traits<Inner>, shrinkable>)
-struct container_traits<repr::RowPool<Inner>> : properties_of<dense, contiguous, shrinkable, retains, proportional_clear>
+struct container_traits<repr::RowPool<Inner>> : properties_of<dense, positional, contiguous, shrinkable, retains, proportional_clear>
 {
 };
 

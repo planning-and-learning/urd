@@ -77,16 +77,31 @@ concept serves_by_traits = container_traits<R>::declared && detail::satisfies(co
                            && has<container_traits<R>, flat> == has<S, flat> && (!S::is_sequence || !by_value<S> || has<S, sorted>)
                            && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
-// instantiates no container. Whether a container offers what its traits promise (conforming) is checked once, by the
-// typed test suites, for every registered container, not again for every request: those interface checks were most
-// of what resolving a request cost the compiler. Positions are the exception, checked where asked for.
+// instantiates no container, and a candidate need not even be defined where a request is resolved (the registry
+// declares representations; the header a Store's family comes from defines them). Whether a container offers what
+// its traits promise (conforming) is checked once, by the typed test suites, for every registered container, not
+// again for every request: those interface checks were most of what resolving a request cost the compiler.
 /// What S holds as rows where they are Stores: a map's values, else its elements.
 template<typename S>
 using row_of = std::conditional_t<S::is_map, typename S::mapped_type, typename S::element_type>;
 
+/// The properties R gives S's rows: element_traits<R> where R declares them, else the rows' own but for memory
+/// (destroying a row frees what it owns, as erase and clear do).
 template<typename R, typename S>
-concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || std::ranges::random_access_range<R>)
-                 && (!is_store<row_of<S>> || detail::satisfies(element_traits<R>::urd_properties, requirement<container_traits<row_of<S>>>));
+struct row_traits
+{
+    using type = element_traits<R>;
+};
+template<typename R, typename S>
+    requires requires { element_traits<R>::defaulted; }
+struct row_traits<R, S>
+{
+    using type = with_t<container_traits<row_of<S>>, reclaims>;
+};
+
+template<typename R, typename S>
+concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || has<container_traits<R>, positional>)
+                 && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, requirement<container_traits<row_of<S>>>));
 
 // The containers, with urd's hash, equality and order, so that any hashable or orderable element works and nothing
 // has to be specialized in namespace std.
@@ -449,17 +464,25 @@ inline constexpr bool stable_storage = has<container_traits<R>, stable_refs>;
 
 /// The order for S: where elements are few or never change, containers with stable storage come last, since contiguous
 /// storage is more compact and faster to search and iterate (docs/BENCHMARKS.md); otherwise the lists' order.
+template<bool Compact, typename... Rs>
+struct reordered
+{
+    using type = type_list<Rs...>;
+};
+// Built only where it is used: join is the costly part of choosing, and reading every candidate's traits is spared
+// where the list stays as it is.
+template<typename... Rs>
+struct reordered<true, Rs...>
+{
+    using type = typename join<std::conditional_t<stable_storage<Rs>, type_list<>, type_list<Rs>>...,
+                               std::conditional_t<stable_storage<Rs>, type_list<Rs>, type_list<>>...>::type;
+};
 template<typename S, typename List>
 struct ordered_for;
 template<typename S, typename... Rs>
 struct ordered_for<S, type_list<Rs...>>
 {
-    static constexpr bool compact = has<S, frozen> || has<S, small>;
-    // The reordered list is built only where it is used: join is the costly part of choosing.
-    using type = typename std::conditional_t<
-        compact,
-        join<std::conditional_t<stable_storage<Rs>, type_list<>, type_list<Rs>>..., std::conditional_t<stable_storage<Rs>, type_list<Rs>, type_list<>>...>,
-        std::type_identity<type_list<Rs...>>>::type;
+    using type = typename reordered<has<S, frozen> || has<S, small>, Rs...>::type;
 };
 
 /// The container chosen.

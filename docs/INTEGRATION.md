@@ -103,6 +103,16 @@ request offers. Where a request is `small` or `frozen`, containers with stable s
 node per element, or segments that never move) move last, as contiguous storage is faster for few or unchanging
 elements.
 
+Selection reads traits and template arguments only, never a candidate's members: a request is resolved where the
+candidates are declared but not necessarily defined, and a member read of a declared-only type is silently false,
+which would drop the candidate rather than fail. So a `container_traits` specialization and its constraints may use
+`has<container_traits<X>, …>`, `indexable`/`hashable`/`orderable` of an element type, type traits of template
+arguments and `detail::row_element_t<Row>` (a row Store's elements, by its request), but not `std::ranges::*` of
+the container, its `value_type`, `mapped_type` or `sizeof`. Two properties exist so that selection can ask them of
+a declaration: `positional` (the container is a random-access range; `tests/properties.cpp` checks the two agree)
+and `functional` (a value per key, a map). A nested Store's own semantics (`Hash`, `EqualTo`, `Less`) and
+properties (`traits_t`) come from its request alone (`semantics/concepts.hpp`, `is_store`).
+
 A request no container serves fails in `no_representation_for<spec, culprits<…>, hashable, orderable, indexable>`,
 whose arguments say why: the culprits are the stated tags whose removal, one at a time, would make the request
 servable (`to_spec::without<tag>` re-runs the rules without one, so dropping `frozen` drops the implied
@@ -225,7 +235,8 @@ may also be `positional`: its elements have positions 0..n-1, and `operator[]`, 
 element's position is its index: `Store<key<T>, positional, monotone>` is an interner, whose `insert` returns
 the element's iterator (`position` of it is the index) and whose indices never shift. Both resolve to
 `repr::IndexedSet` (`include/urd/repr/indexed.hpp`), a vector plus a flat hash table of positions; erase keeps
-the order and costs O(n).
+the order and costs O(n). A container serves `positional` by declaring it, which the random-access ranges do
+(vectors, segmented vectors, indexed sets, sparse sets, rows, the flat sorted containers).
 
 ## Indices and views
 

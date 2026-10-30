@@ -19,20 +19,6 @@
 
 // Pools: rows identified by the handles insert gives, equal rows by equal handles.
 
-namespace urd
-{
-
-/// A change to a row of a pool: the value at `position` becomes `value`. A pool of sequence rows takes a sorted
-/// span of them, with unique positions, to insert a row that differs from another in few positions.
-template<typename T>
-struct Write
-{
-    std::size_t position = 0;
-    T value {};
-};
-
-}  // namespace urd
-
 namespace urd::repr
 {
 
@@ -225,7 +211,7 @@ namespace urd
 
 /// Rows kept in full, each once; clear keeps the storage.
 template<typename Row, bool ThreadSafe>
-    requires hashable<std::vector<std::ranges::range_value_t<Row>>>
+    requires hashable<std::vector<detail::row_element_t<Row>>>
 struct container_traits<repr::RowInterner<Row, ThreadSafe>> :
     properties_of<handles, unique, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {

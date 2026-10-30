@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/repr/pools.hpp"
+#include "urd/index.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>
@@ -31,7 +31,9 @@ public:
     /// The handle of the row with these elements: an earlier handle where an equal row is stored.
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
-    { return representation().insert(elements); }
+    {
+        return representation().insert(elements);
+    }
     handle_type insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
     /// The handle of the row `base` with `writes` applied: sorted by position, each position once and within the row.
     /// A pool that shares structure stores only what changed.
@@ -48,18 +50,24 @@ public:
     /// shares structure stores only what changed.
     handle_type insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
         requires(!sequence_rows)
-    { return representation().insert(base, added, removed); }
+    {
+        return representation().insert(base, added, removed);
+    }
     /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
     [[nodiscard]] bool contains(handle_type handle, const row_element& element) const
         requires(!sequence_rows)
-    { return constant().contains(handle, element); }
+    {
+        return constant().contains(handle, element);
+    }
 
     [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
     /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
     /// its bits. Valid until the pool is cleared.
     [[nodiscard]] auto view(handle_type handle) const
         requires requires(const R& rows) { rows.view(handle); }
-    { return constant().view(handle); }
+    {
+        return constant().view(handle);
+    }
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
@@ -68,7 +76,9 @@ public:
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
         requires has<S, shrinkable>
-    { representation().clear(); }
+    {
+        representation().clear();
+    }
 
 private:
     [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }

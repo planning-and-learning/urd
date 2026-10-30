@@ -139,7 +139,7 @@ namespace urd
 /// What R guarantees, with the log. Clear logs every element first, which for a dense set means a pass over its
 /// words (O(U/64), not proportional to the elements), so a dense set's clear cost is not promised.
 template<typename R>
-    requires has<container_traits<R>, unique> && (!detail::map_container<R>)
+    requires has<container_traits<R>, unique> && (!map_traits<container_traits<R>>)
 struct container_traits<repr::ChangeLogged<R>> :
     std::conditional_t<has<container_traits<R>, dense>, with_t<container_traits<R>, change_log, any_clear>, with_t<container_traits<R>, change_log>>
 {

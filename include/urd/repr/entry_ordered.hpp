@@ -40,7 +40,9 @@ public:
 
     template<std::input_iterator InputIt>
     FlatEntryMap(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     [[nodiscard]] iterator begin() const { return m_entries.cbegin(); }
     [[nodiscard]] iterator end() const { return m_entries.cend(); }
@@ -114,14 +116,18 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    { return try_emplace(K(pair.first), pair.second); }
+    {
+        return try_emplace(K(pair.first), pair.second);
+    }
     template<typename Pair>
         requires requires(const Pair& pair) {
             K(pair.first);
             V(pair.second);
         }
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    { return insert(pair).first; }
+    {
+        return insert(pair).first;
+    }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -129,7 +135,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    {
+        return insert(std::pair<K, V>(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
     {
@@ -173,7 +181,7 @@ namespace urd
 /// In the order the request gave, in one array; erase and clear keep it.
 template<orderable K, typename V, typename Order>
     requires detail::is_entry_less<Order>
-struct container_traits<repr::FlatEntryMap<K, V, Order>> : properties_of<sorted, unique, contiguous, shrinkable, retains>
+struct container_traits<repr::FlatEntryMap<K, V, Order>> : properties_of<sorted, unique, functional, positional, contiguous, shrinkable, retains>
 {
 };
 

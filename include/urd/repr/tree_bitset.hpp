@@ -213,7 +213,9 @@ public:
 private:
     static constexpr std::uint32_t zero(std::uint32_t size) { return size == 1 ? 0 : zero_subtree; }
     static constexpr std::uint32_t child_size(std::uint32_t size, std::uint32_t k)
-    { return std::min(tree::chunk<Arity>(size), size - k * tree::chunk<Arity>(size)); }
+    {
+        return std::min(tree::chunk<Arity>(size), size - k * tree::chunk<Arity>(size));
+    }
     static Children unused_children()
     {
         auto children = Children {};
@@ -295,7 +297,9 @@ private:
             std::uint32_t size = 0;
 
             [[nodiscard]] bool contains(std::uint32_t other_offset, std::uint32_t other_size) const
-            { return offset <= other_offset && other_offset + other_size <= offset + size; }
+            {
+                return offset <= other_offset && other_offset + other_size <= offset + size;
+            }
         };
 
         const Nodes* m_nodes;
@@ -395,7 +399,7 @@ namespace urd
 
 /// Rows that are sets of indices, sharing equal subtrees; clear keeps the table's storage.
 template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires indexable<std::ranges::range_value_t<Row>> && has<traits_t<Row>, unique, dense>
+    requires indexable<detail::row_element_t<Row>> && has<traits_t<Row>, unique, dense>
 struct container_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> :
     properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {

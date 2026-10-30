@@ -288,19 +288,19 @@ namespace urd
 
 /// In insertion order, in one array; erase and clear keep the storage of both the array and the table.
 template<hashable T, typename Index>
-struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, contiguous, shrinkable, retains>
+struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, contiguous, shrinkable, retains>
 {
 };
 
 /// In insertion order, never moved, only ever added to; clear keeps the segments.
 template<hashable T, typename Index>
-struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, stable_refs, growable, retains>
+struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains>
 {
 };
 
 /// The same, by threads at once.
 template<hashable T, typename Index>
-struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, stable_refs, growable, retains, concurrent>
+struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains, concurrent>
 {
 };
 

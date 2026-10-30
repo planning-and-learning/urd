@@ -83,7 +83,7 @@ private:
 
 // What it guarantees: it only grows, and entries keep their address.
 template<>
-struct urd::container_traits<Journal> : urd::properties_of<urd::stable_refs, urd::growable>
+struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd::stable_refs, urd::growable>
 {
 };
 
@@ -314,6 +314,30 @@ std::vector<int> descending(int count)
 }  // namespace
 
 TYPED_TEST(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
+
+namespace
+{
+template<typename T>
+struct representation_of
+{
+    using type = T;
+};
+template<typename R, typename S>
+struct representation_of<urd::detail::Store<R, S>>
+{
+    using type = R;
+};
+}  // namespace
+
+// A container declares positional exactly where it is a random-access range: selection reads the declaration, since
+// it may not look inside a candidate (the container need not be defined where a request is resolved). And every
+// Store is movable, which a generation map's slots rely on without asking the Store (traits.hpp, slot_value).
+TYPED_TEST(Properties, DeclaresPositionalWhereRandomAccess)
+{
+    using R = typename representation_of<TypeParam>::type;
+    static_assert(declares<R, urd::positional> == std::ranges::random_access_range<R>);
+    static_assert(std::movable<TypeParam>);
+}
 
 TYPED_TEST(Properties, KeepsItsPropertiesThroughRandomOperations)
 {

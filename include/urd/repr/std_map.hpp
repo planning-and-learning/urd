@@ -15,7 +15,7 @@ namespace urd
 // inserts and rehashes.
 template<typename K, typename V, typename C, typename Allocator>
     requires natural_order<C, K>
-struct container_traits<std::map<K, V, C, Allocator>> : properties_of<sorted, unique, stable_refs, sparse, shrinkable, reclaims, proportional_clear>
+struct container_traits<std::map<K, V, C, Allocator>> : properties_of<sorted, unique, functional, stable_refs, sparse, shrinkable, reclaims, proportional_clear>
 {
 };
 
@@ -27,7 +27,7 @@ struct container_traits<std::multimap<K, V, C, Allocator>> : properties_of<sorte
 
 template<typename K, typename V, typename H, typename E, typename Allocator>
     requires natural_hash<H, E, K>
-struct container_traits<std::unordered_map<K, V, H, E, Allocator>> : properties_of<unique, stable_refs, sparse, shrinkable>
+struct container_traits<std::unordered_map<K, V, H, E, Allocator>> : properties_of<unique, functional, stable_refs, sparse, shrinkable>
 {
 };
 

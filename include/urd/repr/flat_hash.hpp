@@ -20,7 +20,7 @@ struct container_traits<boost::unordered_flat_set<T, H, E, Allocator>> : propert
 
 template<typename K, typename V, typename H, typename E, typename Allocator>
     requires natural_hash<H, E, K>
-struct container_traits<boost::unordered_flat_map<K, V, H, E, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
+struct container_traits<boost::unordered_flat_map<K, V, H, E, Allocator>> : properties_of<unique, functional, sparse, shrinkable, retains>
 {
 };
 

@@ -14,7 +14,7 @@ namespace urd
 /// the segments. The thread-safe variant appends concurrently.
 template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
 struct container_traits<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> :
-    properties_of<dense, stable_refs, growable, retains, proportional_clear, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
+    properties_of<dense, positional, stable_refs, growable, retains, proportional_clear, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
 {
 };
 

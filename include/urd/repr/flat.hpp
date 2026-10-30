@@ -15,14 +15,14 @@ namespace urd
 template<typename K, typename C, typename Allocator>
     requires natural_order<C, K>
 struct container_traits<boost::container::flat_set<K, C, Allocator>> :
-    properties_of<sorted, unique, sparse, contiguous, canonical, shrinkable, retains, proportional_clear>
+    properties_of<sorted, unique, positional, sparse, contiguous, canonical, shrinkable, retains, proportional_clear>
 {
 };
 
 template<typename K, typename C, typename Allocator>
     requires natural_order<C, K>
 struct container_traits<boost::container::flat_multiset<K, C, Allocator>> :
-    properties_of<sorted, contiguous, canonical, shrinkable, retains, proportional_clear>
+    properties_of<sorted, positional, contiguous, canonical, shrinkable, retains, proportional_clear>
 {
 };
 
@@ -31,7 +31,7 @@ struct container_traits<boost::container::flat_multiset<K, C, Allocator>> :
 template<typename K, typename V, typename C, typename Allocator>
     requires natural_order<C, K>
 struct container_traits<boost::container::flat_map<K, V, C, Allocator>> :
-    properties_of<sorted, unique, sparse, contiguous, canonical, shrinkable, retains, proportional_clear>
+    properties_of<sorted, unique, functional, positional, sparse, contiguous, canonical, shrinkable, retains, proportional_clear>
 {
 };
 
@@ -39,7 +39,8 @@ struct container_traits<boost::container::flat_map<K, V, C, Allocator>> :
 // it is not canonical.
 template<typename K, typename V, typename C, typename Allocator>
     requires natural_order<C, K>
-struct container_traits<boost::container::flat_multimap<K, V, C, Allocator>> : properties_of<sorted, multi, contiguous, shrinkable, retains, proportional_clear>
+struct container_traits<boost::container::flat_multimap<K, V, C, Allocator>> :
+    properties_of<sorted, multi, positional, contiguous, shrinkable, retains, proportional_clear>
 {
 };
 

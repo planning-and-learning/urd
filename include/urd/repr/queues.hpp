@@ -198,17 +198,28 @@ private:
 };
 
 /// The integral priority a bucket queue files an element under: its projection where Compare orders by one, else the
-/// element.
+/// element. A type computation, so that asking it of an element completes nothing.
 template<typename T, typename Compare>
-[[nodiscard]] constexpr auto bucket_priority(const T& element)
+struct bucket_priority_of
+{
+    using type = T;
+};
+template<typename T, typename Compare>
+    requires requires { Compare::projection; }
+struct bucket_priority_of<T, Compare>
+{
+    using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
+};
+template<typename T, typename Compare>
+using bucket_priority_t = typename bucket_priority_of<T, Compare>::type;
+template<typename T, typename Compare>
+[[nodiscard]] constexpr bucket_priority_t<T, Compare> bucket_priority(const T& element)
 {
     if constexpr (requires { Compare::projection; })
         return std::invoke(Compare::projection, element);
     else
         return element;
 }
-template<typename T, typename Compare>
-using bucket_priority_t = std::remove_cvref_t<decltype(bucket_priority<T, Compare>(std::declval<const T&>()))>;
 
 /// The least first, for integral priorities: a vector of elements per priority, and the least that holds any. A push
 /// below it lowers it, so the order holds whatever is pushed; where pushes never go below the last popped

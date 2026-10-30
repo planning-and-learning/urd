@@ -61,6 +61,11 @@ namespace urd
 template<typename Traits>
 inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique> || has<Traits, multi>;
 
+/// Whether Traits are a map's: a value per key (functional) or several (multi). Declared, so that selection can ask
+/// it of a container it has not seen defined.
+template<typename Traits>
+inline constexpr bool map_traits = has<Traits, functional> || has<Traits, multi>;
+
 namespace detail
 {
 

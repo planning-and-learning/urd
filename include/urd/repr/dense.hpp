@@ -854,6 +854,7 @@ template<indexable K, bool KeepOrder>
 struct container_traits<repr::SparseSet<K, KeepOrder>> :
     properties_of<unique,
                   dense,
+                  positional,
                   contiguous,
                   shrinkable,
                   retains,
@@ -866,16 +867,17 @@ struct container_traits<repr::SparseSet<K, KeepOrder>> :
 /// slot. Stable slots never move: the values keep their addresses.
 template<indexable K, typename V, bool Stable>
 struct container_traits<repr::IndexMap<K, V, false, false, Stable>> :
-    properties_of<sorted, unique, dense, shrinkable, retains, std::conditional_t<Stable, stable_refs, moving_refs>>
+    properties_of<sorted, unique, functional, dense, shrinkable, retains, std::conditional_t<Stable, stable_refs, moving_refs>>
 {
 };
 
 /// Clear starts a new generation; stale slots keep their values' storage until written again.
 template<indexable K, typename V, bool ThreadSafe, bool Stable>
-    requires std::default_initializable<V> && std::movable<V>
+    requires detail::slot_value<V>
 struct container_traits<repr::IndexMap<K, V, true, ThreadSafe, Stable>> :
     properties_of<sorted,
                   unique,
+                  functional,
                   dense,
                   shrinkable,
                   retains,

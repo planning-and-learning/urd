@@ -238,8 +238,12 @@ struct container_traits<repr::Recycling<Map>> : with_t<container_traits<Map>, re
 };
 
 /// Its values keep what they hold when their keys are erased: their own properties, memory included.
-template<typename Map>
-struct element_traits<repr::Recycling<Map>> : container_traits<typename Map::mapped_type>
+template<typename K, typename V, typename C, typename Allocator>
+struct element_traits<repr::Recycling<std::map<K, V, C, Allocator>>> : container_traits<V>
+{
+};
+template<typename K, typename V, typename H, typename E, typename Allocator>
+struct element_traits<repr::Recycling<std::unordered_map<K, V, H, E, Allocator>>> : container_traits<V>
 {
 };
 

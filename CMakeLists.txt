@@ -132,6 +132,10 @@ if(URD_BUILD_TESTS)
     add_library(survey OBJECT tests/survey.cpp)
     target_link_libraries(survey PRIVATE urd::urd)
 
+    # Resolving a request completes neither the candidates nor a Store named as the element: compiling it is the test.
+    add_library(selection OBJECT tests/selection.cpp)
+    target_link_libraries(selection PRIVATE urd::urd)
+
     # The tests that came with the representations copied from yggdrasil, unchanged but for names.
     foreach(test segmented_vector tree_vector_set tree_bitset_set)
         add_executable(test_repr_${test} tests/repr/containers/${test}.cpp tests/repr/main.cpp)

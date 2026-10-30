@@ -302,7 +302,7 @@ struct to_spec
                   "position or order; a priority queue with handles changes or erases an element by its handle");
     static_assert(!stated.has(tag::flat) || (pool && stated.has(tag::unique)),
                   "urd::Store: flat stores each record of an interning pool as one block of bytes; ask for handles and unique too");
-    static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || std::ranges::input_range<value_type>,
+    static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || iterates<value_type>,
                   "urd::Store: a pool of records (value<V>, V no range of elements) stores them flat: ask for flat");
     static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
                   "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");

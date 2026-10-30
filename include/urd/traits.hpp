@@ -548,7 +548,9 @@ inline constexpr tag_table tags = make_tag_table(all_tags {});
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
 constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
 
-/// The roots of the categories a container declares, then those only a Store's request has.
+/// The roots of the categories a container declares, then those a request states. A container may also declare
+/// positional (its elements are reached by position: a random-access range) and functional (a value per key: a
+/// map); selection reads those two directly, so that it never has to look inside a candidate.
 inline constexpr std::array guaranteed_roots { tag::any_order,          tag::duplicates,      tag::any_keys,      tag::moving_refs,  tag::any_layout,
                                                tag::any_representation, tag::single_threaded, tag::immutable,     tag::any_memory,   tag::any_clear,
                                                tag::any_access,         tag::any_scope,       tag::any_layering,  tag::any_tracking, tag::any_handle,
@@ -688,34 +690,53 @@ namespace detail
 
 }  // namespace detail
 
-/// What a container guarantees about its elements where they are Stores: the properties a nested Store's rows
-/// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,
-/// as erase and clear do. A container that keeps rows, or stores them flattened, specializes it.
 namespace detail
 {
 
-template<typename R>
-concept names_value_type = requires { typename R::value_type; };
-template<typename R>
-concept names_mapped_type = names_value_type<R> && requires { typename R::mapped_type; };
+/// The elements of a row type, read without completing it: a Store's by its request (where it iterates: a pool or
+/// queue has no elements to hand out), else what iterating a range gives. Undefined otherwise, so a constraint
+/// naming it is simply not satisfied.
+template<typename Row>
+struct row_element
+{
+};
+template<typename Row>
+    requires(!is_store<Row>) && std::ranges::range<Row>
+struct row_element<Row>
+{
+    using type = std::ranges::range_value_t<Row>;
+};
+template<typename Row>
+    requires(is_store<Row> && container_traits<Row>::iterable)
+struct row_element<Row>
+{
+    using type = typename container_traits<Row>::element_type;
+};
+template<typename Row>
+using row_element_t = typename row_element<Row>::type;
 
-/// What R holds as rows: a map's values, else its value_type where it names one (a queue or pool is no range), else
-/// what iterating it gives.
-template<typename R>
-struct held
-{
-    using type = std::ranges::range_value_t<R>;
-};
-template<names_value_type R>
-struct held<R>
-{
-    using type = typename R::value_type;
-};
-template<names_mapped_type R>
-struct held<R>
-{
-    using type = typename R::mapped_type;
-};
+// Three questions about an element type that a trait or rule may ask, answered for a Store from its request and
+// never by completing it (a template argument evaluates every operand, so `!is_store<V> && std::trait<V>` would
+// still complete V: these are specialized instead).
+
+/// Whether V can fill a slot that is emptied and filled again: default-constructible and movable. Every Store is
+/// movable, and one not asked to be nonempty or given a fixed shape has an empty value.
+template<typename V>
+inline constexpr bool slot_value = std::default_initializable<V> && std::movable<V>;
+template<typename R, typename S>
+inline constexpr bool slot_value<Store<R, S>> = !S::urd_properties.has(tag::nonempty) && !S::urd_properties.has(tag::fixed_shape);
+
+/// Whether destroying a V does nothing. A Store owns storage, so never.
+template<typename V>
+inline constexpr bool trivially_destructible = std::is_trivially_destructible_v<V>;
+template<typename R, typename S>
+inline constexpr bool trivially_destructible<Store<R, S>> = false;
+
+/// Whether V is iterated as a range of elements. A Store is where its request says so (a set, map or sequence).
+template<typename V>
+inline constexpr bool iterates = std::ranges::input_range<V>;
+template<typename R, typename S>
+inline constexpr bool iterates<Store<R, S>> = S::iterable;
 
 }  // namespace detail
 
@@ -731,9 +752,15 @@ inline constexpr detail::property_set relies_on = detail::property_set::roots();
 template<typename R>
 inline constexpr bool orders_by_value = false;
 
+/// What a container guarantees about its elements where they are Stores: the properties a nested Store's rows
+/// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,
+/// as erase and clear do. A container that keeps rows, or stores them flattened, specializes it. The primary
+/// only marks that nothing was declared: the default is computed by the registry from the request's row type
+/// (row_traits), so that selection reads nothing of a candidate.
 template<typename R>
-struct element_traits : with_t<container_traits<typename detail::held<R>::type>, reclaims>
+struct element_traits
 {
+    static constexpr bool defaulted = true;
 };
 
 namespace detail
@@ -745,7 +772,7 @@ struct traits_of
     using type = container_traits<std::remove_cvref_t<X>>;
 };
 template<typename X>
-    requires requires { X::urd_properties; }
+    requires(!is_store<X>) && requires { X::urd_properties; }
 struct traits_of<X>
 {
     using type = X;

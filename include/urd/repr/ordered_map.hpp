@@ -37,7 +37,9 @@ public:
 
     template<std::input_iterator InputIt>
     OrderedMap(InputIt first, InputIt last)
-    { insert(first, last); }
+    {
+        insert(first, last);
+    }
 
     [[nodiscard]] iterator begin() const { return iterator(this, 0); }
     [[nodiscard]] iterator end() const { return iterator(this, size()); }
@@ -91,10 +93,14 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    { return try_emplace(K(pair.first), pair.second); }
+    {
+        return try_emplace(K(pair.first), pair.second);
+    }
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    { return insert(pair).first; }
+    {
+        return insert(pair).first;
+    }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -102,7 +108,9 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
+    {
+        return insert(std::pair<K, V>(std::forward<Args>(args)...));
+    }
 
     size_type erase(const K& key)
     {
@@ -178,7 +186,9 @@ public:
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_position == rhs.m_position; }
         /// How many entries lie between: positions, so that an entry's position is `it - begin()`.
         friend difference_type operator-(const iterator& lhs, const iterator& rhs)
-        { return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position); }
+        {
+            return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position);
+        }
 
     private:
         friend class OrderedMap;
@@ -212,8 +222,10 @@ template<typename Keys, typename V>
     requires has<container_traits<Keys>, insertion_ordered, unique>
 struct container_traits<repr::OrderedMap<Keys, V>> :
     with_t<container_traits<Keys>,
+           functional,
+           by_key,  // the keys are positional, the entries are not: a map is reached by key
            any_layout,
-           std::conditional_t<std::is_trivially_destructible_v<V> && has<container_traits<Keys>, constant_clear>,
+           std::conditional_t<detail::trivially_destructible<V> && has<container_traits<Keys>, constant_clear>,
                               constant_clear,
                               std::conditional_t<has<container_traits<Keys>, proportional_clear>, proportional_clear, any_clear>>>
 {

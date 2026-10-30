@@ -197,7 +197,7 @@ namespace urd
 
 /// As Map, with scopes undone by a log.
 template<typename Map>
-    requires container_traits<Map>::declared && has<container_traits<Map>, unique> && detail::map_container<Map>
+    requires container_traits<Map>::declared && has<container_traits<Map>, unique, functional>
 struct container_traits<repr::Scoped<Map>> : with_t<container_traits<Map>, scoped>
 {
 };

@@ -52,7 +52,7 @@ struct container_traits<gtl::parallel_flat_hash_set<T, H, E, A, N, std::mutex, A
 /// As the set; update and read too.
 template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename Aux>
     requires natural_hash<H, E, K>
-struct container_traits<gtl::parallel_flat_hash_map<K, V, H, E, A, N, std::mutex, Aux>> : properties_of<unique, sparse, shrinkable, concurrent>
+struct container_traits<gtl::parallel_flat_hash_map<K, V, H, E, A, N, std::mutex, Aux>> : properties_of<unique, functional, sparse, shrinkable, concurrent>
 {
 };
 
@@ -65,7 +65,8 @@ struct container_traits<gtl::parallel_node_hash_set<T, H, E, A, N, std::mutex, A
 
 template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename Aux>
     requires natural_hash<H, E, K>
-struct container_traits<gtl::parallel_node_hash_map<K, V, H, E, A, N, std::mutex, Aux>> : properties_of<unique, sparse, stable_refs, shrinkable, concurrent>
+struct container_traits<gtl::parallel_node_hash_map<K, V, H, E, A, N, std::mutex, Aux>> :
+    properties_of<unique, functional, sparse, stable_refs, shrinkable, concurrent>
 {
 };
 

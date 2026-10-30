@@ -56,6 +56,15 @@ inline constexpr bool is_index = false;
 template<typename T>
 inline constexpr bool is_index<index<T>> = true;
 
+/// A change to a row of a pool: the value at `position` becomes `value`. A pool of sequence rows takes a sorted
+/// span of them, with unique positions, to insert a row that differs from another in few positions.
+template<typename T>
+struct Write
+{
+    std::size_t position = 0;
+    T value {};
+};
+
 /// The Store, Family or layer that resolves a T's indices by default: `template<> struct urd::context_of<Atom> { using
 /// type = Repository; };` once per record type, so that view<Atom> needs no second argument.
 template<typename T>
