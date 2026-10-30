@@ -1,9 +1,9 @@
 #pragma once
 
 // A grid of requests, each well-formed, over a few element types: what the resolution table (docs/RESOLUTION.md,
-// written and checked by tests/resolution_table.cpp) and the registry audit (tests/registry.cpp) run over. Every row
-// of the README's resolution table and every representation pin in tests/store.cpp and tests/survey.cpp has its shape
-// here. Nothing instantiates a Store: a request's spec and its resolution read only traits.
+// written and checked by tests/resolution_table.cpp) and the registry audit (tests/registry.cpp) run over. Every
+// representation pin in tests/store.cpp and tests/survey.cpp has its shape here. Nothing instantiates a Store: a request's spec and its resolution read only
+// traits.
 
 #include "names.hpp"
 #include "urd/flat.hpp"
@@ -109,9 +109,7 @@ std::string type_name()
 }
 template<typename T>
 std::string type_name(std::type_identity<std::vector<T>>)
-{
-    return "std::vector<" + type_name<T>() + ">";
-}
+{ return "std::vector<" + type_name<T>() + ">"; }
 
 /// One request: its spec, and how to print it as written.
 template<typename... Ps>
@@ -166,9 +164,7 @@ using cat_t = typename cat<Lists...>::type;
 /// Calls f on each request type of a list (as std::type_identity<request<…>>).
 template<typename F, typename... Rs>
 void for_each_request(requests<Rs...> /*list*/, F f)
-{
-    (f(std::type_identity<Rs> {}), ...);
-}
+{ (f(std::type_identity<Rs> {}), ...); }
 
 // The groups. Unservable requests are in: the table shows "none" for them, which is what they are today (concurrent
 // sets and maps by hashed keys among them in a build without gtl, which is why the table is checked only with it).
