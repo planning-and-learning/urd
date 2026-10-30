@@ -4,7 +4,11 @@
 // includes the families it holds Stores of; the error of a Store whose family is missing names the header.
 
 #include "urd/store.hpp"
+#include "urd/use/contiguous.hpp"
 #include "urd/use/dense.hpp"
 #include "urd/use/hash.hpp"
 #include "urd/use/records.hpp"
 #include "urd/use/sequences.hpp"
+#if defined(URD_HAS_GTL)
+#include "urd/use/parallel.hpp"
+#endif

@@ -6,12 +6,13 @@
 #include "urd/traits.hpp"
 
 #include <cstddef>
-#include <gtl/phmap.hpp>
+#include <gtl/phmap_fwd_decl.hpp>
 #include <memory>
 #include <mutex>
 #include <utility>
 
 // gtl's sharded hash tables: threads may insert into and look up in them at once, each shard behind its own mutex.
+// Declared here through gtl's forward header; defined by urd/use/parallel.hpp.
 // ponytail: gtl's B-trees are left out: btree_map lacks insert_or_assign, and std::set and std::map serve sorted
 // requests until a benchmark says otherwise.
 
@@ -69,5 +70,14 @@ struct container_traits<gtl::parallel_node_hash_map<K, V, H, E, A, N, std::mutex
     properties_of<unique, functional, sparse, stable_refs, shrinkable, concurrent>
 {
 };
+
+template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename Aux>
+inline constexpr auto defined_in<gtl::parallel_flat_hash_set<T, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
+template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename M, typename Aux>
+inline constexpr auto defined_in<gtl::parallel_flat_hash_map<K, V, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
+template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename Aux>
+inline constexpr auto defined_in<gtl::parallel_node_hash_set<T, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
+template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename M, typename Aux>
+inline constexpr auto defined_in<gtl::parallel_node_hash_map<K, V, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
 
 }  // namespace urd

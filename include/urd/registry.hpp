@@ -2,15 +2,15 @@
 
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
-#include "urd/repr/change_logged.hpp"
+#include "urd/repr/change_logged_fwd.hpp"
 #include "urd/repr/core/dependent_false.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/disjoint_sets_fwd.hpp"
-#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/entry_ordered_fwd.hpp"
 #include "urd/repr/flat.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/grouped_fwd.hpp"
-#include "urd/repr/indexed.hpp"
+#include "urd/repr/indexed_fwd.hpp"
 #include "urd/repr/layered.hpp"
 #include "urd/repr/ordered_map_fwd.hpp"
 #if defined(URD_HAS_GTL)

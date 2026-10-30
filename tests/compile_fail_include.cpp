@@ -10,6 +10,15 @@
 #if URD_CASE != 3
 #include <urd/use/sequences.hpp>
 #endif
+#if URD_CASE != 4
+#include <urd/use/hash.hpp>
+#endif
+#if URD_CASE != 5
+#include <urd/use/contiguous.hpp>
+#endif
+#if URD_CASE != 6 && defined(URD_HAS_GTL)
+#include <urd/use/parallel.hpp>
+#endif
 
 #include <string>
 
@@ -33,4 +42,15 @@ int main()
     // sequences: std::vector is the standard's, its marker urd/use/sequences.hpp's
     auto items = urd::Store<urd::value<int>>();
     (void) items.size();
+    // hash: Boost's flat hash set is declared through Boost's forward header, defined by urd/use/hash.hpp
+    auto keys = urd::Store<urd::key<int>>();
+    (void) keys.size();
+    // contiguous: Boost's flat set likewise, by urd/use/contiguous.hpp
+    auto sorted = urd::Store<urd::key<int>, urd::sorted, urd::contiguous>();
+    (void) sorted.size();
+#if defined(URD_HAS_GTL)
+    // parallel: gtl's sharded table, by urd/use/parallel.hpp
+    auto shared = urd::Store<urd::key<int>, urd::concurrent>();
+    (void) shared.size();
+#endif
 }

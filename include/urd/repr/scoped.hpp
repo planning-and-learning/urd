@@ -9,7 +9,7 @@
 #include "urd/traits.hpp"
 
 #include <algorithm>
-#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <cassert>
 #include <cstddef>
 #include <iterator>

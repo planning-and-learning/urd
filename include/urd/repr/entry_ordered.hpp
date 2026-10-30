@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/repr/entry_ordered_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -177,15 +178,5 @@ private:
 
 namespace urd
 {
-
-/// In the order the request gave, in one array; erase and clear keep it.
-template<orderable K, typename V, typename Order>
-    requires detail::is_entry_less<Order>
-struct container_traits<repr::FlatEntryMap<K, V, Order>> : properties_of<sorted, unique, functional, positional, contiguous, shrinkable, retains>
-{
-};
-
-template<typename K, typename V, typename Order>
-inline constexpr bool orders_by_value<repr::FlatEntryMap<K, V, Order>> = true;
 
 }  // namespace urd

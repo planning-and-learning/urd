@@ -3,6 +3,7 @@
 #include "urd/elements.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
+#include "urd/repr/indexed_fwd.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
@@ -35,7 +36,7 @@ namespace urd::repr
 /// thread-safe tree pool): the segments are the thread-safe ones and a concurrent hash table holds the positions.
 /// Looking up is lock-free; an insert of a new element takes a lock, so positions stay 0..n-1 without gaps. Clear,
 /// copy and move need no other operation running.
-template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe>
+template<typename T, typename Index, bool ThreadSafe, bool Stable>
 class IndexedSet
 {
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
@@ -270,38 +271,9 @@ private:
     [[no_unique_address]] std::conditional_t<ThreadSafe, std::mutex, NoLock> m_writer;
 };
 
-/// An IndexedSet whose elements never move: an interner that hands out references.
-template<typename T, typename Index = std::uint32_t>
-using StableIndexedSet = IndexedSet<T, Index, false, true>;
-/// An IndexedSet that threads may insert into at once.
-template<typename T, typename Index = std::uint32_t>
-using ConcurrentIndexedSet = IndexedSet<T, Index, true, true>;
-
-/// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
-template<typename T, bool ThreadSafe>
-using InterningTable = IndexedSet<T, std::uint32_t, ThreadSafe>;
-
 }  // namespace urd::repr
 
 namespace urd
 {
-
-/// In insertion order, in one array; erase and clear keep the storage of both the array and the table.
-template<hashable T, typename Index>
-struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, contiguous, shrinkable, retains>
-{
-};
-
-/// In insertion order, never moved, only ever added to; clear keeps the segments.
-template<hashable T, typename Index>
-struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains>
-{
-};
-
-/// The same, by threads at once.
-template<hashable T, typename Index>
-struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains, concurrent>
-{
-};
 
 }  // namespace urd

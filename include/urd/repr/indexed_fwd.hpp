@@ -1,0 +1,57 @@
+#pragma once
+
+// A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
+// and what the registry reads of it. Defined in urd/repr/indexed.hpp, which urd/use/hash.hpp includes.
+
+#include "urd/elements.hpp"
+#include "urd/traits.hpp"
+
+#include <cstdint>
+
+namespace urd::repr
+{
+
+/// The elements in a vector, and a hash table of their positions. Stable: the elements lie in segments that never
+/// move. ThreadSafe (with Stable): threads insert and look up at once. The registry names it for any element type,
+/// so it is an unconstrained template; its container_traits declare properties only for hashable elements.
+template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe>
+class IndexedSet;
+
+/// An IndexedSet whose elements never move: an interner that hands out references.
+template<typename T, typename Index = std::uint32_t>
+using StableIndexedSet = IndexedSet<T, Index, false, true>;
+/// An IndexedSet that threads may insert into at once.
+template<typename T, typename Index = std::uint32_t>
+using ConcurrentIndexedSet = IndexedSet<T, Index, true, true>;
+
+/// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
+template<typename T, bool ThreadSafe>
+using InterningTable = IndexedSet<T, std::uint32_t, ThreadSafe>;
+
+}  // namespace urd::repr
+
+namespace urd
+{
+
+/// In insertion order, in one array; erase and clear keep the storage of both the array and the table.
+template<hashable T, typename Index>
+struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, contiguous, shrinkable, retains>
+{
+};
+
+/// In insertion order, never moved, only ever added to; clear keeps the segments.
+template<hashable T, typename Index>
+struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains>
+{
+};
+
+/// The same, by threads at once.
+template<hashable T, typename Index>
+struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains, concurrent>
+{
+};
+
+template<typename T, typename Index, bool ThreadSafe, bool Stable>
+inline constexpr auto defined_in<repr::IndexedSet<T, Index, ThreadSafe, Stable>> = detail::fixed_string("urd/use/hash.hpp");
+
+}  // namespace urd
