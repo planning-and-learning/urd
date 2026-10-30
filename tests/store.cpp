@@ -696,6 +696,57 @@ TEST(Queues, EmplaceGivesTheHandle)
     EXPECT_EQ(queue.top(), 1);
 }
 
+// An insertion-ordered set keeps its elements in one array, so it has positions without asking for positional.
+TEST(Positions, InsertionOrderedSetsHaveThem)
+{
+    auto names = Store<key<std::string>, urd::insertion_ordered>();
+    names.insert("b");
+    names.insert("a");
+    EXPECT_EQ(names[0], "b");
+    EXPECT_EQ(names.back(), "a");
+    EXPECT_EQ(names.position(names.find("a")), 1U);
+}
+
+// A sorted Store's least and greatest elements are its first and last, O(1) in a tree or a sorted array.
+TEST(Ends, SortedStoresHaveTheirLeastAndGreatest)
+{
+    const auto tree = Store<key<int>, urd::sorted> { 5, 1, 3 };
+    EXPECT_EQ(tree.front(), 1);
+    EXPECT_EQ(tree.back(), 5);
+    const auto flat = Store<key<int>, urd::sorted, urd::frozen> { 5, 1, 3 };
+    EXPECT_EQ(flat.front(), 1);
+    const auto map = Store<key<int>, value<int>, urd::sorted> { { 2, 20 }, { 1, 10 } };
+    EXPECT_EQ(map.front().second, 10);
+    EXPECT_EQ(map.back().first, 2);
+}
+template<typename S>
+concept has_front = requires(const S& store) { store.front(); };
+static_assert(!has_front<Store<key<int>, urd::dense, urd::sorted>> && !has_front<Store<key<int>>>);
+
+// The change log answers whether an element is among its changes, without scanning them.
+TEST(ChangeLog, WasAddedAndWasRemoved)
+{
+    auto facts = Store<key<int>, urd::change_log> { 1, 2 };
+    facts.clear_changes();
+    facts.insert(3);
+    facts.erase(1);
+    EXPECT_TRUE(facts.was_added(3) && !facts.was_added(2) && facts.was_removed(1) && !facts.was_removed(3));
+}
+
+// A pool of records counts a record as a set does: once, or not at all.
+TEST(Records, Count)
+{
+    struct Point
+    {
+        int x = 0;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
+    };
+    auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>();
+    points.insert(Point { 1 });
+    EXPECT_EQ(points.count(Point { 1 }), 1U);
+    EXPECT_EQ(points.count(Point { 2 }), 0U);
+}
+
 // A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.
 TEST(Layered, AnswersFromItselfThenItsParent)
 {

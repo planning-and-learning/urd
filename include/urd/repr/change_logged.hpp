@@ -33,9 +33,7 @@ public:
 
     template<std::input_iterator InputIt>
     ChangeLogged(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     [[nodiscard]] iterator begin() const { return m_elements.begin(); }
     [[nodiscard]] iterator end() const { return m_elements.end(); }
@@ -46,6 +44,8 @@ public:
     [[nodiscard]] std::span<const value_type> added() const { return { m_added.data(), m_added.size() }; }
     /// The elements there when the log was cleared, and removed since.
     [[nodiscard]] std::span<const value_type> removed() const { return { m_removed.data(), m_removed.size() }; }
+    [[nodiscard]] bool was_added(const value_type& element) const { return m_added.contains(element); }
+    [[nodiscard]] bool was_removed(const value_type& element) const { return m_removed.contains(element); }
     /// Starts a new log: the contents as they are become the reference.
     void clear_changes()
     {
@@ -59,19 +59,13 @@ public:
     // The bounds, where R is sorted.
     [[nodiscard]] iterator lower_bound(const value_type& element) const
         requires requires(const R& set) { set.lower_bound(element); }
-    {
-        return m_elements.lower_bound(element);
-    }
+    { return m_elements.lower_bound(element); }
     [[nodiscard]] iterator upper_bound(const value_type& element) const
         requires requires(const R& set) { set.upper_bound(element); }
-    {
-        return m_elements.upper_bound(element);
-    }
+    { return m_elements.upper_bound(element); }
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const value_type& element) const
         requires requires(const R& set) { set.equal_range(element); }
-    {
-        return m_elements.equal_range(element);
-    }
+    { return m_elements.equal_range(element); }
     /// Equal contents, as R compares them; the logs do not count.
     [[nodiscard]] friend bool operator==(const ChangeLogged& lhs, const ChangeLogged& rhs) { return lhs.m_elements == rhs.m_elements; }
 
@@ -90,9 +84,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(value_type(std::forward<Args>(args)...));
-    }
+    { return insert(value_type(std::forward<Args>(args)...)); }
 
     size_type erase(const value_type& element)
     {

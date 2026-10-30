@@ -33,12 +33,11 @@ public:
     template<std::invocable<index_type> Factory>
         requires std::convertible_to<std::invoke_result_t<Factory, index_type>, T>
     std::pair<index_type, bool> insert(const T& key, Factory make)
-    {
-        return representation().insert(key, make);
-    }
+    { return representation().insert(key, make); }
     /// The index of an equal record, or none.
     [[nodiscard]] index_type find(const T& record) const { return constant().find(record); }
     [[nodiscard]] bool contains(const T& record) const { return constant().contains(record); }
+    [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
     [[nodiscard]] bool contains(index_type at) const { return !at.is_none() && (at.value) < constant().size(); }
     [[nodiscard]] const T& operator[](index_type at) const { return constant()[at]; }
     [[nodiscard]] const T& at(index_type at) const
@@ -59,9 +58,7 @@ public:
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()
         requires has<S, shrinkable>
-    {
-        representation().clear();
-    }
+    { representation().clear(); }
 
 private:
     [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
