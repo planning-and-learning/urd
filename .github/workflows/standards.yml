@@ -1,12 +1,19 @@
-name: peachycheck
+# The lint check: peachycheck's action checks the repository out, installs peachycheck and its linters and lints
+# with this repository's peachycheck.yml (the files changed since the base on a pull request, every file on main).
+# Builds and tests run in ci.yml. The organization's ruleset requires the job's name: `standards`.
+name: Standards
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  peachycheck:
+  standards:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

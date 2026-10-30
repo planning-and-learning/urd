@@ -1,7 +1,8 @@
 name: CI
 
-# urd works on main directly, so main is what CI checks.
+# main, and pull requests into it: the organization's ruleset lets main take only commits that passed `standards`.
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
