@@ -13,6 +13,9 @@ class changes
 public:
     [[nodiscard]] auto added() const { return representation().added(); }
     [[nodiscard]] auto removed() const { return representation().removed(); }
+    /// Whether `element` is among added(), or removed(): O(1) expected, as the log is kept.
+    [[nodiscard]] bool was_added(const typename S::element_type& element) const { return representation().was_added(element); }
+    [[nodiscard]] bool was_removed(const typename S::element_type& element) const { return representation().was_removed(element); }
     /// Starts a new log from the contents as they are.
     void clear_changes() { store_access::representation(static_cast<Derived&>(*this)).clear_changes(); }
 

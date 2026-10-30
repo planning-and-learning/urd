@@ -266,6 +266,12 @@ struct no_changes
     template<typename... Args>
         requires denied<Reason>
     void clear_changes(Args&&...);
+    template<typename... Args>
+        requires denied<Reason>
+    void was_added(Args&&...) const;
+    template<typename... Args>
+        requires denied<Reason>
+    void was_removed(Args&&...) const;
 };
 template<fixed_string Reason>
 struct no_view
@@ -352,7 +358,7 @@ inline constexpr std::array declares_ordered_lookup { facet_id::ordered_lookup }
 inline constexpr std::array declares_iteration { facet_id::iteration };
 inline constexpr std::array declares_reverse_iteration { facet_id::reverse_iteration };
 inline constexpr std::array declares_subscript { facet_id::positions, facet_id::values_by_key, facet_id::slots, facet_id::records };
-inline constexpr std::array declares_ends { facet_id::positions, facet_id::queue_access };
+inline constexpr std::array declares_ends { facet_id::positions, facet_id::queue_access, facet_id::sorted_ends };
 inline constexpr std::array declares_position { facet_id::positions, facet_id::entries };
 inline constexpr std::array declares_data { facet_id::contiguous_data };
 inline constexpr std::array declares_reserve { facet_id::capacity };
@@ -466,10 +472,13 @@ struct denial
                                               if_t<S::is_pool,
                                                    no_subscript<"operator[]/at: an interning pool reads rows by handle: get(h), view(h)">,
                                                    no_subscript<"operator[]/at: not offered by this kind of Store">>>>>>;
-    using ends = facet_if<!on::any_on(declares_ends),
-                          if_t<S::is_set,
-                               no_ends<"front/back: a set has no positions; ask for positional">,
-                               if_t<S::is_map, no_ends<"front/back: a map is reached by key">, no_ends<"front/back: not offered by this kind of Store">>>>;
+    using ends =
+        facet_if<!on::any_on(declares_ends),
+                 if_t<has<S, sorted> && has<S, dense>,
+                      no_ends<"front/back: dense keys are found by scanning their range; read *begin() where that cost is meant">,
+                      if_t<S::is_set,
+                           no_ends<"front/back: a set has no positions; ask for positional">,
+                           if_t<S::is_map, no_ends<"front/back: a map is reached by key">, no_ends<"front/back: not offered by this kind of Store">>>>>;
     using position =
         facet_if<!on::any_on(declares_position), no_position<"position: the Store has no positions; ask for positional (a set) or insertion_ordered (a map)">>;
     using data = facet_if<!on::any_on(declares_data), no_data<"data: the Store's elements are not contiguous; ask for contiguous">>;
@@ -491,7 +500,7 @@ struct denial
                                 no_queue<"push/pop/top: not a queue; ask for fifo, lifo or by_priority">>>;
     using scopes = facet_if<!on::any_on(declares_scopes), no_scopes<"push_scope/pop_scope/depth/bound_in_scope: ask for scoped">>;
     using layers = facet_if<!on::any_on(declares_layers), no_layers<"layer_over: ask for layered">>;
-    using changes = facet_if<!on::any_on(declares_changes), no_changes<"added/removed/clear_changes: ask for change_log">>;
+    using changes = facet_if<!on::any_on(declares_changes), no_changes<"added/removed/was_added/was_removed/clear_changes: ask for change_log">>;
     using view = facet_if<!on::any_on(declares_view), no_view<"view: a pool lends a row by handle, a positional set an element by index">>;
     using rows = facet_if<!on::any_on(declares_rows), no_rows<"get/row_size/memory_usage: only a pool of interned rows (handles, unique)">>;
     using acquire = facet_if<!on::any_on(declares_acquire), no_acquire<"acquire: only a pool of slots (handles without unique)">>;

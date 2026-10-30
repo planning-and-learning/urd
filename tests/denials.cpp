@@ -87,6 +87,8 @@ URD_TEST_DECLARES(layer_over)
 URD_TEST_DECLARES(added)
 URD_TEST_DECLARES(removed)
 URD_TEST_DECLARES(clear_changes)
+URD_TEST_DECLARES(was_added)
+URD_TEST_DECLARES(was_removed)
 URD_TEST_DECLARES(get)
 URD_TEST_DECLARES(view)
 URD_TEST_DECLARES(row_size)
@@ -150,7 +152,8 @@ template<typename S>
 using R_of = typename S::representation;
 template<typename S>
 using S_of = urd::traits_t<S>;
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+// The arguments are a name and a type, which parentheses would not leave as such.
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage,bugprone-macro-parentheses)
 #define URD_TEST_FACET(id, Store) entry<facet_id::id, facet::id<probe<Store>, R_of<Store>, S_of<Store>>>
 using facets = urd::detail::type_list<URD_TEST_FACET(sizing, Set),
                                       URD_TEST_FACET(iteration, Set),
@@ -177,7 +180,8 @@ using facets = urd::detail::type_list<URD_TEST_FACET(sizing, Set),
                                       URD_TEST_FACET(grouping, Partition),
                                       URD_TEST_FACET(entries, Ordered),
                                       URD_TEST_FACET(inverse, Graph),
-                                      URD_TEST_FACET(shape, Shaped)>;
+                                      URD_TEST_FACET(shape, Shaped),
+                                      URD_TEST_FACET(sorted_ends, Sorted)>;
 #undef URD_TEST_FACET
 
 template<std::size_t N>
@@ -227,7 +231,7 @@ URD_TEST_GROUP(keys, declares_keys<F>)
 URD_TEST_GROUP(queue, declares_push<F> || declares_pop<F> || declares_top<F>)
 URD_TEST_GROUP(scopes, declares_push_scope<F> || declares_pop_scope<F> || declares_depth<F> || declares_bound_in_scope<F>)
 URD_TEST_GROUP(layers, declares_layer_over<F>)
-URD_TEST_GROUP(changes, declares_added<F> || declares_removed<F> || declares_clear_changes<F>)
+URD_TEST_GROUP(changes, declares_added<F> || declares_removed<F> || declares_clear_changes<F> || declares_was_added<F> || declares_was_removed<F>)
 URD_TEST_GROUP(view, declares_view<F>)
 URD_TEST_GROUP(rows, declares_get<F> || declares_row_size<F> || declares_memory_usage<F>)
 URD_TEST_GROUP(acquire, declares_acquire<F>)

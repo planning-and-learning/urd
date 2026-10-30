@@ -241,6 +241,9 @@ int main()
 #elif URD_CASE == 62  // ... nor where layers continue the handles
     using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>;
     (void) S().erase({});
+#elif URD_CASE == 63  // dense keys have no O(1) least element: their first is found by a scan
+    using S = Store<key<int>, urd::dense, urd::sorted>;
+    (void) S().front();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

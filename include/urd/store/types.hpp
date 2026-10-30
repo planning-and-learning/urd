@@ -94,6 +94,7 @@ enum class facet_id : std::uint8_t
     entries,
     inverse,
     shape,
+    sorted_ends,
     count
 };
 
@@ -121,7 +122,9 @@ struct facet_switches
             case facet_id::reverse_iteration:
                 return store_types<R, S>::ordered;
             case facet_id::positions:
-                return has<S, positional>;
+                // Every insertion-ordered set is kept in one array (an interner, a sparse set): its elements have
+                // positions whether the request names them or not.
+                return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>);
             case facet_id::contiguous_data:
                 return has<S, contiguous>;
             case facet_id::capacity:
@@ -158,6 +161,9 @@ struct facet_switches
                 return S::is_map && has<S, bidirectional>;
             case facet_id::shape:
                 return has<S, fixed_shape>;
+            case facet_id::sorted_ends:
+                // Sequences and positional sets have front and back by position (positions).
+                return (S::is_set || S::is_map) && has<S, sorted> && !has<S, dense> && !has<S, positional>;
             case facet_id::count:
                 return false;
         }

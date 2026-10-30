@@ -33,6 +33,7 @@
 #include "urd/store/shape.hpp"
 #include "urd/store/sizing.hpp"
 #include "urd/store/slots.hpp"
+#include "urd/store/sorted_ends.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
 #include "urd/traits.hpp"
@@ -107,6 +108,7 @@ class Store :
     public facet_if<facet_switches<R, S>::on(facet_id::entries), facet::entries<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::inverse), facet::inverse<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::shape), facet::shape<Store<R, S>, R, S>>,
+    public facet_if<facet_switches<R, S>::on(facet_id::sorted_ends), facet::sorted_ends<Store<R, S>, R, S>>,
     // Where a member name is in none of the facets above, a denial stands in: a call then names the property that
     // rules the operation out (store/denials.hpp).
     public denial<R, S>::insert,
