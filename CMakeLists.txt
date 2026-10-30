@@ -216,7 +216,7 @@ if(URD_BUILD_TESTS)
         set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
     endfunction()
 
-    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 58)
+    urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 62)
     # A rejected request names its rule (to_spec in properties.hpp); docs/properties.rst lists them.
     urd_compile_fail_expects(compile_fail_store 4 "two properties answer the same question")
     urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
@@ -261,6 +261,10 @@ if(URD_BUILD_TESTS)
     urd_compile_fail_expects(compile_fail_store 22 "begin/end: a queue")
     urd_compile_fail_expects(compile_fail_store 26 "a pool is reached by handle")
     urd_compile_fail_expects(compile_fail_store 58 "operator==: a layered Store.*s contents include its parent")
+    urd_compile_fail_expects(compile_fail_store 59 "erase: the pool is monotone")
+    urd_compile_fail_expects(compile_fail_store 60 "erase: a pool with structural_sharing shares nodes")
+    urd_compile_fail_expects(compile_fail_store 61 "erase: a concurrent pool is read without a lock")
+    urd_compile_fail_expects(compile_fail_store 62 "erase: a layered pool.*s handles are continued")
     # A Store whose family header is missing names it (store.hpp, complete_representation).
     urd_compile_fail_cases(compile_fail_include tests/compile_fail_include.cpp 13)
     if(URD_WITH_GTL)  # the parallel family exists only with gtl; without, its case has nothing to leave out

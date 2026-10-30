@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -51,9 +52,7 @@ public:
 
     template<std::ranges::input_range Elements>
     handle_type insert(const Elements& elements)
-    {
-        return intern(canonical(elements));
-    }
+    { return intern(canonical(elements)); }
     /// The handle of the row with these elements, or none.
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
@@ -167,6 +166,16 @@ public:
     }
     void reserve(size_type count) { m_rows.reserve(count); }
     void clear() { m_rows.clear(); }
+    /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
+    /// Gives the handle the moved row had, or none where `handle` was the last. Views of the moved row stay valid.
+    std::optional<handle_type> erase(handle_type handle)
+        requires(!ThreadSafe)
+    {
+        assert((handle.value) < m_rows.size());
+        const auto last = handle_type(static_cast<std::uint32_t>(m_rows.size() - 1));
+        m_rows.swap_erase(handle.value);
+        return handle == last ? std::nullopt : std::optional(last);
+    }
 
 private:
     /// The elements as a stored row: as the Row keeps them (a set's in order, once), or as bitset words.

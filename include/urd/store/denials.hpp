@@ -343,7 +343,7 @@ inline constexpr std::array declares_insert { facet_id::growth, facet_id::pool, 
 inline constexpr std::array declares_emplace { facet_id::growth, facet_id::queue_access, facet_id::slots };
 inline constexpr std::array declares_appending { facet_id::growth };
 inline constexpr std::array declares_pop_back { facet_id::removal };
-inline constexpr std::array declares_erase { facet_id::removal, facet_id::queue_access, facet_id::slots };
+inline constexpr std::array declares_erase { facet_id::removal, facet_id::queue_access, facet_id::slots, facet_id::pool };
 inline constexpr std::array declares_clear {
     facet_id::removal, facet_id::queue_access, facet_id::pool, facet_id::records, facet_id::slots, facet_id::grouping
 };
@@ -424,7 +424,7 @@ struct denial
                                      if_t<is_fixed,
                                           no_erase<"erase: fixed_shape rows keep their shape; reset() clears their contents">,
                                           if_t<S::is_pool,
-                                               no_erase<"erase: an interning pool keeps its rows; nothing erases them">,
+                                               no_erase<"erase: a pool of records keeps them; their indices are kept by the records that hold them">,
                                                no_erase<"erase: not offered by this kind of Store">>>>>>;
     using clear = facet_if<!on::any_on(declares_clear),
                            if_t<is_frozen,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/index.hpp"
+#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>
@@ -24,6 +25,10 @@ class pool
     using row_element = std::ranges::range_value_t<typename S::element_type>;
     /// Rows that are sequences take writes by position.
     static constexpr bool sequence_rows = !by_value<traits_t<typename S::element_type>>;
+
+    /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
+    /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).
+    static constexpr bool erasable = has<S, shrinkable> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
 
 public:
     using handle_type = typename R::handle_type;
@@ -83,6 +88,26 @@ public:
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
     /// The bytes the stored rows take.
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
+    /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
+    /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
+    /// row's views stay valid, the erased row's do not.
+    std::optional<handle_type> erase(handle_type handle)
+        requires(erasable)
+    { return representation().erase(handle); }
+    // Where erase is ruled out, the reason: the denial for erase stays off, since this facet declares the name.
+    template<typename... Args>
+        requires has<S, monotone> && denied<"erase: the pool is monotone, it only grows; drop monotone">
+    void erase(Args&&...);
+    template<typename... Args>
+        requires has<S, structural_sharing>
+                 && denied<"erase: a pool with structural_sharing shares nodes between rows; its handles name no positions a row could move into">
+    void erase(Args&&...);
+    template<typename... Args>
+        requires has<S, concurrent> && denied<"erase: a concurrent pool is read without a lock beside inserts, which would see a row move">
+    void erase(Args&&...);
+    template<typename... Args>
+        requires has<S, layered> && denied<"erase: a layered pool's handles are continued by the layers over it, which a moved row would break">
+    void erase(Args&&...);
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
         requires has<S, shrinkable>
