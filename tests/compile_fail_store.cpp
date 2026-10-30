@@ -229,6 +229,18 @@ int main()
 #elif URD_CASE == 58  // a layered Store's contents include its parent's: no ==
     using S = Store<key<int>, urd::layered>;
     (void) (S() == S());
+#elif URD_CASE == 59  // erase moves the last row in: not where the pool only grows
+    using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone>;
+    (void) S().erase({});
+#elif URD_CASE == 60  // ... nor where handles name shared nodes
+    using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>;
+    (void) S().erase({});
+#elif URD_CASE == 61  // ... nor where threads read without a lock
+    using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>;
+    (void) S().erase({});
+#elif URD_CASE == 62  // ... nor where layers continue the handles
+    using S = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>;
+    (void) S().erase({});
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

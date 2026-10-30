@@ -189,6 +189,31 @@ TEST(Pools, FindAndSizeWithoutSharing)
     EXPECT_FALSE(rows.find({ 2, 1 }).has_value());
 }
 
+// Erase moves the last row into the erased one's handle and says which handle it had, so whatever keeps handles
+// (postings over the rows, yggdrasil's swap-erase) follows it.
+TEST(Pools, EraseMovesTheLastRowIn)
+{
+    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+    const auto a = rows.insert({ 1 });
+    const auto b = rows.insert({ 2 });
+    const auto c = rows.insert({ 3 });
+    EXPECT_EQ(rows.erase(a), c);  // {3} moves into a's handle
+    EXPECT_EQ(rows.size(), 2U);
+    EXPECT_TRUE(std::ranges::equal(rows.get(a), std::vector { 3 }));
+    EXPECT_EQ(rows.find({ 3 }), a);
+    EXPECT_FALSE(rows.find({ 1 }).has_value());
+    EXPECT_EQ(rows.erase(b), std::nullopt);  // the last row: nothing moves
+    EXPECT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.insert({ 2 }).value, 1U);  // a new row gets handle size()
+}
+template<typename P>
+concept erasable = requires(P pool, typename P::handle_type handle) { pool.erase(handle); };
+static_assert(erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
+              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone>>
+              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>
+              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>>
+              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>>);
+
 // A pool that shares nodes finds what it can build from them: the rows inserted, and their parts.
 TEST(Pools, FindWithSharing)
 {

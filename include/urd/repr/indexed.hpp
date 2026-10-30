@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <boost/unordered/concurrent_flat_set.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -86,9 +87,7 @@ public:
 
     template<std::input_iterator InputIt>
     IndexedSet(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     IndexedSet(const IndexedSet& other) : IndexedSet(other.begin(), other.end()) {}
     IndexedSet& operator=(const IndexedSet& other)
@@ -121,9 +120,7 @@ public:
     [[nodiscard]] const T& operator[](size_type position) const { return (*m_elements)[position]; }
     [[nodiscard]] const T* data() const
         requires(!Stable)
-    {
-        return m_elements->data();
-    }
+    { return m_elements->data(); }
 
     void reserve(size_type count)
         requires(!Stable)
@@ -176,9 +173,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(T(std::forward<Args>(args)...));
-    }
+    { return insert(T(std::forward<Args>(args)...)); }
     /// The position of `key`, appending what `make(position)` gives where it is new: the factory runs under the
     /// writer lock with the position reserved, for an element that holds its own position, and must give an element
     /// equal to `key`. It must not touch this set.
@@ -209,9 +204,7 @@ public:
     }
     iterator erase(const_iterator pos)
         requires(!Stable)
-    {
-        return erase(pos, std::next(pos));
-    }
+    { return erase(pos, std::next(pos)); }
     /// Later elements move up to keep the order, so their positions change.
     // ponytail: O(n) per erase, reindexing what follows; an interner never erases.
     iterator erase(const_iterator first, const_iterator last)
@@ -224,6 +217,24 @@ public:
         for (auto position = from; position < size(); ++position)
             m_positions.insert(Position { position });
         return at(from);
+    }
+    /// Erases the element at `position` by moving the last one into its place: O(1) expected, and only the last
+    /// element's position changes (to `position`). The order is not kept.
+    void swap_erase(Index position)
+        requires(!Stable)
+    {
+        assert(position < size());
+        const auto last = static_cast<Index>(size() - 1);
+        // The table hashes a position by the element there: each leaves the table before its element moves.
+        m_positions.erase(Position { position });
+        if (position != last)
+        {
+            m_positions.erase(Position { last });
+            (*m_elements)[position] = std::move((*m_elements)[last]);
+        }
+        m_elements->pop_back();
+        if (position != last)
+            m_positions.insert(Position { position });
     }
     void clear()
     {

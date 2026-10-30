@@ -611,6 +611,33 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
                 cleared = true;
             }
         }
+        // Now and then a row erased, where the pool erases: the last row moves into its handle. The model drops every
+        // entry of the erased row and gives the moved row's entries the erased handle.
+        if constexpr (requires { pool.erase(handles.front()); })
+        {
+            if (!cleared && !rows.empty() && step % 7 == 6)
+            {
+                operation = "erase";
+                const auto victim = handles[static_cast<std::size_t>(random() % handles.size())];
+                const auto erased_row = rows[static_cast<std::size_t>(std::ranges::find(handles, victim) - handles.begin())];
+                const auto last = typename P::handle_type(static_cast<std::uint32_t>(pool.size() - 1));
+                const auto moved = pool.erase(victim);
+                if (moved != (victim == last ? std::nullopt : std::optional(last)))
+                    return "step " + std::to_string(step) + " (erase): erase gives another handle than the last row's";
+                for (std::size_t each = rows.size(); each-- > 0;)
+                    if (handles[each] == victim)
+                    {
+                        rows.erase(rows.begin() + static_cast<std::ptrdiff_t>(each));
+                        handles.erase(handles.begin() + static_cast<std::ptrdiff_t>(each));
+                    }
+                for (auto& handle : handles)
+                    if (moved && handle == *moved)
+                        handle = victim;
+                if (find(erased_row))
+                    return "step " + std::to_string(step) + " (erase): the erased row is still found";
+                cleared = true;  // done with this step's change
+            }
+        }
         const auto base = rows.empty() ? rows.size() : static_cast<std::size_t>(random() % rows.size());
         if constexpr (sequence_rows)
         {
@@ -662,8 +689,8 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         const auto label = "step " + std::to_string(step) + " (" + operation + "): ";
         // Inserting stores more or nothing; only clear lowers it.
         const auto memory = pool.memory_usage();
-        if (operation != "clear" && memory < memory_before)
-            return label + "memory_usage fell without a clear";
+        if (operation != "clear" && operation != "erase" && memory < memory_before)
+            return label + "memory_usage fell without a clear or an erase";
         memory_before = memory;
         for (std::size_t each = 0; each < rows.size(); ++each)
         {
