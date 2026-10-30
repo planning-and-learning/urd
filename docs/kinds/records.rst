@@ -110,6 +110,11 @@ Member functions
 
    Shrinkable pools; the arena keeps its segments.
 
+Complexity
+----------
+
+.. urd-complexity:: records
+
 Layered pools (``layered``)
 ---------------------------
 

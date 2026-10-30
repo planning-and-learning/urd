@@ -1,0 +1,203 @@
+// Writes share/urd/complexity.json from the cost table (tests/complexity.hpp), or checks the committed file against
+// it:
+//
+//     complexity_table --write share/urd/complexity.json
+//     complexity_table --check share/urd/complexity.json     (the `complexity_table` test)
+//
+// One line per representation the registry can choose for a request of the grid, in the grid's order: what it is,
+// the kinds of Store it serves, what it holds, and the cost of each operation it has. The docs render the
+// complexity sections of docs/kinds/*.rst from this file (docs/_ext/urd_language.py).
+
+#include "complexity.hpp"
+#include "generated.hpp"
+#include "grid.hpp"
+#include "urd/registry.hpp"
+// Every family: facet_switches reads the representations.
+#include "urd/use/contiguous.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/layers.hpp"
+#include "urd/use/nodes.hpp"
+#include "urd/use/pools.hpp"
+#include "urd/use/queues.hpp"
+#include "urd/use/records.hpp"
+#include "urd/use/scopes.hpp"
+#include "urd/use/sequences.hpp"
+#if defined(URD_HAS_GTL)
+#include "urd/use/parallel.hpp"
+#endif
+
+#include <cstddef>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace
+{
+
+using urd::test::cost;
+using urd::test::op;
+
+std::string json_string(std::string_view text)
+{
+    auto result = std::string("\"");
+    for (const char each : text)
+    {
+        if (each == '"' || each == '\\')
+            result += '\\';
+        result += each;
+    }
+    return result + "\"";
+}
+
+constexpr std::string_view growth_name(urd::test::growth of)
+{
+    constexpr std::array names { "one", "log", "linear", "n_log_n" };
+    return names[static_cast<std::size_t>(of)];
+}
+
+constexpr std::string_view in_name(urd::test::in of)
+{
+    constexpr std::array names { "n", "keys", "capacity", "row", "delta", "changes" };
+    return names[static_cast<std::size_t>(of)];
+}
+
+/// A cost as the docs write it: O(log n), O(1)*~ (amortized, expected).
+std::string written(const cost& how)
+{
+    constexpr std::array quantity { "n", "U", "capacity", "r", "k", "changes" };
+    const auto of = std::string(quantity[static_cast<std::size_t>(how.of)]);
+    auto result = std::string();
+    switch (how.grows)
+    {
+        case urd::test::growth::one:
+            result = "O(1)";
+            break;
+        case urd::test::growth::log:
+            result = "O(log " + of + ")";
+            break;
+        case urd::test::growth::linear:
+            result = "O(" + of + ")";
+            break;
+        case urd::test::growth::n_log_n:
+            result = "O(" + of + " log " + of + ")";
+            break;
+    }
+    return result + (how.amortized ? "*" : "") + (how.expected ? "~" : "");
+}
+
+struct representation
+{
+    std::string id;
+    std::string description;
+    std::set<std::string> kinds;
+};
+
+template<typename S>
+std::string kind_of()
+{
+    if constexpr (S::is_partition)
+        return "partitions";
+    else if constexpr (S::is_pool)
+        return urd::has<S, urd::flat> ? "records" : "pools";
+    else if constexpr (S::is_queue)
+        return "queues";
+    else if constexpr (S::is_map)
+        return "maps";
+    else if constexpr (S::is_set)
+        return "sets";
+    else
+        return "sequences";
+}
+
+template<typename R, typename S>
+struct serving
+{
+    static constexpr bool value = urd::detail::serves<R, S>;
+};
+
+template<typename S, typename List>
+struct collect;
+template<typename S, typename... Rs>
+struct collect<S, urd::detail::type_list<Rs...>>
+{
+    template<typename R>
+    static void one(std::vector<representation>& into)
+    {
+        if constexpr (serving<R, S>::value)
+        {
+            const auto id = std::string(urd::test::name<R>::id);
+            auto found = std::ranges::find(into, id, &representation::id);
+            if (found == into.end())
+            {
+                into.push_back({ id, std::string(urd::test::name<R>::value), {} });
+                found = std::prev(into.end());
+            }
+            found->kinds.insert(kind_of<S>());
+        }
+    }
+    static void run(std::vector<representation>& into) { (one<Rs>(into), ...); }
+};
+
+std::string generate()
+{
+    auto all = std::vector<representation>();
+    urd::test::for_each_group(
+        [&](const char* /*title*/, auto list)
+        {
+            urd::test::for_each_request(list,
+                                        [&]<typename Q>(std::type_identity<Q>)
+                                        {
+                                            using S = typename Q::spec;
+                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            collect<S, List>::run(all);
+                                        });
+        });
+
+    auto out = std::string("{\"generated_by\": \"complexity_table --write share/urd/complexity.json, from tests/complexity.hpp\", "
+                           "\"marks\": {\"*\": \"amortized\", \"~\": \"expected\"}, \"operations\": [");
+    for (std::size_t each = 0; each < urd::test::op_names.size(); ++each)
+        out += (each == 0 ? "" : ", ") + json_string(urd::test::op_names[each]);
+    out += "], \"representations\": [\n";
+    bool first = true;
+    for (const auto& each : all)
+    {
+        const auto note = std::ranges::find(urd::test::memory_table, std::string_view(each.id), &urd::test::memory_note::representation);
+        if (note == urd::test::memory_table.end())
+            throw std::runtime_error("no memory note for " + each.id + " (memory_table, tests/complexity.hpp)");
+        auto kinds = std::string("[");
+        for (const auto& kind : each.kinds)
+            kinds += (kinds.size() > 1 ? ", " : "") + json_string(kind);
+        auto costs = std::string("{");
+        for (std::size_t what = 0; what < urd::test::op_names.size(); ++what)
+        {
+            const auto how = urd::test::table_cost(each.id, static_cast<op>(what));
+            if (!how)
+                continue;
+            costs += (costs.size() > 1 ? ", " : "") + json_string(urd::test::op_names[what]) + ": ";
+            if (how->as_part)
+                costs += "{\"as_part\": true}";
+            else
+            {
+                costs += "{\"cost\": " + json_string(written(*how));
+                costs += ", \"growth\": " + json_string(growth_name(how->grows));
+                costs += ", \"in\": " + json_string(in_name(how->of));
+                costs += ", \"verified\": " + json_string(how->timed ? "timed" : "counted") + "}";
+            }
+        }
+        out += first ? "  " : ",\n  ";
+        first = false;
+        out += "{\"representation\": " + json_string(each.id);
+        out += ", \"description\": " + json_string(each.description);
+        out += ", \"kinds\": " + kinds + "]";
+        out += ", \"holds\": " + json_string(note->holds);
+        out += ", \"costs\": " + costs + "}}";
+    }
+    return out + "\n]}\n";
+}
+
+}  // namespace
+
+int main(int argc, char** argv) { return urd::test::write_or_check(argc, argv, "complexity_table", generate); }

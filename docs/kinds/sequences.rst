@@ -116,54 +116,7 @@ Shape (``fixed_shape``)
 Complexity
 ----------
 
-n elements, r a row's length.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 28 18 14 14 12 14
-
-   * - Representation
-     - push / insert
-     - access
-     - erase
-     - clear
-     - memory
-   * - ``std::vector``
-     - O(1)\* at the end, O(n) inside
-     - O(1)
-     - O(n)
-     - O(n)
-     - contiguous; retains
-   * - ``boost::container::flat_multiset``
-     - O(n), into place
-     - O(1)
-     - O(n)
-     - O(n)
-     - contiguous; retains
-   * - ``SegmentedVector``
-     - O(1)\* (no element moves)
-     - O(1)
-     - —
-     - O(n)
-     - doubling segments; stable references
-   * - ``Jagged`` (frozen rows)
-     - O(r)\* per row
-     - a row: O(1), a span
-     - —
-     - O(n)
-     - one offsets array per level
-   * - ``Jagged`` (``fixed_shape``)
-     - built once, O(total length)
-     - a row: O(1), a span or ``BitsetSpan``; bit ops O(r/64)
-     - —
-     - —
-     - one array; bit rows ⌈r/64⌉ words each
-   * - ``RowPool``
-     - O(1)\*, a kept row first
-     - O(1)
-     - O(1), keeps the row
-     - O(n)
-     - rows kept with their storage
+.. urd-complexity:: sequences
 
 Example
 -------

@@ -156,8 +156,8 @@ indexable).
 | `Store<key<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | dense |
 | `Store<key<int>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<int>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | dense |
-| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | dense |
+| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `tracked_dense_set` | dense |
+| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `ordered_sparse_set` | dense |
 | `Store<key<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | dense |
 | `Store<key<int>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense |
 | `Store<key<int>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense |
@@ -177,8 +177,8 @@ indexable).
 | `Store<key<Id>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | dense |
 | `Store<key<Id>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<Id>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `dense_set` | dense |
-| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `sparse_set` | dense |
+| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `tracked_dense_set` | dense |
+| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `ordered_sparse_set` | dense |
 | `Store<key<Id>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | dense |
 | `Store<key<Id>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense |
 | `Store<key<Id>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense |

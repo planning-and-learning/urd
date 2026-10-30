@@ -129,14 +129,16 @@ struct name<urd::repr::RowPool<Inner>>
 template<typename K, bool TrackWords>
 struct name<urd::repr::DenseSet<K, TrackWords>>
 {
-    static constexpr std::string_view id = "dense_set";
-    static constexpr std::string_view value = "dense set (a bitset over indices)";
+    static constexpr std::string_view id = TrackWords ? "tracked_dense_set" : "dense_set";
+    static constexpr std::string_view value =
+        TrackWords ? "dense set tracking its words (a bitset over indices, cleared by the words it touched)" : "dense set (a bitset over indices)";
 };
 template<typename K, bool KeepOrder>
 struct name<urd::repr::SparseSet<K, KeepOrder>>
 {
-    static constexpr std::string_view id = "sparse_set";
-    static constexpr std::string_view value = "sparse set (members array plus index positions, O(1) clear)";
+    static constexpr std::string_view id = KeepOrder ? "ordered_sparse_set" : "sparse_set";
+    static constexpr std::string_view value =
+        KeepOrder ? "sparse set keeping insertion order (erase shifts the members after it)" : "sparse set (members array plus index positions, O(1) clear)";
 };
 template<typename K, typename V>
 struct name<urd::repr::IndexMap<K, V, false>>
@@ -312,8 +314,8 @@ struct name<urd::repr::FlatEntryMap<K, V, Order>>
     static constexpr std::string_view id = "flat_entry_map";
     static constexpr std::string_view value = "flat entry map (entries in an order that reads their values, found by key)";
 };
-template<typename K, typename V>
-struct name<urd::repr::RecyclingMap<K, V>>
+template<typename K, typename V, typename C>
+struct name<urd::repr::Recycling<std::map<K, V, C>>>
 {
     static constexpr std::string_view id = "recycling_map";
     static constexpr std::string_view value = "recycling map (std::map that keeps erased nodes and their values for reuse)";

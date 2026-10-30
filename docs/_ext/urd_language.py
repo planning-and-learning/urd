@@ -7,6 +7,7 @@ Directives:
 - ``.. urd-category:: <root>``: one category: its question as a section, its diagram, the body written in the
   page, then a card per tag (with the shortest served request of docs/RESOLUTION.md stating it).
 - ``.. urd-needs::``: every phrase, alphabetically, linked to its tag.
+- ``.. urd-complexity:: <kind>``: the costs of a kind's representations, from share/urd/complexity.json.
 
 Every category must appear exactly once, on its theme's page (language/<theme>); a warning says which, and the build with -W fails.
 """
@@ -27,6 +28,7 @@ VOCABULARY = json.loads((ROOT / "share/urd/vocabulary.json").read_text())
 THEMES = {t["theme"]: t for t in VOCABULARY["themes"]}
 CATEGORIES = {c["category"]: c for c in VOCABULARY["categories"]}
 TAGS = {t["tag"]: t for t in VOCABULARY["tags"]}
+COMPLEXITY = json.loads((ROOT / "share/urd/complexity.json").read_text())
 ROLES = {
     "guarantee": "a guarantee: the container keeps it",
     "demand": "a demand: you promise it about the data",
@@ -173,6 +175,29 @@ class Needs(Generated):
         return out
 
 
+class Complexity(Generated):
+    """``.. urd-complexity:: <kind>``: what each operation costs the representations of a kind of Store."""
+
+    required_arguments = 1
+
+    def lines(self) -> list[str]:
+        kind = self.arguments[0]
+        rows = [r for r in COMPLEXITY["representations"] if kind in r["kinds"]]
+        if not rows:
+            raise self.error(f"urd-complexity: no representation serves {kind!r}")
+        ops = [o for o in COMPLEXITY["operations"] if any(o in r["costs"] for r in rows)]
+        out = [".. list-table::", "   :header-rows: 1", "", "   * - Representation"]
+        out += [f"     - {o.replace('_', ' ')}" for o in ops] + ["     - holds"]
+        for r in rows:
+            out.append(f"   * - ``{r['representation']}``: {r['description']}")
+            for o in ops:
+                cost = r["costs"].get(o)
+                text = "—" if cost is None else "as its part" if cost.get("as_part") else cost["cost"].replace("*", "\\*")
+                out.append(f"     - {text}")
+            out.append(f"     - {r['holds']}")
+        return [*out, "", "\\* amortized, ~ expected; n elements, U the key range, r a row's length, k a delta's changes.", ""]
+
+
 def init_env(app, env, docnames) -> None:
     if not hasattr(env, "urd_categories"):
         env.urd_categories = {}
@@ -198,6 +223,7 @@ def setup(app) -> dict:
     app.add_directive("urd-theme", Theme)
     app.add_directive("urd-category", Category)
     app.add_directive("urd-needs", Needs)
+    app.add_directive("urd-complexity", Complexity)
     app.connect("env-before-read-docs", init_env)
     app.connect("env-purge-doc", purge)
     app.connect("env-check-consistency", check)
