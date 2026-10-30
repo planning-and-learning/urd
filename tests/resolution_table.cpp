@@ -169,7 +169,7 @@ std::string generate()
            "includes, a wrapper's part first. This table is built with no family header included: resolving completes nothing.\n"
            "A request is one of three things: served; `none` and missing, a\n"
            "representation that could be written (its note says which); or incompatible, a contract no representation can\n"
-           "keep, which `Store` rejects with a message (the rules are listed in docs/properties.rst, \"Incompatible\n"
+           "keep, which `Store` rejects with a message (the rules are listed in docs/language/index.rst, \"Incompatible\n"
            "combinations\"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`\n"
            "with its culprits' compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,\n"
            "indexable).\n";

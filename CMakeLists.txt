@@ -73,6 +73,7 @@ endif()
 
 # The documentation (docs/, Sphinx): `cmake --build build --target docs` where sphinx-build is found, in
 # build/docs-venv (python3 -m venv build/docs-venv && build/docs-venv/bin/pip install -r docs/requirements.txt) or on the path.
+# Graphviz's dot draws the category diagrams. Published from main by .github/workflows/docs.yml.
 find_program(URD_SPHINX_BUILD NAMES sphinx-build HINTS "${CMAKE_BINARY_DIR}/docs-venv/bin")
 if(URD_SPHINX_BUILD)
     add_custom_target(docs
@@ -217,7 +218,7 @@ if(URD_BUILD_TESTS)
     endfunction()
 
     urd_compile_fail_cases(compile_fail_store tests/compile_fail_store.cpp 68)
-    # A rejected request names its rule (to_spec in properties.hpp); docs/properties.rst lists them.
+    # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
     urd_compile_fail_expects(compile_fail_store 4 "two properties answer the same question")
     urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
     urd_compile_fail_expects(compile_fail_store 6 "stable_refs needs frozen too")

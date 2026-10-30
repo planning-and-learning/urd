@@ -8,7 +8,7 @@ A Store is a request: the element types and a list of property tags, in any orde
 .. cpp:class:: template<typename... Properties> Store
 
    An alias (``urd/store.hpp``) for the Store class resolved from the request ``Properties``: among them exactly
-   one :cpp:class:`key` or :cpp:class:`value`, or both, and property tags from :doc:`properties`, at most one per
+   one :cpp:class:`key` or :cpp:class:`value`, or both, and property tags from :doc:`language/index`, at most one per
    category. Equal requests, in whatever order, are the same type. ``Store<...>::representation`` names the
    container chosen, for tests that pin it; code that uses a Store never needs it.
 
@@ -33,6 +33,23 @@ A Store is a request: the element types and a list of property tags, in any orde
 .. cpp:struct:: row_lengths
 
    What a ``fixed_shape`` Store is built from: how long each row is, in order.
+
+Nesting
+-------
+
+A Store of Stores is written as one: an element, key or value can be another Store, to any depth.
+
+.. code-block:: cpp
+
+   using Tags     = Store<key<std::string>, sorted>;
+   using Tagged   = Store<key<Item>, value<Tags>>;                          // a map of sorted sets
+   using Families = Store<key<Tags>>;                                       // a set of sets (hashed by contents: Tags is sorted)
+   using Trips    = Store<key<std::string>, value<Store<value<Point>>>>;    // a map of sequences
+   using Layers   = Store<value<Store<key<Cell>, value<Store<value<Item>>>>>>;  // sequences of maps of sequences
+
+Most rows are held as Stores, each owning its storage. Where the outer request says how rows live (``frozen``,
+``fixed_shape``, ``retains``, ``handles``), urd stores them together and hands out a row as a view: see
+:doc:`kinds/sequences` and :doc:`kinds/pools`.
 
 Kinds
 -----

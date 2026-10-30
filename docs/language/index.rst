@@ -1,134 +1,92 @@
-Properties
-==========
+How the language is organized
+=============================
 
-Each property answers one question (a category) with a tag. A tag derived from another promises at least as much,
-and the root of a category promises nothing. Containers declare the guarantees in ``container_traits``; the rest
-only a request states. A Store has the properties it was asked for, not those of its representation: a set that
+A request is a list of tags. Each tag answers a question about the data, and the questions are grouped in two
+levels:
+
+- **A theme** is an area you may care about: what the Store is, what the data is like, order, change over time,
+  memory and layout, threads. Themes only organize; they have no rules.
+- **A category** is one question within a theme, such as *Which keys?* (theme: what the data is like). A request
+  answers each category at most once: ``dense`` and ``sparse`` both answer *Which keys?*, so a request holds one of
+  them. A category left unanswered stays at its **root**, which promises nothing: urd may pick anything there.
+- **A tag** is one answer to a category. Within a category some answers promise more than others:
+  ``constant_clear`` (clear in O(1)) is at least ``proportional_clear`` (clear in O(elements present)), so a
+  container that clears in O(1) also serves a request for ``proportional_clear``. Each category's diagram draws
+  this: an arrow points to an answer that promises at least as much.
+
+Take ``Distance`` from the example on the :doc:`front page </index>`:
+
+.. code-block:: cpp
+
+   using Distance = Store<key<User>, value<int>, dense, constant_clear>;
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 35 40
+
+   * - Theme
+     - Category
+     - Answer
+   * - What it is
+     - *Values per key?*
+     - ``functional``, implied: a map without ``multi`` holds one value per key
+   * - What the data is like
+     - *Which keys?*
+     - ``dense``: the users are ids 0..n-1
+   * - Change over time
+     - *How is it cleared?*
+     - ``constant_clear``: in O(1)
+   * - Every other category
+     - (unanswered)
+     - its root: no promise
+
+urd picks the cheapest container that keeps every answer: here a map with a generation counter per slot
+(``generation_map``). A Store has the properties it was asked for, not those of its representation: a set that
 ``reclaims`` resolves to a tree, which is sorted, but was not asked to be, so it is not.
 
-Guarantees
+Who keeps an answer
+-------------------
+
+Tags also differ in who makes the promise, shown on each tag's card:
+
+- a **guarantee** is kept by the container (``sorted``, ``stable_refs``); containers declare their guarantees in
+  ``container_traits``, and the typed tests check them against a reference model;
+- a **demand** is a promise you make about the data (``dense``: the keys really are indices);
+- a **kind** makes the Store a queue, a pool or a partition (``fifo``, ``handles``, ``partition``);
+- a **request** only a request states (``frozen``, ``positional``);
+- a **hint** (``small``) changes the choice, never a guarantee.
+
+The themes
 ----------
 
-What a container declares and keeps, checked by the typed tests against a reference model.
+.. urd-themes::
 
-.. list-table::
-   :header-rows: 1
-   :widths: 14 22 64
+Each theme's page holds its categories, and each category its tags. To start from a need in plain words instead,
+see :doc:`needs`.
 
-   * - Category
-     - Tags (later ones promise more)
-     - Guarantee, and what it switches on
-   * - order
-     - ``sorted``, ``insertion_ordered``
-     - Iteration ascending by :cpp:class:`urd::Less`, or in the order elements first came. ``sorted`` adds
-       ``lower_bound``, ``upper_bound``, ``equal_range`` and ``operator<=>``; either adds ``rbegin``, ``rend``.
-   * - uniqueness
-     - ``unique``
-     - No two elements equal. Implied for sets, and for maps without ``multi``; stated for pools that intern.
-   * - keys
-     - ``dense``, ``sparse``
-     - Keys are indices 0..n-1 (:cpp:struct:`urd::index_of`), stored by position; or few in their range.
-   * - references
-     - ``stable_refs``
-     - A reference to a stored element stays valid until that element is removed, by whichever path hands it out:
-       an iterator's element, a map's value (``at``, ``operator[]``, ``update``, an entry's ``.second``), a
-       sequence's ``operator[]``, a queue's ``front`` or ``top``, a pool's ``[handle]``. Insert moves no other
-       element; ``erase`` and ``clear`` end only the references to what they remove.
-   * - layout
-     - ``contiguous``
-     - Elements lie next to each other in memory: ``data()``.
-   * - representation
-     - ``canonical``
-     - Equal contents have equal representations (a bitset); such a Store is hashable by its contents.
-   * - threads
-     - ``concurrent``
-     - Threads share the Store: inserts from threads at once, and beside them reads of published elements (inserted
-       before the reading thread started, or by it); for maps also ``update`` and ``read`` on any keys, each value
-       under its own lock, ``at`` only for keys no thread writes; for pools inserts and reads by handle. A lookup
-       beside inserts is ``contains`` or ``count`` (``find``'s iterator compared with ``end()`` races with the
-       size). Erase of another thread's element, ``clear``, iteration, ``reserve``, copy, move and destruction need
-       no other operation running.
-   * - memory
-     - ``retains``, ``reclaims``
-     - Storage freed by erase and clear is kept for reuse, or returned.
-   * - clear
-     - ``proportional_clear`` → ``constant_clear``
-     - ``clear`` costs O(elements present), or O(1).
-   * - access
-     - ``fifo``, ``lifo``, ``by_priority``
-     - A queue: reached by ``front`` or ``top``; iterated in the order pushed, or a priority queue in none.
-   * - handles
-     - ``handles``
-     - A pool: ``insert`` gives an :cpp:struct:`urd::index`; with ``unique`` equal rows get equal handles; on a
-       priority queue, ``push`` gives a handle to ``update`` or ``erase`` by.
-   * - sharing
-     - ``structural_sharing``
-     - Equal parts of different rows are stored once (tree pools).
-   * - scopes
-     - ``scoped``
-     - Changes undone by ``pop_scope``.
-   * - layering
-     - ``layered``
-     - Lookups fall through to a parent; on pools, indices continue after the parent's.
-   * - tracking
-     - ``change_log``
-     - ``added()`` and ``removed()`` since ``clear_changes()``.
-   * - grouping
-     - ``partition``
-     - Union-find classes: ``merge``, ``find``, ``same``.
-   * - direction
-     - ``bidirectional``
-     - A map answering ``keys(value)`` too.
-   * - shape
-     - ``fixed_shape``
-     - Rows whose number and lengths are set at construction (:cpp:struct:`urd::row_lengths`); their contents
-       change in place, and ``reset()`` sets them back to defaults.
-   * - packing
-     - ``flat``
-     - Each record of an interning pool is one self-contained block of bytes (trivially copyable, or serialized by
-       cista), frozen once stored and read by :cpp:struct:`urd::index`.
+.. toctree::
+   :maxdepth: 1
 
-Requested only
---------------
+   kind
+   data
+   order
+   change
+   memory
+   threads
+   needs
 
-What a request states and no container declares.
+Order by a projection
+---------------------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 14 22 64
-
-   * - Category
-     - Tags
-     - Effect
-   * - lifecycle
-     - ``monotone`` → ``frozen``
-     - Only grows (no ``erase``, ``clear``, ``pop_back``), or changes only by ``assign(first, last)``, a rebuild in
-       the storage held where the container can; a frozen Store is read by any number of threads between rebuilds.
-       A monotone queue keeps ``pop``: pop is how a queue is consumed, and ``monotone`` takes only ``clear`` away.
-   * - emptiness
-     - ``nonempty``
-     - At least one element: no default constructor, and construction from elements asserts one; a fixed-shape
-       Store asserts a row. A promise about iterated elements: sets, maps and sequences only.
-   * - multiplicity
-     - ``functional``, ``multi``
-     - One value per key, or many (a multimap).
-   * - identity
-     - ``positional``
-     - Elements identified by position: sequences, and sets with positions (an interner with ``monotone``).
-   * - workload
-     - ``small``
-     - A few elements: picks compact containers, never changes a guarantee. Must be backed by a benchmark.
-   * - priority
-     - ``monotone_priority``
-     - A priority queue never pushed below the last popped: integral priorities go to buckets.
-   * - order
-     - ``order_by<P>``
-     - See :cpp:class:`urd::order_by`.
+``order_by<P>`` is no tag: it orders a ``sorted`` Store or a ``by_priority`` queue by ``P(element)`` (``P(key)`` in
+a map), or a map by ``P(key, value)``. ``P`` is a member pointer or a stateless lambda; ties are broken by the
+element's (the key's) own order. Ordered by values, a map's values change only through ``update``, ``merge`` and
+``insert_or_assign``, and the request says ``small`` or ``frozen`` too (a flat scan). See :cpp:class:`urd::order_by`.
 
 Incompatible combinations
 -------------------------
 
-A request is one of three things: served, missing, or incompatible. :doc:`RESOLUTION` shows the first two for a
+A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). The third is a contract no representation
 can keep: ``Store`` rejects it before resolution with a message naming the rule, and a compile-fail case in
 ``tests/compile_fail_store.cpp`` pins each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``). The rules
@@ -279,7 +237,7 @@ servable.
      - Drop ``structural_sharing``.
      - 41
    * - ``dense, layered, concurrent`` maps
-     - Missing, not incompatible: the concurrent slot directory is not written yet (see the note in :doc:`RESOLUTION`).
+     - Missing, not incompatible: the concurrent slot directory is not written yet (see the note in :doc:`/RESOLUTION`).
      - ``dense, layered`` single-threaded, or ``dense, constant_clear, concurrent`` without layers.
      - 43
    * - ``key<int>, value<int>, concurrent, retains``

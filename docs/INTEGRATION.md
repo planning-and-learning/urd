@@ -156,7 +156,7 @@ whose arguments say why: the culprits are the stated tags whose removal, one at 
 servable (`to_spec::without<tag>` re-runs the rules without one, so dropping `frozen` drops the implied
 `stable_refs` too), and the three booleans say what the key type is where no tag is the culprit. The probes run
 only on failure. Every rule of `to_spec` and every registry-level rejection has a compile-fail case that checks the
-message, not only the failure (`urd_compile_fail_expects` in `CMakeLists.txt`); docs/properties.rst lists them
+message, not only the failure (`urd_compile_fail_expects` in `CMakeLists.txt`); docs/language/index.rst lists them
 under "Incompatible combinations", so a request is one of three things: served, missing (a `none` row of
 docs/RESOLUTION.md with a note), or incompatible (a message).
 

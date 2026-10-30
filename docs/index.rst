@@ -39,7 +39,7 @@ complexity of each operation per representation.
    :caption: The request language
 
    requests
-   properties
+   language/index
    semantics
 
 .. toctree::
