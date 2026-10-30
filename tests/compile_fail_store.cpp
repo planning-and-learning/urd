@@ -97,9 +97,9 @@ int main()
 #elif URD_CASE == 21  // an interner's element is its index's: changing it in place would break the lookup
     auto symbols = Store<key<int>, urd::positional> { 1, 2 };
     symbols[0] = 3;
-#elif URD_CASE == 22  // a queue is reached by its front or top, never iterated
+#elif URD_CASE == 22  // a queue is iterated but compares by no ==: a heap's order is no content
     auto open = Store<value<int>, urd::by_priority>();
-    (void) open.begin();
+    (void) (open == open);
 #elif URD_CASE == 23  // a queue offers the next element by its order's name: top for a priority queue
     auto open = Store<value<int>, urd::by_priority>();
     (void) open.front();
@@ -244,6 +244,26 @@ int main()
 #elif URD_CASE == 63  // dense keys have no O(1) least element: their first is found by a scan
     using S = Store<key<int>, urd::dense, urd::sorted>;
     (void) S().front();
+#elif URD_CASE == 64  // a bucket queue would visit every priority's bucket
+    using S = Store<value<int>, urd::by_priority, urd::monotone_priority>;
+    (void) S().begin();
+#elif URD_CASE == 65  // only a fifo queue has a back
+    using S = Store<value<int>, urd::lifo>;
+    (void) S().back();
+#elif URD_CASE == 66  // a queue without handles has nothing to read an element by
+    using S = Store<value<int>, urd::by_priority>;
+    (void) S()[0];
+#elif URD_CASE == 67  // a partition holds each element once
+    using S = Store<key<int>, urd::partition>;
+    (void) S().count(0);
+#elif URD_CASE == 68  // a layered pool of records reaches each through the layer that owns it
+    struct Name
+    {
+        int id = 0;
+        static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
+    };
+    using S = Store<value<Name>, urd::handles, urd::unique, urd::flat, urd::layered>;
+    (void) S().begin();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

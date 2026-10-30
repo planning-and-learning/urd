@@ -256,8 +256,9 @@ template<typename S>
 concept can_push = requires(S store) { store.push(1); };
 template<typename S>
 concept can_list_values = requires(S store) { store.values(1); };
-static_assert(!can_insert<Store<key<int>, urd::frozen>> && !can_subscript<Set> && !can_pop_back<Store<value<int>, urd::monotone>> && !can_iterate<Queue>
-              && !can_iterate<Pool> && !can_search<Set> && !can_push<Sequence> && !can_list_values<Map>);
+static_assert(!can_insert<Store<key<int>, urd::frozen>> && !can_subscript<Set> && !can_pop_back<Store<value<int>, urd::monotone>>
+              && !can_iterate<Store<value<int>, urd::by_priority, urd::monotone_priority>> && !can_iterate<Pool> && !can_search<Set> && !can_push<Sequence>
+              && !can_list_values<Map>);
 // And what the facets offer is still there.
 static_assert(can_insert<Set> && can_search<Sorted> && can_push<Queue> && can_iterate<Set> && can_list_values<Multi>);
 
