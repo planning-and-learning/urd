@@ -146,23 +146,53 @@ if(URD_BUILD_TESTS)
         endforeach()
     endif()
 
+    # One run of the compiler on a source, syntax only, with the include directories, definitions and options of a
+    # target that links urd: the command behind the tests that are a compiler run (they build nothing and run in
+    # parallel under ctest -j).
+    function(urd_syntax_only out target source)
+        set(includes "$<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>")
+        set(definitions "$<TARGET_PROPERTY:${target},COMPILE_DEFINITIONS>")
+        set(${out}
+            ${CMAKE_CXX_COMPILER}
+            ${CMAKE_CXX20_STANDARD_COMPILE_OPTION}
+            "$<$<BOOL:${includes}>:-I$<JOIN:${includes},$<SEMICOLON>-I>>"
+            "$<$<BOOL:${definitions}>:-D$<JOIN:${definitions},$<SEMICOLON>-D>>"
+            "$<TARGET_PROPERTY:${target},COMPILE_OPTIONS>"
+            -fsyntax-only
+            ${CMAKE_CURRENT_SOURCE_DIR}/${source}
+            PARENT_SCOPE
+        )
+    endfunction()
+
+    # What compiling a file costs: tests/budget.py runs the compiler on it and fails when its peak memory exceeds
+    # the limit for this compiler (time is reported only: it depends on the machine and on what else ctest runs).
+    # The limits are the measured numbers plus a margin; a change that exceeds one fails like a lint finding.
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    function(urd_budget name target source limit_gnu limit_clang)
+        urd_syntax_only(compile ${target} ${source})
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            set(limit ${limit_clang})
+        else()
+            set(limit ${limit_gnu})
+        endif()
+        add_test(NAME budget_${name}
+                 COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/budget.py --limit-mb ${limit} --label ${name} -- ${compile}
+                 COMMAND_EXPAND_LISTS)
+    endfunction()
+
+    # The bare include (urd/store.hpp and nothing else) and the survey, a file holding many Stores.
+    add_executable(test_budget_bare_control EXCLUDE_FROM_ALL tests/budget/bare.cpp)
+    target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
+    urd_budget(bare test_budget_bare_control tests/budget/bare.cpp 400 400)
+    urd_budget(survey survey tests/survey.cpp 1100 950)
+
     # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
     # of a target that links urd (so the cases build nothing and run in parallel under ctest -j). The control
     # case of each file must compile, so each case fails for its own reason; the cases are skipped when it does not.
     function(urd_compile_fail_cases name source count)
         add_executable(test_${name}_control EXCLUDE_FROM_ALL ${source})
         target_link_libraries(test_${name}_control PRIVATE urd::urd)
-        set(includes "$<TARGET_PROPERTY:test_${name}_control,INCLUDE_DIRECTORIES>")
-        set(definitions "$<TARGET_PROPERTY:test_${name}_control,COMPILE_DEFINITIONS>")
-        set(compile
-            ${CMAKE_CXX_COMPILER}
-            ${CMAKE_CXX20_STANDARD_COMPILE_OPTION}
-            "$<$<BOOL:${includes}>:-I$<JOIN:${includes},$<SEMICOLON>-I>>"
-            "$<$<BOOL:${definitions}>:-D$<JOIN:${definitions},$<SEMICOLON>-D>>"
-            "$<TARGET_PROPERTY:test_${name}_control,COMPILE_OPTIONS>"
-            -fsyntax-only
-            ${CMAKE_CURRENT_SOURCE_DIR}/${source}
-        )
+        urd_syntax_only(compile test_${name}_control ${source})
         add_test(NAME ${name}_control COMMAND ${compile} COMMAND_EXPAND_LISTS)
         set_tests_properties(${name}_control PROPERTIES FIXTURES_SETUP ${name})
         foreach(case RANGE 1 ${count})
