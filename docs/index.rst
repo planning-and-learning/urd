@@ -8,6 +8,7 @@ A ``Store`` is described by what it holds and how it is used, not by which conta
 .. code-block:: cpp
 
    #include <urd/store.hpp>
+   #include <urd/use/all.hpp>   // or only the families these Stores need: dense, hash, queues
    using namespace urd;
 
    struct User                                                             // an index: one integral member

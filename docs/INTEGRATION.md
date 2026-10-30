@@ -19,6 +19,18 @@ naming its origin. Its names move into `urd::repr` and its macros take the `URD_
 include both urd and the original library without two definitions of one name. Its own tests come along
 under `tests/repr/`, unchanged but for those names.
 
+A representation is two headers. `repr/X_fwd.hpp` declares the class template (its default arguments and its
+constraints go on this declaration, and nowhere else), carries its `container_traits`, `element_traits`,
+`relies_on` and `orders_by_value`, the aliases the registry names, and says which family header defines it
+(`urd::defined_in<X<…>>`, a `fixed_string` such as `"urd/use/dense.hpp"`); a wrapper also lists what it wraps
+(`urd::parts<Layered<R>>` is `type_list<R>`). `repr/X.hpp` includes the declaration and defines the class. A
+container from a library is declared through the library's own forward header (`boost/unordered/*_fwd.hpp`,
+`boost/container/container_fwd.hpp`, `gtl/phmap_fwd_decl.hpp`; the standard's cannot be, and are included). The
+registry includes declarations only, so that `urd/store.hpp` costs the same however many containers exist; the
+family header `urd/use/<family>.hpp` includes the definitions and defines the marker `urd::include<"urd/use/
+<family>.hpp">`. Families are cut by what they pull in (`docs/representations.rst` lists them): a container on
+Boost.Unordered joins `hash`, a std-only one the family of its kind.
+
 It must build cleanly under urd's warnings (`-Wall -Wextra -Wpedantic -Wshadow -Wconversion
 -Wsign-conversion`, errors in CI), which are stricter than yggdrasil's: fix the code, do not weaken the
 flags. Copying `SegmentedVector` needed two explicit casts where signed and unsigned values met.
@@ -112,6 +124,30 @@ the container, its `value_type`, `mapped_type` or `sizeof`. Two properties exist
 a declaration: `positional` (the container is a random-access range; `tests/properties.cpp` checks the two agree)
 and `functional` (a value per key, a map). A nested Store's own semantics (`Hash`, `EqualTo`, `Less`) and
 properties (`traits_t`) come from its request alone (`semantics/concepts.hpp`, `is_store`).
+
+The Store's first base checks that its representation's family is included, by the marker and never by
+completing the representation (completing a wrapper of an undefined part is an error, not a false), the parts
+first; a file that holds a Store without its family fails with the header in the error, on both compilers:
+
+```text
+GCC:   error: static assertion failed: urd::Store: the representation's family is not included here: #include the
+       header that urd::include<"..."> names in this error (urd/use/all.hpp has every family)
+       note: ‘(((bool)urd::included<urd::detail::fixed_string<18>{std::array<char, 18>{"urd/use/dense.hpp"}}>) || …)’
+       evaluates to false
+Clang: error: static assertion failed due to requirement 'included<defined_in<urd::repr::DenseSet<int>>> ||
+       dependent_false<urd::include<urd::detail::fixed_string<18>{{"urd/use/dense.hpp"}}>>::value': urd::Store: …
+```
+
+The marker is read once per file, so a family header goes before the first Store that needs it (included later,
+the Store still fails, with the same message). Two things prove the registry defines nothing: `resolution_table`,
+which resolves every request of the grid, is built with no family header (`tests/layout.cmake` checks its
+sources), and `tests/selection.cpp` resolves requests whose element is a Store of records stored flat without that
+family's header, so completing the element would fail. The table's `--check` also rejects a chosen representation
+that names no family. `tests/compile_fail_include.cpp` holds a Store of each family with its header left out and
+expects the header in the error, plus a wrapper without its part's header (both named, the part first), a nested
+Store without its inner's family (needed where the outer is held), and a header included too late. A budget test
+(`tests/budget.py`) holds the bare include of `urd/store.hpp` under a memory limit per compiler, so the rule cannot
+erode unnoticed.
 
 A request no container serves fails in `no_representation_for<spec, culprits<…>, hashable, orderable, indexable>`,
 whose arguments say why: the culprits are the stated tags whose removal, one at a time, would make the request

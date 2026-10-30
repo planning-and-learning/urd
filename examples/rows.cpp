@@ -2,6 +2,8 @@
 
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/sequences.hpp"
 
 #include <iostream>
 #include <utility>

@@ -1,6 +1,8 @@
 // Queues: elements reached by the order they leave in. The order is the property; push, pop and front or top
 // follow the standard adaptors.
 
+#include "urd/use/queues.hpp"
+
 #include "show.hpp"
 #include "urd/store.hpp"
 

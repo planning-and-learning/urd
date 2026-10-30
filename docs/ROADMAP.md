@@ -425,6 +425,25 @@ parent's positions; a concurrent change log; scoped sets; `Bidirectional` over `
 and `assign` to freeze it; a partition over hashed keys; change logging of fixed-shape bit rows; `erase(handle)`
 on interners, reporting the moved handle.
 
+## M16: zero-overhead includes — done
+
+`urd/store.hpp` declares every representation and defines none: a file pays for the definitions of the families it
+holds Stores of, by including `urd/use/<family>.hpp` (eleven families, cut by what they pull in, and `all.hpp`); a
+Store whose family is missing fails with the header's path in the error, a wrapper's part before the wrapper. Before
+it could, selection had to stop looking inside candidates and nested Stores: `positional` and `functional` became
+declared properties, `element_traits` a marker whose default the registry computes from the request, a Store's
+`Hash`, `EqualTo`, `Less` and `traits_t` are decided by its request, and the row pools, the generation map, the
+ordered map, the bucket queue and the pool rule read element types through Store-aware helpers (`row_element_t`,
+`slot_value`, `trivially_destructible`, `trivially_copyable`, `iterates`). `resolution_table` builds with no family
+header and is the proof; `tests/selection.cpp`, thirteen compile-fail cases and a compile budget (`tests/budget.py`)
+keep it. Measured, `-fsyntax-only`: the bare include 1.36 s and 250 MB before, 0.89 s and 167 MB after on GCC
+(Clang 1.87 s and 211 MB to 1.22 s and 168 MB); what remains is the standard library (about 0.9 s and 110 MB of
+it) and the vocabulary. Each example includes the families it holds; `docs/RESOLUTION.md` names every request's.
+
+Deferred: C++20 modules, which would make the parsing a one-time cost once the toolchains agree; splitting
+`tests/properties.cpp` by kind (145 s and 2.4 GB on GCC, instantiation of a hundred Stores, which no include split
+touches).
+
 ## After M11: the second pass over the libraries
 
 A second reading of the four libraries on their newest branches (docs/SURVEY.md, "Second pass", 2026-10-29) verified

@@ -4,6 +4,7 @@
 
 ```cpp
 #include <urd/store.hpp>
+#include <urd/use/all.hpp>   // or only the families these Stores need: dense, hash, queues
 using namespace urd;
 
 struct User                                                             // an index: one integral member
@@ -244,9 +245,33 @@ cmake --install build --prefix <where>                                    # then
 Link the `urd::urd` target (`find_package(urd)` after the install, or `urd_DIR=<build>` against the build tree) and
 include `urd/store.hpp`. The target carries its dependencies: Boost 1.89 or later (Container, Unordered, Hash2),
 cista, and with `URD_WITH_GTL` (on by default) gtl, whose sharded tables serve `concurrent` sets and maps by hashed
-keys; without it such a request has no representation. Requests use only the vocabulary of `urd/traits.hpp` and
-`urd/properties.hpp`; what `urd/repr` holds is the representations' business, not code that uses a Store (a check
-keeps containers out of the include root).
+keys; without it such a request has no representation.
+
+`urd/store.hpp` costs the vocabulary and the resolution only: it declares every representation and defines none,
+so including it stays cheap as containers are added (a budget test holds it under 210 MB). A file pays for the
+definitions of the families it holds Stores of, by including `urd/use/<family>.hpp`; a Store whose family is
+missing fails to compile with the header's path in the error (`urd::include<"urd/use/dense.hpp">`), and
+[docs/RESOLUTION.md](docs/RESOLUTION.md) names each request's family. Code that uses a Store names no
+representation: requests use only the vocabulary of `urd/traits.hpp` and `urd/properties.hpp`; what `urd/repr` holds
+is the representations' business (a check keeps containers out of the include root).
+
+| header | what it defines | pulls in |
+|---|---|---|
+| `urd/use/dense.hpp` | keys that are indices: the bitset and sparse sets, the slot-per-index maps (generations, stable or thread-safe slots), the insertion-ordered map over a sparse set, the partition, the multimaps by key index (CSR, bidirectional, growing rows) | nothing |
+| `urd/use/sequences.hpp` | `std::vector`, the segmented vector whose elements never move, rows flattened into one array, rows kept for reuse | nothing |
+| `urd/use/nodes.hpp` | the standard's node containers (`set`, `map`, `unordered_*`, the multi forms) and the recycling wrappers | nothing |
+| `urd/use/queues.hpp` | first in (a deque, or a ring that retains), last in, the least first (heap, addressable heap, bucket queue) | nothing |
+| `urd/use/hash.hpp` | Boost's flat hash set and map, the indexed sets (interners), the insertion-ordered map over one, the postings, the change log | Boost.Unordered |
+| `urd/use/contiguous.hpp` | Boost's flat sorted set, multiset, map, multimap; the map ordered by its values | Boost.Container |
+| `urd/use/pools.hpp` | the row interner, the tree pools, the slot vector | Boost.Unordered |
+| `urd/use/records.hpp` | the record interner and the arena interner (records stored flat) | Boost.Unordered, cista |
+| `urd/use/scopes.hpp` | the scoped map, with the family of the map it scopes | nothing |
+| `urd/use/layers.hpp` | layered sets, maps and pools, with the family of what is layered | nothing |
+| `urd/use/parallel.hpp` | gtl's sharded tables (`concurrent` by hashed keys); only with `URD_WITH_GTL` | gtl |
+| `urd/use/all.hpp` | every family | everything |
+
+Beside these: `urd/flat.hpp` where a record stored flat is written (the cista containers under urd's names),
+`urd/view.hpp` where views are made, `urd/compose/family.hpp` for families of Stores.
 
 - [docs/](docs/): the reference documentation (Sphinx), one page per kind of Store with its member types, member
   functions and their complexity, as the standard library documents its containers; built by `cmake --build build

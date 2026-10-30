@@ -9,6 +9,58 @@ properties it keeps in ``container_traits``, and the typed tests check every dec
 model through thousands of random operations; a deliberately wrong declaration is caught. Adding a container is
 described in :doc:`INTEGRATION`.
 
+Families
+--------
+
+``urd/store.hpp`` declares every representation and defines none (``include/urd/repr/*_fwd.hpp``: the declaration,
+its defaults, its traits, and the header that defines it). A file includes the families it holds Stores of; a Store
+whose family is missing fails to compile naming the header, a wrapper's part before the wrapper. ``docs/RESOLUTION.md``
+gives each request's family.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Header
+     - Defines
+     - Pulls in
+   * - ``urd/use/dense.hpp``
+     - keys that are indices: the bitset and sparse sets, the slot-per-index maps, the insertion-ordered map over a sparse set, the partition, the multimaps by key index
+     - nothing
+   * - ``urd/use/sequences.hpp``
+     - ``std::vector``, the segmented vector, rows flattened into one array, rows kept for reuse
+     - nothing
+   * - ``urd/use/nodes.hpp``
+     - the standard's node containers and the recycling wrappers
+     - nothing
+   * - ``urd/use/queues.hpp``
+     - first in (deque or ring), last in, the least first (heap, addressable heap, bucket queue)
+     - nothing
+   * - ``urd/use/hash.hpp``
+     - Boost's flat hash tables, the indexed sets, the insertion-ordered map over one, the postings, the change log
+     - Boost.Unordered
+   * - ``urd/use/contiguous.hpp``
+     - Boost's flat sorted containers; the map ordered by its values
+     - Boost.Container
+   * - ``urd/use/pools.hpp``
+     - the row interner, the tree pools, the slot vector
+     - Boost.Unordered
+   * - ``urd/use/records.hpp``
+     - the record interner and the arena interner
+     - Boost.Unordered, cista
+   * - ``urd/use/scopes.hpp``
+     - the scoped map (with the family of the map it scopes)
+     - nothing
+   * - ``urd/use/layers.hpp``
+     - layered sets, maps and pools (with the family of what is layered)
+     - nothing
+   * - ``urd/use/parallel.hpp``
+     - gtl's sharded tables; only with ``URD_WITH_GTL``
+     - gtl
+   * - ``urd/use/all.hpp``
+     - every family
+     - everything
+
 The standard library's and Boost's
 ----------------------------------
 

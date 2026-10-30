@@ -1,7 +1,10 @@
 // Sequences: values identified by position. The properties choose the container, and decide what may change.
 
+#include "urd/use/sequences.hpp"
+
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/contiguous.hpp"
 
 #include <exception>
 #include <iostream>

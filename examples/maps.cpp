@@ -2,6 +2,8 @@
 
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/nodes.hpp"
 
 #include <exception>
 #include <iostream>

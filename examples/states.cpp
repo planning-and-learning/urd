@@ -4,6 +4,9 @@
 
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/pools.hpp"
+#include "urd/use/sequences.hpp"
 
 #include <cstdint>
 #include <exception>

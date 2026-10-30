@@ -2,8 +2,11 @@
 // (structural_sharing) against the flat row interner: time per state inserted and read, and bytes per state. The
 // numbers back docs/BENCHMARKS.md.
 
+#include "urd/use/pools.hpp"
+
 #include "urd/store.hpp"
-#include "urd/use/all.hpp"
+#include "urd/use/dense.hpp"
+#include "urd/use/sequences.hpp"
 
 #include <benchmark/benchmark.h>
 #include <cstddef>

@@ -3,6 +3,8 @@
 
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/contiguous.hpp"
+#include "urd/use/hash.hpp"
 
 #include <exception>
 #include <iostream>

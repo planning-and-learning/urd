@@ -249,3 +249,11 @@ Status (2026-10-29, M13 to M15 of docs/ROADMAP.md):
    log, layered interners, the generation-stamped bitset; rejected: order_by
    on dense keys, value-ordered maps without small or frozen, layered with
    sorted.
+
+Status (2026-10-31, M16): the include cost is flat. urd/store.hpp declares
+every representation and defines none; a file includes urd/use/<family>.hpp
+for the families it holds Stores of, and a missing one fails with the header
+in the error. Selection reads traits and template arguments only (proved by
+resolution_table, built without any definition), and a Store's semantics as
+an element follow from its request. Bare include: 1.36 s, 250 MB -> 0.89 s,
+167 MB (GCC); a budget test holds it.

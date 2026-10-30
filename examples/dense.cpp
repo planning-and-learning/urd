@@ -1,6 +1,8 @@
 // Dense keys: indices 0..n-1, stored by position instead of hashed. Facts, markings cleared every round, and costs
 // per state.
 
+#include "urd/use/dense.hpp"
+
 #include "show.hpp"
 #include "urd/store.hpp"
 

@@ -1,8 +1,12 @@
 // Scopes, layers and memo tables: a symbol table whose inner bindings end with their scope, a map that reuses a
 // parent's entries, and a memo kept for two generations.
 
+#include "urd/use/scopes.hpp"
+
 #include "show.hpp"
 #include "urd/store.hpp"
+#include "urd/use/hash.hpp"
+#include "urd/use/layers.hpp"
 
 #include <cstdint>
 #include <exception>

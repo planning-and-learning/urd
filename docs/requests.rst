@@ -140,8 +140,14 @@ Building and using
 
 Link ``urd::urd`` and include ``urd/store.hpp``. The target carries Boost 1.89 or later (Container, Unordered,
 Hash2), cista, and with ``URD_WITH_GTL`` (on by default) gtl, whose sharded tables serve ``concurrent`` sets and maps
-by hashed keys. ``urd/flat.hpp`` is included where records stored flat are defined, ``urd/use/records.hpp`` where
-a pool of them is held, ``urd/view.hpp`` where views are made, ``urd/compose/family.hpp`` for families.
+by hashed keys.
+
+``urd/store.hpp`` declares every representation and defines none: it costs the vocabulary and the resolution, and
+stays as cheap as containers are added. A file includes the families it holds Stores of, ``urd/use/<family>.hpp``
+(:doc:`representations` lists them; ``urd/use/all.hpp`` has every one), and a Store whose family is missing fails
+to compile with the header's path in the error. The resolution table (``docs/RESOLUTION.md``) names each request's
+family. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
+``urd/compose/family.hpp`` for families of Stores.
 
 This documentation is built with Sphinx:
 
