@@ -142,19 +142,7 @@ struct container_costs<repr::Lifo<T>>
     static constexpr double words = 1.5;
 };
 
-/// heap.
-template<typename T>
-struct container_costs<repr::Heap<T>>
-{
-    static constexpr cost push = costs::log_na;
-    static constexpr cost pop = costs::log_n;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.5;
-};
-
-/// heap_by.
+/// heap, by urd::Less or by an order_by.
 template<typename T, typename Compare>
 struct container_costs<repr::Queue<T, repr::leaving::least, Compare>>
 {
@@ -218,19 +206,11 @@ struct container_synopsis<repr::Lifo<T>>
     static constexpr std::string_view holds = "a vector; retains";
 };
 
-template<typename T>
-struct container_synopsis<repr::Heap<T>>
-{
-    static constexpr std::string_view id = "heap";
-    static constexpr std::string_view description = "binary heap (a vector, least first)";
-    static constexpr std::string_view holds = "a vector as a binary heap; retains";
-};
-
 template<typename T, typename Compare>
 struct container_synopsis<repr::Queue<T, repr::leaving::least, Compare>>
 {
-    static constexpr std::string_view id = "heap_by";
-    static constexpr std::string_view description = "queue by a given order";
+    static constexpr std::string_view id = "heap";
+    static constexpr std::string_view description = "binary heap (a vector, least first, by urd::Less or an order_by)";
     static constexpr std::string_view holds = "a vector as a binary heap; retains";
 };
 

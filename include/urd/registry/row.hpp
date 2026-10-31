@@ -11,6 +11,7 @@
 #include "urd/traits.hpp"
 
 #include <array>
+#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <string_view>
@@ -35,6 +36,7 @@ struct type_features
     bool integral_priority_by_request = false;               ///< and under the request's comparator
     bool store = false;                                      ///< a Store: a row
     property_set store_properties = property_set::roots();   ///< a row's request
+    urd::kind store_kind = urd::kind::sequence;              ///< a row's kind
     property_set store_requirement = property_set::roots();  ///< what a container must guarantee for a row's request
     bool store_of_stores = false;                            ///< a row whose elements are rows
     bool flattenable = false;                                ///< frozen rows a jagged array holds
@@ -44,6 +46,15 @@ struct type_features
     bool row_element_indexable = false;                      ///< a row's elements are indices
 };
 
+/// The order a request asks its elements in, beyond their own: none (urd::Less, or no order), an order_by over the
+/// elements (a map's keys), or an order_by over a map's entries, key and value.
+enum class order : std::uint8_t
+{
+    none,
+    element,
+    entry,
+};
+
 /// What a request's elements are: its element type (a set's key, a sequence's or pool's value), or a map's key and
 /// mapped types; and its order_by comparator, where it orders entries by their values too.
 struct request_features
@@ -51,8 +62,14 @@ struct request_features
     type_features element;
     type_features key;
     type_features mapped;
-    bool entry_less = false;
+    order by = order::none;
 };
+
+/// The orders a row takes, as a mask of urd::detail::order.
+inline constexpr std::uint8_t natural_order_only = 1U << static_cast<unsigned>(order::none);
+inline constexpr std::uint8_t element_orders = natural_order_only | (1U << static_cast<unsigned>(order::element));
+inline constexpr std::uint8_t entry_orders = 1U << static_cast<unsigned>(order::entry);
+constexpr bool accepts_order(std::uint8_t orders, order of) { return (orders & (1U << static_cast<unsigned>(of))) != 0; }
 
 /// A row's properties for given element features, or none where it does not take these elements.
 using row_function = std::optional<property_set> (*)(const request_features&);
@@ -64,6 +81,10 @@ struct registry_row
 {
     std::string_view id;
     std::array<std::string_view, 2> headers {};
+    /// What its Stores are (urd::kind): a wrapper's is its part's.
+    urd::kind kind = urd::kind::sequence;
+    /// The orders it takes (accepts_order): urd::Less only, an order_by over the elements too, or one over entries.
+    std::uint8_t orders = natural_order_only;
     row_function traits = nullptr;
     row_function rows = nullptr;
     property_set relies_on = property_set::roots();
@@ -90,10 +111,5 @@ constexpr property_set with(property_set base, std::initializer_list<tag> listed
         base.put(each);
     return base;
 }
-
-/// What the interface reads of properties: whether a container keeps elements by value, is a queue, is a map.
-constexpr bool keeps_by_value(const property_set& of) { return of.has(tag::sorted) || of.has(tag::unique) || of.has(tag::multi); }
-constexpr bool is_queue_properties(const property_set& of) { return of.in(tag::any_access) != tag::any_access; }
-constexpr bool is_map_properties(const property_set& of) { return of.has(tag::functional) || of.has(tag::multi); }
 
 }  // namespace urd::detail

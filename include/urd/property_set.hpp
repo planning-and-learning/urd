@@ -126,6 +126,20 @@ consteval tag_table make_tag_table(type_list<Ts...> tags)
 { return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } }; }
 inline constexpr tag_table tags = make_tag_table(all_tags {});
 
+/// The kind each tag makes (its `makes`), or the lowest, sequence, where it makes none.
+template<typename Tag>
+consteval kind makes_of()
+{
+    if constexpr (requires { Tag::makes; })
+        return Tag::makes;
+    else
+        return kind::sequence;
+}
+template<typename... Ts>
+consteval std::array<kind, tag_count> make_kind_table(type_list<Ts...> /*tags*/)
+{ return { makes_of<Ts>()... }; }
+inline constexpr std::array<kind, tag_count> kinds_made = make_kind_table(all_tags {});
+
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
 constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
 
@@ -186,6 +200,20 @@ struct property_set
 
     friend constexpr bool operator==(const property_set&, const property_set&) = default;
 };
+
+/// The kind of a request with these tags: the kind its shape makes (a key: a set; a key and a value: a map; a value: a
+/// sequence), or the highest one a tag it holds makes (urd::kind, `makes`).
+constexpr kind kind_of(const property_set& held, bool keyed, bool valued)
+{
+    auto result = keyed ? (valued ? kind::map : kind::set) : kind::sequence;
+    for (std::size_t each = 0; each < tag_count; ++each)
+    {
+        const auto of = static_cast<tag>(each);
+        if (root_of(of) != of && held.in(root_of(of)) == of && kinds_made[each] > result)
+            result = kinds_made[each];
+    }
+    return result;
+}
 
 /// Whether `have` provides, in every category a container declares, at least what `want` asks for.
 constexpr bool satisfies(const property_set& have, const property_set& want)

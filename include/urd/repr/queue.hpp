@@ -112,12 +112,7 @@ struct representation_of<"lifo", S>
 template<typename S>
 struct representation_of<"heap", S>
 {
-    using type = repr::Heap<typename S::element_type>;
-};
-template<typename S>
-struct representation_of<"heap_by", S>
-{
-    using type = repr::Queue<typename S::element_type, repr::leaving::least, typename S::order_type>;
+    using type = repr::Queue<typename S::element_type, repr::leaving::least, element_order_t<S>>;
 };
 
 }  // namespace urd::detail

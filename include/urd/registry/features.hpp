@@ -57,6 +57,7 @@ consteval type_features features_of_type()
             using traits = container_traits<T>;
             result.store = true;
             result.store_properties = traits::urd_properties;
+            result.store_kind = traits::kind;
             result.store_requirement = []
             {
                 auto requirement = traits::urd_properties;
@@ -87,7 +88,10 @@ consteval request_features features_of()
         result.element = features_of_type<typename S::element_type, P>();
     result.key = features_of_type<typename S::key_type, P>();
     result.mapped = features_of_type<typename S::mapped_type, void>();
-    result.entry_less = is_entry_less<P>;
+    if constexpr (is_entry_less<P>)
+        result.by = order::entry;
+    else if constexpr (!std::is_void_v<P>)
+        result.by = order::element;
     return result;
 }
 
@@ -101,17 +105,8 @@ namespace urd::detail
 template<typename S>
 consteval const registry_row* row_choice()
 {
-    auto s = request_shape { S::urd_properties, requirement<S>, S::is_sequence, S::is_queue, S::is_map };
     constexpr auto f = features_of<S>();
-    using P = typename S::order_type;
-    if constexpr (std::is_void_v<P>)
-        return S::is_map ? first_serving_row(map_rows, s, f) : first_serving_row(element_rows, s, f);
-    else if constexpr (!S::is_map)
-        return first_serving_row(ordered_element_rows, s, f);
-    else if constexpr (is_entry_less<P>)
-        return first_serving_row(value_ordered_map_rows, s, f);
-    else
-        return first_serving_row(ordered_map_rows, s, f);
+    return first_serving_row(registry_table, request_shape { S::kind, S::urd_properties, requirement<S> }, f);
 }
 
 }  // namespace urd::detail

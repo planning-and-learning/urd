@@ -182,15 +182,17 @@ struct spec
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
     static constexpr bool declared = true;
 
+    /// What the Store is (urd::kind): from its key and value types and the tags that make a kind.
+    static constexpr urd::kind kind = detail::kind_of(urd_properties, !std::is_void_v<K>, !std::is_void_v<V>);
     /// Keys grouped into disjoint classes (partition), reached by merge and find.
-    static constexpr bool is_partition = !std::is_void_v<K> && std::is_void_v<V> && urd_properties.in(tag::any_grouping) == tag::partition;
-    static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V> && !is_partition;
-    static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
+    static constexpr bool is_partition = kind == urd::kind::partition;
+    static constexpr bool is_set = kind == urd::kind::set;
+    static constexpr bool is_map = kind == urd::kind::map;
     /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
-    static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_access) != tag::any_access;
+    static constexpr bool is_queue = kind == urd::kind::queue;
     /// Values identified by the handles insert gives (handles): a pool.
-    static constexpr bool is_pool = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_handle) == tag::handles && !is_queue;
-    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue && !is_pool;
+    static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::records;
+    static constexpr bool is_sequence = kind == urd::kind::sequence || kind == urd::kind::multiset;
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
@@ -228,22 +230,8 @@ consteval bool one_per_category(std::initializer_list<tag> listed)
     return true;
 }
 
-/// What a request's kind is, from its key and value types and the categories that make a kind.
-struct kind
-{
-    bool set = false;
-    bool map = false;
-    bool sequence = false;
-    bool queue = false;
-};
-
-/// The kind a request is, from whether it has a key, a value, and the tags that make a queue or a pool.
-consteval kind kind_of(const property_set& stated, bool keyed, bool valued)
-{
-    const bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
-    const bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
-    return { .set = keyed && !valued && !stated.has(tag::partition), .map = keyed && valued, .sequence = !keyed && valued && !queue && !pool, .queue = queue };
-}
+/// Whether a kind holds values by position or by value without keys: a sequence, sorted or not.
+constexpr bool sequence_like(kind of) { return of == kind::sequence || of == kind::multiset; }
 
 /// The request rules: what the list implies, in place of what it states.
 consteval property_set implied(property_set stated, kind of)
@@ -251,18 +239,18 @@ consteval property_set implied(property_set stated, kind of)
     auto result = stated;
     // A sequence is positional; a set may be too, with its elements in insertion order unless it asks for another
     // (an interner: each element's position is its index).
-    if (of.sequence)
+    if (sequence_like(of))
         result.put(tag::positional);
-    if (of.set && stated.has(tag::positional) && !stated.has(tag::sorted))
+    if (of == kind::set && stated.has(tag::positional) && !stated.has(tag::sorted))
         result.put(tag::insertion_ordered);
     // A set's keys are its contents, each once; a map's keys are each once unless it is a multimap.
-    if (of.set || (of.map && !stated.has(tag::multi)))
+    if (of == kind::set || (of == kind::map && !stated.has(tag::multi)))
         result.put(tag::unique);
     // A map has one value per key unless it says multi; a sequence one value per position.
-    if ((of.map && !stated.has(tag::multi)) || of.sequence)
+    if ((of == kind::map && !stated.has(tag::multi)) || sequence_like(of))
         result.put(tag::functional);
     // Positions are 0..n-1; a partition's classes are over indices.
-    if (of.sequence || stated.has(tag::partition))
+    if (sequence_like(of) || stated.has(tag::partition))
         result.put(tag::dense);
     // Nothing moves once nothing changes.
     if (stated.has(tag::frozen))
@@ -321,9 +309,9 @@ struct to_spec
     static constexpr property_set stated = stated_with_access(stated_of({ tag_of<Ps>()... }));
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
-    static constexpr bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
-    static constexpr bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
     static constexpr kind of = kind_of(stated, keyed, valued);
+    static constexpr bool queue = of == kind::queue;
+    static constexpr bool pool = of == kind::pool || of == kind::records;
 
     static_assert(!stated.has(tag::partition) || (!valued && !stated.has(tag::frozen)),
                   "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
@@ -339,16 +327,16 @@ struct to_spec
                   "with fifo or lifo");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
-    static_assert(!stated.has(tag::nonempty) || of.set || of.map || of.sequence,
+    static_assert(!stated.has(tag::nonempty) || of == kind::set || of == kind::map || sequence_like(of),
                   "urd::Store: nonempty is a promise about the elements a set, map or sequence iterates; a queue empties by pop and a "
                   "pool by erase(handle), so it cannot hold there: drop nonempty, or check empty() before pop");
-    static_assert(!stated.has(tag::fixed_shape) || (of.sequence && !stated.has(tag::monotone) && is_store<value_type>),
+    static_assert(!stated.has(tag::fixed_shape) || (sequence_like(of) && !stated.has(tag::monotone) && is_store<value_type>),
                   "urd::Store: fixed_shape is a sequence of rows (value<Store<…>>) whose number and lengths never change; its rows' "
                   "contents do");
-    static_assert(!of.map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
+    static_assert(of != kind::map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
     static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
                   "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
-    static_assert(!((of.sequence || stated.has(tag::positional)) && stated.has(tag::stable_refs)) || stated.has(tag::monotone),
+    static_assert(!((sequence_like(of) || stated.has(tag::positional)) && stated.has(tag::stable_refs)) || stated.has(tag::monotone),
                   "urd::Store: erasing or inserting at a position moves the elements after it: stable_refs on a sequence or a "
                   "positional set needs monotone, append only, or frozen");
     static_assert(!(stated.has(tag::sorted) && stated.has(tag::concurrent)) || stated.has(tag::dense),

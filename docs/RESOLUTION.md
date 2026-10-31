@@ -428,7 +428,7 @@ indexable).
 | Request | Spec | Representation | Include |
 |---|---|---|---|
 | `Store<value<int>, by_priority, monotone_priority>` | by_priority, shrinkable, monotone_priority | `bucket_queue` | bucket_queue.hpp |
-| `Store<value<int>, by_priority, order_by<P>>` | by_priority, shrinkable | `heap_by` | queue.hpp |
+| `Store<value<int>, by_priority, order_by<P>>` | by_priority, shrinkable | `heap` | queue.hpp |
 | `Store<value<int>, by_priority, handles, order_by<P>>` | by_priority, handles, shrinkable | `addressable_heap` | addressable_heap.hpp |
 | `Store<value<int>, by_priority, monotone_priority, order_by<P>>` | by_priority, shrinkable, monotone_priority | `bucket_queue` | bucket_queue.hpp |
 

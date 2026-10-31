@@ -77,6 +77,32 @@ enum class tag : std::uint8_t
     count  ///< not a tag: how many there are
 };
 
+/// What a Store is, by how its elements are placed and reached. A request is the kind its shape makes (key<K>: a set,
+/// key<K> and value<V>: a map, value<V>: a sequence), or the highest of those its stated tags make (`makes` below), in
+/// this order: a priority queue with handles is a queue, a pool of records stored flat is records.
+enum class kind : std::uint8_t
+{
+    sequence,   ///< values by position
+    multiset,   ///< values kept by value, in order, duplicates kept
+    set,        ///< keys, each once
+    map,        ///< a value per key, or several
+    pool,       ///< rows by handle
+    records,    ///< records stored flat, by handle
+    queue,      ///< reached by front or top
+    partition,  ///< keys in disjoint classes
+};
+
+/// Whether a kind keeps its elements by value (inserted where their value puts them), not where they are put.
+constexpr bool keeps_by_value(kind of) { return of == kind::multiset || of == kind::set || of == kind::map; }
+/// Whether a container of kind `container` holds a request of kind `request`: its own kind; and keys and values
+/// kept by value are held alike (a sorted sequence without duplicates, value<V>, sorted, unique, is held as a set
+/// is), whether duplicates are kept being a property of its own (unique).
+constexpr bool holds_kind(kind container, kind request)
+{
+    const auto elements_by_value = [](kind of) { return of == kind::set || of == kind::multiset; };
+    return container == request || (elements_by_value(container) && elements_by_value(request));
+}
+
 // Properties, in the style of Boost.Graph's graph_traits: each answers one question (a category) with a tag
 // type, and a tag derived from another means "at least that". The root of a category promises nothing, and names
 // itself as `root`, which every tag of its category inherits. Each tag also carries its number in urd::tag, so that
@@ -93,6 +119,7 @@ struct any_order
 struct sorted : any_order
 {
     static constexpr tag value = tag::sorted;
+    static constexpr kind makes = kind::multiset;
 };
 /// In the order they were inserted: a new element goes last, and the others keep their places.
 struct insertion_ordered : any_order
@@ -109,6 +136,7 @@ struct duplicates
 struct unique : duplicates
 {
     static constexpr tag value = tag::unique;
+    static constexpr kind makes = kind::multiset;
 };
 
 struct any_keys
@@ -226,16 +254,19 @@ struct any_access
 struct fifo : any_access
 {
     static constexpr tag value = tag::fifo;
+    static constexpr kind makes = kind::queue;
 };
 /// A stack: the last element pushed leaves first (top, push, pop).
 struct lifo : any_access
 {
     static constexpr tag value = tag::lifo;
+    static constexpr kind makes = kind::queue;
 };
 /// A priority queue: the least element by urd::Less leaves first (top, push, pop).
 struct by_priority : any_access
 {
     static constexpr tag value = tag::by_priority;
+    static constexpr kind makes = kind::queue;
 };
 
 struct any_scope
@@ -271,6 +302,7 @@ struct any_handle
 struct handles : any_handle
 {
     static constexpr tag value = tag::handles;
+    static constexpr kind makes = kind::pool;
 };
 
 struct any_sharing
@@ -317,6 +349,7 @@ struct any_packing
 struct flat : any_packing
 {
     static constexpr tag value = tag::flat;
+    static constexpr kind makes = kind::records;
 };
 
 struct any_grouping
@@ -328,6 +361,7 @@ struct any_grouping
 struct partition : any_grouping
 {
     static constexpr tag value = tag::partition;
+    static constexpr kind makes = kind::partition;
 };
 
 struct any_tracking
@@ -402,6 +436,7 @@ struct functional : any_multiplicity
 struct multi : any_multiplicity
 {
     static constexpr tag value = tag::multi;
+    static constexpr kind makes = kind::multiset;
 };
 
 struct by_key
@@ -438,6 +473,7 @@ struct any_priority
 struct monotone_priority : any_priority
 {
     static constexpr tag value = tag::monotone_priority;
+    static constexpr kind makes = kind::queue;
 };
 
 }  // namespace urd
