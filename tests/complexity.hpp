@@ -221,52 +221,24 @@ inline constexpr std::array costly { urd::tag::dense,       urd::tag::stable_ref
                                      urd::tag::layered,     urd::tag::change_log,   urd::tag::handles,    urd::tag::structural_sharing, urd::tag::partition,
                                      urd::tag::fixed_shape, urd::tag::bidirectional };
 
-/// The facets the operations below read, from the spec alone: the cases of urd::detail::facet_switches that do not
-/// read the representation (only equality and ordering do, and they are not compared). Each container's benchmark
-/// checks it against facet_switches for its own Store (benchmarks/experiment.cpp).
+/// The facets a request's Store has, from the spec alone: each facet's own condition (urd/store/<facet>.hpp), for
+/// those that do not read the representation (equality and ordering do, and are not compared). Each container's
+/// benchmark checks it against facet_switches for its own Store (benchmarks/experiment.cpp).
 template<typename S>
 struct spec_switches
 {
-    static constexpr bool on(urd::detail::facet_id id)
+    template<std::size_t I>
+    static consteval bool one()
     {
-        using urd::has;
-        using urd::detail::facet_id;
-        switch (id)
-        {
-            case facet_id::iteration:
-                return S::iterable || (S::is_queue && !has<S, urd::monotone_priority>);
-            case facet_id::lookup:
-                return urd::by_value<S> && S::iterable;
-            case facet_id::ordered_lookup:
-                return has<S, urd::sorted> && !urd::detail::is_entry_less<typename S::order_type>;
-            case facet_id::positions:
-                return has<S, urd::positional> || (S::is_set && has<S, urd::insertion_ordered> && !has<S, urd::reclaims>);
-            case facet_id::growth:
-                return has<S, urd::growable> && S::iterable;
-            case facet_id::removal:
-                return has<S, urd::shrinkable> && S::iterable;
-            case facet_id::values_by_key:
-                return S::is_map && has<S, urd::unique>;
-            case facet_id::multi_values:
-                return S::is_map && !has<S, urd::unique>;
-            case facet_id::queue_access:
-                return S::is_queue;
-            case facet_id::scopes:
-                return has<S, urd::scoped>;
-            case facet_id::pool:
-                return S::is_pool && has<S, urd::unique> && !has<S, urd::flat>;
-            case facet_id::records:
-                return S::is_pool && has<S, urd::unique> && has<S, urd::flat>;
-            case facet_id::slots:
-                return S::is_pool && !has<S, urd::unique>;
-            case facet_id::grouping:
-                return S::is_partition;
-            case facet_id::shape:
-                return has<S, urd::fixed_shape>;
-            default:
-                return false;
-        }
+        using condition = urd::detail::facet_condition<static_cast<urd::detail::facet_id>(I)>;
+        if constexpr (condition::reads_container)
+            return false;
+        else
+            return condition::template on<void, S>();
     }
+    static constexpr auto table = []<std::size_t... I>(std::index_sequence<I...> /*facets*/)
+    { return std::array<bool, sizeof...(I)> { one<I>()... }; }(std::make_index_sequence<static_cast<std::size_t>(urd::detail::facet_id::count)> {});
+    static constexpr bool on(urd::detail::facet_id id) { return table[static_cast<std::size_t>(id)]; }
 };
 
 /// The operations a Store offers, read from its facets (`On::on`); the facets not listed here (sizing, equality, set

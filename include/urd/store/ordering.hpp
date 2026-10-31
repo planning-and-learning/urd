@@ -18,3 +18,18 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S and its representation R.
+template<>
+struct facet_condition<facet_id::ordering>
+{
+    static constexpr bool reads_container = true;
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return compares_in_order<R, S>(); }
+};
+
+}  // namespace urd::detail

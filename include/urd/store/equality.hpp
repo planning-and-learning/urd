@@ -24,3 +24,19 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S and its representation R.
+/// A layered Store's contents include its parent's, which neither its == nor its iteration covers.
+template<>
+struct facet_condition<facet_id::equality>
+{
+    static constexpr bool reads_container = true;
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>; }
+};
+
+}  // namespace urd::detail

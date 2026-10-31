@@ -19,3 +19,18 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet_id::sizing>
+{
+    static constexpr bool reads_container = false;
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return S::sized; }
+};
+
+}  // namespace urd::detail

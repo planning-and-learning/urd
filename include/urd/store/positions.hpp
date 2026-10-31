@@ -108,3 +108,20 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+/// Every insertion-ordered set is kept in one array (an interner, a sparse set): its elements have
+/// positions whether the request names them or not.
+template<>
+struct facet_condition<facet_id::positions>
+{
+    static constexpr bool reads_container = false;
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>); }
+};
+
+}  // namespace urd::detail

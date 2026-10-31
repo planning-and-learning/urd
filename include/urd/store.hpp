@@ -9,6 +9,7 @@
 #include "urd/semantics/less.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
+#include "urd/store/construction.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/denials.hpp"
 #include "urd/store/entries.hpp"
@@ -151,7 +152,7 @@ public:
     // difference_type with iteration, key_type, lookup_type and mapped_type with lookup.
 
     Store()
-        requires(!has<S, nonempty>)
+        requires(construction<S>::default_constructible)
     = default;
 
     // Construction stays here, as a facet's constructor could not initialize the Store's representation.
@@ -161,7 +162,7 @@ public:
         requires std::constructible_from<R, InputIt, InputIt>
     Store(InputIt first, InputIt last) : m_representation(first, last)
     {
-        if constexpr (has<S, nonempty>)
+        if constexpr (construction<S>::needs_an_element)
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
@@ -176,26 +177,26 @@ public:
             m_representation.assign(first, last);
         else
             m_representation = representation(first, last);
-        if constexpr (has<S, nonempty>)
+        if constexpr (construction<S>::needs_an_element)
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
     /// Rows of these lengths, empty: a fixed_shape Store's only shape. A nonempty one needs a row (a row of length 0
     /// is a row).
     explicit Store(const row_lengths& lengths)
-        requires has<S, fixed_shape>
+        requires construction<S>::by_shape
         : m_representation(lengths.lengths)
     {
-        if constexpr (has<S, nonempty>)
+        if constexpr (construction<S>::needs_an_element)
             assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
     }
     /// Rows of rows, empty, at any depth: for each row, the shape of its rows (a std::vector of row lengths for rows
     /// of rows, a std::vector of those one level up).
     template<typename Shape>
-        requires(has<S, fixed_shape> && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
+        requires(construction<S>::by_shape && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
     explicit Store(const Shape& rows) : m_representation(rows)
     {
-        if constexpr (has<S, nonempty>)
+        if constexpr (construction<S>::needs_an_element)
             assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
     }
 
@@ -250,7 +251,7 @@ struct container_traits<detail::Store<R, S>> : S
 /// be a hashed key: ask for sorted (or canonical) on the inner Store. Equality is the facet's (equality.hpp), which
 /// compares in that order, so equal Stores hash equally.
 template<typename R, typename S>
-    requires(S::iterable && (has<S, sorted> || has<S, canonical> || S::is_sequence) && Hashable<typename S::element_type>)
+    requires(detail::construction<S>::hashed_in_order && Hashable<typename S::element_type>)
 struct Hash<detail::Store<R, S>>
 {
     hash_t operator()(const detail::Store<R, S>& store) const
@@ -274,7 +275,7 @@ struct EqualTo<detail::Store<R, S>>
 /// Ordered lexicographically by urd::Less over the elements, in the order the request fixes (sorted,
 /// insertion_ordered, a sequence): a strict weak order agreeing with EqualTo, as the standard's ordered containers'.
 template<typename R, typename S>
-    requires(S::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::is_sequence) && OrderedByLess<typename S::element_type>)
+    requires(detail::construction<S>::ordered_in_order && OrderedByLess<typename S::element_type>)
 struct Less<detail::Store<R, S>>
 {
     bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const

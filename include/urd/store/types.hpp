@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 
 namespace urd::detail
 {
@@ -98,80 +99,19 @@ enum class facet_id : std::uint8_t
     count
 };
 
-/// Which facets a Store for spec S over representation R has: its kind and properties switch them on.
+/// When a Store has the facet `Id`, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`, and whether it
+/// reads the representation R (most read only the spec S).
+template<facet_id Id>
+struct facet_condition;
+
+/// Which facets a Store for spec S over representation R has: each facet's own condition.
 template<typename R, typename S>
 struct facet_switches
 {
-    static constexpr bool on(facet_id id)
-    {
-        switch (id)
-        {
-            case facet_id::sizing:
-                return S::sized;
-            case facet_id::iteration:
-                // A queue visits its elements in the order pushed, or a priority queue in none; not a bucket queue
-                // (monotone_priority), which would visit every priority's bucket. Iterated so, a queue is still no
-                // range for the facets that read S::iterable (equality, growth, removal).
-                return S::iterable || (S::is_queue && !has<S, monotone_priority>);
-            case facet_id::equality:
-                // A layered Store's contents include its parent's, which neither its == nor its iteration covers.
-                return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>;
-            case facet_id::ordering:
-                return compares_in_order<R, S>();
-            case facet_id::lookup:
-                return store_types<R, S>::keyed && S::iterable;
-            case facet_id::ordered_lookup:
-                return has<S, sorted> && !is_entry_less<typename S::order_type>;
-            case facet_id::reverse_iteration:
-                return store_types<R, S>::ordered;
-            case facet_id::positions:
-                // Every insertion-ordered set is kept in one array (an interner, a sparse set): its elements have
-                // positions whether the request names them or not.
-                return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>);
-            case facet_id::contiguous_data:
-                return has<S, contiguous>;
-            case facet_id::capacity:
-                return has<S, growable>;
-            case facet_id::growth:
-                return has<S, growable> && S::iterable;
-            case facet_id::removal:
-                return has<S, shrinkable> && S::iterable;
-            case facet_id::values_by_key:
-                return S::is_map && has<S, unique>;
-            case facet_id::multi_values:
-                return S::is_map && !has<S, unique>;
-            case facet_id::set_algebra:
-                return S::is_set;
-            case facet_id::queue_access:
-                return S::is_queue;
-            case facet_id::scopes:
-                return has<S, scoped>;
-            case facet_id::layers:
-                return has<S, layered>;
-            case facet_id::changes:
-                return has<S, change_log>;
-            case facet_id::pool:
-                return S::is_pool && has<S, unique> && !has<S, flat>;
-            case facet_id::records:
-                return S::is_pool && has<S, unique> && has<S, flat>;
-            case facet_id::slots:
-                return S::is_pool && !has<S, unique>;
-            case facet_id::grouping:
-                return S::is_partition;
-            case facet_id::entries:
-                return S::is_map && has<S, insertion_ordered>;
-            case facet_id::inverse:
-                return S::is_map && has<S, bidirectional>;
-            case facet_id::shape:
-                return has<S, fixed_shape>;
-            case facet_id::sorted_ends:
-                // Sequences and positional sets have front and back by position (positions).
-                return (S::is_set || S::is_map) && has<S, sorted> && !has<S, dense> && !has<S, positional>;
-            case facet_id::count:
-                return false;
-        }
-        return false;
-    }
+    static constexpr auto table = []<std::size_t... I>(std::index_sequence<I...> /*facets*/)
+    { return std::array<bool, sizeof...(I)> { facet_condition<static_cast<facet_id>(I)>::template on<R, S>()... }; }(
+        std::make_index_sequence<static_cast<std::size_t>(facet_id::count)> {});
+    static constexpr bool on(facet_id id) { return table[static_cast<std::size_t>(id)]; }
     /// Whether any of the facets is on: whether some facet declares a member name.
     template<std::size_t N>
     static constexpr bool any_on(const std::array<facet_id, N>& ids)

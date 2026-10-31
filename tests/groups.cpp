@@ -34,6 +34,7 @@ using urd::detail::facet_id;
 /// it resolves to (by id; "" for none).
 struct seen
 {
+    urd::kind kind = urd::kind::sequence;
     bool queue = false;
     bool pool = false;
     bool partition = false;
@@ -46,6 +47,7 @@ template<typename S>
 seen seen_of()
 {
     auto result = seen {};
+    result.kind = S::kind;
     result.queue = S::is_queue;
     result.pool = S::is_pool;
     result.partition = S::is_partition;
@@ -119,7 +121,11 @@ TEST(Groups, KindTagsChangeTheKindOrTheOperations)
         // A priority queue with handles is still a priority queue: its handles add update and erase by handle to its
         // queue access, which the operations compared here do not list.
         const bool queue_handles = each.stated == tag::handles && each.with.queue;
-        EXPECT_TRUE(kind_changes || each.with.offers != each.without.offers || queue_handles) << named(each);
+        // Another stated tag makes the same kind (monotone_priority a priority queue, flat records): this one is
+        // redundant in this request, which says nothing of its group.
+        const bool made_by_another = each.with.kind == each.without.kind && each.without.kind != urd::kind::set
+                                     && each.without.kind != urd::kind::map && each.without.kind != urd::kind::sequence;
+        EXPECT_TRUE(kind_changes || each.with.offers != each.without.offers || queue_handles || made_by_another) << named(each);
     }
 }
 

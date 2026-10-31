@@ -111,3 +111,18 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet_id::records>
+{
+    static constexpr bool reads_container = false;
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return S::is_pool && has<S, unique> && has<S, flat>; }
+};
+
+}  // namespace urd::detail

@@ -237,8 +237,12 @@ registry) is 5,951 lines, against 6,670 at the start of the cleanup (2f7f046), w
 new. Per-container customization points in `repr/` went from 348 specializations to 135 (`declaration_of` and
 `representation_of`).
 
-**Still to do (step 3):** the facets (`facet_switches`, `denials.hpp`), interface.hpp's conformance, and store.hpp's
-tag-dependent constructors still name tags; they join `tests/generic.py` once they declare themselves.
+**Step 3, done in part:** each facet declares when it is on, in its own file (`facet_condition<facet_id::X>`), and
+`facet_switches` and the tests' `spec_switches` read those; store.hpp's constructors and its Hash and Less read
+`construction<S>` (store/construction.hpp) and name no tag (store.hpp is in `tests/generic.py`). Left as they are,
+for the user to decide: `denials.hpp` (a diagnostic per member group, chosen by the request's kind and tags) and
+interface.hpp's conformance (what a container must offer for each property it declares). Both are tables of
+per-property knowledge rather than glue.
 
 **Minor features, for the user to decide:** the small/frozen preference, entry orders (`order_by` over key and
 value), `structural_sharing`, `urd_per_container`'s keyword arguments. Open findings of the group checks:
