@@ -3,6 +3,7 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/traits.hpp"
 
 #include <functional>
@@ -40,13 +41,13 @@ struct container_traits<std::unordered_multimap<K, V, H, E, Allocator>> : proper
 };
 
 template<typename K, typename V, typename C, typename Allocator>
-inline constexpr auto defined_in<std::map<K, V, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::map<K, V, C, Allocator>> = detail::fixed_string("urd/repr/std_map.hpp");
 template<typename K, typename V, typename C, typename Allocator>
-inline constexpr auto defined_in<std::multimap<K, V, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::multimap<K, V, C, Allocator>> = detail::fixed_string("urd/repr/std_map.hpp");
 template<typename K, typename V, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<std::unordered_map<K, V, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::unordered_map<K, V, H, E, Allocator>> = detail::fixed_string("urd/repr/std_map.hpp");
 template<typename K, typename V, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<std::unordered_multimap<K, V, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::unordered_multimap<K, V, H, E, Allocator>> = detail::fixed_string("urd/repr/std_map.hpp");
 
 }  // namespace urd
 
@@ -141,3 +142,39 @@ struct container_synopsis<std::unordered_multimap<K, V, H, E, A>>
 };
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/std_map.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"unordered_map", S>
+{
+    using type = std::unordered_map<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>;
+};
+template<typename S>
+struct representation_of<"unordered_multimap", S>
+{
+    using type = std::unordered_multimap<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>;
+};
+template<typename S>
+struct representation_of<"map", S>
+{
+    using type = std::map<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+};
+template<typename S>
+struct representation_of<"multimap", S>
+{
+    using type = std::multimap<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+};
+
+}  // namespace urd::detail

@@ -3,7 +3,7 @@
 // Pools of rows and of slots, declared with their defaults and what the registry reads of them: the row interner
 // (rows kept in full, each once), the tree pools (rows as trees whose equal subtrees are stored once; of values, or
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools.hpp,
-// tree_vector.hpp, tree_bitset.hpp and slots.hpp, which urd/use/pools.hpp includes.
+// tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -87,13 +87,13 @@ struct container_traits<repr::SlotVector<T, ThreadSafe>> :
 };
 
 template<typename Row, bool ThreadSafe>
-inline constexpr auto defined_in<repr::RowInterner<Row, ThreadSafe>> = detail::fixed_string("urd/use/pools.hpp");
+inline constexpr auto defined_in<repr::RowInterner<Row, ThreadSafe>> = detail::fixed_string("urd/repr/pools.hpp");
 template<typename Row, std::size_t Arity, bool ThreadSafe>
-inline constexpr auto defined_in<repr::TreeVectorSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/use/pools.hpp");
+inline constexpr auto defined_in<repr::TreeVectorSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/repr/tree_vector.hpp");
 template<typename Row, std::size_t Arity, bool ThreadSafe>
-inline constexpr auto defined_in<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/use/pools.hpp");
+inline constexpr auto defined_in<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/repr/tree_bitset.hpp");
 template<typename T, bool ThreadSafe>
-inline constexpr auto defined_in<repr::SlotVector<T, ThreadSafe>> = detail::fixed_string("urd/use/pools.hpp");
+inline constexpr auto defined_in<repr::SlotVector<T, ThreadSafe>> = detail::fixed_string("urd/repr/slots.hpp");
 
 }  // namespace urd
 
@@ -190,7 +190,7 @@ struct container_synopsis<repr::SlotVector<T, true>>
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct container_synopsis<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 {
-    static constexpr std::string_view id = "tree_bitset_set";
+    static constexpr std::string_view id = ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set";
     static constexpr std::string_view description = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
     static constexpr std::string_view holds = "nodes shared across rows; all-zero subtrees take nothing";
 };
@@ -198,7 +198,7 @@ struct container_synopsis<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct container_synopsis<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 {
-    static constexpr std::string_view id = "tree_vector_set";
+    static constexpr std::string_view id = ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set";
     static constexpr std::string_view description = "tree vector set (rows as trees of values, equal subtrees once)";
     static constexpr std::string_view holds = "nodes shared across rows: a delta adds about k log r nodes";
 };

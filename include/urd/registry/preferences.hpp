@@ -1,8 +1,10 @@
 #pragma once
 
-// The registry's order: every container it may choose, in order of preference, the first that serves a request
-// being chosen (urd/registry/select.hpp). Adding a container is adding it here, after declaring it (its traits, costs
-// and synopsis) and aliasing it with urd's hash, equality and order (urd/registry/aliases.hpp).
+// The registry's order as types: every container it may choose, in order of preference. Selection scans the rows,
+// which follow these lists entry for entry (urd/registry/rows.hpp); these are walked by the tests and generators that
+// read every container (urd/registry/candidates.hpp). Adding a container is adding it here and its row there, after
+// declaring it (its traits, costs and synopsis) and aliasing it with urd's hash, equality and order
+// (urd/registry/aliases.hpp).
 
 #include "urd/registry/aliases.hpp"
 
@@ -91,10 +93,8 @@ using element_preference = element_candidates<JaggedOf,
                                               ThreadSafeLayeredRowInterner,
                                               ThreadSafeLayeredRecordInterner,
                                               ThreadSafeLayeredArenaInterner,
-#if defined(URD_HAS_GTL)
                                               ParallelHashSetOf,
                                               ParallelNodeHashSetOf,
-#endif
                                               ConcurrentIndexedSet,
                                               SlotVector,
                                               ThreadSafeSlotVector,
@@ -103,10 +103,8 @@ using map_preference = map_candidates<FlatHashMapOf,
                                       HashMapOf,
                                       PostingMapOf,
                                       HashMultiMapOf,
-#if defined(URD_HAS_GTL)
                                       ParallelHashMapOf,
                                       ParallelNodeHashMapOf,
-#endif
                                       TreeMapOf,
                                       TreeMultiMapOf,
                                       FlatMultiMapOf,
@@ -161,64 +159,28 @@ struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As...
 {
 };
 
-/// Whether R is a copy of a registered container made for tests/scaling: such a copy serves nothing (serves, last).
-template<typename R>
-inline constexpr bool registry_copy = false;
-
-#if defined(URD_REGISTRY_COPIES)
-/// For tests/scaling only: copy I of container R, a type of its own with R's traits, which selection checks as far as
-/// R and then turns down (registry_copy). URD_REGISTRY_COPIES copies of every candidate come before the candidates
-/// themselves: the registry grown that many times over, with every request resolving as before.
-template<std::size_t I, typename R>
-struct RegistryCopy
-{
-};
-template<std::size_t I, typename R>
-inline constexpr bool registry_copy<RegistryCopy<I, R>> = true;
-template<std::size_t I, typename... Rs>
-using copies_of = type_list<RegistryCopy<I, Rs>...>;
-template<typename... Rs, std::size_t... I>
-auto with_copies(type_list<Rs...> /*candidates*/, std::index_sequence<I...> /*copies*/) -> typename join<copies_of<I, Rs...>..., type_list<Rs...>>::type;
-template<typename List>
-using registry_grown =
-    decltype(detail::with_copies(List {}, std::make_index_sequence<URD_REGISTRY_COPIES>()));  // qualified: lookup by argument would complete every candidate
-#else
-template<typename List>
-using registry_grown = List;
-#endif
-
 /// The registered containers for spec S, instantiated with its element type, or a map's key and value types.
 template<typename S, typename Candidates>
 struct instantiated;
 template<typename S, template<typename...> class... Cs>
 struct instantiated<S, element_candidates<Cs...>>
 {
-    using type = registry_grown<type_list<Cs<typename S::element_type>...>>;
+    using type = type_list<Cs<typename S::element_type>...>;
 };
 template<typename S, template<typename, typename> class... Cs>
 struct instantiated<S, map_candidates<Cs...>>
 {
-    using type = registry_grown<type_list<Cs<typename S::key_type, typename S::mapped_type>...>>;
+    using type = type_list<Cs<typename S::key_type, typename S::mapped_type>...>;
 };
 template<typename S, template<typename, typename> class... Cs>
 struct instantiated<S, ordered_element_candidates<Cs...>>
 {
-    using type = registry_grown<type_list<Cs<typename S::element_type, typename S::order_type>...>>;
+    using type = type_list<Cs<typename S::element_type, typename S::order_type>...>;
 };
 template<typename S, template<typename, typename, typename> class... Cs>
 struct instantiated<S, ordered_map_candidates<Cs...>>
 {
-    using type = registry_grown<type_list<Cs<typename S::key_type, typename S::mapped_type, typename S::order_type>...>>;
+    using type = type_list<Cs<typename S::key_type, typename S::mapped_type, typename S::order_type>...>;
 };
 
 }  // namespace urd::detail
-
-#if defined(URD_REGISTRY_COPIES)
-namespace urd
-{
-template<std::size_t I, typename R>
-struct container_traits<detail::RegistryCopy<I, R>> : container_traits<R>
-{
-};
-}  // namespace urd
-#endif

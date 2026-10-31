@@ -1,7 +1,7 @@
 #pragma once
 
 // Containers for keys that are indices 0..n-1 (dense keys), declared with what the registry reads of them: a bitset,
-// a sparse set, a slot-per-index map. Defined in urd/repr/dense.hpp, which urd/use/dense.hpp includes. The registry
+// a sparse set, a slot-per-index map. Defined in urd/repr/dense_set.hpp, sparse_set.hpp and index_map.hpp. The registry
 // names them for any element type, so they are unconstrained templates; their container_traits declare properties
 // only for indexable keys.
 
@@ -83,11 +83,11 @@ struct container_traits<repr::IndexMap<K, V, true, ThreadSafe, Stable>> :
 };
 
 template<typename K, bool TrackWords>
-inline constexpr auto defined_in<repr::DenseSet<K, TrackWords>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::DenseSet<K, TrackWords>> = detail::fixed_string("urd/repr/dense_set.hpp");
 template<typename K, bool KeepOrder>
-inline constexpr auto defined_in<repr::SparseSet<K, KeepOrder>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::SparseSet<K, KeepOrder>> = detail::fixed_string("urd/repr/sparse_set.hpp");
 template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
-inline constexpr auto defined_in<repr::IndexMap<K, V, Generations, ThreadSafe, Stable>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::IndexMap<K, V, Generations, ThreadSafe, Stable>> = detail::fixed_string("urd/repr/index_map.hpp");
 
 }  // namespace urd
 

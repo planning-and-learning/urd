@@ -3,10 +3,23 @@
 // everything they have in common.
 
 #include "show.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/pools.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <cstdint>
 #include <exception>

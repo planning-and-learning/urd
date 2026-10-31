@@ -4,19 +4,43 @@
 #include "urd/compose/family.hpp"
 #include "urd/store.hpp"
 // Every family: the cases below hold a Store of every kind.
-#include "urd/use/contiguous.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/nodes.hpp"
-#include "urd/use/pools.hpp"
-#include "urd/use/queues.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/scopes.hpp"
-#include "urd/use/sequences.hpp"
-#if defined(URD_HAS_GTL)
-#include "urd/use/parallel.hpp"
-#endif
+#include "urd/repr/addressable_heap.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/bucket_queue.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel_hash.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/queue.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/recycling.hpp"
+#include "urd/repr/ring_fifo.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/scoped.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/view.hpp"
 
 #include <string>
@@ -42,8 +66,8 @@ int main()
     frozen.insert(3);
 #elif URD_CASE == 3  // a monotone Store only grows
     growing.pop_back();
-#elif URD_CASE == 4  // one value per key, and many: a contradiction
-    using S = Store<key<int>, value<int>, urd::functional, urd::multi>;
+#elif URD_CASE == 4  // functional is derived (a map without multi), never stated
+    using S = Store<key<int>, value<int>, urd::functional>;
     (void) S();
 #elif URD_CASE == 5
     using S = Store<key<int>, urd::dense, urd::sparse>;
@@ -190,8 +214,8 @@ int main()
 #elif URD_CASE == 45  // a partition groups keys: no values, and it changes by merge
     using S = Store<key<int>, value<int>, urd::partition>;
     (void) S();
-#elif URD_CASE == 46  // monotone_priority says how a priority queue is pushed to: it needs the queue
-    using S = Store<value<int>, urd::monotone_priority>;
+#elif URD_CASE == 46  // monotone_priority makes a priority queue: it cannot go with a first-in queue
+    using S = Store<value<int>, urd::fifo, urd::monotone_priority>;
     (void) S();
 #elif URD_CASE == 47  // fixed_shape is a sequence of rows, each a Store
     using S = Store<value<int>, urd::fixed_shape>;

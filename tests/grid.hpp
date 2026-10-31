@@ -10,6 +10,7 @@
 #include "urd/flat.hpp"
 #include "urd/format.hpp"
 #include "urd/registry.hpp"
+#include "urd/registry/candidates.hpp"
 #include "urd/request.hpp"
 #include "urd/store.hpp"
 
@@ -35,12 +36,12 @@ namespace urd::test
 inline constexpr auto negated = [](int element) { return -element; };
 inline constexpr auto by_value = [](const int& /*key*/, const int& value) { return value; };
 
-// Requests as types, and the families a Store needs, come from the library (urd/request.hpp); a request is written as
+// Requests as types, and the headers a Store needs, come from the library (urd/request.hpp); a request is written as
 // urd::spelling_of_request says (urd/format.hpp).
 using urd::cat_t;
-using urd::element_families_of;
-using urd::families_of;
+using urd::element_headers_of;
 using urd::for_each_request;
+using urd::headers_of;
 using urd::requests;
 
 /// One request of the grid: urd::request, with how it is written.
@@ -50,8 +51,8 @@ struct request : urd::request<Ps...>
     static std::string describe() { return urd::spelling_of_request<urd::request<Ps...>>(); }
 };
 
-// The groups. Unservable requests are in: the table shows "none" for them, which is what they are today (concurrent
-// sets and maps by hashed keys among them in a build without gtl, which is why the table is checked only with it).
+// The groups. Unservable requests are in: the table shows "none" for them, which is what they are today: requests no
+// container serves yet.
 
 template<typename K>
 using sets_of = requests<request<key<K>>,
@@ -304,7 +305,7 @@ struct nth_request<P, requests<Rs...>>
 };
 
 /// The candidate named Name that serves spec S: how a per-container object finds its container among a request's
-/// candidates (one name may stand for several types, a layered pool of rows or of records). Reads declarations only.
+/// candidates (each id names one container; for a request, one type). Reads declarations only.
 template<urd::detail::fixed_string Name, typename S, typename List = typename urd::detail::candidates_for<S>::type>
 struct serving_named;
 template<urd::detail::fixed_string Name, typename S, typename... Rs>

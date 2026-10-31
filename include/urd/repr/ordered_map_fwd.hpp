@@ -1,11 +1,11 @@
 #pragma once
 
 // A map in insertion order over an insertion-ordered set of keys, declared with what the registry reads of it.
-// Defined in urd/repr/ordered_map.hpp, which the family of its keys includes (urd/use/dense.hpp for a sparse set,
-// urd/use/hash.hpp for an indexed set).
+// Defined in urd/repr/ordered_map.hpp; its keys (an indexed set or a sparse set) in theirs.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
+#include "urd/repr/dense_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
@@ -38,9 +38,14 @@ struct container_traits<repr::OrderedMap<Keys, V>> :
 {
 };
 
-/// Defined where its keys are: the map adds nothing a family of its own would hold.
 template<typename Keys, typename V>
-inline constexpr auto defined_in<repr::OrderedMap<Keys, V>> = defined_in<Keys>;
+inline constexpr auto defined_in<repr::OrderedMap<Keys, V>> = detail::fixed_string("urd/repr/ordered_map.hpp");
+/// Its keys, whose header is needed too.
+template<typename Keys, typename V>
+struct parts<repr::OrderedMap<Keys, V>>
+{
+    using type = detail::type_list<Keys>;
+};
 
 }  // namespace urd
 
@@ -55,6 +60,14 @@ struct container_costs<repr::OrderedMap<Keys, V>> : part_costs<Keys>
     static constexpr cost iterate = costs::lin_nt;
     static constexpr double words = part_costs<Keys>::words + 1;
 };
+/// dense_ordered_map: its keys are indices, which no counting element can be, so its erase is timed.
+template<typename K, typename V>
+struct container_costs<repr::OrderedMap<repr::SparseSet<K, true>, V>> : part_costs<repr::SparseSet<K, true>>
+{
+    static constexpr cost erase = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = part_costs<repr::SparseSet<K, true>>::words + 1;
+};
 
 }  // namespace urd
 
@@ -67,6 +80,14 @@ struct container_synopsis<repr::OrderedMap<Keys, V>>
     static constexpr std::string_view id = "ordered_map";
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
     static constexpr std::string_view holds = "its key set + n values in order";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::OrderedMap<repr::SparseSet<K, true>, V>>
+{
+    static constexpr std::string_view id = "dense_ordered_map";
+    static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
+    static constexpr std::string_view holds = "its sparse set + n values in order";
 };
 
 }  // namespace urd

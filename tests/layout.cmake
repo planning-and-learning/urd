@@ -2,20 +2,20 @@ cmake_minimum_required(VERSION 3.21)
 
 # The include tree's root holds the headers a user names in an include line (store.hpp, index.hpp, view.hpp, flat.hpp)
 # and the resolution pipeline (concepts, elements, interface, properties, registry, traits). Containers live in
-# urd/repr (declared by the registry, defined by the family headers in urd/use, which downstream code includes),
+# urd/repr (declared by the registry, each defined in its own header, which downstream code includes),
 # compositions of Stores in urd/compose. A new root header must be added here on purpose.
 set(allowed_files concepts.hpp container_synopsis.hpp costs.hpp elements.hpp flat.hpp format.hpp index.hpp interface.hpp properties.hpp property_set.hpp registry.hpp request.hpp store.hpp tag_synopsis.hpp tags.hpp traits.hpp view.hpp)
-set(allowed_directories compose registry repr semantics store use)
+set(allowed_directories compose registry repr semantics store)
 
-# The resolution and vocabulary tables are built from declarations alone: their sources include no family header and no
-# repr header.
+# The resolution and vocabulary tables are built from declarations alone: their sources include no container
+# header.
 # Were selection to complete a representation, the table would stop compiling; this keeps the proof honest.
 # The request groups read every candidate's costs (urd::container_costs) the same way, so costs complete nothing either.
 foreach(source tests/resolution_table.cpp tests/vocabulary_table.cpp tests/generated.hpp tests/grid.hpp tests/names.hpp tests/requests_group.cpp
                tests/requests.hpp)
     file(READ "${ROOT}/${source}" text)
-    if(text MATCHES "#include [\"<]urd/(use|repr)/")
-        message(FATAL_ERROR "${source}: the generated tables build from declarations only; it includes no urd/use or urd/repr header (tests/layout.cmake)")
+    if(text MATCHES "#include [\"<]urd/repr/")
+        message(FATAL_ERROR "${source}: the generated tables build from declarations only; it includes no urd/repr header (tests/layout.cmake)")
     endif()
 endforeach()
 

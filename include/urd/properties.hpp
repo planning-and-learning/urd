@@ -74,11 +74,31 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 {
 };
 
-/// Whether a request may state tags of `of`'s category. Mutability is not one: it follows from frozen and monotone.
+/// Whether a request may state `of`: a tag of a category a container declares or a request states, and not one the
+/// library derives (internal_tags). Mutability is not stated: it follows from frozen and monotone.
 constexpr bool statable(tag of)
 {
     const auto root = root_of(of);
-    return (in(root, guaranteed_roots) && root != tag::immutable) || in(root, requested_roots);
+    return ((in(root, guaranteed_roots) && root != tag::immutable) || in(root, requested_roots)) && !in(of, internal_tags);
+}
+
+/// Whether P is a tag the library derives and no request states (internal_tags).
+template<typename P>
+consteval bool is_internal()
+{
+    if constexpr (a_tag<P>)
+        return in(P::value, internal_tags);
+    else
+        return false;
+}
+
+/// The tags stated, with what one implies of another's category: monotone_priority is a priority queue's promise, so
+/// it makes the request a priority queue.
+consteval property_set stated_with_access(property_set stated)
+{
+    if (stated.has(tag::monotone_priority) && stated.in(tag::any_access) == tag::any_access)
+        stated.put(tag::by_priority);
+    return stated;
 }
 
 /// Whether P is a tag a Store may be asked for (statable).
@@ -282,20 +302,23 @@ spec<K, V, Order, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positio
 template<typename... Ps>
 struct to_spec
 {
-    static_assert((is_property<Ps> && ...),
+    static_assert(!(is_internal<Ps>() || ...),
+                  "urd::Store: functional, immutable, growable and shrinkable are derived, never stated: a map has one value per key "
+                  "unless it says multi, and frozen, monotone, nonempty and fixed_shape say how a Store may change");
+    static_assert(((is_property<Ps> || is_internal<Ps>()) && ...),
                   "urd::Store: every argument must be an urd property (key<K>, value<V>, sorted, unique, …, or a "
                   "workload such as small)");
     static_assert((0 + ... + static_cast<int>(is_a<key, Ps>)) <= 1, "urd::Store: at most one key<K>");
     static_assert((0 + ... + static_cast<int>(is_a<value, Ps>)) <= 1, "urd::Store: at most one value<V>");
     static_assert(one_per_category({ tag_of<Ps>()... }),
-                  "urd::Store: two properties answer the same question (dense and sparse, functional and multi, "
-                  "frozen and monotone, two workloads, …)");
+                  "urd::Store: two properties answer the same question (dense and sparse, frozen and monotone, two "
+                  "workloads, …)");
 
     using key_type = typename first_of<key, Ps...>::type;
     using value_type = typename first_of<value, Ps...>::type;
     static_assert(!std::is_void_v<key_type> || !std::is_void_v<value_type>, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
 
-    static constexpr property_set stated = stated_of({ tag_of<Ps>()... });
+    static constexpr property_set stated = stated_with_access(stated_of({ tag_of<Ps>()... }));
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
     static constexpr bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
@@ -312,7 +335,8 @@ struct to_spec
     static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || iterates<value_type>,
                   "urd::Store: a pool of records (value<V>, V no range of elements) stores them flat: ask for flat");
     static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
-                  "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");
+                  "urd::Store: monotone_priority says how a priority queue is pushed to, so it makes a priority queue; it cannot go "
+                  "with fifo or lifo");
     static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
                   "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
     static_assert(!stated.has(tag::nonempty) || of.set || of.map || of.sequence,

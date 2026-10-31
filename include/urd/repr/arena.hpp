@@ -5,12 +5,14 @@
 
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/records_fwd.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
+#include "urd/traits.hpp"
 
 #include <boost/unordered/concurrent_flat_set.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
@@ -188,6 +190,7 @@ private:
         state.scratch.reset();
         ::cista::serialize<cista_mode>(state.scratch, record);
         const auto* bytes = state.arena.write(state.scratch.base(), state.scratch.size(), alignof(T));
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): cista reads a record from [begin, end) of bytes
         return ::cista::deserialize<const T, cista_mode>(bytes, bytes + state.scratch.size());
     }
 
@@ -196,3 +199,29 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/arena.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"arena_interner", S>
+{
+    using type = repr::ArenaInterner<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"thread_safe_arena_interner", S>
+{
+    using type = repr::ArenaInterner<typename S::element_type, true>;
+};
+
+}  // namespace urd::detail

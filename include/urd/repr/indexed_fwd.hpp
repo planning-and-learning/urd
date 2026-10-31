@@ -1,7 +1,7 @@
 #pragma once
 
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
-// and what the registry reads of it. Defined in urd/repr/indexed.hpp, which urd/use/hash.hpp includes.
+// and what the registry reads of it. Defined in urd/repr/indexed.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -54,7 +54,7 @@ struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<in
 };
 
 template<typename T, typename Index, bool ThreadSafe, bool Stable>
-inline constexpr auto defined_in<repr::IndexedSet<T, Index, ThreadSafe, Stable>> = detail::fixed_string("urd/use/hash.hpp");
+inline constexpr auto defined_in<repr::IndexedSet<T, Index, ThreadSafe, Stable>> = detail::fixed_string("urd/repr/indexed.hpp");
 
 }  // namespace urd
 

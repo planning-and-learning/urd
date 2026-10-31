@@ -4,8 +4,8 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
-#include "urd/repr/dense.hpp"
 #include "urd/repr/rows_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -115,3 +115,24 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/row_pool.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"row_pool", S>
+{
+    using type = repr::RowPool<typename S::element_type>;
+};
+
+}  // namespace urd::detail

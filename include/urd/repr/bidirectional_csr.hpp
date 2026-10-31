@@ -3,6 +3,7 @@
 // A frozen multimap by dense key that answers by value too: compressed sparse rows both ways.
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/grouped_fwd.hpp"
 #include "urd/repr/grouped_multimap.hpp"
 #include "urd/repr/index_groups.hpp"
@@ -52,3 +53,24 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/bidirectional_csr.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"bidirectional_csr", S>
+{
+    using type = repr::BidirectionalCsr<typename S::key_type, typename S::mapped_type>;
+};
+
+}  // namespace urd::detail

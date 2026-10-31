@@ -1,13 +1,15 @@
 #pragma once
 
 // Postings: a multimap whose values lie together per key in a flat hash table. The grouped multimap over hashed
-// groups; the one grouped container that pulls in Boost.Unordered, so it is the hash family's (urd/use/hash.hpp).
+// groups; the one grouped container that pulls in Boost.Unordered.
 
 #include "urd/elements.hpp"
-#include "urd/repr/grouped.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/grouped_fwd.hpp"
+#include "urd/repr/grouped_multimap.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
+#include "urd/traits.hpp"
 
 #include <algorithm>
 #include <boost/unordered/unordered_flat_map.hpp>
@@ -92,3 +94,24 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/postings.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"posting_map", S>
+{
+    using type = repr::PostingMap<typename S::key_type, typename S::mapped_type>;
+};
+
+}  // namespace urd::detail

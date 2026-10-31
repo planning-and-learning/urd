@@ -4,9 +4,14 @@
 
 #include "allocations.hpp"
 #include "names.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <cstddef>
 #include <gtest/gtest.h>

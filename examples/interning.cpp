@@ -2,9 +2,16 @@
 // repeats, in the order first seen.
 
 #include "show.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/hash.hpp"
 
 #include <exception>
 #include <iostream>

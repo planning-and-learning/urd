@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/indexed_fwd.hpp"
@@ -288,3 +289,34 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/indexed.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"indexed_set", S>
+{
+    using type = repr::IndexedSet<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"stable_indexed_set", S>
+{
+    using type = repr::StableIndexedSet<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"concurrent_indexed_set", S>
+{
+    using type = repr::ConcurrentIndexedSet<typename S::element_type>;
+};
+
+}  // namespace urd::detail

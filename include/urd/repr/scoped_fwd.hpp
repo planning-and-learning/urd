@@ -1,8 +1,8 @@
 #pragma once
 
 // A map with scopes (pop_scope undoes every change since the matching push_scope), declared with what the registry
-// reads of it, over a flat hash table, a tree or a dense map. Defined in urd/repr/scoped.hpp, which
-// urd/use/scopes.hpp includes; the map it scopes comes with the map's family.
+// reads of it, over a flat hash table, a tree or a dense map. Defined in urd/repr/scoped.hpp; the map it
+// scopes in its own header.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -49,7 +49,7 @@ struct parts<repr::Scoped<Map>>
 };
 
 template<typename Map>
-inline constexpr auto defined_in<repr::Scoped<Map>> = detail::fixed_string("urd/use/scopes.hpp");
+inline constexpr auto defined_in<repr::Scoped<Map>> = detail::fixed_string("urd/repr/scoped.hpp");
 
 }  // namespace urd
 

@@ -1,7 +1,7 @@
 #pragma once
 
 // A partition of indices into disjoint classes (union-find), declared with what the registry reads of it. Defined in
-// urd/repr/disjoint_sets.hpp, which urd/use/dense.hpp includes.
+// urd/repr/disjoint_sets.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -29,7 +29,7 @@ struct container_traits<repr::DisjointSets<K>> : properties_of<partition, dense,
 };
 
 template<typename K>
-inline constexpr auto defined_in<repr::DisjointSets<K>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::DisjointSets<K>> = detail::fixed_string("urd/repr/disjoint_sets.hpp");
 
 }  // namespace urd
 

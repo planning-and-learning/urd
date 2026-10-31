@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/disjoint_sets_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -104,3 +105,24 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/disjoint_sets.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"disjoint_sets", S>
+{
+    using type = repr::DisjointSets<typename S::element_type>;
+};
+
+}  // namespace urd::detail

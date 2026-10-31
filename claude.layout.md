@@ -37,7 +37,7 @@ the missing ones are listed, not those already included. It is a `static_assert`
 (`complete_representation`), reading the paths from the rows, so it comes before any error about an incomplete type.
 For example:
 
-    urd::Store: Store<key<int>, dense, change_log> resolves to change_logged_dense_set; include
+    urd::Store: Store<key<int>, dense, change_log> resolves to change_logged_tracked_dense_set; include
     "urd/repr/dense_set.hpp", "urd/repr/change_logged.hpp"
 
 ## The design
@@ -72,6 +72,9 @@ For example:
      container's own header. `store.hpp` declares only the primary template, so it holds no container type. Where
      the header is not included, the specialization is missing, and the Store's check fails with the header's path,
      which the row carries.
+
+  Each id names exactly one container (done): a wrapper's id is its prefix and its part's id (`layered_record_interner`,
+  `change_logged_set`), so a wrapper over a new part has an id of its own.
 
   So template instantiations per request are constant. The `constexpr` loop is linear in the kind's group, but cheap
   per step. Indexing the group by its most selective category (order, then keys) bounds the loop by the containers
@@ -158,6 +161,26 @@ kind. The family as a concept goes.
 6. **The precompiled table:** `table.hpp` precompiled in urd's targets; the CMake line for downstream projects in
    `docs/INTEGRATION.md`; a module where supported, behind an option.
 
+## Status (2026-10-31, not yet compiled)
+
+- Steps 0–3 done and committed (rows, features, agreement).
+- Step 4 written: `choose<S>` scans the rows; the type walk is in `urd/registry/candidates.hpp`, for tests only.
+- Step 5 written, but for the standard containers:
+  - every container has its own header with its marker, its `defined_in` and its `representation_of`;
+  - `urd/use/` and the grouping headers (`repr/dense.hpp`, `grouped.hpp`, `queues.hpp`, `rows.hpp`,
+    `layered.hpp`) are gone;
+  - the rows carry their headers, and resolution names the missing ones in one error
+    (`missing_headers_for<spec, "id", type_list<include<"…">…>>`) before naming any type;
+  - `store.hpp` includes no container declaration;
+  - `requests.json` lists `headers` per container, not `families` (to regenerate: build `requests_table`, write it,
+    reconfigure).
+- Left for step 5: urd's own declarations of the standard containers. Until then `std_set.hpp`, `std_map.hpp` and
+  `sequence.hpp` include `<set>`, `<unordered_set>`, `<map>`, `<unordered_map>` and `<vector>`. A wrapper's header
+  over a standard container (`layer.hpp`, `change_logged.hpp`, `recycling.hpp`) includes them as well, and
+  `compile_fail_include` has no case for them.
+- Files that included families now include every container header of those families: the same definitions as
+  before. The new error names exactly what is missing, so each can be trimmed to what its Stores resolve to.
+
 ## Verification
 
 - **The scaling test** (step 1) passes from step 4 on, on GCC and Clang, Debug and Release.
@@ -180,5 +203,5 @@ kind. The family as a concept goes.
 
 - **Modules:** GCC 13's support is not enough; the precompiled header is the default.
 - **Directory layout of `repr/`:** with no families, the headers can stay flat, one per container, or go in
-  directories by kind, with the two containers that serve two kinds (`layered`, `layered_pool`) placed by a rule.
+  directories by kind, with the two wrappers that serve two kinds (`Layered`, `LayeredPool`) placed by a rule.
   Kind matches how a user reads a request; flat needs no rule.

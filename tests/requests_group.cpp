@@ -1,14 +1,15 @@
 // One group of the request grid (URD_GROUP, tests/grid.hpp) for benchmarks/requests.json (tests/requests.hpp): which
-// containers serve each request, from their traits alone, so no family header is included. Compiled alone (by a
+// containers serve each request, from their traits alone, so no container header is included. Compiled alone (by a
 // linter, without CMake's definition), the first group.
 
 #include "complexity.hpp"
 #include "grid.hpp"
 #include "requests.hpp"
 #include "urd/registry.hpp"
-#include "urd/registry/features.hpp"
+#include "urd/registry/candidates.hpp"
 
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -45,7 +46,7 @@ struct serving
     static constexpr bool value = urd::detail::serves<R, S>;
 };
 
-/// The containers serving S, in the registry's order, each with the families a Store of it for S needs.
+/// The containers serving S, in the registry's order, each with the headers a Store of it for S needs.
 template<typename S, typename List>
 struct servers;
 template<typename S, typename... Rs>
@@ -56,19 +57,19 @@ struct servers<S, urd::detail::type_list<Rs...>>
     {
         if constexpr (serving<R, S>::value)
         {
-            auto families = std::vector<std::string>();
-            urd::test::families_of<R>(families);
+            auto headers = std::vector<std::string>();
+            urd::test::headers_of<R>(headers);
             if constexpr (!std::is_void_v<typename S::key_type>)
-                urd::test::element_families_of<typename S::key_type>(families);
+                urd::test::element_headers_of<typename S::key_type>(headers);
             if constexpr (!std::is_void_v<typename S::value_type>)
-                urd::test::element_families_of<typename S::value_type>(families);
+                urd::test::element_headers_of<typename S::value_type>(headers);
             auto part = std::string(urd::test::part_name<R>());
             auto uninvited = std::vector<std::string>();
             for (const auto each : urd::test::costly)
                 if (!S::urd_properties.has(each) && urd::container_traits<R>::urd_properties.has(each))
                     uninvited.emplace_back(urd::test::tag_name(each));
             into.push_back(
-                { std::string(urd::test::name<R>::id), std::move(families), std::move(part), urd::test::words_of<R>().value_or(0), std::move(uninvited) });
+                { std::string(urd::test::name<R>::id), std::move(headers), std::move(part), urd::test::words_of<R>().value_or(0), std::move(uninvited) });
         }
     }
     static std::vector<urd::test::server> list()
@@ -79,16 +80,29 @@ struct servers<S, urd::detail::type_list<Rs...>>
     }
 };
 
-/// Whether choosing among the rows as values (urd/registry/rows.hpp) picks the container choose<S> picks, by id ("" for
-/// none): the two selections agree before one replaces the other (claude.layout.md, step 2).
+/// Whether the scan over the rows (choose<S>, urd/registry/select.hpp) picks the container the walk over every
+/// registered type picks (the same id, or none for both), with the headers its declarations name (urd::defined_in,
+/// urd::parts). That the id names that type is checked where the container's header is included: the per-container
+/// tests resolve through it (tests/container.cpp).
 template<typename S, typename List>
-consteval bool rows_agree()
+bool rows_agree()
 {
-    using chosen = urd::detail::choose_in<S, List>;
-    if constexpr (chosen::found)
-        return urd::detail::row_choice<S>() == urd::test::name<typename chosen::type>::id;
+    using walked = urd::detail::choose_in<S, List>;
+    constexpr auto row = urd::detail::choose<S>::row;
+    if constexpr (!walked::found)
+        return row == nullptr;
     else
-        return urd::detail::row_choice<S>().empty();
+    {
+        if (row == nullptr || row->id != urd::test::name<typename walked::type>::id)
+            return false;
+        auto declared = std::vector<std::string>();
+        urd::test::headers_of<typename walked::type>(declared);
+        auto listed = std::vector<std::string>();
+        for (const auto header : row->headers)
+            if (!header.empty())
+                listed.emplace_back(header);
+        return listed == declared;
+    }
 }
 
 }  // namespace
@@ -104,7 +118,8 @@ urd::test::request_group urd::test::requests_of<this_group>()
         {
             using S = typename Q::spec;
             using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
-            static_assert(rows_agree<S, List>(), "the rows choose another container than choose<S> (the request is in the instantiation above)");
+            if (!rows_agree<S, List>())
+                throw std::runtime_error("the rows choose another container, or other headers, than the declarations for " + Q::describe());
             result.rows.push_back({ Q::describe(),
                                     shape_of_spec<S>(),
                                     urd::has<S, urd::small>,

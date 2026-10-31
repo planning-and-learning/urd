@@ -4,9 +4,10 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
-#include "urd/repr/dense.hpp"
 #include "urd/repr/rows_fwd.hpp"
+#include "urd/repr/sparse_set.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -348,3 +349,29 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/jagged.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"jagged", S>
+{
+    using type = repr::Jagged<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"tracked_jagged", S>
+{
+    using type = repr::Jagged<typename S::element_type, true>;
+};
+
+}  // namespace urd::detail

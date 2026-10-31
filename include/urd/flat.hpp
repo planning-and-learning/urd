@@ -1,8 +1,8 @@
 #pragma once
 
 // Records stored flat: the cista containers a record is written with, under urd's names, their hash and equality,
-// and how a view resolves them. Include it where flat records are defined; the pools that store them are the
-// records family, urd/use/records.hpp, included where such a Store is held.
+// and how a view resolves them. Include it where flat records are defined; the pools that store them are in
+// urd/repr/records.hpp and urd/repr/arena.hpp, included where such a Store is held.
 
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
@@ -33,9 +33,7 @@ namespace detail
 /// The alternative a flat variant holds, as the type its apply takes.
 template<typename... Ts>
 [[nodiscard]] constexpr auto held_index(const flat_variant<Ts...>& held) noexcept
-{
-    return static_cast<typename flat_variant<Ts...>::index_t>(held.index());
-}
+{ return static_cast<typename flat_variant<Ts...>::index_t>(held.index()); }
 
 }  // namespace detail
 
@@ -56,9 +54,7 @@ struct Hash<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>>
 {
     hash_t operator()(const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& elements) const
         requires Hashable<T>
-    {
-        return urd::hash_range(elements);
-    }
+    { return urd::hash_range(elements); }
 };
 template<typename T, template<typename> typename Ptr, bool IndexPointers, typename SizeType, class Allocator>
 struct EqualTo<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>>
@@ -66,9 +62,7 @@ struct EqualTo<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>
     bool operator()(const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& lhs,
                     const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& rhs) const
         requires EqualityComparableByEqualTo<T>
-    {
-        return equal_range(lhs, rhs);
-    }
+    { return equal_range(lhs, rhs); }
 };
 
 template<typename... Ts>
@@ -113,7 +107,7 @@ struct variant_traits<flat_variant<Ts...>>
     {
         if (!held.valid())
             throw std::bad_variant_access();
-        return flat_variant<Ts...>::apply([&function](const auto& alternative) -> decltype(auto) { return function(alternative); },
+        return flat_variant<Ts...>::apply([&function](const auto& alternative) -> decltype(auto) { return std::forward<F>(function)(alternative); },
                                           detail::held_index(held),
                                           held);
     }

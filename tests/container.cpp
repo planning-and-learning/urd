@@ -1,6 +1,6 @@
 // One container's property tests: the suite of tests/properties.hpp for the container and for the Store over it for
 // each request it is tested for. CMake compiles this file once per container listed in benchmarks/requests.json
-// (`tested`), in objects of a few requests each, through a generated source that includes the container's family
+// (`tested`), in objects of a few requests each, through a generated source that includes the container's
 // headers first, defines
 //
 //     URD_CONTAINER       its id (urd::test::name<R>::id)
@@ -11,16 +11,23 @@
 // definitions), the hash set of `Store<key<int>>` stands in.
 
 #if !defined(URD_CONTAINER)
-#include "urd/use/hash.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #endif
 
 #include "grid.hpp"
 #include "properties.hpp"
 #include "urd/registry.hpp"
+#include "urd/registry/candidates.hpp"
 
 #include <array>
 #include <cstddef>
 #include <gtest/gtest.h>
+#include <type_traits>
 #include <utility>
 
 namespace
@@ -51,6 +58,24 @@ auto types_of(std::index_sequence<I...> /*requests*/)
     else
         return testing::Types<store_at<I>...> {};
 }
+
+/// Whether the container's id names, for request I, the type the walk over the registry names
+/// (representation_of<id, S>, specialized in the container's own header). Every generated object includes that
+/// header first; this file compiled alone (by a linter) may not, and then has nothing to compare.
+template<std::size_t I>
+consteval bool named_by_id()
+{
+    using walked = typename urd::test::serving_named<container, spec_at<I>>::type;
+    if constexpr (!urd::included<urd::defined_in<walked>>)
+        return true;
+    else
+        return std::is_same_v<typename urd::detail::representation_of<container, spec_at<I>>::type, walked>;
+}
+template<std::size_t... I>
+consteval bool named_by_id(std::index_sequence<I...> /*requests*/)
+{ return (named_by_id<I>() && ...); }
+static_assert(named_by_id(std::make_index_sequence<positions.size() / 2>()),
+              "representation_of<id, S> names another type than the registry's declarations for this container");
 
 }  // namespace
 

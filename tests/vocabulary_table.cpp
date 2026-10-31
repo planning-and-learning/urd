@@ -4,8 +4,9 @@
 //     vocabulary_table --write share/urd/vocabulary.json
 //     vocabulary_table --check share/urd/vocabulary.json     (the `vocabulary` test)
 //
-// One line per tag, then one per category and one per theme. Role, description, phrases, themes and questions are
-// written by hand; category, implies, excludes and statable come from the tag hierarchy, so they cannot drift from it.
+// One line per tag, then one per category, one per group and one per heading. Description, phrases, promise, groups,
+// headings and questions are written by hand; the role is derived from the group and the promise (tests/names.hpp),
+// and category, implies, excludes and statable come from the tag hierarchy, so they cannot drift from it.
 // A request holds one tag per category: a tag excludes every other of its category, even one it implies (frozen and
 // monotone).
 
@@ -48,7 +49,8 @@ std::string tags_where(urd::tag of, Keep keep)
 /// The entry of `of`'s category.
 const urd::test::category_entry& category_of(urd::tag of) { return urd::test::category_vocabulary[urd::detail::index(root_of(of))]; }
 
-/// Guarantees, kinds and demands on the keys are questions containers answer; requests and hints are asked only.
+/// A derived role is consistent with the category: kinds and guarantees are of categories containers declare, requests
+/// and hints of categories only a request states; a demand may be either.
 void check_role(urd::tag of, std::string_view role)
 {
     const bool guaranteed = urd::detail::in(root_of(of), urd::detail::guaranteed_roots);
@@ -82,7 +84,8 @@ std::string generate()
                + ", \"role\": " + json_text(entry.role) + ", \"description\": " + json_text(entry.description) + ", \"phrases\": " + phrases
                + ", \"implies\": " + tags_where(of, [of](urd::tag other) { return at_least(of, other); })
                + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == root_of(of); })
-               + ", \"theme\": " + json_text(category_of(of).theme) + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false") + "}";
+               + ", \"group\": " + json_text(category_of(of).group) + (entry.promise.empty() ? std::string() : ", \"promise\": " + json_text(entry.promise))
+               + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false") + "}";
     }
     out += "\n], \"categories\": [\n";
     first = true;
@@ -93,17 +96,27 @@ std::string generate()
             continue;
         out += first ? "  " : ",\n  ";
         first = false;
-        out += "{\"category\": " + json_text(urd::test::tag_name(of)) + ", \"theme\": " + json_text(category_of(of).theme)
+        out += "{\"category\": " + json_text(urd::test::tag_name(of)) + ", \"group\": " + json_text(category_of(of).group)
+               + (category_of(of).heading.empty() ? std::string() : ", \"heading\": " + json_text(category_of(of).heading))
                + ", \"question\": " + json_text(category_of(of).question) + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false")
                + ", \"tags\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == of; }) + "}";
     }
-    out += "\n], \"themes\": [\n";
+    out += "\n], \"groups\": [\n";
     first = true;
-    for (const auto& theme : urd::test::theme_vocabulary)
+    for (const auto& group : urd::test::group_vocabulary)
     {
         out += first ? "  " : ",\n  ";
         first = false;
-        out += "{\"theme\": " + json_text(theme.id) + ", \"title\": " + json_text(theme.title) + ", \"summary\": " + json_text(theme.summary) + "}";
+        out += "{\"group\": " + json_text(group.id) + ", \"title\": " + json_text(group.title) + ", \"test\": " + json_text(group.test)
+               + ", \"summary\": " + json_text(group.summary) + ", \"literature\": " + json_text(group.literature) + "}";
+    }
+    out += "\n], \"headings\": [\n";
+    first = true;
+    for (const auto& heading : urd::test::heading_vocabulary)
+    {
+        out += first ? "  " : ",\n  ";
+        first = false;
+        out += "{\"heading\": " + json_text(heading.id) + ", \"group\": \"semantics\", \"title\": " + json_text(heading.title) + "}";
     }
     return out + "\n]}\n";
 }

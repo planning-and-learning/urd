@@ -156,15 +156,14 @@ Building and using
    cmake --install build --prefix <where>                                    # then find_package(urd) from there
 
 Link ``urd::urd`` and include ``urd/store.hpp``. The target carries Boost 1.89 or later (Container, Unordered,
-Hash2), cista, and with ``URD_WITH_GTL`` (on by default) gtl, whose sharded tables serve ``concurrent`` sets and maps
-by hashed keys.
+Hash2), cista, and gtl, whose sharded tables serve ``concurrent`` sets and maps by hashed keys.
 
 ``urd/store.hpp`` declares every representation and defines none: it costs the vocabulary and the resolution, and
-stays as cheap as containers are added. A file includes the families it holds Stores of, ``urd/use/<family>.hpp``
-(:doc:`representations` lists them), and a Store whose family is missing fails to compile with the header's path in
-the error. No header includes every family: the records family alone brings cista's serialization, which only a
-file holding such a pool should pay for. The resolution table (``docs/RESOLUTION.md``) names each request's
-family. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
+stays as cheap as containers are added: a request names only the container it resolves to. A file includes the
+header of each container its Stores resolve to, ``urd/repr/<container>.hpp`` (:doc:`representations` lists them),
+and a Store whose container's header is missing fails to compile naming the headers to include. No header includes
+every container: the record pools alone bring cista's serialization, which only a file holding such a pool should
+pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
 ``urd/compose/family.hpp`` for families of Stores.
 
 This documentation is built with Sphinx:

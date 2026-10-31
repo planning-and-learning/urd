@@ -1,16 +1,33 @@
-// Scopes, change logs, layers and families of Stores. Each family header a Store here needs is included, and no other.
-
-#include "urd/use/scopes.hpp"
+// Scopes, change logs, layers and families of Stores. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/scoped.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/pools.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <algorithm>
 #include <chrono>

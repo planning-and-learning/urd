@@ -7,24 +7,51 @@
 //
 // Release only: the linear cases do millions of operations.
 
+// Every container, before anything that names a Store: a Store's container is resolved where the Store is
+// first named, and only containers whose headers precede that are found defined.
+#include "urd/repr/addressable_heap.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/bucket_queue.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel_hash.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/queue.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/recycling.hpp"
+#include "urd/repr/ring_fifo.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/scoped.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
+// The tables and the grid.
 #include "complexity.hpp"
 #include "grid.hpp"
 #include "urd/registry.hpp"
+#include "urd/registry/candidates.hpp"
 #include "urd/store.hpp"
-// Every family the requests below resolve to.
-#include "urd/use/contiguous.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/nodes.hpp"
-#include "urd/use/pools.hpp"
-#include "urd/use/queues.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/scopes.hpp"
-#include "urd/use/sequences.hpp"
-#if defined(URD_HAS_GTL)
-#include "urd/use/parallel.hpp"
-#endif
 
 #include <algorithm>
 #include <cstddef>

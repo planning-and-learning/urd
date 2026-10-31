@@ -1,6 +1,6 @@
 // One container's benchmarks: its experiments (benchmarks/cells.hpp), each the container's lifecycle on one shape of
 // element at each size (benchmarks/lifecycle.hpp). CMake compiles this file once per container listed in
-// benchmarks/requests.json, through a generated source that includes the container's family headers first (only
+// benchmarks/requests.json, through a generated source that includes the container's headers first (only
 // those: a header costs its compile whether used or not), defines
 //
 //     URD_CONTAINER    its id (urd::test::name<R>::id)
@@ -13,7 +13,12 @@
 // definitions), the hash set of `Store<key<int>>` stands in.
 
 #if !defined(URD_CONTAINER)
-#include "urd/use/hash.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #endif
 
 #include "lifecycle.hpp"

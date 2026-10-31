@@ -14,7 +14,7 @@ namespace urd
 
 // Boost's open-addressing hash tables, with a natural hash on hashable elements. Elements live in one array of
 // slots, so a rehash moves them (no stable_refs); erase and clear keep the slots. Declared here through Boost's
-// forward headers; defined by urd/use/hash.hpp.
+// forward headers; defined by urd/repr/unordered_flat_set.hpp and urd/repr/unordered_flat_map.hpp.
 template<typename T, typename H, typename E, typename Allocator>
     requires natural_hash<H, E, T>
 struct container_traits<boost::unordered_flat_set<T, H, E, Allocator>> : properties_of<unique, sparse, shrinkable, retains>
@@ -28,9 +28,9 @@ struct container_traits<boost::unordered_flat_map<K, V, H, E, Allocator>> : prop
 };
 
 template<typename T, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<boost::unordered_flat_set<T, H, E, Allocator>> = detail::fixed_string("urd/use/hash.hpp");
+inline constexpr auto defined_in<boost::unordered_flat_set<T, H, E, Allocator>> = detail::fixed_string("urd/repr/unordered_flat_set.hpp");
 template<typename K, typename V, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<boost::unordered_flat_map<K, V, H, E, Allocator>> = detail::fixed_string("urd/use/hash.hpp");
+inline constexpr auto defined_in<boost::unordered_flat_map<K, V, H, E, Allocator>> = detail::fixed_string("urd/repr/unordered_flat_map.hpp");
 
 }  // namespace urd
 

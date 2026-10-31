@@ -20,7 +20,6 @@ endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-option(URD_WITH_GTL "Concurrent sets and maps by hashed keys: gtl's parallel hash tables." ON)
 option(URD_ENABLE_FMT_FORMATTERS "urd/format.hpp: how urd's types are written, with fmt." ON)
 # The superbuild's prefix comes after any prefix the user set, so a consumer may point at its own Boost.
 list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
@@ -30,10 +29,11 @@ if(URD_ENABLE_FMT_FORMATTERS OR URD_BUILD_TESTS OR URD_BUILD_BENCHMARKS)
     find_package(fmt CONFIG REQUIRED)
 endif()
 # Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2 (xxHash for
-# urd::Hash, in Boost since 1.89); cista (serialization, for records stored flat). All header-only but for
-# Boost.Container's small runtime library.
+# urd::Hash, in Boost since 1.89); cista (serialization, for records stored flat); gtl (sharded hash tables, for
+# concurrent sets and maps by hashed keys). All header-only but for Boost.Container's small runtime library.
 find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container unordered hash2)
 find_package(cista REQUIRED CONFIG)
+find_package(gtl REQUIRED CONFIG)
 
 add_library(urd INTERFACE)
 add_library(urd::urd ALIAS urd)
@@ -43,12 +43,7 @@ target_include_directories(urd INTERFACE
 )
 target_compile_features(urd INTERFACE cxx_std_20)
 # Imported targets' headers are system headers, so the build's warnings cover only urd.
-target_link_libraries(urd INTERFACE Boost::container Boost::unordered Boost::hash2 cista::cista)
-if(URD_WITH_GTL)
-    find_package(gtl REQUIRED CONFIG)
-    target_link_libraries(urd INTERFACE gtl::gtl)
-    target_compile_definitions(urd INTERFACE URD_HAS_GTL=1)
-endif()
+target_link_libraries(urd INTERFACE Boost::container Boost::unordered Boost::hash2 cista::cista gtl::gtl)
 if(URD_ENABLE_FMT_FORMATTERS)
     target_link_libraries(urd INTERFACE fmt::fmt)
     target_compile_definitions(urd INTERFACE URD_ENABLE_FMT_FORMATTERS=1)

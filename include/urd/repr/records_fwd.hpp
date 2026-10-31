@@ -1,23 +1,18 @@
 #pragma once
 
 // Pools of records, each one block of bytes read by index: declared, with what the registry reads of them. Their
-// definitions are urd/repr/records.hpp (the record interner) and urd/repr/arena.hpp (the arena interner), which
-// urd/use/records.hpp includes.
+// definitions are urd/repr/records.hpp (the record interner) and urd/repr/arena.hpp (the arena interner).
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/registry/element_concepts.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
 
 namespace urd::repr
 {
-
-/// A record cista can serialize into the arena: hashable (its identity), and naming its members for cista
-/// (cista_members() gives urd::Members<&T::a, …>). Never a Store, which asking would complete.
-template<typename T>
-concept flat_record = !is_store<T> && hashable<T> && requires { T::cista_members(); };
 
 /// A pool of trivially copyable records, each distinct one once, in an indexed set (urd/repr/records.hpp).
 template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe>
@@ -54,9 +49,9 @@ struct container_traits<repr::ArenaInterner<T, ThreadSafe>> :
 };
 
 template<typename T, bool ThreadSafe, bool Stable>
-inline constexpr auto defined_in<repr::RecordInterner<T, ThreadSafe, Stable>> = detail::fixed_string("urd/use/records.hpp");
+inline constexpr auto defined_in<repr::RecordInterner<T, ThreadSafe, Stable>> = detail::fixed_string("urd/repr/records.hpp");
 template<typename T, bool ThreadSafe>
-inline constexpr auto defined_in<repr::ArenaInterner<T, ThreadSafe>> = detail::fixed_string("urd/use/records.hpp");
+inline constexpr auto defined_in<repr::ArenaInterner<T, ThreadSafe>> = detail::fixed_string("urd/repr/arena.hpp");
 
 }  // namespace urd
 

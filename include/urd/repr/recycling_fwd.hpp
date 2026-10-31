@@ -1,7 +1,7 @@
 #pragma once
 
 // Node containers that keep their erased nodes for reuse, declared with what the registry reads of them. Defined in
-// urd/repr/recycling.hpp, which urd/use/nodes.hpp includes.
+// urd/repr/recycling.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -76,9 +76,9 @@ struct parts<repr::RecyclingSet<Set>>
 };
 
 template<typename Map>
-inline constexpr auto defined_in<repr::Recycling<Map>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<repr::Recycling<Map>> = detail::fixed_string("urd/repr/recycling.hpp");
 template<typename Set>
-inline constexpr auto defined_in<repr::RecyclingSet<Set>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<repr::RecyclingSet<Set>> = detail::fixed_string("urd/repr/recycling.hpp");
 
 }  // namespace urd
 

@@ -56,22 +56,20 @@ namespace urd
 namespace detail
 {
 
-/// The first base of a Store: the representation must be defined here. The registry only declares representations;
-/// the header of R's family, urd/use/<family>.hpp (defined_in<R>), defines them and marks that it was included.
-/// Checked by the marker, never by completing R, and for a wrapper's parts first, so that one compile names every
-/// header missing. Both compilers print the header's path in the failed condition: urd::include<"urd/use/...">.
-template<typename List>
-struct complete_parts;
+/// The first base of a Store: its container's headers are included here. Where they are not, the request resolved
+/// to a missing_container (urd/registry/select.hpp), whose arguments name the request, the container and the headers
+/// to include; the error is this one, at the first Store instantiated.
 template<typename R>
-struct complete_representation : complete_parts<typename parts<R>::type>
+struct complete_representation
 {
-    static_assert(included<defined_in<R>> || repr::dependent_false<include<defined_in<R>>>::value,
-                  "urd::Store: the representation's family is not included here: #include the header that urd::include<\"...\"> names "
-                  "in this error (docs/RESOLUTION.md names each request's)");
 };
-template<typename... Ps>
-struct complete_parts<type_list<Ps...>> : complete_representation<Ps>...
+template<typename S, fixed_string Container, typename Missing>
+struct complete_representation<missing_container<S, Container, Missing>>
 {
+    static_assert(repr::dependent_false<S>::value,
+                  "urd::Store: this file does not include the headers that define the container its request resolves to. "
+                  "#include each header urd::include<\"...\"> names in the type_list above, in that order "
+                  "(docs/RESOLUTION.md names each request's)");
 };
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties

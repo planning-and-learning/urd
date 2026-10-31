@@ -6,10 +6,8 @@ include(CMakeFindDependencyMacro)
 find_dependency(Boost 1.89 CONFIG COMPONENTS container unordered hash2)
 # cista: serialization, for records stored flat.
 find_dependency(cista CONFIG)
-if(@URD_WITH_GTL@)
-    # gtl: the parallel hash tables behind concurrent sets and maps by hashed keys.
-    find_dependency(gtl CONFIG)
-endif()
+# gtl: the parallel hash tables behind concurrent sets and maps by hashed keys.
+find_dependency(gtl CONFIG)
 if(@URD_ENABLE_FMT_FORMATTERS@)
     # fmt: how urd's types are written (urd/format.hpp).
     find_dependency(fmt CONFIG)

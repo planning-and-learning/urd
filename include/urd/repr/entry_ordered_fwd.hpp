@@ -1,7 +1,7 @@
 #pragma once
 
 // A map whose entries are kept in an order that may read the values, declared with what the registry reads of it.
-// Defined in urd/repr/entry_ordered.hpp, which urd/use/contiguous.hpp includes.
+// Defined in urd/repr/entry_ordered.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -31,7 +31,7 @@ template<typename K, typename V, typename Order>
 inline constexpr bool orders_by_value<repr::FlatEntryMap<K, V, Order>> = true;
 
 template<typename K, typename V, typename Order>
-inline constexpr auto defined_in<repr::FlatEntryMap<K, V, Order>> = detail::fixed_string("urd/use/contiguous.hpp");
+inline constexpr auto defined_in<repr::FlatEntryMap<K, V, Order>> = detail::fixed_string("urd/repr/entry_ordered.hpp");
 
 }  // namespace urd
 

@@ -1,16 +1,28 @@
-// Maps whose values merge, nested dense maps, and maps that recycle their nodes. Each family header a Store here needs is included, and no other.
+// Maps whose values merge, nested dense maps, and maps that recycle their nodes. Each header a Store here needs is included.
 
-#include "urd/store.hpp"
-#include "urd/use/scopes.hpp"
-#if defined(URD_HAS_GTL)
-#include "urd/use/parallel.hpp"
-#endif
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/nodes.hpp"
+#include "urd/registry/aliases.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel_hash.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/recycling.hpp"
+#include "urd/repr/scoped.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
+#include "urd/store.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -190,7 +202,6 @@ TEST(Merge, ThreadsUpdateTogether)
 }
 
 // Threads updating and reading the same hashed keys of a shared map at once: every update counts.
-#if defined(URD_HAS_GTL)
 TEST(Merge, ThreadsUpdateHashedKeysTogether)
 {
     auto counts = Store<key<std::string>, value<int>, urd::concurrent>();
@@ -215,7 +226,6 @@ TEST(Merge, ThreadsUpdateHashedKeysTogether)
         total += counts.at(std::to_string(key));
     EXPECT_EQ(total, threads * rounds);
 }
-#endif
 
 // A sorted map whose values are rows that keep their memory: erased keys leave their nodes and values for the next
 // keys, so buckets of a cost queue, emptied and refilled, allocate nothing once warm.

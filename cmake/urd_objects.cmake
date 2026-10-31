@@ -9,12 +9,11 @@ function(urd_small_object target)
     endif()
 endfunction()
 
-# One object per container of benchmarks/requests.json, each compiling SOURCE with only that container's family headers
+# One object per container of benchmarks/requests.json, each compiling SOURCE with only that container's headers
 # included first, so adding a container adds its own objects and changing one rebuilds its own. KEY names the map of
 # containers to grid positions (FIELDS numbers each); an object takes at most PER_OBJECT of them, so no object grows
 # with the grid. Each object defines URD_CONTAINER, DEFINE (its positions) and URD_CHUNK (its index among the
-# container's objects), and its source ends with TAIL, where @object@ is the object's name. Without gtl, gtl's
-# containers are left out. The objects are named PREFIX_<container>_<chunk> and returned in OUT_OBJECTS.
+# container's objects), and its source ends with TAIL, where @object@ is the object's name. The objects are named PREFIX_<container>_<chunk> and returned in OUT_OBJECTS.
 function(urd_per_container)
     cmake_parse_arguments(PARSE_ARGV 0 arg "" "KEY;FIELDS;PER_OBJECT;PREFIX;SOURCE;DEFINE;TAIL;OUT_OBJECTS" "LINK")
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
@@ -33,19 +32,16 @@ function(urd_per_container)
             break()
         endif()
         string(JSON container MEMBER "${requests}" ${arg_KEY} ${index})
-        if(NOT URD_WITH_GTL AND container MATCHES "^parallel_")
-            continue()
-        endif()
-        string(JSON families_count ERROR_VARIABLE no_families LENGTH "${requests}" families ${container})
-        if(no_families)
-            set(families_count 0)
+        string(JSON headers_count ERROR_VARIABLE no_headers LENGTH "${requests}" headers ${container})
+        if(no_headers)
+            set(headers_count 0)
         endif()
         set(headers "")
-        if(families_count GREATER 0)
-            math(EXPR last_family "${families_count} - 1")
-            foreach(at RANGE ${last_family})
-                string(JSON family GET "${requests}" families ${container} ${at})
-                string(APPEND headers "#include \"urd/use/${family}.hpp\"\n")
+        if(headers_count GREATER 0)
+            math(EXPR last_header "${headers_count} - 1")
+            foreach(at RANGE ${last_header})
+                string(JSON header GET "${requests}" headers ${container} ${at})
+                string(APPEND headers "#include \"${header}\"\n")
             endforeach()
         endif()
         string(JSON values LENGTH "${requests}" ${arg_KEY} ${container})

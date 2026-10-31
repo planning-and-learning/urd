@@ -1,9 +1,8 @@
 #pragma once
 
 // Multimaps whose values lie together per key, declared with what the registry reads of them: compressed sparse rows
-// (frozen, by key index, with or without the inverse), growing rows per index, and postings in a hash table. The
-// first three are defined in urd/repr/grouped.hpp (urd/use/dense.hpp), the postings in urd/repr/postings.hpp
-// (urd/use/hash.hpp).
+// (frozen, by key index, with or without the inverse), growing rows per index, and postings in a hash table. Defined
+// in urd/repr/csr_multimap.hpp, bidirectional_csr.hpp, dense_multimap.hpp and postings.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -70,13 +69,13 @@ struct container_traits<repr::DenseMultiMap<K, V>> : properties_of<sorted, multi
 };
 
 template<typename K, typename V>
-inline constexpr auto defined_in<repr::CsrMultiMap<K, V>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::CsrMultiMap<K, V>> = detail::fixed_string("urd/repr/csr_multimap.hpp");
 template<typename K, typename V>
-inline constexpr auto defined_in<repr::BidirectionalCsr<K, V>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::BidirectionalCsr<K, V>> = detail::fixed_string("urd/repr/bidirectional_csr.hpp");
 template<typename K, typename V>
-inline constexpr auto defined_in<repr::DenseMultiMap<K, V>> = detail::fixed_string("urd/use/dense.hpp");
+inline constexpr auto defined_in<repr::DenseMultiMap<K, V>> = detail::fixed_string("urd/repr/dense_multimap.hpp");
 template<typename K, typename V>
-inline constexpr auto defined_in<repr::PostingMap<K, V>> = detail::fixed_string("urd/use/hash.hpp");
+inline constexpr auto defined_in<repr::PostingMap<K, V>> = detail::fixed_string("urd/repr/postings.hpp");
 
 }  // namespace urd
 

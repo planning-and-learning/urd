@@ -1,5 +1,8 @@
 #pragma once
 
+#include "urd/registry/row.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/indexed_fwd.hpp"
 #include "urd/repr/ordered_map_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -38,9 +41,7 @@ public:
 
     template<std::input_iterator InputIt>
     OrderedMap(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     [[nodiscard]] iterator begin() const { return iterator(this, 0); }
     [[nodiscard]] iterator end() const { return iterator(this, size()); }
@@ -94,14 +95,10 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    {
-        return try_emplace(K(pair.first), pair.second);
-    }
+    { return try_emplace(K(pair.first), pair.second); }
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    {
-        return insert(pair).first;
-    }
+    { return insert(pair).first; }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -109,9 +106,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(std::pair<K, V>(std::forward<Args>(args)...));
-    }
+    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
 
     size_type erase(const K& key)
     {
@@ -187,9 +182,7 @@ public:
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_position == rhs.m_position; }
         /// How many entries lie between: positions, so that an entry's position is `it - begin()`.
         friend difference_type operator-(const iterator& lhs, const iterator& rhs)
-        {
-            return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position);
-        }
+        { return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position); }
 
     private:
         friend class OrderedMap;
@@ -218,3 +211,29 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/ordered_map.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"ordered_map", S>
+{
+    using type = repr::OrderedMap<repr::IndexedSet<typename S::key_type>, typename S::mapped_type>;
+};
+template<typename S>
+struct representation_of<"dense_ordered_map", S>
+{
+    using type = repr::OrderedMap<repr::SparseSet<typename S::key_type, true>, typename S::mapped_type>;
+};
+
+}  // namespace urd::detail

@@ -137,6 +137,10 @@ inline constexpr std::array guaranteed_roots { tag::any_order,          tag::dup
                                                tag::any_access,         tag::any_scope,       tag::any_layering,  tag::any_tracking, tag::any_handle,
                                                tag::any_sharing,        tag::any_grouping,    tag::any_direction, tag::any_shape,    tag::any_packing };
 inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::by_key, tag::general, tag::any_priority };
+/// The tags no request states: the library derives them (a map is functional unless it says multi; what a Store's
+/// interface offers follows from frozen, monotone, nonempty and fixed_shape), and containers still declare them. A
+/// public tag changes some resolution or rejects some request; these would only repeat what is derived.
+inline constexpr std::array internal_tags { tag::immutable, tag::growable, tag::shrinkable, tag::functional };
 
 constexpr bool in(tag root, const auto& roots)
 {

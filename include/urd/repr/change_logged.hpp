@@ -1,8 +1,12 @@
 #pragma once
 
 #include "urd/interface.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/change_logged_fwd.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/flat_hash.hpp"
 #include "urd/repr/indexed.hpp"
+#include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -130,3 +134,40 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/change_logged.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"change_logged_unordered_flat_set", S>
+{
+    using type =
+        repr::ChangeLogged<boost::unordered_flat_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
+};
+template<typename S>
+struct representation_of<"change_logged_tracked_dense_set", S>
+{
+    using type = repr::ChangeLogged<repr::DenseSet<typename S::element_type, true>>;
+};
+template<typename S>
+struct representation_of<"change_logged_unordered_set", S>
+{
+    using type = repr::ChangeLogged<std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
+};
+template<typename S>
+struct representation_of<"change_logged_set", S>
+{
+    using type = repr::ChangeLogged<std::set<typename S::element_type, urd::Less<typename S::element_type>>>;
+};
+
+}  // namespace urd::detail

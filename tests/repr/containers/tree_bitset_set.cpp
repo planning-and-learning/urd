@@ -3,7 +3,7 @@
 // fixed at 32 bits, and yggdrasil's default arity 2 spelled out. The concurrent tests come with the concurrent node
 // tables; the boost::dynamic_bitset adapters are not copied.
 
-#include "urd/repr/dense.hpp"
+#include "urd/repr/dense_set.hpp"
 #include "urd/repr/tree_bitset.hpp"
 
 #include <algorithm>

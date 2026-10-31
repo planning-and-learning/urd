@@ -9,53 +9,75 @@ properties it keeps in ``container_traits``, and the typed tests check every dec
 model through thousands of random operations; a deliberately wrong declaration is caught. Adding a container is
 described in :doc:`INTEGRATION`.
 
-Families
---------
+Headers
+-------
 
-``urd/store.hpp`` declares every representation and defines none (``include/urd/repr/*_fwd.hpp``: the declaration,
-its defaults, its traits, and the header that defines it). A file includes the families it holds Stores of; a Store
-whose family is missing fails to compile naming the header, a wrapper's part before the wrapper. ``docs/RESOLUTION.md``
-gives each request's family.
+``urd/store.hpp`` declares the representations and defines none (``include/urd/repr/*_fwd.hpp``: the declaration,
+its defaults, its traits, and the header that defines it), and a request names only the container it resolves to. A
+file includes the header of each container its Stores resolve to, in ``urd/repr/``, and nothing grouped; a Store whose
+container's header is missing fails to compile naming the headers to include, a wrapper's part before the wrapper.
+``docs/RESOLUTION.md`` gives each request's headers.
 
 .. list-table::
    :header-rows: 1
-   :widths: 24 56 20
+   :widths: 34 46 20
 
-   * - Header
+   * - Header (``urd/repr/``)
      - Defines
      - Pulls in
-   * - ``urd/use/dense.hpp``
-     - keys that are indices: the bitset and sparse sets, the slot-per-index maps, the insertion-ordered map over a sparse set, the partition, the multimaps by key index
+   * - ``dense_set.hpp``, ``sparse_set.hpp``, ``index_map.hpp``
+     - the bitset, the sparse set, the slot-per-index maps
      - nothing
-   * - ``urd/use/sequences.hpp``
-     - ``std::vector``, the segmented vector, rows flattened into one array, rows kept for reuse
+   * - ``disjoint_sets.hpp``
+     - the partition
      - nothing
-   * - ``urd/use/nodes.hpp``
+   * - ``csr_multimap.hpp``, ``bidirectional_csr.hpp``, ``dense_multimap.hpp``
+     - the multimaps by key index
+     - nothing
+   * - ``postings.hpp``
+     - the postings (values together per key in a hash table)
+     - Boost.Unordered
+   * - ``ordered_map.hpp``
+     - the insertion-ordered map (with its keys' header)
+     - nothing
+   * - ``sequence.hpp``, ``segmented.hpp``
+     - ``std::vector``, the segmented vector
+     - nothing
+   * - ``jagged.hpp``, ``row_pool.hpp``
+     - rows flattened into one array, rows kept for reuse
+     - nothing
+   * - ``std_set.hpp``, ``std_map.hpp``, ``recycling.hpp``
      - the standard's node containers and the recycling wrappers
      - nothing
-   * - ``urd/use/queues.hpp``
-     - first in (deque or ring), last in, the least first (heap, addressable heap, bucket queue)
+   * - ``queue.hpp``, ``ring_fifo.hpp``, ``addressable_heap.hpp``, ``bucket_queue.hpp``
+     - first in (deque or ring), last in, the least first
      - nothing
-   * - ``urd/use/hash.hpp``
-     - Boost's flat hash tables, the indexed sets, the insertion-ordered map over one, the postings, the change log
+   * - ``unordered_flat_set.hpp``, ``unordered_flat_map.hpp``
+     - Boost's flat hash tables
      - Boost.Unordered
-   * - ``urd/use/contiguous.hpp``
+   * - ``indexed.hpp``
+     - the indexed sets (interners)
+     - Boost.Unordered
+   * - ``change_logged.hpp``
+     - the change log (with the logged set's header)
+     - Boost.Unordered
+   * - ``flat_set.hpp``, ``flat_map.hpp``, ``entry_ordered.hpp``
      - Boost's flat sorted containers; the map ordered by its values
      - Boost.Container
-   * - ``urd/use/pools.hpp``
+   * - ``pools.hpp``, ``tree_vector.hpp``, ``tree_bitset.hpp``, ``slots.hpp``
      - the row interner, the tree pools, the slot vector
      - Boost.Unordered
-   * - ``urd/use/records.hpp``
+   * - ``records.hpp``, ``arena.hpp``
      - the record interner and the arena interner
      - Boost.Unordered, cista
-   * - ``urd/use/scopes.hpp``
-     - the scoped map (with the family of the map it scopes)
+   * - ``scoped.hpp``
+     - the scoped map (with the scoped map's header)
      - nothing
-   * - ``urd/use/layers.hpp``
-     - layered sets, maps and pools (with the family of what is layered)
+   * - ``layer.hpp``, ``layered_pool.hpp``
+     - layered sets, maps and pools (with the layered container's header)
      - nothing
-   * - ``urd/use/parallel.hpp``
-     - gtl's sharded tables; only with ``URD_WITH_GTL``
+   * - ``parallel_hash.hpp``
+     - gtl's sharded tables
      - gtl
 
 The standard library's and Boost's

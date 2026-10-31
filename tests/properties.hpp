@@ -4,7 +4,7 @@
 // per property, skipped for a container that does not declare it, and one that drives every operation at random
 // through urd::verify. A type-parameterized suite (GoogleTest's TYPED_TEST_SUITE_P): each container's test object
 // (tests/container.cpp, compiled once per container) instantiates it for that container and the Stores over it, so
-// adding a container adds its own tests. The family headers a container needs are included before this header.
+// adding a container adds its own tests. The headers a container needs are included before this header.
 
 #include "allocations.hpp"
 #include "names.hpp"

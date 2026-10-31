@@ -4,9 +4,11 @@
 
 ```cpp
 #include <urd/store.hpp>
-#include <urd/use/dense.hpp>   // the families these Stores resolve to: dense keys,
-#include <urd/use/hash.hpp>    // an interner,
-#include <urd/use/queues.hpp>  // a queue
+#include <urd/repr/indexed.hpp>            // the containers these Stores resolve to: an interner,
+#include <urd/repr/bidirectional_csr.hpp>  // a graph by index both ways,
+#include <urd/repr/dense_set.hpp>          // a bitset,
+#include <urd/repr/queue.hpp>              // a queue,
+#include <urd/repr/index_map.hpp>          // a slot per index
 using namespace urd;
 
 struct User                                                             // an index: one integral member
@@ -56,18 +58,16 @@ while (!frontier.empty())
 
 ## The language
 
-Tags answer questions, and the questions fall into six themes:
+Tags answer questions, and the questions fall into four groups, by what leaving out a tag you need causes:
 
-| Theme | It asks | In the example |
+| Group | Leaving it out | In the example |
 |---|---|---|
-| [What it is](https://verdog-ai.github.io/urd/language/kind.html) | a queue, a pool, a partition? one value per key or many? | `fifo` (Frontier), `multi`, `bidirectional` (Follows) |
-| [What the data is like](https://verdog-ai.github.io/urd/language/data.html) | which keys? duplicates? how many? | `dense` (Seen, Distance, Follows) |
-| [Order](https://verdog-ai.github.io/urd/language/order.html) | sorted, insertion order, by position? | `positional` (Names) |
-| [Change over time](https://verdog-ai.github.io/urd/language/change.html) | built once, only grows? how is it cleared? | `frozen` (Follows), `monotone` (Names), `constant_clear` (Distance) |
-| [Memory and layout](https://verdog-ai.github.io/urd/language/memory.html) | stable references, one array, freed memory? | |
-| [Threads](https://verdog-ai.github.io/urd/language/threads.html) | shared between threads? | |
+| [Kind](https://verdog-ai.github.io/urd/language/kind.html) | does not compile | `fifo` (Frontier) |
+| [Semantics](https://verdog-ai.github.io/urd/language/semantics.html) | is a bug | `positional`, `monotone` (Names); `multi`, `frozen`, `bidirectional` (Follows); `dense` (Seen, Distance, Follows) |
+| [Costs](https://verdog-ai.github.io/urd/language/costs.html) | is slower by a complexity class | `constant_clear` (Distance) |
+| [Hints](https://verdog-ai.github.io/urd/language/hints.html) | is slower by a constant factor | |
 
-[How the language is organized](https://verdog-ai.github.io/urd/language/index.html) explains themes, questions and tags;
+[How the language is organized](https://verdog-ai.github.io/urd/language/index.html) explains groups, questions and tags;
 [the index by need](https://verdog-ai.github.io/urd/language/needs.html) starts from plain words ("reset every round", "union find").
 
 ## Use it
@@ -80,8 +80,8 @@ cmake --build build -j8 && ctest --test-dir build -j8
 cmake --install build --prefix <where>                                    # then find_package(urd) from there
 ```
 
-Link `urd::urd`, include `urd/store.hpp`, and include `urd/use/<family>.hpp` for the families your Stores resolve to:
-a missing one fails to compile with the header's path in the error.
+Link `urd::urd`, include `urd/store.hpp`, and include the header of each container your Stores resolve to: a missing
+one fails to compile with the headers to include in the error.
 
 ## Documentation
 

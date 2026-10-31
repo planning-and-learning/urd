@@ -1,15 +1,33 @@
 // What a Store is, checked at compile time: the order of a request's properties does not matter, what a request
 // implies, the interface its properties give (in the standard's names), which Stores hash, compare and order, and
 // that a Store adds no space to its representation. What each request resolves to is docs/RESOLUTION.md, checked by
-// the resolution test; only what that table cannot show is here (a build without gtl).
+// the resolution test; only what that table cannot show is here.
 
 #include "urd/concepts.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/recycling.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/nodes.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -88,15 +106,9 @@ static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional
 // The log over the set the other properties pick: a tracked bitset for dense keys, a tree for sorted, nodes for
 // stable references (gap 4 of docs/SURVEY.md: runir's denotation states, tyr's delta fact sets).
 
-// Sets and maps shared by threads, by hashed keys: gtl's sharded tables (a build without gtl has none).
-#if defined(URD_HAS_GTL)
+// Sets and maps shared by threads, by hashed keys: gtl's sharded tables.
 // By an indexable key too: without dense, a hash table, not a slot per index.
 // Stability with concurrency on hashed keys: the node tables, whose elements a rehash leaves in place.
-#else
-// Without gtl there is no concurrent map by hashed keys, and a dense slot per index is no stand-in: a container that
-// stores by index demands keys that are indices, which this request never promised.
-static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, urd::concurrent>::type>::found);
-#endif
 // gtl's table keeps no storage for reuse, and a dense map may not stand in for it (its keys were not promised).
 static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, urd::concurrent, urd::retains>::type>::found);
 

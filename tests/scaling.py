@@ -3,7 +3,7 @@
     python3 -I scaling.py --label name --copies k --margin-mb m -- <compiler command...>
 
 Runs the command twice, with the registry as it is and grown by k copies of every container (URD_REGISTRY_COPIES,
-include/urd/registry/preferences.hpp: copies that selection checks as far as a real candidate that does not serve),
+include/urd/registry/rows.hpp: copies of every row that selection checks as it checks the row, and that serve nothing),
 and fails when the grown run's peak memory exceeds the first by more than the margin. Time is reported only.
 """
 

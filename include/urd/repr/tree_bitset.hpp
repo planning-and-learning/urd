@@ -2,6 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"
@@ -480,3 +481,29 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/tree_bitset.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"tree_bitset_set", S>
+{
+    using type = repr::TreeBitsetSet<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"thread_safe_tree_bitset_set", S>
+{
+    using type = repr::TreeBitsetSet<typename S::element_type, 4, true>;
+};
+
+}  // namespace urd::detail

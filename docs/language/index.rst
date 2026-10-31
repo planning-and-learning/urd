@@ -1,14 +1,35 @@
 How the language is organized
 =============================
 
-A request is a list of tags. Each tag answers a question about the data, and the questions are grouped in two
-levels:
+A request is a list of tags. Each tag answers a question about the data, and the questions fall into four groups,
+told apart by one test: **what does leaving out a tag you need cause?**
 
-- **A theme** is an area you may care about: what the Store is, what the data is like, order, change over time,
-  memory and layout, threads. Themes only organize; they have no rules.
-- **A category** is one question within a theme, such as *Which keys?* (theme: what the data is like). A request
-  answers each category at most once: ``dense`` and ``sparse`` both answer *Which keys?*, so a request holds one of
-  them. A category left unanswered stays at its **root**, which promises nothing: urd may pick anything there.
+.. list-table::
+   :header-rows: 1
+   :widths: 18 52 30
+
+   * - Group
+     - Leaving out a tag you need
+     - For example
+   * - :doc:`kind`
+     - does not compile: the operation does not exist
+     - ``fifo``, ``handles``, ``partition``
+   * - :doc:`semantics`
+     - is a bug: the program relies on something nobody keeps
+     - ``sorted``, ``stable_refs``, ``dense``, ``frozen``
+   * - :doc:`costs`
+     - is slower by a complexity class
+     - ``constant_clear``, ``retains``
+   * - :doc:`hints`
+     - is slower by a constant factor, and never changes a guarantee
+     - ``small``
+
+The test is about leaving a tag out. Asking for a tag you do not need only costs speed, whatever its group. Within
+the groups:
+
+- **A category** is one question, such as *Which keys?* (semantics). A request answers each category at most once:
+  ``dense`` and ``sparse`` both answer *Which keys?*, so a request holds one of them. A category left unanswered
+  stays at its **root**, which promises nothing: urd may pick anything there.
 - **A tag** is one answer to a category. Within a category some answers promise more than others:
   ``constant_clear`` (clear in O(1)) is at least ``proportional_clear`` (clear in O(elements present)), so a
   container that clears in O(1) also serves a request for ``proportional_clear``. Each category's diagram draws
@@ -22,20 +43,25 @@ Take ``Distance`` from the example on the :doc:`front page </index>`:
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 35 40
+   :widths: 18 32 50
 
-   * - Theme
+   * - Group
      - Category
-     - Answer
-   * - What it is
-     - *Values per key?*
-     - ``functional``, implied: a map without ``multi`` holds one value per key
-   * - What the data is like
+     - Answer, and what leaving it out would cause
+   * - Kind
+     - (from the arguments)
+     - ``key<User>, value<int>``: a map. Without ``value<int>`` it is a set, and ``distance[u]`` does not compile
+   * - Semantics
      - *Which keys?*
-     - ``dense``: the users are ids 0..n-1
-   * - Change over time
+     - ``dense``: the users are ids 0..n-1, which you promise. Left out, the Store is still correct, only no longer a
+       slot per user; stated falsely, it is a bug
+   * - Costs
      - *How is it cleared?*
-     - ``constant_clear``: in O(1)
+     - ``constant_clear``: in O(1). Left out, ``clear`` between searches may take time in proportion to the users
+       reached, a complexity class more over many searches
+   * - Hints
+     - (none)
+     - nothing to say about the workload
    * - Every other category
      - (unanswered)
      - its root: no promise
@@ -47,32 +73,36 @@ urd picks the cheapest container that keeps every answer: here a map with a gene
 Who keeps an answer
 -------------------
 
-Tags also differ in who makes the promise, shown on each tag's card:
+Tags also differ in who makes the promise, shown on each tag's card. The role follows from the group, and in
+semantics from who keeps the tag:
 
-- a **guarantee** is kept by the container (``sorted``, ``stable_refs``); containers declare their guarantees in
-  ``container_traits``, and the typed tests check them against a reference model;
-- a **demand** is a promise you make about the data (``dense``: the keys really are indices);
 - a **kind** makes the Store a queue, a pool or a partition (``fifo``, ``handles``, ``partition``);
-- a **request** only a request states (``frozen``, ``positional``);
+- a **guarantee** is kept by the container (``sorted``, ``stable_refs``, and the costs); containers declare their
+  guarantees in ``container_traits``, and the typed tests check them against a reference model;
+- a **demand** is a promise you make about the data (``dense``: the keys really are indices);
+- a **request** only a request states, and the Store's interface enforces it (``frozen``, ``positional``);
 - a **hint** (``small``) changes the choice, never a guarantee.
 
-The themes
+Some tags are never stated: a map is ``functional`` (one value per key) unless it says ``multi``, and what a Store
+offers (``immutable``, ``growable``, ``shrinkable``) follows from ``frozen``, ``monotone``, ``nonempty`` and
+``fixed_shape``. Containers still declare them, and their cards say so. A tag is public only where stating it changes
+which container is chosen or rejects some request.
+
+The groups
 ----------
 
-.. urd-themes::
+.. urd-groups::
 
-Each theme's page holds its categories, and each category its tags. To start from a need in plain words instead,
+Each group's page holds its categories, and each category its tags. To start from a need in plain words instead,
 see :doc:`needs`.
 
 .. toctree::
    :maxdepth: 1
 
    kind
-   data
-   order
-   change
-   memory
-   threads
+   semantics
+   costs
+   hints
    needs
 
 Order by a projection

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/recycling_fwd.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
@@ -41,9 +42,7 @@ public:
 
     template<std::input_iterator InputIt>
     Recycling(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     /// A value built from `args` for `key` unless it has one; a kept node first, where there is one.
     template<typename... Args>
@@ -76,14 +75,10 @@ public:
             V(pair.second);
         }
     std::pair<iterator, bool> insert(const Pair& pair)
-    {
-        return try_emplace(K(pair.first), pair.second);
-    }
+    { return try_emplace(K(pair.first), pair.second); }
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
-    {
-        return insert(pair).first;
-    }
+    { return insert(pair).first; }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
@@ -91,9 +86,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(std::pair<K, V>(std::forward<Args>(args)...));
-    }
+    { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
 
     size_type erase(const K& key)
     {
@@ -150,9 +143,7 @@ public:
 
     template<std::input_iterator InputIt>
     RecyclingSet(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     std::pair<iterator, bool> insert(const T& element) { return put(element); }
     std::pair<iterator, bool> insert(T&& element) { return put(std::move(element)); }
@@ -164,9 +155,7 @@ public:
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    {
-        return insert(T(std::forward<Args>(args)...));
-    }
+    { return insert(T(std::forward<Args>(args)...)); }
 
     size_type erase(const T& element)
     {
@@ -219,3 +208,39 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/recycling.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"recycling_hash_set", S>
+{
+    using type = repr::RecyclingHashSet<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"recycling_tree_set", S>
+{
+    using type = repr::RecyclingTreeSet<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"recycling_hash_map", S>
+{
+    using type = repr::RecyclingHashMap<typename S::key_type, typename S::mapped_type>;
+};
+template<typename S>
+struct representation_of<"recycling_map", S>
+{
+    using type = repr::Recycling<std::map<typename S::key_type, typename S::mapped_type, key_order_t<S>>>;
+};
+
+}  // namespace urd::detail

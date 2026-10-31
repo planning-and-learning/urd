@@ -10,7 +10,7 @@
 // `experiments`: what is measured. Each container on each shape of element, for the fewest requests whose operations
 // cover those of every request it serves on that shape (usually one; a second is "#2"), at the sizes of
 // benchmarks/cells.hpp. `containers` lists each one's experiments as (group, position, ordinal) in the grid and
-// `families` its family headers: CMake compiles one benchmark source per container from them
+// `headers` the headers it needs: CMake compiles one benchmark source per container from them
 // (benchmarks/experiment.cpp), which includes and instantiates that container only. `tested` lists, per container,
 // the requests its property tests run for (group, position, ...): those over ints that are no queue, pool or
 // partition; CMake compiles one test object per container from them (tests/container.cpp).
@@ -135,7 +135,7 @@ std::string generate()
         }
     }
     auto positions = std::map<std::string, std::string>();
-    auto families = std::map<std::string, std::vector<std::string>>();
+    auto headers_of = std::map<std::string, std::vector<std::string>>();
     auto tested = std::map<std::string, std::string>();
     out += "\n], \"experiments\": {\n";
     first = true;
@@ -147,10 +147,10 @@ std::string generate()
         first = false;
         auto& at = positions[each.container];
         at += (at.empty() ? "" : ", ") + std::to_string(each.group) + ", " + std::to_string(each.row->position) + ", " + std::to_string(each.ordinal);
-        auto& headers = families[each.container];
-        for (const auto& family : each.server->families)
-            if (std::ranges::find(headers, family) == headers.end())
-                headers.push_back(family);
+        auto& headers = headers_of[each.container];
+        for (const auto& header : each.server->headers)
+            if (std::ranges::find(headers, header) == headers.end())
+                headers.push_back(header);
         // The property suite (tests/properties.hpp) builds a container from ints: a set or sequence of them, or a map
         // of them; not a queue, a pool or a partition.
         const auto& offers = each.row->operations;
@@ -169,11 +169,11 @@ std::string generate()
         out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + at + "]";
         first = false;
     }
-    out += "\n}, \"families\": {\n";
+    out += "\n}, \"headers\": {\n";
     first = true;
     for (const auto& [container, at] : positions)
     {
-        out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + joined(families[container], json_text) + "]";
+        out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + joined(headers_of[container], json_text) + "]";
         first = false;
     }
     out += "\n}, \"tested\": {\n";

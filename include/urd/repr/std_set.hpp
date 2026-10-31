@@ -3,6 +3,7 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/traits.hpp"
 
 #include <functional>
@@ -36,11 +37,11 @@ struct container_traits<std::unordered_set<T, H, E, Allocator>> : properties_of<
 };
 
 template<typename T, typename C, typename Allocator>
-inline constexpr auto defined_in<std::set<T, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::set<T, C, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
 template<typename T, typename C, typename Allocator>
-inline constexpr auto defined_in<std::multiset<T, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::multiset<T, C, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
 template<typename T, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<std::unordered_set<T, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+inline constexpr auto defined_in<std::unordered_set<T, H, E, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
 
 }  // namespace urd
 
@@ -102,3 +103,29 @@ struct container_synopsis<std::multiset<T, C, A>>
 };
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/std_set.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"unordered_set", S>
+{
+    using type = std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>;
+};
+template<typename S>
+struct representation_of<"set", S>
+{
+    using type = std::set<typename S::element_type, element_order_t<S>>;
+};
+
+}  // namespace urd::detail

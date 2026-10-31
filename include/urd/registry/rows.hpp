@@ -355,147 +355,211 @@ namespace urd::detail
 /// The rows of element_preference (urd/registry/preferences.hpp), in its order.
 inline constexpr auto element_rows = std::to_array<registry_row>({
     { "jagged",
+      { "urd/repr/jagged.hpp" },
       [](const request_features& f) { return rows::jagged(f.element, false); },
       [](const request_features& f) { return rows::jagged_rows(f.element, false); } },
     { "tracked_jagged",
+      { "urd/repr/jagged.hpp" },
       [](const request_features& f) { return rows::jagged(f.element, true); },
       [](const request_features& f) { return rows::jagged_rows(f.element, true); } },
-    { "vector", [](const request_features&) { return rows::vector(); } },
-    { "unordered_flat_set", [](const request_features& f) { return rows::flat_hash_set(f.element); } },
-    { "unordered_set", [](const request_features& f) { return rows::hash_set(f.element); } },
-    { "set", [](const request_features& f) { return rows::tree_set(f.element, false); } },
-    { "flat_multiset", [](const request_features& f) { return rows::flat_multiset(f.element, false); } },
-    { "indexed_set", [](const request_features& f) { return rows::indexed_set(f.element); } },
-    { "flat_set", [](const request_features& f) { return rows::flat_set(f.element, false); } },
-    { "recycling_hash_set", [](const request_features& f) { return rows::recycling_set(rows::hash_set(f.element)); } },
-    { "recycling_tree_set", [](const request_features& f) { return rows::recycling_set(rows::tree_set(f.element, false)); } },
-    { "dense_set", [](const request_features& f) { return rows::dense_set(f.element, false); } },
-    { "tracked_dense_set", [](const request_features& f) { return rows::dense_set(f.element, true); } },
-    { "sparse_set", [](const request_features& f) { return rows::sparse_set(f.element, false); } },
-    { "stable_indexed_set", [](const request_features& f) { return rows::stable_indexed_set(f.element, false); } },
-    { "ordered_sparse_set", [](const request_features& f) { return rows::sparse_set(f.element, true); } },
-    { "segmented_vector", [](const request_features&) { return rows::segmented_vector(false); } },
-    { "concurrent_segmented_vector", [](const request_features&) { return rows::segmented_vector(true); } },
-    { "row_pool", [](const request_features& f) { return rows::row_pool(f.element); }, [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "fifo", [](const request_features&) { return rows::fifo(); } },
-    { "ring_fifo", [](const request_features&) { return rows::ring_fifo(); } },
-    { "lifo", [](const request_features&) { return rows::lifo(); } },
-    { "bucket_queue", [](const request_features& f) { return rows::bucket_queue(f.element, false); }, nullptr, property_set::of({ tag::monotone_priority }) },
-    { "heap", [](const request_features& f) { return rows::heap(f.element, false); } },
-    { "addressable_heap", [](const request_features& f) { return rows::addressable_heap(f.element, false); } },
-    { "layered", [](const request_features& f) { return rows::layered(rows::flat_hash_set(f.element)); } },
-    { "layered_node_set", [](const request_features& f) { return rows::layered(rows::hash_set(f.element)); } },
-    { "change_logged", [](const request_features& f) { return rows::change_logged(rows::flat_hash_set(f.element)); } },
-    { "change_logged_dense_set", [](const request_features& f) { return rows::change_logged(rows::dense_set(f.element, true)); } },
-    { "change_logged_node_set", [](const request_features& f) { return rows::change_logged(rows::hash_set(f.element)); } },
-    { "change_logged_tree_set", [](const request_features& f) { return rows::change_logged(rows::tree_set(f.element, false)); } },
+    { "vector", { "urd/repr/sequence.hpp" }, [](const request_features&) { return rows::vector(); } },
+    { "unordered_flat_set", { "urd/repr/unordered_flat_set.hpp" }, [](const request_features& f) { return rows::flat_hash_set(f.element); } },
+    { "unordered_set", { "urd/repr/std_set.hpp" }, [](const request_features& f) { return rows::hash_set(f.element); } },
+    { "set", { "urd/repr/std_set.hpp" }, [](const request_features& f) { return rows::tree_set(f.element, false); } },
+    { "flat_multiset", { "urd/repr/flat_set.hpp" }, [](const request_features& f) { return rows::flat_multiset(f.element, false); } },
+    { "indexed_set", { "urd/repr/indexed.hpp" }, [](const request_features& f) { return rows::indexed_set(f.element); } },
+    { "flat_set", { "urd/repr/flat_set.hpp" }, [](const request_features& f) { return rows::flat_set(f.element, false); } },
+    { "recycling_hash_set",
+      { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" },
+      [](const request_features& f) { return rows::recycling_set(rows::hash_set(f.element)); } },
+    { "recycling_tree_set",
+      { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" },
+      [](const request_features& f) { return rows::recycling_set(rows::tree_set(f.element, false)); } },
+    { "dense_set", { "urd/repr/dense_set.hpp" }, [](const request_features& f) { return rows::dense_set(f.element, false); } },
+    { "tracked_dense_set", { "urd/repr/dense_set.hpp" }, [](const request_features& f) { return rows::dense_set(f.element, true); } },
+    { "sparse_set", { "urd/repr/sparse_set.hpp" }, [](const request_features& f) { return rows::sparse_set(f.element, false); } },
+    { "stable_indexed_set", { "urd/repr/indexed.hpp" }, [](const request_features& f) { return rows::stable_indexed_set(f.element, false); } },
+    { "ordered_sparse_set", { "urd/repr/sparse_set.hpp" }, [](const request_features& f) { return rows::sparse_set(f.element, true); } },
+    { "segmented_vector", { "urd/repr/segmented.hpp" }, [](const request_features&) { return rows::segmented_vector(false); } },
+    { "concurrent_segmented_vector", { "urd/repr/segmented.hpp" }, [](const request_features&) { return rows::segmented_vector(true); } },
+    { "row_pool",
+      { "urd/repr/row_pool.hpp" },
+      [](const request_features& f) { return rows::row_pool(f.element); },
+      [](const request_features& f) { return rows::own_rows(f.element); } },
+    { "fifo", { "urd/repr/queue.hpp" }, [](const request_features&) { return rows::fifo(); } },
+    { "ring_fifo", { "urd/repr/ring_fifo.hpp" }, [](const request_features&) { return rows::ring_fifo(); } },
+    { "lifo", { "urd/repr/queue.hpp" }, [](const request_features&) { return rows::lifo(); } },
+    { "bucket_queue",
+      { "urd/repr/bucket_queue.hpp" },
+      [](const request_features& f) { return rows::bucket_queue(f.element, false); },
+      nullptr,
+      property_set::of({ tag::monotone_priority }) },
+    { "heap", { "urd/repr/queue.hpp" }, [](const request_features& f) { return rows::heap(f.element, false); } },
+    { "addressable_heap", { "urd/repr/addressable_heap.hpp" }, [](const request_features& f) { return rows::addressable_heap(f.element, false); } },
+    { "layered_unordered_flat_set",
+      { "urd/repr/unordered_flat_set.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::flat_hash_set(f.element)); } },
+    { "layered_unordered_set",
+      { "urd/repr/std_set.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::hash_set(f.element)); } },
+    { "change_logged_unordered_flat_set",
+      { "urd/repr/unordered_flat_set.hpp", "urd/repr/change_logged.hpp" },
+      [](const request_features& f) { return rows::change_logged(rows::flat_hash_set(f.element)); } },
+    { "change_logged_tracked_dense_set",
+      { "urd/repr/dense_set.hpp", "urd/repr/change_logged.hpp" },
+      [](const request_features& f) { return rows::change_logged(rows::dense_set(f.element, true)); } },
+    { "change_logged_unordered_set",
+      { "urd/repr/std_set.hpp", "urd/repr/change_logged.hpp" },
+      [](const request_features& f) { return rows::change_logged(rows::hash_set(f.element)); } },
+    { "change_logged_set",
+      { "urd/repr/std_set.hpp", "urd/repr/change_logged.hpp" },
+      [](const request_features& f) { return rows::change_logged(rows::tree_set(f.element, false)); } },
     { "row_interner",
+      { "urd/repr/pools.hpp" },
       [](const request_features& f) { return rows::row_interner(f.element, false); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
     { "tree_vector_set",
+      { "urd/repr/tree_vector.hpp" },
       [](const request_features& f) { return rows::tree_vector_set(f.element, false); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
     { "tree_bitset_set",
+      { "urd/repr/tree_bitset.hpp" },
       [](const request_features& f) { return rows::tree_bitset_set(f.element, false); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
     { "thread_safe_row_interner",
+      { "urd/repr/pools.hpp" },
       [](const request_features& f) { return rows::row_interner(f.element, true); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "tree_vector_set",
+    { "thread_safe_tree_vector_set",
+      { "urd/repr/tree_vector.hpp" },
       [](const request_features& f) { return rows::tree_vector_set(f.element, true); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "tree_bitset_set",
+    { "thread_safe_tree_bitset_set",
+      { "urd/repr/tree_bitset.hpp" },
       [](const request_features& f) { return rows::tree_bitset_set(f.element, true); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "record_interner", [](const request_features& f) { return rows::record_interner(f.element, false, false); } },
-    { "arena_interner", [](const request_features& f) { return rows::arena_interner(f.element, false); } },
-    { "stable_record_interner", [](const request_features& f) { return rows::record_interner(f.element, false, true); } },
-    { "thread_safe_record_interner", [](const request_features& f) { return rows::record_interner(f.element, true, false); } },
-    { "thread_safe_arena_interner", [](const request_features& f) { return rows::arena_interner(f.element, true); } },
-    { "layered_pool",
+    { "record_interner", { "urd/repr/records.hpp" }, [](const request_features& f) { return rows::record_interner(f.element, false, false); } },
+    { "arena_interner", { "urd/repr/arena.hpp" }, [](const request_features& f) { return rows::arena_interner(f.element, false); } },
+    { "stable_record_interner", { "urd/repr/records.hpp" }, [](const request_features& f) { return rows::record_interner(f.element, false, true); } },
+    { "thread_safe_record_interner", { "urd/repr/records.hpp" }, [](const request_features& f) { return rows::record_interner(f.element, true, false); } },
+    { "thread_safe_arena_interner", { "urd/repr/arena.hpp" }, [](const request_features& f) { return rows::arena_interner(f.element, true); } },
+    { "layered_row_interner",
+      { "urd/repr/pools.hpp", "urd/repr/layered_pool.hpp" },
       [](const request_features& f) { return rows::layered_pool(rows::row_interner(f.element, false)); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "layered_pool", [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, false, false)); } },
-    { "layered_pool", [](const request_features& f) { return rows::layered_pool(rows::arena_interner(f.element, false)); } },
-    { "layered_pool", [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, false, true)); } },
-    { "layered_pool",
+    { "layered_record_interner",
+      { "urd/repr/records.hpp", "urd/repr/layered_pool.hpp" },
+      [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, false, false)); } },
+    { "layered_arena_interner",
+      { "urd/repr/arena.hpp", "urd/repr/layered_pool.hpp" },
+      [](const request_features& f) { return rows::layered_pool(rows::arena_interner(f.element, false)); } },
+    { "layered_stable_record_interner",
+      { "urd/repr/records.hpp", "urd/repr/layered_pool.hpp" },
+      [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, false, true)); } },
+    { "layered_thread_safe_row_interner",
+      { "urd/repr/pools.hpp", "urd/repr/layered_pool.hpp" },
       [](const request_features& f) { return rows::layered_pool(rows::row_interner(f.element, true)); },
       [](const request_features& f) { return rows::own_rows(f.element); } },
-    { "layered_pool", [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, true, false)); } },
-    { "layered_pool", [](const request_features& f) { return rows::layered_pool(rows::arena_interner(f.element, true)); } },
-#if defined(URD_HAS_GTL)
-    { "parallel_hash_set", [](const request_features& f) { return rows::parallel_hash_set(f.element, false); } },
-    { "parallel_node_hash_set", [](const request_features& f) { return rows::parallel_hash_set(f.element, true); } },
-#endif
-    { "concurrent_indexed_set", [](const request_features& f) { return rows::stable_indexed_set(f.element, true); } },
-    { "slot_vector", [](const request_features&) { return rows::slot_vector(false); } },
-    { "thread_safe_slot_vector", [](const request_features&) { return rows::slot_vector(true); } },
-    { "disjoint_sets", [](const request_features& f) { return rows::disjoint_sets(f.element); } },
+    { "layered_thread_safe_record_interner",
+      { "urd/repr/records.hpp", "urd/repr/layered_pool.hpp" },
+      [](const request_features& f) { return rows::layered_pool(rows::record_interner(f.element, true, false)); } },
+    { "layered_thread_safe_arena_interner",
+      { "urd/repr/arena.hpp", "urd/repr/layered_pool.hpp" },
+      [](const request_features& f) { return rows::layered_pool(rows::arena_interner(f.element, true)); } },
+    { "parallel_hash_set", { "urd/repr/parallel_hash.hpp" }, [](const request_features& f) { return rows::parallel_hash_set(f.element, false); } },
+    { "parallel_node_hash_set", { "urd/repr/parallel_hash.hpp" }, [](const request_features& f) { return rows::parallel_hash_set(f.element, true); } },
+    { "concurrent_indexed_set", { "urd/repr/indexed.hpp" }, [](const request_features& f) { return rows::stable_indexed_set(f.element, true); } },
+    { "slot_vector", { "urd/repr/slots.hpp" }, [](const request_features&) { return rows::slot_vector(false); } },
+    { "thread_safe_slot_vector", { "urd/repr/slots.hpp" }, [](const request_features&) { return rows::slot_vector(true); } },
+    { "disjoint_sets", { "urd/repr/disjoint_sets.hpp" }, [](const request_features& f) { return rows::disjoint_sets(f.element); } },
 });
 
 /// The rows of map_preference, in its order.
 inline constexpr auto map_rows = std::to_array<registry_row>({
-    { "unordered_flat_map", [](const request_features& f) { return rows::flat_hash_map(f.key); } },
-    { "unordered_map", [](const request_features& f) { return rows::hash_map(f.key); } },
-    { "posting_map", [](const request_features& f) { return rows::posting_map(f.key); } },
-    { "unordered_multimap", [](const request_features& f) { return rows::hash_multimap(f.key); } },
-#if defined(URD_HAS_GTL)
-    { "parallel_hash_map", [](const request_features& f) { return rows::parallel_hash_map(f.key, false); } },
-    { "parallel_node_hash_map", [](const request_features& f) { return rows::parallel_hash_map(f.key, true); } },
-#endif
-    { "map", [](const request_features& f) { return rows::tree_map(f.key, false); } },
-    { "multimap", [](const request_features& f) { return rows::tree_multimap(f.key, false); } },
-    { "flat_multimap", [](const request_features& f) { return rows::flat_multimap(f.key, false); } },
-    { "flat_map", [](const request_features& f) { return rows::flat_map(f.key, false); } },
+    { "unordered_flat_map", { "urd/repr/unordered_flat_map.hpp" }, [](const request_features& f) { return rows::flat_hash_map(f.key); } },
+    { "unordered_map", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::hash_map(f.key); } },
+    { "posting_map", { "urd/repr/postings.hpp" }, [](const request_features& f) { return rows::posting_map(f.key); } },
+    { "unordered_multimap", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::hash_multimap(f.key); } },
+    { "parallel_hash_map", { "urd/repr/parallel_hash.hpp" }, [](const request_features& f) { return rows::parallel_hash_map(f.key, false); } },
+    { "parallel_node_hash_map", { "urd/repr/parallel_hash.hpp" }, [](const request_features& f) { return rows::parallel_hash_map(f.key, true); } },
+    { "map", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::tree_map(f.key, false); } },
+    { "multimap", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::tree_multimap(f.key, false); } },
+    { "flat_multimap", { "urd/repr/flat_map.hpp" }, [](const request_features& f) { return rows::flat_multimap(f.key, false); } },
+    { "flat_map", { "urd/repr/flat_map.hpp" }, [](const request_features& f) { return rows::flat_map(f.key, false); } },
     { "recycling_hash_map",
+      { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" },
       [](const request_features& f) { return rows::recycling(rows::hash_map(f.key)); },
       [](const request_features& f) { return rows::own_rows(f.mapped); } },
     { "recycling_map",
+      { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" },
       [](const request_features& f) { return rows::recycling(rows::tree_map(f.key, false)); },
       [](const request_features& f) { return rows::own_rows(f.mapped); } },
-    { "dense_map", [](const request_features& f) { return rows::index_map(f.key, false); } },
-    { "stable_dense_map", [](const request_features& f) { return rows::index_map(f.key, true); } },
-    { "generation_map", [](const request_features& f) { return rows::generation_map(f.key, f.mapped, false, false); } },
-    { "stable_generation_map", [](const request_features& f) { return rows::generation_map(f.key, f.mapped, false, true); } },
-    { "thread_safe_generation_map", [](const request_features& f) { return rows::generation_map(f.key, f.mapped, true, true); } },
-    { "ordered_map", [](const request_features& f) { return rows::ordered_map(rows::indexed_set(f.key), f.mapped); } },
-    { "ordered_map", [](const request_features& f) { return rows::ordered_map(rows::sparse_set(f.key, true), f.mapped); } },
-    { "csr_multimap", [](const request_features& f) { return rows::csr_multimap(f.key); } },
-    { "bidirectional_csr", [](const request_features& f) { return rows::bidirectional_csr(f.key, f.mapped); } },
-    { "dense_multimap", [](const request_features& f) { return rows::dense_multimap(f.key); } },
-    { "scoped_map", [](const request_features& f) { return rows::scoped(rows::flat_hash_map(f.key)); } },
-    { "scoped_tree_map", [](const request_features& f) { return rows::scoped(rows::tree_map(f.key, false)); } },
-    { "scoped_dense_map", [](const request_features& f) { return rows::scoped(rows::index_map(f.key, false)); } },
-    { "layered", [](const request_features& f) { return rows::layered(rows::flat_hash_map(f.key)); } },
-    { "layered_node_map", [](const request_features& f) { return rows::layered(rows::hash_map(f.key)); } },
-    { "layered", [](const request_features& f) { return rows::layered(rows::index_map(f.key, false)); } },
-    { "layered_generation_map", [](const request_features& f) { return rows::layered(rows::generation_map(f.key, f.mapped, false, false)); } },
+    { "dense_map", { "urd/repr/index_map.hpp" }, [](const request_features& f) { return rows::index_map(f.key, false); } },
+    { "stable_dense_map", { "urd/repr/index_map.hpp" }, [](const request_features& f) { return rows::index_map(f.key, true); } },
+    { "generation_map", { "urd/repr/index_map.hpp" }, [](const request_features& f) { return rows::generation_map(f.key, f.mapped, false, false); } },
+    { "stable_generation_map", { "urd/repr/index_map.hpp" }, [](const request_features& f) { return rows::generation_map(f.key, f.mapped, false, true); } },
+    { "thread_safe_generation_map", { "urd/repr/index_map.hpp" }, [](const request_features& f) { return rows::generation_map(f.key, f.mapped, true, true); } },
+    { "ordered_map",
+      { "urd/repr/indexed.hpp", "urd/repr/ordered_map.hpp" },
+      [](const request_features& f) { return rows::ordered_map(rows::indexed_set(f.key), f.mapped); } },
+    { "dense_ordered_map",
+      { "urd/repr/sparse_set.hpp", "urd/repr/ordered_map.hpp" },
+      [](const request_features& f) { return rows::ordered_map(rows::sparse_set(f.key, true), f.mapped); } },
+    { "csr_multimap", { "urd/repr/csr_multimap.hpp" }, [](const request_features& f) { return rows::csr_multimap(f.key); } },
+    { "bidirectional_csr", { "urd/repr/bidirectional_csr.hpp" }, [](const request_features& f) { return rows::bidirectional_csr(f.key, f.mapped); } },
+    { "dense_multimap", { "urd/repr/dense_multimap.hpp" }, [](const request_features& f) { return rows::dense_multimap(f.key); } },
+    { "scoped_map",
+      { "urd/repr/unordered_flat_map.hpp", "urd/repr/scoped.hpp" },
+      [](const request_features& f) { return rows::scoped(rows::flat_hash_map(f.key)); } },
+    { "scoped_tree_map",
+      { "urd/repr/std_map.hpp", "urd/repr/scoped.hpp" },
+      [](const request_features& f) { return rows::scoped(rows::tree_map(f.key, false)); } },
+    { "scoped_dense_map",
+      { "urd/repr/index_map.hpp", "urd/repr/scoped.hpp" },
+      [](const request_features& f) { return rows::scoped(rows::index_map(f.key, false)); } },
+    { "layered_unordered_flat_map",
+      { "urd/repr/unordered_flat_map.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::flat_hash_map(f.key)); } },
+    { "layered_unordered_map",
+      { "urd/repr/std_map.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::hash_map(f.key)); } },
+    { "layered_dense_map",
+      { "urd/repr/index_map.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::index_map(f.key, false)); } },
+    { "layered_generation_map",
+      { "urd/repr/index_map.hpp", "urd/repr/layer.hpp" },
+      [](const request_features& f) { return rows::layered(rows::generation_map(f.key, f.mapped, false, false)); } },
 });
 
 /// The rows of ordered_element_preference (over the request's comparator), in its order.
 inline constexpr auto ordered_element_rows = std::to_array<registry_row>({
-    { "set", [](const request_features& f) { return rows::tree_set(f.element, true); } },
-    { "flat_multiset", [](const request_features& f) { return rows::flat_multiset(f.element, true); } },
-    { "flat_set", [](const request_features& f) { return rows::flat_set(f.element, true); } },
-    { "bucket_queue", [](const request_features& f) { return rows::bucket_queue(f.element, true); }, nullptr, property_set::of({ tag::monotone_priority }) },
-    { "heap_by", [](const request_features& f) { return rows::heap(f.element, true); } },
-    { "addressable_heap", [](const request_features& f) { return rows::addressable_heap(f.element, true); } },
+    { "set", { "urd/repr/std_set.hpp" }, [](const request_features& f) { return rows::tree_set(f.element, true); } },
+    { "flat_multiset", { "urd/repr/flat_set.hpp" }, [](const request_features& f) { return rows::flat_multiset(f.element, true); } },
+    { "flat_set", { "urd/repr/flat_set.hpp" }, [](const request_features& f) { return rows::flat_set(f.element, true); } },
+    { "bucket_queue",
+      { "urd/repr/bucket_queue.hpp" },
+      [](const request_features& f) { return rows::bucket_queue(f.element, true); },
+      nullptr,
+      property_set::of({ tag::monotone_priority }) },
+    { "heap_by", { "urd/repr/queue.hpp" }, [](const request_features& f) { return rows::heap(f.element, true); } },
+    { "addressable_heap", { "urd/repr/addressable_heap.hpp" }, [](const request_features& f) { return rows::addressable_heap(f.element, true); } },
 });
 
 /// The rows of ordered_map_preference, in its order.
 inline constexpr auto ordered_map_rows = std::to_array<registry_row>({
-    { "map", [](const request_features& f) { return rows::tree_map(f.key, true); } },
-    { "multimap", [](const request_features& f) { return rows::tree_multimap(f.key, true); } },
-    { "flat_multimap", [](const request_features& f) { return rows::flat_multimap(f.key, true); } },
-    { "flat_map", [](const request_features& f) { return rows::flat_map(f.key, true); } },
+    { "map", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::tree_map(f.key, true); } },
+    { "multimap", { "urd/repr/std_map.hpp" }, [](const request_features& f) { return rows::tree_multimap(f.key, true); } },
+    { "flat_multimap", { "urd/repr/flat_map.hpp" }, [](const request_features& f) { return rows::flat_multimap(f.key, true); } },
+    { "flat_map", { "urd/repr/flat_map.hpp" }, [](const request_features& f) { return rows::flat_map(f.key, true); } },
     { "recycling_map",
+      { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" },
       [](const request_features& f) { return rows::recycling(rows::tree_map(f.key, true)); },
       [](const request_features& f) { return rows::own_rows(f.mapped); } },
 });
 
 /// The rows of value_ordered_map_preference.
 inline constexpr auto value_ordered_map_rows = std::to_array<registry_row>({
-    { "flat_entry_map", [](const request_features& f) { return rows::flat_entry_map(f.key, f.entry_less); } },
+    { "flat_entry_map", { "urd/repr/entry_ordered.hpp" }, [](const request_features& f) { return rows::flat_entry_map(f.key, f.entry_less); } },
 });
 
 }  // namespace urd::detail
@@ -514,7 +578,7 @@ struct request_shape
     bool is_map = false;
 };
 
-/// Whether `row` serves a request of shape `s` with features `f`: serves<R, S> (urd/registry/select.hpp), as values.
+/// Whether `row` serves a request of shape `s` with features `f`: serves<R, S> (urd/registry/candidates.hpp), as values.
 constexpr bool row_serves(const registry_row& row, const request_shape& s, const request_features& f)
 {
     const auto traits = row.traits(f);
@@ -533,12 +597,20 @@ constexpr bool row_serves(const registry_row& row, const request_shape& s, const
     return given && satisfies(*given, held.store_requirement);
 }
 
-/// The id of the first row of `table` serving the request, or "" where none does. Where elements are few or never
-/// change, rows with stable storage come last (reordered<> in urd/registry/select.hpp).
+/// The first row of `table` serving the request, or none. Where elements are few or never
+/// change, rows with stable storage come last (reordered<> in urd/registry/candidates.hpp).
 template<std::size_t N>
-constexpr std::string_view first_serving_row(const std::array<registry_row, N>& table, const request_shape& s, const request_features& f)
+constexpr const registry_row* first_serving_row(const std::array<registry_row, N>& table, const request_shape& s, const request_features& f)
 {
     const bool compact = s.stated.has(tag::frozen) || s.stated.has(tag::small);
+#if defined(URD_REGISTRY_COPIES)
+    // For tests/scaling only: the registry grown by URD_REGISTRY_COPIES copies of every row, which are checked as their
+    // rows are and serve nothing. Every request resolves as before, at the cost a registry that many times larger has.
+    for (int copy = 0; copy < URD_REGISTRY_COPIES; ++copy)
+        for (const auto& row : table)
+            if (row_serves(row, s, f) && row.id.empty())
+                return &row;
+#endif
     for (const int pass : { 0, 1 })
         for (const auto& row : table)
         {
@@ -547,9 +619,9 @@ constexpr std::string_view first_serving_row(const std::array<registry_row, N>& 
             if ((compact && stable) != (pass == 1))
                 continue;
             if (row_serves(row, s, f))
-                return row.id;
+                return &row;
         }
-    return {};
+    return nullptr;
 }
 
 }  // namespace urd::detail

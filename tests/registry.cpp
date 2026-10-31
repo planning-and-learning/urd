@@ -6,6 +6,7 @@
 
 #include "complexity.hpp"
 #include "grid.hpp"
+#include "urd/registry/candidates.hpp"
 
 #include <array>
 #include <gtest/gtest.h>

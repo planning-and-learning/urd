@@ -16,9 +16,7 @@
 #include "urd/repr/indexed_fwd.hpp"
 #include "urd/repr/layered_fwd.hpp"
 #include "urd/repr/ordered_map_fwd.hpp"
-#if defined(URD_HAS_GTL)
 #include "urd/repr/parallel.hpp"
-#endif
 #include "urd/repr/pools_fwd.hpp"
 #include "urd/repr/queues_fwd.hpp"
 #include "urd/repr/records_fwd.hpp"
@@ -143,9 +141,7 @@ template<typename T>
 using BucketQueueOf = repr::BucketQueue<T>;
 template<typename T>
 using AddressableHeapOf = repr::AddressableHeap<T>;
-// gtl's sharded tables, where the build has gtl (URD_WITH_GTL): without them a concurrent set or map by hashed keys
-// has no representation.
-#if defined(URD_HAS_GTL)
+// gtl's sharded tables: the concurrent sets and maps by hashed keys.
 template<typename T>
 using ParallelHashSetOf = repr::ParallelHashSet<T>;
 template<typename K, typename V>
@@ -154,7 +150,6 @@ template<typename T>
 using ParallelNodeHashSetOf = repr::ParallelNodeHashSet<T>;
 template<typename K, typename V>
 using ParallelNodeHashMapOf = repr::ParallelNodeHashMap<K, V>;
-#endif
 template<typename T>
 using RecyclingHashSetOf = repr::RecyclingHashSet<T>;
 template<typename T>

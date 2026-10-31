@@ -7,10 +7,14 @@
 // (claude.layout.md). The features are computed once per request (urd/registry/features.hpp).
 
 #include "urd/property_set.hpp"
+#include "urd/semantics/less.hpp"
+#include "urd/traits.hpp"
 
+#include <array>
 #include <initializer_list>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 
 namespace urd::detail
 {
@@ -53,15 +57,28 @@ struct request_features
 /// A row's properties for given element features, or none where it does not take these elements.
 using row_function = std::optional<property_set> (*)(const request_features&);
 
-/// A registered container as data. `rows`: what it guarantees the Stores it holds (element_traits), or none where it
+/// A registered container as data. `headers`: those a file holding a Store of it includes, a wrapper's part's first
+/// (urd::defined_in, urd::parts). `rows`: what it guarantees the Stores it holds (element_traits), or none where it
 /// gives them their own, but for memory.
 struct registry_row
 {
     std::string_view id;
+    std::array<std::string_view, 2> headers {};
     row_function traits = nullptr;
     row_function rows = nullptr;
     property_set relies_on = property_set::roots();
 };
+
+/// The container a row's id names for a spec S; declared only. Each container's own header specializes it
+/// (representation_of<"unordered_flat_set", S>), so a file names only the containers whose headers it includes.
+template<fixed_string Id, typename S>
+struct representation_of;
+
+/// The comparator of a container that takes one: the request's order_by where it gives one, else urd::Less.
+template<typename S>
+using element_order_t = std::conditional_t<std::is_void_v<typename S::order_type>, Less<typename S::element_type>, typename S::order_type>;
+template<typename S>
+using key_order_t = std::conditional_t<std::is_void_v<typename S::order_type>, Less<typename S::key_type>, typename S::order_type>;
 
 /// The tags, at most one per category, the others at their roots.
 constexpr property_set props(std::initializer_list<tag> listed) { return property_set::of(listed); }

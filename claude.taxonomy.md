@@ -1,11 +1,11 @@
 # Plan: four groups of tags — kind, semantics, costs, hints
 
-To execute after the benchmarks branch (complexity as data, the registry's claims, benchmark_comparisons) is merged.
+Executed on the `benchmarks` branch (2026-10-31), not yet compiled; see Status at the end.
 
 ## Context
 
-The vocabulary is grouped by six themes (docs/language/, `theme_vocabulary` in tests/names.hpp), and each tag has a
-role written by hand (guarantee, demand, kind, request, hint). Themes group by topic, and every finer partition we
+The vocabulary was grouped by six themes (docs/language/; the themes and each tag's hand-written role, guarantee,
+demand, kind, request or hint, in `urd::tag_synopsis`, include/urd/tag_synopsis.hpp, read by tests/names.hpp). Themes group by topic, and every finer partition we
 tried (seven levels from the literature, effects computed per tag) either forced tags into one box they do not fit
 or was well defined without being meaningful.
 
@@ -133,3 +133,36 @@ not offer it. This rule decides the changes below, and every future tag.
 ## Open
 
 - **The name of the third group:** "costs" (chosen: it says these are guarantees, unlike hints) or "optimization".
+
+## Status (2026-10-31, written, not compiled)
+
+Where the code had moved since this plan, the change went to the current place, not back: the words of the vocabulary
+live in `urd::tag_synopsis` (include/urd/tag_synopsis.hpp), and tests/names.hpp reads them.
+
+- **Change 1, 2 (internal tags):** `internal_tags` in include/urd/property_set.hpp (`immutable`, `growable`,
+  `shrinkable`, `functional`); `statable` excludes them; stating one fails with "are derived, never stated"
+  (compile-fail case 4, which stated `functional, multi`, now states `functional`).
+- **Change 3 (`sparse`):** not decided. `Groups.SparseChangesNoResolution` (tests/groups.cpp) is the check; `sparse`
+  stays public until it passes.
+- **Change 4:** `monotone_priority` implies `by_priority` (`stated_with_access`, include/urd/properties.hpp);
+  compile-fail case 46 now pins `fifo, monotone_priority`.
+- **Change 5:** nothing to do yet, by design.
+- **Step 4 (vocabulary):**
+  - in tag_synopsis.hpp, the themes become `kind_group`, `semantics_group`, `costs_group` and `hints_group` (title,
+    test, summary, literature), with the four headings of semantics;
+  - a root names `group` (and `heading` in semantics), a semantics tag its `promise` ("guaranteed" or "caller");
+  - `role` is gone from the synopses and derived in tests/names.hpp (`role_of`), with the same result for every tag
+    as before;
+  - the `static_assert` there checks a group per root, a heading exactly in semantics, a promise exactly for
+    semantics tags.
+- **Step 5:** tests/groups.cpp (kind, hints, costs, public tags), a test in tests/CMakeLists.txt. The kind check
+  allows `handles` on a priority queue, which stays a priority queue but gains update and erase by handle.
+- **Step 6:** vocabulary_table writes `group`, `promise`, `heading`, `groups` and `headings`; `theme` and `themes`
+  are gone; `role` stays, derived. share/urd/vocabulary.json must be regenerated (`vocabulary_table --write`), and
+  the docs build reads it. urd-search and urd-miner read `theme`: their owner must be told.
+- **Step 7:** docs/language/ is kind, semantics (by heading), costs, hints; the extension has `urd-groups`,
+  `urd-group` and `urd-heading`, and a tag card says who keeps a semantics tag. The overview states the test and
+  works `Distance` through it.
+- **Step 8:** the README's table is the four groups.
+- **Not done:** the sabotages and the measured comparison with urd-search and urd-miner (they need a build, and the
+  other agent's tools).

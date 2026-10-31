@@ -1,7 +1,7 @@
 #pragma once
 
 // A set that records what changed since its log was cleared, declared with what the registry reads of it. Defined in
-// urd/repr/change_logged.hpp, which urd/use/hash.hpp includes (its log is two indexed sets).
+// urd/repr/change_logged.hpp (its log is two indexed sets); the set it logs in its own header.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -39,7 +39,7 @@ struct parts<repr::ChangeLogged<R>>
     using type = detail::type_list<R>;
 };
 template<typename R>
-inline constexpr auto defined_in<repr::ChangeLogged<R>> = detail::fixed_string("urd/use/hash.hpp");
+inline constexpr auto defined_in<repr::ChangeLogged<R>> = detail::fixed_string("urd/repr/change_logged.hpp");
 
 }  // namespace urd
 
@@ -60,35 +60,18 @@ struct container_costs<repr::ChangeLogged<R>> : part_costs<part_of<repr::ChangeL
 namespace urd
 {
 
+namespace detail
+{
+inline constexpr std::string_view change_logged_prefix = "change_logged_";
+inline constexpr std::string_view change_logged_description = "change-logged (plus what was added and removed) ";
+}  // namespace detail
+
+/// A change-logged set: `change_logged_` and its part's id (`change_logged_set`).
 template<typename R>
 struct container_synopsis<repr::ChangeLogged<R>>
 {
-    static constexpr std::string_view id = "change_logged";
-    static constexpr std::string_view description = "change-logged set (a flat hash set, plus what was added and removed)";
-    static constexpr std::string_view holds = "+ the elements added and removed";
-};
-
-template<typename T>
-struct container_synopsis<repr::ChangeLogged<repr::DenseSet<T, true>>>
-{
-    static constexpr std::string_view id = "change_logged_dense_set";
-    static constexpr std::string_view description = "change-logged dense set (a bitset, plus what was added and removed)";
-    static constexpr std::string_view holds = "+ the elements added and removed";
-};
-
-template<typename T>
-struct container_synopsis<repr::ChangeLogged<std::set<T, Less<T>>>>
-{
-    static constexpr std::string_view id = "change_logged_tree_set";
-    static constexpr std::string_view description = "change-logged tree set (std::set, plus what was added and removed)";
-    static constexpr std::string_view holds = "+ the elements added and removed";
-};
-
-template<typename T>
-struct container_synopsis<repr::ChangeLogged<std::unordered_set<T, Hash<T>, EqualTo<T>>>>
-{
-    static constexpr std::string_view id = "change_logged_node_set";
-    static constexpr std::string_view description = "change-logged node set (std::unordered_set, plus what was added and removed)";
+    static constexpr std::string_view id = joined<detail::change_logged_prefix, container_synopsis<R>::id>::value;
+    static constexpr std::string_view description = joined<detail::change_logged_description, container_synopsis<R>::description>::value;
     static constexpr std::string_view holds = "+ the elements added and removed";
 };
 

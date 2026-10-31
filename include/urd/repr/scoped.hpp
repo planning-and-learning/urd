@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/scoped_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -177,3 +178,34 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/scoped.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"scoped_map", S>
+{
+    using type = repr::ScopedMap<typename S::key_type, typename S::mapped_type>;
+};
+template<typename S>
+struct representation_of<"scoped_tree_map", S>
+{
+    using type = repr::ScopedTreeMap<typename S::key_type, typename S::mapped_type>;
+};
+template<typename S>
+struct representation_of<"scoped_dense_map", S>
+{
+    using type = repr::ScopedDenseMap<typename S::key_type, typename S::mapped_type>;
+};
+
+}  // namespace urd::detail

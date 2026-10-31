@@ -8,7 +8,7 @@
 
 What is measured (benchmarks/requests.json): each container on each shape of element, its whole lifecycle at three
 sizes, every operation it offers timed in turn. A cell is one such experiment at one size; its result is the median
-time per operation (ns), with a fingerprint of the sources it measured (the container's family headers with every urd
+time per operation (ns), with a fingerprint of the sources it measured (the container's headers with every urd
 header they include, the Store's facets, the benchmark code). A result whose fingerprint no longer matches is stale.
 Results are per machine (benchmarks/results/<machine>.json).
 
@@ -91,14 +91,14 @@ def code_of(path: Path) -> str:
 
 
 def fingerprints() -> dict[str, str]:
-    """For each container, the hash of the sources its cells measure: its family headers, the Store, the benchmark."""
+    """For each container, the hash of the sources its cells measure: its headers, the Store, the benchmark."""
     common = [*sorted((ROOT / "include" / "urd" / "store").glob("*.hpp")), ROOT / "include" / "urd" / "store.hpp",
               *(ROOT / "benchmarks" / name for name in ("experiment.cpp", "lifecycle.hpp", "cells.hpp")),
               ROOT / "docs" / "SOURCES.json"]
     result = {}
-    for container, families in requests()["families"].items():
+    for container, headers in requests()["headers"].items():
         digest = hashlib.sha256()
-        for path in closure(common + [ROOT / "include" / "urd" / "use" / f"{family}.hpp" for family in families]):
+        for path in closure(common + [ROOT / "include" / header for header in headers]):
             digest.update(str(path.relative_to(ROOT)).encode())
             digest.update(code_of(path).encode())
         result[container] = digest.hexdigest()[:16]

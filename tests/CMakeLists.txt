@@ -6,7 +6,7 @@ find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}"
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
 # nested Stores. Those below count allocations (allocations.cpp replaces operator new).
-foreach(test properties rows semantics queues pools registry denials views concurrency complexity complexity_verify)
+foreach(test properties rows semantics queues pools registry denials views concurrency complexity complexity_verify groups)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
@@ -25,14 +25,13 @@ add_test(NAME containers COMMAND test_containers)
 set_tests_properties(containers PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME containers_coverage
-         COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/containers_coverage.py $<TARGET_FILE:test_containers>
-                 $<$<NOT:$<BOOL:${URD_WITH_GTL}>>:--without-gtl>)
+         COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/containers_coverage.py $<TARGET_FILE:test_containers>)
 # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
 # positive of its optimizer, not a defect of the code); the other warnings stay on.
 target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
 target_sources(test_rows PRIVATE allocations.cpp)
 target_sources(test_queues PRIVATE allocations.cpp)
-# A Store's behavior, by topic: each file includes the family headers its Stores need and no other.
+# A Store's behavior, by topic: each file includes the headers of the containers its Stores resolve to.
 foreach(topic rules sets maps multimaps scopes queues pools rows)
     add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp allocations.cpp)
     target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
@@ -44,9 +43,7 @@ set_tests_properties(store_rules PROPERTIES PASS_REGULAR_EXPRESSION "Running 0 t
 # The resolution table: docs/RESOLUTION.md is generated from the request grid and checked against the registry.
 add_executable(resolution_table resolution_table.cpp)
 target_link_libraries(resolution_table PRIVATE urd::urd fmt::fmt)
-if(URD_WITH_GTL)  # the table documents the full build: without gtl its concurrent rows read none
-    add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
-endif()
+add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
 # What serves each request and what each container is measured for (benchmarks/requests.json): one object per
 # group of the grid (requests_group.cpp), so no translation unit walks the whole grid; requests_table.cpp
 # merges them.
@@ -65,9 +62,7 @@ add_executable(requests_table requests_table.cpp)
 target_link_libraries(requests_table PRIVATE urd::urd ${request_group_objects} fmt::fmt)
 target_include_directories(requests_table PRIVATE ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/benchmarks)
 target_compile_definitions(requests_table PRIVATE URD_GROUPS=${URD_REQUEST_GROUPS})
-if(URD_WITH_GTL)
-    add_test(NAME requests COMMAND requests_table --check ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
-endif()
+add_test(NAME requests COMMAND requests_table --check ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
 # The vocabulary: share/urd/vocabulary.json is generated from the tags and their entries, and checked against them.
 add_executable(vocabulary_table vocabulary_table.cpp)
 target_link_libraries(vocabulary_table PRIVATE urd::urd fmt::fmt)
@@ -76,19 +71,15 @@ add_test(NAME vocabulary COMMAND vocabulary_table --check ${PROJECT_SOURCE_DIR}/
 # The costs: share/urd/complexity.json is generated from the cost table (tests/complexity.hpp) and checked against it.
 add_executable(complexity_table complexity_table.cpp)
 target_link_libraries(complexity_table PRIVATE urd::urd fmt::fmt)
-if(URD_WITH_GTL)  # as the resolution table: the full build's representations
-    add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
-endif()
+add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
 
 
 # The measurements behind the claims (benchmarks/record.py): every cell measured and current, every choice
 # holding, the generated part of docs/BENCHMARKS.md current; with the benchmarks built, every cell registered.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-if(URD_WITH_GTL)
-    add_test(NAME benchmark_results COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py check)
-    add_test(NAME benchmarks_doc COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py doc --check)
-endif()
-if(URD_BUILD_BENCHMARKS AND URD_WITH_GTL)
+add_test(NAME benchmark_results COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py check)
+add_test(NAME benchmarks_doc COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py doc --check)
+if(URD_BUILD_BENCHMARKS)
     add_test(NAME benchmark_coverage
              COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py coverage --binary $<TARGET_FILE:benchmark_comparisons>)
 endif()
@@ -153,8 +144,7 @@ urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 urd_budget(survey survey survey.cpp 720 650)
 
 # What a file holding Stores costs must not grow with the number of containers (claude.layout.md): tests/scaling.py
-# compiles it with the registry as it is and grown fourfold (URD_REGISTRY_COPIES=3) and compares peak memory. It
-# fails until selection works on values (step 4 of the plan), so it is expected to fail until then.
+# compiles it with the registry as it is and grown fourfold (URD_REGISTRY_COPIES=3) and compares peak memory.
 foreach(file one ten)
     add_executable(test_scaling_${file}_control EXCLUDE_FROM_ALL scaling/${file}.cpp)
     target_link_libraries(test_scaling_${file}_control PRIVATE urd::urd)
@@ -162,7 +152,6 @@ foreach(file one ten)
     add_test(NAME scaling_${file}
              COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/scaling.py --label ${file} --copies 3 --margin-mb 5 -- ${compile}
              COMMAND_EXPAND_LISTS)
-    set_tests_properties(scaling_${file} PROPERTIES WILL_FAIL TRUE)
 endforeach()
 
 # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
@@ -187,7 +176,7 @@ endfunction()
 
 urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 68)
 # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
-urd_compile_fail_expects(compile_fail_store 4 "two properties answer the same question")
+urd_compile_fail_expects(compile_fail_store 4 "are derived, never stated")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 6 "stable_refs needs frozen too")
 urd_compile_fail_expects(compile_fail_store 7 "so it cannot have key<K>")
@@ -203,7 +192,7 @@ urd_compile_fail_expects(compile_fail_store 36 "stores them flat: ask for flat")
 urd_compile_fail_expects(compile_fail_store 37 "ask for handles and unique too")
 urd_compile_fail_expects(compile_fail_store 44 "a queue empties by pop")
 urd_compile_fail_expects(compile_fail_store 45 "a partition groups key<K>s")
-urd_compile_fail_expects(compile_fail_store 46 "ask for by_priority too")
+urd_compile_fail_expects(compile_fail_store 46 "so it makes a priority queue")
 urd_compile_fail_expects(compile_fail_store 47 "fixed_shape is a sequence of rows")
 urd_compile_fail_expects(compile_fail_store 13 "stable_refs on a sequence or a positional set needs monotone")
 urd_compile_fail_expects(compile_fail_store 50 "stable_refs on a sequence or a positional set needs monotone")
@@ -239,30 +228,22 @@ urd_compile_fail_expects(compile_fail_store 65 "back: only a fifo queue has a ba
 urd_compile_fail_expects(compile_fail_store 66 "operator.*: a queue is reached by its front or top; ask for handles")
 urd_compile_fail_expects(compile_fail_store 67 "count: a partition holds each element once")
 urd_compile_fail_expects(compile_fail_store 68 "begin/end: a layered pool reaches each record")
-# A Store whose family header is missing names it (store.hpp, complete_representation).
+# A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
+# chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)
-if(URD_WITH_GTL)  # the parallel family exists only with gtl; without, its case has nothing to leave out
-    urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/use/parallel[.]hpp\"")
-else()
-    set_tests_properties(compile_fail_include_6 PROPERTIES DISABLED TRUE)
-endif()
-urd_compile_fail_expects(compile_fail_include 1 "include<.*\"urd/use/records[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 2 "include<.*\"urd/use/dense[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/use/sequences[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/use/hash[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/use/contiguous[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/use/nodes[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/use/queues[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/use/pools[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/use/hash[.]hpp\".*include<.*\"urd/use/layers[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/use/scopes[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/use/hash[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/use/nodes[.]hpp\"")
-if(NOT URD_WITH_GTL)
-    urd_compile_fail_cases(compile_fail_gtl compile_fail_gtl.cpp 2)
-    urd_compile_fail_expects(compile_fail_gtl 1 "URD_WITH_GTL")
-    urd_compile_fail_expects(compile_fail_gtl 2 "URD_WITH_GTL")
-endif()
+urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/repr/parallel_hash[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 1 "include<.*\"urd/repr/arena[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 2 "include<.*\"urd/repr/dense_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/repr/flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/repr/queue[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/repr/pools[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/unordered_flat_map[.]hpp\".*include<.*\"urd/repr/layer[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/repr/layer[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/repr/scoped[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
 
 # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.
 add_test(

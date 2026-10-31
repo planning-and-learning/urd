@@ -1,9 +1,15 @@
 // Dense keys: indices 0..n-1, stored by position instead of hashed. Facts, markings cleared every round, and costs
 // per state.
 
-#include "urd/use/dense.hpp"
-
 #include "show.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/sparse_set.hpp"
 #include "urd/store.hpp"
 
 #include <cstdint>

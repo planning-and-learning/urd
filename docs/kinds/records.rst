@@ -37,13 +37,13 @@ records are frozen once stored.
    * - either with ``layered``
      - ``LayeredPool`` over it
 
-Either pool is the records family: ``urd/use/records.hpp`` is included where the Store is held, ``urd/flat.hpp``
-where a flat record is written.
+Each pool has its header: ``urd/repr/records.hpp`` (the record interner) or ``urd/repr/arena.hpp`` (the arena
+interner) is included where the Store is held, ``urd/flat.hpp`` where a flat record is written.
 
 .. code-block:: cpp
 
    #include <urd/flat.hpp>
-   #include <urd/use/records.hpp>
+   #include <urd/repr/arena.hpp>
    struct Predicate
    {
        urd::flat_string name;

@@ -21,15 +21,16 @@ under `tests/repr/`, unchanged but for those names.
 
 A representation is two headers. `repr/X_fwd.hpp` declares the class template (its default arguments and its
 constraints go on this declaration, and nowhere else), carries its `container_traits`, `element_traits`,
-`relies_on` and `orders_by_value`, the aliases the registry names, and says which family header defines it
-(`urd::defined_in<X<…>>`, a `fixed_string` such as `"urd/use/dense.hpp"`); a wrapper also lists what it wraps
-(`urd::parts<Layered<R>>` is `type_list<R>`). `repr/X.hpp` includes the declaration and defines the class. A
+`relies_on` and `orders_by_value`, the aliases the registry names, and says which header defines it
+(`urd::defined_in<X<…>>`, a `fixed_string` such as `"urd/repr/dense_set.hpp"`); a wrapper also lists what it wraps
+(`urd::parts<Layered<R>>` is `type_list<R>`). `repr/X.hpp` includes the declaration, defines the class and defines
+the marker `urd::include<"urd/repr/X.hpp">`. A
 container from a library is declared through the library's own forward header (`boost/unordered/*_fwd.hpp`,
 `boost/container/container_fwd.hpp`, `gtl/phmap_fwd_decl.hpp`; the standard's cannot be, and are included). The
-registry includes declarations only, so that `urd/store.hpp` costs the same however many containers exist; the
-family header `urd/use/<family>.hpp` includes the definitions and defines the marker `urd::include<"urd/use/
-<family>.hpp">`. Families are cut by what they pull in (`docs/representations.rst` lists them): a container on
-Boost.Unordered joins `hash`, a std-only one the family of its kind.
+registry includes declarations only and names only the container a request resolves to, so that `urd/store.hpp`
+costs the same however many containers exist; a file includes the header of each container its Stores resolve to,
+and nothing grouped: a library's container gets a header of its own that includes the library's definition
+(`repr/unordered_flat_set.hpp`, `repr/flat_map.hpp`, `repr/parallel_hash.hpp`).
 
 It must build cleanly under urd's warnings (`-Wall -Wextra -Wpedantic -Wshadow -Wconversion
 -Wsign-conversion`, errors in CI), which are stricter than yggdrasil's: fix the code, do not weaken the
@@ -49,8 +50,8 @@ cmake --build dependencies-build -j8 && cmake --install dependencies-build
 The main build then finds each one as a package (`find_package` in `CMakeLists.txt`, the prefix on
 `CMAKE_PREFIX_PATH`) and links its imported target to `urd::urd`, so a consumer of urd gets it too through
 `cmake/urdConfig.cmake.in`'s `find_dependency`; a new dependency is added in both places. Imported targets' headers
-are system headers, so the warnings cover only urd. gtl is optional (`URD_WITH_GTL`): the registry lists its
-tables under `URD_HAS_GTL`, and so do the tests that name them. A recipe that skips the build when the package is
+are system headers, so the warnings cover only urd. Every dependency is required: urd ships them all, so there is
+one build to test and no container that exists in one configuration only. A recipe that skips the build when the package is
 already installed (cista's does) keeps an old install until `dependencies-install/lib/cmake/<name>` is removed.
 
 ## 3. Declare its properties: `container_traits<R>`
@@ -73,9 +74,12 @@ Inside, properties are values, not types: each tag carries its number in `urd::t
 That keeps resolving a request cheap for the compiler. A Store's spec lists the tags that say more than their
 category's root, so a diagnostic reads `spec<int, void, urd::tag::sorted, urd::tag::unique, urd::tag::shrinkable>`.
 A new tag goes into its category's struct list and into `urd::tag`, in the same order (a `static_assert` checks
-it), with its words beside it: a `urd::tag_synopsis` specialization (its name; for a root, its theme and question;
-for any other tag, its role, description and phrases; a `static_assert` in `tests/names.hpp` checks that every tag has
-them). Then regenerate the vocabulary with
+it), with its words beside it: a `urd::tag_synopsis` specialization (its name; for a root, its group, its question, and
+in semantics its reading heading; for any other tag, its description and phrases, and in semantics who keeps it,
+`promise` "guaranteed" or "caller"; a `static_assert` in `tests/names.hpp` checks that every tag has them). Its role
+is derived from those. Its group follows from one test, what leaving out the tag where it is needed causes
+(`docs/language/index.rst`); a tag is public only where stating it changes some resolution or rejects some request,
+and one the library derives goes in `internal_tags` (`include/urd/property_set.hpp`). Then regenerate the vocabulary with
 `vocabulary_table --write share/urd/vocabulary.json`; the `vocabulary` test fails until it is.
 
 Memory is a category too: `retains` (storage that erase and clear free is kept, so refilling to an earlier size
@@ -109,12 +113,19 @@ its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it
 
-Add its template to one list in `include/urd/registry/preferences.hpp`: `element_preference` for one taking the element
-type, `map_preference` for a map taking its key and value types. A container with further template parameters
-gets an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order). Nothing
-else is written per container: a request takes the first container in the list that serves it, meaning its
-`container_traits` for the request's elements satisfy the request and it offers the interface a Store for the
-request offers. Where a request is `small` or `frozen`, containers with stable storage (declaring `stable_refs`: a
+Three entries, at the same place in the registry's order:
+- its template in one list in `include/urd/registry/preferences.hpp`: `element_preference` for one taking the element
+  type, `map_preference` for a map taking its key and value types. A container with further template parameters gets
+  an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order);
+- its row in `include/urd/registry/rows.hpp`: its id, its headers, and its properties as a `constexpr` function of the request's
+  element features, the same properties its `container_traits` declare for those elements;
+- its row's headers (its own, after its part's for a wrapper), and `representation_of<"its id", S>` in its own
+  header: its type for a spec, so that a file names only the containers whose headers it includes.
+
+A request takes the first row that serves it, meaning its properties for the request's elements satisfy the request
+and it offers the interface a Store for the request offers; only that row's type is then named, so a Store costs the
+compiler the same however many containers are registered. The request tests check, for every request of the grid,
+that the rows pick the container the `container_traits` would (`tests/requests_group.cpp`). Where a request is `small` or `frozen`, containers with stable storage (declaring `stable_refs`: a
 node per element, or segments that never move) move last, as contiguous storage is faster for few or unchanging
 elements.
 
@@ -134,31 +145,26 @@ Beside its `container_traits`, in the same header, a container declares its cost
 `find_row`, `scope`), its memory in machine words per element (`words`) and what it holds besides its elements
 (`holds`). A wrapper derives from `part_costs<part_of<W>>` and declares only what it changes. The same rule as for
 the traits holds: values only, never a member of the container, so that reading a container's costs completes
-nothing; the request groups (`tests/requests_group.cpp`) read every candidate's costs with no family header
+nothing; the request groups (`tests/requests_group.cpp`) read every candidate's costs with no container header
 included, which `tests/layout.cmake` keeps true. `tests/complexity.cpp` fails on an operation a Store offers
 without a cost, and `tests/complexity_verify.cpp` counts the work of every cost not marked timed.
 
-The Store's first base checks that its representation's family is included, by the marker and never by
-completing the representation (completing a wrapper of an undefined part is an error, not a false), the parts
-first; a file that holds a Store without its family fails with the header in the error, on both compilers:
+The Store's first base checks that the headers its container needs are included, by their markers and never by
+completing the representation (completing a wrapper of an undefined part is an error, not a false). A file that
+holds a Store without them fails with one error, `urd::Store: this file does not include the headers that define the
+container its request resolves to`, reached from the Store's type (which names the request and its container) and
+naming every missing header in a `type_list` of `urd::include<"urd/repr/….hpp">`: only the missing ones, a wrapper's
+part before the wrapper.
 
-```text
-GCC:   error: static assertion failed: urd::Store: the representation's family is not included here: #include the
-       header that urd::include<"..."> names in this error (docs/RESOLUTION.md names each request's)
-       note: ‘(((bool)urd::included<urd::detail::fixed_string<18>{std::array<char, 18>{"urd/use/dense.hpp"}}>) || …)’
-       evaluates to false
-Clang: error: static assertion failed due to requirement 'included<defined_in<urd::repr::DenseSet<int>>> ||
-       dependent_false<urd::include<urd::detail::fixed_string<18>{{"urd/use/dense.hpp"}}>>::value': urd::Store: …
-```
-
-The marker is read once per file, so a family header goes before the first Store that needs it (included later,
+The marker is read once per file, so a container's header goes before the first Store that needs it (included later,
 the Store still fails, with the same message). Two things prove the registry defines nothing: `resolution_table`,
-which resolves every request of the grid, is built with no family header (`tests/layout.cmake` checks its
+which resolves every request of the grid, is built with no container header (`tests/layout.cmake` checks its
 sources), and `tests/selection.cpp` resolves requests whose element is a Store of records stored flat without that
-family's header, so completing the element would fail. The table's `--check` also rejects a chosen representation
-that names no family. `tests/compile_fail_include.cpp` holds a Store of each family with its header left out and
-expects the header in the error, plus a wrapper without its part's header (both named, the part first), a nested
-Store without its inner's family (needed where the outer is held), and a header included too late. A budget test
+container's header, so completing the element would fail. The table's `--check` also rejects a chosen representation
+that names no header. `tests/compile_fail_include.cpp` holds Stores with headers left out and expects them in the
+error: a container's own, a wrapper missing its part's and its own (both named, the part first), a wrapper whose part
+is included (only its own named), a nested Store without its inner's header (needed where the outer is held), two
+Stores of which one's header is included, and a header included too late. A budget test
 (`tests/budget.py`) holds the bare include of `urd/store.hpp` under a memory limit per compiler, so the rule cannot
 erode unnoticed.
 
@@ -403,8 +409,8 @@ other must be serializable by cista, naming its members in `cista_members()` and
 their hash and equality), and goes into `repr::ArenaInterner`: the record is serialized into a byte arena
 (`repr::ByteArena`, segments that never move) and read back in place, so the stored record's vectors point inside
 its block. The registry names both interners through declarations only (`repr/records_fwd.hpp`); the Store that
-holds one needs the records family, `<urd/use/records.hpp>`, included, which the error of a Store without it
-names. A request for a pool of records that are no range of elements
+holds one needs its header, `<urd/repr/records.hpp>` or `<urd/repr/arena.hpp>`, included, which the error of a
+Store without it names. A request for a pool of records that are no range of elements
 must say `flat`, and `flat` goes with `handles, unique` only.
 
 A flat pool is counted and read by index: `insert(record)` gives `pair<index<Record>, bool>`, an equal record its
@@ -542,7 +548,7 @@ The preference lists in `include/urd/registry/preferences.hpp` are judged agains
   element. It is generated (`requests_table --write benchmarks/requests.json`, one object per group of the grid) and
   checked by the `requests` test, so a new container or a reordered list shows up there.
 - **Measurements.** Each container is measured on its own: `benchmarks/experiment.cpp` is compiled once per
-  container, with only its family headers, and runs its lifecycle at three sizes. `benchmarks/record.py record
+  container, with only its headers, and runs its lifecycle at three sizes. `benchmarks/record.py record
   --binary <build>/benchmark_comparisons` measures the cells that are missing or stale (a cell is stale when a header
   it measures changed), so a new or changed container is measured alone.
 - **Claims.** `benchmarks/record.py check` (the `benchmark_results` test) compares, for each request, the chosen

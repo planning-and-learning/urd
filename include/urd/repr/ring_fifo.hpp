@@ -3,6 +3,7 @@
 // A first-in queue over one vector used as a ring.
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/position_iterator.hpp"
 #include "urd/repr/queues_fwd.hpp"
 #include "urd/semantics/less.hpp"
@@ -111,3 +112,24 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/ring_fifo.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"ring_fifo", S>
+{
+    using type = repr::RingFifo<typename S::element_type>;
+};
+
+}  // namespace urd::detail

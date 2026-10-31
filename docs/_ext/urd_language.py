@@ -1,15 +1,16 @@
-"""The request language, theme -> category -> tag, from share/urd/vocabulary.json.
+"""The request language, group -> category -> tag, from share/urd/vocabulary.json.
 
 Directives:
 
-- ``.. urd-themes::``: the themes, each with its questions and tags.
-- ``.. urd-theme:: <theme>``: one theme's categories, as a table.
+- ``.. urd-groups::``: the four groups (kind, semantics, costs, hints), each with its test, questions and tags.
+- ``.. urd-group:: <group>``: one group's categories, as a table.
+- ``.. urd-heading:: <heading>``: within semantics, the categories under one reading heading, as a table.
 - ``.. urd-category:: <root>``: one category: its question as a section, its diagram, the body written in the
   page, then a card per tag (with the shortest served request of docs/RESOLUTION.md stating it).
 - ``.. urd-needs::``: every phrase, alphabetically, linked to its tag.
 - ``.. urd-complexity:: <kind>``: the costs of a kind's representations, from share/urd/complexity.json.
 
-Every category must appear exactly once, on its theme's page (language/<theme>); a warning says which, and the build with -W fails.
+Every category must appear exactly once, on its group's page (language/<group>); a warning says which, and the build with -W fails.
 """
 
 import json
@@ -25,10 +26,18 @@ from sphinx.util.nodes import nested_parse_with_titles
 LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 VOCABULARY = json.loads((ROOT / "share/urd/vocabulary.json").read_text())
-THEMES = {t["theme"]: t for t in VOCABULARY["themes"]}
+GROUPS = {g["group"]: g for g in VOCABULARY["groups"]}
+HEADINGS = {h["heading"]: h for h in VOCABULARY["headings"]}
 CATEGORIES = {c["category"]: c for c in VOCABULARY["categories"]}
 TAGS = {t["tag"]: t for t in VOCABULARY["tags"]}
 COMPLEXITY = json.loads((ROOT / "share/urd/complexity.json").read_text())
+ROLES = {
+    "guarantee": "a guarantee: the container keeps it",
+    "demand": "a demand: you promise it about the data",
+    "kind": "a kind: it makes the Store a queue, a pool or a partition",
+    "request": "a request: only a request states it",
+    "hint": "a hint: it changes the choice, never a guarantee",
+}
 _RESULTS = sorted((ROOT / "benchmarks/results").glob("*.json"))
 MEASURED = json.loads(_RESULTS[0].read_text())["cells"] if _RESULTS else {}
 
@@ -59,12 +68,21 @@ def shortest_request(tag: str) -> str | None:
     return min((r for r, stated in SERVED if tag in stated), key=len, default=None)
 
 
-def on_page(theme: str) -> list[dict]:
-    """The categories of a theme, in the order its page (language/<theme>.rst) holds them: its writer chose it."""
-    page = Path(__file__).resolve().parents[1] / "language" / f"{theme}.rst"
+def on_page(group: str) -> list[dict]:
+    """The categories of a group, in the order its page (language/<group>.rst) holds them: its writer chose it."""
+    page = Path(__file__).resolve().parents[1] / "language" / f"{group}.rst"
     source = page.read_text() if page.exists() else ""
     roots = re.findall(r"^\.\. urd-category:: (\w+)", source, flags=re.MULTILINE)
-    return [CATEGORIES[r] for r in roots if r in CATEGORIES and CATEGORIES[r]["theme"] == theme]
+    return [CATEGORIES[r] for r in roots if r in CATEGORIES and CATEGORIES[r]["group"] == group]
+
+
+def category_table(roots: list[dict]) -> list[str]:
+    out = [".. list-table::", "   :header-rows: 1", "   :widths: 40 45 15", "",
+           "   * - Question", "     - Tags", "     - Stated"]
+    for c in roots:
+        out += [f"   * - {category_link(c['category'])}", f"     - {code(c['tags'])}",
+                "     - yes" if c["statable"] else "     - no: derived"]
+    return out
 
 
 def code(names: list[str]) -> str:
@@ -91,34 +109,43 @@ class Generated(Directive):
         return container.children
 
 
-class Themes(Generated):
+class Groups(Generated):
     def lines(self) -> list[str]:
-        out = [".. list-table::", "   :header-rows: 1", "   :widths: 18 52 30", "", "   * - Theme", "     - Questions",
-               "     - Tags"]
-        for theme in THEMES.values():
-            roots = on_page(theme["theme"])
-            out += [f"   * - :doc:`{theme['title']} <{theme['theme']}>`",
+        out = [".. list-table::", "   :header-rows: 1", "   :widths: 14 30 30 26", "", "   * - Group", "     - Leaving out a tag you need",
+               "     - Questions", "     - Tags"]
+        for group in GROUPS.values():
+            roots = on_page(group["group"])
+            out += [f"   * - :doc:`{group['title']} <{group['group']}>`",
+                    f"     - {group['test']}",
                     "     - " + " · ".join(c["question"] for c in roots),
                     "     - " + code([t for c in roots for t in c["tags"]])]
         return out
 
 
-class Theme(Generated):
+class Group(Generated):
     required_arguments = 1
 
     def lines(self) -> list[str]:
-        theme = self.arguments[0]
-        if theme not in THEMES:
-            raise self.error(f"urd-theme: unknown theme {theme!r}")
-        roots = on_page(theme)
+        group = self.arguments[0]
+        if group not in GROUPS:
+            raise self.error(f"urd-group: unknown group {group!r}")
+        roots = on_page(group)
         if not roots:
-            raise self.error(f"urd-theme: theme {theme!r} holds no category on this page")
-        out = [".. list-table::", "   :header-rows: 1", "   :widths: 40 45 15", "",
-               "   * - Question", "     - Tags", "     - Stated"]
-        for c in roots:
-            out += [f"   * - {category_link(c['category'])}", f"     - {code(c['tags'])}",
-                    "     - yes" if c["statable"] else "     - no: derived"]
-        return out
+            raise self.error(f"urd-group: group {group!r} holds no category on this page")
+        return [*category_table(roots), "", GROUPS[group]["literature"], ""]
+
+
+class Heading(Generated):
+    required_arguments = 1
+
+    def lines(self) -> list[str]:
+        heading = self.arguments[0]
+        if heading not in HEADINGS:
+            raise self.error(f"urd-heading: unknown heading {heading!r}")
+        roots = [c for c in on_page(HEADINGS[heading]["group"]) if c.get("heading") == heading]
+        if not roots:
+            raise self.error(f"urd-heading: heading {heading!r} holds no category on this page")
+        return category_table(roots)
 
 
 class Category(Generated):
@@ -131,8 +158,8 @@ class Category(Generated):
             raise self.error(f"urd-category: unknown category {root!r}")
         category = CATEGORIES[root]
         env = self.state.document.settings.env
-        if env.docname != f"language/{category['theme']}":
-            raise self.error(f"urd-category: {root} belongs on language/{category['theme']}, not {env.docname}")
+        if env.docname != f"language/{category['group']}":
+            raise self.error(f"urd-category: {root} belongs on language/{category['group']}, not {env.docname}")
         env.urd_categories.setdefault(root, []).append(env.docname)
 
         question = category["question"]
@@ -156,6 +183,8 @@ class Category(Generated):
         example = shortest_request(name) if tag["statable"] else None
         out = [f".. _tag-{name}:", "", f"``{name}``", "~" * (len(name) + 4), "", tag["description"], "",
                f"- **Role:** {ROLES[tag['role']]}.", f"- **In plain words:** {', '.join(tag['phrases'])}."]
+        if "promise" in tag:
+            out.append("- **Kept by:** " + ("you, about your data." if tag["promise"] == "caller" else "the container."))
         implied = [t for t in tag["implies"] if t in TAGS]
         if implied:
             out.append(f"- **Promises at least:** {code(implied)}.")
@@ -227,8 +256,9 @@ def check(app, env) -> None:
 
 
 def setup(app) -> dict:
-    app.add_directive("urd-themes", Themes)
-    app.add_directive("urd-theme", Theme)
+    app.add_directive("urd-groups", Groups)
+    app.add_directive("urd-group", Group)
+    app.add_directive("urd-heading", Heading)
     app.add_directive("urd-category", Category)
     app.add_directive("urd-needs", Needs)
     app.add_directive("urd-complexity", Complexity)

@@ -5,6 +5,8 @@
 // tables (share/urd/complexity.json, benchmarks/requests.json, docs/RESOLUTION.md) and the tests' names all read these;
 // downstream code never needs them, as it uses the Store and never names the representation.
 
+#include <array>
+#include <cstddef>
 #include <string_view>
 
 namespace urd
@@ -16,6 +18,26 @@ namespace urd
 template<typename R>
 struct container_synopsis
 {
+};
+
+/// The strings Parts, one after the other, as one string with static storage: a wrapper's id is its prefix and its
+/// part's id (`layered_` and `record_interner`), so a wrapper over a new part has an id of its own.
+template<const std::string_view&... Parts>
+struct joined
+{
+    static constexpr auto storage = []
+    {
+        auto result = std::array<char, (Parts.size() + ... + 0)> {};
+        std::size_t at = 0;
+        (
+            (void) [&] {
+                for (const char each : Parts)
+                    result[at++] = each;
+            }(),
+            ...);
+        return result;
+    }();
+    static constexpr auto value = std::string_view(storage.data(), storage.size());
 };
 
 }  // namespace urd

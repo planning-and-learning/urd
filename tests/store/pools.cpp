@@ -1,12 +1,24 @@
-// Interners, partitions and pools of records. Each family header a Store here needs is included, and no other.
+// Interners, partitions and pools of records. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/records.hpp"
 
 #include <algorithm>
 #include <chrono>

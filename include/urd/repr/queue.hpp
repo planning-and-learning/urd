@@ -3,6 +3,7 @@
 // A queue whose elements leave in the order it says: first in, last in, or the least by a comparator.
 
 #include "urd/elements.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/position_iterator.hpp"
 #include "urd/repr/queues_fwd.hpp"
 #include "urd/semantics/less.hpp"
@@ -84,3 +85,39 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/queue.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"fifo", S>
+{
+    using type = repr::Fifo<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"lifo", S>
+{
+    using type = repr::Lifo<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"heap", S>
+{
+    using type = repr::Heap<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"heap_by", S>
+{
+    using type = repr::Queue<typename S::element_type, repr::leaving::least, typename S::order_type>;
+};
+
+}  // namespace urd::detail

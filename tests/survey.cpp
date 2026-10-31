@@ -5,20 +5,45 @@
 
 #include "urd/compose/family.hpp"
 #include "urd/flat.hpp"
+#include "urd/registry/aliases.hpp"
+#include "urd/repr/addressable_heap.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/bucket_queue.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/entry_ordered.hpp"
+#include "urd/repr/flat_map.hpp"
+#include "urd/repr/flat_set.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel_hash.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/queue.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/recycling.hpp"
+#include "urd/repr/ring_fifo.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/scoped.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/nodes.hpp"
-#if defined(URD_HAS_GTL)
-#include "urd/use/parallel.hpp"
-#endif
-#include "urd/use/pools.hpp"
-#include "urd/use/queues.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/scopes.hpp"
-#include "urd/use/sequences.hpp"
 #include "urd/view.hpp"
 
 #include <concepts>
@@ -391,10 +416,8 @@ static_assert(std::same_as<BitMatrix::representation, urd::repr::Jagged<Store<ke
 // allocated by every worker: a concurrent map, the allocation in update under the shard's lock.
 struct CanonicalGraphTag;
 using CanonicalGraph = Id<CanonicalGraphTag>;
-#if defined(URD_HAS_GTL)
 using Representatives = Store<key<CanonicalGraph>, value<Vertex>, urd::concurrent>;
 static_assert(std::same_as<Representatives::representation, urd::repr::ParallelHashMap<CanonicalGraph, Vertex>>);
-#endif
 
 // runir kr/parser/ext_constructors.hpp, ReferenceTable: a name -> entity map beside a vector of the entities by
 // identifier, six times over; loki builder_declarations.cpp: declarations beside their declaration order.
@@ -450,6 +473,8 @@ static_assert(std::same_as<TypesByIndex::representation, urd::repr::FlatEntryMap
 // each layered over the previous phase's): a family of layered pools of flat records, one per record type, each
 // phase a family over the previous one. A record is written once, as cista keeps it; the index is urd's; a view is
 // the index and the family that resolves the indices in the record.
+namespace
+{
 namespace formalism
 {
 
@@ -502,6 +527,7 @@ static_assert(std::same_as<urd::resolved_t<urd::flat_variant<urd::index<Object>,
                            std::variant<urd::view<Object, Repository>, ParameterIndex>>);
 
 }  // namespace formalism
+}  // namespace
 
 // Named accessors, one line each, where tyr's views had get_name() and get_arity(); the repository as the default
 // context, so that view<Predicate<Fluent>> needs no second argument.

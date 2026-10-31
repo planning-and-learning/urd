@@ -1,11 +1,21 @@
-// Rows of a fixed shape: bits and elements changed in place, nested and tracked. Each family header a Store here needs is included, and no other.
+// Rows of a fixed shape: bits and elements changed in place, nested and tracked. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/sparse_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <algorithm>
 #include <chrono>

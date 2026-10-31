@@ -1,13 +1,21 @@
-// Queues: handles, iteration, and reading by handle. Each family header a Store here needs is included, and no other.
-
-#include "urd/use/queues.hpp"
+// Queues: handles, iteration, and reading by handle. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
+#include "urd/repr/addressable_heap.hpp"
+#include "urd/repr/bucket_queue.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/queue.hpp"
+#include "urd/repr/ring_fifo.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
 
 #include <algorithm>
 #include <chrono>

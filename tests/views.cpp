@@ -3,13 +3,32 @@
 
 #include "urd/compose/family.hpp"
 #include "urd/flat.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/pools.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/sequences.hpp"
 #include "urd/view.hpp"
 
 #include <concepts>
@@ -193,6 +212,8 @@ TEST(View, ComparesAndHashesByIndexAndLayer)
 
 // A repository: a family of layered pools of flat records, one per record type, as the formalism of a planner keeps
 // its symbols. Each phase branches a family from the previous one.
+namespace
+{
 namespace formalism
 {
 
@@ -241,6 +262,7 @@ Object object(std::string_view name)
 }
 
 }  // namespace formalism
+}  // namespace
 
 template<>
 struct urd::context_of<formalism::Atom>

@@ -1,8 +1,8 @@
 #pragma once
 
 // Layers: a set, map or pool that answers lookups from its own elements, then from a parent's it neither owns nor
-// changes. Declared with what the registry reads of them; defined in urd/repr/layered.hpp, which urd/use/layers.hpp
-// includes. What is layered comes with its own family.
+// changes. Declared with what the registry reads of them; defined in urd/repr/layer.hpp and
+// urd/repr/layered_pool.hpp. What is layered is defined in its own header.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -56,9 +56,9 @@ struct parts<repr::Layered<R>>
 };
 
 template<typename R>
-inline constexpr auto defined_in<repr::Layered<R>> = detail::fixed_string("urd/use/layers.hpp");
+inline constexpr auto defined_in<repr::Layered<R>> = detail::fixed_string("urd/repr/layer.hpp");
 template<typename R>
-inline constexpr auto defined_in<repr::LayeredPool<R>> = detail::fixed_string("urd/use/layers.hpp");
+inline constexpr auto defined_in<repr::LayeredPool<R>> = detail::fixed_string("urd/repr/layered_pool.hpp");
 
 }  // namespace urd
 
@@ -84,44 +84,29 @@ struct container_costs<repr::Layered<R>> : part_costs<part_of<repr::Layered<R>>>
 namespace urd
 {
 
+namespace detail
+{
+inline constexpr std::string_view layered_prefix = "layered_";
+inline constexpr std::string_view layered_pool_description = "layered pool (its own elements after a parent's, indices continuing) of a ";
+inline constexpr std::string_view layered_description = "layered (its own elements, then a parent's) over a ";
+}  // namespace detail
+
+/// A layered pool: `layered_` and its part's id (`layered_record_interner`).
 template<typename R>
 struct container_synopsis<repr::LayeredPool<R>>
 {
-    static constexpr std::string_view id = "layered_pool";
-    static constexpr std::string_view description = "layered pool (its own elements after a parent's, indices continuing)";
+    static constexpr std::string_view id = joined<detail::layered_prefix, container_synopsis<R>::id>::value;
+    static constexpr std::string_view description = joined<detail::layered_pool_description, container_synopsis<R>::description>::value;
     static constexpr std::string_view holds = "its own rows, indices after the parent's";
 };
 
+/// A layered set or map: `layered_` and its part's id (`layered_unordered_flat_map`).
 template<typename R>
 struct container_synopsis<repr::Layered<R>>
 {
-    static constexpr std::string_view id = "layered";
-    static constexpr std::string_view description = "layered (its own elements, then a parent's)";
+    static constexpr std::string_view id = joined<detail::layered_prefix, container_synopsis<R>::id>::value;
+    static constexpr std::string_view description = joined<detail::layered_description, container_synopsis<R>::description>::value;
     static constexpr std::string_view holds = "its own elements; the parent is not owned";
-};
-
-template<typename T>
-struct container_synopsis<repr::Layered<std::unordered_set<T, Hash<T>, EqualTo<T>>>>
-{
-    static constexpr std::string_view id = "layered_node_set";
-    static constexpr std::string_view description = "layered node set (std::unordered_set over a parent's)";
-    static constexpr std::string_view holds = "its own elements in nodes; the parent is not owned";
-};
-
-template<typename K, typename V>
-struct container_synopsis<repr::Layered<std::unordered_map<K, V, Hash<K>, EqualTo<K>>>>
-{
-    static constexpr std::string_view id = "layered_node_map";
-    static constexpr std::string_view description = "layered node map (std::unordered_map over a parent's)";
-    static constexpr std::string_view holds = "its own entries in nodes; the parent is not owned";
-};
-
-template<typename K, typename V>
-struct container_synopsis<repr::Layered<repr::IndexMap<K, V, true>>>
-{
-    static constexpr std::string_view id = "layered_generation_map";
-    static constexpr std::string_view description = "layered generation map (a slot per index, O(1) clear, over a parent's)";
-    static constexpr std::string_view holds = "its own slots; the parent is not owned";
 };
 
 }  // namespace urd

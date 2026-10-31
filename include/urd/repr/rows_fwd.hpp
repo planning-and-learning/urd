@@ -1,12 +1,13 @@
 #pragma once
 
 // Representations of nested Stores, whose elements (rows) are Stores themselves, declared with what the registry
-// reads of them. Defined in urd/repr/rows.hpp, which urd/use/sequences.hpp includes.
+// reads of them. Defined in urd/repr/jagged.hpp and urd/repr/row_pool.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
+#include "urd/registry/element_concepts.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
@@ -27,38 +28,6 @@ class RowPool;
 
 namespace urd
 {
-
-namespace detail
-{
-
-/// Whether Jagged can hold rows Inner: frozen rows, of elements or (at a deeper level) of rows in order.
-template<typename Inner>
-concept flattenable = is_store<Inner> && has<container_traits<Inner>, frozen>
-                      && (!is_store<typename container_traits<Inner>::element_type> || !by_value<container_traits<Inner>>);
-
-/// Whether Jagged can hold rows Inner that change in place: rows of elements, as a sequence, or a dense set's bits;
-/// or fixed-shape rows of such rows, at any depth.
-template<typename Inner>
-consteval bool holds_fixed_rows()
-{
-    if constexpr (!is_store<Inner>)
-        return false;
-    else
-    {
-        using traits = container_traits<Inner>;
-        using below = typename traits::element_type;
-        if constexpr (has<traits, frozen>)
-            return false;
-        else if constexpr (!is_store<below>)
-            return !by_value<traits> || (traits::is_set && has<traits, unique, dense>);
-        else
-            return has<traits, fixed_shape> && holds_fixed_rows<below>();
-    }
-}
-template<typename Inner>
-concept fixed_rows = holds_fixed_rows<Inner>();
-
-}  // namespace detail
 
 /// Rows in one array: appends at the end, and erase and clear keep the storage at every level.
 template<detail::flattenable Inner>
@@ -106,9 +75,9 @@ struct element_traits<repr::RowPool<Inner>> : container_traits<Inner>
 };
 
 template<typename Inner, bool TrackRows>
-inline constexpr auto defined_in<repr::Jagged<Inner, TrackRows>> = detail::fixed_string("urd/use/sequences.hpp");
+inline constexpr auto defined_in<repr::Jagged<Inner, TrackRows>> = detail::fixed_string("urd/repr/jagged.hpp");
 template<typename Inner>
-inline constexpr auto defined_in<repr::RowPool<Inner>> = detail::fixed_string("urd/use/sequences.hpp");
+inline constexpr auto defined_in<repr::RowPool<Inner>> = detail::fixed_string("urd/repr/row_pool.hpp");
 
 }  // namespace urd
 

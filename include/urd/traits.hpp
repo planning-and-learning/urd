@@ -1,7 +1,7 @@
 #pragma once
 
 // What a container declares about itself: its properties (container_traits), the representations it wraps (parts),
-// and the family header that defines it (defined_in). The tags it declares them with are in urd/tags.hpp.
+// and the header that defines it (defined_in). The tags it declares them with are in urd/tags.hpp.
 
 #include "urd/property_set.hpp"
 #include "urd/semantics/concepts.hpp"
@@ -43,28 +43,30 @@ struct fixed_string
     std::array<char, N> text {};
 
     consteval fixed_string(const char (&literal)[N]) { std::ranges::copy(literal, text.begin()); }
+    /// From a string computed at compile time (a row's id), N its size plus the terminating zero.
+    consteval explicit fixed_string(std::string_view computed) { std::ranges::copy(computed, text.begin()); }
 
     [[nodiscard]] constexpr const char* c_str() const noexcept { return text.data(); }
 };
 
 }  // namespace detail
 
-// The registry declares representations and does not define them: a file pays for the definitions of the families
-// it holds Stores of, by including urd/use/<family>.hpp. That a family is included is told by a marker that header
-// defines, never by looking at a representation (completing a wrapper of an undefined part is an error, not a
-// false); a Store whose family is absent names the header to include in its error (store.hpp).
+// The registry declares representations and does not define them: a file pays for the definition of each container
+// its Stores resolve to, by including that container's own header (urd/repr/<container>.hpp), and for nothing else.
+// That a header is included is told by a marker it defines, never by looking at a representation (completing a
+// wrapper of an undefined part is an error, not a false); a Store whose container's header is absent names it in its
+// error (store.hpp).
 
-/// Declared only; urd/use/<family>.hpp defines include<"urd/use/<family>.hpp">.
+/// Declared only; each container's header urd/repr/X.hpp defines include<"urd/repr/X.hpp">.
 template<detail::fixed_string Header>
 struct include;
 /// Whether the header's marker is defined here.
 template<detail::fixed_string Header>
 inline constexpr bool included = requires { sizeof(include<Header>); };
-/// The header that defines representation R, specialized beside R's declaration in its repr/X_fwd.hpp. A
-/// representation that names none has no header; resolution_table --check rejects that for anything the registry
-/// chooses, so every registered representation names its family.
+/// The header that defines representation R, specialized beside R's declaration. A representation that names none
+/// has no header; resolution_table --check rejects that for anything the registry chooses.
 template<typename R>
-inline constexpr auto defined_in = detail::fixed_string("urd/use/<unnamed>.hpp");
+inline constexpr auto defined_in = detail::fixed_string("urd/repr/<unnamed>.hpp");
 /// The representations a wrapper holds, whose headers are needed too (Layered<R>: R; Scoped<Map>: Map; ...).
 template<typename R>
 struct parts

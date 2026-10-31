@@ -6,16 +6,33 @@
 
 #include "names.hpp"
 #include "urd/flat.hpp"
+#include "urd/repr/arena.hpp"
+#include "urd/repr/bidirectional_csr.hpp"
+#include "urd/repr/change_logged.hpp"
+#include "urd/repr/csr_multimap.hpp"
+#include "urd/repr/dense_multimap.hpp"
+#include "urd/repr/dense_set.hpp"
+#include "urd/repr/disjoint_sets.hpp"
+#include "urd/repr/index_map.hpp"
+#include "urd/repr/indexed.hpp"
+#include "urd/repr/jagged.hpp"
+#include "urd/repr/layer.hpp"
+#include "urd/repr/layered_pool.hpp"
+#include "urd/repr/ordered_map.hpp"
+#include "urd/repr/parallel_hash.hpp"
+#include "urd/repr/pools.hpp"
+#include "urd/repr/postings.hpp"
+#include "urd/repr/records.hpp"
+#include "urd/repr/row_pool.hpp"
+#include "urd/repr/segmented.hpp"
+#include "urd/repr/sequence.hpp"
+#include "urd/repr/slots.hpp"
+#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/tree_bitset.hpp"
+#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/unordered_flat_map.hpp"
+#include "urd/repr/unordered_flat_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
-#if defined(URD_HAS_GTL)
-#include "urd/use/parallel.hpp"
-#endif
-#include "urd/use/pools.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -57,13 +74,9 @@ class ConcurrentSets : public testing::Test
 {
 };
 using Sets = testing::Types<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>,
-                            urd::repr::ConcurrentIndexedSet<int>
-#if defined(URD_HAS_GTL)
-                            ,
+                            urd::repr::ConcurrentIndexedSet<int>,
                             Store<key<int>, urd::concurrent>,
-                            Store<key<int>, urd::stable_refs, urd::concurrent>
-#endif
-                            >;
+                            Store<key<int>, urd::stable_refs, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentSets, Sets, urd::test::Names);
 
 TYPED_TEST(ConcurrentSets, InsertsFromThreadsAgree)
@@ -152,13 +165,9 @@ template<typename M>
 class ConcurrentMaps : public testing::Test
 {
 };
-using Maps = testing::Types<Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>
-#if defined(URD_HAS_GTL)
-                            ,
+using Maps = testing::Types<Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>,
                             Store<key<int>, value<int>, urd::concurrent>,
-                            Store<key<int>, value<int>, urd::stable_refs, urd::concurrent>
-#endif
-                            >;
+                            Store<key<int>, value<int>, urd::stable_refs, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentMaps, Maps, urd::test::Names);
 
 TYPED_TEST(ConcurrentMaps, InsertsFromThreadsAgree)

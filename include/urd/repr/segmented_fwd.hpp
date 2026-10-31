@@ -1,7 +1,7 @@
 #pragma once
 
 // A vector in segments that never move, declared with its defaults and what the registry reads of it. Defined in
-// urd/repr/containers/segmented_vector.hpp, which urd/repr/segmented.hpp and urd/use/sequences.hpp include.
+// urd/repr/containers/segmented_vector.hpp, which urd/repr/segmented.hpp includes.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
@@ -34,7 +34,7 @@ struct container_traits<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, I
 };
 
 template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
-inline constexpr auto defined_in<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> = detail::fixed_string("urd/use/sequences.hpp");
+inline constexpr auto defined_in<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> = detail::fixed_string("urd/repr/segmented.hpp");
 
 }  // namespace urd
 

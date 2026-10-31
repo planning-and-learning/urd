@@ -2,6 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/pools_fwd.hpp"
 #include "urd/traits.hpp"
@@ -55,9 +56,7 @@ public:
     }
     template<typename... Args>
     handle_type emplace(Args&&... args)
-    {
-        return insert(T(std::forward<Args>(args)...));
-    }
+    { return insert(T(std::forward<Args>(args)...)); }
     /// A slot to use as it is: an erased element, with whatever it held and the storage it kept (a scratch buffer
     /// reused without allocating), else a new default-constructed one.
     handle_type acquire()
@@ -133,3 +132,29 @@ namespace urd
 {
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/slots.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"slot_vector", S>
+{
+    using type = repr::SlotVector<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"thread_safe_slot_vector", S>
+{
+    using type = repr::SlotVector<typename S::element_type, true>;
+};
+
+}  // namespace urd::detail

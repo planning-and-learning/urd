@@ -2,6 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/records_fwd.hpp"
 #include "urd/traits.hpp"
@@ -60,3 +61,34 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/records.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"record_interner", S>
+{
+    using type = repr::RecordInterner<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<"stable_record_interner", S>
+{
+    using type = repr::RecordInterner<typename S::element_type, false, true>;
+};
+template<typename S>
+struct representation_of<"thread_safe_record_interner", S>
+{
+    using type = repr::RecordInterner<typename S::element_type, true>;
+};
+
+}  // namespace urd::detail

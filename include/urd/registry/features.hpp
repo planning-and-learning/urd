@@ -6,12 +6,9 @@
 // not apply to a type, the feature is simply false, as a constraint is simply unsatisfied.
 
 #include "urd/elements.hpp"
+#include "urd/registry/element_concepts.hpp"
 #include "urd/registry/row.hpp"
 #include "urd/registry/rows.hpp"
-#include "urd/registry/select.hpp"
-#include "urd/repr/queues_fwd.hpp"
-#include "urd/repr/records_fwd.hpp"
-#include "urd/repr/rows_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
@@ -22,6 +19,19 @@
 namespace urd::detail
 {
 
+/// What a representation must guarantee for spec S: S's properties, except where the Store provides them.
+/// A frozen Store's elements never move whatever the representation; a sequence's positions are dense
+/// in every representation of a sequence.
+template<typename S>
+inline constexpr property_set requirement = []
+{
+    auto result = S::urd_properties;
+    if (result.has(tag::frozen))
+        result.put(tag::moving_refs);
+    if (S::is_sequence)
+        result.put(tag::any_keys);
+    return result;
+}();
 /// The features of T, with P the request's order_by comparator (void where it gives none).
 template<typename T, typename P>
 consteval type_features features_of_type()
@@ -86,10 +96,10 @@ consteval request_features features_of()
 namespace urd::detail
 {
 
-/// The id of the container spec S resolves to, chosen among the rows as values (urd/registry/rows.hpp), or "" where
-/// none serves: choose<S> as a scan. tests/registry.cpp checks the two agree for every request of the grid.
+/// The row of the container spec S resolves to, chosen among the rows as values (urd/registry/rows.hpp), or none:
+/// what choose<S> (urd/registry/select.hpp) resolves by.
 template<typename S>
-consteval std::string_view row_choice()
+consteval const registry_row* row_choice()
 {
     auto s = request_shape { S::urd_properties, requirement<S>, S::is_sequence, S::is_queue, S::is_map };
     constexpr auto f = features_of<S>();

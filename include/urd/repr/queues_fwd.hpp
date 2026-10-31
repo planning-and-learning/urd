@@ -2,11 +2,12 @@
 
 // Queues, declared with their defaults and what the registry reads of them: first in, last in, the least by a
 // comparator (a binary heap, an addressable heap, a bucket queue), and a ring for first-in queues that retain their
-// storage. Defined in urd/repr/queues.hpp, which urd/use/queues.hpp includes.
+// storage. Defined in urd/repr/queue.hpp, addressable_heap.hpp, bucket_queue.hpp and ring_fifo.hpp.
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/registry/element_concepts.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -39,22 +40,6 @@ class BucketQueue;
 /// A first-in queue over one vector used as a ring: pop and clear keep the vector.
 template<typename T>
 class RingFifo;
-
-/// The integral priority a bucket queue files an element under: its projection where Compare orders by one, else the
-/// element. A type computation, so that asking it of an element completes nothing.
-template<typename T, typename Compare>
-struct bucket_priority_of
-{
-    using type = T;
-};
-template<typename T, typename Compare>
-    requires requires { Compare::projection; }
-struct bucket_priority_of<T, Compare>
-{
-    using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
-};
-template<typename T, typename Compare>
-using bucket_priority_t = typename bucket_priority_of<T, Compare>::type;
 
 template<typename T>
 using Fifo = Queue<T, leaving::first_in>;
@@ -108,13 +93,13 @@ template<typename T, typename C>
 inline constexpr detail::property_set relies_on<repr::BucketQueue<T, C>> = detail::property_set::of({ tag::monotone_priority });
 
 template<typename T, repr::leaving Order, typename C>
-inline constexpr auto defined_in<repr::Queue<T, Order, C>> = detail::fixed_string("urd/use/queues.hpp");
+inline constexpr auto defined_in<repr::Queue<T, Order, C>> = detail::fixed_string("urd/repr/queue.hpp");
 template<typename T, typename C>
-inline constexpr auto defined_in<repr::AddressableHeap<T, C>> = detail::fixed_string("urd/use/queues.hpp");
+inline constexpr auto defined_in<repr::AddressableHeap<T, C>> = detail::fixed_string("urd/repr/addressable_heap.hpp");
 template<typename T, typename C>
-inline constexpr auto defined_in<repr::BucketQueue<T, C>> = detail::fixed_string("urd/use/queues.hpp");
+inline constexpr auto defined_in<repr::BucketQueue<T, C>> = detail::fixed_string("urd/repr/bucket_queue.hpp");
 template<typename T>
-inline constexpr auto defined_in<repr::RingFifo<T>> = detail::fixed_string("urd/use/queues.hpp");
+inline constexpr auto defined_in<repr::RingFifo<T>> = detail::fixed_string("urd/repr/ring_fifo.hpp");
 
 }  // namespace urd
 

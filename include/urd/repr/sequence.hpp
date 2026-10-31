@@ -2,6 +2,7 @@
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
+#include "urd/registry/row.hpp"
 #include "urd/traits.hpp"
 
 #include <vector>
@@ -14,9 +15,9 @@ struct container_traits<std::vector<T, Allocator>> : properties_of<dense, positi
 {
 };
 
-/// Defined by the standard; its family header exists so that every representation has one.
+/// Defined by the standard; this header is its own, so that every representation has one.
 template<typename T, typename Allocator>
-inline constexpr auto defined_in<std::vector<T, Allocator>> = detail::fixed_string("urd/use/sequences.hpp");
+inline constexpr auto defined_in<std::vector<T, Allocator>> = detail::fixed_string("urd/repr/sequence.hpp");
 
 }  // namespace urd
 
@@ -49,3 +50,24 @@ struct container_synopsis<std::vector<T, A>>
 };
 
 }  // namespace urd
+
+namespace urd
+{
+
+template<>
+struct include<"urd/repr/sequence.hpp">
+{
+};
+
+}  // namespace urd
+
+namespace urd::detail
+{
+
+template<typename S>
+struct representation_of<"vector", S>
+{
+    using type = std::vector<typename S::element_type>;
+};
+
+}  // namespace urd::detail
