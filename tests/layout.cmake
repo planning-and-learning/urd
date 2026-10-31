@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 # and the resolution pipeline (concepts, elements, interface, properties, rules, registry, traits). Containers live in
 # urd/repr (declared by the registry, each defined in its own header, which downstream code includes),
 # compositions of Stores in urd/compose. A new root header must be added here on purpose.
-set(allowed_files concepts.hpp container_synopsis.hpp costs.hpp elements.hpp flat.hpp format.hpp index.hpp interface.hpp properties.hpp property_set.hpp incompatible.hpp request.hpp rules.hpp store.hpp tag_synopsis.hpp tags.hpp traits.hpp view.hpp)
+set(allowed_files concepts.hpp container_synopsis.hpp costs.hpp elements.hpp flat.hpp format.hpp index.hpp interface.hpp properties.hpp property_set.hpp incompatible.hpp request.hpp rules.hpp store.hpp tags.hpp traits.hpp view.hpp)
 set(allowed_directories compose registry repr semantics store)
 
 # The resolution and vocabulary tables are built from declarations alone: their sources include no container

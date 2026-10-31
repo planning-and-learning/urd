@@ -6,7 +6,6 @@
 // request costs the compiler a constant evaluation instead of hundreds of class instantiations.
 
 #include "urd/rules.hpp"
-#include "urd/tag_synopsis.hpp"
 #include "urd/tags.hpp"
 
 #include <algorithm>
@@ -125,8 +124,8 @@ static_assert(numbered_in_order(all_tags {}), "urd::tag and the tag types must l
 
 template<typename... Tags>
 constexpr auto tag_names_of(type_list<Tags...> /*tags*/)
-{ return std::array<std::string_view, sizeof...(Tags)> { tag_synopsis<Tags>::name... }; }
-/// Every tag's name (tag_synopsis), in the order of urd::tag.
+{ return std::array<std::string_view, sizeof...(Tags)> { Tags::name... }; }
+/// Every tag's name, in the order of urd::tag.
 inline constexpr auto tag_names = tag_names_of(all_tags {});
 
 /// For each tag, its category's root and which tags it is at least (itself, and those it derives from).
@@ -339,7 +338,7 @@ concept a_tag = requires {
 
 }  // namespace detail
 
-/// A tag's name, as a request writes it (tag_synopsis).
+/// A tag's name, as a request writes it.
 constexpr std::string_view tag_name(tag of) { return detail::tag_names[detail::index(of)]; }
 
 /// The properties stated by Tags, in any order, at most one per category; categories no tag answers keep their root.

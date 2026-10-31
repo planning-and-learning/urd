@@ -37,14 +37,13 @@ struct name<R>
     static constexpr std::string_view value = urd::container_synopsis<R>::description;
 };
 
-/// The vocabulary as arrays in the order of urd::tag, computed from each tag's words (urd::tag_synopsis, beside the
-/// urd/tag_synopsis.hpp): for printing a request or a spec, and for share/urd/vocabulary.json
+/// The vocabulary as arrays in the order of urd::tag, computed from each tag's words (beside the tag, urd/tags.hpp): for printing a request or a spec, and for share/urd/vocabulary.json
 /// (tests/vocabulary_table.cpp).
 inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names = urd::detail::tag_names;
 using urd::tag_name;
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
-/// tags answer (urd::tag_synopsis of its root). Whether a request may state its tags comes from the code
+/// tags answer (the words of its root). Whether a request may state its tags comes from the code
 /// (urd::detail::statable).
 struct category_entry
 {
@@ -55,13 +54,10 @@ struct category_entry
 template<typename Tag>
 constexpr category_entry category_of()
 {
-    using words = urd::tag_synopsis<Tag>;
-    if constexpr (!requires { words::question; })
+    if constexpr (!std::is_same_v<typename Tag::root, Tag>)
         return {};
-    else if constexpr (requires { typename words::heading; })
-        return { words::group::id, words::heading::id, words::question };
     else
-        return { words::group::id, {}, words::question };
+        return { Tag::group::id, Tag::heading::id, Tag::question };
 }
 template<typename... Tags>
 constexpr auto categories_of(urd::detail::type_list<Tags...> /*tags*/)
@@ -69,7 +65,7 @@ constexpr auto categories_of(urd::detail::type_list<Tags...> /*tags*/)
 inline constexpr std::array<category_entry, urd::detail::tag_count> category_vocabulary = categories_of(urd::detail::all_tags {});
 
 /// What a tag is to the one who writes a request: who keeps it (semantics only), its description and phrases
-/// (urd::tag_synopsis), and its role, derived: kind in the kind group; demand where the caller promises it; hint in the
+/// (urd/tags.hpp), and its role, derived: kind in the kind group; demand where the caller promises it; hint in the
 /// hints group; else guarantee where a container declares its category (guaranteed_roots), request where only a
 /// request states it. A category's root has an empty entry: it promises nothing and is never written.
 struct tag_entry
@@ -92,15 +88,13 @@ constexpr std::string_view role_of(urd::tag of, std::string_view group, std::str
 template<typename Tag>
 constexpr tag_entry entry_of()
 {
-    using words = urd::tag_synopsis<Tag>;
     auto result = tag_entry {};
-    if constexpr (requires { words::description; })
+    if constexpr (!std::is_same_v<typename Tag::root, Tag>)
     {
-        if constexpr (requires { words::promise; })
-            result.promise = words::promise;
-        result.description = words::description;
-        for (std::size_t each = 0; each < words::phrases.size(); ++each)
-            result.phrases[each] = words::phrases[each];
+        result.promise = Tag::promise;
+        result.description = Tag::description;
+        for (std::size_t each = 0; each < Tag::phrases.size(); ++each)
+            result.phrases[each] = Tag::phrases[each];
         const auto& category = category_vocabulary[urd::detail::index(urd::detail::root_of(Tag::value))];
         result.role = role_of(Tag::value, category.group, result.promise);
     }
@@ -150,7 +144,7 @@ static_assert(
         }
         return true;
     }(),
-    "urd::tag_synopsis: every tag has a name; a root a group and a question, and a heading in semantics; any other tag a "
+    "urd/tags.hpp: every tag has a name; a root a group and a question, and a heading in semantics; any other tag a "
     "description and phrases, and a promise in semantics");
 static_assert(tag_name(urd::tag::sorted) == "sorted" && tag_vocabulary[urd::detail::index(urd::tag::monotone_priority)].role == "demand"
               && tag_vocabulary[urd::detail::index(urd::tag::small)].role == "hint" && tag_vocabulary[urd::detail::index(urd::tag::fifo)].role == "kind"

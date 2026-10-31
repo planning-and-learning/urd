@@ -1,6 +1,6 @@
 // The four groups of tags (kind, semantics, costs, hints; docs/language/index.rst), checked against the code over the
 // request grid: each request with a stated tag, against the same request without it (its category back at its root,
-// the request rules applied again). A group is written by hand per category (urd/tag_synopsis.hpp); these check the
+// the request rules applied again). A group is written by hand per category (urd/tags.hpp); these check the
 // three groups the code can tell apart from semantics:
 //
 // - kind: without the tag, the Store is another kind (a queue, a pool, a partition or none), or offers other operations;
