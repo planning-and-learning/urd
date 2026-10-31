@@ -59,7 +59,7 @@ void value_states(benchmark::State& state)
         benchmark::DoNotOptimize(row);
         state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations() * states));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }
 
 /// States of `width` facts, about a tenth of them true: each a random earlier one with `changes` facts added and as
@@ -84,19 +84,19 @@ void fact_states(benchmark::State& state)
             auto removed = std::vector<std::uint32_t>();
             for (int change = 0; change < changes; ++change)
             {
-                added.push_back(random() % width);
-                removed.push_back(random() % width);
+                added.push_back(static_cast<std::uint32_t>(random() % width));
+                removed.push_back(static_cast<std::uint32_t>(random() % width));
             }
             handles.push_back(
                 pool.insert(handles[random() % handles.size()], std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed)).first);
         }
         std::size_t total = 0;
         for (const auto handle : handles)
-            total += pool.contains(handle, width / 2) ? 1 : 0;
+            total += pool.contains(handle, width / 2) ? 1U : 0U;
         benchmark::DoNotOptimize(total);
         state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations() * states));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }
 
 }  // namespace

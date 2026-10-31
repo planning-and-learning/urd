@@ -3,8 +3,10 @@
 // Representations of nested Stores, whose elements (rows) are Stores themselves, declared with what the registry
 // reads of them. Defined in urd/repr/rows.hpp, which urd/use/sequences.hpp includes.
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
@@ -107,5 +109,72 @@ template<typename Inner, bool TrackRows>
 inline constexpr auto defined_in<repr::Jagged<Inner, TrackRows>> = detail::fixed_string("urd/use/sequences.hpp");
 template<typename Inner>
 inline constexpr auto defined_in<repr::RowPool<Inner>> = detail::fixed_string("urd/use/sequences.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// jagged.
+template<typename Inner>
+struct container_costs<repr::Jagged<Inner>>
+{
+    static constexpr cost insert = costs::lin_row_t;
+    static constexpr cost erase = costs::lin_nt;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 1.2;
+};
+
+/// row_pool.
+template<typename Inner>
+struct container_costs<repr::RowPool<Inner>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 4;
+};
+
+/// tracked_jagged.
+template<typename Inner>
+struct container_costs<repr::Jagged<Inner, true>>
+{
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 1.3;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename Inner>
+struct container_synopsis<repr::Jagged<Inner>>
+{
+    static constexpr std::string_view id = "jagged";
+    static constexpr std::string_view description = "jagged array (CSR: offsets + one data array)";
+    static constexpr std::string_view holds = "one offsets array per level";
+};
+
+template<typename Inner>
+struct container_synopsis<repr::RowPool<Inner>>
+{
+    static constexpr std::string_view id = "row_pool";
+    static constexpr std::string_view description = "row pool (cleared rows are kept for reuse)";
+    static constexpr std::string_view holds = "rows kept with their storage";
+};
+
+template<typename Inner>
+struct container_synopsis<repr::Jagged<Inner, true>>
+{
+    static constexpr std::string_view id = "tracked_jagged";
+    static constexpr std::string_view description = "jagged rows that track the rows handed out to change";
+    static constexpr std::string_view holds = "one array, + the rows handed out to change";
+};
 
 }  // namespace urd

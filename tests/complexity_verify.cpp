@@ -33,6 +33,7 @@
 #include <map>
 #include <optional>
 #include <random>
+#include <set>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -262,6 +263,32 @@ growth classify(double small, double large)
     return growth::n_log_n;
 }
 
+/// Which quantities grow together: the elements, their key range and the capacity are one.
+enum class scale : std::uint8_t
+{
+    n,
+    row,
+    delta,
+    changes,
+};
+constexpr scale scale_of(urd::quantity of)
+{
+    switch (of)
+    {
+        case urd::quantity::row:
+            return scale::row;
+        case urd::quantity::delta:
+            return scale::delta;
+        case urd::quantity::changes:
+            return scale::changes;
+        case urd::quantity::n:
+        case urd::quantity::keys:
+        case urd::quantity::capacity:
+            break;
+    }
+    return scale::n;
+}
+
 struct verified
 {
     growth measured = growth::one;
@@ -292,9 +319,9 @@ struct verify_all<Q, urd::detail::type_list<Rs...>>
             for (std::size_t each = 0; each < offers.size(); ++each)
             {
                 const auto what = static_cast<op>(each);
-                const auto how = urd::test::table_cost(urd::test::name<R>::id, what);
+                const auto how = urd::test::cost_of<R>(what);
                 const auto key = std::pair(std::string(urd::test::name<R>::id), what);
-                if (!offers[each] || !how || how->timed || how->as_part || into.contains(key))
+                if (!offers[each] || !how || how->timed || urd::test::passed_on<R>(what) || into.contains(key))
                     continue;
                 std::optional<double> small;
                 std::optional<double> large;
@@ -311,12 +338,36 @@ struct verify_all<Q, urd::detail::type_list<Rs...>>
                     small = work<R, S>(what, 256);
                     large = work<R, S>(what, 16384);
                 }
+                // One quantity grows: a row's length for the row operations, the changes for a scope, else the elements
+                // (with their key range and capacity). A cost in another quantity holds it fixed, so it must not grow.
+                const auto varied = what == op::insert_row || what == op::find_row ? scale::row : what == op::scope ? scale::changes : scale::n;
                 if (small && large)
-                    into[key] = { classify(*small, *large), how->grows, Q::describe() };
+                    into[key] = { classify(*small, *large), scale_of(how->of) == varied ? how->grows : growth::one, Q::describe() };
             }
         }
     }
     static void run(std::map<std::pair<std::string, op>, verified>& into) { (one<Rs>(into), ...); }
+};
+
+/// The counted costs the candidates serving S declare themselves (not passed on to a part), by name.
+template<typename S, typename List>
+struct counted;
+template<typename S, typename... Rs>
+struct counted<S, urd::detail::type_list<Rs...>>
+{
+    template<typename R>
+    static void one(std::set<std::pair<std::string, op>>& into)
+    {
+        if constexpr (serving<R, S>::value)
+            for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
+            {
+                const auto what = static_cast<op>(each);
+                const auto how = urd::test::cost_of<R>(what);
+                if (how && !how->timed && !urd::test::passed_on<R>(what))
+                    into.emplace(std::string(urd::test::name<R>::id), what);
+            }
+    }
+    static void run(std::set<std::pair<std::string, op>>& into) { (one<Rs>(into), ...); }
 };
 
 template<typename... Ps>
@@ -383,13 +434,21 @@ TEST(Complexity, CountedCostsGrowAsDeclared)
         EXPECT_EQ(static_cast<int>(result.measured), static_cast<int>(result.declared))
             << key.first << " " << urd::test::op_names[static_cast<std::size_t>(key.second)] << " (" << result.request << "): measured "
             << static_cast<int>(result.measured) << ", declared " << static_cast<int>(result.declared) << " (0 constant, 1 logarithmic, 2 linear, 3 n log n)";
-    for (const auto& each : urd::test::cost_table)
-    {
-        if (!each.how.timed && !each.how.as_part)
+    // Every counted cost a candidate of the grid declares is verified (gtl's tables are no candidates without it).
+    auto declared = std::set<std::pair<std::string, op>>();
+    urd::test::for_each_group(
+        [&](const char* /*title*/, auto list)
         {
-            EXPECT_TRUE(results.contains({ std::string(each.representation), each.operation }))
-                << each.representation << " " << urd::test::op_names[static_cast<std::size_t>(each.operation)]
-                << ": counted, but no request over Probe reaches it (probe_requests, tests/complexity_verify.cpp), or mark it timed";
-        }
-    }
+            urd::test::for_each_request(list,
+                                        [&]<typename Q>(std::type_identity<Q>)
+                                        {
+                                            using S = typename Q::spec;
+                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            counted<S, List>::run(declared);
+                                        });
+        });
+    for (const auto& [representation, what] : declared)
+        EXPECT_TRUE(results.contains({ representation, what }))
+            << representation << " " << urd::test::op_names[static_cast<std::size_t>(what)]
+            << ": counted, but no request over Probe reaches it (probe_requests, tests/complexity_verify.cpp), or mark it timed";
 }

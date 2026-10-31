@@ -73,8 +73,9 @@ Inside, properties are values, not types: each tag carries its number in `urd::t
 That keeps resolving a request cheap for the compiler. A Store's spec lists the tags that say more than their
 category's root, so a diagnostic reads `spec<int, void, urd::tag::sorted, urd::tag::unique, urd::tag::shrinkable>`.
 A new tag goes into its category's struct list and into `urd::tag`, in the same order (a `static_assert` checks
-it), with its name in `tag_names` and its entry in `tag_vocabulary` (`tests/names.hpp`: role, description,
-phrases; another `static_assert` checks that every tag has one). Then regenerate the vocabulary with
+it), with its words beside it: a `urd::tag_synopsis` specialization (its name; for a root, its theme and question;
+for any other tag, its role, description and phrases; a `static_assert` in `tests/names.hpp` checks that every tag has
+them). Then regenerate the vocabulary with
 `vocabulary_table --write share/urd/vocabulary.json`; the `vocabulary` test fails until it is.
 
 Memory is a category too: `retains` (storage that erase and clear free is kept, so refilling to an earlier size
@@ -126,6 +127,16 @@ the container, its `value_type`, `mapped_type` or `sizeof`. Two properties exist
 a declaration: `positional` (the container is a random-access range; `tests/properties.cpp` checks the two agree)
 and `functional` (a value per key, a map). A nested Store's own semantics (`Hash`, `EqualTo`, `Less`) and
 properties (`traits_t`) come from its request alone (`semantics/concepts.hpp`, `is_store`).
+
+Beside its `container_traits`, in the same header, a container declares its costs: a specialization of
+`urd::container_costs` (`include/urd/costs.hpp`) with a `static constexpr cost` per operation it has (`insert`,
+`lookup`, `ordered_lookup`, `erase`, `clear`, `iterate`, `access`, `push`, `pop`, `top`, `merge`, `insert_row`,
+`find_row`, `scope`), its memory in machine words per element (`words`) and what it holds besides its elements
+(`holds`). A wrapper derives from `part_costs<part_of<W>>` and declares only what it changes. The same rule as for
+the traits holds: values only, never a member of the container, so that reading a container's costs completes
+nothing; the request groups (`tests/requests_group.cpp`) read every candidate's costs with no family header
+included, which `tests/layout.cmake` keeps true. `tests/complexity.cpp` fails on an operation a Store offers
+without a cost, and `tests/complexity_verify.cpp` counts the work of every cost not marked timed.
 
 The Store's first base checks that its representation's family is included, by the marker and never by
 completing the representation (completing a wrapper of an undefined part is an error, not a false), the parts
@@ -518,8 +529,27 @@ A workload (`small`) is the one category that only chooses: a request says how t
 changes the representation picked, never what the Store guarantees. Each workload must be backed by a
 benchmark.
 
-The preference lists in `include/urd/registry.hpp` follow `docs/BENCHMARKS.md`, which `benchmarks/` produces
-(Google Benchmark, `-DURD_BUILD_BENCHMARKS=ON`). A change to an order cites a benchmark.
+The preference lists in `include/urd/registry.hpp` are judged against costs and measurements, both kept as data:
+
+- **Costs.** Each container declares its cost per operation and its memory per element (`urd::container_costs`,
+  section 5); `share/urd/complexity.json` is generated from them (`complexity_table`).
+- **What serves what.** `benchmarks/requests.json` lists, for every request of the grid, the containers serving it
+  in the registry's order and the operations its Store offers, and the experiments: each container on each shape of
+  element. It is generated (`requests_table --write benchmarks/requests.json`, one object per group of the grid) and
+  checked by the `requests` test, so a new container or a reordered list shows up there.
+- **Measurements.** Each container is measured on its own: `benchmarks/experiment.cpp` is compiled once per
+  container, with only its family headers, and runs its lifecycle at three sizes. `benchmarks/record.py record
+  --binary <build>/benchmark_comparisons` measures the cells that are missing or stale (a cell is stale when a header
+  it measures changed), so a new or changed container is measured alone.
+- **Claims.** `benchmarks/record.py check` (the `benchmark_results` test) compares, for each request, the chosen
+  container against every other serving it, from the data alone. An other that gives a costly guarantee the request
+  did not ask for and the chosen one does not give (`stable_refs`, `concurrent`, `layered`, ...: the `costly` list in
+  `tests/complexity.hpp`) is no fair alternative and is not compared, as the registry never hands such a guarantee
+  out unasked. The others are compared by cost (a wrong order fails) and otherwise by the measured time of a
+  lifecycle: the chosen one may be slower by at most 10% or 5 ns per element, whichever is larger. Nothing is excused
+  in writing, and no benchmark compares two containers: a comparison reads their two results.
+
+A change to an order is backed by these: `docs/BENCHMARKS.md` shows the result.
 
 A declared guarantee the request left open is free: a request that did not ask for `stable_refs` may receive a
 node-based table. One guarantee is also a demand on the caller, `dense`: a container that stores by index needs

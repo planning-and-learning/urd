@@ -30,21 +30,6 @@ std::string_view resolved_name()
         return "none";
 }
 
-/// The families whose headers a Store of R needs: R's, and its parts' (a wrapper's part comes first, as its error
-/// does). Named by the header's stem: `hash`, `hash + layers`.
-template<typename R>
-void families_of(std::vector<std::string>& into)
-{
-    [&]<typename... Ps>(urd::detail::type_list<Ps...>) { (families_of<Ps>(into), ...); }(typename urd::parts<R>::type {});
-    auto header = std::string(urd::defined_in<R>.c_str());
-    header = header.substr(header.rfind('/') + 1);
-    header = header.substr(0, header.rfind('.'));
-    if (header == "<unnamed>")
-        throw std::runtime_error("a registered representation names no family header (urd::defined_in, beside its declaration): "
-                                 + std::string(urd::test::name<R>::id));
-    if (std::find(into.begin(), into.end(), header) == into.end())
-        into.push_back(header);
-}
 template<typename S>
 std::string families()
 {
@@ -53,7 +38,7 @@ std::string families()
     else
     {
         auto names = std::vector<std::string>();
-        families_of<typename urd::detail::choose<S>::type>(names);
+        urd::test::families_of<typename urd::detail::choose<S>::type>(names);
         auto result = std::string();
         for (const auto& name : names)
             result += (result.empty() ? "" : " + ") + name;

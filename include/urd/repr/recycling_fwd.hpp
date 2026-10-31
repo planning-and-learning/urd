@@ -3,7 +3,9 @@
 // Node containers that keep their erased nodes for reuse, declared with what the registry reads of them. Defined in
 // urd/repr/recycling.hpp, which urd/use/nodes.hpp includes.
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <map>
@@ -77,5 +79,79 @@ template<typename Map>
 inline constexpr auto defined_in<repr::Recycling<Map>> = detail::fixed_string("urd/use/nodes.hpp");
 template<typename Set>
 inline constexpr auto defined_in<repr::RecyclingSet<Set>> = detail::fixed_string("urd/use/nodes.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// recycling_map: its part's costs, but for what it declares here.
+template<typename K, typename V, typename C>
+struct container_costs<repr::Recycling<std::map<K, V, C>>> : part_costs<part_of<repr::Recycling<std::map<K, V, C>>>>
+{
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr double words = 5.5;
+};
+
+/// recycling_hash_set: its part's costs, but for what it declares here.
+template<typename T>
+struct container_costs<repr::RecyclingHashSet<T>> : part_costs<part_of<repr::RecyclingHashSet<T>>>
+{
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr double words = 4.5;
+};
+
+/// recycling_tree_set: its part's costs, but for what it declares here.
+template<typename T>
+struct container_costs<repr::RecyclingTreeSet<T>> : part_costs<part_of<repr::RecyclingTreeSet<T>>>
+{
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr double words = 5.5;
+};
+
+/// recycling_hash_map: its part's costs, but for what it declares here.
+template<typename K, typename V>
+struct container_costs<repr::RecyclingHashMap<K, V>> : part_costs<part_of<repr::RecyclingHashMap<K, V>>>
+{
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr double words = 4.5;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename K, typename V, typename C>
+struct container_synopsis<repr::Recycling<std::map<K, V, C>>>
+{
+    static constexpr std::string_view id = "recycling_map";
+    static constexpr std::string_view description = "recycling map (std::map that keeps erased nodes and their values for reuse)";
+    static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
+};
+
+template<typename T>
+struct container_synopsis<repr::RecyclingHashSet<T>>
+{
+    static constexpr std::string_view id = "recycling_hash_set";
+    static constexpr std::string_view description = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
+    static constexpr std::string_view holds = "erased nodes kept for reuse";
+};
+
+template<typename T>
+struct container_synopsis<repr::RecyclingTreeSet<T>>
+{
+    static constexpr std::string_view id = "recycling_tree_set";
+    static constexpr std::string_view description = "recycling tree set (std::set that keeps erased nodes for reuse)";
+    static constexpr std::string_view holds = "erased nodes kept for reuse";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::RecyclingHashMap<K, V>>
+{
+    static constexpr std::string_view id = "recycling_hash_map";
+    static constexpr std::string_view description = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
+    static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
+};
 
 }  // namespace urd

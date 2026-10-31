@@ -4,6 +4,11 @@
 // changes. Declared with what the registry reads of them; defined in urd/repr/layered.hpp, which urd/use/layers.hpp
 // includes. What is layered comes with its own family.
 
+#include "urd/costs.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 namespace urd::repr
@@ -54,5 +59,69 @@ template<typename R>
 inline constexpr auto defined_in<repr::Layered<R>> = detail::fixed_string("urd/use/layers.hpp");
 template<typename R>
 inline constexpr auto defined_in<repr::LayeredPool<R>> = detail::fixed_string("urd/use/layers.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// layered_pool: its part's costs, but for what it declares here.
+template<typename R>
+struct container_costs<repr::LayeredPool<R>> : part_costs<part_of<repr::LayeredPool<R>>>
+{
+    static constexpr double words = part_costs<part_of<repr::LayeredPool<R>>>::words;
+};
+
+/// layered: its part's costs, but for what it declares here.
+template<typename R>
+struct container_costs<repr::Layered<R>> : part_costs<part_of<repr::Layered<R>>>
+{
+    static constexpr double words = part_costs<part_of<repr::Layered<R>>>::words;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename R>
+struct container_synopsis<repr::LayeredPool<R>>
+{
+    static constexpr std::string_view id = "layered_pool";
+    static constexpr std::string_view description = "layered pool (its own elements after a parent's, indices continuing)";
+    static constexpr std::string_view holds = "its own rows, indices after the parent's";
+};
+
+template<typename R>
+struct container_synopsis<repr::Layered<R>>
+{
+    static constexpr std::string_view id = "layered";
+    static constexpr std::string_view description = "layered (its own elements, then a parent's)";
+    static constexpr std::string_view holds = "its own elements; the parent is not owned";
+};
+
+template<typename T>
+struct container_synopsis<repr::Layered<std::unordered_set<T, Hash<T>, EqualTo<T>>>>
+{
+    static constexpr std::string_view id = "layered_node_set";
+    static constexpr std::string_view description = "layered node set (std::unordered_set over a parent's)";
+    static constexpr std::string_view holds = "its own elements in nodes; the parent is not owned";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::Layered<std::unordered_map<K, V, Hash<K>, EqualTo<K>>>>
+{
+    static constexpr std::string_view id = "layered_node_map";
+    static constexpr std::string_view description = "layered node map (std::unordered_map over a parent's)";
+    static constexpr std::string_view holds = "its own entries in nodes; the parent is not owned";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::Layered<repr::IndexMap<K, V, true>>>
+{
+    static constexpr std::string_view id = "layered_generation_map";
+    static constexpr std::string_view description = "layered generation map (a slot per index, O(1) clear, over a parent's)";
+    static constexpr std::string_view holds = "its own slots; the parent is not owned";
+};
 
 }  // namespace urd

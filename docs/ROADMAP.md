@@ -451,7 +451,7 @@ touches).
 tool of `claude.search.md` reads it): its category, its role (a guarantee containers declare, a promise the caller makes
 about its data, a kind of Store, a request the interface enforces, or a hint that only reorders candidates), one line
 on its meaning, a few phrases a need is stated in, what it implies and what it excludes. Role, description and phrases
-are written by hand in `tag_vocabulary` (`tests/names.hpp`, a `static_assert` requires an entry per tag); category,
+are written by hand beside each tag (`urd::tag_synopsis` in `urd/traits.hpp` since M19; a `static_assert` requires them per tag); category,
 implies and excludes come from the tag hierarchy; `vocabulary_table --check` (the `vocabulary` test) holds the file to
 both and rejects a role that does not match its category.
 
@@ -489,6 +489,15 @@ Not done, with the reason:
 
 Found and left, costs offered that are not the best: `Scoped::at()` logs a copy on every access inside a scope;
 `erase_if` on flat sets is O(n²).
+
+## M19: the registry's choices, judged — done
+
+Every choice the registry makes is settled by costs, measured, or given a reason, and a test says which is missing
+or stale. Costs are data (`tests/complexity.hpp`, verified by counting work); each container is measured on its own
+on each shape of element at 10³, 10⁴ and 10⁵ elements; the claims are derived from `benchmarks/requests.json`,
+`share/urd/complexity.json` and the results by `benchmarks/record.py` (docs/INTEGRATION.md, "Choosing among
+containers"). Nothing is compiled or measured per pair of containers: the first attempt did, and one translation unit
+took 14 GB. Every object compiled per container or per grid group is held under 1 GiB.
 
 ## After M11: the second pass over the libraries
 

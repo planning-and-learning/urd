@@ -51,7 +51,7 @@ indexable).
 | `Store<key<int>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | hash |
 | `Store<key<int>, monotone>` | unique, growable, monotone | `unordered_flat_set` | hash |
 | `Store<key<int>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | nodes |
-| `Store<key<int>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
+| `Store<key<int>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | hash |
 | `Store<key<int>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
 
 ## Sets of std::string
@@ -93,7 +93,7 @@ indexable).
 | `Store<key<std::string>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | hash |
 | `Store<key<std::string>, monotone>` | unique, growable, monotone | `unordered_flat_set` | hash |
 | `Store<key<std::string>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | nodes |
-| `Store<key<std::string>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
+| `Store<key<std::string>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | hash |
 | `Store<key<std::string>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
 
 ## Sets of Id
@@ -135,7 +135,7 @@ indexable).
 | `Store<key<Id>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | hash |
 | `Store<key<Id>, monotone>` | unique, growable, monotone | `unordered_flat_set` | hash |
 | `Store<key<Id>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | nodes |
-| `Store<key<Id>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
+| `Store<key<Id>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | hash |
 | `Store<key<Id>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | contiguous |
 
 ## Sets ordered by a projection

@@ -4,6 +4,8 @@
 // Defined in urd/repr/ordered_map.hpp, which the family of its keys includes (urd/use/dense.hpp for a sparse set,
 // urd/use/hash.hpp for an indexed set).
 
+#include "urd/costs.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
@@ -39,5 +41,32 @@ struct container_traits<repr::OrderedMap<Keys, V>> :
 /// Defined where its keys are: the map adds nothing a family of its own would hold.
 template<typename Keys, typename V>
 inline constexpr auto defined_in<repr::OrderedMap<Keys, V>> = defined_in<Keys>;
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// ordered_map: its part's costs, but for what it declares here.
+template<typename Keys, typename V>
+struct container_costs<repr::OrderedMap<Keys, V>> : part_costs<Keys>
+{
+    static constexpr cost erase = costs::lin_n;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = part_costs<Keys>::words + 1;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename Keys, typename V>
+struct container_synopsis<repr::OrderedMap<Keys, V>>
+{
+    static constexpr std::string_view id = "ordered_map";
+    static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
+    static constexpr std::string_view holds = "its key set + n values in order";
+};
 
 }  // namespace urd

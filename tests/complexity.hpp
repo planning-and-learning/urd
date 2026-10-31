@@ -1,10 +1,12 @@
 #pragma once
 
 // What each operation costs each representation, as data: the complexity sections of docs/kinds/*.rst are written
-// from it (share/urd/complexity.json, tests/complexity_table.cpp), the registry's choices are classified by it
-// (benchmarks/comparisons.hpp), and tests/complexity_verify.cpp checks it by counting the work done.
+// from it (share/urd/complexity.json, tests/complexity_table.cpp), the registry's choices are judged by it from that
+// file and the measured results (benchmarks/record.py), and tests/complexity_verify.cpp checks it by counting the
+// work done.
 
 #include "names.hpp"
+#include "urd/costs.hpp"
 #include "urd/store/types.hpp"
 
 #include <array>
@@ -39,642 +41,294 @@ inline constexpr std::array<std::string_view, static_cast<std::size_t>(op::count
     "insert", "lookup", "ordered_lookup", "erase", "clear", "iterate", "access", "push", "pop", "top", "merge", "insert_row", "find_row", "scope",
 };
 
-/// How a cost grows, in which quantity.
-enum class growth : std::uint8_t
-{
-    one,
-    log,
-    linear,
-    n_log_n,
-};
-enum class in : std::uint8_t
-{
-    n,         ///< the elements
-    keys,      ///< U, the key range (dense keys fill it: about n)
-    capacity,  ///< the slots held (about n over the load factor)
-    row,       ///< r, a row's length
-    delta,     ///< k, a delta's changes
-    changes,   ///< the changes since a scope began
-};
+/// Which operations a Store offers, by op.
+using offers = std::array<bool, static_cast<std::size_t>(op::count)>;
 
-struct cost
-{
-    growth grows = growth::one;
-    in of = in::n;
-    bool amortized = false;
-    bool expected = false;
-    /// Verified from measured times (benchmarks/record.py) where no element operation shows the work: index and bit
-    /// containers, clearing and iterating.
-    bool timed = false;
-    /// The cost of the representation this one wraps (urd::parts), for an operation it passes on.
-    bool as_part = false;
-};
+/// The cost types are the library's (urd/costs.hpp), where each representation declares its costs.
+using urd::cost;
+using urd::growth;
+using in = urd::quantity;
 
-namespace costs
-{
-inline constexpr cost one {};
-inline constexpr cost one_a { .amortized = true };
-inline constexpr cost one_e { .expected = true };
-inline constexpr cost one_ae { .amortized = true, .expected = true };
-inline constexpr cost one_t { .timed = true };
-inline constexpr cost one_at { .amortized = true, .timed = true };
-inline constexpr cost log_n { .grows = growth::log };
-inline constexpr cost log_na { .grows = growth::log, .amortized = true };
-inline constexpr cost lin_n { .grows = growth::linear };
-inline constexpr cost lin_nt { .grows = growth::linear, .timed = true };
-inline constexpr cost lin_keys { .grows = growth::linear, .of = in::keys, .timed = true };
-inline constexpr cost lin_capacity { .grows = growth::linear, .of = in::capacity, .timed = true };
-inline constexpr cost lin_row_e { .grows = growth::linear, .of = in::row, .expected = true };
-inline constexpr cost lin_row_t { .grows = growth::linear, .of = in::row, .timed = true };
-inline constexpr cost lin_changes { .grows = growth::linear, .of = in::changes };
-inline constexpr cost lin_changes_t { .grows = growth::linear, .of = in::changes, .timed = true };
-inline constexpr cost nlog_changes { .grows = growth::n_log_n, .of = in::changes };
-inline constexpr cost part { .as_part = true };
-}  // namespace costs
-
-struct cost_entry
-{
-    std::string_view representation;  ///< name<R>::id
-    op operation;
-    cost how;
-};
-
-/// Every representation's costs, by its name (tests/names.hpp). An operation a representation lacks has no entry.
-/// From the complexity sections of docs/kinds/*.rst; amortized and expected bounds count as their class.
-inline constexpr auto cost_table = []
-{
-    using namespace costs;
-    using enum op;
-    return std::to_array<cost_entry>({
-        // Hash tables: open addressing (Boost, gtl's shards) and nodes (the standard's).
-        { "unordered_flat_set", insert, one_ae },
-        { "unordered_flat_set", lookup, one_e },
-        { "unordered_flat_set", erase, one_e },
-        { "unordered_flat_set", clear, lin_capacity },
-        { "unordered_flat_set", iterate, lin_capacity },
-        { "unordered_flat_map", insert, one_ae },
-        { "unordered_flat_map", lookup, one_e },
-        { "unordered_flat_map", erase, one_e },
-        { "unordered_flat_map", clear, lin_capacity },
-        { "unordered_flat_map", iterate, lin_capacity },
-        { "parallel_hash_set", insert, one_ae },
-        { "parallel_hash_set", lookup, one_e },
-        { "parallel_hash_set", erase, one_e },
-        { "parallel_hash_set", clear, lin_capacity },
-        { "parallel_hash_set", iterate, lin_capacity },
-        { "parallel_hash_map", insert, one_ae },
-        { "parallel_hash_map", lookup, one_e },
-        { "parallel_hash_map", erase, one_e },
-        { "parallel_hash_map", clear, lin_capacity },
-        { "parallel_hash_map", iterate, lin_capacity },
-        { "parallel_node_hash_set", insert, one_ae },
-        { "parallel_node_hash_set", lookup, one_e },
-        { "parallel_node_hash_set", erase, one_e },
-        { "parallel_node_hash_set", clear, lin_capacity },
-        { "parallel_node_hash_set", iterate, lin_capacity },
-        { "parallel_node_hash_map", insert, one_ae },
-        { "parallel_node_hash_map", lookup, one_e },
-        { "parallel_node_hash_map", erase, one_e },
-        { "parallel_node_hash_map", clear, lin_capacity },
-        { "parallel_node_hash_map", iterate, lin_capacity },
-        { "unordered_set", insert, one_ae },
-        { "unordered_set", lookup, one_e },
-        { "unordered_set", erase, one_e },
-        { "unordered_set", clear, lin_nt },
-        { "unordered_set", iterate, lin_nt },
-        { "unordered_map", insert, one_ae },
-        { "unordered_map", lookup, one_e },
-        { "unordered_map", erase, one_e },
-        { "unordered_map", clear, lin_nt },
-        { "unordered_map", iterate, lin_nt },
-        { "unordered_multimap", insert, one_ae },
-        { "unordered_multimap", lookup, one_e },
-        { "unordered_multimap", erase, one_e },
-        { "unordered_multimap", clear, lin_nt },
-        { "unordered_multimap", iterate, lin_nt },
-        // Trees.
-        { "set", insert, log_n },
-        { "set", lookup, log_n },
-        { "set", ordered_lookup, log_n },
-        { "set", erase, log_n },
-        { "set", clear, lin_nt },
-        { "set", iterate, lin_nt },
-        { "map", insert, log_n },
-        { "map", lookup, log_n },
-        { "map", ordered_lookup, log_n },
-        { "map", erase, log_n },
-        { "map", clear, lin_nt },
-        { "map", iterate, lin_nt },
-        { "multimap", insert, log_n },
-        { "multimap", lookup, log_n },
-        { "multimap", ordered_lookup, log_n },
-        { "multimap", erase, log_n },
-        { "multimap", clear, lin_nt },
-        { "multimap", iterate, lin_nt },
-        // Sorted vectors: an insert or erase inside shifts the elements after it.
-        { "flat_set", insert, lin_n },
-        { "flat_set", lookup, log_n },
-        { "flat_set", ordered_lookup, log_n },
-        { "flat_set", erase, lin_n },
-        { "flat_set", clear, lin_nt },
-        { "flat_set", iterate, lin_nt },
-        { "flat_set", access, one_t },
-        { "flat_multiset", insert, lin_n },
-        { "flat_multiset", lookup, log_n },
-        { "flat_multiset", ordered_lookup, log_n },
-        { "flat_multiset", erase, lin_n },
-        { "flat_multiset", clear, lin_nt },
-        { "flat_multiset", iterate, lin_nt },
-        { "flat_multiset", access, one_t },
-        { "flat_map", insert, lin_n },
-        { "flat_map", lookup, log_n },
-        { "flat_map", ordered_lookup, log_n },
-        { "flat_map", erase, lin_n },
-        { "flat_map", clear, lin_nt },
-        { "flat_map", iterate, lin_nt },
-        { "flat_multimap", insert, lin_n },
-        { "flat_multimap", lookup, log_n },
-        { "flat_multimap", ordered_lookup, log_n },
-        { "flat_multimap", erase, lin_n },
-        { "flat_multimap", clear, lin_nt },
-        { "flat_multimap", iterate, lin_nt },
-        // Entries in an order of their values, found by key: a scan, for few entries.
-        { "flat_entry_map", insert, lin_n },
-        { "flat_entry_map", lookup, lin_n },
-        { "flat_entry_map", erase, lin_n },
-        { "flat_entry_map", clear, lin_nt },
-        { "flat_entry_map", iterate, lin_nt },
-        // Interners: a hash table of positions over the elements in order.
-        { "indexed_set", insert, one_ae },
-        { "indexed_set", lookup, one_e },
-        { "indexed_set", erase, lin_n },
-        { "indexed_set", clear, lin_capacity },
-        { "indexed_set", iterate, lin_nt },
-        { "indexed_set", access, one_t },
-        { "stable_indexed_set", insert, one_ae },
-        { "stable_indexed_set", lookup, one_e },
-        { "stable_indexed_set", iterate, lin_nt },
-        { "stable_indexed_set", access, one_t },
-        { "concurrent_indexed_set", insert, one_ae },
-        { "concurrent_indexed_set", lookup, one_e },
-        { "concurrent_indexed_set", iterate, lin_nt },
-        { "concurrent_indexed_set", access, one_t },
-        // Dense keys: a bit or a slot per index; no element is hashed or compared.
-        { "dense_set", insert, one_at },
-        { "dense_set", lookup, one_t },
-        { "dense_set", ordered_lookup, lin_keys },
-        { "dense_set", erase, one_t },
-        { "dense_set", clear, lin_keys },
-        { "dense_set", iterate, lin_keys },
-        { "tracked_dense_set", insert, one_at },
-        { "tracked_dense_set", lookup, one_t },
-        { "tracked_dense_set", ordered_lookup, lin_keys },
-        { "tracked_dense_set", erase, one_t },
-        { "tracked_dense_set", clear, lin_nt },
-        { "tracked_dense_set", iterate, lin_keys },
-        { "sparse_set", insert, one_at },
-        { "sparse_set", lookup, one_t },
-        { "sparse_set", erase, one_t },
-        { "sparse_set", clear, one_t },
-        { "sparse_set", iterate, lin_nt },
-        { "ordered_sparse_set", insert, one_at },
-        { "ordered_sparse_set", lookup, one_t },
-        { "ordered_sparse_set", erase, lin_nt },
-        { "ordered_sparse_set", clear, one_t },
-        { "ordered_sparse_set", iterate, lin_nt },
-        { "ordered_sparse_set", access, one_t },
-        { "dense_map", insert, one_at },
-        { "dense_map", lookup, one_t },
-        { "dense_map", ordered_lookup, lin_keys },
-        { "dense_map", erase, one_t },
-        { "dense_map", clear, lin_keys },
-        { "dense_map", iterate, lin_keys },
-        { "stable_dense_map", insert, one_at },
-        { "stable_dense_map", lookup, one_t },
-        { "stable_dense_map", ordered_lookup, lin_keys },
-        { "stable_dense_map", erase, one_t },
-        { "stable_dense_map", clear, lin_keys },
-        { "stable_dense_map", iterate, lin_keys },
-        { "generation_map", insert, one_at },
-        { "generation_map", lookup, one_t },
-        { "generation_map", ordered_lookup, lin_keys },
-        { "generation_map", erase, one_t },
-        { "generation_map", clear, one_t },
-        { "generation_map", iterate, lin_keys },
-        { "stable_generation_map", insert, one_at },
-        { "stable_generation_map", lookup, one_t },
-        { "stable_generation_map", ordered_lookup, lin_keys },
-        { "stable_generation_map", erase, one_t },
-        { "stable_generation_map", clear, one_t },
-        { "stable_generation_map", iterate, lin_keys },
-        { "thread_safe_generation_map", insert, one_at },
-        { "thread_safe_generation_map", lookup, one_t },
-        { "thread_safe_generation_map", ordered_lookup, lin_keys },
-        { "thread_safe_generation_map", erase, one_t },
-        { "thread_safe_generation_map", clear, one_t },
-        { "thread_safe_generation_map", iterate, lin_keys },
-        { "csr_multimap", lookup, one_t },
-        { "csr_multimap", ordered_lookup, lin_keys },
-        { "csr_multimap", iterate, lin_keys },
-        { "bidirectional_csr", lookup, one_t },
-        { "bidirectional_csr", ordered_lookup, lin_keys },
-        { "bidirectional_csr", iterate, lin_keys },
-        { "dense_multimap", insert, one_at },
-        { "dense_multimap", lookup, one_t },
-        { "dense_multimap", ordered_lookup, lin_keys },
-        { "dense_multimap", erase, lin_row_t },
-        { "dense_multimap", clear, lin_keys },
-        { "dense_multimap", iterate, lin_keys },
-        { "posting_map", insert, one_ae },
-        { "posting_map", lookup, one_e },
-        { "posting_map", erase, lin_row_t },
-        { "posting_map", clear, lin_capacity },
-        { "posting_map", iterate, lin_nt },
-        { "disjoint_sets", lookup, one_at },
-        { "disjoint_sets", merge, one_at },
-        // Sequences.
-        { "vector", insert, one_a },
-        { "vector", erase, lin_n },
-        { "vector", clear, lin_nt },
-        { "vector", iterate, lin_nt },
-        { "vector", access, one_t },
-        { "segmented_vector", insert, one_a },
-        { "segmented_vector", iterate, lin_nt },
-        { "segmented_vector", access, one_t },
-        { "concurrent_segmented_vector", insert, one_a },
-        { "concurrent_segmented_vector", iterate, lin_nt },
-        { "concurrent_segmented_vector", access, one_t },
-        { "row_pool", insert, one_at },
-        { "row_pool", erase, one_t },
-        { "row_pool", clear, lin_nt },
-        { "row_pool", iterate, lin_nt },
-        { "row_pool", access, one_t },
-        { "jagged", insert, lin_row_t },
-        { "jagged", erase, lin_nt },
-        { "jagged", clear, lin_nt },
-        { "jagged", iterate, lin_nt },
-        { "jagged", access, one_t },
-        { "tracked_jagged", iterate, lin_nt },
-        { "tracked_jagged", access, one_t },
-        // Queues.
-        { "fifo", push, one_a },
-        { "fifo", pop, one },
-        { "fifo", top, one_t },
-        { "fifo", clear, lin_nt },
-        { "fifo", iterate, lin_nt },
-        { "ring_fifo", push, one_a },
-        { "ring_fifo", pop, one },
-        { "ring_fifo", top, one_t },
-        { "ring_fifo", clear, lin_nt },
-        { "ring_fifo", iterate, lin_nt },
-        { "lifo", push, one_a },
-        { "lifo", pop, one },
-        { "lifo", top, one_t },
-        { "lifo", clear, lin_nt },
-        { "lifo", iterate, lin_nt },
-        { "heap", push, log_na },
-        { "heap", pop, log_n },
-        { "heap", top, one_t },
-        { "heap", clear, lin_nt },
-        { "heap", iterate, lin_nt },
-        { "heap_by", push, log_na },
-        { "heap_by", pop, log_n },
-        { "heap_by", top, one_t },
-        { "heap_by", clear, lin_nt },
-        { "heap_by", iterate, lin_nt },
-        { "addressable_heap", push, log_na },
-        { "addressable_heap", pop, log_n },
-        { "addressable_heap", top, one_t },
-        { "addressable_heap", clear, lin_nt },
-        { "addressable_heap", iterate, lin_nt },
-        { "bucket_queue", push, one_at },
-        { "bucket_queue", pop, one_at },
-        { "bucket_queue", top, one_t },
-        { "bucket_queue", clear, lin_keys },
-        // Pools: a row is hashed and compared in full; a tree pool's row is its nodes.
-        { "row_interner", insert_row, lin_row_e },
-        { "row_interner", find_row, lin_row_e },
-        { "row_interner", access, one_t },
-        { "thread_safe_row_interner", insert_row, lin_row_e },
-        { "thread_safe_row_interner", find_row, lin_row_e },
-        { "thread_safe_row_interner", access, one_t },
-        { "tree_vector_set", insert_row, lin_row_e },
-        { "tree_vector_set", find_row, lin_row_e },
-        { "tree_vector_set", access, lin_row_t },
-        { "tree_bitset_set", insert_row, lin_row_t },
-        { "tree_bitset_set", find_row, lin_row_t },
-        { "tree_bitset_set", access, lin_row_t },
-        { "record_interner", insert_row, lin_row_t },
-        { "record_interner", find_row, lin_row_t },
-        { "record_interner", access, one_t },
-        { "stable_record_interner", insert_row, lin_row_t },
-        { "stable_record_interner", find_row, lin_row_t },
-        { "stable_record_interner", access, one_t },
-        { "thread_safe_record_interner", insert_row, lin_row_t },
-        { "thread_safe_record_interner", find_row, lin_row_t },
-        { "thread_safe_record_interner", access, one_t },
-        { "arena_interner", insert_row, lin_row_t },
-        { "arena_interner", find_row, lin_row_t },
-        { "arena_interner", access, one_t },
-        { "thread_safe_arena_interner", insert_row, lin_row_t },
-        { "thread_safe_arena_interner", find_row, lin_row_t },
-        { "thread_safe_arena_interner", access, one_t },
-        { "slot_vector", insert_row, one_at },
-        { "slot_vector", access, one_t },
-        { "thread_safe_slot_vector", insert_row, one_at },
-        { "thread_safe_slot_vector", access, one_t },
-        // Wrappers: what they pass on costs what their part costs; what they add is listed.
-        { "layered", insert, part },
-        { "layered", lookup, part },
-        { "layered", erase, part },
-        { "layered", clear, part },
-        { "layered", iterate, part },
-        { "layered_node_set", insert, part },
-        { "layered_node_set", lookup, part },
-        { "layered_node_set", erase, part },
-        { "layered_node_set", clear, part },
-        { "layered_node_set", iterate, part },
-        { "layered_node_map", insert, part },
-        { "layered_node_map", lookup, part },
-        { "layered_node_map", erase, part },
-        { "layered_node_map", clear, part },
-        { "layered_node_map", iterate, part },
-        { "layered_generation_map", insert, part },
-        { "layered_generation_map", lookup, part },
-        { "layered_generation_map", erase, part },
-        { "layered_generation_map", clear, part },
-        { "layered_generation_map", iterate, part },
-        { "layered_pool", insert_row, part },
-        { "layered_pool", find_row, part },
-        { "layered_pool", access, part },
-        { "change_logged", insert, part },
-        { "change_logged", lookup, part },
-        { "change_logged", erase, part },
-        { "change_logged", clear, lin_nt },
-        { "change_logged", iterate, part },
-        { "change_logged_dense_set", insert, part },
-        { "change_logged_dense_set", lookup, part },
-        { "change_logged_dense_set", ordered_lookup, part },
-        { "change_logged_dense_set", erase, part },
-        { "change_logged_dense_set", clear, lin_nt },
-        { "change_logged_dense_set", iterate, part },
-        { "change_logged_tree_set", insert, part },
-        { "change_logged_tree_set", lookup, part },
-        { "change_logged_tree_set", ordered_lookup, part },
-        { "change_logged_tree_set", erase, part },
-        { "change_logged_tree_set", clear, lin_nt },
-        { "change_logged_tree_set", iterate, part },
-        { "change_logged_node_set", insert, part },
-        { "change_logged_node_set", lookup, part },
-        { "change_logged_node_set", erase, part },
-        { "change_logged_node_set", clear, lin_nt },
-        { "change_logged_node_set", iterate, part },
-        { "recycling_hash_set", insert, part },
-        { "recycling_hash_set", lookup, part },
-        { "recycling_hash_set", erase, part },
-        { "recycling_hash_set", clear, lin_nt },
-        { "recycling_hash_set", iterate, part },
-        { "recycling_tree_set", insert, part },
-        { "recycling_tree_set", lookup, part },
-        { "recycling_tree_set", ordered_lookup, part },
-        { "recycling_tree_set", erase, part },
-        { "recycling_tree_set", clear, lin_nt },
-        { "recycling_tree_set", iterate, part },
-        { "recycling_hash_map", insert, part },
-        { "recycling_hash_map", lookup, part },
-        { "recycling_hash_map", erase, part },
-        { "recycling_hash_map", clear, lin_nt },
-        { "recycling_hash_map", iterate, part },
-        { "recycling_map", insert, part },
-        { "recycling_map", lookup, part },
-        { "recycling_map", ordered_lookup, part },
-        { "recycling_map", erase, part },
-        { "recycling_map", clear, lin_nt },
-        { "recycling_map", iterate, part },
-        { "scoped_map", insert, one_ae },
-        { "scoped_map", lookup, one_e },
-        { "scoped_map", erase, one_e },
-        { "scoped_map", clear, lin_capacity },
-        { "scoped_map", iterate, lin_capacity },
-        { "scoped_map", scope, lin_changes },
-        { "scoped_tree_map", insert, log_n },
-        { "scoped_tree_map", lookup, log_n },
-        { "scoped_tree_map", ordered_lookup, log_n },
-        { "scoped_tree_map", erase, log_n },
-        { "scoped_tree_map", clear, lin_nt },
-        { "scoped_tree_map", iterate, lin_nt },
-        { "scoped_tree_map", scope, nlog_changes },
-        { "scoped_dense_map", insert, one_at },
-        { "scoped_dense_map", lookup, one_t },
-        { "scoped_dense_map", ordered_lookup, lin_keys },
-        { "scoped_dense_map", erase, one_t },
-        { "scoped_dense_map", clear, lin_keys },
-        { "scoped_dense_map", iterate, lin_keys },
-        { "scoped_dense_map", scope, lin_changes_t },
-        // A map whose keys are a set of its own (an interner, or a sparse set), the values beside them in order.
-        { "ordered_map", insert, part },
-        { "ordered_map", lookup, part },
-        { "ordered_map", erase, lin_n },
-        { "ordered_map", clear, part },
-        { "ordered_map", iterate, lin_nt },
-    });
-}();
-
-/// What each representation holds besides its elements, for the docs.
-struct memory_note
-{
-    std::string_view representation;
-    std::string_view holds;
-    /// Machine words per element, the element itself counting 1 (per key or slot for dense keys, which fill their
-    /// range); what it adds to its part's where plus_part. Rough by design: it orders representations whose costs
-    /// grow apart (benchmarks/comparisons.hpp), and benchmarks/record.py checks it against measured bytes within 2x.
-    double words = 1;
-    bool plus_part = false;
-};
-inline constexpr auto memory_table = std::to_array<memory_note>({
-    { "unordered_flat_set", "~n/0.875 slots + 1 byte each; retains", 1.3 },
-    { "unordered_flat_map", "~n/0.875 slots + 1 byte each; retains", 1.3 },
-    { "parallel_hash_set", "16 shards of open addressing, a lock each", 1.3 },
-    { "parallel_hash_map", "16 shards of open addressing, a lock each", 1.3 },
-    { "parallel_node_hash_set", "16 shards, a node per element; stable references", 3 },
-    { "parallel_node_hash_map", "16 shards, a node per entry; stable references", 3 },
-    { "unordered_set", "a node per element + buckets; stable references", 4 },
-    { "unordered_map", "a node per entry + buckets; stable references", 4 },
-    { "unordered_multimap", "a node per entry + buckets; stable references", 4 },
-    { "set", "a node per element; reclaims", 5 },
-    { "map", "a node per entry; reclaims", 5 },
-    { "multimap", "a node per entry; reclaims", 5 },
-    { "flat_set", "n elements in one array; retains", 1.5 },
-    { "flat_multiset", "n elements in one array; retains", 1.5 },
-    { "flat_map", "n entries in one array; retains", 1.5 },
-    { "flat_multimap", "n entries in one array; retains", 1.5 },
-    { "flat_entry_map", "n entries in one array; for few", 1.5 },
-    { "indexed_set", "n elements in order + a table of positions", 2.5 },
-    { "stable_indexed_set", "segments that never move + a table of positions", 2.5 },
-    { "concurrent_indexed_set", "segments that never move + a table of positions; new elements under a lock", 2.6 },
-    { "dense_set", "U bits", 0.016 },
-    { "tracked_dense_set", "U bits + the indices of the words in use", 0.03 },
-    { "sparse_set", "n members + U positions", 2 },
-    { "ordered_sparse_set", "n members in insertion order + U positions", 2 },
-    { "dense_map", "a slot per index", 1.2 },
-    { "stable_dense_map", "a slot per index, in segments that never move", 1.3 },
-    { "generation_map", "a slot and a generation per index", 1.6 },
-    { "stable_generation_map", "a slot and a generation per index, in segments that never move", 1.7 },
-    { "thread_safe_generation_map", "a slot, a generation and a lock byte per index, in segments", 1.8 },
-    { "csr_multimap", "n values + U + 1 offsets", 1.2 },
-    { "bidirectional_csr", "n values + U + 1 offsets, both ways", 2.4 },
-    { "dense_multimap", "a vector per index; retains", 4 },
-    { "posting_map", "a vector of values per key", 4 },
-    { "disjoint_sets", "a parent and a size per element", 2 },
-    { "vector", "one array; retains", 1.5 },
-    { "segmented_vector", "doubling segments; stable references", 1.5 },
-    { "concurrent_segmented_vector", "doubling segments; stable references; appends from threads", 1.6 },
-    { "row_pool", "rows kept with their storage", 4 },
-    { "jagged", "one offsets array per level", 1.2 },
-    { "tracked_jagged", "one array, + the rows handed out to change", 1.3 },
-    { "fifo", "a deque; stable references", 1.2 },
-    { "ring_fifo", "one vector as a ring; retains", 1.5 },
-    { "lifo", "a vector; retains", 1.5 },
-    { "heap", "a vector as a binary heap; retains", 1.5 },
-    { "heap_by", "a vector as a binary heap; retains", 1.5 },
-    { "addressable_heap", "a heap of handles + a slot per handle", 3 },
-    { "bucket_queue", "a vector per priority", 2 },
-    { "row_interner", "each distinct row once, in full", 2.5 },
-    { "thread_safe_row_interner", "each distinct row once, in full; inserts under a lock", 2.6 },
-    { "tree_vector_set", "nodes shared across rows: a delta adds about k log r nodes", 1 },
-    { "tree_bitset_set", "nodes shared across rows; all-zero subtrees take nothing", 0.05 },
-    { "record_interner", "each distinct record once, as one block of bytes", 2.5 },
-    { "stable_record_interner", "each distinct record once, in segments that never move", 2.6 },
-    { "thread_safe_record_interner", "each distinct record once; inserts under a lock", 2.7 },
-    { "arena_interner", "each distinct record once, serialized into an arena", 2.5 },
-    { "thread_safe_arena_interner", "each distinct record once, serialized; inserts under a lock", 2.7 },
-    { "slot_vector", "stable slots; freed slots reused first", 1.5 },
-    { "thread_safe_slot_vector", "stable slots; freed slots reused first, under a lock", 1.6 },
-    { "layered", "its own elements; the parent is not owned", 0, true },
-    { "layered_node_set", "its own elements in nodes; the parent is not owned", 4 },
-    { "layered_node_map", "its own entries in nodes; the parent is not owned", 4 },
-    { "layered_generation_map", "its own slots; the parent is not owned", 1.6 },
-    { "layered_pool", "its own rows, indices after the parent's", 0, true },
-    { "change_logged", "+ the elements added and removed", 1, true },
-    { "change_logged_dense_set", "+ the elements added and removed", 1.03 },
-    { "change_logged_tree_set", "+ the elements added and removed", 6 },
-    { "change_logged_node_set", "+ the elements added and removed", 5 },
-    { "recycling_hash_set", "erased nodes kept for reuse", 4.5 },
-    { "recycling_tree_set", "erased nodes kept for reuse", 5.5 },
-    { "recycling_hash_map", "erased nodes and their values kept for reuse", 4.5 },
-    { "recycling_map", "erased nodes and their values kept for reuse", 5.5 },
-    { "scoped_map", "+ a log entry per change; pop_scope undoes them", 2.3 },
-    { "scoped_tree_map", "+ a log entry per change; pop_scope undoes them", 6 },
-    { "scoped_dense_map", "+ a log entry per change; pop_scope undoes them", 2.2 },
-    { "ordered_map", "its key set + n values in order", 1, true },
-});
-
-/// The cost of `what` in the representation named `representation`, unresolved (as_part stays as_part); none where it
-/// lacks the operation.
-constexpr std::optional<cost> table_cost(std::string_view representation, op what)
-{
-    for (const auto& each : cost_table)
-        if (each.representation == representation && each.operation == what)
-            return each.how;
-    return std::nullopt;
-}
-
-/// The representation a wrapper passes operations on to: the first of urd::parts<R>; an ordered map's key set.
-template<typename R, typename List = typename urd::parts<R>::type>
-struct first_part
-{
-};
-template<typename R, typename P, typename... Ps>
-struct first_part<R, urd::detail::type_list<P, Ps...>>
-{
-    using type = P;
-};
-template<typename Keys, typename V>
-struct first_part<urd::repr::OrderedMap<Keys, V>, urd::detail::type_list<>>
-{
-    using type = Keys;
-};
-
-/// The memory of R in words per element (memory_table), a wrapper's added to its part's; none where undeclared.
-template<typename R>
-constexpr std::optional<double> words_of()
-{
-    for (const auto& each : memory_table)
-        if (each.representation == name<R>::id)
-        {
-            if (!each.plus_part)
-                return each.words;
-            if constexpr (requires { typename first_part<R>::type; })
-                if (const auto part = words_of<typename first_part<R>::type>())
-                    return *part + each.words;
-            return std::nullopt;
-        }
-    return std::nullopt;
-}
-
-/// The cost of `what` in R, with what a wrapper passes on resolved to its part.
+/// The cost of `what` in R (urd::container_costs<R>, a wrapper's resolved through its part); none where R lacks it.
 template<typename R>
 constexpr std::optional<cost> cost_of(op what)
 {
-    const auto found = table_cost(name<R>::id, what);
-    if (!found || !found->as_part)
-        return found;
-    if constexpr (requires { typename first_part<R>::type; })
-        return cost_of<typename first_part<R>::type>(what);
+    using C = urd::container_costs<R>;
+    switch (what)
+    {
+        case op::insert:
+            if constexpr (requires { C::insert; })
+                return C::insert;
+            break;
+        case op::lookup:
+            if constexpr (requires { C::lookup; })
+                return C::lookup;
+            break;
+        case op::ordered_lookup:
+            if constexpr (requires { C::ordered_lookup; })
+                return C::ordered_lookup;
+            break;
+        case op::erase:
+            if constexpr (requires { C::erase; })
+                return C::erase;
+            break;
+        case op::clear:
+            if constexpr (requires { C::clear; })
+                return C::clear;
+            break;
+        case op::iterate:
+            if constexpr (requires { C::iterate; })
+                return C::iterate;
+            break;
+        case op::access:
+            if constexpr (requires { C::access; })
+                return C::access;
+            break;
+        case op::push:
+            if constexpr (requires { C::push; })
+                return C::push;
+            break;
+        case op::pop:
+            if constexpr (requires { C::pop; })
+                return C::pop;
+            break;
+        case op::top:
+            if constexpr (requires { C::top; })
+                return C::top;
+            break;
+        case op::merge:
+            if constexpr (requires { C::merge; })
+                return C::merge;
+            break;
+        case op::insert_row:
+            if constexpr (requires { C::insert_row; })
+                return C::insert_row;
+            break;
+        case op::find_row:
+            if constexpr (requires { C::find_row; })
+                return C::find_row;
+            break;
+        case op::scope:
+            if constexpr (requires { C::scope; })
+                return C::scope;
+            break;
+        case op::count:
+            break;
+    }
+    return std::nullopt;
+}
+
+/// Whether R passes `what` on to its part: a wrapper's cost it inherits rather than declares (the same object).
+template<typename R>
+constexpr bool passed_on(op what)
+{
+    using C = urd::container_costs<R>;
+    if constexpr (requires { typename C::part; })
+    {
+        using P = urd::container_costs<typename C::part>;
+        switch (what)
+        {
+            case op::insert:
+                if constexpr (requires { P::insert; })
+                    return &C::insert == &P::insert;
+                break;
+            case op::lookup:
+                if constexpr (requires { P::lookup; })
+                    return &C::lookup == &P::lookup;
+                break;
+            case op::ordered_lookup:
+                if constexpr (requires { P::ordered_lookup; })
+                    return &C::ordered_lookup == &P::ordered_lookup;
+                break;
+            case op::erase:
+                if constexpr (requires { P::erase; })
+                    return &C::erase == &P::erase;
+                break;
+            case op::clear:
+                if constexpr (requires { P::clear; })
+                    return &C::clear == &P::clear;
+                break;
+            case op::iterate:
+                if constexpr (requires { P::iterate; })
+                    return &C::iterate == &P::iterate;
+                break;
+            case op::access:
+                if constexpr (requires { P::access; })
+                    return &C::access == &P::access;
+                break;
+            case op::push:
+                if constexpr (requires { P::push; })
+                    return &C::push == &P::push;
+                break;
+            case op::pop:
+                if constexpr (requires { P::pop; })
+                    return &C::pop == &P::pop;
+                break;
+            case op::top:
+                if constexpr (requires { P::top; })
+                    return &C::top == &P::top;
+                break;
+            case op::merge:
+                if constexpr (requires { P::merge; })
+                    return &C::merge == &P::merge;
+                break;
+            case op::insert_row:
+                if constexpr (requires { P::insert_row; })
+                    return &C::insert_row == &P::insert_row;
+                break;
+            case op::find_row:
+                if constexpr (requires { P::find_row; })
+                    return &C::find_row == &P::find_row;
+                break;
+            case op::scope:
+                if constexpr (requires { P::scope; })
+                    return &C::scope == &P::scope;
+                break;
+            case op::count:
+                break;
+        }
+    }
+    return false;
+}
+
+/// The part R wraps, by name: the one its costs are passed on to, else the first of urd::parts<R>; empty where R
+/// wraps none.
+template<typename R>
+std::string_view part_name()
+{
+    if constexpr (requires { typename urd::container_costs<R>::part; })
+        return name<typename urd::container_costs<R>::part>::id;
+    else if constexpr (requires { typename urd::part_of<R>; })
+        return name<urd::part_of<R>>::id;
+    else
+        return {};
+}
+
+/// R's memory in words per element; none where it declares none.
+template<typename R>
+constexpr std::optional<double> words_of()
+{
+    if constexpr (requires { urd::container_costs<R>::words; })
+        return urd::container_costs<R>::words;
     else
         return std::nullopt;
 }
 
-/// The operations a Store of R for S offers, read from its facets (urd::detail::facet_switches); the facets not
-/// listed here (sizing, equality, set algebra, ...) are not compared.
-template<typename R, typename S>
-constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
+/// The guarantees that cost something to give: storage by index, nodes, locks, generations, a log, a parent, shared
+/// parts. A container that gives one nobody asked for is a surprise, unlike one that also happens to keep its memory,
+/// lie contiguous, or iterate in order (a dense container's order is its index order, at no cost).
+inline constexpr std::array costly { urd::tag::dense,       urd::tag::stable_refs,  urd::tag::concurrent, urd::tag::constant_clear,     urd::tag::scoped,
+                                     urd::tag::layered,     urd::tag::change_log,   urd::tag::handles,    urd::tag::structural_sharing, urd::tag::partition,
+                                     urd::tag::fixed_shape, urd::tag::bidirectional };
+
+/// The facets the operations below read, from the spec alone: the cases of urd::detail::facet_switches that do not
+/// read the representation (only equality and ordering do, and they are not compared). Each container's benchmark
+/// checks it against facet_switches for its own Store (benchmarks/experiment.cpp).
+template<typename S>
+struct spec_switches
+{
+    static constexpr bool on(urd::detail::facet_id id)
+    {
+        using urd::has;
+        using urd::detail::facet_id;
+        switch (id)
+        {
+            case facet_id::iteration:
+                return S::iterable || (S::is_queue && !has<S, urd::monotone_priority>);
+            case facet_id::lookup:
+                return urd::by_value<S> && S::iterable;
+            case facet_id::ordered_lookup:
+                return has<S, urd::sorted> && !urd::detail::is_entry_less<typename S::order_type>;
+            case facet_id::positions:
+                return has<S, urd::positional> || (S::is_set && has<S, urd::insertion_ordered> && !has<S, urd::reclaims>);
+            case facet_id::growth:
+                return has<S, urd::growable> && S::iterable;
+            case facet_id::removal:
+                return has<S, urd::shrinkable> && S::iterable;
+            case facet_id::values_by_key:
+                return S::is_map && has<S, urd::unique>;
+            case facet_id::multi_values:
+                return S::is_map && !has<S, urd::unique>;
+            case facet_id::queue_access:
+                return S::is_queue;
+            case facet_id::scopes:
+                return has<S, urd::scoped>;
+            case facet_id::pool:
+                return S::is_pool && has<S, urd::unique> && !has<S, urd::flat>;
+            case facet_id::records:
+                return S::is_pool && has<S, urd::unique> && has<S, urd::flat>;
+            case facet_id::slots:
+                return S::is_pool && !has<S, urd::unique>;
+            case facet_id::grouping:
+                return S::is_partition;
+            case facet_id::shape:
+                return has<S, urd::fixed_shape>;
+            default:
+                return false;
+        }
+    }
+};
+
+/// The operations a Store offers, read from its facets (`On::on`); the facets not listed here (sizing, equality, set
+/// algebra, ...) are not compared.
+template<typename S, typename On>
+constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered_by()
 {
     using urd::detail::facet_id;
-    using on = urd::detail::facet_switches<R, S>;
     auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
     const auto offer = [&](op what) { result[static_cast<std::size_t>(what)] = true; };
-    if (on::on(facet_id::growth))
+    // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
+    if (On::on(facet_id::growth) && !urd::has<S, urd::fixed_shape>)
         offer(op::insert);
-    if (on::on(facet_id::removal))
+    if (On::on(facet_id::removal))
     {
         offer(op::erase);
         offer(op::clear);
     }
-    if (on::on(facet_id::lookup) || on::on(facet_id::values_by_key) || on::on(facet_id::multi_values))
+    if (On::on(facet_id::lookup) || On::on(facet_id::values_by_key) || On::on(facet_id::multi_values))
         offer(op::lookup);
-    if (on::on(facet_id::ordered_lookup))
+    if (On::on(facet_id::ordered_lookup))
         offer(op::ordered_lookup);
-    if (on::on(facet_id::iteration))
+    if (On::on(facet_id::iteration))
         offer(op::iterate);
-    if (on::on(facet_id::positions) || on::on(facet_id::shape))
+    if (On::on(facet_id::positions) || On::on(facet_id::shape))
         offer(op::access);
-    if (on::on(facet_id::queue_access))
+    if (On::on(facet_id::queue_access))
     {
         offer(op::push);
         offer(op::pop);
         offer(op::top);
         offer(op::clear);
     }
-    if (on::on(facet_id::grouping))
+    if (On::on(facet_id::grouping))
     {
         offer(op::merge);
         offer(op::lookup);
     }
-    if (on::on(facet_id::pool) || on::on(facet_id::records))
+    if (On::on(facet_id::pool) || On::on(facet_id::records))
     {
         offer(op::insert_row);
         offer(op::find_row);
         offer(op::access);
     }
-    if (on::on(facet_id::slots))
+    if (On::on(facet_id::slots))
     {
         offer(op::insert_row);
         offer(op::access);
     }
-    if (on::on(facet_id::scopes))
+    if (On::on(facet_id::scopes))
         offer(op::scope);
     return result;
 }
+
+/// The operations a Store of R for S offers.
+template<typename R, typename S>
+constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
+{ return offered_by<S, urd::detail::facet_switches<R, S>>(); }
+
+/// The operations a request's Store offers, from its spec alone (spec_switches).
+template<typename S>
+constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
+{ return offered_by<S, spec_switches<S>>(); }
 
 }  // namespace urd::test

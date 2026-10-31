@@ -29,13 +29,17 @@ THEMES = {t["theme"]: t for t in VOCABULARY["themes"]}
 CATEGORIES = {c["category"]: c for c in VOCABULARY["categories"]}
 TAGS = {t["tag"]: t for t in VOCABULARY["tags"]}
 COMPLEXITY = json.loads((ROOT / "share/urd/complexity.json").read_text())
-ROLES = {
-    "guarantee": "a guarantee: the container keeps it",
-    "demand": "a demand: you promise it about the data",
-    "kind": "a kind: it makes the Store a queue, a pool or a partition",
-    "request": "a request: only a request states it",
-    "hint": "a hint: it changes the choice, never a guarantee",
-}
+_RESULTS = sorted((ROOT / "benchmarks/results").glob("*.json"))
+MEASURED = json.loads(_RESULTS[0].read_text())["cells"] if _RESULTS else {}
+
+
+def measured(representation: str, operation: str) -> str:
+    """The measured time of an operation at 10^4 int elements (benchmarks/results), as " · 12 ns", or ""."""
+    for name, result in MEASURED.items():
+        parts = name.split("/")
+        if parts[0] == representation and set(parts[1].split(";")) <= {"int", "-"} and parts[-1] == "10000" and operation in result.get("ns", {}):
+            return f" · {result['ns'][operation]:.3g} ns"
+    return ""
 
 
 def served_requests() -> list[tuple[str, set[str]]]:
@@ -193,9 +197,13 @@ class Complexity(Generated):
             for o in ops:
                 cost = r["costs"].get(o)
                 text = "—" if cost is None else "as its part" if cost.get("as_part") else cost["cost"].replace("*", "\\*")
+                if cost is not None:
+                    text += measured(r["representation"], o)
                 out.append(f"     - {text}")
             out.append(f"     - {r['holds']}")
-        return [*out, "", "\\* amortized, ~ expected; n elements, U the key range, r a row's length, k a delta's changes.", ""]
+        return [*out, "", "\\* amortized, ~ expected; n elements, U the key range, r a row's length, k a delta's changes. "
+                       "Where measured, the median time per operation at 10\\ :sup:`4` int elements follows "
+                       "(:doc:`/BENCHMARKS`).", ""]
 
 
 def init_env(app, env, docnames) -> None:

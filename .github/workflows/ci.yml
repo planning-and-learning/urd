@@ -46,6 +46,7 @@ jobs:
         run: >
           cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DURD_WITH_GTL=${{ matrix.gtl }}
+          -DURD_BUILD_BENCHMARKS=${{ (matrix.compiler == 'g++' && matrix.build_type == 'Release' && matrix.gtl == 'ON') && 'ON' || 'OFF' }}
 
       - name: Build
         run: cmake --build build

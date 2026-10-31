@@ -5,7 +5,9 @@
 // names them for any element type, so they are unconstrained templates; their container_traits declare properties
 // only for indexable keys.
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
@@ -86,5 +88,203 @@ template<typename K, bool KeepOrder>
 inline constexpr auto defined_in<repr::SparseSet<K, KeepOrder>> = detail::fixed_string("urd/use/dense.hpp");
 template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
 inline constexpr auto defined_in<repr::IndexMap<K, V, Generations, ThreadSafe, Stable>> = detail::fixed_string("urd/use/dense.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// dense_set.
+template<typename K>
+struct container_costs<repr::DenseSet<K, false>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::lin_keys;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 0.016;
+};
+
+/// tracked_dense_set.
+template<typename K>
+struct container_costs<repr::DenseSet<K, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 0.03;
+};
+
+/// sparse_set.
+template<typename K>
+struct container_costs<repr::SparseSet<K, false>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::one_t;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 2;
+};
+
+/// ordered_sparse_set.
+template<typename K>
+struct container_costs<repr::SparseSet<K, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost erase = costs::lin_nt;
+    static constexpr cost clear = costs::one_t;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 2;
+};
+
+/// dense_map.
+template<typename K, typename V>
+struct container_costs<repr::IndexMap<K, V, false>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::lin_keys;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 1.2;
+};
+
+/// stable_dense_map.
+template<typename K, typename V>
+struct container_costs<repr::IndexMap<K, V, false, false, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::lin_keys;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 1.3;
+};
+
+/// generation_map.
+template<typename K, typename V>
+struct container_costs<repr::IndexMap<K, V, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::one_t;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 1.6;
+};
+
+/// stable_generation_map.
+template<typename K, typename V>
+struct container_costs<repr::IndexMap<K, V, true, false, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::one_t;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 1.7;
+};
+
+/// thread_safe_generation_map.
+template<typename K, typename V>
+struct container_costs<repr::IndexMap<K, V, true, true>>
+{
+    static constexpr cost insert = costs::one_at;
+    static constexpr cost lookup = costs::one_t;
+    static constexpr cost ordered_lookup = costs::lin_keys;
+    static constexpr cost erase = costs::one_t;
+    static constexpr cost clear = costs::one_t;
+    static constexpr cost iterate = costs::lin_keys;
+    static constexpr double words = 1.8;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename K>
+struct container_synopsis<repr::DenseSet<K, false>>
+{
+    static constexpr std::string_view id = "dense_set";
+    static constexpr std::string_view description = "dense set (a bitset over indices)";
+    static constexpr std::string_view holds = "U bits";
+};
+
+template<typename K>
+struct container_synopsis<repr::DenseSet<K, true>>
+{
+    static constexpr std::string_view id = "tracked_dense_set";
+    static constexpr std::string_view description = "dense set tracking its words (a bitset over indices, cleared by the words it touched)";
+    static constexpr std::string_view holds = "U bits + the indices of the words in use";
+};
+
+template<typename K>
+struct container_synopsis<repr::SparseSet<K, false>>
+{
+    static constexpr std::string_view id = "sparse_set";
+    static constexpr std::string_view description = "sparse set (members array plus index positions, O(1) clear)";
+    static constexpr std::string_view holds = "n members + U positions";
+};
+
+template<typename K>
+struct container_synopsis<repr::SparseSet<K, true>>
+{
+    static constexpr std::string_view id = "ordered_sparse_set";
+    static constexpr std::string_view description = "sparse set keeping insertion order (erase shifts the members after it)";
+    static constexpr std::string_view holds = "n members in insertion order + U positions";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::IndexMap<K, V, false>>
+{
+    static constexpr std::string_view id = "dense_map";
+    static constexpr std::string_view description = "dense map (a slot per index)";
+    static constexpr std::string_view holds = "a slot per index";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::IndexMap<K, V, false, false, true>>
+{
+    static constexpr std::string_view id = "stable_dense_map";
+    static constexpr std::string_view description = "dense map over slots that never move (segments)";
+    static constexpr std::string_view holds = "a slot per index, in segments that never move";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::IndexMap<K, V, true>>
+{
+    static constexpr std::string_view id = "generation_map";
+    static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
+    static constexpr std::string_view holds = "a slot and a generation per index";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::IndexMap<K, V, true, false, true>>
+{
+    static constexpr std::string_view id = "stable_generation_map";
+    static constexpr std::string_view description = "generation map over slots that never move (segments)";
+    static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::IndexMap<K, V, true, true>>
+{
+    static constexpr std::string_view id = "thread_safe_generation_map";
+    static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
+    static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
+};
 
 }  // namespace urd

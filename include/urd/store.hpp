@@ -160,6 +160,7 @@ public:
 
     /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
     template<std::input_iterator InputIt>
+        requires std::constructible_from<R, InputIt, InputIt>
     Store(InputIt first, InputIt last) : m_representation(first, last)
     {
         if constexpr (has<S, nonempty>)

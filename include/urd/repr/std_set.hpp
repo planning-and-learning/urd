@@ -1,6 +1,8 @@
 #pragma once
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <functional>
@@ -39,5 +41,64 @@ template<typename T, typename C, typename Allocator>
 inline constexpr auto defined_in<std::multiset<T, C, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
 template<typename T, typename H, typename E, typename Allocator>
 inline constexpr auto defined_in<std::unordered_set<T, H, E, Allocator>> = detail::fixed_string("urd/use/nodes.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// set.
+template<typename T, typename C, typename A>
+struct container_costs<std::set<T, C, A>>
+{
+    static constexpr cost insert = costs::log_n;
+    static constexpr cost lookup = costs::log_n;
+    static constexpr cost ordered_lookup = costs::log_n;
+    static constexpr cost erase = costs::log_n;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 5;
+};
+
+/// unordered_set.
+template<typename T, typename H, typename E, typename A>
+struct container_costs<std::unordered_set<T, H, E, A>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::one_e;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 4;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename T, typename C, typename A>
+struct container_synopsis<std::set<T, C, A>>
+{
+    static constexpr std::string_view id = "set";
+    static constexpr std::string_view description = "std::set (balanced tree)";
+    static constexpr std::string_view holds = "a node per element; reclaims";
+};
+
+template<typename T, typename H, typename E, typename A>
+struct container_synopsis<std::unordered_set<T, H, E, A>>
+{
+    static constexpr std::string_view id = "unordered_set";
+    static constexpr std::string_view description = "std::unordered_set (hash table)";
+    static constexpr std::string_view holds = "a node per element + buckets; stable references";
+};
+
+template<typename T, typename C, typename A>
+struct container_synopsis<std::multiset<T, C, A>>
+{
+    static constexpr std::string_view id = "multiset";
+    static constexpr std::string_view description = "std::multiset (balanced tree)";
+    static constexpr std::string_view holds = "a node per element; reclaims";
+};
 
 }  // namespace urd

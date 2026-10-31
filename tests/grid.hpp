@@ -9,12 +9,18 @@
 #include "urd/flat.hpp"
 #include "urd/store.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cxxabi.h>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
+#include <type_traits>
 #include <typeinfo>
 #include <utility>
 #include <vector>
@@ -110,6 +116,41 @@ std::string type_name()
 template<typename T>
 std::string type_name(std::type_identity<std::vector<T>>)
 { return "std::vector<" + type_name<T>() + ">"; }
+
+/// The families whose headers a Store of R needs: R's, and its parts' (a wrapper's part comes first, as its error
+/// does). Named by the header's stem: `hash`, `hash + layers`.
+template<typename R>
+void families_of(std::vector<std::string>& into)
+{
+    [&]<typename... Ps>(urd::detail::type_list<Ps...>) { (families_of<Ps>(into), ...); }(typename urd::parts<R>::type {});
+    auto header = std::string(urd::defined_in<R>.c_str());
+    header = header.substr(header.rfind('/') + 1);
+    header = header.substr(0, header.rfind('.'));
+    if (header == "<unnamed>")
+        throw std::runtime_error("a registered representation names no family header (urd::defined_in, beside its declaration): "
+                                 + std::string(urd::test::name<R>::id));
+    if (std::find(into.begin(), into.end(), header) == into.end())
+        into.push_back(header);
+}
+/// The families of the Stores a type names as its elements, nested ones too (a Store of Stores of ints), by matching
+/// the Store's type, so none of them is completed.
+template<typename T>
+void element_families_of(std::vector<std::string>& into);
+template<typename R, typename S>
+void element_families_of_store(std::type_identity<urd::detail::Store<R, S>> /*store*/, std::vector<std::string>& into)
+{
+    families_of<R>(into);
+    if constexpr (!std::is_void_v<typename S::key_type>)
+        element_families_of<typename S::key_type>(into);
+    if constexpr (!std::is_void_v<typename S::value_type>)
+        element_families_of<typename S::value_type>(into);
+}
+template<typename T>
+void element_families_of(std::vector<std::string>& into)
+{
+    if constexpr (urd::is_store<T>)
+        urd::test::element_families_of_store(std::type_identity<T> {}, into);  // qualified: lookup by argument would complete the Store
+}
 
 /// One request: its spec, and how to print it as written.
 template<typename... Ps>
@@ -372,31 +413,70 @@ using flat_pools = requests<request<value<Id>, handles, unique, flat>,
                             request<value<Id>, handles, unique, flat, monotone, layered>,
                             request<value<Text>, handles, unique, flat, layered, concurrent>>;
 
+/// The groups, in the order of the table, and their titles.
+using groups = std::tuple<sets_of<int>,
+                          sets_of<std::string>,
+                          sets_of<Id>,
+                          ordered_sets,
+                          dense_sets_of<int>,
+                          dense_sets_of<Id>,
+                          indices,
+                          maps_of<int, int>,
+                          maps_of<std::string, double>,
+                          maps_of<Id, Id>,
+                          ordered_maps,
+                          dense_maps_of<int, int>,
+                          dense_maps_of<Id, double>,
+                          sequences,
+                          queues_of<int>,
+                          queues_of<Id>,
+                          ordered_queues,
+                          pools,
+                          stores_as_keys,
+                          sparse_partitions,
+                          flat_pools>;
+inline constexpr std::array<const char*, std::tuple_size_v<groups>> group_titles {
+    "Sets of int",
+    "Sets of std::string",
+    "Sets of Id",
+    "Sets ordered by a projection",
+    "Dense sets of int",
+    "Dense sets of Id",
+    "Keyed by an index",
+    "Maps int to int",
+    "Maps std::string to double",
+    "Maps Id to Id",
+    "Maps ordered by a projection",
+    "Dense maps int to int",
+    "Dense maps Id to double",
+    "Sequences",
+    "Queues of int",
+    "Queues of Id",
+    "Queues ordered by a projection",
+    "Pools",
+    "Stores as keys",
+    "Partitions of sparse keys",
+    "Records stored flat",
+};
+
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>
 void for_each_group(F f)
 {
-    f("Sets of int", sets_of<int> {});
-    f("Sets of std::string", sets_of<std::string> {});
-    f("Sets of Id", sets_of<Id> {});
-    f("Sets ordered by a projection", ordered_sets {});
-    f("Dense sets of int", dense_sets_of<int> {});
-    f("Dense sets of Id", dense_sets_of<Id> {});
-    f("Keyed by an index", indices {});
-    f("Maps int to int", maps_of<int, int> {});
-    f("Maps std::string to double", maps_of<std::string, double> {});
-    f("Maps Id to Id", maps_of<Id, Id> {});
-    f("Maps ordered by a projection", ordered_maps {});
-    f("Dense maps int to int", dense_maps_of<int, int> {});
-    f("Dense maps Id to double", dense_maps_of<Id, double> {});
-    f("Sequences", sequences {});
-    f("Queues of int", queues_of<int> {});
-    f("Queues of Id", queues_of<Id> {});
-    f("Queues ordered by a projection", ordered_queues {});
-    f("Pools", pools {});
-    f("Stores as keys", stores_as_keys {});
-    f("Partitions of sparse keys", sparse_partitions {});
-    f("Records stored flat", flat_pools {});
+    [&]<std::size_t... G>(std::index_sequence<G...>)
+    { (f(group_titles[G], std::tuple_element_t<G, groups> {}), ...); }(std::make_index_sequence<std::tuple_size_v<groups>>());
 }
+
+template<std::size_t P, typename List>
+struct nth_request;
+template<std::size_t P, typename... Rs>
+struct nth_request<P, requests<Rs...>>
+{
+    using type = std::tuple_element_t<P, std::tuple<Rs...>>;
+};
+
+/// The request at position P of group G: how a benchmark names the request it measures a container for.
+template<std::size_t G, std::size_t P>
+using request_at = typename nth_request<P, std::tuple_element_t<G, groups>>::type;
 
 }  // namespace urd::test

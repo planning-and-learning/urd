@@ -1,8 +1,10 @@
 #pragma once
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <cstddef>
@@ -79,5 +81,95 @@ template<typename T, typename H, typename E, typename A, std::size_t N, typename
 inline constexpr auto defined_in<gtl::parallel_node_hash_set<T, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
 template<typename K, typename V, typename H, typename E, typename A, std::size_t N, typename M, typename Aux>
 inline constexpr auto defined_in<gtl::parallel_node_hash_map<K, V, H, E, A, N, M, Aux>> = detail::fixed_string("urd/use/parallel.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// parallel_hash_set.
+template<typename T>
+struct container_costs<repr::ParallelHashSet<T>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::one_e;
+    static constexpr cost clear = costs::lin_capacity;
+    static constexpr cost iterate = costs::lin_capacity;
+    static constexpr double words = 1.3;
+};
+
+/// parallel_hash_map.
+template<typename K, typename V>
+struct container_costs<repr::ParallelHashMap<K, V>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::one_e;
+    static constexpr cost clear = costs::lin_capacity;
+    static constexpr cost iterate = costs::lin_capacity;
+    static constexpr double words = 1.3;
+};
+
+/// parallel_node_hash_set.
+template<typename T>
+struct container_costs<repr::ParallelNodeHashSet<T>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::one_e;
+    static constexpr cost clear = costs::lin_capacity;
+    static constexpr cost iterate = costs::lin_capacity;
+    static constexpr double words = 3;
+};
+
+/// parallel_node_hash_map.
+template<typename K, typename V>
+struct container_costs<repr::ParallelNodeHashMap<K, V>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::one_e;
+    static constexpr cost clear = costs::lin_capacity;
+    static constexpr cost iterate = costs::lin_capacity;
+    static constexpr double words = 3;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename T>
+struct container_synopsis<repr::ParallelHashSet<T>>
+{
+    static constexpr std::string_view id = "parallel_hash_set";
+    static constexpr std::string_view description = "parallel hash set (gtl: shards, each behind its mutex)";
+    static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::ParallelHashMap<K, V>>
+{
+    static constexpr std::string_view id = "parallel_hash_map";
+    static constexpr std::string_view description = "parallel hash map (gtl: shards, each behind its mutex; update and read under it)";
+    static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
+};
+
+template<typename T>
+struct container_synopsis<repr::ParallelNodeHashSet<T>>
+{
+    static constexpr std::string_view id = "parallel_node_hash_set";
+    static constexpr std::string_view description = "parallel node hash set (gtl: shards behind mutexes, a node per element that never moves)";
+    static constexpr std::string_view holds = "16 shards, a node per element; stable references";
+};
+
+template<typename K, typename V>
+struct container_synopsis<repr::ParallelNodeHashMap<K, V>>
+{
+    static constexpr std::string_view id = "parallel_node_hash_map";
+    static constexpr std::string_view description = "parallel node hash map (gtl: shards behind mutexes, a node per entry that never moves)";
+    static constexpr std::string_view holds = "16 shards, a node per entry; stable references";
+};
 
 }  // namespace urd

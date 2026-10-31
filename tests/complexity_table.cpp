@@ -1,5 +1,5 @@
-// Writes share/urd/complexity.json from the cost table (tests/complexity.hpp), or checks the committed file against
-// it:
+// Writes share/urd/complexity.json from the declared costs (urd::container_costs, beside each representation's
+// traits), or checks the committed file against them:
 //
 //     complexity_table --write share/urd/complexity.json
 //     complexity_table --check share/urd/complexity.json     (the `complexity_table` test)
@@ -27,11 +27,14 @@
 #include "urd/use/parallel.hpp"
 #endif
 
+#include <array>
 #include <cstddef>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
@@ -54,7 +57,7 @@ std::string json_string(std::string_view text)
 
 constexpr std::string_view growth_name(urd::test::growth of)
 {
-    constexpr std::array names { "one", "log", "linear", "n_log_n" };
+    constexpr std::array names { "one", "log", "linear", "n_log_n", "n_times" };
     return names[static_cast<std::size_t>(of)];
 }
 
@@ -84,6 +87,9 @@ std::string written(const cost& how)
         case urd::test::growth::n_log_n:
             result = "O(" + of + " log " + of + ")";
             break;
+        case urd::test::growth::n_times:
+            result = "O(n " + of + ")";
+            break;
     }
     return result + (how.amortized ? "*" : "") + (how.expected ? "~" : "");
 }
@@ -93,6 +99,14 @@ struct representation
     std::string id;
     std::string description;
     std::set<std::string> kinds;
+    std::string part;  ///< what a wrapper passes operations on to
+    double words = 0;  ///< memory per element, a wrapper's with its part's
+    std::string holds;
+    /// Each operation's cost, where R has one, and whether R passes it on to its part.
+    std::array<std::optional<cost>, static_cast<std::size_t>(op::count)> costs {};
+    std::array<bool, static_cast<std::size_t>(op::count)> passed_on {};
+    /// The operations some request's Store over it offers: a cost passed on to the part is listed only for these.
+    urd::test::offers offered {};
 };
 
 template<typename S>
@@ -132,10 +146,25 @@ struct collect<S, urd::detail::type_list<Rs...>>
             auto found = std::ranges::find(into, id, &representation::id);
             if (found == into.end())
             {
-                into.push_back({ id, std::string(urd::test::name<R>::value), {} });
+                auto made = representation {
+                    id, std::string(urd::test::name<R>::value), {}, std::string(urd::test::part_name<R>()), urd::test::words_of<R>().value_or(0), {}
+                };
+                if constexpr (requires { urd::container_synopsis<R>::holds; })
+                    made.holds = std::string(urd::container_synopsis<R>::holds);
+                else
+                    throw std::runtime_error("no synopsis declared for " + id + " (urd::container_synopsis, beside its container_traits)");
+                for (std::size_t what = 0; what < made.costs.size(); ++what)
+                {
+                    made.costs[what] = urd::test::cost_of<R>(static_cast<op>(what));
+                    made.passed_on[what] = urd::test::passed_on<R>(static_cast<op>(what));
+                }
+                into.push_back(std::move(made));
                 found = std::prev(into.end());
             }
             found->kinds.insert(kind_of<S>());
+            const auto offers = urd::test::offered<R, S>();
+            for (std::size_t what = 0; what < offers.size(); ++what)
+                found->offered[what] = found->offered[what] || offers[what];
         }
     }
     static void run(std::vector<representation>& into) { (one<Rs>(into), ...); }
@@ -156,7 +185,7 @@ std::string generate()
                                         });
         });
 
-    auto out = std::string("{\"generated_by\": \"complexity_table --write share/urd/complexity.json, from tests/complexity.hpp\", "
+    auto out = std::string("{\"generated_by\": \"complexity_table --write share/urd/complexity.json, from urd::container_costs\", "
                            "\"marks\": {\"*\": \"amortized\", \"~\": \"expected\"}, \"operations\": [");
     for (std::size_t each = 0; each < urd::test::op_names.size(); ++each)
         out += (each == 0 ? "" : ", ") + json_string(urd::test::op_names[each]);
@@ -164,20 +193,17 @@ std::string generate()
     bool first = true;
     for (const auto& each : all)
     {
-        const auto note = std::ranges::find(urd::test::memory_table, std::string_view(each.id), &urd::test::memory_note::representation);
-        if (note == urd::test::memory_table.end())
-            throw std::runtime_error("no memory note for " + each.id + " (memory_table, tests/complexity.hpp)");
         auto kinds = std::string("[");
         for (const auto& kind : each.kinds)
             kinds += (kinds.size() > 1 ? ", " : "") + json_string(kind);
         auto costs = std::string("{");
         for (std::size_t what = 0; what < urd::test::op_names.size(); ++what)
         {
-            const auto how = urd::test::table_cost(each.id, static_cast<op>(what));
-            if (!how)
+            const auto& how = each.costs[what];
+            if (!how || (each.passed_on[what] && !each.offered[what]))
                 continue;
             costs += (costs.size() > 1 ? ", " : "") + json_string(urd::test::op_names[what]) + ": ";
-            if (how->as_part)
+            if (each.passed_on[what])
                 costs += "{\"as_part\": true}";
             else
             {
@@ -192,7 +218,10 @@ std::string generate()
         out += "{\"representation\": " + json_string(each.id);
         out += ", \"description\": " + json_string(each.description);
         out += ", \"kinds\": " + kinds + "]";
-        out += ", \"holds\": " + json_string(note->holds);
+        out += ", \"holds\": " + json_string(each.holds);
+        if (!each.part.empty())
+            out += ", \"part\": " + json_string(each.part);
+        out += ", \"words\": " + std::to_string(each.words);
         out += ", \"costs\": " + costs + "}}";
     }
     return out + "\n]}\n";

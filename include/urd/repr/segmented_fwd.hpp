@@ -3,7 +3,9 @@
 // A vector in segments that never move, declared with its defaults and what the registry reads of it. Defined in
 // urd/repr/containers/segmented_vector.hpp, which urd/repr/segmented.hpp and urd/use/sequences.hpp include.
 
+#include "urd/costs.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
@@ -33,5 +35,51 @@ struct container_traits<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, I
 
 template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
 inline constexpr auto defined_in<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> = detail::fixed_string("urd/use/sequences.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// segmented_vector.
+template<typename T, std::size_t N, typename I>
+struct container_costs<repr::SegmentedVector<T, N, false, I>>
+{
+    static constexpr cost insert = costs::one_a;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 1.5;
+};
+
+/// concurrent_segmented_vector.
+template<typename T, std::size_t N, typename I>
+struct container_costs<repr::SegmentedVector<T, N, true, I>>
+{
+    static constexpr cost insert = costs::one_a;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 1.6;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename T, std::size_t N, typename I>
+struct container_synopsis<repr::SegmentedVector<T, N, false, I>>
+{
+    static constexpr std::string_view id = "segmented_vector";
+    static constexpr std::string_view description = "segmented vector (elements never move)";
+    static constexpr std::string_view holds = "doubling segments; stable references";
+};
+
+template<typename T, std::size_t N, typename I>
+struct container_synopsis<repr::SegmentedVector<T, N, true, I>>
+{
+    static constexpr std::string_view id = "concurrent_segmented_vector";
+    static constexpr std::string_view description = "segmented vector, thread-safe appends";
+    static constexpr std::string_view holds = "doubling segments; stable references; appends from threads";
+};
 
 }  // namespace urd

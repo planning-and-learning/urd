@@ -92,12 +92,102 @@ if(URD_BUILD_EXAMPLES)
     endforeach()
 endif()
 
+# The objects compiled once per container or per grid group stay small: each compiles under a 1 GiB address space
+# where prlimit exists, so one that outgrows it fails the build by name instead of slowing every build down.
+find_program(URD_PRLIMIT prlimit)
+function(urd_small_object target)
+    if(URD_PRLIMIT)
+        set_property(TARGET ${target} PROPERTY RULE_LAUNCH_COMPILE "${URD_PRLIMIT} --as=1073741824 --")
+    endif()
+endfunction()
+
 if(URD_BUILD_BENCHMARKS)
     find_package(benchmark REQUIRED PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
     add_executable(benchmark_containers benchmarks/containers.cpp)
     target_link_libraries(benchmark_containers PRIVATE urd::urd benchmark::benchmark)
     add_executable(benchmark_pools benchmarks/pools.cpp)
     target_link_libraries(benchmark_pools PRIVATE urd::urd benchmark::benchmark)
+    # Each container measured on its own: one object per container of benchmarks/requests.json, each
+    # benchmarks/experiment.cpp instantiating that container's Stores only, linked into one program with a generated
+    # main. Adding a container adds one object; changing one rebuilds its own. Without gtl, its containers are left out.
+    # The registry's claims are judged from the results afterwards (benchmarks/record.py), never compiled or run.
+    block()
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
+        set(requests "{}")
+        if(EXISTS ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
+            file(READ ${PROJECT_SOURCE_DIR}/benchmarks/requests.json requests)
+        endif()
+        string(JSON container_count ERROR_VARIABLE no_containers LENGTH "${requests}" containers)
+        if(no_containers)
+            message(WARNING "benchmarks/requests.json lists no containers: requests_table --write it, then reconfigure")
+            set(container_count 0)
+        endif()
+        math(EXPR last_container "${container_count} - 1")
+        set(URD_EXPERIMENTS_PER_OBJECT 6)
+        set(URD_EXPERIMENT_DECLARATIONS "")
+        set(URD_EXPERIMENT_CALLS "")
+        set(experiment_objects "")
+        foreach(index RANGE 0 ${last_container})
+            if(index GREATER_EQUAL container_count)
+                break()
+            endif()
+            string(JSON container MEMBER "${requests}" containers ${index})
+            if(NOT URD_WITH_GTL AND container MATCHES "^parallel_")
+                continue()
+            endif()
+            # Its families' headers only, then the experiment.
+            string(JSON families_count ERROR_VARIABLE no_families LENGTH "${requests}" families ${container})
+            if(no_families)
+                set(families_count 0)
+            endif()
+            set(headers "")
+            if(families_count GREATER 0)
+                math(EXPR last_family "${families_count} - 1")
+                foreach(at RANGE ${last_family})
+                    string(JSON family GET "${requests}" families ${container} ${at})
+                    string(APPEND headers "#include \"urd/use/${family}.hpp\"\n")
+                endforeach()
+            endif()
+            # Its experiments, at most URD_EXPERIMENTS_PER_OBJECT to an object: a container measured on many element
+            # types is several objects, so no object grows with the grid.
+            string(JSON positions_count LENGTH "${requests}" containers ${container})
+            math(EXPR experiment_count "${positions_count} / 3")
+            math(EXPR last_experiment "${experiment_count} - 1")
+            set(chunk 0)
+            set(positions "")
+            foreach(experiment RANGE ${last_experiment})
+                foreach(field RANGE 2)
+                    math(EXPR at "${experiment} * 3 + ${field}")
+                    string(JSON position GET "${requests}" containers ${container} ${at})
+                    list(APPEND positions ${position})
+                endforeach()
+                list(LENGTH positions held)
+                math(EXPR held "${held} / 3")
+                if(held EQUAL URD_EXPERIMENTS_PER_OBJECT OR experiment EQUAL last_experiment)
+                    set(object benchmark_${container}_${chunk})
+                    list(JOIN positions "," joined)
+                    file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/experiments/${object}.cpp
+                         CONTENT "${headers}#include \"${PROJECT_SOURCE_DIR}/benchmarks/experiment.cpp\"\n\nvoid register_${object}();\nvoid register_${object}() { register_experiments(); }\n")
+                    add_library(${object} OBJECT ${CMAKE_CURRENT_BINARY_DIR}/experiments/${object}.cpp)
+                    target_link_libraries(${object} PRIVATE urd::urd benchmark::benchmark)
+                    target_include_directories(${object} PRIVATE tests benchmarks)
+                    target_compile_definitions(${object} PRIVATE URD_CONTAINER="${container}" URD_EXPERIMENTS=${joined})
+                    # GCC's -Wmaybe-uninitialized misfires on a slot vector held in a std::optional (a known false
+                    # positive of its optimizer); the other warnings stay on.
+                    target_compile_options(${object} PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>)
+                    urd_small_object(${object})
+                    list(APPEND experiment_objects ${object})
+                    string(APPEND URD_EXPERIMENT_DECLARATIONS "void register_${object}();\n")
+                    string(APPEND URD_EXPERIMENT_CALLS "    register_${object}();\n")
+                    math(EXPR chunk "${chunk} + 1")
+                    set(positions "")
+                endif()
+            endforeach()
+        endforeach()
+        configure_file(benchmarks/experiments_main.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp @ONLY)
+        add_executable(benchmark_comparisons ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp)
+        target_link_libraries(benchmark_comparisons PRIVATE ${experiment_objects} benchmark::benchmark)
+    endblock()
 endif()
 
 if(URD_BUILD_TESTS)
@@ -114,8 +204,6 @@ if(URD_BUILD_TESTS)
         set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
     target_sources(test_properties PRIVATE tests/allocations.cpp)
-    # The registry's claims are derived in benchmarks/comparisons.hpp.
-    target_include_directories(test_registry PRIVATE benchmarks tests)
     # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
     # positive of its optimizer, not a defect of the code); the other warnings stay on.
     target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
@@ -129,6 +217,27 @@ if(URD_BUILD_TESTS)
     if(URD_WITH_GTL)  # the table documents the full build: without gtl its concurrent rows read none
         add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
     endif()
+    # What serves each request and what each container is measured for (benchmarks/requests.json): one object per
+    # group of the grid (tests/requests_group.cpp), so no translation unit walks the whole grid; tests/requests_table.cpp
+    # merges them.
+    set(URD_REQUEST_GROUPS 21)  # the groups of tests/grid.hpp: requests_table checks the number
+    math(EXPR last_group "${URD_REQUEST_GROUPS} - 1")
+    set(request_group_objects "")
+    foreach(group RANGE ${last_group})
+        add_library(requests_group_${group} OBJECT tests/requests_group.cpp)
+        target_link_libraries(requests_group_${group} PRIVATE urd::urd)
+        target_include_directories(requests_group_${group} PRIVATE tests benchmarks)
+        target_compile_definitions(requests_group_${group} PRIVATE URD_GROUP=${group})
+        urd_small_object(requests_group_${group})
+        list(APPEND request_group_objects requests_group_${group})
+    endforeach()
+    add_executable(requests_table tests/requests_table.cpp)
+    target_link_libraries(requests_table PRIVATE urd::urd ${request_group_objects})
+    target_include_directories(requests_table PRIVATE tests benchmarks)
+    target_compile_definitions(requests_table PRIVATE URD_GROUPS=${URD_REQUEST_GROUPS})
+    if(URD_WITH_GTL)
+        add_test(NAME requests COMMAND requests_table --check ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
+    endif()
     # The vocabulary: share/urd/vocabulary.json is generated from the tags and their entries, and checked against them.
     add_executable(vocabulary_table tests/vocabulary_table.cpp)
     target_link_libraries(vocabulary_table PRIVATE urd::urd)
@@ -137,13 +246,22 @@ if(URD_BUILD_TESTS)
     # The costs: share/urd/complexity.json is generated from the cost table (tests/complexity.hpp) and checked against it.
     add_executable(complexity_table tests/complexity_table.cpp)
     target_link_libraries(complexity_table PRIVATE urd::urd)
-    add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
+    if(URD_WITH_GTL)  # as the resolution table: the full build's representations
+        add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
+    endif()
 
-    # The registry's claims: benchmarks/comparisons.json lists each comparison and the benchmark cells it reads.
-    add_executable(comparison_table benchmarks/comparison_table.cpp)
-    target_link_libraries(comparison_table PRIVATE urd::urd)
-    target_include_directories(comparison_table PRIVATE tests)
-    add_test(NAME comparisons COMMAND comparison_table --check ${PROJECT_SOURCE_DIR}/benchmarks/comparisons.json)
+
+    # The measurements behind the claims (benchmarks/record.py): every cell measured and current, every choice
+    # holding, the generated part of docs/BENCHMARKS.md current; with the benchmarks built, every cell registered.
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    if(URD_WITH_GTL)
+        add_test(NAME benchmark_results COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py check)
+        add_test(NAME benchmarks_doc COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py doc --check)
+    endif()
+    if(URD_BUILD_BENCHMARKS AND URD_WITH_GTL)
+        add_test(NAME benchmark_coverage
+                 COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py coverage --binary $<TARGET_FILE:benchmark_comparisons>)
+    endif()
 
     # The include root holds the vocabulary and the entry point only.
     add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)

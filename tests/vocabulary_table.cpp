@@ -1,4 +1,4 @@
-// Writes share/urd/vocabulary.json from the tags (urd/traits.hpp) and their entries (tag_vocabulary, tests/names.hpp),
+// Writes share/urd/vocabulary.json from the tags and their words (urd::tag_synopsis, beside each tag in urd/traits.hpp),
 // or checks the committed file against them:
 //
 //     vocabulary_table --write share/urd/vocabulary.json
@@ -65,12 +65,12 @@ void check_role(urd::tag of, std::string_view role)
         role == "demand" || ((role == "guarantee" || role == "kind") && guaranteed) || ((role == "request" || role == "hint") && !guaranteed);
     if (!consistent)
         throw std::runtime_error("the role `" + std::string(role) + "` of `" + std::string(urd::test::tag_name(of))
-                                 + "` does not match its category (tag_vocabulary, tests/names.hpp)");
+                                 + "` does not match its category (urd::tag_synopsis, urd/traits.hpp)");
 }
 
 std::string generate()
 {
-    auto out = std::string("{\"generated_by\": \"vocabulary_table --write share/urd/vocabulary.json, from urd/traits.hpp and tests/names.hpp\", "
+    auto out = std::string("{\"generated_by\": \"vocabulary_table --write share/urd/vocabulary.json, from urd/traits.hpp\", "
                            "\"incompatible\": \"docs/language/index.rst, Incompatible combinations\", \"tags\": [\n");
     bool first = true;
     for (std::size_t each = 0; each < tag_count; ++each)

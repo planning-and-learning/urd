@@ -3,7 +3,9 @@
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
 // and what the registry reads of it. Defined in urd/repr/indexed.hpp, which urd/use/hash.hpp includes.
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <cstdint>
@@ -53,5 +55,74 @@ struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<in
 
 template<typename T, typename Index, bool ThreadSafe, bool Stable>
 inline constexpr auto defined_in<repr::IndexedSet<T, Index, ThreadSafe, Stable>> = detail::fixed_string("urd/use/hash.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// indexed_set.
+template<typename T>
+struct container_costs<repr::IndexedSet<T, std::uint32_t>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost erase = costs::lin_n;
+    static constexpr cost clear = costs::lin_capacity;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 2.5;
+};
+
+/// stable_indexed_set.
+template<typename T, typename Index>
+struct container_costs<repr::StableIndexedSet<T, Index>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 2.5;
+};
+
+/// concurrent_indexed_set.
+template<typename T, typename Index>
+struct container_costs<repr::ConcurrentIndexedSet<T, Index>>
+{
+    static constexpr cost insert = costs::one_ae;
+    static constexpr cost lookup = costs::one_e;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr cost access = costs::one_t;
+    static constexpr double words = 2.6;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename T>
+struct container_synopsis<repr::IndexedSet<T, std::uint32_t>>
+{
+    static constexpr std::string_view id = "indexed_set";
+    static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
+    static constexpr std::string_view holds = "n elements in order + a table of positions";
+};
+
+template<typename T, typename Index>
+struct container_synopsis<repr::StableIndexedSet<T, Index>>
+{
+    static constexpr std::string_view id = "stable_indexed_set";
+    static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
+    static constexpr std::string_view holds = "segments that never move + a table of positions";
+};
+
+template<typename T, typename Index>
+struct container_synopsis<repr::ConcurrentIndexedSet<T, Index>>
+{
+    static constexpr std::string_view id = "concurrent_indexed_set";
+    static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
+    static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
+};
 
 }  // namespace urd

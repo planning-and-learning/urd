@@ -224,9 +224,9 @@ void frontier(benchmark::State& state)
     {
         queue.push(step);
         queue.push(step + 1);
-        benchmark::DoNotOptimize(queue.front());
+        benchmark::DoNotOptimize(&queue.front());
         queue.pop();
-        benchmark::DoNotOptimize(queue.front());
+        benchmark::DoNotOptimize(&queue.front());
         queue.pop();
         ++step;
     }
@@ -243,7 +243,7 @@ void grow(benchmark::State& state)
             queue.push(element);
         while (!queue.empty())
         {
-            benchmark::DoNotOptimize(queue.front());
+            benchmark::DoNotOptimize(&queue.front());
             queue.pop();
         }
     }

@@ -4,8 +4,10 @@
 // comparator (a binary heap, an addressable heap, a bucket queue), and a ring for first-in queues that retain their
 // storage. Defined in urd/repr/queues.hpp, which urd/use/queues.hpp includes.
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/semantics/less.hpp"
+#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
@@ -113,5 +115,170 @@ template<typename T, typename C>
 inline constexpr auto defined_in<repr::BucketQueue<T, C>> = detail::fixed_string("urd/use/queues.hpp");
 template<typename T>
 inline constexpr auto defined_in<repr::RingFifo<T>> = detail::fixed_string("urd/use/queues.hpp");
+
+}  // namespace urd
+
+namespace urd
+{
+
+/// fifo.
+template<typename T>
+struct container_costs<repr::Fifo<T>>
+{
+    static constexpr cost push = costs::one_a;
+    static constexpr cost pop = costs::one;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 1.2;
+};
+
+/// ring_fifo.
+template<typename T>
+struct container_costs<repr::RingFifo<T>>
+{
+    static constexpr cost push = costs::one_a;
+    static constexpr cost pop = costs::one;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 1.5;
+};
+
+/// lifo.
+template<typename T>
+struct container_costs<repr::Lifo<T>>
+{
+    static constexpr cost push = costs::one_a;
+    static constexpr cost pop = costs::one;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 1.5;
+};
+
+/// heap.
+template<typename T>
+struct container_costs<repr::Heap<T>>
+{
+    static constexpr cost push = costs::log_na;
+    static constexpr cost pop = costs::log_n;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 1.5;
+};
+
+/// heap_by.
+template<typename T, typename Compare>
+struct container_costs<repr::Queue<T, repr::leaving::least, Compare>>
+{
+    static constexpr cost push = costs::log_na;
+    static constexpr cost pop = costs::log_n;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 1.5;
+};
+
+/// addressable_heap.
+template<typename T, typename Compare>
+struct container_costs<repr::AddressableHeap<T, Compare>>
+{
+    static constexpr cost push = costs::log_na;
+    static constexpr cost pop = costs::log_n;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_nt;
+    static constexpr cost iterate = costs::lin_nt;
+    static constexpr double words = 3;
+};
+
+/// bucket_queue.
+template<typename T, typename Compare>
+struct container_costs<repr::BucketQueue<T, Compare>>
+{
+    static constexpr cost push = costs::one_at;
+    static constexpr cost pop = costs::one_at;
+    static constexpr cost top = costs::one_t;
+    static constexpr cost clear = costs::lin_keys;
+    static constexpr double words = 2;
+};
+
+}  // namespace urd
+
+namespace urd
+{
+
+template<typename T>
+struct container_synopsis<repr::Fifo<T>>
+{
+    static constexpr std::string_view id = "fifo";
+    static constexpr std::string_view description = "queue (a deque, first in first out)";
+    static constexpr std::string_view holds = "a deque; stable references";
+};
+
+template<typename T>
+struct container_synopsis<repr::RingFifo<T>>
+{
+    static constexpr std::string_view id = "ring_fifo";
+    static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
+    static constexpr std::string_view holds = "one vector as a ring; retains";
+};
+
+template<typename T>
+struct container_synopsis<repr::Lifo<T>>
+{
+    static constexpr std::string_view id = "lifo";
+    static constexpr std::string_view description = "stack (a vector, last in first out)";
+    static constexpr std::string_view holds = "a vector; retains";
+};
+
+template<typename T>
+struct container_synopsis<repr::Heap<T>>
+{
+    static constexpr std::string_view id = "heap";
+    static constexpr std::string_view description = "binary heap (a vector, least first)";
+    static constexpr std::string_view holds = "a vector as a binary heap; retains";
+};
+
+template<typename T, typename Compare>
+struct container_synopsis<repr::Queue<T, repr::leaving::least, Compare>>
+{
+    static constexpr std::string_view id = "heap_by";
+    static constexpr std::string_view description = "queue by a given order";
+    static constexpr std::string_view holds = "a vector as a binary heap; retains";
+};
+
+template<typename T, typename Compare>
+struct container_synopsis<repr::Queue<T, repr::leaving::first_in, Compare>>
+{
+    static constexpr std::string_view id = "fifo_by";
+    static constexpr std::string_view description = "queue by a given order";
+    static constexpr std::string_view holds = "a deque; stable references";
+};
+
+template<typename T, typename Compare>
+struct container_synopsis<repr::Queue<T, repr::leaving::last_in, Compare>>
+{
+    static constexpr std::string_view id = "lifo_by";
+    static constexpr std::string_view description = "queue by a given order";
+    static constexpr std::string_view holds = "a vector; retains";
+};
+
+template<typename T, typename Compare>
+struct container_synopsis<repr::AddressableHeap<T, Compare>>
+{
+    static constexpr std::string_view id = "addressable_heap";
+    static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
+    static constexpr std::string_view holds = "a heap of handles + a slot per handle";
+};
+
+template<typename T, typename Compare>
+struct container_synopsis<repr::BucketQueue<T, Compare>>
+{
+    static constexpr std::string_view id = "bucket_queue";
+    static constexpr std::string_view description = "bucket queue (a bucket per integral priority)";
+    static constexpr std::string_view holds = "a vector per priority";
+};
 
 }  // namespace urd
