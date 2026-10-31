@@ -189,7 +189,8 @@ representation, and the test checks them as defined:
 | `stable_refs` | the reference is the one the kind's path hands out (a map's value by `at` or an entry's `.second`, a queue's `front`, a pool's `[index]`); `erase` and `clear` end the references to what they remove |
 | `concurrent` | covers inserts and reads of published elements by the kind's paths (`include/urd/tags.hpp` lists them per kind); erase of another thread's element, `clear`, iteration, `reserve`, copy, move and destruction need no other operation running |
 
-- Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
+- Add the requests it now serves to the grid (`tests/grid.hpp`) where none is there yet; `docs/RESOLUTION.md`, checked
+  by the `resolution` test, then shows what each resolves to.
 - Its property tests come with registering it: each container gets its own test objects (`tests/container.cpp`,
   compiled once per container from `benchmarks/requests.json`'s `tested`, the requests over ints it serves that are
   no queue, pool or partition), which instantiate the suite of `tests/properties.hpp` for the container and for the
@@ -388,7 +389,7 @@ value<V>, dense, layered>`, `Layered<IndexMap>`). Where a map's values layer the
 its own value as a layer over the parent's instead of a copy, so a map of layered pools layers through both levels:
 the relations of a planning task, `Store<key<index<Predicate>>, value<Rows>, dense, layered>` with `Rows` a
 layered pool of rows of object indices, fall through to the previous phase's pool for a predicate the phase did not
-touch, and continue that pool's indices for one it did (`tests/store.cpp`, `RelationsLayerThroughBothLevels`). A
+touch, and continue that pool's indices for one it did (`tests/store/scopes.cpp`, `RelationsLayerThroughBothLevels`). A
 memo kept for two generations is two maps swapped and cleared per generation (examples/scopes.cpp), not a
 representation.
 

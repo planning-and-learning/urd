@@ -2,7 +2,7 @@
 
 // A grid of requests, each well-formed, over a few element types: what the resolution table (docs/RESOLUTION.md,
 // written and checked by tests/resolution_table.cpp) and the registry audit (tests/registry.cpp) run over. Every
-// representation pin in tests/store.cpp and tests/survey.cpp has its shape here. Nothing instantiates a Store: a request's spec and its resolution read only
+// request tests/survey.cpp pins has its shape here. Nothing instantiates a Store: a request's spec and its resolution read only
 // traits.
 
 #include "elements.hpp"

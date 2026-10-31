@@ -217,7 +217,7 @@ if(URD_BUILD_TESTS)
 
     # The Store, and typed tests: one per property for every container that declares it, one per behavior of
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
-    foreach(test store properties rows semantics queues pools registry denials views concurrency complexity complexity_verify)
+    foreach(test properties rows semantics queues pools registry denials views concurrency complexity complexity_verify)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
         target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
         add_test(NAME ${test} COMMAND test_${test})
@@ -243,7 +243,14 @@ if(URD_BUILD_TESTS)
     target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
     target_sources(test_rows PRIVATE tests/allocations.cpp)
     target_sources(test_queues PRIVATE tests/allocations.cpp)
-    target_sources(test_store PRIVATE tests/allocations.cpp)
+    # A Store's behavior, by topic: each file includes the family headers its Stores need and no other.
+    foreach(topic rules sets maps multimaps scopes queues pools rows)
+        add_executable(test_store_${topic} tests/store/${topic}.cpp tests/repr/main.cpp tests/allocations.cpp)
+        target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
+        add_test(NAME store_${topic} COMMAND test_store_${topic})
+    endforeach()
+    # The rules are compile-time only.
+    set_tests_properties(store_rules PROPERTIES PASS_REGULAR_EXPRESSION "Running 0 tests|PASSED")
 
     # The resolution table: docs/RESOLUTION.md is generated from the request grid and checked against the registry.
     add_executable(resolution_table tests/resolution_table.cpp)

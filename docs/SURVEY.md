@@ -313,7 +313,7 @@ matrices three ways.
 
 | # | Gap | Sites | Smallest addition |
 |---|---|---|---|
-| 1 | **A Store as a hashed key.** Done (2026-10-30): `Hash<Store>` for Stores whose contents fix their order (sorted, canonical, sequences); an unordered Store stays unhashable, by design | yggdrasil `incremental_bound.hpp:156` (plans by a bit vector), `goal_search.hpp:116` (memo by a sorted row); tyr `seen_bindings`; loki union keys in hashed form; every "set of sets" | `Hash<Store>` by `hash_range` over its elements (a map's entries), `EqualTo` through its `operator==`; a pin in `tests/store.cpp` |
+| 1 | **A Store as a hashed key.** Done (2026-10-30): `Hash<Store>` for Stores whose contents fix their order (sorted, canonical, sequences); an unordered Store stays unhashable, by design | yggdrasil `incremental_bound.hpp:156` (plans by a bit vector), `goal_search.hpp:116` (memo by a sorted row); tyr `seen_bindings`; loki union keys in hashed form; every "set of sets" | `Hash<Store>` by `hash_range` over its elements (a map's entries), `EqualTo` through its `operator==`; a pin in `tests/store/sets.cpp` |
 | 2 | **Layered interner**: positions continuing after a frozen parent's, `find` falling through | loki's 40 repositories, one layer per translation phase and per task; yggdrasil's 22 `BasicSymbolRepository` instantiations and the per-relation slots; `GoalHeuristic::m_states` (ids counting across a clear) | `Layered<IndexedSet>` whose positions add the parent's size (ROADMAP M6's deferred item) |
 | 3 | **Swap-erase on interned rows, reported**. Done (M18, 2026-10-30) for the erase: `handle_type erase(handle_type)`, the moved row's old handle or none, on row pools without `structural_sharing`, `monotone`, `concurrent` or `layered`; `replace` needs no operation of its own (find, erase, insert: O(r), as yggdrasil's chain scan). Was: `erase(h)` on `RowInterner` that moves the last row in and returns the moved handle; `replace(key, old, new)` on `multi` Stores. Recorded (M15): the operation's shape is `std::optional<handle_type> erase(handle_type)`, the moved handle or none; own milestone, as interners are `unique` and `monotone` today | yggdrasil: 37 `RawArraySet` sites (`Builder<Relation>` among them), the join and semijoin postings, `ProjectionEvaluator`, `Counts` | the two operations; every sync becomes two calls |
 | 4 | **`change_log` over dense sets and fixed-shape bit rows** | runir `DenotationState` and its ~12 evaluators; tyr `FactsWorkspace`'s fact sets plus delta fact sets | the dense half done (M15, 2026-10-29): `Store<key<I>, dense, change_log>` is `ChangeLogged` over the tracked bitset (sorted and tree sets too); for bit rows, `assign_row` recording changed bits by XOR of words, or a logging row proxy, remains |
@@ -330,7 +330,7 @@ matrices three ways.
 
 Found by the pins, and fixed: a `concurrent` map by an indexable key (`Store<key<int>, value<V>, concurrent>`) resolved
 to the thread-safe generation `IndexMap`, a slot per index, because the parallel hash map stood after the dense containers
-in the registry; it now stands among the hash tables, and `tests/store.cpp` pins it.
+in the registry; it now stands among the hash tables, and `docs/RESOLUTION.md` shows it.
 
 ## Third pass: yggdrasil re-read (2026-10-30)
 
