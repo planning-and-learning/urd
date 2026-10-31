@@ -200,19 +200,19 @@ urd_compile_fail_expects(compile_fail_store 38 "no container serves this request
 # A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
 # chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)
-urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/repr/parallel_hash[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 1 "include<.*\"urd/repr/arena[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 2 "include<.*\"urd/repr/dense_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/repr/flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/repr/queue[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/repr/pools[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/unordered_flat_map[.]hpp\".*include<.*\"urd/repr/layer[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/repr/layer[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/repr/scoped[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/repr/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/repr/values/parallel_hash_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 1 "include<.*\"urd/repr/records/arena[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 2 "include<.*\"urd/repr/values/dense_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/repr/values/flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/repr/queues/queue[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/repr/pools/pools[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/maps/unordered_flat_map[.]hpp\".*include<.*\"urd/repr/wrappers/layer[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/repr/wrappers/layer[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/repr/wrappers/scoped[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
 
 # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.
 add_test(

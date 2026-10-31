@@ -52,12 +52,12 @@ struct fixed_string
 }  // namespace detail
 
 // The registry declares representations and does not define them: a file pays for the definition of each container
-// its Stores resolve to, by including that container's own header (urd/repr/<container>.hpp), and for nothing else.
+// its Stores resolve to, by including that container's own header (urd/repr/<kind>/<container>.hpp), and for nothing else.
 // That a header is included is told by a marker it defines, never by looking at a representation (completing a
 // wrapper of an undefined part is an error, not a false); a Store whose container's header is absent names it in its
 // error (store.hpp).
 
-/// Declared only; each container's header urd/repr/X.hpp defines include<"urd/repr/X.hpp">.
+/// Declared only; each container's header urd/repr/<kind>/X.hpp defines include<"urd/repr/<kind>/X.hpp">.
 template<detail::fixed_string Header>
 struct include;
 /// Whether the header's marker is defined here.
@@ -102,7 +102,7 @@ using row_element_t = typename row_element<Row>::type;
 template<typename V>
 inline constexpr bool slot_value = std::default_initializable<V> && std::movable<V>;
 template<typename R, typename S>
-inline constexpr bool slot_value<Store<R, S>> = !S::urd_properties.has(tag::nonempty) && !S::urd_properties.has(tag::fixed_shape);
+inline constexpr bool slot_value<Store<R, S>> = !S::urd_properties.has(emptiness::nonempty) && !S::urd_properties.has(shape::fixed_shape);
 
 /// Whether destroying a V does nothing. A Store owns storage, so never.
 template<typename V>
@@ -135,17 +135,6 @@ inline constexpr detail::property_set relies_on = detail::property_set::roots();
 /// reference. False by default.
 template<typename R>
 inline constexpr bool orders_by_value = false;
-
-/// What a container guarantees about its elements where they are Stores: the properties a nested Store's rows
-/// have as the container holds them. By default their own, except memory: destroying a row frees what it owns,
-/// as erase and clear do. A container that keeps rows, or stores them flattened, specializes it. The primary
-/// only marks that nothing was declared: the default is computed by the registry from the request's row type
-/// (row_traits), so that selection reads nothing of a candidate.
-template<typename R>
-struct element_traits
-{
-    static constexpr bool defaulted = true;
-};
 
 namespace detail
 {

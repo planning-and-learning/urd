@@ -1,10 +1,9 @@
 #pragma once
 
-// Choosing a container as constant evaluation: each entry of the table (urd/registry/table.hpp) is asked for its
-// offer for the request's elements, and the first whose offer serves the request is chosen. Serving reads only what
-// the offer and the request declare: the kinds match (holds_kind), the container gives what the request requires
-// (satisfies), the request promises what the container relies on and demands (promises), and nested Stores get what
-// they ask for. Where the request holds a tag that prefers some entries later (urd/tags.hpp, preferences), they come
+// Choosing a container as constant evaluation: the entries of the request's kind's table (urd/registry/table.hpp)
+// whose tags match the request's, the first of them chosen. Matching reads only tags: the container provides what the
+// request requires (satisfies), the request's roles promise what the container relies on and demands (promises), and
+// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/tags.hpp, preferences), they come
 // after the others.
 
 #include "urd/registry/table.hpp"
@@ -14,30 +13,31 @@
 namespace urd::detail
 {
 
-/// What a request is, as the scan reads it: its kind, what it promises its container, and what a container must
-/// guarantee for it.
+/// What a request is, as the scan reads it: what it requires of a container, its roles (what it states and what its
+/// data is: urd/registry/facts.hpp), and where the elements it holds (a map's values, else its elements) are Stores,
+/// their tags and what they require; else the roots.
 struct request_shape
 {
-    urd::kind kind = urd::kind::sequence;
-    property_set promised;
     property_set required;
+    role_tags roles;
+    property_set held = property_set::roots();
+    property_set held_required = property_set::roots();
 };
 
-/// Whether offer `o` serves a request of shape `s` with facts `f`.
-constexpr bool serves(const offer& o, const request_shape& s, const request_features& f)
+/// Whether entry `e` serves request `s`: it provides what is required, the request promises what it relies on and
+/// demands, and Stores held as elements get what they require.
+constexpr bool serves(const registry_entry& e, const request_shape& s)
 {
-    if (!holds_kind(o.kind, s.kind) || !satisfies(o.properties, s.required) || !promises(s.promised, o.relies_on)
-        || !promises(s.promised, demands_of(o.properties)))
+    if (!satisfies(e.provides, s.required) || !promises(s.roles, e.relies_on) || !promises(s.roles.stated, demands_of(e.provides)))
         return false;
-    const auto& held = s.kind == urd::kind::map ? f.mapped : f.element;
-    return !held.store || satisfies(o.nested, held.store->required);
+    return satisfies(with(s.held, e.gives_elements), s.held_required);
 }
 
-/// Whether offer `o` comes after the others serving a request of shape `s`, by the preferences (urd/tags.hpp).
-constexpr bool comes_later(const offer& o, const request_shape& s)
+/// Whether entry `e` comes after the others serving request `s`, by the preferences (urd/tags.hpp).
+constexpr bool comes_later(const registry_entry& e, const request_shape& s)
 {
     for (const auto& each : preferences)
-        if (s.promised.has(each.when) && o.properties.has(each.later))
+        if (s.roles.stated.has(each.when) && e.provides.has(each.later))
             return true;
     return false;
 }
@@ -45,22 +45,23 @@ constexpr bool comes_later(const offer& o, const request_shape& s)
 /// No entry: the request is served by none.
 inline constexpr std::size_t no_entry = static_cast<std::size_t>(-1);
 
-/// The entries serving a request, by position in the table, in the order they are preferred.
+/// The entries of Node serving a request, by position in its table, in the order they are preferred.
+template<typename Node>
 struct serving_entries
 {
-    std::array<std::size_t, registry_table.size()> at {};
+    std::array<std::size_t, table_of<Node>.size()> at {};
     std::size_t count = 0;
 };
-constexpr serving_entries all_serving(const request_shape& s, const request_features& f)
+template<typename Node>
+constexpr serving_entries<Node> all_serving(const request_shape& s)
 {
-    auto result = serving_entries {};
-    auto later = serving_entries {};
-    for (std::size_t each = 0; each < registry_table.size(); ++each)
+    auto result = serving_entries<Node> {};
+    auto later = serving_entries<Node> {};
+    for (std::size_t each = 0; each < table_of<Node>.size(); ++each)
     {
-        const auto o = registry_table[each].offers(f);
-        if (!o || !serves(*o, s, f))
+        if (!serves(table_of<Node>[each], s))
             continue;
-        if (comes_later(*o, s))
+        if (comes_later(table_of<Node>[each], s))
             later.at[later.count++] = each;
         else
             result.at[result.count++] = each;
@@ -70,17 +71,17 @@ constexpr serving_entries all_serving(const request_shape& s, const request_feat
     return result;
 }
 
-/// The position in the table of the entry chosen for the request, or no_entry: the first of all_serving, found
+/// The position in Node's table of the entry chosen for the request, or no_entry: the first of all_serving, found
 /// without listing the rest.
-constexpr std::size_t first_serving(const request_shape& s, const request_features& f)
+template<typename Node>
+constexpr std::size_t first_serving(const request_shape& s)
 {
     auto later = no_entry;
-    for (std::size_t each = 0; each < registry_table.size(); ++each)
+    for (std::size_t each = 0; each < table_of<Node>.size(); ++each)
     {
-        const auto o = registry_table[each].offers(f);
-        if (!o || !serves(*o, s, f))
+        if (!serves(table_of<Node>[each], s))
             continue;
-        if (!comes_later(*o, s))
+        if (!comes_later(table_of<Node>[each], s))
             return each;
         if (later == no_entry)
             later = each;

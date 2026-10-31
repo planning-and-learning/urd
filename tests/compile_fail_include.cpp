@@ -4,38 +4,38 @@
 // std::vector are always declared through store.hpp today, so they have no case until urd declares its own.)
 #include <urd/store.hpp>
 #if URD_CASE != 1
-#include <urd/repr/arena.hpp>
+#include <urd/repr/records/arena.hpp>
 #endif
 #if URD_CASE != 2
-#include <urd/repr/dense_set.hpp>
+#include <urd/repr/values/dense_set.hpp>
 #endif
 #if URD_CASE != 3 && URD_CASE != 8 && URD_CASE != 11 && URD_CASE != 12 && URD_CASE != 13
-#include <urd/repr/unordered_flat_set.hpp>
+#include <urd/repr/values/unordered_flat_set.hpp>
 #endif
 #if URD_CASE != 4
-#include <urd/repr/flat_set.hpp>
+#include <urd/repr/values/flat_set.hpp>
 #endif
 #if URD_CASE != 5
-#include <urd/repr/parallel_hash.hpp>
+#include <urd/repr/values/parallel_hash_set.hpp>
 #endif
 #if URD_CASE != 6
-#include <urd/repr/queue.hpp>
+#include <urd/repr/queues/queue.hpp>
 #endif
 #if URD_CASE != 7
-#include <urd/repr/pools.hpp>
+#include <urd/repr/pools/pools.hpp>
 #endif
 #if URD_CASE != 8
-#include <urd/repr/unordered_flat_map.hpp>
+#include <urd/repr/maps/unordered_flat_map.hpp>
 #endif
 #if URD_CASE != 8 && URD_CASE != 9
-#include <urd/repr/layer.hpp>
+#include <urd/repr/wrappers/layer.hpp>
 #endif
 #if URD_CASE != 10
-#include <urd/repr/scoped.hpp>
+#include <urd/repr/wrappers/scoped.hpp>
 #endif
 #include <string>
-#include <urd/repr/index_map.hpp>
-#include <urd/repr/sequence.hpp>
+#include <urd/repr/maps/index_map.hpp>
+#include <urd/repr/sequences/sequence.hpp>
 
 namespace
 {
@@ -54,7 +54,7 @@ struct Note
 // The header included after a Store was instantiated: the check fired already, and the error names the header all
 // the same (the marker is read once per file, so a container's header goes before the first Store that needs it).
 inline auto early = urd::Store<urd::key<int>>();
-#include <urd/repr/unordered_flat_set.hpp>
+#include <urd/repr/values/unordered_flat_set.hpp>
 #endif
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage): the condition of each case, in #if lines, where no function can go
@@ -62,11 +62,11 @@ inline auto early = urd::Store<urd::key<int>>();
 
 int main()
 {
-#if URD_HOLDS(1)  // the arena interner, without urd/repr/arena.hpp
+#if URD_HOLDS(1)  // the arena interner, without urd/repr/records/arena.hpp
     auto notes = urd::Store<urd::value<Note>, urd::handles, urd::unique, urd::flat>();
     (void) notes.size();
 #endif
-#if URD_HOLDS(2)  // the bitset, without urd/repr/dense_set.hpp
+#if URD_HOLDS(2)  // the bitset, without urd/repr/values/dense_set.hpp
     auto bits = urd::Store<urd::key<int>, urd::dense>();
     (void) bits.size();
 #endif

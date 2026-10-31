@@ -32,8 +32,8 @@ indexable).
 | `Store<key<int>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<key<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<key<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<int>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<int>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
+| `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<key<int>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<int>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
 | `Store<key<int>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
@@ -74,8 +74,8 @@ indexable).
 | `Store<key<std::string>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<key<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<key<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<std::string>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<std::string>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
+| `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<key<std::string>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<std::string>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
 | `Store<key<std::string>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
@@ -116,8 +116,8 @@ indexable).
 | `Store<key<Id>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<key<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<key<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<Id>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<Id>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
+| `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<key<Id>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<Id>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
 | `Store<key<Id>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
@@ -223,8 +223,8 @@ indexable).
 | `Store<key<int>, value<int>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
 | `Store<key<int>, value<int>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
 | `Store<key<int>, value<int>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<int>, value<int>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<int>, value<int>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
+| `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
 | `Store<key<int>, value<int>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<int>, value<int>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
@@ -256,8 +256,8 @@ indexable).
 | `Store<key<std::string>, value<double>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
 | `Store<key<std::string>, value<double>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
 | `Store<key<std::string>, value<double>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
+| `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
 | `Store<key<std::string>, value<double>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<std::string>, value<double>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
@@ -289,8 +289,8 @@ indexable).
 | `Store<key<Id>, value<Id>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
 | `Store<key<Id>, value<Id>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
 | `Store<key<Id>, value<Id>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
+| `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
 | `Store<key<Id>, value<Id>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<Id>, value<Id>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
@@ -388,10 +388,10 @@ indexable).
 | `Store<value<Store<value<Store<value<int>, stable_refs, frozen>>, stable_refs, frozen>>>` |  | `jagged` | jagged.hpp |
 | `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>>` |  | `jagged` | jagged.hpp |
 | `Store<value<Store<value<int>, retains>>, retains>` | retains | `row_pool` | row_pool.hpp |
-| `Store<value<Store<value<int>>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
-| `Store<value<Store<key<int>, unique, dense>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
+| `Store<value<Store<value<int>>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
+| `Store<value<Store<key<int>, unique, dense>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
 | `Store<value<Store<key<int>, unique, dense>>, fixed_shape, proportional_clear>` | proportional_clear, fixed_shape | `tracked_jagged` | jagged.hpp |
-| `Store<value<Store<value<Store<key<int>, unique, dense>>, fixed_shape>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
+| `Store<value<Store<value<Store<key<int>, unique, dense>>, fixed_shape>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
 
 ## Queues of int
 

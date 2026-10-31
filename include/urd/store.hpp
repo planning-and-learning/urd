@@ -195,6 +195,7 @@ struct resolve
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
 
+
 /// A Store is ordered by its values where its representation is.
 template<typename R, typename S>
 inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;

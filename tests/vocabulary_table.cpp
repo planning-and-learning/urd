@@ -36,7 +36,7 @@ std::string tags_where(urd::tag of, Keep keep)
     auto result = std::string("[");
     for (std::size_t each = 0; each < tag_count; ++each)
     {
-        const auto other = static_cast<urd::tag>(each);
+        const auto other = urd::detail::tag_at(each);
         if (other == of || root_of(other) == other || !keep(other))
             continue;
         if (result.size() > 1)
@@ -68,7 +68,7 @@ std::string generate()
     bool first = true;
     for (std::size_t each = 0; each < tag_count; ++each)
     {
-        const auto of = static_cast<urd::tag>(each);
+        const auto of = urd::detail::tag_at(each);
         if (root_of(of) == of)
             continue;
         const auto& entry = urd::test::tag_vocabulary[each];
@@ -91,7 +91,7 @@ std::string generate()
     first = true;
     for (std::size_t each = 0; each < tag_count; ++each)
     {
-        const auto of = static_cast<urd::tag>(each);
+        const auto of = urd::detail::tag_at(each);
         if (root_of(of) != of)
             continue;
         out += first ? "  " : ",\n  ";

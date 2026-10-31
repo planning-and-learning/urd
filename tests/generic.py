@@ -3,7 +3,7 @@ declaration, and the glue only combines declarations.
 
     python3 -I generic.py <repository root>
 
-Fails on a glue file that names a tag that is no category's root (tag::frozen, urd::small, has<S, sorted>). Roots
+Fails on a glue file that names a category's answer other than none (change::frozen, urd::small, has<S, sorted>). Roots
 name categories, which the glue may iterate. Reports each place.
 """
 
@@ -20,16 +20,23 @@ GLUE = ["include/urd/property_set.hpp", "include/urd/properties.hpp", "include/u
 def tags(root: Path) -> tuple[set[str], set[str]]:
     """Every tag's name, and those that are roots, from urd/tags.hpp."""
     text = (root / "include/urd/tags.hpp").read_text()
-    names = set(re.findall(r"^struct (\w+)(?: : \w+)?\n\{\n(?:    using root = \w+;\n)?    static constexpr tag value", text, re.M))
+    names = set(re.findall(r"^struct (\w+)(?: : \w+)?\n\{\n(?:    using root = \w+;\n)?    static constexpr auto value", text, re.M))
     roots = set(re.findall(r"^struct (\w+)\n\{\n    using root = \1;", text, re.M))
     return names, roots
+
+
+def categories(root: Path) -> set[str]:
+    """Every category's enum, from urd/tags.hpp."""
+    text = (root / "include/urd/tags.hpp").read_text()
+    return set(re.findall(r"^enum class (\w+) : std::uint8_t\n\{\n    none,", text, re.M))
 
 
 def main() -> int:
     root = Path(sys.argv[1])
     names, roots = tags(root)
     specific = names - roots
-    pattern = re.compile(r"\b(?:tag::|urd::|has<[^>]*?\b)(" + "|".join(sorted(specific, key=len, reverse=True)) + r")\b")
+    enums = "|".join(sorted(categories(root), key=len, reverse=True))
+    pattern = re.compile(r"\b(?:(?:" + enums + r")::|urd::|has<[^>]*?\b)(" + "|".join(sorted(specific, key=len, reverse=True)) + r")\b")
     found = 0
     for relative in GLUE:
         for number, line in enumerate((root / relative).read_text().splitlines(), 1):

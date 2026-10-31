@@ -32,9 +32,9 @@ template<typename R>
         return detail::run_layered_records(range, seed, steps);
     else if constexpr (of == kind::records)
         return detail::run_records(range, seed, steps);
-    else if constexpr (of == kind::pool && has<container_traits<R>, unique>)
-        return detail::run_pool(range, seed, steps);
     else if constexpr (of == kind::pool)
+        return detail::run_pool(range, seed, steps);
+    else if constexpr (of == kind::slots)
         return detail::run_slots(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);

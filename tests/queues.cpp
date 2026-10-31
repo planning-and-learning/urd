@@ -3,10 +3,10 @@
 // sequences.
 
 #include "allocations.hpp"
-#include "urd/repr/addressable_heap.hpp"
-#include "urd/repr/bucket_queue.hpp"
-#include "urd/repr/queue.hpp"
-#include "urd/repr/ring_fifo.hpp"
+#include "urd/repr/queues/addressable_heap.hpp"
+#include "urd/repr/queues/bucket_queue.hpp"
+#include "urd/repr/queues/queue.hpp"
+#include "urd/repr/queues/ring_fifo.hpp"
 #include "urd/store.hpp"
 #include "verify.hpp"
 

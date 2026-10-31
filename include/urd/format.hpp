@@ -101,7 +101,7 @@ std::string spelling_of_spec()
         parts.push_back(fmt::format("value<{}>", spelling<typename S::value_type>()));
     for (std::size_t each = 0; each < detail::tag_count; ++each)
     {
-        const auto root = static_cast<tag>(each);
+        const auto root = detail::tag_at(each);
         if (detail::root_of(root) == root && S::urd_properties.in(root) != root)
             parts.emplace_back(tag_name(S::urd_properties.in(root)));
     }

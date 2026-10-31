@@ -11,7 +11,9 @@
 #include "urd/repr/core/dependent_false.hpp"
 #include "urd/traits.hpp"
 
+#include <array>
 #include <cstddef>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -21,17 +23,25 @@
 namespace urd::detail
 {
 
-/// What spec S is, as the scan reads it.
+/// What spec S is, as the scan reads it: what it requires, its roles, and the elements it holds; computed once.
 template<typename S>
-inline constexpr request_shape shape_of = request_shape { S::kind, S::promised, S::required };
+inline constexpr request_shape shape_of = [] {
+    using held = held_as<std::conditional_t<S::is_map, typename S::mapped_type, typename S::element_type>>;
+    return request_shape { S::required, request_roles<S>(), held::properties, held::required };
+}();
 
-/// The entry for spec S: its position in the table, or no_entry. `found` is false where none serves.
+/// The entry for spec S: its node (by its kind), its position in the node's table, or no_entry. `found` is false
+/// where none serves.
 template<typename S>
 struct choose
 {
-    static constexpr std::size_t position = first_serving(shape_of<S>, features_of<S>());
+    using node = node_t<S>;
+    static constexpr std::size_t position = first_serving<node>(shape_of<S>);
     static constexpr bool found = position != no_entry;
-    static constexpr std::string_view id = found ? registry_table[position].id : std::string_view();
+    static constexpr std::string_view id = found ? table_of<node>[position].id : std::string_view();
+    /// The headers of the chosen container, a wrapper's part's first.
+    static constexpr std::span<const std::string_view> headers =
+        found ? table_of<node>[position].headers : std::span<const std::string_view>();
 };
 
 /// The I-th type of a list.
@@ -45,9 +55,10 @@ struct nth<I, type_list<Ts...>>
 
 /// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
 template<typename S>
-inline constexpr serving_entries serving_v = all_serving(shape_of<S>, features_of<S>());
+inline constexpr serving_entries<node_t<S>> serving_v = all_serving<node_t<S>>(shape_of<S>);
 template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], declarations>::type...>;
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/)
+    -> type_list<typename nth<serving_v<S>.at[I], typename node_t<S>::declarations>::type...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 
@@ -55,7 +66,7 @@ using serving_declarations = decltype(serving_declarations_of<S>(std::make_index
 template<typename S, std::size_t... I>
 consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 {
-    constexpr auto entry = registry_table[choose<S>::position];
+    constexpr auto entry = table_of<node_t<S>>[choose<S>::position];
     return typename join<std::conditional_t<included<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>,
                                             type_list<>,
                                             type_list<include<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>>>...>::type {};
@@ -84,18 +95,17 @@ struct missing_headers_for<S, Decl, type_list<>>
 template<typename S>
 struct chosen_type
 {
-    using declaration = typename nth<choose<S>::position, declarations>::type;
-    using type =
-        typename missing_headers_for<S,
-                                     declaration,
-                                     decltype(missing_headers<S>(std::make_index_sequence<registry_table[choose<S>::position].headers.size()> {}))>::type;
+    using declaration = typename nth<choose<S>::position, typename node_t<S>::declarations>::type;
+    using type = typename missing_headers_for<S, declaration, decltype(missing_headers<S>(std::make_index_sequence<choose<S>::headers.size()> {}))>::type;
 };
 
 /// The static assertion a request no container serves fails with; S, in its instantiation, names the request.
 template<typename S>
 struct no_representation_for
 {
-    static_assert(repr::dependent_false<S>::value, "urd::Store: no container serves this request: drop or change a tag");
+    static_assert(repr::dependent_false<S>::value,
+                  "urd::Store: no container serves this request: drop or change a tag (urd-search lists each container of its "
+                  "kind with what it lacks or needs)");
     /// A stand-in, so that the assertion is the only error.
     using type = std::vector<typename S::element_type>;
 };

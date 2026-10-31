@@ -134,7 +134,7 @@ static_assert(
     {
         for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
         {
-            const auto of = static_cast<urd::tag>(each);
+            const auto of = urd::detail::tag_at(each);
             const bool root = urd::detail::root_of(of) == of;
             const auto& category = category_vocabulary[urd::detail::index(urd::detail::root_of(of))];
             const bool semantics = category.group == "semantics";
@@ -146,11 +146,11 @@ static_assert(
     }(),
     "urd/tags.hpp: every tag has a name; a root a group and a question, and a heading in semantics; any other tag a "
     "description and phrases, and a promise in semantics");
-static_assert(tag_name(urd::tag::sorted) == "sorted" && tag_vocabulary[urd::detail::index(urd::tag::monotone_priority)].role == "demand"
-              && tag_vocabulary[urd::detail::index(urd::tag::small)].role == "hint" && tag_vocabulary[urd::detail::index(urd::tag::fifo)].role == "kind"
-              && tag_vocabulary[urd::detail::index(urd::tag::frozen)].role == "request"
-              && category_vocabulary[urd::detail::index(urd::tag::single_threaded)].group == "semantics"
-              && category_vocabulary[urd::detail::index(urd::tag::any_clear)].group == "costs");
+static_assert(tag_name(urd::order::sorted) == "sorted" && tag_vocabulary[urd::detail::index(urd::priority::monotone_priority)].role == "demand"
+              && tag_vocabulary[urd::detail::index(urd::workload::small)].role == "hint" && tag_vocabulary[urd::detail::index(urd::access::fifo)].role == "kind"
+              && tag_vocabulary[urd::detail::index(urd::change::frozen)].role == "request"
+              && category_vocabulary[urd::detail::index(urd::threading::none)].group == "semantics"
+              && category_vocabulary[urd::detail::index(urd::clearing::none)].group == "costs");
 
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names

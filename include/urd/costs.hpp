@@ -9,6 +9,7 @@
 #include "urd/traits.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 namespace urd
@@ -207,6 +208,75 @@ struct cost
     bool amortized = false;
     bool expected = false;
 };
+
+/// The cost of `what` in costs C (a declaration's operation_costs, or urd::container_costs<R>): its member named for
+/// the operation, or none where C has none.
+template<typename C>
+constexpr std::optional<cost> cost_of(operation what)
+{
+    switch (what)
+    {
+        case operation::insert:
+            if constexpr (requires { C::insert; })
+                return C::insert;
+            break;
+        case operation::lookup:
+            if constexpr (requires { C::lookup; })
+                return C::lookup;
+            break;
+        case operation::ordered_lookup:
+            if constexpr (requires { C::ordered_lookup; })
+                return C::ordered_lookup;
+            break;
+        case operation::erase:
+            if constexpr (requires { C::erase; })
+                return C::erase;
+            break;
+        case operation::clear:
+            if constexpr (requires { C::clear; })
+                return C::clear;
+            break;
+        case operation::iterate:
+            if constexpr (requires { C::iterate; })
+                return C::iterate;
+            break;
+        case operation::access:
+            if constexpr (requires { C::access; })
+                return C::access;
+            break;
+        case operation::push:
+            if constexpr (requires { C::push; })
+                return C::push;
+            break;
+        case operation::pop:
+            if constexpr (requires { C::pop; })
+                return C::pop;
+            break;
+        case operation::top:
+            if constexpr (requires { C::top; })
+                return C::top;
+            break;
+        case operation::merge:
+            if constexpr (requires { C::merge; })
+                return C::merge;
+            break;
+        case operation::insert_row:
+            if constexpr (requires { C::insert_row; })
+                return C::insert_row;
+            break;
+        case operation::find_row:
+            if constexpr (requires { C::find_row; })
+                return C::find_row;
+            break;
+        case operation::scope:
+            if constexpr (requires { C::scope; })
+                return C::scope;
+            break;
+        case operation::count:
+            break;
+    }
+    return std::nullopt;
+}
 
 /// The costs of the operations of representation R, each a `static constexpr cost` member named for the operation
 /// (insert, lookup, ordered_lookup, erase, clear, iterate, access, push, pop, top, merge, insert_row, find_row,

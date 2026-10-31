@@ -10,43 +10,44 @@
 
 // Every container, before anything that names a Store: a Store's container is resolved where the Store is
 // first named, and only containers whose headers precede that are found defined.
-#include "urd/repr/addressable_heap.hpp"
-#include "urd/repr/arena.hpp"
-#include "urd/repr/bidirectional_csr.hpp"
-#include "urd/repr/bucket_queue.hpp"
-#include "urd/repr/change_logged.hpp"
-#include "urd/repr/csr_multimap.hpp"
-#include "urd/repr/dense_multimap.hpp"
-#include "urd/repr/dense_set.hpp"
-#include "urd/repr/disjoint_sets.hpp"
-#include "urd/repr/entry_ordered.hpp"
-#include "urd/repr/flat_map.hpp"
-#include "urd/repr/flat_set.hpp"
-#include "urd/repr/index_map.hpp"
-#include "urd/repr/indexed.hpp"
-#include "urd/repr/jagged.hpp"
-#include "urd/repr/layer.hpp"
-#include "urd/repr/layered_pool.hpp"
-#include "urd/repr/ordered_map.hpp"
-#include "urd/repr/parallel_hash.hpp"
-#include "urd/repr/pools.hpp"
-#include "urd/repr/postings.hpp"
-#include "urd/repr/queue.hpp"
-#include "urd/repr/records.hpp"
-#include "urd/repr/recycling.hpp"
-#include "urd/repr/ring_fifo.hpp"
-#include "urd/repr/row_pool.hpp"
-#include "urd/repr/scoped.hpp"
-#include "urd/repr/segmented.hpp"
-#include "urd/repr/sequence.hpp"
-#include "urd/repr/slots.hpp"
-#include "urd/repr/sparse_set.hpp"
-#include "urd/repr/std_map.hpp"
-#include "urd/repr/std_set.hpp"
-#include "urd/repr/tree_bitset.hpp"
-#include "urd/repr/tree_vector.hpp"
-#include "urd/repr/unordered_flat_map.hpp"
-#include "urd/repr/unordered_flat_set.hpp"
+#include "urd/repr/queues/addressable_heap.hpp"
+#include "urd/repr/records/arena.hpp"
+#include "urd/repr/maps/bidirectional_csr.hpp"
+#include "urd/repr/queues/bucket_queue.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/maps/csr_multimap.hpp"
+#include "urd/repr/maps/dense_multimap.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/maps/entry_ordered.hpp"
+#include "urd/repr/maps/flat_map.hpp"
+#include "urd/repr/values/flat_set.hpp"
+#include "urd/repr/maps/index_map.hpp"
+#include "urd/repr/values/indexed.hpp"
+#include "urd/repr/sequences/jagged.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/values/parallel_hash_set.hpp"
+#include "urd/repr/maps/parallel_hash_map.hpp"
+#include "urd/repr/pools/pools.hpp"
+#include "urd/repr/maps/postings.hpp"
+#include "urd/repr/queues/queue.hpp"
+#include "urd/repr/records/records.hpp"
+#include "urd/repr/wrappers/recycling.hpp"
+#include "urd/repr/queues/ring_fifo.hpp"
+#include "urd/repr/sequences/row_pool.hpp"
+#include "urd/repr/wrappers/scoped.hpp"
+#include "urd/repr/sequences/segmented.hpp"
+#include "urd/repr/sequences/sequence.hpp"
+#include "urd/repr/slots/slots.hpp"
+#include "urd/repr/values/sparse_set.hpp"
+#include "urd/repr/maps/std_map.hpp"
+#include "urd/repr/values/std_set.hpp"
+#include "urd/repr/pools/tree_bitset.hpp"
+#include "urd/repr/pools/tree_vector.hpp"
+#include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/unordered_flat_set.hpp"
 // The tables and the grid.
 #include "complexity.hpp"
 #include "format.hpp"
@@ -73,6 +74,17 @@ using urd::test::op;
 
 using urd::test::json_text;
 
+/// Tags by role as a JSON list of names, each prefixed by its role ("element:can_hash"); the roots left out.
+std::string tag_list(std::initializer_list<std::pair<std::string_view, urd::detail::property_set>> roles)
+{
+    auto result = std::string("[");
+    for (const auto& [role, held] : roles)
+        for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
+            if (held.held[each] != urd::detail::tag_at(each))
+                result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(urd::tag_name(held.held[each])));
+    return result + "]";
+}
+
 struct representation
 {
     std::string id;
@@ -81,6 +93,9 @@ struct representation
     std::string part;  ///< what a wrapper passes operations on to
     double words = 0;  ///< memory per element, a wrapper's with its part's
     std::string holds;
+    /// Its tags, for a tool to match a need against: what it provides, and what it relies on, by role.
+    std::string provides;
+    std::string relies_on;
     /// Each operation's cost, where R has one, and whether R passes it on to its part.
     std::array<std::optional<cost>, static_cast<std::size_t>(op::count)> costs {};
     std::array<bool, static_cast<std::size_t>(op::count)> passed_on {};
@@ -119,12 +134,19 @@ struct collect<S, urd::detail::type_list<Rs...>>
             if (found == into.end())
             {
                 auto made = representation {
-                    id, std::string(urd::test::name<R>::value), {}, std::string(urd::test::part_name<R>()), urd::test::words_of<R>().value_or(0), {}
+                    id, std::string(urd::test::name<R>::value), {}, std::string(urd::test::part_name<R>()), urd::test::words_of<R>().value_or(0), {}, {}, {}
                 };
                 if constexpr (requires { urd::container_synopsis<R>::holds; })
                     made.holds = std::string(urd::container_synopsis<R>::holds);
                 else
                     throw std::runtime_error("no synopsis declared for " + id + " (urd::container_synopsis, beside its container_traits)");
+                using declaration = urd::detail::declaration_t<R>;
+                made.provides = tag_list({ { "", declaration::provides } });
+                made.relies_on = tag_list({ { "", declaration::relies_on.stated },
+                                            { "element:", declaration::relies_on.element },
+                                            { "mapped:", declaration::relies_on.mapped },
+                                            { "row:", declaration::relies_on.row },
+                                            { "row_element:", declaration::relies_on.row_element } });
                 for (std::size_t what = 0; what < made.costs.size(); ++what)
                 {
                     made.costs[what] = urd::test::cost_of<R>(static_cast<op>(what));
@@ -206,6 +228,8 @@ std::string generate()
         out += ", \"description\": " + json_text(each.description);
         out += ", \"kinds\": " + kinds + "]";
         out += ", \"holds\": " + json_text(each.holds);
+        out += ", \"provides\": " + each.provides;
+        out += ", \"relies_on\": " + each.relies_on;
         if (!each.part.empty())
             out += ", \"part\": " + json_text(each.part);
         out += ", \"words\": " + std::to_string(each.words);

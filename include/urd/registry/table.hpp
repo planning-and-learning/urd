@@ -1,7 +1,7 @@
 #pragma once
 
-// The registry's table: every declaration (urd/registry/declarations.hpp) as values, one entry each, in order of
-// preference.
+// The registry's tables: each node's declarations (urd/registry/declarations.hpp) as values, one entry each, in order
+// of preference.
 
 #include "urd/registry/declarations.hpp"
 
@@ -14,7 +14,8 @@ template<typename... Decls>
 constexpr auto entries_from(type_list<Decls...> /*declarations*/)
 { return std::array<registry_entry, sizeof...(Decls)> { entry_of<Decls>()... }; }
 
-/// The table as values, one entry per declaration, in the same order.
-inline constexpr auto registry_table = entries_from(declarations {});
+/// Node's table as values, one entry per declaration, in the same order.
+template<typename Node>
+inline constexpr auto table_of = entries_from(typename Node::declarations {});
 
 }  // namespace urd::detail

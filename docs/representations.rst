@@ -11,7 +11,7 @@ model through thousands of random operations; a deliberately wrong declaration i
 Headers
 -------
 
-``urd/store.hpp`` declares the representations and defines none (``include/urd/repr/*_fwd.hpp``: the declaration,
+``urd/store.hpp`` declares the representations and defines none (``include/urd/repr/<kind>/*_fwd.hpp``: the declaration,
 its defaults, its traits, and the header that defines it), and a request names only the container it resolves to. A
 file includes the header of each container its Stores resolve to, in ``urd/repr/``, and nothing grouped; a Store whose
 container's header is missing fails to compile naming the headers to include, a wrapper's part before the wrapper.

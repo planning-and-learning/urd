@@ -49,9 +49,9 @@ using element_t = std::ranges::range_value_t<R>;
 /// What a container lets change: it inserts unless it relies on being frozen or of a fixed shape, and erases unless
 /// it relies on only growing too (its declaration's relies_on).
 template<typename R>
-inline constexpr bool container_grows = is_store<R> ? grows<container_traits<R>> : !relies_on<R>.has(tag::frozen) && !relies_on<R>.has(tag::fixed_shape);
+inline constexpr bool container_grows = is_store<R> ? grows<container_traits<R>> : !relies_on<R>.has(change::frozen) && !relies_on<R>.has(shape::fixed_shape);
 template<typename R>
-inline constexpr bool container_shrinks = is_store<R> ? shrinks<container_traits<R>> : container_grows<R> && !relies_on<R>.has(tag::monotone);
+inline constexpr bool container_shrinks = is_store<R> ? shrinks<container_traits<R>> : container_grows<R> && !relies_on<R>.has(change::monotone);
 
 /// A map: it names what its keys map to.
 template<typename R>

@@ -52,10 +52,9 @@ std::vector<urd::test::server> servers()
                 urd::test::element_headers_of<typename S::key_type>(headers);
             if constexpr (!std::is_void_v<typename S::value_type>)
                 urd::test::element_headers_of<typename S::value_type>(headers);
-            const auto offer = Decl::offers(urd::detail::features_of<S>());
             auto uninvited = std::vector<std::string>();
             for (const auto each : urd::test::costly)
-                if (!S::urd_properties.has(each) && offer->properties.has(each))
+                if (!S::urd_properties.has(each) && Decl::provides.has(each))
                     uninvited.emplace_back(urd::test::tag_name(each));
             result.push_back({ std::string(Decl::id),
                                std::move(headers),

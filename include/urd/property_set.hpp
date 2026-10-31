@@ -104,19 +104,65 @@ using all_tags = type_list<any_order,
                            general,
                            small,
                            any_priority,
-                           monotone_priority>;
+                           monotone_priority,
+                           any_can_hash,
+                           can_hash,
+                           any_can_order,
+                           can_order,
+                           any_an_index,
+                           an_index,
+                           any_copies_as_bytes,
+                           copies_as_bytes,
+                           any_destroys_trivially,
+                           destroys_trivially,
+                           any_refillable,
+                           refillable,
+                           any_own_order,
+                           own_order,
+                           any_natural_ordered,
+                           natural_ordered,
+                           any_by_entry,
+                           by_entry,
+                           any_integral_priority,
+                           integral_priority,
+                           any_urd_hashed,
+                           urd_hashed,
+                           any_rows_flatten,
+                           rows_flatten,
+                           any_rows_in_place,
+                           rows_in_place,
+                           any_rows_reused,
+                           rows_reused,
+                           any_names_members,
+                           names_members>;
 
-inline constexpr std::size_t tag_count = static_cast<std::size_t>(tag::count);
-constexpr std::size_t index(tag of) { return static_cast<std::size_t>(of); }
-
+/// How many tags there are, every category's none included.
 template<typename... Ts>
-consteval bool numbered_in_order(type_list<Ts...> /*tags*/)
-{
-    std::size_t position = 0;
-    return sizeof...(Ts) == tag_count && ((index(Ts::value) == position++) && ...);
-}
-static_assert(numbered_in_order(all_tags {}), "urd::tag and the tag types must list the same properties in the same order");
+consteval std::size_t count_of(type_list<Ts...> /*tags*/)
+{ return sizeof...(Ts); }
+inline constexpr std::size_t tag_count = count_of(all_tags {});
+static_assert(tag_count == all_tag_count, "urd: the tag types and the categories' enums must list the same tags");
+inline constexpr std::size_t category_count = static_cast<std::size_t>(category::count);
 
+/// Every tag in the order of the tag types: each category's none, then its answers, in its enum's order.
+template<typename... Ts>
+consteval std::array<tag, sizeof...(Ts)> tags_in_order(type_list<Ts...> /*tags*/)
+{ return { tag(Ts::value)... }; }
+inline constexpr auto all_tag_values = tags_in_order(all_tags {});
+
+/// A tag's position among all tags, and the tag at a position: what the tables below are indexed by.
+constexpr std::size_t index(tag of) { return of.position; }
+constexpr tag tag_at(std::size_t position) { return all_tag_values[position]; }
+
+static_assert(
+    []
+    {
+        for (std::size_t each = 0; each < tag_count; ++each)
+            if (index(all_tag_values[each]) != each)
+                return false;
+        return true;
+    }(),
+    "urd: each category's tag types must list its none first, then its answers in the order of its enum");
 template<typename... Tags>
 constexpr auto tag_names_of(type_list<Tags...> /*tags*/)
 { return std::array<std::string_view, sizeof...(Tags)> { Tags::name... }; }
@@ -168,12 +214,12 @@ constexpr tag root_of(tag of) { return tags.root[index(of)]; }
 constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
 
 /// The roots of the categories a container declares, then those a request states.
-inline constexpr std::array guaranteed_roots {
-    tag::any_order,  tag::duplicates,  tag::any_keys,     tag::moving_refs,   tag::any_layout, tag::any_representation, tag::single_threaded,
-    tag::any_memory,  tag::any_clear,    tag::any_access,    tag::any_scope,  tag::any_layering,       tag::any_tracking,
-    tag::any_handle, tag::any_sharing, tag::any_grouping, tag::any_direction, tag::any_shape,  tag::any_packing,        tag::by_key
+inline constexpr std::array<tag, 20> guaranteed_roots {
+    order::none,  uniqueness::none,  keys::none,     referencing::none,   layout::none, representation::none, threading::none,
+    memory::none,  clearing::none,    access::none,    scoping::none,  layering::none,       tracking::none,
+    handling::none, sharing::none, grouping::none, direction::none, shape::none,  packing::none,        position::none
 };
-inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::general, tag::any_priority };
+inline constexpr std::array<tag, 5> requested_roots { change::none, emptiness::none, multiplicity::none, workload::none, priority::none };
 
 constexpr bool in(tag root, const auto& roots)
 {
@@ -194,10 +240,10 @@ struct property_set
     {
         auto result = property_set {};
         for (std::size_t each = 0; each < tag_count; ++each)
-            result.held[each] = static_cast<tag>(each);
+            result.held[each] = tag_at(each);
         return result;
     }
-    /// The given tags, at most one per category, the others at their roots.
+    /// The given tags (any category's answers: order::sorted, …), at most one per category, the others at none.
     static constexpr property_set of(std::initializer_list<tag> stated)
     {
         auto result = roots();
@@ -245,8 +291,8 @@ constexpr property_set demands_of(const property_set& declared)
 {
     auto result = property_set::roots();
     for (std::size_t each = 0; each < tag_count; ++each)
-        if (tags_demanded[each] && declared.has(static_cast<tag>(each)))
-            result.put(static_cast<tag>(each));
+        if (tags_demanded[each] && declared.has(tag_at(each)))
+            result.put(tag_at(each));
     return result;
 }
 

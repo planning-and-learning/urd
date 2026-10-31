@@ -1,8 +1,8 @@
 // What a consumer of the package needs: the urd::urd target, and with it Boost, cista and, where configured, gtl;
 // and for each Store, the header of the container it resolves to (docs/RESOLUTION.md names it, as does the error of a
 // Store without it).
-#include <urd/repr/parallel_hash.hpp>
-#include <urd/repr/unordered_flat_set.hpp>
+#include <urd/repr/values/parallel_hash_set.hpp>
+#include <urd/repr/values/unordered_flat_set.hpp>
 #include <urd/store.hpp>
 
 int main()

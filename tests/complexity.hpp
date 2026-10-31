@@ -54,71 +54,7 @@ struct costs_holder<X>
 /// it.
 template<typename R>
 constexpr std::optional<cost> cost_of(op what)
-{
-    using C = typename costs_holder<R>::type;
-    switch (what)
-    {
-        case op::insert:
-            if constexpr (requires { C::insert; })
-                return C::insert;
-            break;
-        case op::lookup:
-            if constexpr (requires { C::lookup; })
-                return C::lookup;
-            break;
-        case op::ordered_lookup:
-            if constexpr (requires { C::ordered_lookup; })
-                return C::ordered_lookup;
-            break;
-        case op::erase:
-            if constexpr (requires { C::erase; })
-                return C::erase;
-            break;
-        case op::clear:
-            if constexpr (requires { C::clear; })
-                return C::clear;
-            break;
-        case op::iterate:
-            if constexpr (requires { C::iterate; })
-                return C::iterate;
-            break;
-        case op::access:
-            if constexpr (requires { C::access; })
-                return C::access;
-            break;
-        case op::push:
-            if constexpr (requires { C::push; })
-                return C::push;
-            break;
-        case op::pop:
-            if constexpr (requires { C::pop; })
-                return C::pop;
-            break;
-        case op::top:
-            if constexpr (requires { C::top; })
-                return C::top;
-            break;
-        case op::merge:
-            if constexpr (requires { C::merge; })
-                return C::merge;
-            break;
-        case op::insert_row:
-            if constexpr (requires { C::insert_row; })
-                return C::insert_row;
-            break;
-        case op::find_row:
-            if constexpr (requires { C::find_row; })
-                return C::find_row;
-            break;
-        case op::scope:
-            if constexpr (requires { C::scope; })
-                return C::scope;
-            break;
-        case op::count:
-            break;
-    }
-    return std::nullopt;
-}
+{ return urd::cost_of<typename costs_holder<R>::type>(what); }
 
 /// Whether R passes `what` on to its part: a wrapper's cost it inherits rather than declares (the same object).
 template<typename R>
@@ -216,9 +152,9 @@ constexpr std::optional<double> words_of()
 /// The guarantees that cost something to give: storage by index, nodes, locks, generations, a log, a parent, shared
 /// parts. A container that gives one nobody asked for is a surprise, unlike one that also happens to keep its memory,
 /// lie contiguous, or iterate in order (a dense container's order is its index order, at no cost).
-inline constexpr std::array costly { urd::tag::dense,       urd::tag::stable_refs,  urd::tag::concurrent, urd::tag::constant_clear,     urd::tag::scoped,
-                                     urd::tag::layered,     urd::tag::change_log,   urd::tag::handles,    urd::tag::structural_sharing, urd::tag::partition,
-                                     urd::tag::fixed_shape, urd::tag::bidirectional };
+inline constexpr std::array<urd::tag, 12> costly { urd::keys::dense,       urd::referencing::stable_refs,  urd::threading::concurrent, urd::clearing::constant_clear,     urd::scoping::scoped,
+                                     urd::layering::layered,     urd::tracking::change_log,   urd::handling::handles,    urd::sharing::structural_sharing, urd::grouping::partition,
+                                     urd::shape::fixed_shape, urd::direction::bidirectional };
 
 /// The operations a Store offers, read from its facets (`On::on`); the facets not listed here (sizing, equality, set
 /// algebra, ...) are not compared.

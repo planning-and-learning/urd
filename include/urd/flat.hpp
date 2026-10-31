@@ -2,7 +2,7 @@
 
 // Records stored flat: the cista containers a record is written with, under urd's names, their hash and equality,
 // and how a view resolves them. Include it where flat records are defined; the pools that store them are in
-// urd/repr/records.hpp and urd/repr/arena.hpp, included where such a Store is held.
+// urd/repr/records/records.hpp and urd/repr/records/arena.hpp, included where such a Store is held.
 
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"

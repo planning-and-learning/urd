@@ -23,7 +23,7 @@
 #include "urd/repr/containers/detail/segmented_rows.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
-#include "urd/repr/segmented_fwd.hpp"
+#include "urd/repr/sequences/segmented_fwd.hpp"
 
 #include <algorithm>
 #include <array>

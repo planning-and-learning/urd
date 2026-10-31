@@ -4,14 +4,14 @@
 
 #include "properties.hpp"
 
-#include "urd/repr/bidirectional_csr.hpp"
-#include "urd/repr/csr_multimap.hpp"
-#include "urd/repr/dense_multimap.hpp"
-#include "urd/repr/dense_set.hpp"
-#include "urd/repr/disjoint_sets.hpp"
-#include "urd/repr/index_map.hpp"
-#include "urd/repr/ordered_map.hpp"
-#include "urd/repr/sparse_set.hpp"
+#include "urd/repr/maps/bidirectional_csr.hpp"
+#include "urd/repr/maps/csr_multimap.hpp"
+#include "urd/repr/maps/dense_multimap.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/maps/index_map.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/values/sparse_set.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -76,7 +76,7 @@ struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd:
 {
 };
 template<>
-inline constexpr urd::detail::property_set urd::relies_on<Journal> = urd::detail::property_set::of({ urd::tag::monotone });
+inline constexpr urd::detail::property_set urd::relies_on<Journal> = urd::detail::property_set::of({ urd::change::monotone });
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Adapters, Properties, testing::Types<Journal>, urd::test::Names);
 
@@ -107,7 +107,7 @@ struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_
 {
 };
 template<>
-inline constexpr urd::detail::property_set urd::relies_on<ClaimsStableRefs> = urd::detail::property_set::of({ urd::tag::monotone });
+inline constexpr urd::detail::property_set urd::relies_on<ClaimsStableRefs> = urd::detail::property_set::of({ urd::change::monotone });
 
 TEST(Properties, AFalseClaimIsCaught)
 {

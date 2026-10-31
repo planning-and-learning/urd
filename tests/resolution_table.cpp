@@ -39,7 +39,7 @@ std::string headers()
     else
     {
         auto result = std::string();
-        for (const auto name : urd::detail::registry_table[urd::detail::choose<S>::position].headers)
+        for (const auto name : urd::detail::choose<S>::headers)
             if (!name.empty())
                 result += (result.empty() ? "" : " + ") + std::string(name.substr(name.rfind('/') + 1));
         return result;
@@ -53,7 +53,7 @@ std::string spec_tags()
     auto result = std::string();
     for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
     {
-        const auto root = static_cast<urd::tag>(each);
+        const auto root = urd::detail::tag_at(each);
         if (urd::detail::root_of(root) == root && S::urd_properties.in(root) != root)
         {
             if (!result.empty())

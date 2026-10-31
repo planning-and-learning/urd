@@ -137,22 +137,23 @@ struct order_of<T, K, V, P, Ps...> : order_of<T, K, V, Ps...>
 template<typename P>
 inline constexpr bool is_property = is_tag<P>() || is_a<key, P> || is_a<value, P> || is_order_by<P>;
 
-/// P's number, where P is a tag; tag::count for key<K> and value<V>.
+/// P's number, where P is a tag; tag {} for key<K> and value<V>.
 template<typename P>
 consteval tag tag_of()
 {
     if constexpr (a_tag<P>)
         return P::value;
     else
-        return tag::count;
+        return tag {};
 }
 
 }  // namespace detail
 
-/// A Store's request in canonical form: its key and value types (void where absent), and the tags that say more than
-/// their category's root, in the order of urd::tag. Whatever order the properties were listed in, equal requests give
-/// equal specs, and so equal Store types; compilers print the tags by name.
-template<typename K, typename V, typename Order, tag... Tags>
+/// A Store's request in canonical form: its key and value types (void where absent), and its answers, one per category
+/// that says more than none, each in its category's enum, in the order of the categories (urd::category). Whatever
+/// order the properties were listed in, equal requests give equal specs, and so equal Store types; compilers print the
+/// answers by name (urd::order::sorted).
+template<typename K, typename V, typename Order, auto... Answers>
 struct spec
 {
     using key_type = K;
@@ -161,7 +162,7 @@ struct spec
     using order_type = Order;
 
     /// What the Store promises: the request's tags, with what they mean (meaning, urd/tags.hpp).
-    static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
+    static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
 
     /// What the Store is (urd::kind): from its key and value types and the tags that make a kind.
@@ -173,7 +174,7 @@ struct spec
     /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
     static constexpr bool is_queue = kind == urd::kind::queue;
     /// Values identified by the handles insert gives (handles): a pool.
-    static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::records;
+    static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::slots || kind == urd::kind::records;
     static constexpr bool is_sequence = kind == urd::kind::sequence || kind == urd::kind::multiset;
     /// What its container must guarantee: the promise, but for what the Store keeps itself (asked_of_container).
     static constexpr detail::property_set required = urd::asked_of_container(urd_properties);
@@ -198,7 +199,7 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 {
     auto result = property_set::roots();
     for (const auto each : listed)
-        if (each != tag::count)
+        if (each != tag {})
             result.put(each);
     return result;
 }
@@ -208,7 +209,7 @@ consteval bool one_per_category(std::initializer_list<tag> listed)
 {
     auto answers = std::array<int, tag_count> {};
     for (const auto each : listed)
-        if (each != tag::count && ++answers[index(root_of(each))] > 1)
+        if (each != tag {} && ++answers[index(root_of(each))] > 1)
             return false;
     return true;
 }
@@ -224,14 +225,14 @@ consteval listed_tags non_roots(const property_set& properties)
     auto result = listed_tags {};
     for (std::size_t each = 0; each < tag_count; ++each)
     {
-        const auto root = static_cast<tag>(each);
+        const auto root = tag_at(each);
         if (root_of(root) == root && properties.in(root) != root)
             result.tags[result.count++] = properties.in(root);
     }
     return result;
 }
 template<typename K, typename V, typename Order, listed_tags Listed, std::size_t... I>
-spec<K, V, Order, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positions*/);
+spec<K, V, Order, answer_of<Listed.tags[I]>...> spec_of(std::index_sequence<I...> /*positions*/);
 
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
 template<typename... Ps>

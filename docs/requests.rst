@@ -139,7 +139,9 @@ Hash2), cista, and gtl, whose sharded tables serve ``concurrent`` sets and maps 
 
 ``urd/store.hpp`` declares every representation and defines none: it costs the vocabulary and the resolution, and
 stays as cheap as containers are added: a request names only the container it resolves to. A file includes the
-header of each container its Stores resolve to, ``urd/repr/<container>.hpp`` (:doc:`representations` lists them),
+header of each container its Stores resolve to, ``urd/repr/<kind>/<container>.hpp`` (:doc:`representations` lists
+them; the kinds' directories are sequences, values, maps, queues, pools, slots, records and partitions, and wrappers
+holds the wrappers),
 and a Store whose container's header is missing fails to compile naming the headers to include. No header includes
 every container: the record pools alone bring cista's serialization, which only a file holding such a pool should
 pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, and ``urd/view.hpp`` where views are made.
