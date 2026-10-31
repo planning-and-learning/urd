@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/incompatible.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -90,15 +91,6 @@ consteval bool is_internal()
         return in(P::value, internal_tags);
     else
         return false;
-}
-
-/// The tags stated, with what one implies of another's category: monotone_priority is a priority queue's promise, so
-/// it makes the request a priority queue.
-consteval property_set stated_with_access(property_set stated)
-{
-    if (stated.has(tag::monotone_priority) && stated.in(tag::any_access) == tag::any_access)
-        stated.put(tag::by_priority);
-    return stated;
 }
 
 /// Whether P is a tag a Store may be asked for (statable).
@@ -233,9 +225,6 @@ consteval bool one_per_category(std::initializer_list<tag> listed)
     return true;
 }
 
-/// Whether a kind holds values by position or by value without keys: a sequence, sorted or not.
-constexpr bool sequence_like(kind of) { return of == kind::sequence || of == kind::multiset; }
-
 /// The tags of a set that say more than their category's root, in the order of urd::tag: a spec's arguments.
 struct listed_tags
 {
@@ -276,76 +265,28 @@ struct to_spec
     using value_type = typename first_of<value, Ps...>::type;
     static_assert(!std::is_void_v<key_type> || !std::is_void_v<value_type>, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
 
-    static constexpr property_set stated = stated_with_access(stated_of({ tag_of<Ps>()... }));
+    static constexpr property_set stated = restated(stated_of({ tag_of<Ps>()... }));
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
     static constexpr kind of = kind_of(stated, keyed, valued);
-    static constexpr bool queue = of == kind::queue;
-    static constexpr bool pool = of == kind::pool || of == kind::records;
-
-    static_assert(!stated.has(tag::partition) || (!valued && !stated.has(tag::frozen)),
-                  "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
-    static_assert(!stated.has(tag::handles) || (!keyed && (!queue || stated.has(tag::by_priority)) && !stated.has(tag::positional) && !stated.has(tag::frozen)),
-                  "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
-                  "position or order; a priority queue with handles changes or erases an element by its handle");
-    static_assert(!stated.has(tag::flat) || (pool && stated.has(tag::unique)),
-                  "urd::Store: flat stores each record of an interning pool as one block of bytes; ask for handles and unique too");
-    static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || iterates<value_type>,
-                  "urd::Store: a pool of records (value<V>, V no range of elements) stores them flat: ask for flat");
-    static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
-                  "urd::Store: monotone_priority says how a priority queue is pushed to, so it makes a priority queue; it cannot go "
-                  "with fifo or lifo");
-    static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
-                  "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
-    static_assert(!stated.has(tag::nonempty) || of == kind::set || of == kind::map || sequence_like(of),
-                  "urd::Store: nonempty is a promise about the elements a set, map or sequence iterates; a queue empties by pop and a "
-                  "pool by erase(handle), so it cannot hold there: drop nonempty, or check empty() before pop");
-    static_assert(!stated.has(tag::fixed_shape) || (sequence_like(of) && !stated.has(tag::monotone) && is_store<value_type>),
-                  "urd::Store: fixed_shape is a sequence of rows (value<Store<…>>) whose number and lengths never change; its rows' "
-                  "contents do");
-    static_assert(of != kind::map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
-    static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
-                  "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
-    static_assert(!((sequence_like(of) || stated.has(tag::positional)) && stated.has(tag::stable_refs)) || stated.has(tag::monotone),
-                  "urd::Store: erasing or inserting at a position moves the elements after it: stable_refs on a sequence or a "
-                  "positional set needs monotone, append only, or frozen");
-    static_assert(!(stated.has(tag::sorted) && stated.has(tag::concurrent)) || stated.has(tag::dense),
-                  "urd::Store: no concurrent sorted container: threads share a hashed (concurrent) or dense Store; keep sorted and "
-                  "synchronize outside, or drop sorted");
-    static_assert(!queue || !stated.has(tag::concurrent),
-                  "urd::Store: a queue is reached by its front or top, which pop moves: no queue is concurrent; guard it with a mutex, "
-                  "or share a positional, monotone set");
-    static_assert(!(stated.has(tag::frozen) && stated.has(tag::concurrent)),
-                  "urd::Store: a frozen Store never changes, so any number of threads may read it; concurrent asks for inserts "
-                  "from threads at once, which it has none of: drop concurrent");
 
     /// What order_by orders: keys, or a sequence's or queue's values.
     using ordered_type = std::conditional_t<keyed, key_type, value_type>;
     static constexpr bool ordered_by = (is_order_by<Ps> || ...);
     static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
-    static_assert(!ordered_by || stated.has(tag::sorted) || stated.has(tag::by_priority),
-                  "urd::Store: order_by<P> orders a sorted Store or a by_priority queue; ask for one of them too");
-    static_assert(!ordered_by || !keyed || stated.has(tag::multi) || orderable<ordered_type>,
-                  "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
-                  "(else two keys with equal P(key) would be one)");
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
-    static_assert(!ordered_by || !stated.has(tag::dense),
-                  "urd::Store: dense keys are stored and iterated by index, so no order_by<P> applies: drop dense, or order the index "
-                  "type itself");
-    static_assert(!ordered_by || !is_entry_less<order_type> || stated.has(tag::small) || stated.has(tag::frozen),
-                  "urd::Store: a map ordered by its values is a flat scan (O(n) insert, lookup by key): ask for small or frozen too, or "
-                  "order by key");
-    static_assert(!(stated.has(tag::dense) && stated.has(tag::reclaims)),
-                  "urd::Store: dense keys are stored by position (a slot per index), so erase returns no storage: reclaims needs sparse "
-                  "keys (a tree or node table)");
-    static_assert(!keyed || !stated.has(tag::constant_clear) || stated.has(tag::dense),
-                  "urd::Store: constant_clear is a generation counter over a slot per index: ask for dense too (a hash table or tree "
-                  "clears in time proportional to its slots: proportional_clear)");
-    static_assert(!(stated.has(tag::layered) && stated.has(tag::sorted)),
-                  "urd::Store: a layer iterates its own elements, not its parent's, so no order holds over both: drop sorted, or iterate "
-                  "the parent separately");
-    static_assert(!(stated.has(tag::partition) && stated.has(tag::concurrent)),
-                  "urd::Store: a partition's merge rewrites parents along two paths: single-threaded");
+
+    /// What the request is, as its checks read it; every rule of urd/incompatible.hpp is asked of it.
+    static constexpr request_facts facts { .stated = stated,
+                                           .of = of,
+                                           .keyed = keyed,
+                                           .valued = valued,
+                                           .value_is_store = is_store<value_type>,
+                                           .value_iterates = iterates<value_type>,
+                                           .ordered_by = ordered_by,
+                                           .entry_order = is_entry_less<order_type>,
+                                           .ordered_orderable = orderable<ordered_type> };
+    static_assert(sizeof(incompatible_rules<facts>) != 0);  // instantiates every rule, each asserting its message
 
     static constexpr listed_tags listed = non_roots(implied(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));

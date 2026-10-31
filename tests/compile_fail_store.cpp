@@ -288,6 +288,9 @@ int main()
     };
     using S = Store<value<Name>, urd::handles, urd::unique, urd::flat, urd::layered>;
     (void) S().begin();
+#elif URD_CASE == 69  // values kept by value without keys are kept in order
+    using S = Store<value<int>, urd::unique>;
+    (void) S();
 #elif URD_CASE == 29  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

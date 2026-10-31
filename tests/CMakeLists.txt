@@ -186,7 +186,7 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 68)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 69)
 # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "are derived, never stated")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
@@ -240,6 +240,7 @@ urd_compile_fail_expects(compile_fail_store 65 "back: only a fifo queue has a ba
 urd_compile_fail_expects(compile_fail_store 66 "operator.*: a queue is reached by its front or top; ask for handles")
 urd_compile_fail_expects(compile_fail_store 67 "count: a partition holds each element once")
 urd_compile_fail_expects(compile_fail_store 68 "begin/end: a layered pool reaches each record")
+urd_compile_fail_expects(compile_fail_store 69 "values kept by value .unique or multi, without key<K>. are kept in order")
 # A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
 # chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)

@@ -27,19 +27,23 @@ constexpr bool in_kinds(kinds set, kind of) { return set == 0 || (set & (1U << s
 
 /// One implication: for a Store of one of `of` (every kind where empty) holding `when` (always where it is
 /// tag::count), it holds `then` too, unless its category already holds something; `provided` where the Store keeps
-/// `then` itself, so that a container need not.
+/// `then` itself, so that a container need not; `stated` where `then` counts as stated with `when`, so that the
+/// request's checks (urd/incompatible.hpp) read it too.
 struct implication
 {
     kinds of = 0;
     tag when = tag::count;
     tag then = tag::count;
     bool provided = false;
+    bool stated = false;
 };
 
 inline constexpr kinds sequences = kinds_of({ kind::sequence, kind::multiset });
 
 /// The implications, in the order they apply: an earlier one answers a category first.
 inline constexpr auto implications = std::to_array<implication>({
+    // monotone_priority is a priority queue's promise, so it makes a priority queue.
+    { .when = tag::monotone_priority, .then = tag::by_priority, .stated = true },
     // A sequence is identified by position, and its positions are 0..n-1 whatever holds it.
     { .of = sequences, .then = tag::positional },
     { .of = sequences, .then = tag::functional },

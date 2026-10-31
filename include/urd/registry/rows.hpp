@@ -745,8 +745,8 @@ constexpr bool row_serves(const registry_row& row, const request_shape& s, const
         return false;
     const auto& have = *traits;
     if (!satisfies(have, s.required) || !demands_met(have, s.stated) || have.has(tag::unique) != s.stated.has(tag::unique)
-        || have.has(tag::handles) != s.stated.has(tag::handles) || (s.kind == urd::kind::multiset && !s.stated.has(tag::sorted))
-        || !promises(s.stated, row.relies_on) || (s.stated.has(tag::positional) && !have.has(tag::positional)))
+        || have.has(tag::handles) != s.stated.has(tag::handles) || !promises(s.stated, row.relies_on)
+        || (s.stated.has(tag::positional) && !have.has(tag::positional)))
         return false;
     const auto& held = s.kind == urd::kind::map ? f.mapped : f.element;
     if (!held.store)

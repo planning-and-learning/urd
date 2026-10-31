@@ -220,6 +220,15 @@ constexpr kind kind_of(const property_set& held, bool keyed, bool valued)
 constexpr bool applies(const implication& rule, kind of, const property_set& held)
 { return in_kinds(rule.of, of) && (rule.when == tag::count || held.has(rule.when)); }
 
+/// What a request states, with the tags its stated tags state with them (the implications marked stated).
+constexpr property_set restated(property_set stated)
+{
+    for (const auto& rule : implications)
+        if (rule.stated && (rule.when == tag::count || stated.has(rule.when)) && stated.in(root_of(rule.then)) == root_of(rule.then))
+            stated.put(rule.then);
+    return stated;
+}
+
 /// What a request of kind `of` that states `stated` holds: the implications applied in order, each answering only a
 /// category nothing answered yet.
 constexpr property_set implied(property_set stated, kind of)

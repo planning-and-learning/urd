@@ -24,15 +24,13 @@ namespace urd::detail
 /// sequence's duplicates), is reached by handle exactly where S is (a pool offers no iteration), stores records flat
 /// exactly where S asks (records come back by index), is a map exactly
 /// where S is, is a queue exactly where S is, and is random-access where S
-/// is a sequence. A sequence
-/// kept by value must be sorted, or its positions would mean nothing. Where S's elements (a map's values) are Stores (rows), R
+/// is a sequence. Where S's elements (a map's values) are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
 concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, S::required)
                            && detail::demands_met(container_traits<R>::urd_properties, S::urd_properties) && by_value<container_traits<R>> == by_value<S>
                            && has<container_traits<R>, unique> == has<S, unique> && has<container_traits<R>, handles> == has<S, handles>
-                           && has<container_traits<R>, flat> == has<S, flat> && (!S::is_sequence || !by_value<S> || has<S, sorted>)
-                           && queue_traits<container_traits<R>> == S::is_queue;
+                           && has<container_traits<R>, flat> == has<S, flat> && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container, and a candidate need not even be defined where a request is resolved (the registry
 // declares representations; the header a Store's family comes from defines them). Whether a container offers what

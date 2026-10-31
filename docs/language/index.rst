@@ -120,7 +120,7 @@ A request is one of three things: served, missing, or incompatible. :doc:`/RESOL
 grid of requests (a ``none`` row carries a note saying what is missing). The third is a contract no representation
 can keep: ``Store`` rejects it before resolution with a message naming the rule, and a compile-fail case in
 ``tests/compile_fail_store.cpp`` pins each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``). The rules
-are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
+are in ``include/urd/incompatible.hpp``, one small template each, and ``to_spec`` asks them all.
 
 .. list-table::
    :header-rows: 1
@@ -138,7 +138,7 @@ are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
      - A Store has one key type and one value type.
      - A nested Store, or a tuple key.
      - 9
-   * - Two tags of one category: ``dense, sparse``; ``functional, multi``; ``retains, reclaims``; ``frozen, monotone``;
+   * - Two tags of one category: ``dense, sparse``; ``retains, reclaims``; ``frozen, monotone``;
        two workloads
      - One question, two answers.
      - Keep one.
@@ -177,9 +177,9 @@ are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
      - A queue changes by push and pop and is reached by its front or top.
      - A sorted set or a sequence.
      - 24
-   * - ``monotone_priority`` without ``by_priority``
-     - It says how a priority queue is pushed to.
-     - Add ``by_priority``.
+   * - ``monotone_priority`` with ``fifo`` or ``lifo``
+     - It says how a priority queue is pushed to, so it makes one.
+     - Drop ``fifo`` or ``lifo`` (``by_priority`` need not be stated with it).
      - 46
    * - ``handles`` with ``key<K>``, ``positional`` or ``frozen``, or on a ``fifo``/``lifo`` queue
      - A pool holds ``value<V>`` rows reached by handle; a key, a position or an order would identify them otherwise.
@@ -237,6 +237,10 @@ are the ``static_assert`` s of ``to_spec`` in ``include/urd/properties.hpp``.
      - A merge rewrites parents along two paths.
      - Single-threaded; one partition per thread, merged after.
      - 57
+   * - ``value<V>, unique`` or ``value<V>, multi`` without ``sorted``
+     - Values kept by value, with no key, are kept in order; unordered, their positions would mean nothing.
+     - Add ``sorted``, or use ``key<K>`` for a set.
+     - 69
 
 A second group is rejected by the registry rather than a rule: the request is well formed, but no representation
 serves it and none could. The diagnosis names the culprits, the stated tags whose removal would make the request
