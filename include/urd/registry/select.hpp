@@ -23,7 +23,7 @@ namespace urd::detail
 
 /// What spec S is, as the scan reads it.
 template<typename S>
-inline constexpr request_shape shape_of = request_shape { S::kind, S::urd_properties, S::required };
+inline constexpr request_shape shape_of = request_shape { S::kind, S::promised, S::required };
 
 /// The entry for spec S: its position in the table, or no_entry. `found` is false where none serves.
 template<typename S>

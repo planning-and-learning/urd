@@ -95,7 +95,7 @@ public:
     }
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:

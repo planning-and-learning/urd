@@ -25,7 +25,7 @@ namespace urd::detail::guarantees
 
 constexpr P scoped(const P& part)
 {
-    if (!part || !part->has(tag::unique) || !part->has(tag::functional))
+    if (!part || !part->has(tag::unique))
         return {};
     return with(*part, { tag::scoped });
 }
@@ -66,8 +66,6 @@ struct scoped_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/unordered_flat_map.hpp", "urd/repr/scoped.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::scoped(guarantees::flat_hash_map(f.key));
         if (!held)
             return {};
@@ -106,7 +104,7 @@ struct scoped_tree_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/std_map.hpp", "urd/repr/scoped.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::scoped(guarantees::tree_map(f.key, f));
         if (!held)
@@ -147,7 +145,7 @@ struct scoped_dense_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/index_map.hpp", "urd/repr/scoped.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::scoped(guarantees::index_map(f.key, false));
         if (!held)

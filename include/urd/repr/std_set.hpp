@@ -21,14 +21,14 @@ constexpr P tree_set(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return property_set::of({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P hash_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return property_set::of({ tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::unique, tag::stable_refs, tag::sparse });
 }
 
 }  // namespace urd::detail::guarantees
@@ -58,7 +58,7 @@ struct set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::tree_set(f.element, f);
         if (!held)
@@ -97,7 +97,7 @@ struct unordered_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+        if (!f.hash_natural)
             return {};
         const auto held = guarantees::hash_set(f.element);
         if (!held)

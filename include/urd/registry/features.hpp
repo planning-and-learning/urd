@@ -62,17 +62,20 @@ consteval type_features features_of_type()
 }
 
 /// The facts an order gives: with C the comparator over `Ordered` (urd::Less<Ordered> where none is given), none, an
-/// order over the elements (whether C orders them as sorted means, and what it compares), or one over entries.
+/// order_by over the elements (whether C orders them as sorted means, and what it compares), or one over entries.
 template<typename Ordered, typename C>
 consteval void add_order(request_features& f)
 {
     if constexpr (is_entry_less<C>)
-        f.by = order::entry;
+    {
+        f.ordered = true;
+        f.entry_order = true;
+    }
     else
     {
         if constexpr (!std::same_as<C, Less<Ordered>>)
         {
-            f.by = order::element;
+            f.ordered = true;
             f.order_natural = natural_order<C, Ordered>;
         }
         if constexpr (requires { typename order_key_t<Ordered, C>; })

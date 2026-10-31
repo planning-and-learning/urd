@@ -20,7 +20,7 @@ constexpr P disjoint_sets(const T& t)
 {
     if (!t.indexable)
         return {};
-    return property_set::of({ tag::partition, tag::dense, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::partition, tag::retains });
 }
 
 
@@ -48,8 +48,6 @@ struct disjoint_sets_decl
     static constexpr auto headers = header_list<1> { "urd/repr/disjoint_sets.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::disjoint_sets(f.element);
         if (!held)
             return {};

@@ -60,7 +60,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
     {
         auto operation = std::string("insert");
         bool cleared = false;
-        if constexpr (has<Traits, shrinkable>)
+        if constexpr (container_shrinks<P>)
         {
             if (step % 97 == 96)
             {
@@ -207,7 +207,6 @@ template<typename P>
 std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
 {
     using E = typename P::value_type;
-    using Traits = container_traits<P>;
     using Handle = typename P::handle_type;
     auto live = std::vector<std::pair<Handle, E>>();
     auto addresses = std::vector<const E*>();
@@ -229,7 +228,7 @@ std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
             return std::nullopt;
         };
         std::optional<std::string> wrong;
-        if constexpr (has<Traits, shrinkable>)
+        if constexpr (container_shrinks<P>)
         {
             if (drawn == 31)
             {

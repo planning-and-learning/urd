@@ -1,11 +1,10 @@
 #pragma once
 
 // What computes with the tags (urd/tags.hpp): each tag's category and what it is at least, the properties of a
-// container or a request as one constexpr value per category (property_set), and the rules a container's properties
+// container or a request as one constexpr value per category (property_set), and what a container's properties
 // must meet for a request (satisfies, promises, demands_of). Properties are computed as values, not as types: a
 // request costs the compiler a constant evaluation instead of hundreds of class instantiations.
 
-#include "urd/rules.hpp"
 #include "urd/tags.hpp"
 
 #include <algorithm>
@@ -93,16 +92,12 @@ using all_tags = type_list<any_order,
                            partition,
                            any_tracking,
                            change_log,
-                           immutable,
-                           growable,
-                           shrinkable,
                            may_change,
                            monotone,
                            frozen,
                            maybe_empty,
                            nonempty,
                            any_multiplicity,
-                           functional,
                            multi,
                            by_key,
                            positional,
@@ -142,19 +137,6 @@ consteval tag_table make_tag_table(type_list<Ts...> tags)
 { return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } }; }
 inline constexpr tag_table tags = make_tag_table(all_tags {});
 
-/// The kind each tag makes (its `makes`), or the lowest, sequence, where it makes none.
-template<typename Tag>
-consteval kind makes_of()
-{
-    if constexpr (requires { Tag::makes; })
-        return Tag::makes;
-    else
-        return kind::sequence;
-}
-template<typename... Ts>
-consteval std::array<kind, tag_count> make_kind_table(type_list<Ts...> /*tags*/)
-{ return { makes_of<Ts>()... }; }
-inline constexpr std::array<kind, tag_count> kinds_made = make_kind_table(all_tags {});
 
 /// The categories whose root declares itself exact, and the tags that declare themselves demanded (urd/tags.hpp).
 template<typename Tag>
@@ -185,12 +167,10 @@ inline constexpr std::array<bool, tag_count> tags_demanded = make_demanded_table
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
 constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
 
-/// The roots of the categories a container declares, then those a request states. A container may also declare
-/// functional (a value per key: a map), which selection reads directly, so that it never has to look inside a
-/// candidate.
+/// The roots of the categories a container declares, then those a request states.
 inline constexpr std::array guaranteed_roots {
     tag::any_order,  tag::duplicates,  tag::any_keys,     tag::moving_refs,   tag::any_layout, tag::any_representation, tag::single_threaded,
-    tag::immutable,  tag::any_memory,  tag::any_clear,    tag::any_access,    tag::any_scope,  tag::any_layering,       tag::any_tracking,
+    tag::any_memory,  tag::any_clear,    tag::any_access,    tag::any_scope,  tag::any_layering,       tag::any_tracking,
     tag::any_handle, tag::any_sharing, tag::any_grouping, tag::any_direction, tag::any_shape,  tag::any_packing,        tag::by_key
 };
 inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::general, tag::any_priority };
@@ -239,71 +219,6 @@ struct property_set
 
     friend constexpr bool operator==(const property_set&, const property_set&) = default;
 };
-
-/// The kind of a request with these tags: the kind its shape makes (a key: a set; a key and a value: a map; a value: a
-/// sequence), or the highest one a tag it holds makes (urd::kind, `makes`).
-constexpr kind kind_of(const property_set& held, bool keyed, bool valued)
-{
-    auto result = keyed ? (valued ? kind::map : kind::set) : kind::sequence;
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto of = static_cast<tag>(each);
-        if (root_of(of) != of && held.in(root_of(of)) == of && kinds_made[each] > result)
-            result = kinds_made[each];
-    }
-    return result;
-}
-
-/// Whether an implication (urd/rules.hpp) applies to a Store of kind `of` holding `held`.
-constexpr bool applies(const implication& rule, kind of, const property_set& held)
-{ return in_kinds(rule.of, of) && (rule.when == tag::count || held.has(rule.when)); }
-
-/// What a request states, with the tags its stated tags state with them (the implications marked stated).
-constexpr property_set restated(property_set stated)
-{
-    for (const auto& rule : implications)
-        if (rule.stated && (rule.when == tag::count || stated.has(rule.when)) && stated.in(root_of(rule.then)) == root_of(rule.then))
-            stated.put(rule.then);
-    return stated;
-}
-
-/// What a request of kind `of` that states `stated` holds: the implications applied in order, each answering only a
-/// category nothing answered yet.
-constexpr property_set implied(property_set stated, kind of)
-{
-    // Answered: stated, or put by an earlier rule. A rule may answer with a root (frozen: immutable), so this is kept
-    // apart from what the categories hold.
-    auto answered = std::array<bool, tag_count> {};
-    for (std::size_t each = 0; each < tag_count; ++each)
-        answered[each] = stated.held[each] != static_cast<tag>(each);
-    for (const auto& rule : implications)
-        if (applies(rule, of, stated) && !answered[index(root_of(rule.then))])
-        {
-            stated.put(rule.then);
-            answered[index(root_of(rule.then))] = true;
-        }
-    return stated;
-}
-
-/// What a container must guarantee for a Store of kind `of` that promises `promised`: the promise, but for what the
-/// Store provides itself (the implications marked provided).
-constexpr property_set required_of(property_set promised, kind of)
-{
-    auto result = promised;
-    for (const auto& rule : implications)
-        if (rule.provided && applies(rule, of, promised))
-            result.put(root_of(rule.then));
-    return result;
-}
-
-/// Whether `held` holds any of `listed`.
-constexpr bool holds_any(const property_set& held, const auto& listed)
-{
-    for (const auto each : listed)
-        if (held.has(each))
-            return true;
-    return false;
-}
 
 /// Whether `have` provides, in every category a container declares, at least what `want` asks for; exactly that, in
 /// the categories that declare themselves exact (urd/tags.hpp).

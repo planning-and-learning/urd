@@ -58,7 +58,7 @@ struct change_logged_decl
     static constexpr offered offers(const request_features& f)
     {
         // Over its part with urd::Less: the wrapper's type is written for it.
-        if (f.by != order::none)
+        if (f.ordered)
             return {};
         const auto part = Part::offers(f);
         if (!part)

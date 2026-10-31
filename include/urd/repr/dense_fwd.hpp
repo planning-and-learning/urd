@@ -24,7 +24,7 @@ constexpr P dense_set(const T& t, bool track)
 {
     if (!t.indexable)
         return {};
-    return property_set::of({ tag::sorted, tag::unique, tag::dense, tag::canonical, tag::shrinkable, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::dense, tag::canonical, tag::retains, track ? tag::proportional_clear : tag::any_clear });
 }
 
 constexpr P sparse_set(const T& t, bool keep_order)
@@ -35,7 +35,6 @@ constexpr P sparse_set(const T& t, bool keep_order)
                    tag::dense,
                    tag::positional,
                    tag::contiguous,
-                   tag::shrinkable,
                    tag::retains,
                    t.trivially_destructible ? tag::constant_clear : tag::proportional_clear,
                    keep_order ? tag::insertion_ordered : tag::any_order });
@@ -45,7 +44,7 @@ constexpr P index_map(const T& key, bool stable)
 {
     if (!key.indexable)
         return {};
-    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::dense, tag::shrinkable, tag::retains, references(stable) });
+    return property_set::of({ tag::sorted, tag::unique, tag::dense, tag::retains, references(stable) });
 }
 
 constexpr P generation_map(const T& key, const T& mapped, bool concurrent_, bool stable)
@@ -54,9 +53,7 @@ constexpr P generation_map(const T& key, const T& mapped, bool concurrent_, bool
         return {};
     return property_set::of({ tag::sorted,
                    tag::unique,
-                   tag::functional,
                    tag::dense,
-                   tag::shrinkable,
                    tag::retains,
                    tag::constant_clear,
                    references(stable),
@@ -99,7 +96,7 @@ struct dense_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/dense_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::dense_set(f.element, false);
         if (!held)
@@ -138,7 +135,7 @@ struct tracked_dense_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/dense_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::dense_set(f.element, true);
         if (!held)
@@ -177,8 +174,6 @@ struct sparse_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sparse_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::sparse_set(f.element, false);
         if (!held)
             return {};
@@ -215,8 +210,6 @@ struct ordered_sparse_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sparse_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::sparse_set(f.element, true);
         if (!held)
             return {};
@@ -254,7 +247,7 @@ struct dense_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::index_map(f.key, false);
         if (!held)
@@ -293,7 +286,7 @@ struct stable_dense_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::index_map(f.key, true);
         if (!held)
@@ -332,7 +325,7 @@ struct generation_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::generation_map(f.key, f.mapped, false, false);
         if (!held)
@@ -371,7 +364,7 @@ struct stable_generation_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::generation_map(f.key, f.mapped, false, true);
         if (!held)
@@ -410,7 +403,7 @@ struct thread_safe_generation_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::generation_map(f.key, f.mapped, true, true);
         if (!held)

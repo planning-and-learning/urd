@@ -78,7 +78,7 @@ struct recycling_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::recycling(guarantees::tree_map(f.key, f));
         if (!held)
@@ -116,8 +116,6 @@ struct recycling_hash_set_decl
     static constexpr auto headers = header_list<2> { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::recycling_set(guarantees::hash_set(f.element));
         if (!held)
             return {};
@@ -151,7 +149,7 @@ struct recycling_tree_set_decl
     static constexpr auto headers = header_list<2> { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::recycling_set(guarantees::tree_set(f.element, f));
         if (!held)
@@ -186,8 +184,6 @@ struct recycling_hash_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::recycling(guarantees::hash_map(f.key));
         if (!held)
             return {};

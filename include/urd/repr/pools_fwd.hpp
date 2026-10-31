@@ -27,24 +27,24 @@ constexpr P row_interner(const T& row, bool concurrent_)
 {
     if (row.element == nullptr || !row.element->hashable)
         return {};
-    return property_set::of({ tag::handles, tag::unique, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::retains, threads(concurrent_) });
 }
 
 constexpr P tree_vector_set(const T& row, bool concurrent_)
 {
     if (row.element == nullptr || !row.element->hashable || (row.store != nullptr && keeps_by_value(row.store->kind)))
         return {};
-    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::retains, threads(concurrent_) });
 }
 
 constexpr P tree_bitset_set(const T& row, bool concurrent_)
 {
     if (row.store == nullptr || row.element == nullptr || !row.element->indexable || !row.store->properties.has(tag::unique) || !row.store->properties.has(tag::dense))
         return {};
-    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::retains, threads(concurrent_) });
 }
 
-constexpr P slot_vector(bool concurrent_) { return property_set::of({ tag::handles, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) }); }
+constexpr P slot_vector(bool concurrent_) { return property_set::of({ tag::handles, tag::stable_refs, tag::retains, threads(concurrent_) }); }
 
 }  // namespace urd::detail::guarantees
 
@@ -82,8 +82,6 @@ struct row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::row_interner(f.element, false);
         if (!held)
             return {};
@@ -121,8 +119,6 @@ struct slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::slot_vector(false);
         if (!held)
             return {};
@@ -156,8 +152,6 @@ struct thread_safe_slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::slot_vector(true);
         if (!held)
             return {};
@@ -194,8 +188,6 @@ struct tree_pool_decl
     static constexpr auto headers = header_list<1> { Bits ? "urd/repr/tree_bitset.hpp" : "urd/repr/tree_vector.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = Bits ? guarantees::tree_bitset_set(f.element, ThreadSafe) : guarantees::tree_vector_set(f.element, ThreadSafe);
         if (!held)
             return {};
@@ -241,8 +233,6 @@ struct thread_safe_row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::row_interner(f.element, true);
         if (!held)
             return {};

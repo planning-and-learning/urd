@@ -14,7 +14,7 @@
 namespace urd::detail::guarantees
 {
 
-constexpr P vector() { return property_set::of({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear }); }
+constexpr P vector() { return property_set::of({ tag::positional, tag::contiguous, tag::retains, tag::proportional_clear }); }
 
 }  // namespace urd::detail::guarantees
 
@@ -29,8 +29,6 @@ struct vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequence.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::vector();
         if (!held)
             return {};

@@ -26,7 +26,7 @@ constexpr P ordered_map(const P& keys, const T& mapped)
     const auto clear = (mapped.trivially_destructible && keys->has(tag::constant_clear)) ? tag::constant_clear :
                        keys->has(tag::proportional_clear)                                ? tag::proportional_clear :
                                                                                            tag::any_clear;
-    return with(*keys, { tag::functional, tag::by_key, tag::any_layout, clear });
+    return with(*keys, { tag::by_key, tag::any_layout, clear });
 }
 
 }  // namespace urd::detail::guarantees
@@ -55,8 +55,6 @@ struct ordered_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/indexed.hpp", "urd/repr/ordered_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::ordered_map(guarantees::indexed_set(f.key), f.mapped);
         if (!held)
             return {};
@@ -91,8 +89,6 @@ struct dense_ordered_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/sparse_set.hpp", "urd/repr/ordered_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::ordered_map(guarantees::sparse_set(f.key, true), f.mapped);
         if (!held)
             return {};

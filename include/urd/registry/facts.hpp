@@ -11,7 +11,6 @@
 #include "urd/traits.hpp"
 
 #include <array>
-#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <string_view>
@@ -47,15 +46,6 @@ struct type_features
     const type_features* element = nullptr;
 };
 
-/// The order a request asks its elements in, beyond their own: none (urd::Less, or no order), an order_by over the
-/// elements (a map's keys), or an order_by over a map's entries, key and value.
-enum class order : std::uint8_t
-{
-    none,
-    element,
-    entry,
-};
-
 /// What a request's elements are: its element type (a set's key, a sequence's or pool's value), or a map's key and
 /// mapped types; and its order_by comparator, where it orders entries by their values too.
 struct request_features
@@ -63,7 +53,9 @@ struct request_features
     type_features element;
     type_features key;
     type_features mapped;
-    order by = order::none;
+    /// Whether it gives order_by<P>, and whether P orders a map's entries (key and value) rather than its keys.
+    bool ordered = false;
+    bool entry_order = false;
     /// Where it gives order_by over its elements (a map's keys): whether that comparator orders them as `sorted`
     /// means (natural_order), and the facts about what it compares (its projection's result, else the elements).
     bool order_natural = false;
@@ -72,12 +64,6 @@ struct request_features
     /// container where its hash and equality arguments are natural (natural_hash).
     bool hash_natural = true;
 };
-
-/// The orders a container takes, as a mask of urd::detail::order.
-inline constexpr std::uint8_t natural_order_only = 1U << static_cast<unsigned>(order::none);
-inline constexpr std::uint8_t element_orders = natural_order_only | (1U << static_cast<unsigned>(order::element));
-inline constexpr std::uint8_t entry_orders = 1U << static_cast<unsigned>(order::entry);
-constexpr bool accepts_order(std::uint8_t orders, order of) { return (orders & (1U << static_cast<unsigned>(of))) != 0; }
 
 /// The comparator of a container that takes one: the request's order_by where it gives one, else urd::Less.
 template<typename S>
@@ -114,7 +100,7 @@ using F = request_features;
 
 
 /// Whether the request's order applies to `t`: urd::Less where it gives no order_by, else its comparator.
-constexpr bool orders(const T& t, const F& f) { return f.by == order::none ? t.orderable : f.order_natural; }
+constexpr bool orders(const T& t, const F& f) { return f.ordered ? f.order_natural : t.orderable; }
 /// What a pool of rows gives its rows: their own request.
 constexpr P own_rows(const T& row) { return row.store ? P(row.store->properties) : P(); }
 

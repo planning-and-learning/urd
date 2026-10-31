@@ -20,6 +20,13 @@ namespace urd::detail
 // member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
 // recur (insert in growth, pool, slots and grouping).
 
+/// What a Store's interface lets change, from the tags it states: nothing where frozen or of a fixed shape (grows
+/// false); inserts only where it only grows or must stay nonempty (shrinks false); else inserts, erase and clear.
+template<typename S>
+inline constexpr bool grows = !has<S, frozen> && !has<S, fixed_shape>;
+template<typename S>
+inline constexpr bool shrinks = grows<S> && !has<S, monotone> && !has<S, nonempty>;
+
 /// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
 /// which is still incomplete while its facets are built.
 template<typename R, typename S>

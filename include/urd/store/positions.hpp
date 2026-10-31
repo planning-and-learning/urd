@@ -120,7 +120,7 @@ struct facet_condition<facet_id::positions>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>); }
+    { return S::is_sequence || has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>); }
 };
 
 }  // namespace urd::detail

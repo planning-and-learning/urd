@@ -62,9 +62,10 @@ using urd::value;
 static_assert(std::same_as<Store<key<int>, urd::sorted>, Store<urd::sorted, key<int>>>);
 static_assert(std::same_as<Store<value<int>, urd::unique, urd::sorted>, Store<urd::sorted, value<int>, urd::unique>>);
 
-// Implied properties: a set's keys are unique, values without keys are a sequence, frozen keeps references.
+// What a request is: what it states, and what that means (urd::meaning): a set's keys are unique, a frozen Store's
+// references are stable. Values without keys are a sequence by kind, not by a tag.
 static_assert(urd::has<Store<key<int>>, urd::unique>);
-static_assert(urd::has<Store<value<int>>, urd::positional, urd::functional, urd::dense>);
+static_assert(urd::container_traits<Store<value<int>>>::is_sequence && !urd::has<Store<value<int>>, urd::dense>);
 static_assert(urd::has<Store<key<int>, urd::frozen>, urd::stable_refs>);
 
 // What each request resolves to (pinned, so a change in the selection shows up here). Where no order is asked

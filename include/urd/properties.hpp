@@ -75,22 +75,11 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 {
 };
 
-/// Whether a request may state `of`: a tag of a category a container declares or a request states, and not one the
-/// library derives (internal_tags). Mutability is not stated: it follows from frozen and monotone.
+/// Whether a request may state `of`: a tag of a category a container declares or a request states.
 constexpr bool statable(tag of)
 {
     const auto root = root_of(of);
-    return (in(root, guaranteed_roots) || in(root, requested_roots)) && !in(of, internal_tags);
-}
-
-/// Whether P is a tag the library derives and no request states (internal_tags).
-template<typename P>
-consteval bool is_internal()
-{
-    if constexpr (a_tag<P>)
-        return in(P::value, internal_tags);
-    else
-        return false;
+    return in(root, guaranteed_roots) || in(root, requested_roots);
 }
 
 /// Whether P is a tag a Store may be asked for (statable).
@@ -171,12 +160,12 @@ struct spec
     /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
     using order_type = Order;
 
-    /// What the Store promises: the request's tags with what they imply (urd/rules.hpp).
+    /// What the Store promises: the request's tags, with what they mean (meaning, urd/tags.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
     static constexpr bool declared = true;
 
     /// What the Store is (urd::kind): from its key and value types and the tags that make a kind.
-    static constexpr urd::kind kind = detail::kind_of(urd_properties, !std::is_void_v<K>, !std::is_void_v<V>);
+    static constexpr urd::kind kind = urd::kind_of(urd_properties, !std::is_void_v<K>, !std::is_void_v<V>);
     /// Keys grouped into disjoint classes (partition), reached by merge and find.
     static constexpr bool is_partition = kind == urd::kind::partition;
     static constexpr bool is_set = kind == urd::kind::set;
@@ -186,15 +175,14 @@ struct spec
     /// Values identified by the handles insert gives (handles): a pool.
     static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::records;
     static constexpr bool is_sequence = kind == urd::kind::sequence || kind == urd::kind::multiset;
-    /// What its container must guarantee: the promise, but for what the Store provides itself (urd/rules.hpp).
-    static constexpr detail::property_set required = detail::required_of(urd_properties, kind);
+    /// What its container must guarantee: the promise, but for what the Store keeps itself (asked_of_container).
+    static constexpr detail::property_set required = urd::asked_of_container(urd_properties);
+    /// What it promises its container (promised_to_container): what a container may rely on.
+    static constexpr detail::property_set promised = urd::promised_to_container(urd_properties);
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: all but a pool holding a tag that makes it not know (unsized_tags,
-    /// urd/rules.hpp). A filter would not either. Every other pool counts its rows in O(1), and its handles are
-    /// 0..size()-1: a row inserted new gets handle size().
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !detail::holds_any(urd_properties, detail::unsized_tags));
+
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;
@@ -249,10 +237,7 @@ spec<K, V, Order, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positio
 template<typename... Ps>
 struct to_spec
 {
-    static_assert(!(is_internal<Ps>() || ...),
-                  "urd::Store: functional, immutable, growable and shrinkable are derived, never stated: a map has one value per key "
-                  "unless it says multi, and frozen, monotone, nonempty and fixed_shape say how a Store may change");
-    static_assert(((is_property<Ps> || is_internal<Ps>()) && ...),
+    static_assert((is_property<Ps> && ...),
                   "urd::Store: every argument must be an urd property (key<K>, value<V>, sorted, unique, …, or a "
                   "workload such as small)");
     static_assert((0 + ... + static_cast<int>(is_a<key, Ps>)) <= 1, "urd::Store: at most one key<K>");
@@ -265,7 +250,7 @@ struct to_spec
     using value_type = typename first_of<value, Ps...>::type;
     static_assert(!std::is_void_v<key_type> || !std::is_void_v<value_type>, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
 
-    static constexpr property_set stated = restated(stated_of({ tag_of<Ps>()... }));
+    static constexpr property_set stated = stated_of({ tag_of<Ps>()... });
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
     static constexpr kind of = kind_of(stated, keyed, valued);
@@ -277,10 +262,11 @@ struct to_spec
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
 
     static_assert(well_formed(stated, keyed, valued, ordered_by, orderable<ordered_type>),
-                  "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, or order_by<P> "
-                  "on unique keys that are not orderable (urd/rules.hpp, well_formed)");
+                  "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, "
+                  "monotone_priority without by_priority, order_by<P> without sorted or by_priority, or order_by<P> on "
+                  "unique keys that are not orderable (urd/tags.hpp, well_formed)");
 
-    static constexpr listed_tags listed = non_roots(implied(stated, of));
+    static constexpr listed_tags listed = non_roots(meaning(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
 };
 

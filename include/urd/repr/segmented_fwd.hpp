@@ -21,7 +21,7 @@ namespace urd::detail::guarantees
 {
 
 constexpr P segmented_vector(bool concurrent_)
-{ return property_set::of({ tag::dense, tag::positional, tag::stable_refs, tag::growable, tag::retains, tag::proportional_clear, threads(concurrent_) }); }
+{ return property_set::of({ tag::positional, tag::stable_refs, tag::retains, tag::proportional_clear, threads(concurrent_) }); }
 
 
 }  // namespace urd::detail::guarantees
@@ -50,12 +50,10 @@ struct segmented_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/segmented.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::segmented_vector(false);
         if (!held)
             return {};
-        return offer_of(urd::kind::sequence, *held, f);
+        return offer_of(urd::kind::sequence, *held, f).relying_on({ tag::monotone });  // it never erases
     }
     struct operation_costs
     {
@@ -86,12 +84,10 @@ struct concurrent_segmented_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/segmented.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::segmented_vector(true);
         if (!held)
             return {};
-        return offer_of(urd::kind::sequence, *held, f);
+        return offer_of(urd::kind::sequence, *held, f).relying_on({ tag::monotone });  // it never erases
     }
     struct operation_costs
     {

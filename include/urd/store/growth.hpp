@@ -58,11 +58,11 @@ public:
         requires(!keyed)
     { return representation().emplace_back(std::forward<Args>(args)...); }
     iterator_type insert(const_iterator_type pos, const value_type& element)
-        requires(!keyed && has<S, shrinkable>)
+        requires(!keyed && shrinks<S>)
     { return representation().insert(pos, element); }
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
-        requires(!keyed && has<S, shrinkable>)
+        requires(!keyed && shrinks<S>)
     { return representation().emplace(pos, std::forward<Args>(args)...); }
 
 private:
@@ -80,7 +80,7 @@ struct facet_condition<facet_id::growth>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, growable> && S::iterable; }
+    { return grows<S> && S::iterable; }
 };
 
 }  // namespace urd::detail

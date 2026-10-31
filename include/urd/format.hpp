@@ -2,7 +2,7 @@
 
 // How urd's types are written, with fmt (urd links it with URD_ENABLE_FMT_FORMATTERS, on by default): a type as a
 // request names it (`int`, `std::string`, `index<Id>`, `Store<value<int>, frozen>`), a spec as the request that states
-// its tags (`Store<key<int>, sorted, unique, shrinkable>`), a request as written (urd/request.hpp), a cost as the docs
+// its tags (`Store<key<int>, sorted, unique>`), a request as written (urd/request.hpp), a cost as the docs
 // write it (`O(log n)*~`), and a tag by its name. Another type is written as its urd::type_spelling says: specialize it
 // for an element type of your own; otherwise its demangled name.
 //

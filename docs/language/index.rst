@@ -83,10 +83,11 @@ semantics from who keeps the tag:
 - a **request** only a request states, and the Store's interface enforces it (``frozen``, ``positional``);
 - a **hint** (``small``) changes the choice, never a guarantee.
 
-Some tags are never stated: a map is ``functional`` (one value per key) unless it says ``multi``, and what a Store
-offers (``immutable``, ``growable``, ``shrinkable``) follows from ``frozen``, ``monotone``, ``nonempty`` and
-``fixed_shape``. Containers still declare them, and their cards say so. A tag is public only where stating it changes
-which container is chosen or rejects some request.
+A request is what it states, and what that means (``urd::meaning`` in ``include/urd/tags.hpp``): a set, and a map
+without ``multi``, keep each key once; a positional set numbers its keys as they come; a frozen Store's references
+are stable. What the Store's interface offers follows from ``frozen``, ``monotone``, ``nonempty`` and
+``fixed_shape``. Each container declares everything it guarantees, and what it relies on: one that never erases relies
+on ``monotone``, one built once on ``frozen``.
 
 The groups
 ----------
@@ -119,7 +120,7 @@ Incompatible combinations
 A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). ``to_spec`` rejects only what is
 ill-formed whatever container would hold it; the ``handles``, ``partition`` and ``order_by`` ties rows share one
-message (``well_formed`` in ``include/urd/rules.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+message (``well_formed`` in ``include/urd/tags.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::

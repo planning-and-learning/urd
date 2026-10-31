@@ -10,7 +10,7 @@ namespace urd::detail::facet
 
 /// A set: inclusion and overlap with another set of its kind, and union, intersection and difference in place.
 /// Each uses the representation's own operation where it has one (a bitset combines whole words), else lookups.
-/// The ones that change the set need it growable (union) or shrinkable (intersection, difference).
+/// The ones that change the set need it to grow (union) or also to shrink (intersection, difference): grows, shrinks.
 template<typename Derived, typename R, typename S>
 class set_algebra
 {
@@ -33,7 +33,7 @@ public:
     }
 
     Derived& operator|=(const Derived& other)
-        requires has<S, growable>
+        requires grows<S>
     {
         if constexpr (requires { mutable_representation() |= store_access::representation(other); })
             mutable_representation() |= store_access::representation(other);
@@ -43,14 +43,14 @@ public:
     }
     /// Inserts every element of `other`; whether that added any, as fixpoints ask. A union only adds, so the size says.
     bool unite(const Derived& other)
-        requires has<S, growable>
+        requires grows<S>
     {
         const auto before = self().size();
         mutable_self() |= other;
         return self().size() != before;
     }
     Derived& operator&=(const Derived& other)
-        requires has<S, shrinkable>
+        requires shrinks<S>
     {
         if constexpr (requires { mutable_representation() &= store_access::representation(other); })
             mutable_representation() &= store_access::representation(other);
@@ -59,7 +59,7 @@ public:
         return mutable_self();
     }
     Derived& operator-=(const Derived& other)
-        requires has<S, shrinkable>
+        requires shrinks<S>
     {
         if constexpr (requires { mutable_representation() -= store_access::representation(other); })
             mutable_representation() -= store_access::representation(other);

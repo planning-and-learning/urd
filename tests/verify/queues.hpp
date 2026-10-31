@@ -60,7 +60,7 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
         const int drawn = pick(random);
         auto operation = std::string();
         // Push more often than pop, so the queue grows and shrinks; now and then clear it.
-        if (has<Traits, shrinkable> && drawn == 31)
+        if (container_shrinks<Q> && drawn == 31)
         {
             operation = "clear";
             queue.clear();

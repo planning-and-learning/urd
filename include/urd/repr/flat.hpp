@@ -21,14 +21,14 @@ constexpr P flat_set(const T& t, const F& f)
     if (!orders(t, f))
         return {};
     return property_set::of(
-        { tag::sorted, tag::unique, tag::positional, tag::sparse, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
+        { tag::sorted, tag::unique, tag::positional, tag::sparse, tag::contiguous, tag::canonical, tag::retains, tag::proportional_clear });
 }
 
 constexpr P flat_multiset(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return property_set::of({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::retains, tag::proportional_clear });
 }
 
 constexpr P flat_map(const T& key, const F& f)
@@ -37,12 +37,10 @@ constexpr P flat_map(const T& key, const F& f)
         return {};
     return property_set::of({ tag::sorted,
                    tag::unique,
-                   tag::functional,
                    tag::positional,
                    tag::sparse,
                    tag::contiguous,
                    tag::canonical,
-                   tag::shrinkable,
                    tag::retains,
                    tag::proportional_clear });
 }
@@ -51,7 +49,7 @@ constexpr P flat_multimap(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return property_set::of({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::retains, tag::proportional_clear });
 }
 
 }  // namespace urd::detail::guarantees
@@ -85,7 +83,7 @@ struct flat_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/flat_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::flat_set(f.element, f);
         if (!held)
@@ -125,7 +123,7 @@ struct flat_multiset_decl
     static constexpr auto headers = header_list<1> { "urd/repr/flat_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::flat_multiset(f.element, f);
         if (!held)
@@ -165,7 +163,7 @@ struct flat_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/flat_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::flat_map(f.key, f);
         if (!held)
@@ -204,7 +202,7 @@ struct flat_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/flat_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::flat_multimap(f.key, f);
         if (!held)

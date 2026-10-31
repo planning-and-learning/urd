@@ -168,7 +168,7 @@ endfunction()
 
 urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 59)
 # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
-urd_compile_fail_expects(compile_fail_store 4 "are derived, never stated")
+urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 6 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 8 "at most one key<K>")

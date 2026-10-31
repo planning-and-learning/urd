@@ -46,7 +46,7 @@ private:
 namespace
 {
 
-/// An adapter: the library's journal under the names a growable sequence must offer. It only renames.
+/// An adapter: the library's journal under the names a sequence that only grows must offer. It only renames.
 class Journal
 {
 public:
@@ -70,11 +70,13 @@ private:
 
 }  // namespace
 
-// What it guarantees: it only grows, and entries keep their address.
+// What it guarantees: entries keep their address; and what it relies on: it only grows.
 template<>
-struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd::stable_refs, urd::growable>
+struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd::stable_refs>
 {
 };
+template<>
+inline constexpr urd::detail::property_set urd::relies_on<Journal> = urd::detail::property_set::of({ urd::tag::monotone });
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Adapters, Properties, testing::Types<Journal>, urd::test::Names);
 
@@ -101,9 +103,11 @@ struct ClaimsStableRefs
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_refs, urd::growable>
+struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_refs>
 {
 };
+template<>
+inline constexpr urd::detail::property_set urd::relies_on<ClaimsStableRefs> = urd::detail::property_set::of({ urd::tag::monotone });
 
 TEST(Properties, AFalseClaimIsCaught)
 {
@@ -124,7 +128,7 @@ struct ClaimsStableValues : urd::repr::IndexMap<int, int, false>
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableValues> : urd::properties_of<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::shrinkable, urd::retains>
+struct urd::container_traits<ClaimsStableValues> : urd::properties_of<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::retains>
 {
 };
 

@@ -175,8 +175,8 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
     using V = typename R::mapped_type;
     using Traits = container_traits<R>;
     constexpr bool unique_keys = has<Traits, unique>;
-    constexpr int inserts = has<Traits, growable> ? (unique_keys ? 6 : 4) : 0;
-    constexpr int removals = has<Traits, shrinkable> ? 3 : 0;
+    constexpr int inserts = container_grows<R> ? (unique_keys ? 6 : 4) : 0;
+    constexpr int removals = container_shrinks<R> ? 3 : 0;
 
     // A map ordered by its values keeps no key order; its own order is checked by map_violation.
     using ModelTraits = std::conditional_t<orders_by_value<R>, with_t<Traits, any_order>, Traits>;
@@ -214,9 +214,9 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
                     return inserted && result->first == key && result->second == value;
             };
 
-            if (has<Traits, shrinkable> && step % 100 == 99)
+            if (container_shrinks<R> && step % 100 == 99)
             {
-                if constexpr (has<Traits, shrinkable>)
+                if constexpr (container_shrinks<R>)
                 {
                     operation = "clear";
                     range.clear();

@@ -22,14 +22,14 @@ constexpr P indexed_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::contiguous, tag::retains });
 }
 
 constexpr P stable_indexed_set(const T& t, bool concurrent_)
 {
     if (!t.hashable)
         return {};
-    return with(property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::stable_refs, tag::growable, tag::retains }), { threads(concurrent_) });
+    return with(property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::stable_refs, tag::retains }), { threads(concurrent_) });
 }
 
 }  // namespace urd::detail::guarantees
@@ -70,8 +70,6 @@ struct indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::indexed_set(f.element);
         if (!held)
             return {};
@@ -109,12 +107,10 @@ struct stable_indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::stable_indexed_set(f.element, false);
         if (!held)
             return {};
-        return offer_of(urd::kind::set, *held, f);
+        return offer_of(urd::kind::set, *held, f).relying_on({ tag::monotone });  // it never erases
     }
     struct operation_costs
     {
@@ -146,12 +142,10 @@ struct concurrent_indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::stable_indexed_set(f.element, true);
         if (!held)
             return {};
-        return offer_of(urd::kind::set, *held, f);
+        return offer_of(urd::kind::set, *held, f).relying_on({ tag::monotone });  // it never erases
     }
     struct operation_costs
     {

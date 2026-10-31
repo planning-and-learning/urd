@@ -21,14 +21,14 @@ constexpr P flat_hash_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return property_set::of({ tag::unique, tag::sparse, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::unique, tag::sparse, tag::retains });
 }
 
 constexpr P flat_hash_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return property_set::of({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::unique, tag::sparse, tag::retains });
 }
 
 }  // namespace urd::detail::guarantees
@@ -56,7 +56,7 @@ struct unordered_flat_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/unordered_flat_set.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+        if (!f.hash_natural)
             return {};
         const auto held = guarantees::flat_hash_set(f.element);
         if (!held)
@@ -94,7 +94,7 @@ struct unordered_flat_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/unordered_flat_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+        if (!f.hash_natural)
             return {};
         const auto held = guarantees::flat_hash_map(f.key);
         if (!held)

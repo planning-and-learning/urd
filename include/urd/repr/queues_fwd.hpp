@@ -23,31 +23,31 @@
 namespace urd::detail::guarantees
 {
 
-constexpr P fifo() { return property_set::of({ tag::fifo, tag::stable_refs, tag::shrinkable }); }
+constexpr P fifo() { return property_set::of({ tag::fifo, tag::stable_refs }); }
 
-constexpr P lifo() { return property_set::of({ tag::lifo, tag::shrinkable, tag::retains }); }
+constexpr P lifo() { return property_set::of({ tag::lifo, tag::retains }); }
 
-constexpr P ring_fifo() { return property_set::of({ tag::fifo, tag::shrinkable, tag::retains }); }
+constexpr P ring_fifo() { return property_set::of({ tag::fifo, tag::retains }); }
 
 constexpr P heap(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return property_set::of({ tag::by_priority, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::retains });
 }
 
 constexpr P addressable_heap(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return property_set::of({ tag::by_priority, tag::handles, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::handles, tag::retains });
 }
 
 constexpr P bucket_queue(const T& t, const F& f)
 {
     if (!orders(t, f) || !f.order_key.integral)
         return {};
-    return property_set::of({ tag::by_priority, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::retains });
 }
 
 
@@ -101,8 +101,6 @@ struct fifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::fifo();
         if (!held)
             return {};
@@ -139,8 +137,6 @@ struct ring_fifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/ring_fifo.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::ring_fifo();
         if (!held)
             return {};
@@ -177,8 +173,6 @@ struct lifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::lifo();
         if (!held)
             return {};
@@ -215,7 +209,7 @@ struct heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::heap(f.element, f);
         if (!held)
@@ -253,7 +247,7 @@ struct addressable_heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/addressable_heap.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::addressable_heap(f.element, f);
         if (!held)
@@ -291,7 +285,7 @@ struct bucket_queue_decl
     static constexpr auto headers = header_list<1> { "urd/repr/bucket_queue.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::bucket_queue(f.element, f);
         if (!held)

@@ -4,7 +4,7 @@
 // offer for the request's elements, and the first whose offer serves the request is chosen. Serving reads only what
 // the offer and the request declare: the kinds match (holds_kind), the container gives what the request requires
 // (satisfies), the request promises what the container relies on and demands (promises), and nested Stores get what
-// they ask for. Where the request holds a tag that prefers some entries later (urd/rules.hpp, preferences), they come
+// they ask for. Where the request holds a tag that prefers some entries later (urd/tags.hpp, preferences), they come
 // after the others.
 
 #include "urd/registry/table.hpp"
@@ -14,29 +14,30 @@
 namespace urd::detail
 {
 
-/// What a request is, as the scan reads it: its kind, its promise, and what a container must guarantee for it.
+/// What a request is, as the scan reads it: its kind, what it promises its container, and what a container must
+/// guarantee for it.
 struct request_shape
 {
     urd::kind kind = urd::kind::sequence;
-    property_set stated;
+    property_set promised;
     property_set required;
 };
 
 /// Whether offer `o` serves a request of shape `s` with facts `f`.
 constexpr bool serves(const offer& o, const request_shape& s, const request_features& f)
 {
-    if (!holds_kind(o.kind, s.kind) || !satisfies(o.properties, s.required) || !promises(s.stated, o.relies_on)
-        || !promises(s.stated, demands_of(o.properties)))
+    if (!holds_kind(o.kind, s.kind) || !satisfies(o.properties, s.required) || !promises(s.promised, o.relies_on)
+        || !promises(s.promised, demands_of(o.properties)))
         return false;
     const auto& held = s.kind == urd::kind::map ? f.mapped : f.element;
     return !held.store || satisfies(o.nested, held.store->required);
 }
 
-/// Whether offer `o` comes after the others serving a request of shape `s`, by the preferences (urd/rules.hpp).
+/// Whether offer `o` comes after the others serving a request of shape `s`, by the preferences (urd/tags.hpp).
 constexpr bool comes_later(const offer& o, const request_shape& s)
 {
     for (const auto& each : preferences)
-        if (s.stated.has(each.when) && o.properties.has(each.later))
+        if (s.promised.has(each.when) && o.properties.has(each.later))
             return true;
     return false;
 }

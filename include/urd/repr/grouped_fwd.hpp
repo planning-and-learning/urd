@@ -36,14 +36,14 @@ constexpr P dense_multimap(const T& key)
 {
     if (!key.indexable)
         return {};
-    return property_set::of({ tag::sorted, tag::multi, tag::dense, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::sorted, tag::multi, tag::dense, tag::retains });
 }
 
 constexpr P posting_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return property_set::of({ tag::multi, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::multi, tag::sparse });
 }
 
 }  // namespace urd::detail::guarantees
@@ -94,12 +94,12 @@ struct csr_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/csr_multimap.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::csr_multimap(f.key);
         if (!held)
             return {};
-        return offer_of(urd::kind::map, *held, f);
+        return offer_of(urd::kind::map, *held, f).relying_on({ tag::frozen });  // built once
     }
     struct operation_costs
     {
@@ -130,7 +130,7 @@ struct dense_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/dense_multimap.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::dense_multimap(f.key);
         if (!held)
@@ -169,8 +169,6 @@ struct posting_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/postings.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::posting_map(f.key);
         if (!held)
             return {};
@@ -207,12 +205,12 @@ struct bidirectional_csr_decl
     static constexpr auto headers = header_list<1> { "urd/repr/bidirectional_csr.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
+        if (f.ordered)  // sorted by its own order only
             return {};
         const auto held = guarantees::bidirectional_csr(f.key, f.mapped);
         if (!held)
             return {};
-        return offer_of(urd::kind::map, *held, f);
+        return offer_of(urd::kind::map, *held, f).relying_on({ tag::frozen });  // built once
     }
     struct operation_costs
     {

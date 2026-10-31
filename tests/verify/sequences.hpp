@@ -134,8 +134,8 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
 
     // The operations R offers: inserts (by value, or at the end), removals and, for a sequence, inserts before
     // a position, and assignments through iterators where R's iterators allow them.
-    constexpr int inserts = has<Traits, growable> ? (keyed ? 5 : 3) : 0;
-    constexpr int removals = has<Traits, shrinkable> ? (keyed ? 3 : 5) : 0;
+    constexpr int inserts = container_grows<R> ? (keyed ? 5 : 3) : 0;
+    constexpr int removals = container_shrinks<R> ? (keyed ? 3 : 5) : 0;
     constexpr int writes = !keyed && std::indirectly_writable<std::ranges::iterator_t<R>, const E&> ? 1 : 0;
 
     auto model = detail::Model<Traits, E> { std::vector<E>(std::ranges::begin(range), std::ranges::end(range)) };
@@ -160,9 +160,9 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
             auto wrong = std::string();
             int op = choose(random);
 
-            if (has<Traits, shrinkable> && step % 100 == 99)
+            if (container_shrinks<R> && step % 100 == 99)
             {
-                if constexpr (has<Traits, shrinkable>)
+                if constexpr (container_shrinks<R>)
                 {
                     operation = "clear";
                     range.clear();

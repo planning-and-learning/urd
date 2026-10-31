@@ -17,41 +17,41 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
+| `Store<key<int>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<int>, sorted>` | sorted, unique | `set` | std_set.hpp |
 | `Store<key<int>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_set` | flat_set.hpp |
 | `Store<key<int>, frozen>` | unique, stable_refs, frozen | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, small>` | unique, shrinkable, small | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, stable_refs>` | unique, stable_refs, shrinkable | `unordered_set` | std_set.hpp |
-| `Store<key<int>, small, stable_refs>` | unique, stable_refs, shrinkable, small | `unordered_set` | std_set.hpp |
-| `Store<key<int>, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable | `set` | std_set.hpp |
-| `Store<key<int>, small, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable, small | `set` | std_set.hpp |
-| `Store<key<int>, insertion_ordered>` | insertion_ordered, unique, shrinkable | `indexed_set` | indexed.hpp |
-| `Store<key<int>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` | indexed.hpp |
-| `Store<key<int>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` | flat_set.hpp |
-| `Store<key<int>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` | indexed.hpp |
-| `Store<key<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` | indexed.hpp |
-| `Store<key<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<int>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` | parallel_hash.hpp |
-| `Store<key<int>, retains>` | unique, retains, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` | flat_set.hpp |
-| `Store<key<int>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` | std_set.hpp + recycling.hpp |
-| `Store<key<int>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` | std_set.hpp + recycling.hpp |
-| `Store<key<int>, reclaims>` | unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<int>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<int>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
-| `Store<key<int>, scoped>` | unique, scoped, shrinkable | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
-| `Store<key<int>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<key<int>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<key<int>, layered>` | unique, layered, shrinkable | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<key<int>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_unordered_set` | std_set.hpp + layer.hpp |
-| `Store<key<int>, change_log>` | unique, change_log, shrinkable | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<key<int>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<int>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<int>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, monotone>` | unique, growable, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<int>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | std_set.hpp |
+| `Store<key<int>, small>` | unique, small | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<int>, stable_refs>` | unique, stable_refs | `unordered_set` | std_set.hpp |
+| `Store<key<int>, small, stable_refs>` | unique, stable_refs, small | `unordered_set` | std_set.hpp |
+| `Store<key<int>, sorted, stable_refs>` | sorted, unique, stable_refs | `set` | std_set.hpp |
+| `Store<key<int>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
+| `Store<key<int>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
+| `Store<key<int>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
+| `Store<key<int>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<key<int>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
+| `Store<key<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
+| `Store<key<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
+| `Store<key<int>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
+| `Store<key<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<int>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<int>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<key<int>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
+| `Store<key<int>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
+| `Store<key<int>, reclaims>` | unique, reclaims | `set` | std_set.hpp |
+| `Store<key<int>, sorted, reclaims>` | sorted, unique, reclaims | `set` | std_set.hpp |
+| `Store<key<int>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
+| `Store<key<int>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
+| `Store<key<int>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
+| `Store<key<int>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
+| `Store<key<int>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
+| `Store<key<int>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
+| `Store<key<int>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
+| `Store<key<int>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<int>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<int>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<int>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<int>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<key<int>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<key<int>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
 
@@ -59,41 +59,41 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<std::string>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
+| `Store<key<std::string>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<std::string>, sorted>` | sorted, unique | `set` | std_set.hpp |
 | `Store<key<std::string>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_set` | flat_set.hpp |
 | `Store<key<std::string>, frozen>` | unique, stable_refs, frozen | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, small>` | unique, shrinkable, small | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, stable_refs>` | unique, stable_refs, shrinkable | `unordered_set` | std_set.hpp |
-| `Store<key<std::string>, small, stable_refs>` | unique, stable_refs, shrinkable, small | `unordered_set` | std_set.hpp |
-| `Store<key<std::string>, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable | `set` | std_set.hpp |
-| `Store<key<std::string>, small, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable, small | `set` | std_set.hpp |
-| `Store<key<std::string>, insertion_ordered>` | insertion_ordered, unique, shrinkable | `indexed_set` | indexed.hpp |
-| `Store<key<std::string>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` | indexed.hpp |
-| `Store<key<std::string>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` | flat_set.hpp |
-| `Store<key<std::string>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` | indexed.hpp |
-| `Store<key<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` | indexed.hpp |
-| `Store<key<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<std::string>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` | parallel_hash.hpp |
-| `Store<key<std::string>, retains>` | unique, retains, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` | flat_set.hpp |
-| `Store<key<std::string>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` | std_set.hpp + recycling.hpp |
-| `Store<key<std::string>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` | std_set.hpp + recycling.hpp |
-| `Store<key<std::string>, reclaims>` | unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<std::string>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<std::string>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
-| `Store<key<std::string>, scoped>` | unique, scoped, shrinkable | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
-| `Store<key<std::string>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<key<std::string>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<key<std::string>, layered>` | unique, layered, shrinkable | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<key<std::string>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_unordered_set` | std_set.hpp + layer.hpp |
-| `Store<key<std::string>, change_log>` | unique, change_log, shrinkable | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<key<std::string>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<std::string>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, monotone>` | unique, growable, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<std::string>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | std_set.hpp |
+| `Store<key<std::string>, small>` | unique, small | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<std::string>, stable_refs>` | unique, stable_refs | `unordered_set` | std_set.hpp |
+| `Store<key<std::string>, small, stable_refs>` | unique, stable_refs, small | `unordered_set` | std_set.hpp |
+| `Store<key<std::string>, sorted, stable_refs>` | sorted, unique, stable_refs | `set` | std_set.hpp |
+| `Store<key<std::string>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
+| `Store<key<std::string>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
+| `Store<key<std::string>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
+| `Store<key<std::string>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<key<std::string>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
+| `Store<key<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
+| `Store<key<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
+| `Store<key<std::string>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
+| `Store<key<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<std::string>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<std::string>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<key<std::string>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
+| `Store<key<std::string>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
+| `Store<key<std::string>, reclaims>` | unique, reclaims | `set` | std_set.hpp |
+| `Store<key<std::string>, sorted, reclaims>` | sorted, unique, reclaims | `set` | std_set.hpp |
+| `Store<key<std::string>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
+| `Store<key<std::string>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
+| `Store<key<std::string>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
+| `Store<key<std::string>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
+| `Store<key<std::string>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
+| `Store<key<std::string>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
+| `Store<key<std::string>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
+| `Store<key<std::string>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<std::string>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<std::string>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<std::string>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<key<std::string>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<key<std::string>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
 
@@ -101,41 +101,41 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
+| `Store<key<Id>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Id>, sorted>` | sorted, unique | `set` | std_set.hpp |
 | `Store<key<Id>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_set` | flat_set.hpp |
 | `Store<key<Id>, frozen>` | unique, stable_refs, frozen | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, small>` | unique, shrinkable, small | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, stable_refs>` | unique, stable_refs, shrinkable | `unordered_set` | std_set.hpp |
-| `Store<key<Id>, small, stable_refs>` | unique, stable_refs, shrinkable, small | `unordered_set` | std_set.hpp |
-| `Store<key<Id>, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable | `set` | std_set.hpp |
-| `Store<key<Id>, small, sorted, stable_refs>` | sorted, unique, stable_refs, shrinkable, small | `set` | std_set.hpp |
-| `Store<key<Id>, insertion_ordered>` | insertion_ordered, unique, shrinkable | `indexed_set` | indexed.hpp |
-| `Store<key<Id>, positional>` | insertion_ordered, unique, shrinkable, positional | `indexed_set` | indexed.hpp |
-| `Store<key<Id>, positional, sorted>` | sorted, unique, shrinkable, positional | `flat_set` | flat_set.hpp |
-| `Store<key<Id>, positional, monotone>` | insertion_ordered, unique, growable, monotone, positional | `indexed_set` | indexed.hpp |
-| `Store<key<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, growable, monotone, positional | `stable_indexed_set` | indexed.hpp |
-| `Store<key<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, growable, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
-| `Store<key<Id>, concurrent>` | unique, concurrent, shrinkable | `parallel_hash_set` | parallel_hash.hpp |
-| `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable | `parallel_node_hash_set` | parallel_hash.hpp |
-| `Store<key<Id>, retains>` | unique, retains, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, sorted, retains>` | sorted, unique, retains, shrinkable | `flat_set` | flat_set.hpp |
-| `Store<key<Id>, stable_refs, retains>` | unique, stable_refs, retains, shrinkable | `recycling_hash_set` | std_set.hpp + recycling.hpp |
-| `Store<key<Id>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains, shrinkable | `recycling_tree_set` | std_set.hpp + recycling.hpp |
-| `Store<key<Id>, reclaims>` | unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<Id>, sorted, reclaims>` | sorted, unique, reclaims, shrinkable | `set` | std_set.hpp |
-| `Store<key<Id>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims, shrinkable | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
-| `Store<key<Id>, scoped>` | unique, scoped, shrinkable | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
-| `Store<key<Id>, positional, monotone, layered>` | insertion_ordered, unique, layered, growable, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<key<Id>, change_log, concurrent>` | unique, concurrent, change_log, shrinkable | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<key<Id>, layered>` | unique, layered, shrinkable | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<key<Id>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable | `layered_unordered_set` | std_set.hpp + layer.hpp |
-| `Store<key<Id>, change_log>` | unique, change_log, shrinkable | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<key<Id>, sorted, change_log>` | sorted, unique, change_log, shrinkable | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<Id>, stable_refs, change_log>` | unique, stable_refs, change_log, shrinkable | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
-| `Store<key<Id>, nonempty>` | unique, growable, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, monotone>` | unique, growable, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Id>, sorted, monotone>` | sorted, unique, growable, monotone | `set` | std_set.hpp |
+| `Store<key<Id>, small>` | unique, small | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Id>, stable_refs>` | unique, stable_refs | `unordered_set` | std_set.hpp |
+| `Store<key<Id>, small, stable_refs>` | unique, stable_refs, small | `unordered_set` | std_set.hpp |
+| `Store<key<Id>, sorted, stable_refs>` | sorted, unique, stable_refs | `set` | std_set.hpp |
+| `Store<key<Id>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
+| `Store<key<Id>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
+| `Store<key<Id>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
+| `Store<key<Id>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<key<Id>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
+| `Store<key<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
+| `Store<key<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
+| `Store<key<Id>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash.hpp |
+| `Store<key<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash.hpp |
+| `Store<key<Id>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Id>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<key<Id>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
+| `Store<key<Id>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
+| `Store<key<Id>, reclaims>` | unique, reclaims | `set` | std_set.hpp |
+| `Store<key<Id>, sorted, reclaims>` | sorted, unique, reclaims | `set` | std_set.hpp |
+| `Store<key<Id>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
+| `Store<key<Id>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
+| `Store<key<Id>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
+| `Store<key<Id>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
+| `Store<key<Id>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
+| `Store<key<Id>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
+| `Store<key<Id>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
+| `Store<key<Id>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<Id>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
+| `Store<key<Id>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Id>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Id>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<key<Id>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<key<Id>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
 
@@ -143,342 +143,342 @@ indexable).
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, sorted, order_by<P>>` | sorted, unique, shrinkable | `set` | std_set.hpp |
+| `Store<key<int>, sorted, order_by<P>>` | sorted, unique | `set` | std_set.hpp |
 | `Store<key<int>, sorted, frozen, order_by<P>>` | sorted, unique, stable_refs, frozen | `flat_set` | flat_set.hpp |
 
 ## Dense sets of int
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, dense>` | unique, dense, shrinkable | `dense_set` | dense_set.hpp |
-| `Store<key<int>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | dense_set.hpp |
+| `Store<key<int>, dense>` | unique, dense | `dense_set` | dense_set.hpp |
+| `Store<key<int>, dense, sorted>` | sorted, unique, dense | `dense_set` | dense_set.hpp |
 | `Store<key<int>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | dense_set.hpp |
 | `Store<key<int>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | dense_set.hpp |
-| `Store<key<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | sparse_set.hpp |
-| `Store<key<int>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
+| `Store<key<int>, dense, constant_clear>` | unique, dense, constant_clear | `sparse_set` | sparse_set.hpp |
+| `Store<key<int>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<int>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `tracked_dense_set` | dense_set.hpp |
-| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `ordered_sparse_set` | sparse_set.hpp |
-| `Store<key<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | sparse_set.hpp |
-| `Store<key<int>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense_set.hpp |
-| `Store<key<int>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense_set.hpp |
-| `Store<key<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset) |  |
-| `Store<key<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<key<int>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
-| `Store<key<int>, partition>` | dense, partition, shrinkable | `disjoint_sets` | disjoint_sets.hpp |
+| `Store<key<int>, dense, proportional_clear>` | unique, dense, proportional_clear | `tracked_dense_set` | dense_set.hpp |
+| `Store<key<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense | `ordered_sparse_set` | sparse_set.hpp |
+| `Store<key<int>, dense, contiguous>` | unique, dense, contiguous | `sparse_set` | sparse_set.hpp |
+| `Store<key<int>, dense, monotone>` | unique, dense, monotone | `dense_set` | dense_set.hpp |
+| `Store<key<int>, dense, small>` | unique, dense, small | `dense_set` | dense_set.hpp |
+| `Store<key<int>, dense, concurrent>` | unique, dense, concurrent | `none` — missing: a dense set written by threads (an atomic bitset) |  |
+| `Store<key<int>, dense, stable_refs>` | unique, dense, stable_refs | `none` — missing: dense keys in segmented slots; M14 |  |
+| `Store<key<int>, dense, change_log>` | unique, dense, change_log | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
+| `Store<key<int>, partition>` | partition | `disjoint_sets` | disjoint_sets.hpp |
 
 ## Dense sets of Id
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>, dense>` | unique, dense, shrinkable | `dense_set` | dense_set.hpp |
-| `Store<key<Id>, dense, sorted>` | sorted, unique, dense, shrinkable | `dense_set` | dense_set.hpp |
+| `Store<key<Id>, dense>` | unique, dense | `dense_set` | dense_set.hpp |
+| `Store<key<Id>, dense, sorted>` | sorted, unique, dense | `dense_set` | dense_set.hpp |
 | `Store<key<Id>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_set` | dense_set.hpp |
 | `Store<key<Id>, dense, frozen, sorted>` | sorted, unique, dense, stable_refs, frozen | `dense_set` | dense_set.hpp |
-| `Store<key<Id>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable | `sparse_set` | sparse_set.hpp |
-| `Store<key<Id>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear, shrinkable | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
+| `Store<key<Id>, dense, constant_clear>` | unique, dense, constant_clear | `sparse_set` | sparse_set.hpp |
+| `Store<key<Id>, dense, sorted, constant_clear>` | sorted, unique, dense, constant_clear | `none` — missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks |  |
 | `Store<key<Id>, dense, sorted, contiguous, frozen>` | sorted, unique, dense, stable_refs, contiguous, frozen | `none` — incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous) |  |
-| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear, shrinkable | `tracked_dense_set` | dense_set.hpp |
-| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable | `ordered_sparse_set` | sparse_set.hpp |
-| `Store<key<Id>, dense, contiguous>` | unique, dense, contiguous, shrinkable | `sparse_set` | sparse_set.hpp |
-| `Store<key<Id>, dense, monotone>` | unique, dense, growable, monotone | `dense_set` | dense_set.hpp |
-| `Store<key<Id>, dense, small>` | unique, dense, shrinkable, small | `dense_set` | dense_set.hpp |
-| `Store<key<Id>, dense, concurrent>` | unique, dense, concurrent, shrinkable | `none` — missing: a dense set written by threads (an atomic bitset) |  |
-| `Store<key<Id>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<key<Id>, dense, change_log>` | unique, dense, change_log, shrinkable | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
-| `Store<key<Id>, partition>` | dense, partition, shrinkable | `disjoint_sets` | disjoint_sets.hpp |
+| `Store<key<Id>, dense, proportional_clear>` | unique, dense, proportional_clear | `tracked_dense_set` | dense_set.hpp |
+| `Store<key<Id>, dense, insertion_ordered>` | insertion_ordered, unique, dense | `ordered_sparse_set` | sparse_set.hpp |
+| `Store<key<Id>, dense, contiguous>` | unique, dense, contiguous | `sparse_set` | sparse_set.hpp |
+| `Store<key<Id>, dense, monotone>` | unique, dense, monotone | `dense_set` | dense_set.hpp |
+| `Store<key<Id>, dense, small>` | unique, dense, small | `dense_set` | dense_set.hpp |
+| `Store<key<Id>, dense, concurrent>` | unique, dense, concurrent | `none` — missing: a dense set written by threads (an atomic bitset) |  |
+| `Store<key<Id>, dense, stable_refs>` | unique, dense, stable_refs | `none` — missing: dense keys in segmented slots; M14 |  |
+| `Store<key<Id>, dense, change_log>` | unique, dense, change_log | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
+| `Store<key<Id>, partition>` | partition | `disjoint_sets` | disjoint_sets.hpp |
 
 ## Keyed by an index
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<index<Id>>, dense>` | unique, dense, shrinkable | `dense_set` | dense_set.hpp |
-| `Store<key<index<Id>>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | index_map.hpp |
-| `Store<key<index<Id>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<index<Id>>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
-| `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, layered, handles, growable, monotone>>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered, shrinkable, functional | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
+| `Store<key<index<Id>>, dense>` | unique, dense | `dense_set` | dense_set.hpp |
+| `Store<key<index<Id>>, value<int>, dense>` | unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<index<Id>>, value<int>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
+| `Store<key<index<Id>>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<index<Id>>, sorted>` | sorted, unique | `set` | std_set.hpp |
+| `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, layered, handles, monotone>>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, concurrent, layered, handles, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
 
 ## Maps int to int
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, value<int>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<int>, sorted>` | sorted, unique, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<int>, value<int>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<int>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<int>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | flat_map.hpp |
-| `Store<key<int>, value<int>, multi>` | shrinkable, multi | `posting_map` | postings.hpp |
-| `Store<key<int>, value<int>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | std_map.hpp |
-| `Store<key<int>, value<int>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | std_map.hpp |
+| `Store<key<int>, value<int>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, sorted>` | sorted, unique | `map` | std_map.hpp |
+| `Store<key<int>, value<int>, small>` | unique, small | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
+| `Store<key<int>, value<int>, multi>` | multi | `posting_map` | postings.hpp |
+| `Store<key<int>, value<int>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<int>, value<int>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
 | `Store<key<int>, value<int>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
-| `Store<key<int>, value<int>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | std_map.hpp |
-| `Store<key<int>, value<int>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<int>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<int>, value<int>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` | indexed.hpp + ordered_map.hpp |
-| `Store<key<int>, value<int>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
-| `Store<key<int>, value<int>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` | std_map.hpp + scoped.hpp |
-| `Store<key<int>, value<int>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<key<int>, value<int>, layered>` | unique, layered, shrinkable, functional | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<key<int>, value<int>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<int>, value<int>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` | parallel_hash.hpp |
-| `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |  |
-| `Store<key<int>, value<int>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<int>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` | std_map.hpp |
-| `Store<key<int>, value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<Store<value<int>, dense, retains, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `recycling_hash_map` | std_map.hpp + recycling.hpp |
-| `Store<key<int>, value<Store<value<int>, dense, retains, shrinkable, functional, positional>>, sorted>` | sorted, unique, shrinkable, functional | `recycling_map` | std_map.hpp + recycling.hpp |
-| `Store<key<int>, value<Store<value<int>, dense, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<int>, value<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
+| `Store<key<int>, value<int>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
+| `Store<key<int>, value<int>, insertion_ordered>` | insertion_ordered, unique | `ordered_map` | indexed.hpp + ordered_map.hpp |
+| `Store<key<int>, value<int>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
+| `Store<key<int>, value<int>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
+| `Store<key<int>, value<int>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
+| `Store<key<int>, value<int>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
+| `Store<key<int>, value<int>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
+| `Store<key<int>, value<int>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
+| `Store<key<int>, value<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<int>, value<int>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
+| `Store<key<int>, value<int>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<int>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
+| `Store<key<int>, value<Store<value<int>, stable_refs, frozen>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<Store<value<int>, retains>>>` | unique | `recycling_hash_map` | std_map.hpp + recycling.hpp |
+| `Store<key<int>, value<Store<value<int>, retains>>, sorted>` | sorted, unique | `recycling_map` | std_map.hpp + recycling.hpp |
+| `Store<key<int>, value<Store<value<int>>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<int>, value<Store<key<int>, unique>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
 
 ## Maps std::string to double
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<std::string>, value<double>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<double>, sorted>` | sorted, unique, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<std::string>, value<double>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<double>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<double>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | flat_map.hpp |
-| `Store<key<std::string>, value<double>, multi>` | shrinkable, multi | `posting_map` | postings.hpp |
-| `Store<key<std::string>, value<double>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | std_map.hpp |
-| `Store<key<std::string>, value<double>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | std_map.hpp |
+| `Store<key<std::string>, value<double>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, sorted>` | sorted, unique | `map` | std_map.hpp |
+| `Store<key<std::string>, value<double>, small>` | unique, small | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
+| `Store<key<std::string>, value<double>, multi>` | multi | `posting_map` | postings.hpp |
+| `Store<key<std::string>, value<double>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<std::string>, value<double>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
 | `Store<key<std::string>, value<double>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
-| `Store<key<std::string>, value<double>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | std_map.hpp |
-| `Store<key<std::string>, value<double>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<double>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<std::string>, value<double>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` | indexed.hpp + ordered_map.hpp |
-| `Store<key<std::string>, value<double>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
-| `Store<key<std::string>, value<double>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` | std_map.hpp + scoped.hpp |
-| `Store<key<std::string>, value<double>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<key<std::string>, value<double>, layered>` | unique, layered, shrinkable, functional | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<key<std::string>, value<double>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` | parallel_hash.hpp |
-| `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |  |
-| `Store<key<std::string>, value<double>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<double>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` | std_map.hpp |
-| `Store<key<std::string>, value<Store<value<double>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<Store<value<double>, dense, retains, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `recycling_hash_map` | std_map.hpp + recycling.hpp |
-| `Store<key<std::string>, value<Store<value<double>, dense, retains, shrinkable, functional, positional>>, sorted>` | sorted, unique, shrinkable, functional | `recycling_map` | std_map.hpp + recycling.hpp |
-| `Store<key<std::string>, value<Store<value<double>, dense, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<std::string>, value<Store<key<double>, unique, shrinkable>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
+| `Store<key<std::string>, value<double>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
+| `Store<key<std::string>, value<double>, insertion_ordered>` | insertion_ordered, unique | `ordered_map` | indexed.hpp + ordered_map.hpp |
+| `Store<key<std::string>, value<double>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
+| `Store<key<std::string>, value<double>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
+| `Store<key<std::string>, value<double>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
+| `Store<key<std::string>, value<double>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
+| `Store<key<std::string>, value<double>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
+| `Store<key<std::string>, value<double>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
+| `Store<key<std::string>, value<double>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<std::string>, value<double>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
+| `Store<key<std::string>, value<double>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<double>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
+| `Store<key<std::string>, value<Store<value<double>, stable_refs, frozen>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<Store<value<double>, retains>>>` | unique | `recycling_hash_map` | std_map.hpp + recycling.hpp |
+| `Store<key<std::string>, value<Store<value<double>, retains>>, sorted>` | sorted, unique | `recycling_map` | std_map.hpp + recycling.hpp |
+| `Store<key<std::string>, value<Store<value<double>>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<std::string>, value<Store<key<double>, unique>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
 
 ## Maps Id to Id
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>, value<Id>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Id>, sorted>` | sorted, unique, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<Id>, value<Id>, small>` | unique, shrinkable, functional, small | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Id>, frozen>` | unique, stable_refs, frozen, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Id>, sorted, frozen>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | flat_map.hpp |
-| `Store<key<Id>, value<Id>, multi>` | shrinkable, multi | `posting_map` | postings.hpp |
-| `Store<key<Id>, value<Id>, multi, stable_refs>` | stable_refs, shrinkable, multi | `unordered_multimap` | std_map.hpp |
-| `Store<key<Id>, value<Id>, multi, sorted>` | sorted, shrinkable, multi | `multimap` | std_map.hpp |
+| `Store<key<Id>, value<Id>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, sorted>` | sorted, unique | `map` | std_map.hpp |
+| `Store<key<Id>, value<Id>, small>` | unique, small | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
+| `Store<key<Id>, value<Id>, multi>` | multi | `posting_map` | postings.hpp |
+| `Store<key<Id>, value<Id>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<Id>, value<Id>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
 | `Store<key<Id>, value<Id>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
-| `Store<key<Id>, value<Id>, stable_refs>` | unique, stable_refs, shrinkable, functional | `unordered_map` | std_map.hpp |
-| `Store<key<Id>, value<Id>, retains>` | unique, retains, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Id>, reclaims>` | unique, reclaims, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<Id>, value<Id>, insertion_ordered>` | insertion_ordered, unique, shrinkable, functional | `ordered_map` | indexed.hpp + ordered_map.hpp |
-| `Store<key<Id>, value<Id>, scoped>` | unique, scoped, shrinkable, functional | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
-| `Store<key<Id>, value<Id>, sorted, scoped>` | sorted, unique, scoped, shrinkable, functional | `scoped_tree_map` | std_map.hpp + scoped.hpp |
-| `Store<key<Id>, value<Id>, concurrent, layered>` | unique, concurrent, layered, shrinkable, functional | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<key<Id>, value<Id>, layered>` | unique, layered, shrinkable, functional | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<key<Id>, value<Id>, stable_refs, layered>` | unique, stable_refs, layered, shrinkable, functional | `layered_unordered_map` | std_map.hpp + layer.hpp |
-| `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent, shrinkable, functional | `parallel_hash_map` | parallel_hash.hpp |
-| `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent, shrinkable, functional | `parallel_node_hash_map` | parallel_hash.hpp |
-| `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains, shrinkable, functional | `none` — incompatible: the concurrent tables return their storage on clear |  |
-| `Store<key<Id>, value<Id>, monotone>` | unique, growable, monotone, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Id>, sorted, monotone>` | sorted, unique, growable, monotone, functional | `map` | std_map.hpp |
-| `Store<key<Id>, value<Store<value<Id>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Store<value<Id>, dense, retains, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `recycling_hash_map` | std_map.hpp + recycling.hpp |
-| `Store<key<Id>, value<Store<value<Id>, dense, retains, shrinkable, functional, positional>>, sorted>` | sorted, unique, shrinkable, functional | `recycling_map` | std_map.hpp + recycling.hpp |
-| `Store<key<Id>, value<Store<value<Id>, dense, shrinkable, functional, positional>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Id>, value<Store<key<Id>, unique, shrinkable>>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
+| `Store<key<Id>, value<Id>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
+| `Store<key<Id>, value<Id>, insertion_ordered>` | insertion_ordered, unique | `ordered_map` | indexed.hpp + ordered_map.hpp |
+| `Store<key<Id>, value<Id>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
+| `Store<key<Id>, value<Id>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
+| `Store<key<Id>, value<Id>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
+| `Store<key<Id>, value<Id>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
+| `Store<key<Id>, value<Id>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
+| `Store<key<Id>, value<Id>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash.hpp |
+| `Store<key<Id>, value<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash.hpp |
+| `Store<key<Id>, value<Id>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
+| `Store<key<Id>, value<Id>, monotone>` | unique, monotone | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Id>, sorted, monotone>` | sorted, unique, monotone | `map` | std_map.hpp |
+| `Store<key<Id>, value<Store<value<Id>, stable_refs, frozen>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Store<value<Id>, retains>>>` | unique | `recycling_hash_map` | std_map.hpp + recycling.hpp |
+| `Store<key<Id>, value<Store<value<Id>, retains>>, sorted>` | sorted, unique | `recycling_map` | std_map.hpp + recycling.hpp |
+| `Store<key<Id>, value<Store<value<Id>>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Id>, value<Store<key<Id>, unique>>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
 
 ## Maps ordered by a projection
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, value<int>, sorted, order_by<P>>` | sorted, unique, shrinkable, functional | `map` | std_map.hpp |
-| `Store<key<int>, value<int>, sorted, small, order_by<P>>` | sorted, unique, shrinkable, functional, small | `flat_entry_map` | entry_ordered.hpp |
-| `Store<key<int>, value<int>, sorted, small, multi, order_by<P>>` | sorted, shrinkable, multi, small | `none` — missing: a multimap ordered by its values (FlatEntryMap is unique); no site asks |  |
-| `Store<key<int>, value<int>, sorted, small, stable_refs, order_by<P>>` | sorted, unique, stable_refs, shrinkable, functional, small | `none` — missing: entries ordered by value in nodes (a tree keyed by the entry); no site asks |  |
-| `Store<key<int>, value<int>, sorted, frozen, order_by<P>>` | sorted, unique, stable_refs, frozen, functional | `flat_map` | flat_map.hpp |
+| `Store<key<int>, value<int>, sorted, order_by<P>>` | sorted, unique | `map` | std_map.hpp |
+| `Store<key<int>, value<int>, sorted, small, order_by<P>>` | sorted, unique, small | `flat_entry_map` | entry_ordered.hpp |
+| `Store<key<int>, value<int>, sorted, small, multi, order_by<P>>` | sorted, multi, small | `none` — missing: a multimap ordered by its values (FlatEntryMap is unique); no site asks |  |
+| `Store<key<int>, value<int>, sorted, small, stable_refs, order_by<P>>` | sorted, unique, stable_refs, small | `none` — missing: entries ordered by value in nodes (a tree keyed by the entry); no site asks |  |
+| `Store<key<int>, value<int>, sorted, frozen, order_by<P>>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
 
 ## Dense maps int to int
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<int>, value<int>, dense>` | unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, contiguous>` | unique, dense, contiguous, shrinkable, functional | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
-| `Store<key<int>, value<int>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `dense_ordered_map` | sparse_set.hpp + ordered_map.hpp |
-| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | index_map.hpp |
-| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | index_map.hpp + layer.hpp |
-| `Store<key<int>, value<int>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | index_map.hpp |
-| `Store<key<int>, value<int>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | dense_multimap.hpp |
+| `Store<key<int>, value<int>, dense>` | unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, sorted>` | sorted, unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, contiguous>` | unique, dense, contiguous | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
+| `Store<key<int>, value<int>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear | `thread_safe_generation_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, insertion_ordered>` | insertion_ordered, unique, dense | `dense_ordered_map` | sparse_set.hpp + ordered_map.hpp |
+| `Store<key<int>, value<int>, dense, stable_refs>` | unique, dense, stable_refs | `stable_dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear | `stable_generation_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
+| `Store<key<int>, value<int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
+| `Store<key<int>, value<int>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
+| `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
+| `Store<key<int>, value<int>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
 | `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
 | `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | bidirectional_csr.hpp |
-| `Store<key<int>, value<int>, multi, dense, bidirectional>` | dense, bidirectional, shrinkable, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
-| `Store<key<int>, value<Store<key<int>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<int>, value<Store<key<int>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | index_map.hpp |
-| `Store<key<int>, value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<int>, multi, dense, bidirectional>` | dense, bidirectional, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
+| `Store<key<int>, value<Store<key<int>, unique, dense>>, dense>` | unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<int>, value<Store<key<int>, unique, dense, constant_clear>>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
+| `Store<key<int>, value<Store<value<int>, stable_refs, frozen>>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_map` | index_map.hpp |
 
 ## Dense maps Id to double
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Id>, value<double>, dense>` | unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, sorted>` | sorted, unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, contiguous>` | unique, dense, contiguous, shrinkable, functional | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
-| `Store<key<Id>, value<double>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear, shrinkable, functional | `thread_safe_generation_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense, shrinkable, functional | `dense_ordered_map` | sparse_set.hpp + ordered_map.hpp |
-| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs, shrinkable, functional | `stable_dense_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear, shrinkable, functional | `stable_generation_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent, shrinkable, functional | `thread_safe_generation_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped, shrinkable, functional | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered, shrinkable, functional | `layered_generation_map` | index_map.hpp + layer.hpp |
-| `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, growable, monotone, functional | `dense_map` | index_map.hpp |
-| `Store<key<Id>, value<double>, multi, dense>` | dense, shrinkable, multi | `dense_multimap` | dense_multimap.hpp |
+| `Store<key<Id>, value<double>, dense>` | unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, sorted>` | sorted, unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, contiguous>` | unique, dense, contiguous | `none` — missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values |  |
+| `Store<key<Id>, value<double>, dense, constant_clear, concurrent>` | unique, dense, concurrent, constant_clear | `thread_safe_generation_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, insertion_ordered>` | insertion_ordered, unique, dense | `dense_ordered_map` | sparse_set.hpp + ordered_map.hpp |
+| `Store<key<Id>, value<double>, dense, stable_refs>` | unique, dense, stable_refs | `stable_dense_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, constant_clear, stable_refs>` | unique, dense, stable_refs, constant_clear | `stable_generation_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
+| `Store<key<Id>, value<double>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
+| `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
+| `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<double>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
 | `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
 | `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | bidirectional_csr.hpp |
-| `Store<key<Id>, value<Id>, multi, dense, bidirectional>` | dense, bidirectional, shrinkable, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
-| `Store<key<Id>, value<Store<key<Id>, unique, dense, shrinkable>>, dense>` | unique, dense, shrinkable, functional | `dense_map` | index_map.hpp |
-| `Store<key<Id>, value<Store<key<Id>, unique, dense, constant_clear, shrinkable>>, dense, constant_clear>` | unique, dense, constant_clear, shrinkable, functional | `generation_map` | index_map.hpp |
-| `Store<key<Id>, value<Store<value<double>, dense, stable_refs, frozen, functional, positional>>, dense, frozen>` | unique, dense, stable_refs, frozen, functional | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<Id>, multi, dense, bidirectional>` | dense, bidirectional, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
+| `Store<key<Id>, value<Store<key<Id>, unique, dense>>, dense>` | unique, dense | `dense_map` | index_map.hpp |
+| `Store<key<Id>, value<Store<key<Id>, unique, dense, constant_clear>>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
+| `Store<key<Id>, value<Store<value<double>, stable_refs, frozen>>, dense, frozen>` | unique, dense, stable_refs, frozen | `dense_map` | index_map.hpp |
 
 ## Sequences
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<int>>` | dense, shrinkable, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, sorted>` | sorted, dense, shrinkable, functional, positional | `flat_multiset` | flat_set.hpp |
-| `Store<value<int>, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, small>` | dense, shrinkable, functional, positional, small | `vector` | sequence.hpp |
-| `Store<value<int>, nonempty>` | dense, growable, nonempty, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, retains>` | dense, retains, shrinkable, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, reclaims>` | dense, reclaims, shrinkable, functional, positional | `none` — missing: a vector returns its storage only whole (shrink_to_fit); a sequence returning storage per erase is a deque of blocks |  |
-| `Store<value<int>, contiguous>` | dense, contiguous, shrinkable, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, monotone>` | dense, growable, monotone, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, stable_refs, monotone>` | dense, stable_refs, growable, monotone, functional, positional | `segmented_vector` | segmented.hpp |
-| `Store<value<int>, stable_refs, frozen>` | dense, stable_refs, frozen, functional, positional | `vector` | sequence.hpp |
-| `Store<value<int>, monotone, concurrent>` | dense, concurrent, growable, monotone, functional, positional | `concurrent_segmented_vector` | segmented.hpp |
-| `Store<value<std::string>>` | dense, shrinkable, functional, positional | `vector` | sequence.hpp |
-| `Store<value<Id>, sorted>` | sorted, dense, shrinkable, functional, positional | `flat_multiset` | flat_set.hpp |
-| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>>` | dense, shrinkable, functional, positional | `vector` | sequence.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, frozen>` | dense, stable_refs, frozen, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, dense, stable_refs, frozen, functional, positional>>>` | dense, shrinkable, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>>` | dense, shrinkable, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<value<int>, dense, retains, shrinkable, functional, positional>>, retains>` | dense, retains, shrinkable, functional, positional | `row_pool` | row_pool.hpp |
-| `Store<value<Store<value<int>, dense, shrinkable, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | jagged.hpp |
-| `Store<value<Store<key<int>, unique, dense, shrinkable>>, fixed_shape, proportional_clear>` | dense, proportional_clear, fixed_shape, functional, positional | `tracked_jagged` | jagged.hpp |
-| `Store<value<Store<value<Store<key<int>, unique, dense, shrinkable>>, dense, fixed_shape, functional, positional>>, fixed_shape>` | dense, fixed_shape, functional, positional | `jagged` | jagged.hpp |
+| `Store<value<int>>` |  | `vector` | sequence.hpp |
+| `Store<value<int>, sorted>` | sorted | `flat_multiset` | flat_set.hpp |
+| `Store<value<int>, frozen>` | stable_refs, frozen | `vector` | sequence.hpp |
+| `Store<value<int>, small>` | small | `vector` | sequence.hpp |
+| `Store<value<int>, nonempty>` | nonempty | `vector` | sequence.hpp |
+| `Store<value<int>, retains>` | retains | `vector` | sequence.hpp |
+| `Store<value<int>, reclaims>` | reclaims | `none` — missing: a vector returns its storage only whole (shrink_to_fit); a sequence returning storage per erase is a deque of blocks |  |
+| `Store<value<int>, contiguous>` | contiguous | `vector` | sequence.hpp |
+| `Store<value<int>, monotone>` | monotone | `vector` | sequence.hpp |
+| `Store<value<int>, stable_refs, monotone>` | stable_refs, monotone | `segmented_vector` | segmented.hpp |
+| `Store<value<int>, stable_refs, frozen>` | stable_refs, frozen | `vector` | sequence.hpp |
+| `Store<value<int>, monotone, concurrent>` | concurrent, monotone | `concurrent_segmented_vector` | segmented.hpp |
+| `Store<value<std::string>>` |  | `vector` | sequence.hpp |
+| `Store<value<Id>, sorted>` | sorted | `flat_multiset` | flat_set.hpp |
+| `Store<value<Store<value<int>>>>` |  | `vector` | sequence.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>>` |  | `jagged` | jagged.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, frozen>` | stable_refs, frozen | `jagged` | jagged.hpp |
+| `Store<value<Store<value<Store<value<int>, stable_refs, frozen>>, stable_refs, frozen>>>` |  | `jagged` | jagged.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>>` |  | `jagged` | jagged.hpp |
+| `Store<value<Store<value<int>, retains>>, retains>` | retains | `row_pool` | row_pool.hpp |
+| `Store<value<Store<value<int>>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
+| `Store<value<Store<key<int>, unique, dense>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
+| `Store<value<Store<key<int>, unique, dense>>, fixed_shape, proportional_clear>` | proportional_clear, fixed_shape | `tracked_jagged` | jagged.hpp |
+| `Store<value<Store<value<Store<key<int>, unique, dense>>, fixed_shape>>, fixed_shape>` | fixed_shape | `jagged` | jagged.hpp |
 
 ## Queues of int
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<int>, fifo>` | fifo, shrinkable | `fifo` | queue.hpp |
-| `Store<value<int>, lifo>` | lifo, shrinkable | `lifo` | queue.hpp |
-| `Store<value<int>, by_priority>` | by_priority, shrinkable | `heap` | queue.hpp |
-| `Store<value<int>, by_priority, handles>` | by_priority, handles, shrinkable | `addressable_heap` | addressable_heap.hpp |
-| `Store<value<int>, fifo, small>` | fifo, shrinkable, small | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<int>, fifo, stable_refs>` | stable_refs, fifo, shrinkable | `fifo` | queue.hpp |
-| `Store<value<int>, fifo, retains>` | retains, fifo, shrinkable | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<int>, lifo, constant_clear>` | constant_clear, lifo, shrinkable | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
-| `Store<value<int>, by_priority, constant_clear>` | constant_clear, by_priority, shrinkable | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
-| `Store<value<int>, by_priority, monotone>` | by_priority, growable, monotone | `heap` | queue.hpp |
+| `Store<value<int>, fifo>` | fifo | `fifo` | queue.hpp |
+| `Store<value<int>, lifo>` | lifo | `lifo` | queue.hpp |
+| `Store<value<int>, by_priority>` | by_priority | `heap` | queue.hpp |
+| `Store<value<int>, by_priority, handles>` | by_priority, handles | `addressable_heap` | addressable_heap.hpp |
+| `Store<value<int>, fifo, small>` | fifo, small | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<int>, fifo, stable_refs>` | stable_refs, fifo | `fifo` | queue.hpp |
+| `Store<value<int>, fifo, retains>` | retains, fifo | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<int>, lifo, constant_clear>` | constant_clear, lifo | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
+| `Store<value<int>, by_priority, constant_clear>` | constant_clear, by_priority | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
+| `Store<value<int>, by_priority, monotone>` | by_priority, monotone | `heap` | queue.hpp |
 
 ## Queues of Id
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<Id>, fifo>` | fifo, shrinkable | `fifo` | queue.hpp |
-| `Store<value<Id>, lifo>` | lifo, shrinkable | `lifo` | queue.hpp |
-| `Store<value<Id>, by_priority>` | by_priority, shrinkable | `heap` | queue.hpp |
-| `Store<value<Id>, by_priority, handles>` | by_priority, handles, shrinkable | `addressable_heap` | addressable_heap.hpp |
-| `Store<value<Id>, fifo, small>` | fifo, shrinkable, small | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<Id>, fifo, stable_refs>` | stable_refs, fifo, shrinkable | `fifo` | queue.hpp |
-| `Store<value<Id>, fifo, retains>` | retains, fifo, shrinkable | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<Id>, lifo, constant_clear>` | constant_clear, lifo, shrinkable | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
-| `Store<value<Id>, by_priority, constant_clear>` | constant_clear, by_priority, shrinkable | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
-| `Store<value<Id>, by_priority, monotone>` | by_priority, growable, monotone | `heap` | queue.hpp |
+| `Store<value<Id>, fifo>` | fifo | `fifo` | queue.hpp |
+| `Store<value<Id>, lifo>` | lifo | `lifo` | queue.hpp |
+| `Store<value<Id>, by_priority>` | by_priority | `heap` | queue.hpp |
+| `Store<value<Id>, by_priority, handles>` | by_priority, handles | `addressable_heap` | addressable_heap.hpp |
+| `Store<value<Id>, fifo, small>` | fifo, small | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<Id>, fifo, stable_refs>` | stable_refs, fifo | `fifo` | queue.hpp |
+| `Store<value<Id>, fifo, retains>` | retains, fifo | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<Id>, lifo, constant_clear>` | constant_clear, lifo | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
+| `Store<value<Id>, by_priority, constant_clear>` | constant_clear, by_priority | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
+| `Store<value<Id>, by_priority, monotone>` | by_priority, monotone | `heap` | queue.hpp |
 
 ## Queues ordered by a projection
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<int>, by_priority, monotone_priority>` | by_priority, shrinkable, monotone_priority | `bucket_queue` | bucket_queue.hpp |
-| `Store<value<int>, by_priority, order_by<P>>` | by_priority, shrinkable | `heap` | queue.hpp |
-| `Store<value<int>, by_priority, handles, order_by<P>>` | by_priority, handles, shrinkable | `addressable_heap` | addressable_heap.hpp |
-| `Store<value<int>, by_priority, monotone_priority, order_by<P>>` | by_priority, shrinkable, monotone_priority | `bucket_queue` | bucket_queue.hpp |
+| `Store<value<int>, by_priority, monotone_priority>` | by_priority, monotone_priority | `bucket_queue` | bucket_queue.hpp |
+| `Store<value<int>, by_priority, order_by<P>>` | by_priority | `heap` | queue.hpp |
+| `Store<value<int>, by_priority, handles, order_by<P>>` | by_priority, handles | `addressable_heap` | addressable_heap.hpp |
+| `Store<value<int>, by_priority, monotone_priority, order_by<P>>` | by_priority, monotone_priority | `bucket_queue` | bucket_queue.hpp |
 
 ## Pools
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique>` | unique, handles, shrinkable | `row_interner` | pools.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique>` | unique, handles, shrinkable | `row_interner` | pools.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing, shrinkable | `tree_vector_set` | tree_vector.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing, shrinkable | `tree_bitset_set` | tree_bitset.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, concurrent>` | unique, concurrent, handles, shrinkable | `thread_safe_row_interner` | pools.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing, concurrent>` | unique, concurrent, handles, structural_sharing, shrinkable | `thread_safe_tree_bitset_set` | tree_bitset.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone>` | unique, handles, growable, monotone | `row_interner` | pools.hpp |
-| `Store<value<std::vector<int>>, handles>` | handles, shrinkable | `slot_vector` | slots.hpp |
-| `Store<value<std::vector<int>>, handles, concurrent>` | concurrent, handles, shrinkable | `thread_safe_slot_vector` | slots.hpp |
-| `Store<value<int>, handles>` | handles, shrinkable | `slot_vector` | slots.hpp |
-| `Store<value<Id>, handles, stable_refs>` | stable_refs, handles, shrinkable | `slot_vector` | slots.hpp |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone, layered>` | unique, layered, handles, growable, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, concurrent, layered, handles, shrinkable | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
-| `Store<value<int>, handles, layered>` | layered, handles, shrinkable | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing, shrinkable | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique>` | unique, handles | `row_interner` | pools.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique>` | unique, handles | `row_interner` | pools.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing | `tree_vector_set` | tree_vector.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing | `tree_bitset_set` | tree_bitset.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, concurrent>` | unique, concurrent, handles | `thread_safe_row_interner` | pools.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing, concurrent>` | unique, concurrent, handles, structural_sharing | `thread_safe_tree_bitset_set` | tree_bitset.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, monotone>` | unique, handles, monotone | `row_interner` | pools.hpp |
+| `Store<value<std::vector<int>>, handles>` | handles | `slot_vector` | slots.hpp |
+| `Store<value<std::vector<int>>, handles, concurrent>` | concurrent, handles | `thread_safe_slot_vector` | slots.hpp |
+| `Store<value<int>, handles>` | handles | `slot_vector` | slots.hpp |
+| `Store<value<Id>, handles, stable_refs>` | stable_refs, handles | `slot_vector` | slots.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, monotone, layered>` | unique, layered, handles, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, concurrent, layered, handles | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<value<int>, handles, layered>` | layered, handles | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |
 
 ## Stores as keys
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>, value<int>>` | unique, shrinkable, functional | `unordered_flat_map` | unordered_flat_map.hpp |
-| `Store<key<Store<key<int>, sorted, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<key<Store<key<int>, sorted, unique, shrinkable>>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
-| `Store<key<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable | `none` — incompatible: an unordered Store is no hashed key (compile-fail case 28) |  |
-| `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `none` — incompatible: dense alone fixes no order (compile-fail case 29) |  |
+| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Store<key<int>, sorted, unique, stable_refs, frozen>>, value<int>>` | unique | `unordered_flat_map` | unordered_flat_map.hpp |
+| `Store<key<Store<key<int>, sorted, unique, dense, stable_refs, frozen>>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Store<value<int>, stable_refs, frozen>>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<key<Store<key<int>, sorted, unique>>, sorted>` | sorted, unique | `set` | std_set.hpp |
+| `Store<key<Store<key<int>, unique>>>` | unique | `none` — incompatible: an unordered Store is no hashed key (compile-fail case 28) |  |
+| `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique | `none` — incompatible: dense alone fixes no order (compile-fail case 29) |  |
 
 ## Partitions of sparse keys
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<key<std::string>, partition>` | dense, partition, shrinkable | `none` — missing: a partition over hashed keys (a map from key to position plus the forest); no site asks |  |
+| `Store<key<std::string>, partition>` | partition | `none` — missing: a partition over hashed keys (a map from key to position plus the forest); no site asks |  |
 
 ## Records stored flat
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
-| `Store<value<Id>, handles, unique, flat>` | unique, handles, flat, shrinkable | `record_interner` | records.hpp |
-| `Store<value<Id>, handles, unique, flat, monotone>` | unique, handles, flat, growable, monotone | `record_interner` | records.hpp |
-| `Store<value<Id>, handles, unique, flat, stable_refs>` | unique, stable_refs, handles, flat, shrinkable | `stable_record_interner` | records.hpp |
-| `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat, shrinkable | `thread_safe_record_interner` | records.hpp |
-| `Store<value<Text>, handles, unique, flat>` | unique, handles, flat, shrinkable | `arena_interner` | arena.hpp |
-| `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, growable, monotone | `thread_safe_arena_interner` | arena.hpp |
-| `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, layered, handles, flat, growable, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
-| `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, concurrent, layered, handles, flat, shrinkable | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |
+| `Store<value<Id>, handles, unique, flat>` | unique, handles, flat | `record_interner` | records.hpp |
+| `Store<value<Id>, handles, unique, flat, monotone>` | unique, handles, flat, monotone | `record_interner` | records.hpp |
+| `Store<value<Id>, handles, unique, flat, stable_refs>` | unique, stable_refs, handles, flat | `stable_record_interner` | records.hpp |
+| `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat | `thread_safe_record_interner` | records.hpp |
+| `Store<value<Text>, handles, unique, flat>` | unique, handles, flat | `arena_interner` | arena.hpp |
+| `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, monotone | `thread_safe_arena_interner` | arena.hpp |
+| `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, layered, handles, flat, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
+| `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, concurrent, layered, handles, flat | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |

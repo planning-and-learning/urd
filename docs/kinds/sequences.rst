@@ -14,7 +14,7 @@ Sequences
 
 .. cpp:namespace:: urd::Sequence
 
-A sequence identifies its elements by position (``positional`` and ``dense`` are implied: positions are 0..n-1).
+A sequence identifies its elements by position: positions are 0..n-1.
 With ``sorted`` it keeps its elements in order and takes ``insert`` instead of ``push_back``.
 
 .. list-table::
@@ -87,7 +87,7 @@ Growable (not ``frozen``, not ``fixed_shape``):
 .. cpp:function:: iterator insert(const_iterator pos, const value_type& element)
 .. cpp:function:: template<typename... Args> iterator emplace(const_iterator pos, Args&&... args)
 
-   At a position (shrinkable, unsorted).
+   At a position (not monotone, unsorted).
 
 Shrinkable (neither ``frozen`` nor ``monotone``):
 

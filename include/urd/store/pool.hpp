@@ -25,7 +25,7 @@ class pool
 
     /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
     /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).
-    static constexpr bool erasable = has<S, shrinkable> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
+    static constexpr bool erasable = shrinks<S> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
 
 public:
     using handle_type = typename R::handle_type;
@@ -88,7 +88,7 @@ public:
     { return representation().erase(handle); }
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:

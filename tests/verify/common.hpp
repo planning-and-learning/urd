@@ -3,6 +3,7 @@
 // What every kind's check reads: the contents a range holds, element addresses, positions, and what an insert reports.
 
 #include "urd/semantics/less.hpp"
+#include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -44,6 +45,13 @@ template<typename Traits, std::ranges::forward_range R>
 
 template<typename R>
 using element_t = std::ranges::range_value_t<R>;
+
+/// What a container lets change: it inserts unless it relies on being frozen or of a fixed shape, and erases unless
+/// it relies on only growing too (its declaration's relies_on).
+template<typename R>
+inline constexpr bool container_grows = is_store<R> ? grows<container_traits<R>> : !relies_on<R>.has(tag::frozen) && !relies_on<R>.has(tag::fixed_shape);
+template<typename R>
+inline constexpr bool container_shrinks = is_store<R> ? shrinks<container_traits<R>> : container_grows<R> && !relies_on<R>.has(tag::monotone);
 
 /// A map: it names what its keys map to.
 template<typename R>

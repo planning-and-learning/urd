@@ -65,8 +65,8 @@ int main()
     frozen.insert(3);
 #elif URD_CASE == 3  // a monotone Store only grows
     growing.pop_back();
-#elif URD_CASE == 4  // functional is derived (a map without multi), never stated
-    using S = Store<key<int>, value<int>, urd::functional>;
+#elif URD_CASE == 4  // monotone_priority promises how a priority queue is pushed to: it needs by_priority
+    using S = Store<value<int>, urd::monotone_priority>;
     (void) S();
 #elif URD_CASE == 5
     using S = Store<key<int>, urd::dense, urd::sparse>;

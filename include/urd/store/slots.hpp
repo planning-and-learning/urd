@@ -34,10 +34,10 @@ public:
 
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
     void erase(handle_type handle)
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().erase(handle); }
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:

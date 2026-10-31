@@ -32,7 +32,7 @@ struct facet_condition<facet_id::capacity>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, growable>; }
+    { return grows<S>; }
 };
 
 }  // namespace urd::detail

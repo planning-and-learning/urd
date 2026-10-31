@@ -46,19 +46,13 @@ What holds
 
 .. urd-category:: any_multiplicity
 
-   One value per key, or many (a multimap). Maps also declare ``functional``, which selection reads.
+   One value per key, or many (a multimap).
 
 .. urd-category:: may_change
 
    Only grows (no ``erase``, ``clear``, ``pop_back``), or changes only by ``assign(first, last)``, a rebuild in the
    storage held where the container can; a frozen Store is read by any number of threads between rebuilds. A
    monotone queue keeps ``pop``: pop is how a queue is consumed, and ``monotone`` takes only ``clear`` away.
-
-.. urd-category:: immutable
-
-   Whether the Store offers ``insert`` (growable) or also ``erase`` and ``clear`` (shrinkable). It follows from the
-   answer to *Does it change after building?*: shrinkable by default, growable with ``monotone``, neither with
-   ``frozen``.
 
 .. urd-category:: maybe_empty
 

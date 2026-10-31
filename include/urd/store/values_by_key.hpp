@@ -14,7 +14,7 @@ namespace urd::detail::facet
 
 /// A map with unique keys: its values, by key. Values change only through these: iterating gives const elements,
 /// as some representations' iterators would let a key be overwritten. Changing members need a Store that may
-/// change; adding ones a growable Store.
+/// change; adding ones a Store that grows.
 template<typename Derived, typename R, typename S>
 class values_by_key
 {
@@ -33,7 +33,7 @@ public:
     { return representation().at(key); }
     /// The value for `key`, inserted as a default first where there is none.
     mapped& operator[](const map_key& key)
-        requires(has<S, growable> && std::default_initializable<mapped> && !ordered_by_value)
+        requires(grows<S> && std::default_initializable<mapped> && !ordered_by_value)
     {
         representation().try_emplace(key);
         return representation().at(key);
@@ -41,12 +41,12 @@ public:
     /// Inserts a value built from `args` unless `key` has one.
     template<typename... Args>
     std::pair<iterator_type, bool> try_emplace(const map_key& key, Args&&... args)
-        requires has<S, growable>
+        requires grows<S>
     { return representation().try_emplace(key, std::forward<Args>(args)...); }
     /// Sets the value for `key`, inserting it where there is none.
     template<typename M>
     std::pair<iterator_type, bool> insert_or_assign(const map_key& key, M&& value)
-        requires has<S, growable>
+        requires grows<S>
     { return representation().insert_or_assign(key, std::forward<M>(value)); }
 
     /// Calls update(value, held) on the value of `key`, inserting a default one first where there is none (held is then
@@ -55,7 +55,7 @@ public:
     template<typename Update>
         requires std::invocable<Update&, mapped&, bool>
     decltype(auto) update(const map_key& key, Update update)
-        requires(has<S, growable> && std::default_initializable<mapped>)
+        requires(grows<S> && std::default_initializable<mapped>)
     {
         if constexpr (requires { representation().update(key, update); })
             return representation().update(key, update);
@@ -89,7 +89,7 @@ public:
     template<typename Combine>
         requires std::invocable<Combine&, const mapped&, const mapped&>
     bool merge(const map_key& key, const mapped& value, Combine combine)
-        requires has<S, growable>
+        requires grows<S>
     {
         if constexpr (ordered_by_value)
         {

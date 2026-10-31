@@ -20,7 +20,7 @@ constexpr P flat_entry_map(const T& key)
 {
     if (!key.orderable)
         return {};
-    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::sorted, tag::unique, tag::positional, tag::contiguous, tag::retains });
 }
 
 
@@ -54,7 +54,7 @@ struct flat_entry_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/entry_ordered.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(entry_orders, f.by))
+        if (!f.entry_order)
             return {};
         const auto held = guarantees::flat_entry_map(f.key);
         if (!held)

@@ -22,14 +22,14 @@ constexpr P record_interner(const T& t, bool concurrent_, bool stable)
 {
     if (!t.trivially_copyable || !t.hashable)
         return {};
-    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::shrinkable, tag::retains, references(stable), threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::retains, references(stable), threads(concurrent_) });
 }
 
 constexpr P arena_interner(const T& t, bool concurrent_)
 {
     if (!t.serializable || !t.hashable)
         return {};
-    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::retains, threads(concurrent_) });
 }
 
 }  // namespace urd::detail::guarantees
@@ -61,8 +61,6 @@ struct record_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/records.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::record_interner(f.element, false, false);
         if (!held)
             return {};
@@ -97,8 +95,6 @@ struct stable_record_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/records.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::record_interner(f.element, false, true);
         if (!held)
             return {};
@@ -133,8 +129,6 @@ struct thread_safe_record_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/records.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::record_interner(f.element, true, true);
         if (!held)
             return {};
@@ -169,8 +163,6 @@ struct arena_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/arena.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::arena_interner(f.element, false);
         if (!held)
             return {};
@@ -205,8 +197,6 @@ struct thread_safe_arena_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/arena.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::arena_interner(f.element, true);
         if (!held)
             return {};

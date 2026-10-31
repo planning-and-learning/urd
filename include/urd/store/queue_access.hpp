@@ -39,7 +39,7 @@ public:
     void pop() { representation().pop(); }
     /// Removes every element; a monotone queue never empties but by pop.
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
     /// Replaces the element of `handle`, which moves to its place in the order.

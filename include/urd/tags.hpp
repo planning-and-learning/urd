@@ -136,16 +136,12 @@ enum class tag : std::uint8_t
     partition,
     any_tracking,
     change_log,
-    immutable,
-    growable,
-    shrinkable,
     may_change,
     monotone,
     frozen,
     maybe_empty,
     nonempty,
     any_multiplicity,
-    functional,
     multi,
     by_key,
     positional,
@@ -156,9 +152,7 @@ enum class tag : std::uint8_t
     count  ///< not a tag: how many there are
 };
 
-/// What a Store is, by how its elements are placed and reached. A request is the kind its shape makes (key<K>: a set,
-/// key<K> and value<V>: a map, value<V>: a sequence), or the highest of those its stated tags make (`makes` below), in
-/// this order: a priority queue with handles is a queue, a pool of records stored flat is records.
+/// What a Store is, by how its elements are placed and reached (kind_of below).
 enum class kind : std::uint8_t
 {
     sequence,   ///< values by position
@@ -186,6 +180,89 @@ constexpr bool holds_kind(kind container, kind request)
     return container == request || (elements_by_value(container) && elements_by_value(request));
 }
 
+/// The kind of a request: from the tags it states, else from its shape (key<K>: a set, key<K> and value<V>: a map,
+/// value<V>: a sequence). A priority queue with handles is a queue; a pool of records stored flat is records.
+template<typename Set>
+constexpr kind kind_of(const Set& stated, bool keyed, bool valued)
+{
+    if (stated.has(tag::partition))
+        return kind::partition;
+    if (stated.has(tag::fifo) || stated.has(tag::lifo) || stated.has(tag::by_priority) || stated.has(tag::monotone_priority))
+        return kind::queue;
+    if (stated.has(tag::flat))
+        return kind::records;
+    if (stated.has(tag::handles))
+        return kind::pool;
+    if (keyed)
+        return valued ? kind::map : kind::set;
+    if (stated.has(tag::sorted) || stated.has(tag::unique) || stated.has(tag::multi))
+        return kind::multiset;
+    return kind::sequence;
+}
+
+/// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
+/// Contiguous storage is more compact and faster to search and iterate where elements are few or never change, so
+/// stable storage (a node per element, segments that never move) comes last for them (docs/BENCHMARKS.md).
+struct preference
+{
+    tag when = tag::count;
+    tag later = tag::count;
+};
+inline constexpr std::array preferences { preference { .when = tag::frozen, .later = tag::stable_refs },
+                                          preference { .when = tag::small, .later = tag::stable_refs } };
+
+/// What a Store held as an element of another gets beyond its own request: its storage given back when it is
+/// destroyed, as erase and clear do.
+inline constexpr std::array nested_gives { tag::reclaims };
+
+/// What a request asks of its container: what it means, but for what the Store keeps itself: once nothing changes
+/// (frozen), nothing moves, so stable references need nothing of the container.
+template<typename Set>
+constexpr Set asked_of_container(Set stated)
+{
+    if (stated.has(tag::frozen))
+        stated.put(tag::moving_refs);
+    return stated;
+}
+
+/// Whether a request means something, whatever container would hold it: a partition groups keys, without values; a
+/// pool (handles) is reached by handle, not by key; monotone_priority is a promise of a priority queue; order_by<P>
+/// orders a sorted Store or a priority queue, and on unique keys breaks ties by the keys' own order, so they must be
+/// orderable. Anything else no container serves fails in the registry.
+template<typename Set>
+constexpr bool well_formed(const Set& stated, bool keyed, bool valued, bool ordered_by, bool orderable)
+{
+    return (!stated.has(tag::partition) || !valued) && (!stated.has(tag::handles) || !keyed)
+           && (!stated.has(tag::monotone_priority) || stated.has(tag::by_priority))
+           && (!ordered_by || stated.has(tag::sorted) || stated.has(tag::by_priority))
+           && (!ordered_by || !keyed || stated.has(tag::multi) || orderable);
+}
+
+/// What a request means beyond what it states, by its kind and by what its Store's interface keeps: a set, and a map
+/// without multi, keep each key once; a set with positions numbers its keys as they come (an interner), unless it
+/// asks for another order; once nothing changes (frozen), nothing moves.
+template<typename Set>
+constexpr Set meaning(Set stated, kind of)
+{
+    if (of == kind::set || (of == kind::map && !stated.has(tag::multi)))
+        stated.put(tag::unique);
+    if (of == kind::set && stated.has(tag::positional) && stated.in(tag::any_order) == tag::any_order)
+        stated.put(tag::insertion_ordered);
+    if (stated.has(tag::frozen))
+        stated.put(tag::stable_refs);
+    return stated;
+}
+
+/// What a request promises its container: what it means, and that a Store which must stay nonempty never erases, so
+/// a container that only grows serves it.
+template<typename Set>
+constexpr Set promised_to_container(Set meant)
+{
+    if (meant.has(tag::nonempty) && !meant.has(tag::monotone))
+        meant.put(tag::monotone);
+    return meant;
+}
+
 // Properties, in the style of Boost.Graph's graph_traits: each answers one question (a category) with a tag
 // type, and a tag derived from another means "at least that". The root of a category promises nothing, and names
 // itself as `root`, which every tag of its category inherits. Each tag also carries its number in urd::tag, so that
@@ -210,7 +287,6 @@ struct sorted : any_order
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Iterated in ascending order by urd::Less.";
     static constexpr std::array<std::string_view, 4> phrases { "sorted", "in order", "ordered by key", "range queries" };
-    static constexpr kind makes = kind::multiset;
 };
 /// In the order they were inserted: a new element goes last, and the others keep their places.
 struct insertion_ordered : any_order
@@ -242,7 +318,6 @@ struct unique : duplicates
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No two elements are equal.";
     static constexpr std::array<std::string_view, 3> phrases { "no duplicates", "distinct", "each at most once" };
-    static constexpr kind makes = kind::multiset;
 };
 
 struct any_keys
@@ -439,7 +514,6 @@ struct fifo : any_access
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A queue: elements leave in the order they came.";
     static constexpr std::array<std::string_view, 4> phrases { "queue", "fifo", "breadth first", "worklist" };
-    static constexpr kind makes = kind::queue;
 };
 /// A stack: the last element pushed leaves first (top, push, pop).
 struct lifo : any_access
@@ -449,7 +523,6 @@ struct lifo : any_access
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A stack: the last element pushed leaves first.";
     static constexpr std::array<std::string_view, 3> phrases { "stack", "lifo", "depth first" };
-    static constexpr kind makes = kind::queue;
 };
 /// A priority queue: the least element by urd::Less leaves first (top, push, pop).
 struct by_priority : any_access
@@ -459,7 +532,6 @@ struct by_priority : any_access
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A priority queue: the least element leaves first.";
     static constexpr std::array<std::string_view, 4> phrases { "priority queue", "heap", "best first", "open list" };
-    static constexpr kind makes = kind::queue;
 };
 
 struct any_scope
@@ -521,7 +593,6 @@ struct handles : any_handle
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A pool: insert gives a handle; with unique, equal elements get equal handles.";
     static constexpr std::array<std::string_view, 4> phrases { "interning", "handles", "deduplicated rows", "hash consing" };
-    static constexpr kind makes = kind::pool;
 };
 
 struct any_sharing
@@ -600,7 +671,6 @@ struct flat : any_packing
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Each record is one self-contained block of bytes, frozen once stored and read by index.";
     static constexpr std::array<std::string_view, 3> phrases { "flat records", "serialized", "one block per record" };
-    static constexpr kind makes = kind::records;
 };
 
 struct any_grouping
@@ -620,7 +690,6 @@ struct partition : any_grouping
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A partition: elements fall into disjoint classes that merge joins.";
     static constexpr std::array<std::string_view, 3> phrases { "union find", "disjoint sets", "equivalence classes" };
-    static constexpr kind makes = kind::partition;
 };
 
 struct any_tracking
@@ -642,37 +711,8 @@ struct change_log : any_tracking
     static constexpr std::array<std::string_view, 3> phrases { "delta", "what changed", "semi-naive evaluation" };
 };
 
-/// Offers no change.
-struct immutable
-{
-    using root = immutable;
-    static constexpr tag value = tag::immutable;
-    static constexpr std::string_view name = "immutable";
-    using group = semantics_group;
-    using heading = holds_heading;
-    static constexpr std::string_view question = "Grows or shrinks? (follows from monotone and frozen)";
-};
-/// Offers insert.
-struct growable : immutable
-{
-    static constexpr tag value = tag::growable;
-    static constexpr std::string_view name = "growable";
-    static constexpr std::string_view promise = "guaranteed";
-    static constexpr std::string_view description = "Offers insert.";
-    static constexpr std::array<std::string_view, 1> phrases { "grows" };
-};
-/// Offers insert, erase and clear.
-struct shrinkable : growable
-{
-    static constexpr tag value = tag::shrinkable;
-    static constexpr std::string_view name = "shrinkable";
-    static constexpr std::string_view promise = "guaranteed";
-    static constexpr std::string_view description = "Offers insert, erase and clear.";
-    static constexpr std::array<std::string_view, 1> phrases { "add and remove" };
-};
-
-// What a Store's interface enforces: no container declares a lifecycle, emptiness or identity. Multiplicity a
-// multimap declares (multi), but a request only states it.
+// What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on
+// monotone, one that cannot insert on frozen. Multiplicity a multimap declares (multi), and a request states it.
 struct may_change
 {
     using root = may_change;
@@ -730,15 +770,6 @@ struct any_multiplicity
     using heading = holds_heading;
     static constexpr std::string_view question = "Values per key?";
 };
-/// At most one value per key (a map).
-struct functional : any_multiplicity
-{
-    static constexpr tag value = tag::functional;
-    static constexpr std::string_view name = "functional";
-    static constexpr std::string_view promise = "guaranteed";
-    static constexpr std::string_view description = "At most one value per key: a map.";
-    static constexpr std::array<std::string_view, 3> phrases { "map", "one value per key", "lookup table" };
-};
 /// Any number of values per key (a multimap).
 struct multi : any_multiplicity
 {
@@ -747,7 +778,6 @@ struct multi : any_multiplicity
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Any number of values per key: a multimap.";
     static constexpr std::array<std::string_view, 3> phrases { "multimap", "many values per key", "adjacency lists" };
-    static constexpr kind makes = kind::multiset;
 };
 
 struct by_key
@@ -808,7 +838,6 @@ struct monotone_priority : any_priority
     static constexpr std::string_view promise = "caller";
     static constexpr std::string_view description = "A priority queue never pushed below the last popped.";
     static constexpr std::array<std::string_view, 3> phrases { "dijkstra", "non-negative lengths", "event simulation" };
-    static constexpr kind makes = kind::queue;
 };
 
 }  // namespace urd

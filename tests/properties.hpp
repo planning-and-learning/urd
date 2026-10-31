@@ -57,7 +57,7 @@ template<typename R, typename Tag>
 constexpr bool declares = urd::has<urd::container_traits<R>, Tag>;
 
 template<typename R>
-constexpr bool growable = declares<R, urd::growable>;
+constexpr bool growable = urd::detail::container_grows<R>;
 
 template<typename R>
 constexpr bool map = urd::detail::map_container<R>;
@@ -145,7 +145,7 @@ TYPED_TEST_P(Properties, KeepsItsPropertiesThroughRandomOperations)
     // checks the whole container, so a container that only grows costs O(steps²) a run and gets short ones;
     // one that shrinks stays small and gets long ones, with deeper sequences of erases. Large sizes are the
     // per-property tests' job.
-    constexpr int steps = declares<TypeParam, urd::shrinkable> ? 1000 : 200;
+    constexpr int steps = urd::detail::container_shrinks<TypeParam> ? 1000 : 200;
     for (unsigned seed = 0; seed < 64; ++seed)
     {
         const auto found = urd::verify(built<TypeParam>({ 5, 3, 3, 9, 1 }), seed, steps);
@@ -266,7 +266,7 @@ TYPED_TEST_P(Properties, Nonempty)
     else
     {
         // Nothing removes its elements, and it cannot start empty.
-        static_assert(!declares<TypeParam, urd::shrinkable> && !std::default_initializable<TypeParam>);
+        static_assert(!urd::detail::container_shrinks<TypeParam> && !std::default_initializable<TypeParam>);
         EXPECT_FALSE(std::ranges::empty(built<TypeParam>({ 1 })));
     }
 }
@@ -275,7 +275,7 @@ TYPED_TEST_P(Properties, Retains)
 {
     if (!urd::test::counts_allocations)
         GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
-    if constexpr (!declares<TypeParam, urd::retains> || !declares<TypeParam, urd::shrinkable>)
+    if constexpr (!declares<TypeParam, urd::retains> || !urd::detail::container_shrinks<TypeParam>)
         GTEST_SKIP() << "not declared, or nothing is removed";
     else
     {
@@ -358,7 +358,7 @@ std::int64_t shortest(int runs, Prepare prepare, Measured measured)
 
 TYPED_TEST_P(Properties, ClearCost)
 {
-    if constexpr (!declares<TypeParam, urd::proportional_clear> || !declares<TypeParam, urd::shrinkable>)
+    if constexpr (!declares<TypeParam, urd::proportional_clear> || !urd::detail::container_shrinks<TypeParam>)
         GTEST_SKIP() << "no clear cost declared";
     else
     {
@@ -396,7 +396,7 @@ TYPED_TEST_P(Properties, ClearCost)
 // a pass over what is present, which proportional_clear allows and constant_clear rules out.
 TYPED_TEST_P(Properties, ClearCostInLiveElements)
 {
-    if constexpr (!declares<TypeParam, urd::constant_clear> || !declares<TypeParam, urd::shrinkable>)
+    if constexpr (!declares<TypeParam, urd::constant_clear> || !urd::detail::container_shrinks<TypeParam>)
         GTEST_SKIP() << "no constant clear declared";
     else
     {

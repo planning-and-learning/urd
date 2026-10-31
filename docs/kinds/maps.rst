@@ -14,7 +14,7 @@ Maps
 
 .. cpp:namespace:: urd::Map
 
-A map holds one value per key (``functional``, implied) or many (``multi``: a multimap). Its elements are
+A map holds one value per key, or many (``multi``: a multimap). Its elements are
 ``std::pair<const K, V>``; a dense map iterates each key with a view of its value.
 
 .. list-table::
@@ -110,7 +110,7 @@ Values by key (one value per key)
 
 .. cpp:function:: mapped_type& operator[](const key_type& key)
 
-   The value for ``key``, inserted as a default first where there is none (growable, default-constructible value).
+   The value for ``key``, inserted as a default first where there is none (not frozen, default-constructible value).
 
 .. cpp:function:: template<typename... Args> std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
 .. cpp:function:: template<typename M> std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)

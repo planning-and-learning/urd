@@ -28,7 +28,7 @@ public:
     /// How many classes there are.
     [[nodiscard]] std::size_t classes() const { return constant().classes(); }
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:

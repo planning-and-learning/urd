@@ -92,11 +92,11 @@ A request is checked when the Store type is formed (``include/urd/properties.hpp
 assertion that names what is wrong.
 
 * Every argument is a property; at most one ``key``, one ``value``, one ``order_by``.
-* At most one tag per category: ``dense`` and ``sparse`` contradict, as do ``functional`` and ``multi``, ``frozen``
-  and ``monotone``, two workloads.
-* The rules add what the request implies: a sequence is ``positional`` and ``dense`` (positions are 0..n-1); a
-  set, and a map without ``multi``, is ``unique``; a ``frozen`` Store has ``stable_refs``; ``frozen`` or
-  ``fixed_shape`` makes a Store immutable, ``monotone`` or ``nonempty`` makes it growable, else it is shrinkable.
+* At most one tag per category: ``dense`` and ``sparse`` contradict, as do ``frozen`` and ``monotone``, two
+  workloads.
+* What you state is what you get, with what it means: a set, and a map without ``multi``, keep each key once; a
+  positional set numbers its keys as they come; a ``frozen`` Store has ``stable_refs``. ``frozen`` or ``fixed_shape``
+  Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
 * A pool (``handles``) holds ``value<V>`` rows reached by handle, not by key; a ``partition`` groups keys, without
   values; ``order_by`` on unique keys needs orderable keys, to break ties.
 * Any other request no container serves fails in the registry.

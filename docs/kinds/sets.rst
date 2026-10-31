@@ -14,7 +14,7 @@ Sets
 
 .. cpp:namespace:: urd::Set
 
-A set holds each key once (``unique`` is implied). Its order, keys, references, memory, threads and lifecycle are
+A set holds each key once (``unique`` is what a set means). Its order, keys, references, memory, threads and lifecycle are
 what the request says; the registry picks the container (:doc:`../RESOLUTION`).
 
 .. list-table::

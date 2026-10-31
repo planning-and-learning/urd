@@ -25,14 +25,14 @@ constexpr P parallel_hash_set(const T& t, bool nodes)
 {
     if (!t.hashable)
         return {};
-    return with(property_set::of({ tag::unique, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+    return with(property_set::of({ tag::unique, tag::sparse, tag::concurrent }), { references(nodes) });
 }
 
 constexpr P parallel_hash_map(const T& key, bool nodes)
 {
     if (!key.hashable)
         return {};
-    return with(property_set::of({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+    return with(property_set::of({ tag::unique, tag::sparse, tag::concurrent }), { references(nodes) });
 }
 
 
@@ -80,8 +80,6 @@ struct parallel_hash_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/parallel_hash.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::parallel_hash_set(f.element, false);
         if (!held)
             return {};
@@ -118,8 +116,6 @@ struct parallel_hash_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/parallel_hash.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::parallel_hash_map(f.key, false);
         if (!held)
             return {};
@@ -156,8 +152,6 @@ struct parallel_node_hash_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/parallel_hash.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::parallel_hash_set(f.element, true);
         if (!held)
             return {};
@@ -194,8 +188,6 @@ struct parallel_node_hash_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/parallel_hash.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::parallel_hash_map(f.key, true);
         if (!held)
             return {};

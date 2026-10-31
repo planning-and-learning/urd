@@ -77,7 +77,7 @@ struct facet_condition<facet_id::removal>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, shrinkable> && S::iterable; }
+    { return shrinks<S> && S::iterable; }
 };
 
 }  // namespace urd::detail

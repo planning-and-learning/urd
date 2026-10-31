@@ -25,7 +25,7 @@ namespace urd
 template<typename R>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
-    constexpr auto of = detail::kind_of(container_traits<R>::urd_properties, false, false);
+    constexpr auto of = urd::kind_of(container_traits<R>::urd_properties, false, false);
     if constexpr (of == kind::queue)
         return detail::run_queue(range, seed, steps);
     else if constexpr (of == kind::records && has<container_traits<R>, layered>)

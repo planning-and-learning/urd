@@ -44,7 +44,7 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
     for (int step = 0; step < steps; ++step)
     {
         bool cleared = false;
-        if constexpr (has<Traits, shrinkable>)
+        if constexpr (container_shrinks<P>)
         {
             if (step % 97 == 96)
             {
@@ -151,7 +151,7 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
     for (int step = 0; step < steps; ++step)
     {
         bool cleared = false;
-        if constexpr (has<Traits, shrinkable>)
+        if constexpr (container_shrinks<P>)
         {
             if (step % 97 == 96)
             {

@@ -38,9 +38,9 @@ constexpr bool of_stores(const T& inner) { return inner.element != nullptr && in
 constexpr P jagged(const T& inner, bool track)
 {
     if (!track && flattenable(inner))
-        return property_set::of({ tag::dense, tag::positional, tag::shrinkable, tag::retains, tag::proportional_clear });
+        return property_set::of({ tag::positional, tag::retains, tag::proportional_clear });
     if (fixed_rows(inner))
-        return property_set::of({ tag::dense, tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+        return property_set::of({ tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
     return {};
 }
 
@@ -56,9 +56,10 @@ constexpr P jagged_rows(const T& inner, bool track)
 
 constexpr P row_pool(const T& inner)
 {
-    if (!inner.store || !inner.store->properties.has(tag::shrinkable))
+    if (!inner.store || inner.store->properties.has(tag::monotone) || inner.store->properties.has(tag::nonempty)
+        || inner.store->properties.has(tag::fixed_shape))
         return {};
-    return property_set::of({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::positional, tag::contiguous, tag::retains, tag::proportional_clear });
 }
 
 
@@ -92,12 +93,12 @@ struct jagged_decl
     static constexpr auto headers = header_list<1> { "urd/repr/jagged.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::jagged(f.element, false);
         if (!held)
             return {};
         auto result = offer_of(urd::kind::sequence, *held, f);
+        if (held->has(tag::fixed_shape))  // rows of a fixed shape: set at construction, never added or removed
+            result = result.relying_on({ tag::fixed_shape });
         if (const auto nested = guarantees::jagged_rows(f.element, false))
             result = result.giving_nested(*nested);
         return result;
@@ -133,8 +134,6 @@ struct row_pool_decl
     static constexpr auto headers = header_list<1> { "urd/repr/row_pool.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::row_pool(f.element);
         if (!held)
             return {};
@@ -174,12 +173,12 @@ struct tracked_jagged_decl
     static constexpr auto headers = header_list<1> { "urd/repr/jagged.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by))
-            return {};
         const auto held = guarantees::jagged(f.element, true);
         if (!held)
             return {};
         auto result = offer_of(urd::kind::sequence, *held, f);
+        if (held->has(tag::fixed_shape))  // rows of a fixed shape: set at construction, never added or removed
+            result = result.relying_on({ tag::fixed_shape });
         if (const auto nested = guarantees::jagged_rows(f.element, true))
             result = result.giving_nested(*nested);
         return result;

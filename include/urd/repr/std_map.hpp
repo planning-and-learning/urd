@@ -21,28 +21,28 @@ constexpr P tree_map(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P tree_multimap(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return property_set::of({ tag::sorted, tag::multi, tag::stable_refs, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::multi, tag::stable_refs, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P hash_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return property_set::of({ tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::unique, tag::stable_refs, tag::sparse });
 }
 
 constexpr P hash_multimap(const T& key)
 {
     if (!key.hashable)
         return {};
-    return property_set::of({ tag::multi, tag::stable_refs, tag::shrinkable });
+    return property_set::of({ tag::multi, tag::stable_refs });
 }
 
 }  // namespace urd::detail::guarantees
@@ -70,7 +70,7 @@ struct map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::tree_map(f.key, f);
         if (!held)
@@ -109,7 +109,7 @@ struct multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(element_orders, f.by))
+        if (f.entry_order)
             return {};
         const auto held = guarantees::tree_multimap(f.key, f);
         if (!held)
@@ -148,7 +148,7 @@ struct unordered_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+        if (!f.hash_natural)
             return {};
         const auto held = guarantees::hash_map(f.key);
         if (!held)
@@ -186,7 +186,7 @@ struct unordered_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/std_map.hpp" };
     static constexpr offered offers(const request_features& f)
     {
-        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+        if (!f.hash_natural)
             return {};
         const auto held = guarantees::hash_multimap(f.key);
         if (!held)
