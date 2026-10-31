@@ -6,6 +6,7 @@
 #include "grid.hpp"
 #include "requests.hpp"
 #include "urd/registry.hpp"
+#include "urd/registry/features.hpp"
 
 #include <cstddef>
 #include <string>
@@ -78,6 +79,18 @@ struct servers<S, urd::detail::type_list<Rs...>>
     }
 };
 
+/// Whether choosing among the rows as values (urd/registry/rows.hpp) picks the container choose<S> picks, by id ("" for
+/// none): the two selections agree before one replaces the other (claude.layout.md, step 2).
+template<typename S, typename List>
+consteval bool rows_agree()
+{
+    using chosen = urd::detail::choose_in<S, List>;
+    if constexpr (chosen::found)
+        return urd::detail::row_choice<S>() == urd::test::name<typename chosen::type>::id;
+    else
+        return urd::detail::row_choice<S>().empty();
+}
+
 }  // namespace
 
 template<>
@@ -91,6 +104,7 @@ urd::test::request_group urd::test::requests_of<this_group>()
         {
             using S = typename Q::spec;
             using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+            static_assert(rows_agree<S, List>(), "the rows choose another container than choose<S> (the request is in the instantiation above)");
             result.rows.push_back({ Q::describe(),
                                     shape_of_spec<S>(),
                                     urd::has<S, urd::small>,

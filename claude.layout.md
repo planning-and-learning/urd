@@ -44,11 +44,13 @@ For example:
 
 ### 1. Selection by value: a lookup, not a walk
 
-- **A row per container,** a `constexpr` value declared with the container:
+- **A row per container,** declared with the container. Its properties are not a constant but a `constexpr`
+  function from the request's element features to the container's properties, or to "does not serve these
+  elements". It is one ordinary function per container, not a template, so calling every row is evaluation, not
+  instantiation. The row records:
   - its id, kind and preference rank;
-  - its property set (already a `constexpr property_set` in `container_traits`);
-  - what it requires of its elements, as flags: hashable, orderable, indexable, trivially copyable, a slot value, and
-    the like;
+  - its properties for given element features (today `container_traits`, with the constraints of its partial
+    specialization: what it requires of its elements);
   - its demands (`dense`);
   - for row containers, what it gives its rows (`element_traits`).
 
@@ -56,9 +58,14 @@ For example:
   specializations.
 - **The table:** the rows, grouped by kind, each group in preference order (`include/urd/registry/table.hpp`). The
   order of `preferences.hpp` becomes this order; adding a container adds its row at its place.
+- **Element features,** computed once per request, for its key type and its value type: hashable and orderable by
+  urd's semantics, indexable, trivially copyable, a slot value, serializable by cista, an integral priority; the
+  comparator of `order_by` (orders entries, or projects elements); and for rows, the row request's property set and
+  its elements' features. The survey of the 54 `container_traits` specializations found no other input.
+- **Wrappers** (layered, change-logged, scoped, recycling, ordered maps, rows) compute their properties from their
+  part's: a wrapper's row function calls its part's.
 - **Choosing:**
-  1. A request computes its spec once (as today), plus its element features: the same flags, evaluated once for its
-     element and key types.
+  1. A request computes its spec once (as today), plus its element features.
   2. A `constexpr` function scans its kind's group for the first row that serves. That is a loop over values, with no
      type instantiated. It returns the chosen id.
   3. Only the chosen container's type is named, by id: `representation_of<id, K, V, P>`, specialized in the
@@ -144,6 +151,10 @@ kind. The family as a concept goes.
 
    The scaling test also checks that a one-Store file includes only that container's header (and `<set>`, `<map>`
    and the rest only where it holds such a Store).
+
+   Then the README gains its bullet, written from the compiler's real output: "Pay only for what you use", the
+   compile cost of a Store being that of the container it resolves to, nothing for the others and no more as urd
+   gains containers, and the error naming the headers a file misses, pasted as the compiler prints it.
 6. **The precompiled table:** `table.hpp` precompiled in urd's targets; the CMake line for downstream projects in
    `docs/INTEGRATION.md`; a module where supported, behind an option.
 
@@ -167,11 +178,6 @@ kind. The family as a concept goes.
 
 ## Open
 
-- **Element features as flags:** every constraint a container's traits put on its elements today must be
-  expressible as one of a fixed set of flags. Step 3 lists them; one that isn't (a constraint on a nested Store's
-  request) may need its own field.
-- **Row containers** (`element_traits`, nested Stores): the row's request is itself a spec, so a row's "gives its
-  rows" is a property set. Whether that fits the row cleanly is shown in step 2.
 - **Modules:** GCC 13's support is not enough; the precompiled header is the default.
 - **Directory layout of `repr/`:** with no families, the headers can stay flat, one per container, or go in
   directories by kind, with the two containers that serve two kinds (`layered`, `layered_pool`) placed by a rule.
