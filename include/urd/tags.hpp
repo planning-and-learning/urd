@@ -131,6 +131,9 @@ struct duplicates
 {
     using root = duplicates;
     static constexpr tag value = tag::duplicates;
+    /// Exact: a container must hold what the request holds here, no more (a unique container would drop a sequence's duplicates; one that keeps them would
+    /// break a set).
+    static constexpr bool exact = true;
 };
 /// No two elements are equal.
 struct unique : duplicates
@@ -148,6 +151,9 @@ struct any_keys
 struct dense : any_keys
 {
     static constexpr tag value = tag::dense;
+    /// Demanded: a container that keeps it stores by index, so it needs keys that are indices, which the request must
+    /// promise (its storage grows with the largest key, and a negative key is no index at all).
+    static constexpr bool demanded = true;
 };
 /// The keys are few compared to their range.
 struct sparse : any_keys
@@ -295,6 +301,8 @@ struct any_handle
 {
     using root = any_handle;
     static constexpr tag value = tag::any_handle;
+    /// Exact: a container must hold what the request holds here, no more (handles make a pool, or give a priority queue update and erase by handle).
+    static constexpr bool exact = true;
 };
 /// A pool: each element is identified by a handle that insert gives, with whether it was new, and equal elements get
 /// equal handles. Not iterated; counted, with handles 0..size()-1, unless it has structural_sharing (handles name

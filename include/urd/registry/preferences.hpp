@@ -40,8 +40,8 @@ struct map_candidates
 /// follows docs/BENCHMARKS.md: an open-addressing hash table is fastest at insert, lookup and clear-and-refill
 /// at every size, so it comes first wherever order is not asked for; node tables and segments remain for stable_refs;
 /// where order is asked for, a tree serves elements inserted over time. The dense containers come after the hash
-/// tables, and only a request that promises dense keys reaches them at all (demands_met: a container that stores by
-/// index demands keys that are indices, whatever its place in the list); the indexed set, after them too, only a
+/// tables, and only a request that promises dense keys reaches them at all (dense declares itself demanded: a container
+/// that stores by index needs keys that are indices, whatever its place in the list); the indexed set, after them too, only a
 /// request for insertion order or positions. Frozen rows are flattened first; rows
 /// are kept for reuse only where their memory must be.
 using element_preference = element_candidates<JaggedOf,

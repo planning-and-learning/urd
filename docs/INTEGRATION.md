@@ -564,8 +564,8 @@ A change to an order is backed by these: `docs/BENCHMARKS.md` shows the result.
 A declared guarantee the request left open is free: a request that did not ask for `stable_refs` may receive a
 node-based table. One guarantee is also a demand on the caller, `dense`: a container that stores by index needs
 keys that are indices, its storage grows with the largest key, and a negative key is no index at all. So
-`demands_met` (`include/urd/property_set.hpp`) lets a dense container serve only a request that promises `dense`,
-whatever its place in the list; a partition promises it by rule. Before that rule, a concurrent map by an integer
+the tag declares itself demanded (`include/urd/tags.hpp`), and selection lets a container that keeps a demanded tag
+serve only a request that promises it (`demands_of`, `include/urd/property_set.hpp`), whatever its place in the list; a partition promises it by rule. Before that rule, a concurrent map by an integer
 key with `sorted` or `retains` silently fell through to the thread-safe generation map and asserted on the first
 negative key.
 

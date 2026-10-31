@@ -27,10 +27,10 @@ namespace urd::detail
 /// is a sequence. Where S's elements (a map's values) are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, S::required)
-                           && detail::demands_met(container_traits<R>::urd_properties, S::urd_properties) && by_value<container_traits<R>> == by_value<S>
-                           && has<container_traits<R>, unique> == has<S, unique> && has<container_traits<R>, handles> == has<S, handles>
-                           && has<container_traits<R>, flat> == has<S, flat> && queue_traits<container_traits<R>> == S::is_queue;
+concept serves_by_traits =
+    container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, S::required)
+    && detail::promises(S::urd_properties, detail::demands_of(container_traits<R>::urd_properties))
+    && by_value<container_traits<R>> == by_value<S> && has<container_traits<R>, flat> == has<S, flat> && queue_traits<container_traits<R>> == S::is_queue;
 // Selection reads only the traits, which are partial specializations matched on R's arguments: checking them
 // instantiates no container, and a candidate need not even be defined where a request is resolved (the registry
 // declares representations; the header a Store's family comes from defines them). Whether a container offers what
@@ -55,7 +55,7 @@ struct row_traits<R, S>
 };
 
 template<typename R, typename S>
-concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || has<container_traits<R>, positional>)
+concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>)
                  && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, container_traits<row_of<S>>::required));
 
 /// Stable storage: it keeps references stable, by a node per element or by segments that never move. Under

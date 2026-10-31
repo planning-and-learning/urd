@@ -139,7 +139,7 @@ TEST(Registry, TheChosenCandidateAnswersNoMoreThanAnotherServingOne)
 // enforces it (serves_by_traits, include/urd/registry.hpp); this checks it stays enforced for every request of the
 // grid and every candidate the registry would accept, so that a change to selection or to a container's traits that
 // lets a dense container take a request with open keys is caught here before it reaches a user. Spelled out rather
-// than through demands_met, so that it is no tautology against the function it guards.
+// than through demands_of, so that it is no tautology against the function it guards.
 TEST(Registry, NoServingCandidateDemandsWhatTheRequestDidNotPromise)
 {
     int requests = 0;

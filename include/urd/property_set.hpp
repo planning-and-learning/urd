@@ -2,7 +2,7 @@
 
 // What computes with the tags (urd/tags.hpp): each tag's category and what it is at least, the properties of a
 // container or a request as one constexpr value per category (property_set), and the rules a container's properties
-// must meet for a request (satisfies, promises, demands_met). Properties are computed as values, not as types: a
+// must meet for a request (satisfies, promises, demands_of). Properties are computed as values, not as types: a
 // request costs the compiler a constant evaluation instead of hundreds of class instantiations.
 
 #include "urd/rules.hpp"
@@ -141,17 +141,44 @@ consteval std::array<kind, tag_count> make_kind_table(type_list<Ts...> /*tags*/)
 { return { makes_of<Ts>()... }; }
 inline constexpr std::array<kind, tag_count> kinds_made = make_kind_table(all_tags {});
 
+/// The categories whose root declares itself exact, and the tags that declare themselves demanded (urd/tags.hpp).
+template<typename Tag>
+consteval bool exact_of()
+{
+    if constexpr (requires { Tag::exact; })
+        return Tag::exact;
+    else
+        return false;
+}
+template<typename Tag>
+consteval bool demanded_of()
+{
+    if constexpr (requires { Tag::demanded; })
+        return Tag::demanded;
+    else
+        return false;
+}
+template<typename... Ts>
+consteval std::array<bool, tag_count> make_exact_table(type_list<Ts...> /*tags*/)
+{ return { exact_of<Ts>()... }; }
+template<typename... Ts>
+consteval std::array<bool, tag_count> make_demanded_table(type_list<Ts...> /*tags*/)
+{ return { demanded_of<Ts>()... }; }
+inline constexpr std::array<bool, tag_count> roots_exact = make_exact_table(all_tags {});
+inline constexpr std::array<bool, tag_count> tags_demanded = make_demanded_table(all_tags {});
+
 constexpr tag root_of(tag of) { return tags.root[index(of)]; }
 constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
 
 /// The roots of the categories a container declares, then those a request states. A container may also declare
-/// positional (its elements are reached by position: a random-access range) and functional (a value per key: a
-/// map); selection reads those two directly, so that it never has to look inside a candidate.
-inline constexpr std::array guaranteed_roots { tag::any_order,          tag::duplicates,      tag::any_keys,      tag::moving_refs,  tag::any_layout,
-                                               tag::any_representation, tag::single_threaded, tag::immutable,     tag::any_memory,   tag::any_clear,
-                                               tag::any_access,         tag::any_scope,       tag::any_layering,  tag::any_tracking, tag::any_handle,
-                                               tag::any_sharing,        tag::any_grouping,    tag::any_direction, tag::any_shape,    tag::any_packing };
-inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::by_key, tag::general, tag::any_priority };
+/// functional (a value per key: a map), which selection reads directly, so that it never has to look inside a
+/// candidate.
+inline constexpr std::array guaranteed_roots {
+    tag::any_order,  tag::duplicates,  tag::any_keys,     tag::moving_refs,   tag::any_layout, tag::any_representation, tag::single_threaded,
+    tag::immutable,  tag::any_memory,  tag::any_clear,    tag::any_access,    tag::any_scope,  tag::any_layering,       tag::any_tracking,
+    tag::any_handle, tag::any_sharing, tag::any_grouping, tag::any_direction, tag::any_shape,  tag::any_packing,        tag::by_key
+};
+inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::general, tag::any_priority };
 /// The tags no request states: the library derives them (a map is functional unless it says multi; what a Store's
 /// interface offers follows from frozen, monotone, nonempty and fixed_shape), and containers still declare them. A
 /// public tag changes some resolution or rejects some request; these would only repeat what is derived.
@@ -258,31 +285,35 @@ constexpr property_set required_of(property_set promised, kind of)
     return result;
 }
 
-/// Whether `have` provides, in every category a container declares, at least what `want` asks for.
+/// Whether `have` provides, in every category a container declares, at least what `want` asks for; exactly that, in
+/// the categories that declare themselves exact (urd/tags.hpp).
 constexpr bool satisfies(const property_set& have, const property_set& want)
 {
     for (const auto root : guaranteed_roots)
-        if (!at_least(have.in(root), want.in(root)))
+        if (roots_exact[index(root)] ? have.in(root) != want.in(root) : !at_least(have.in(root), want.in(root)))
             return false;
     return true;
 }
 
-/// Whether a request that states `stated` makes every promise in `needed`, in the categories only a request states.
+/// Whether a request that holds `stated` makes every promise in `needed`.
 constexpr bool promises(const property_set& stated, const property_set& needed)
 {
-    for (const auto root : requested_roots)
-        if (!at_least(stated.in(root), needed.in(root)))
+    for (std::size_t each = 0; each < tag_count; ++each)
+        if (!at_least(stated.held[each], needed.held[each]))
             return false;
     return true;
 }
 
-/// Whether `declared` demands nothing `requested` left open. dense is the one guaranteed category whose declaration
-/// also asks something of callers: a container that stores by index needs keys that are indices (its storage grows
-/// with the largest key, and a negative key is no index at all), so a representation that declares dense serves only
-/// a request that promises dense. Every other guarantee (stable_refs, concurrent, constant_clear, ...) costs the
-/// container, never the caller: a request that leaves it open may receive it (the registry audit watches that it
-/// does not pay for it needlessly).
-constexpr bool demands_met(const property_set& declared, const property_set& requested) { return !declared.has(tag::dense) || requested.has(tag::dense); }
+/// What a container that holds `declared` asks of the request in turn: the tags it holds that declare themselves
+/// demanded (urd/tags.hpp: dense).
+constexpr property_set demands_of(const property_set& declared)
+{
+    auto result = property_set::roots();
+    for (std::size_t each = 0; each < tag_count; ++each)
+        if (tags_demanded[each] && declared.has(static_cast<tag>(each)))
+            result.put(static_cast<tag>(each));
+    return result;
+}
 
 template<typename P>
 concept a_tag = requires {
