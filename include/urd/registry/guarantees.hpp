@@ -257,34 +257,34 @@ constexpr P row_interner(const T& row, bool concurrent_)
 }
 constexpr P tree_vector_set(const T& row, bool concurrent_)
 {
-    if (row.element == nullptr || !row.element->hashable || keeps_by_value(row.store_kind))
+    if (row.element == nullptr || !row.element->hashable || keeps_by_value(row.store->kind))
         return {};
     return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 constexpr P tree_bitset_set(const T& row, bool concurrent_)
 {
-    if (row.element == nullptr || !row.element->indexable || !row.store_properties.has(tag::unique) || !row.store_properties.has(tag::dense))
+    if (row.element == nullptr || !row.element->indexable || !row.store->properties.has(tag::unique) || !row.store->properties.has(tag::dense))
         return {};
     return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 constexpr P slot_vector(bool concurrent_) { return props({ tag::handles, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) }); }
 /// What an interning pool of rows gives its rows: their own properties.
-constexpr P own_rows(const T& row) { return row.store ? P(row.store_properties) : P(); }
+constexpr P own_rows(const T& row) { return row.store ? P(row.store->properties) : P(); }
 
 // Rows.
 /// Whether a jagged array holds rows `inner` flattened: frozen rows, of elements or (deeper) of rows in order.
 constexpr bool flattenable(const T& inner)
-{ return inner.store && inner.store_properties.has(tag::frozen) && (inner.element == nullptr || !inner.element->store || !keeps_by_value(inner.store_kind)); }
+{ return inner.store && inner.store->properties.has(tag::frozen) && (inner.element == nullptr || !inner.element->store || !keeps_by_value(inner.store->kind)); }
 /// Whether a jagged array holds rows `inner` that change in place: rows of elements, as a sequence, or a dense set's
 /// bits; or fixed-shape rows of such rows, at any depth.
 constexpr bool fixed_rows(const T& inner)
 {
-    if (!inner.store || inner.store_properties.has(tag::frozen))
+    if (!inner.store || inner.store->properties.has(tag::frozen))
         return false;
     if (inner.element == nullptr || !inner.element->store)
-        return !keeps_by_value(inner.store_kind)
-               || (inner.store_kind == urd::kind::set && inner.store_properties.has(tag::unique) && inner.store_properties.has(tag::dense));
-    return inner.store_properties.has(tag::fixed_shape) && fixed_rows(*inner.element);
+        return !keeps_by_value(inner.store->kind)
+               || (inner.store->kind == urd::kind::set && inner.store->properties.has(tag::unique) && inner.store->properties.has(tag::dense));
+    return inner.store->properties.has(tag::fixed_shape) && fixed_rows(*inner.element);
 }
 /// Whether a row's elements are rows themselves.
 constexpr bool of_stores(const T& inner) { return inner.element != nullptr && inner.element->store; }
@@ -299,15 +299,15 @@ constexpr P jagged(const T& inner, bool track)
 constexpr P jagged_rows(const T& inner, bool track)
 {
     if (!track && flattenable(inner))
-        return with(inner.store_properties, { of_stores(inner) ? tag::any_layout : tag::contiguous, tag::moving_refs, tag::retains });
+        return with(inner.store->properties, { of_stores(inner) ? tag::any_layout : tag::contiguous, tag::moving_refs, tag::retains });
     if (fixed_rows(inner))
-        return with(inner.store_properties,
-                    { (!of_stores(inner) && !keeps_by_value(inner.store_kind)) ? tag::contiguous : tag::any_layout, tag::moving_refs, tag::retains });
+        return with(inner.store->properties,
+                    { (!of_stores(inner) && !keeps_by_value(inner.store->kind)) ? tag::contiguous : tag::any_layout, tag::moving_refs, tag::retains });
     return {};
 }
 constexpr P row_pool(const T& inner)
 {
-    if (!inner.store || !inner.store_properties.has(tag::shrinkable))
+    if (!inner.store || !inner.store->properties.has(tag::shrinkable))
         return {};
     return props({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
 }

@@ -20,6 +20,14 @@
 namespace urd::detail
 {
 
+/// What a Store is, by its request.
+struct store_facts
+{
+    property_set properties = property_set::roots();
+    property_set required = property_set::roots();
+    urd::kind kind = urd::kind::sequence;
+};
+
 /// What a type is, in facts general enough that any container states its constraints in them; for a Store, also its
 /// request, its kind, and the same facts about its elements, recursively. Nothing here is one container's: a
 /// container's own precondition is composed from these in its offer (urd/registry/guarantees.hpp).
@@ -33,10 +41,8 @@ struct type_features
     bool trivially_destructible = false;  ///< destroyed without code (a Store is not)
     bool default_initializable = false;   ///< default-constructible and movable (a Store unless nonempty or fixed_shape)
     bool serializable = false;            ///< names its members for cista (cista_members), so it is stored as bytes
-    bool store = false;                   ///< a Store, whose request follows
-    property_set store_properties = property_set::roots();
-    property_set store_required = property_set::roots();
-    urd::kind store_kind = urd::kind::sequence;
+    /// Where it is a Store: its request (what it promises, what its container must guarantee, its kind); else none.
+    const store_facts* store = nullptr;
     /// The facts about its elements, where it is a range of them (a Store that iterates, or another range).
     const type_features* element = nullptr;
 };

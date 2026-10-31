@@ -21,6 +21,10 @@ namespace urd::detail
 template<typename T>
 consteval type_features features_of_type();
 
+/// The facts about Store T's request, once per type.
+template<typename T>
+inline constexpr store_facts store_facts_v { container_traits<T>::urd_properties, container_traits<T>::required, container_traits<T>::kind };
+
 /// The facts about T, once per type; a Store's elements' facts are reached through it.
 template<typename T>
 inline constexpr type_features features_v = features_of_type<T>();
@@ -42,11 +46,7 @@ consteval type_features features_of_type()
             result.serializable = requires { T::cista_members(); };
         else
         {
-            using traits = container_traits<T>;
-            result.store = true;
-            result.store_properties = traits::urd_properties;
-            result.store_required = traits::required;
-            result.store_kind = traits::kind;
+            result.store = &store_facts_v<T>;
         }
         if constexpr (requires { typename row_element_t<T>; })
             result.element = &features_v<row_element_t<T>>;

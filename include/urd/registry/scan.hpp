@@ -29,7 +29,7 @@ constexpr bool serves(const offer& o, const request_shape& s, const request_feat
         || !promises(s.stated, demands_of(o.properties)))
         return false;
     const auto& held = s.kind == urd::kind::map ? f.mapped : f.element;
-    return !held.store || satisfies(o.nested, held.store_required);
+    return !held.store || satisfies(o.nested, held.store->required);
 }
 
 /// No entry: the request is served by none.

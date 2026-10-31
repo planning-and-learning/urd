@@ -283,8 +283,9 @@ struct to_spec
                                            .valued = valued,
                                            .value_is_store = is_store<value_type>,
                                            .value_iterates = iterates<value_type>,
-                                           .ordered_by = ordered_by,
-                                           .entry_order = is_entry_less<order_type>,
+                                           .by = !ordered_by                     ? order::none
+                                                 : is_entry_less<order_type> ? order::entry
+                                                                             : order::element,
                                            .ordered_orderable = orderable<ordered_type> };
     static_assert(sizeof(incompatible_rules<facts>) != 0);  // instantiates every rule, each asserting its message
 

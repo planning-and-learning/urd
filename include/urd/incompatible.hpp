@@ -6,6 +6,7 @@
 // readers, and tests/compile_fail_store.cpp pins each message.
 
 #include "urd/property_set.hpp"
+#include "urd/registry/facts.hpp"
 #include "urd/tags.hpp"
 
 namespace urd::detail
@@ -21,8 +22,7 @@ struct request_facts
     bool valued = false;
     bool value_is_store = false;    ///< value<Store<…>>: rows
     bool value_iterates = false;    ///< the value is a range of elements (a pool's row)
-    bool ordered_by = false;        ///< it gives order_by<P>
-    bool entry_order = false;       ///< P orders a map's entries, key and value
+    order by = order::none;  ///< its order_by: none, over the elements (a map's keys), or over entries
     bool ordered_orderable = true;  ///< what P orders (its keys, else its values) is orderable by urd::Less
 };
 
@@ -125,27 +125,27 @@ struct frozen_is_shared
 template<request_facts R>
 struct order_by_orders
 {
-    static_assert(!R.ordered_by || R.stated.has(tag::sorted) || R.stated.has(tag::by_priority),
+    static_assert(R.by == order::none || R.stated.has(tag::sorted) || R.stated.has(tag::by_priority),
                   "urd::Store: order_by<P> orders a sorted Store or a by_priority queue; ask for one of them too");
 };
 template<request_facts R>
 struct order_by_breaks_ties
 {
-    static_assert(!R.ordered_by || !R.keyed || R.stated.has(tag::multi) || R.ordered_orderable,
+    static_assert(R.by == order::none || !R.keyed || R.stated.has(tag::multi) || R.ordered_orderable,
                   "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
                   "(else two keys with equal P(key) would be one)");
 };
 template<request_facts R>
 struct dense_is_its_order
 {
-    static_assert(!R.ordered_by || !R.stated.has(tag::dense),
+    static_assert(R.by == order::none || !R.stated.has(tag::dense),
                   "urd::Store: dense keys are stored and iterated by index, so no order_by<P> applies: drop dense, or order the index "
                   "type itself");
 };
 template<request_facts R>
 struct entry_order_is_a_scan
 {
-    static_assert(!R.ordered_by || !R.entry_order || R.stated.has(tag::small) || R.stated.has(tag::frozen),
+    static_assert(R.by == order::none || R.by != order::entry || R.stated.has(tag::small) || R.stated.has(tag::frozen),
                   "urd::Store: a map ordered by its values is a flat scan (O(n) insert, lookup by key): ask for small or frozen too, or "
                   "order by key");
 };
