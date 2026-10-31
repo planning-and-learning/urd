@@ -57,8 +57,8 @@ struct disjoint_sets_decl
     }
     struct operation_costs
     {
-        static constexpr cost lookup = costs::one_at;
-        static constexpr cost merge = costs::one_at;
+        static constexpr cost lookup = costs::one_a;
+        static constexpr cost merge = costs::one_a;
         static constexpr double words = 2;
     };
     static constexpr std::string_view description = "disjoint sets (union-find by size, path halving)";

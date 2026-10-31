@@ -9,7 +9,6 @@
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
@@ -113,9 +112,9 @@ struct fifo_decl
     {
         static constexpr cost push = costs::one_a;
         static constexpr cost pop = costs::one;
-        static constexpr cost top = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost top = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.2;
     };
     static constexpr std::string_view description = "queue (a deque, first in first out)";
@@ -151,9 +150,9 @@ struct ring_fifo_decl
     {
         static constexpr cost push = costs::one_a;
         static constexpr cost pop = costs::one;
-        static constexpr cost top = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost top = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
@@ -189,9 +188,9 @@ struct lifo_decl
     {
         static constexpr cost push = costs::one_a;
         static constexpr cost pop = costs::one;
-        static constexpr cost top = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost top = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "stack (a vector, last in first out)";
@@ -227,9 +226,9 @@ struct heap_decl
     {
         static constexpr cost push = costs::log_na;
         static constexpr cost pop = costs::log_n;
-        static constexpr cost top = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost top = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "binary heap (a vector, least first, by urd::Less or an order_by)";
@@ -265,9 +264,9 @@ struct addressable_heap_decl
     {
         static constexpr cost push = costs::log_na;
         static constexpr cost pop = costs::log_n;
-        static constexpr cost top = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost top = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 3;
     };
     static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
@@ -301,9 +300,9 @@ struct bucket_queue_decl
     }
     struct operation_costs
     {
-        static constexpr cost push = costs::one_at;
-        static constexpr cost pop = costs::one_at;
-        static constexpr cost top = costs::one_t;
+        static constexpr cost push = costs::one_a;
+        static constexpr cost pop = costs::one_a;
+        static constexpr cost top = costs::one;
         static constexpr cost clear = costs::lin_keys;
         static constexpr double words = 2;
     };

@@ -40,9 +40,9 @@ struct vector_decl
     {
         static constexpr cost insert = costs::one_a;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "std::vector";

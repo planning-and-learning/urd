@@ -66,7 +66,7 @@ struct ordered_map_decl
     {
         using part = indexed_set_decl;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = indexed_set_decl::operation_costs::words + 1;
     };
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
@@ -101,8 +101,8 @@ struct dense_ordered_map_decl
     struct operation_costs : ordered_sparse_set_decl::operation_costs
     {
         using part = ordered_sparse_set_decl;
-        static constexpr cost erase = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = ordered_sparse_set_decl::operation_costs::words + 1;
     };
     static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
@@ -112,7 +112,7 @@ template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::SparseSet<K, true>, V>>
 {
     using declaration = dense_ordered_map_decl;
-    static constexpr request_features features = map_facts<repr::SparseSet<K, true>, V>();
+    static constexpr request_features features = map_facts<K, V>();
 };
 
 }  // namespace detail

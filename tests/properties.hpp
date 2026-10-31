@@ -129,8 +129,6 @@ std::vector<int> descending(int count)
 
 }  // namespace
 
-TYPED_TEST_P(Properties, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
-
 // A container declares positional exactly where it is a random-access range: selection reads the declaration, since
 // it may not look inside a candidate (the container need not be defined where a request is resolved). And every
 // Store is movable, which a generation map's slots rely on without asking the Store (traits.hpp, slot_value).
@@ -464,7 +462,6 @@ TYPED_TEST_P(Properties, Concurrent)
 }
 
 REGISTER_TYPED_TEST_SUITE_P(Properties,
-                            OffersWhatItsPropertiesRequire,
                             DeclaresPositionalWhereRandomAccess,
                             KeepsItsPropertiesThroughRandomOperations,
                             Sorted,

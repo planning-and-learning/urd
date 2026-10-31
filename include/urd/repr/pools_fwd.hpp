@@ -8,7 +8,6 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
@@ -97,7 +96,7 @@ struct row_interner_decl
     {
         static constexpr cost insert_row = costs::lin_row_e;
         static constexpr cost find_row = costs::lin_row_e;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.5;
     };
     static constexpr std::string_view description = "row interner (each row once, in full)";
@@ -131,8 +130,8 @@ struct slot_vector_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::one_at;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::one_a;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
@@ -166,8 +165,8 @@ struct thread_safe_slot_vector_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::one_at;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::one_a;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.6;
     };
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
@@ -207,9 +206,9 @@ struct tree_pool_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = Bits ? costs::lin_row_t : costs::lin_row_e;
-        static constexpr cost find_row = Bits ? costs::lin_row_t : costs::lin_row_e;
-        static constexpr cost access = costs::lin_row_t;
+        static constexpr cost insert_row = Bits ? costs::lin_row : costs::lin_row_e;
+        static constexpr cost find_row = Bits ? costs::lin_row : costs::lin_row_e;
+        static constexpr cost access = costs::lin_row;
         static constexpr double words = Bits ? 0.05 : 1;
     };
     static constexpr std::string_view description =
@@ -256,7 +255,7 @@ struct thread_safe_row_interner_decl
     {
         static constexpr cost insert_row = costs::lin_row_e;
         static constexpr cost find_row = costs::lin_row_e;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.6;
     };
     static constexpr std::string_view description = "row interner, thread-safe";

@@ -6,10 +6,8 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
 
@@ -106,11 +104,11 @@ struct jagged_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::lin_row_t;
-        static constexpr cost erase = costs::lin_nt;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert = costs::lin_row;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.2;
     };
     static constexpr std::string_view description = "jagged array (CSR: offsets + one data array)";
@@ -147,11 +145,11 @@ struct row_pool_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 4;
     };
     static constexpr std::string_view description = "row pool (cleared rows are kept for reuse)";
@@ -188,8 +186,8 @@ struct tracked_jagged_decl
     }
     struct operation_costs
     {
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.3;
     };
     static constexpr std::string_view description = "jagged rows that track the rows handed out to change";

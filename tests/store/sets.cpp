@@ -2,8 +2,6 @@
 // header a Store here needs is included, and no other.
 
 #include "../allocations.hpp"
-#include "urd/compose/family.hpp"
-#include "urd/concepts.hpp"
 #include "urd/repr/addressable_heap.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/bucket_queue.hpp"
@@ -93,7 +91,7 @@ void behaves_like_std_set(unsigned seed)
         auto contents = std::vector<int>(store.begin(), store.end());
         std::ranges::sort(contents);
         EXPECT_TRUE(contents == std::vector<int>(reference.begin(), reference.end()));
-        if constexpr (urd::Sorted<S>)
+        if constexpr (urd::has<S, urd::sorted>)
         {
             EXPECT_TRUE(std::ranges::is_sorted(store));
         }

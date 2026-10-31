@@ -28,7 +28,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::reverse_iteration>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return store_types<R, S>::ordered; }

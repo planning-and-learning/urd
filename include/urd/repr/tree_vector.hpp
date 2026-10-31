@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"

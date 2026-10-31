@@ -154,8 +154,6 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::han
 // A flat pool is counted and read by index, as its records are whole; its handle is the index.
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::handle_type, urd::index<Named>>);
 
-TYPED_TEST(Records, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
-
 TYPED_TEST(Records, KeepsEachDistinctRecordOnceThroughRandomOperations)
 {
     for (unsigned seed = 0; seed < 32; ++seed)
@@ -246,8 +244,6 @@ TEST(Pools, FindWithSharing)
     EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing, and says so
 }
 
-TYPED_TEST(Pools, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
-
 TYPED_TEST(Pools, GivesEqualRowsEqualHandlesThroughRandomOperations)
 {
     for (unsigned seed = 0; seed < 32; ++seed)
@@ -314,8 +310,6 @@ TYPED_TEST_SUITE(Slots, SlotContainers, urd::test::Names);
 static_assert(std::same_as<Store<value<int>, urd::handles>::representation, urd::repr::SlotVector<int>>);
 static_assert(std::same_as<Store<value<int>, urd::handles, urd::concurrent>::representation, urd::repr::SlotVector<int, true>>);
 static_assert(urd::has<Store<value<int>, urd::handles, urd::stable_refs>, urd::stable_refs>);
-
-TYPED_TEST(Slots, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
 TYPED_TEST(Slots, KeepsElementsInPlaceAndReusesFreedSlots)
 {

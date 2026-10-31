@@ -2,7 +2,6 @@
 
 // What every kind's check reads: the contents a range holds, element addresses, positions, and what an insert reports.
 
-#include "urd/interface.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -45,6 +44,13 @@ template<typename Traits, std::ranges::forward_range R>
 
 template<typename R>
 using element_t = std::ranges::range_value_t<R>;
+
+/// A map: it names what its keys map to.
+template<typename R>
+concept map_container = requires {
+    typename R::mapped_type;
+    requires !std::is_void_v<typename R::mapped_type>;
+};
 
 template<typename R>
 std::vector<const element_t<R>*> addresses(const R& range)

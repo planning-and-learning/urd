@@ -4,8 +4,7 @@ Costs
 *Leaving out a tag you need makes the program slower by a complexity class: what these guarantee is how much work or
 memory an operation takes.*
 
-They are guarantees like any other, kept by the container and checked: a counted cost by
-``tests/complexity_verify.cpp``, the rest by measurement (:doc:`/BENCHMARKS`). What every operation of every
+They are guarantees like any other, kept by the container and checked by measurement (:doc:`/BENCHMARKS`). What every operation of every
 representation costs is in the :doc:`complexity tables </kinds/sets>` of each kind.
 
 .. urd-group:: costs

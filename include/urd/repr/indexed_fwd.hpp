@@ -83,8 +83,8 @@ struct indexed_set_decl
         static constexpr cost lookup = costs::one_e;
         static constexpr cost erase = costs::lin_n;
         static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.5;
     };
     static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
@@ -120,8 +120,8 @@ struct stable_indexed_set_decl
     {
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.5;
     };
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
@@ -157,8 +157,8 @@ struct concurrent_indexed_set_decl
     {
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.6;
     };
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";

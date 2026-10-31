@@ -93,7 +93,7 @@ Indices and views
 
    A reference to an element held by index (``urd/view.hpp``): the index and a pointer to a context ``C`` that
    resolves it, where :cpp:concept:`resolves` means ``context[index<T>]`` gives the record. A positional set and a
-   pool resolve their own type; a :cpp:class:`compose::Family` every member type; any type with such an
+   pool resolve their own type; any type with such an
    ``operator[]`` serves. The context must outlive the view.
 
    .. cpp:function:: view(index<T> at, const C& context) noexcept

@@ -173,6 +173,11 @@ template<typename X, typename... Tags>
     requires(detail::a_tag<Tags> && ...)
 inline constexpr bool has = (traits_t<X>::urd_properties.has(Tags::value) && ...);
 
+/// Whether Traits places elements by their value or key, as the standard's associative containers (set,
+/// flat_multiset, map, multimap) do; a sequence (vector) keeps an element where it was put.
+template<typename Traits>
+inline constexpr bool by_value = has<Traits, sorted> || has<Traits, unique> || has<Traits, multi>;
+
 /// Whether Have provides, in every category a container declares, at least what Want asks for.
 template<typename Have, typename Want>
 inline constexpr bool satisfies = detail::satisfies(traits_t<Have>::urd_properties, traits_t<Want>::urd_properties);

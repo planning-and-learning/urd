@@ -2,8 +2,7 @@
 
 // What each operation costs each representation, as data: the complexity sections of docs/kinds/*.rst are written
 // from it (share/urd/complexity.json, tests/complexity_table.cpp), the registry's choices are judged by it from that
-// file and the measured results (benchmarks/record.py), and tests/complexity_verify.cpp checks it by counting the
-// work done.
+// file and the measured results, which also check each cost's growth (benchmarks/record.py).
 
 #include "names.hpp"
 #include "urd/costs.hpp"
@@ -221,26 +220,6 @@ inline constexpr std::array costly { urd::tag::dense,       urd::tag::stable_ref
                                      urd::tag::layered,     urd::tag::change_log,   urd::tag::handles,    urd::tag::structural_sharing, urd::tag::partition,
                                      urd::tag::fixed_shape, urd::tag::bidirectional };
 
-/// The facets a request's Store has, from the spec alone: each facet's own condition (urd/store/<facet>.hpp), for
-/// those that do not read the representation (equality and ordering do, and are not compared). Each container's
-/// benchmark checks it against facet_switches for its own Store (benchmarks/experiment.cpp).
-template<typename S>
-struct spec_switches
-{
-    template<std::size_t I>
-    static consteval bool one()
-    {
-        using condition = urd::detail::facet_condition<static_cast<urd::detail::facet_id>(I)>;
-        if constexpr (condition::reads_container)
-            return false;
-        else
-            return condition::template on<void, S>();
-    }
-    static constexpr auto table = []<std::size_t... I>(std::index_sequence<I...> /*facets*/)
-    { return std::array<bool, sizeof...(I)> { one<I>()... }; }(std::make_index_sequence<static_cast<std::size_t>(urd::detail::facet_id::count)> {});
-    static constexpr bool on(urd::detail::facet_id id) { return table[static_cast<std::size_t>(id)]; }
-};
-
 /// The operations a Store offers, read from its facets (`On::on`); the facets not listed here (sizing, equality, set
 /// algebra, ...) are not compared.
 template<typename S, typename On>
@@ -298,9 +277,9 @@ template<typename R, typename S>
 constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
 { return offered_by<S, urd::detail::facet_switches<R, S>>(); }
 
-/// The operations a request's Store offers, from its spec alone (spec_switches).
+/// The operations a request's Store offers, from its spec alone: no container is named (R is void).
 template<typename S>
 constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
-{ return offered_by<S, spec_switches<S>>(); }
+{ return offered<void, S>(); }
 
 }  // namespace urd::test

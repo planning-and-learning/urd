@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -19,7 +18,7 @@ namespace urd::detail
 // A Store is its core (store.hpp) and facets (namespace facet): one class per group of properties, holding
 // the members those properties allow, inherited where the Store's properties switch them on. Within one Store each
 // member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
-// recur (insert in growth, pool, slots and grouping), which store/denials.hpp records per name.
+// recur (insert in growth, pool, slots and grouping).
 
 /// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
 /// which is still incomplete while its facets are built.
@@ -65,8 +64,7 @@ consteval bool compares_in_order()
         return false;
 }
 
-/// The facets by name: which ones a Store inherits is read from facet_switches, by the Store's base list and by the
-/// denials that stand in for the facets it lacks.
+/// The facets by name: which ones a Store inherits is read from facet_switches, by the Store's base list.
 enum class facet_id : std::uint8_t
 {
     sizing,
@@ -99,8 +97,8 @@ enum class facet_id : std::uint8_t
     count
 };
 
-/// When a Store has the facet `Id`, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`, and whether it
-/// reads the representation R (most read only the spec S).
+/// When a Store has the facet `Id`, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`. Most read only
+/// the spec S; with R void, it is asked from the spec alone, before a container is chosen.
 template<facet_id Id>
 struct facet_condition;
 
@@ -112,15 +110,6 @@ struct facet_switches
     { return std::array<bool, sizeof...(I)> { facet_condition<static_cast<facet_id>(I)>::template on<R, S>()... }; }(
         std::make_index_sequence<static_cast<std::size_t>(facet_id::count)> {});
     static constexpr bool on(facet_id id) { return table[static_cast<std::size_t>(id)]; }
-    /// Whether any of the facets is on: whether some facet declares a member name.
-    template<std::size_t N>
-    static constexpr bool any_on(const std::array<facet_id, N>& ids)
-    {
-        for (const auto id : ids)
-            if (on(id))
-                return true;
-        return false;
-    }
 };
 
 /// How facets reach the Store's representation, which is private to the Store.

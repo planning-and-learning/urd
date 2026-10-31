@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/index.hpp"
-#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>
@@ -87,20 +86,6 @@ public:
     handle_type erase(handle_type handle)
         requires(erasable)
     { return representation().erase(handle); }
-    // Where erase is ruled out, the reason: the denial for erase stays off, since this facet declares the name.
-    template<typename... Args>
-        requires has<S, monotone> && denied<"erase: the pool is monotone, it only grows; drop monotone">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, structural_sharing>
-                 && denied<"erase: a pool with structural_sharing shares nodes between rows; its handles name no positions a row could move into">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, concurrent> && denied<"erase: a concurrent pool is read without a lock beside inserts, which would see a row move">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, layered> && denied<"erase: a layered pool's handles are continued by the layers over it, which a moved row would break">
-    void erase(Args&&...);
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
         requires has<S, shrinkable>
@@ -120,7 +105,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::pool>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return S::is_pool && has<S, unique> && !has<S, flat>; }

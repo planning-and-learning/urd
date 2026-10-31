@@ -3,7 +3,6 @@
 // Rows of rows: one offsets array per level and the values in one array, rows changed in place.
 
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/rows_fwd.hpp"

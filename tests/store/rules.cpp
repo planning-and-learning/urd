@@ -3,7 +3,6 @@
 // that a Store adds no space to its representation. What each request resolves to is docs/RESOLUTION.md, checked by
 // the resolution test; only what that table cannot show is here.
 
-#include "urd/concepts.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr_multimap.hpp"
@@ -130,7 +129,7 @@ static_assert(can_change_rows<Store<value<Store<key<std::size_t>, urd::dense>>>>
 // Storage kept for reuse, or returned: the containers that do so.
 
 // Stores as hashed keys: those whose contents fix their order (sorted, canonical, sequences) hash by them; an
-// unordered one does not, since its iteration order is not its contents' (compile-fail cases 32 and 33).
+// unordered one does not, since its iteration order is not its contents' (compile-fail cases 28 and 29).
 static_assert(urd::hashable<Store<key<int>, urd::sorted, urd::frozen>> && urd::hashable<Store<key<int>, urd::dense, urd::sorted>>
               && urd::hashable<Store<value<int>>> && urd::hashable<Store<value<int>, urd::frozen>>);
 static_assert(!urd::hashable<Store<key<int>>> && !urd::hashable<Store<key<int>, urd::dense, urd::constant_clear>>);
@@ -145,9 +144,9 @@ using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;
 
 // Only what was asked for: a set that reclaims is a tree, which is sorted, but it was not asked to be sorted, so it
 // is not.
-static_assert(!urd::Sorted<Store<key<int>, urd::reclaims>>);
-static_assert(urd::Sorted<Store<key<int>, urd::sorted, urd::small>>);
-static_assert(urd::Unique<Store<key<int>, urd::small>>);
+static_assert(!urd::has<Store<key<int>, urd::reclaims>, urd::sorted>);
+static_assert(urd::has<Store<key<int>, urd::sorted, urd::small>, urd::sorted>);
+static_assert(urd::has<Store<key<int>, urd::small>, urd::unique>);
 
 // A Store adds no space to its representation: the facets it does not have are empty bases.
 static_assert(sizeof(Store<value<int>>) == sizeof(Store<value<int>>::representation));
@@ -178,9 +177,5 @@ static_assert(!can_assign<Store<key<int>, urd::positional>>);
 // A unique set's insert says whether it inserted; a multiset's does not.
 static_assert(std::same_as<decltype(Store<key<int>>().insert(1).second), bool>);
 static_assert(std::same_as<decltype(Store<value<int>, urd::sorted>().insert(1)), Store<value<int>, urd::sorted>::iterator>);
-// Every Store offers what its properties require of a container.
-static_assert(urd::conforming<Store<key<int>>> && urd::conforming<Store<key<int>, urd::sorted>>);
-static_assert(urd::conforming<Store<value<int>>> && urd::conforming<Store<value<int>, urd::sorted, urd::nonempty>>);
-static_assert(urd::conforming<Store<value<int>, urd::stable_refs, urd::monotone>> && urd::conforming<Store<key<int>, urd::frozen>>);
 
 }  // namespace

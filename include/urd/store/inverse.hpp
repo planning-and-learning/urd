@@ -22,7 +22,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::inverse>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return S::is_map && has<S, bidirectional>; }

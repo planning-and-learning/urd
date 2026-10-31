@@ -3,7 +3,6 @@
 // urd::verify for sets and sequences: random operations checked against a model of the contents (Model).
 
 #include "common.hpp"
-#include "urd/interface.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -124,7 +123,7 @@ std::optional<std::string> violation(const R& range,
     return std::nullopt;
 }
 
-/// urd::verify for a conforming R.
+/// urd::verify for a set or sequence R.
 template<typename R>
 std::optional<std::string> run(R& range, unsigned seed, int steps)
 {

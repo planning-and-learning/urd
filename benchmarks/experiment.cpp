@@ -47,7 +47,7 @@ void register_one()
     using S = typename urd::test::request_at<Group, Position>::spec;
     using R = typename urd::test::serving_named<container, S>::type;
     static_assert(urd::test::offered<R, S>() == urd::test::offered<S>(),
-                  "benchmarks/experiment.cpp: spec_switches (tests/complexity.hpp) no longer agrees with facet_switches");
+                  "benchmarks/experiment.cpp: the facets from the spec alone no longer agree with this container's");
     urd::bench::register_experiment<R, S>(Ordinal);
 }
 

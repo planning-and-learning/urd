@@ -10,7 +10,7 @@ A request is one of three things: served; `none` and missing, a
 representation that could be written (its note says which); or incompatible, a contract no representation can
 keep, which `Store` rejects with a message (the rules are listed in docs/language/index.rst, "Incompatible
 combinations"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`
-with its culprits' compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,
+with its compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,
 indexable).
 
 ## Sets of int
@@ -199,7 +199,7 @@ indexable).
 | `Store<key<index<Id>>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
 | `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, layered, handles, growable, monotone>>, dense, layered>` | unique, dense, layered, shrinkable, functional | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered, shrinkable, functional | `none` — missing: the concurrent slot directory (compile-fail case 43) |  |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered, shrinkable, functional | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
 
 ## Maps int to int
 
@@ -449,8 +449,8 @@ indexable).
 | `Store<value<Id>, handles, stable_refs>` | stable_refs, handles, shrinkable | `slot_vector` | slots.hpp |
 | `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone, layered>` | unique, layered, handles, growable, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
 | `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, concurrent, layered, handles, shrinkable | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
-| `Store<value<int>, handles, layered>` | layered, handles, shrinkable | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 40) |  |
-| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing, shrinkable | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 41) |  |
+| `Store<value<int>, handles, layered>` | layered, handles, shrinkable | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
+| `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing, shrinkable | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |
 
 ## Stores as keys
 
@@ -461,8 +461,8 @@ indexable).
 | `Store<key<Store<key<int>, sorted, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<Store<value<int>, dense, stable_refs, frozen, functional, positional>>>` | unique, shrinkable | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<Store<key<int>, sorted, unique, shrinkable>>, sorted>` | sorted, unique, shrinkable | `set` | std_set.hpp |
-| `Store<key<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable | `none` — incompatible: an unordered Store is no hashed key (compile-fail case 32) |  |
-| `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `none` — incompatible: dense alone fixes no order (compile-fail case 33) |  |
+| `Store<key<Store<key<int>, unique, shrinkable>>>` | unique, shrinkable | `none` — incompatible: an unordered Store is no hashed key (compile-fail case 28) |  |
+| `Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>` | unique, shrinkable | `none` — incompatible: dense alone fixes no order (compile-fail case 29) |  |
 
 ## Partitions of sparse keys
 

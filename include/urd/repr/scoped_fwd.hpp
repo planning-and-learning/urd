@@ -120,8 +120,8 @@ struct scoped_tree_map_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr cost scope = costs::nlog_changes;
         static constexpr double words = 6;
     };
@@ -157,13 +157,13 @@ struct scoped_dense_map_decl
     struct operation_costs
     {
         using part = dense_map_decl;
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
+        static constexpr cost erase = costs::one;
         static constexpr cost clear = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
-        static constexpr cost scope = costs::lin_changes_t;
+        static constexpr cost scope = costs::lin_changes;
         static constexpr double words = 2.2;
     };
     static constexpr std::string_view description = "scoped dense map (a slot per index, scopes undone by a log)";

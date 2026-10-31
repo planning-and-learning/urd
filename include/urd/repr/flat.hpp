@@ -98,9 +98,9 @@ struct flat_set_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "boost::container::flat_set (sorted vector)";
@@ -138,9 +138,9 @@ struct flat_multiset_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "boost::container::flat_multiset (sorted vector)";
@@ -178,8 +178,8 @@ struct flat_map_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "boost::container::flat_map (sorted vector)";
@@ -217,8 +217,8 @@ struct flat_multimap_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "boost::container::flat_multimap (sorted vector)";

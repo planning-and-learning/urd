@@ -28,7 +28,7 @@ constexpr bool in_kinds(kinds set, kind of) { return set == 0 || (set & (1U << s
 /// One implication: for a Store of one of `of` (every kind where empty) holding `when` (always where it is
 /// tag::count), it holds `then` too, unless its category already holds something; `provided` where the Store keeps
 /// `then` itself, so that a container need not; `stated` where `then` counts as stated with `when`, so that the
-/// request's checks (urd/incompatible.hpp) read it too.
+/// request's kind and checks (to_spec, urd/properties.hpp) read it too.
 struct implication
 {
     kinds of = 0;
@@ -91,5 +91,15 @@ inline constexpr auto preferences = std::to_array<preference>({
     { .when = tag::frozen, .later = tag::stable_refs },
     { .when = tag::small, .later = tag::stable_refs },
 });
+
+/// Whether a request means something, whatever container would hold it: a partition groups keys, without values; a
+/// pool (handles) is reached by handle, not by key; order_by on unique keys breaks ties by the keys' own order, so
+/// they must be orderable. Anything else no container serves fails in the registry.
+template<typename Set>
+constexpr bool well_formed(const Set& stated, bool keyed, bool valued, bool ordered_by, bool orderable)
+{
+    return (!stated.has(tag::partition) || !valued) && (!stated.has(tag::handles) || !keyed)
+           && (!ordered_by || !keyed || stated.has(tag::multi) || orderable);
+}
 
 }  // namespace urd::detail

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/change_logged_fwd.hpp"
 #include "urd/repr/dense_fwd.hpp"

@@ -16,7 +16,7 @@ Checks: >
   -cppcoreguidelines-no-malloc,
   -bugprone-derived-method-shadowing-base-method
 CheckOptions:
-  # The denials test declares one name detector per member name, which only a macro keeps to one line each.
+  # The tests' own configuration macros (URD_TEST_...).
   cppcoreguidelines-macro-usage.AllowedRegexp: '^URD_TEST_'
   bugprone-exception-escape.CheckMoveMemberFunctions: false
   bugprone-unchecked-optional-access.IgnoreValueCalls: true

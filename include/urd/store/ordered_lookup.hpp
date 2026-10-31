@@ -33,7 +33,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::ordered_lookup>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, sorted> && !is_entry_less<typename S::order_type>; }

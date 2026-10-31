@@ -1,8 +1,6 @@
 // Scopes, change logs, layers and families of Stores. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/compose/family.hpp"
-#include "urd/concepts.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr_multimap.hpp"
@@ -202,20 +200,6 @@ template<typename T>
 using Interned = Store<key<T>, urd::positional, urd::monotone>;
 
 }  // namespace
-
-// A family holds one Store per type and reaches each by its type.
-TEST(Family, ReachesEachMemberByType)
-{
-    auto repositories = urd::compose::Family<Interned, int, std::string>();
-    repositories.get<int>().insert(7);
-    repositories.get<std::string>().insert("on");
-    repositories.get<std::string>().insert("clear");
-    EXPECT_EQ(repositories.get<int>().size(), 1U);
-    EXPECT_EQ(std::as_const(repositories).get<std::string>()[1], "clear");
-    std::size_t total = 0;
-    repositories.for_each([&total](const auto& member) { total += member.size(); });
-    EXPECT_EQ(total, 3U);
-}
 
 // A change log holds exactly the difference between the contents and those when it was last cleared.
 TEST(ChangeLog, HoldsTheDifferenceSinceItWasCleared)

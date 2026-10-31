@@ -3,7 +3,6 @@
 // A Store over a parent: its own elements, and lookups that fall through to the parent's.
 
 #include "urd/index.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/flat_hash.hpp"
@@ -30,22 +29,6 @@
 namespace urd::repr
 {
 
-namespace detail
-{
-
-template<typename R>
-struct mapped_of
-{
-    using type = char;  // a set's: no at() is offered
-};
-template<urd::detail::map_container R>
-struct mapped_of<R>
-{
-    using type = typename R::mapped_type;
-};
-
-}  // namespace detail
-
 /// A set or map with unique keys that answers lookups from its own elements, then from a parent's, which it does
 /// not own and never changes: a layer over a repository built earlier. It holds, iterates and erases only its own
 /// elements; inserting what the parent has inserts nothing and finds the parent's. In a map, a key's own value
@@ -55,15 +38,16 @@ struct mapped_of<R>
 template<typename R>
 class Layered
 {
-    static constexpr bool is_map = urd::detail::map_container<R>;
-    using mapped = typename detail::mapped_of<R>::type;
+    /// A map's elements are (key, value) pairs; a set's are its keys.
+    static constexpr bool is_map = !std::same_as<typename R::key_type, typename R::value_type>;
 
 public:
     using iterator = typename R::const_iterator;
     using const_iterator = iterator;
     using key_type = typename R::key_type;
     using value_type = typename R::value_type;
-    using mapped_type = std::conditional_t<is_map, mapped, void>;
+    /// A map's value type: the second of its elements, which a dense map builds as a pair of references.
+    using mapped_type = std::remove_cvref_t<typename std::conditional_t<is_map, std::tuple_element<1, value_type>, std::type_identity<void>>::type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -123,17 +107,23 @@ public:
     iterator erase(const_iterator first, const_iterator last) { return m_own.erase(first, last); }
     void clear() { m_own.clear(); }
 
-    [[nodiscard]] const mapped& at(const key_type& key) const
+    /// The value of the nearest layer, this one or a parent, that holds `key`.
+    [[nodiscard]] decltype(auto) at(const key_type& key) const
         requires is_map
-    { return m_own.contains(key) || m_parent == nullptr ? m_own.at(key) : m_parent->at(key); }
+    {
+        const auto* layer = this;
+        while (!layer->m_own.contains(key) && layer->m_parent != nullptr)
+            layer = layer->m_parent;
+        return layer->m_own.at(key);
+    }
     /// The own value: where only the parent has one, a value that layers (a layered Store) is made here as a layer
     /// over the parent's, else the parent's is copied up first.
-    [[nodiscard]] mapped& at(const key_type& key)
+    [[nodiscard]] decltype(auto) at(const key_type& key)
         requires is_map
     {
         if (in_parent_only(key))
         {
-            if constexpr (requires(mapped& own, const mapped* above) { own.layer_over(above); })
+            if constexpr (requires(mapped_type& own, const mapped_type* above) { own.layer_over(above); })
             {
                 m_own.try_emplace(key);
                 m_own.at(key).layer_over(&m_parent->at(key));

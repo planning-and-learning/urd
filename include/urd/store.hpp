@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/index.hpp"
-#include "urd/interface.hpp"
 #include "urd/properties.hpp"
 #include "urd/registry/select.hpp"
 #include "urd/semantics/equal_to.hpp"
@@ -11,7 +10,6 @@
 #include "urd/store/changes.hpp"
 #include "urd/store/construction.hpp"
 #include "urd/store/contiguous_data.hpp"
-#include "urd/store/denials.hpp"
 #include "urd/store/entries.hpp"
 #include "urd/store/equality.hpp"
 #include "urd/store/grouping.hpp"
@@ -74,7 +72,7 @@ struct complete_representation<missing_container<S, Container, Missing>>
 };
 
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
-/// allow (interface.hpp), and container_traits reports S's properties, not the representation's, so code cannot
+/// allow (its facets), and container_traits reports S's properties, not the representation's, so code cannot
 /// come to rely on what it never asked for. The Store itself holds only what every Store has, whatever its
 /// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
 /// which its kind and properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
@@ -107,41 +105,7 @@ class Store :
     public facet_if<facet_switches<R, S>::on(facet_id::entries), facet::entries<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::inverse), facet::inverse<Store<R, S>, R, S>>,
     public facet_if<facet_switches<R, S>::on(facet_id::shape), facet::shape<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::sorted_ends), facet::sorted_ends<Store<R, S>, R, S>>,
-    // Where a member name is in none of the facets above, a denial stands in: a call then names the property that
-    // rules the operation out (store/denials.hpp).
-    public denial<R, S>::insert,
-    public denial<R, S>::emplace,
-    public denial<R, S>::appending,
-    public denial<R, S>::pop_back,
-    public denial<R, S>::erase,
-    public denial<R, S>::clear,
-    public denial<R, S>::lookup,
-    public denial<R, S>::ordered_lookup,
-    public denial<R, S>::iteration,
-    public denial<R, S>::reverse_iteration,
-    public denial<R, S>::subscript,
-    public denial<R, S>::ends,
-    public denial<R, S>::position,
-    public denial<R, S>::data,
-    public denial<R, S>::reserve,
-    public denial<R, S>::sizing,
-    public denial<R, S>::values_by_key,
-    public denial<R, S>::update,
-    public denial<R, S>::merge,
-    public denial<R, S>::values,
-    public denial<R, S>::keys,
-    public denial<R, S>::queue,
-    public denial<R, S>::scopes,
-    public denial<R, S>::layers,
-    public denial<R, S>::changes,
-    public denial<R, S>::view,
-    public denial<R, S>::rows,
-    public denial<R, S>::acquire,
-    public denial<R, S>::grouping,
-    public denial<R, S>::reset,
-    public denial<R, S>::set_algebra,
-    public denial<R, S>::equality
+    public facet_if<facet_switches<R, S>::on(facet_id::sorted_ends), facet::sorted_ends<Store<R, S>, R, S>>
 {
     using types = store_types<R, S>;
 

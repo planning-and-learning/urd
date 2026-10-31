@@ -103,7 +103,7 @@ struct csr_multimap_decl
     }
     struct operation_costs
     {
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.2;
@@ -139,10 +139,10 @@ struct dense_multimap_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::lin_row_t;
+        static constexpr cost erase = costs::lin_row;
         static constexpr cost clear = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 4;
@@ -180,9 +180,9 @@ struct posting_map_decl
     {
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::lin_row_t;
+        static constexpr cost erase = costs::lin_row;
         static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 4;
     };
     static constexpr std::string_view description = "postings (a flat hash table of value vectors)";
@@ -216,7 +216,7 @@ struct bidirectional_csr_decl
     }
     struct operation_costs
     {
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 2.4;

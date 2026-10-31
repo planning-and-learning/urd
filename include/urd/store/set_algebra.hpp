@@ -84,7 +84,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::set_algebra>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return S::is_set; }

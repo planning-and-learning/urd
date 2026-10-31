@@ -1,7 +1,6 @@
 // A partition of indices, a family of Stores named by type, and a set that logs what changed,
 // for semi-naive evaluation.
 
-#include "urd/compose/family.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr_multimap.hpp"
@@ -19,16 +18,12 @@
 
 #include <exception>
 #include <iostream>
-#include <string>
 
 using urd::key;
 using urd::Store;
 
 namespace
 {
-
-template<typename T>
-using Interned = Store<key<T>, urd::positional, urd::monotone>;
 
 void run()
 {
@@ -38,12 +33,6 @@ void run()
     terms.merge(0, 3);
     terms.merge(3, 4);
     std::cout << "classes: " << terms.classes() << ", 0 and 4 equal: " << std::boolalpha << terms.same(0, 4) << '\n';
-
-    // One interner per kind of entity, reached by its type.
-    auto repositories = urd::compose::Family<Interned, int, std::string>();
-    repositories.get<std::string>().insert("on");
-    repositories.get<int>().insert(42);
-    std::cout << "strings interned: " << repositories.get<std::string>().size() << '\n';
 
     // Semi-naive evaluation: each round works on the facts new since the last.
     auto facts = Store<key<int>, urd::change_log>();

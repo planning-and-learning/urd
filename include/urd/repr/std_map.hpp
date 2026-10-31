@@ -83,8 +83,8 @@ struct map_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 5;
     };
     static constexpr std::string_view description = "std::map (balanced tree)";
@@ -122,8 +122,8 @@ struct multimap_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 5;
     };
     static constexpr std::string_view description = "std::multimap (balanced tree)";
@@ -160,8 +160,8 @@ struct unordered_map_decl
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
         static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 4;
     };
     static constexpr std::string_view description = "std::unordered_map (hash table)";
@@ -198,8 +198,8 @@ struct unordered_multimap_decl
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
         static constexpr cost erase = costs::lin_row_e;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 4;
     };
     static constexpr std::string_view description = "std::unordered_multimap (hash table)";

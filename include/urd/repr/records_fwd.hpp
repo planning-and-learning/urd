@@ -8,7 +8,6 @@
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
 
@@ -71,9 +70,9 @@ struct record_interner_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::lin_row_t;
-        static constexpr cost find_row = costs::lin_row_t;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::lin_row;
+        static constexpr cost find_row = costs::lin_row;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.5;
     };
     static constexpr std::string_view description = "record interner (trivially copyable records in an indexed set)";
@@ -107,9 +106,9 @@ struct stable_record_interner_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::lin_row_t;
-        static constexpr cost find_row = costs::lin_row_t;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::lin_row;
+        static constexpr cost find_row = costs::lin_row;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.6;
     };
     static constexpr std::string_view description = "record interner over segments that never move (no lock)";
@@ -143,9 +142,9 @@ struct thread_safe_record_interner_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::lin_row_t;
-        static constexpr cost find_row = costs::lin_row_t;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::lin_row;
+        static constexpr cost find_row = costs::lin_row;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.7;
     };
     static constexpr std::string_view description = "record interner, thread-safe";
@@ -179,9 +178,9 @@ struct arena_interner_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::lin_row_t;
-        static constexpr cost find_row = costs::lin_row_t;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::lin_row;
+        static constexpr cost find_row = costs::lin_row;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.5;
     };
     static constexpr std::string_view description = "arena interner (records serialized by cista into a byte arena)";
@@ -215,9 +214,9 @@ struct thread_safe_arena_interner_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert_row = costs::lin_row_t;
-        static constexpr cost find_row = costs::lin_row_t;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert_row = costs::lin_row;
+        static constexpr cost find_row = costs::lin_row;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2.7;
     };
     static constexpr std::string_view description = "arena interner, thread-safe";

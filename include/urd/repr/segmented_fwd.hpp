@@ -60,8 +60,8 @@ struct segmented_vector_decl
     struct operation_costs
     {
         static constexpr cost insert = costs::one_a;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "segmented vector (elements never move)";
@@ -96,8 +96,8 @@ struct concurrent_segmented_vector_decl
     struct operation_costs
     {
         static constexpr cost insert = costs::one_a;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 1.6;
     };
     static constexpr std::string_view description = "segmented vector, thread-safe appends";

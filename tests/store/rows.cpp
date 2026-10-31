@@ -1,8 +1,6 @@
 // Rows of a fixed shape: bits and elements changed in place, nested and tracked. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/compose/family.hpp"
-#include "urd/concepts.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/csr_multimap.hpp"
 #include "urd/repr/dense_multimap.hpp"

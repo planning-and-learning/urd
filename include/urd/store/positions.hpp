@@ -118,7 +118,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::positions>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>); }

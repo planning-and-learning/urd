@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <concepts>
 #include <ranges>
+#include <type_traits>
 
 namespace urd::detail::facet
 {
@@ -33,10 +34,14 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::equality>
 {
-    static constexpr bool reads_container = true;
     template<typename R, typename S>
     static constexpr bool on()
-    { return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>; }
+    {
+        if constexpr (std::is_void_v<R>)  // asked from the spec alone, before a container is chosen
+            return false;
+        else
+            return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>;
+    }
 };
 
 }  // namespace urd::detail

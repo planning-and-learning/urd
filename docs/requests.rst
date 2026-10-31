@@ -97,23 +97,9 @@ assertion that names what is wrong.
 * The rules add what the request implies: a sequence is ``positional`` and ``dense`` (positions are 0..n-1); a
   set, and a map without ``multi``, is ``unique``; a ``frozen`` Store has ``stable_refs``; ``frozen`` or
   ``fixed_shape`` makes a Store immutable, ``monotone`` or ``nonempty`` makes it growable, else it is shrinkable.
-* A pool (``handles``) holds ``value<V>`` rows, is reached by handle, and cannot be ``positional`` or ``frozen``; a
-  pool of records that are no range must say ``flat``; ``flat`` goes with ``handles, unique`` only.
-* A queue changes by ``push`` and ``pop`` and cannot be ``frozen`` or ``positional``; ``monotone_priority`` needs
-  ``by_priority``.
-* ``fixed_shape`` is a sequence of rows (``value<Store<...>>``) that is not ``monotone``.
-* ``contiguous`` with ``stable_refs`` needs ``frozen``: contiguous storage moves its elements when it grows; a
-  sequence or a ``positional`` set with ``stable_refs`` needs ``monotone`` or ``frozen``: erasing or inserting at a
-  position moves the elements after it.
-* ``nonempty`` is a promise about iterated elements: sets, maps and sequences, not queues or pools.
-* ``concurrent`` goes with hashed or ``dense`` Stores: no concurrent sorted container, no concurrent queue (its
-  front moves with ``pop``), and a ``frozen`` Store is read by any number of threads without it.
-* ``order_by`` needs ``sorted`` or ``by_priority``; on unique keys the keys must be orderable, to break ties; a
-  ``dense`` Store is iterated by index and takes no ``order_by``; a map ordered by its values is a flat scan, so it
-  asks for ``small`` or ``frozen`` too.
-* ``dense`` with ``reclaims`` has no storage to return (a slot per index); ``constant_clear`` on a set or map needs
-  ``dense`` (a generation counter over slots); ``layered`` with ``sorted`` has no order over both layers; a
-  ``partition`` is single-threaded.
+* A pool (``handles``) holds ``value<V>`` rows reached by handle, not by key; a ``partition`` groups keys, without
+  values; ``order_by`` on unique keys needs orderable keys, to break ties.
+* Any other request no container serves fails in the registry.
 
 Resolution
 ----------
@@ -126,21 +112,14 @@ is also a demand, since a container that stores by index needs keys that are ind
 only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
 and checked by a test, and a second test checks that no serving candidate demands what a request did not promise.
 
-A request no container serves fails with a static assertion whose instantiation names the culprits: the stated
-tags whose removal, one at a time, would make it servable, and whether the key type is hashable, orderable and
-indexable.
+A request no container serves fails with a static assertion; its instantiation names the request:
 
 .. code-block:: text
 
-   In instantiation of 'no_representation_for<spec<std::string, void, ..., urd::tag::dense, ...>, culprits<urd::tag::dense>, true, true, false>'
-   error: static assertion failed: urd::Store: no representation provides this combination of properties. ...
+   In instantiation of 'no_representation_for<spec<std::string, void, ..., urd::tag::dense, ...>>'
+   error: static assertion failed: urd::Store: no container serves this request: drop or change a tag
 
-A call to an operation the properties rule out names the property:
-
-.. code-block:: text
-
-   error: no matching function for call to 'insert'
-   note: constraints not satisfied: 'denied<"insert: the Store is frozen; it changes only by assign(first, last)">'
+A call to an operation the properties rule out is a plain compile error: the Store has no such member.
 
 .. _building:
 
@@ -163,8 +142,7 @@ stays as cheap as containers are added: a request names only the container it re
 header of each container its Stores resolve to, ``urd/repr/<container>.hpp`` (:doc:`representations` lists them),
 and a Store whose container's header is missing fails to compile naming the headers to include. No header includes
 every container: the record pools alone bring cista's serialization, which only a file holding such a pool should
-pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
-``urd/compose/family.hpp`` for families of Stores.
+pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, and ``urd/view.hpp`` where views are made.
 
 This documentation is built with Sphinx:
 

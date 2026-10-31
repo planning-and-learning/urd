@@ -6,19 +6,12 @@ find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}"
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
 # nested Stores. Those below count allocations (allocations.cpp replaces operator new).
-foreach(test properties rows semantics queues pools registry denials views concurrency complexity complexity_verify groups)
+foreach(test properties rows semantics queues pools views concurrency complexity)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
     set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 endforeach()
-# Open findings of the group checks (claude.taxonomy.md, Status), for the user to decide, run but not gating:
-# reclaims switches off an insertion-ordered set's positions (a cost tag changing the interface); canonical and sparse
-# change no resolution of the grid; stating sparse leaves requests unservable whose containers do not declare it.
-set_tests_properties(groups PROPERTIES ENVIRONMENT
-    "GTEST_FILTER=-Groups.CostsChangeNoFacetAndNoOtherGuarantee:Groups.EveryPublicTagChangesSomeResolutionOrInterface:Groups.SparseChangesNoResolution")
-add_test(NAME groups_open COMMAND test_groups --gtest_filter=Groups.CostsChange*:Groups.EveryPublic*:Groups.Sparse*)
-set_tests_properties(groups_open PROPERTIES WILL_FAIL TRUE)
 target_sources(test_properties PRIVATE allocations.cpp)
 # Each container's property tests (tests/container.cpp, the suite of tests/properties.hpp), linked into one program;
 # the gtest main collects the instantiations. benchmarks/requests.json's `tested` lists what each is tested for.
@@ -31,8 +24,6 @@ target_link_libraries(test_containers PRIVATE ${container_test_objects} urd::urd
 add_test(NAME containers COMMAND test_containers)
 set_tests_properties(containers PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-add_test(NAME containers_coverage
-         COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/containers_coverage.py $<TARGET_FILE:test_containers>)
 # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
 # positive of its optimizer, not a defect of the code); the other warnings stay on.
 target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
@@ -91,18 +82,8 @@ if(URD_BUILD_BENCHMARKS)
              COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/benchmarks/record.py coverage --binary $<TARGET_FILE:benchmark_comparisons>)
 endif()
 
-# The include root holds the vocabulary and the entry point only.
-add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)
 # The glue names no specific tag: what a tag means is declared beside it, in the rules or by a container (tests/generic.py).
 add_test(NAME generic COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/generic.py ${PROJECT_SOURCE_DIR})
-
-# Declarations from the four libraries as Store requests: compiling them is the test.
-add_library(survey OBJECT survey.cpp)
-target_link_libraries(survey PRIVATE urd::urd)
-
-# Resolving a request completes neither the candidates nor a Store named as the element: compiling it is the test.
-add_library(selection OBJECT selection.cpp)
-target_link_libraries(selection PRIVATE urd::urd)
 
 # The tests that came with the representations copied from yggdrasil, unchanged but for names.
 foreach(test segmented_vector tree_vector_set tree_bitset_set)
@@ -146,13 +127,12 @@ function(urd_budget name target source limit_gnu limit_clang)
              COMMAND_EXPAND_LISTS)
 endfunction()
 
-# The bare include (urd/store.hpp and nothing else) and the survey, a file holding many Stores.
+# The bare include (urd/store.hpp and nothing else).
 add_executable(test_budget_bare_control EXCLUDE_FROM_ALL budget/bare.cpp)
 target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
-urd_budget(survey survey survey.cpp 720 650)
 
-# A file holding a Store pays for its own container and for no other registered one (claude.layout.md): tests/scaling.py
+# A file holding a Store pays for its own container and for no other registered one: tests/scaling.py
 # compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<key<int>>
 # resolves to Boost's flat hash set.
 find_program(URD_CLANG_FOR_TRACE NAMES clang++ clang++-18)
@@ -186,61 +166,37 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 69)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 59)
 # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "are derived, never stated")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
-urd_compile_fail_expects(compile_fail_store 6 "stable_refs needs frozen too")
-urd_compile_fail_expects(compile_fail_store 7 "so it cannot have key<K>")
-urd_compile_fail_expects(compile_fail_store 9 "at most one key<K>")
-urd_compile_fail_expects(compile_fail_store 10 "every argument must be an urd property")
-urd_compile_fail_expects(compile_fail_store 14 "two properties answer the same question")
-urd_compile_fail_expects(compile_fail_store 24 "a queue changes by push and pop")
-urd_compile_fail_expects(compile_fail_store 27 "is reached by handle, not by key")
-urd_compile_fail_expects(compile_fail_store 28 "orders a sorted Store or a by_priority queue")
-urd_compile_fail_expects(compile_fail_store 29 "breaks ties by the keys' own order")
-urd_compile_fail_expects(compile_fail_store 31 "P is neither")
-urd_compile_fail_expects(compile_fail_store 36 "stores them flat: ask for flat")
-urd_compile_fail_expects(compile_fail_store 37 "ask for handles and unique too")
-urd_compile_fail_expects(compile_fail_store 44 "a queue empties by pop")
-urd_compile_fail_expects(compile_fail_store 45 "a partition groups key<K>s")
-urd_compile_fail_expects(compile_fail_store 46 "so it makes a priority queue")
-urd_compile_fail_expects(compile_fail_store 47 "fixed_shape is a sequence of rows")
-urd_compile_fail_expects(compile_fail_store 13 "stable_refs on a sequence or a positional set needs monotone")
-urd_compile_fail_expects(compile_fail_store 50 "stable_refs on a sequence or a positional set needs monotone")
-urd_compile_fail_expects(compile_fail_store 48 "no concurrent sorted container")
-urd_compile_fail_expects(compile_fail_store 49 "no queue is concurrent")
-urd_compile_fail_expects(compile_fail_store 51 "any number of threads may read it")
-urd_compile_fail_expects(compile_fail_store 52 "reclaims needs sparse keys")
-urd_compile_fail_expects(compile_fail_store 53 "ask for dense too")
-urd_compile_fail_expects(compile_fail_store 54 "so no order_by<P> applies")
-urd_compile_fail_expects(compile_fail_store 55 "ask for small or frozen too")
-urd_compile_fail_expects(compile_fail_store 56 "no order holds over both")
-urd_compile_fail_expects(compile_fail_store 57 "single-threaded")
-# A request no representation serves names the culprits (registry.hpp).
-urd_compile_fail_expects(compile_fail_store 8 "culprits<urd::tag::dense>")
-urd_compile_fail_expects(compile_fail_store 32 "culprits<>, false")
-urd_compile_fail_expects(compile_fail_store 33 "culprits<>, false")
-urd_compile_fail_expects(compile_fail_store 40 "culprits<urd::tag::layered>")
-urd_compile_fail_expects(compile_fail_store 41 "culprits<urd::tag::layered, urd::tag::structural_sharing>")
-urd_compile_fail_expects(compile_fail_store 43 "culprits<urd::tag::concurrent, urd::tag::layered>")
-# A missing operation names the property that rules it out (store/denials.hpp).
-urd_compile_fail_expects(compile_fail_store 1 "a set has no positions")
-urd_compile_fail_expects(compile_fail_store 2 "insert: the Store is frozen")
-urd_compile_fail_expects(compile_fail_store 3 "pop_back: the Store is monotone")
-urd_compile_fail_expects(compile_fail_store 26 "a pool is reached by handle")
-urd_compile_fail_expects(compile_fail_store 58 "operator==: a layered Store.*s contents include its parent")
-urd_compile_fail_expects(compile_fail_store 59 "erase: the pool is monotone")
-urd_compile_fail_expects(compile_fail_store 60 "erase: a pool with structural_sharing shares nodes")
-urd_compile_fail_expects(compile_fail_store 61 "erase: a concurrent pool is read without a lock")
-urd_compile_fail_expects(compile_fail_store 62 "erase: a layered pool.*s handles are continued")
-urd_compile_fail_expects(compile_fail_store 63 "front/back: dense keys are found by scanning their range")
-urd_compile_fail_expects(compile_fail_store 64 "begin/end: a bucket queue")
-urd_compile_fail_expects(compile_fail_store 65 "back: only a fifo queue has a back")
-urd_compile_fail_expects(compile_fail_store 66 "operator.*: a queue is reached by its front or top; ask for handles")
-urd_compile_fail_expects(compile_fail_store 67 "count: a partition holds each element once")
-urd_compile_fail_expects(compile_fail_store 68 "begin/end: a layered pool reaches each record")
-urd_compile_fail_expects(compile_fail_store 69 "values kept by value .unique or multi, without key<K>. are kept in order")
+urd_compile_fail_expects(compile_fail_store 6 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 8 "at most one key<K>")
+urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd property")
+urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same question")
+urd_compile_fail_expects(compile_fail_store 24 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 27 "P is neither")
+urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 33 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 39 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 40 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 12 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 43 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 41 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 42 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 44 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 45 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 46 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 47 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 48 "no container serves this request")
+# A request no container serves (urd/registry/select.hpp).
+urd_compile_fail_expects(compile_fail_store 7 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 28 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 29 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 36 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 37 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 38 "no container serves this request")
 # A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
 # chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)

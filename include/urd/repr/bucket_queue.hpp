@@ -25,7 +25,7 @@ namespace urd::repr
 {
 
 template<typename T, typename Compare>
-[[nodiscard]] constexpr bucket_priority_t<T, Compare> bucket_priority(const T& element)
+[[nodiscard]] constexpr urd::detail::order_key_t<T, Compare> bucket_priority(const T& element)
 {
     if constexpr (requires { Compare::projection; })
         return std::invoke(Compare::projection, element);

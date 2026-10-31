@@ -108,10 +108,10 @@ struct dense_set_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
+        static constexpr cost erase = costs::one;
         static constexpr cost clear = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 0.016;
@@ -147,11 +147,11 @@ struct tracked_dense_set_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::lin_n;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 0.03;
     };
@@ -186,11 +186,11 @@ struct sparse_set_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::one_t;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::one;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 2;
     };
     static constexpr std::string_view description = "sparse set (members array plus index positions, O(1) clear)";
@@ -224,12 +224,12 @@ struct ordered_sparse_set_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
-        static constexpr cost erase = costs::lin_nt;
-        static constexpr cost clear = costs::one_t;
-        static constexpr cost iterate = costs::lin_nt;
-        static constexpr cost access = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost clear = costs::one;
+        static constexpr cost iterate = costs::lin_n;
+        static constexpr cost access = costs::one;
         static constexpr double words = 2;
     };
     static constexpr std::string_view description = "sparse set keeping insertion order (erase shifts the members after it)";
@@ -263,10 +263,10 @@ struct dense_map_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
+        static constexpr cost erase = costs::one;
         static constexpr cost clear = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.2;
@@ -302,10 +302,10 @@ struct stable_dense_map_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
+        static constexpr cost erase = costs::one;
         static constexpr cost clear = costs::lin_keys;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.3;
@@ -341,11 +341,11 @@ struct generation_map_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::one_t;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::one;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.6;
     };
@@ -380,11 +380,11 @@ struct stable_generation_map_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::one_t;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::one;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.7;
     };
@@ -419,11 +419,11 @@ struct thread_safe_generation_map_decl
     }
     struct operation_costs
     {
-        static constexpr cost insert = costs::one_at;
-        static constexpr cost lookup = costs::one_t;
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost lookup = costs::one;
         static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one_t;
-        static constexpr cost clear = costs::one_t;
+        static constexpr cost erase = costs::one;
+        static constexpr cost clear = costs::one;
         static constexpr cost iterate = costs::lin_keys;
         static constexpr double words = 1.8;
     };

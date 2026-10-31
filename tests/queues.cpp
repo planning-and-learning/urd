@@ -82,8 +82,6 @@ static_assert(iterable<Store<value<int>, urd::fifo>> && !iterable<Store<value<in
               && has_front<Store<value<int>, urd::fifo>> && !has_top<Store<value<int>, urd::fifo>>);
 static_assert(has_top<Store<value<int>, urd::by_priority>> && !has_front<Store<value<int>, urd::by_priority>>);
 
-TYPED_TEST(Queues, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
-
 TYPED_TEST(Queues, LeavesInItsOrderThroughRandomOperations)
 {
     for (unsigned seed = 0; seed < 64; ++seed)

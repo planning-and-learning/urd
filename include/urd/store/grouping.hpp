@@ -1,6 +1,5 @@
 #pragma once
 
-#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <cstddef>
@@ -24,9 +23,6 @@ public:
     [[nodiscard]] key find(const key& element) const { return constant().find(element); }
     /// Whether `element` is an element of some class.
     [[nodiscard]] bool contains(const key& element) const { return constant().contains(element); }
-    template<typename... Args>
-        requires denied<"count: a partition holds each element once; contains tells whether it does">
-    void count(Args&&...) const;
     [[nodiscard]] bool same(const key& lhs, const key& rhs) const { return constant().same(lhs, rhs); }
     [[nodiscard]] std::size_t class_size(const key& element) const { return constant().class_size(element); }
     /// How many classes there are.
@@ -49,7 +45,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::grouping>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return S::is_partition; }

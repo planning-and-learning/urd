@@ -197,8 +197,7 @@ std::string generate()
             {
                 costs += "{\"cost\": " + json_text(fmt::format("{}", *how));
                 costs += ", \"growth\": " + json_text(urd::name(how->grows));
-                costs += ", \"in\": " + json_text(urd::name(how->of));
-                costs += ", \"verified\": " + json_text(how->timed ? "timed" : "counted") + "}";
+                costs += ", \"in\": " + json_text(urd::name(how->of)) + "}";
             }
         }
         out += first ? "  " : ",\n  ";

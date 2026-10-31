@@ -66,7 +66,7 @@ std::string spec_tags()
 
 /// Why a request of the grid resolves to `none`, keyed by the request as written. A missing representation is
 /// one that could be written (nobody has needed it yet); an incompatible one is a contract no representation can
-/// keep, which the registry rejects with culprits (its compile-fail case is named). generate() fails on a `none`
+/// keep, which the registry rejects (its compile-fail case is named). generate() fails on a `none`
 /// row without a note, and on a note whose request is served now.
 const std::map<std::string, std::string>& notes()
 {
@@ -77,15 +77,15 @@ const std::map<std::string, std::string>& notes()
         { "Store<key<Id>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
         { "Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, dense, stable_refs, frozen, functional, positional>>, unique, "
           "concurrent, layered, handles, growable, monotone>>, dense, layered, concurrent>",
-          "missing: the concurrent slot directory (compile-fail case 43)" },
+          "missing: the concurrent slot directory (compile-fail case 38)" },
         { "Store<key<int>, value<int>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
         { "Store<key<std::string>, value<double>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
         { "Store<key<Id>, value<Id>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
-        { "Store<value<int>, handles, layered>", "incompatible: slots are recycled, so no layer continues their handles (compile-fail case 40)" },
+        { "Store<value<int>, handles, layered>", "incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36)" },
         { "Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, structural_sharing, layered>",
-          "incompatible: a tree pool numbers nodes, not rows (compile-fail case 41)" },
-        { "Store<key<Store<key<int>, unique, shrinkable>>>", "incompatible: an unordered Store is no hashed key (compile-fail case 32)" },
-        { "Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>", "incompatible: dense alone fixes no order (compile-fail case 33)" },
+          "incompatible: a tree pool numbers nodes, not rows (compile-fail case 37)" },
+        { "Store<key<Store<key<int>, unique, shrinkable>>>", "incompatible: an unordered Store is no hashed key (compile-fail case 28)" },
+        { "Store<key<Store<key<int>, unique, dense, stable_refs, frozen>>>", "incompatible: dense alone fixes no order (compile-fail case 29)" },
         { "Store<key<int>, insertion_ordered, reclaims>",
           "missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks" },
         { "Store<key<int>, scoped>", "missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps" },
@@ -157,7 +157,7 @@ std::string generate()
            "representation that could be written (its note says which); or incompatible, a contract no representation can\n"
            "keep, which `Store` rejects with a message (the rules are listed in docs/language/index.rst, \"Incompatible\n"
            "combinations\"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`\n"
-           "with its culprits' compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,\n"
+           "with its compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,\n"
            "indexable).\n";
     auto noted = std::set<std::string>();
     urd::test::for_each_group(

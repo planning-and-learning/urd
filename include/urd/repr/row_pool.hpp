@@ -3,7 +3,6 @@
 // Rows that keep their storage for reuse: a vector of row Stores whose erased rows wait to be refilled.
 
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/rows_fwd.hpp"

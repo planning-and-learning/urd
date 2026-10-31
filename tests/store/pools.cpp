@@ -1,8 +1,6 @@
 // Interners, partitions and pools of records. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/compose/family.hpp"
-#include "urd/concepts.hpp"
 #include "urd/repr/arena.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/change_logged.hpp"

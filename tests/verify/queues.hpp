@@ -3,7 +3,6 @@
 // urd::verify for queues: pushes, pops and clears checked against a model of the elements in the order pushed.
 
 #include "common.hpp"
-#include "urd/interface.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 

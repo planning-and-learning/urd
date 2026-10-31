@@ -3,7 +3,6 @@
 // urd::verify for maps: random inserts, erases and clears checked against a model of the entries (MapModel).
 
 #include "common.hpp"
-#include "urd/interface.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -167,7 +166,7 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
     return std::nullopt;
 }
 
-/// urd::verify for a conforming map R: inserts of every kind the standard's maps have, erases by key, position
+/// urd::verify for a map R: inserts of every kind the standard's maps have, erases by key, position
 /// and range, and clears, each checked against the model.
 template<typename R>
 std::optional<std::string> run_map(R& range, unsigned seed, int steps)

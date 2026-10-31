@@ -84,6 +84,21 @@ inline constexpr bool is_projected_less = false;
 template<typename T, auto P>
 inline constexpr bool is_projected_less<ProjectedLess<T, P>, T> = true;
 
+/// What order Compare compares elements T by: its projection's result where it projects (order_by<P>), else T.
+template<typename T, typename Compare>
+struct order_key_of
+{
+    using type = T;
+};
+template<typename T, typename Compare>
+    requires requires { Compare::projection; }
+struct order_key_of<T, Compare>
+{
+    using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
+};
+template<typename T, typename Compare>
+using order_key_t = typename order_key_of<T, Compare>::type;
+
 }  // namespace detail
 
 /// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses; or the

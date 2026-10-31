@@ -3,7 +3,6 @@
 // urd::verify for pools of records stored flat, and for layered ones.
 
 #include "common.hpp"
-#include "urd/interface.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 

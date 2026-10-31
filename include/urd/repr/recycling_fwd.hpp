@@ -91,7 +91,7 @@ struct recycling_map_decl
     struct operation_costs : map_decl::operation_costs
     {
         using part = map_decl;
-        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
         static constexpr double words = 5.5;
     };
     static constexpr std::string_view description = "recycling map (std::map that keeps erased nodes and their values for reuse)";
@@ -126,7 +126,7 @@ struct recycling_hash_set_decl
     struct operation_costs : unordered_set_decl::operation_costs
     {
         using part = unordered_set_decl;
-        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
         static constexpr double words = 4.5;
     };
     static constexpr std::string_view description = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
@@ -161,7 +161,7 @@ struct recycling_tree_set_decl
     struct operation_costs : set_decl::operation_costs
     {
         using part = set_decl;
-        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
         static constexpr double words = 5.5;
     };
     static constexpr std::string_view description = "recycling tree set (std::set that keeps erased nodes for reuse)";
@@ -199,7 +199,7 @@ struct recycling_hash_map_decl
     struct operation_costs : unordered_map_decl::operation_costs
     {
         using part = unordered_map_decl;
-        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
         static constexpr double words = 4.5;
     };
     static constexpr std::string_view description = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";

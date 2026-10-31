@@ -16,7 +16,7 @@ namespace urd
 {
 
 /// Whether C resolves indices of T: `context[index<T>]` is the record. A positional set or a pool of Ts does, and so
-/// does a Family of such Stores, for every member type, and a layer of them, for the records of every layer below.
+/// does a layer of them, for the records of every layer below.
 template<typename C, typename T>
 concept resolves = requires(const C& context, index<T> at) {
     { context[at] } -> std::convertible_to<const T&>;

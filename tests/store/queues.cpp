@@ -1,8 +1,6 @@
 // Queues: handles, iteration, and reading by handle. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/compose/family.hpp"
-#include "urd/concepts.hpp"
 #include "urd/repr/addressable_heap.hpp"
 #include "urd/repr/bucket_queue.hpp"
 #include "urd/repr/change_logged.hpp"
@@ -47,7 +45,7 @@ using urd::key;
 using urd::Store;
 using urd::value;
 
-// A layered Store has no ==: its contents include its parent's (store/denials.hpp names why).
+// A layered Store has no ==: its contents include its parent's.
 static_assert(!std::equality_comparable<Store<key<int>, urd::layered>> && std::equality_comparable<Store<key<int>>>);
 
 // A priority queue with handles gives the handle from emplace as from push, to update the element later.

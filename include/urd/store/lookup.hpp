@@ -36,7 +36,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::lookup>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return store_types<R, S>::keyed && S::iterable; }

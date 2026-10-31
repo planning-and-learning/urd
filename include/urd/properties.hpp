@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/incompatible.hpp"
+#include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -276,34 +276,12 @@ struct to_spec
     static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
 
-    /// What the request is, as its checks read it; every rule of urd/incompatible.hpp is asked of it.
-    static constexpr request_facts facts { .stated = stated,
-                                           .of = of,
-                                           .keyed = keyed,
-                                           .valued = valued,
-                                           .value_is_store = is_store<value_type>,
-                                           .value_iterates = iterates<value_type>,
-                                           .by = !ordered_by               ? order::none :
-                                                 is_entry_less<order_type> ? order::entry :
-                                                                             order::element,
-                                           .ordered_orderable = orderable<ordered_type> };
-    static_assert(sizeof(incompatible_rules<facts>) != 0);  // instantiates every rule, each asserting its message
+    static_assert(well_formed(stated, keyed, valued, ordered_by, orderable<ordered_type>),
+                  "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, or order_by<P> "
+                  "on unique keys that are not orderable (urd/rules.hpp, well_formed)");
 
     static constexpr listed_tags listed = non_roots(implied(stated, of));
     using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
-
-    /// The tags the request states (the roots left out), to probe one at a time where no representation serves it.
-    static constexpr listed_tags stated_tags = non_roots(stated);
-    /// What the request implies without `Reset` (its category back at its root, the rules applied again, so that
-    /// without frozen the implied stable_refs goes too).
-    template<tag Reset>
-    static constexpr listed_tags listed_without =
-        non_roots(implied(property_set(stated).put(root_of(Reset)), kind_of(property_set(stated).put(root_of(Reset)), keyed, valued)));
-    /// The spec of the request without `Reset`: what it would resolve to then. It runs none of the checks above; it is
-    /// for finding which tag an unservable request fails by.
-    template<tag Reset>
-    using without =
-        decltype(detail::spec_of<key_type, value_type, order_type, listed_without<Reset>>(std::make_index_sequence<listed_without<Reset>.count> {}));
 };
 
 }  // namespace detail

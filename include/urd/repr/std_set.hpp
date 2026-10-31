@@ -71,8 +71,8 @@ struct set_decl
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
         static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 5;
     };
     static constexpr std::string_view description = "std::set (balanced tree)";
@@ -109,8 +109,8 @@ struct unordered_set_decl
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
         static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 4;
     };
     static constexpr std::string_view description = "std::unordered_set (hash table)";

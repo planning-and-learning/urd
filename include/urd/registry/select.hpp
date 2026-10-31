@@ -1,8 +1,7 @@
 #pragma once
 
 // How a request chooses its container: the entry the scan chooses (urd/registry/scan.hpp), then the one type its
-// declaration names for the request (representation_of); and where none serves, what to drop (the diagnostics, the
-// same scan with one tag removed per try). No container type is named but the one chosen, so what resolving a request
+// declaration names for the request (representation_of); and where none serves, an error. No container type is named but the one chosen, so what resolving a request
 // costs the compiler in instantiations does not grow with the number of containers.
 
 #include "urd/elements.hpp"
@@ -92,59 +91,21 @@ struct chosen_type
                                      decltype(missing_headers<S>(std::make_index_sequence<registry_table[choose<S>::position].headers.size()> {}))>::type;
 };
 
-/// The tags of an unservable request whose removal, one at a time, would make it servable: what to drop, or what the
-/// pool lacks a representation for. Named in the error for such a request.
-template<tag... Ts>
-struct culprits
-{
-};
-
-/// The static assertion a request no representation serves fails with. Its arguments say why: the spec, the culprit
-/// tags, and whether the key (a sequence's or queue's element) is hashable, orderable and indexable, for when no tag
-/// is the culprit but the type is.
-template<typename S, typename Culprits, bool KeyHashable, bool KeyOrderable, bool KeyIndexable>
+/// The static assertion a request no container serves fails with; S, in its instantiation, names the request.
+template<typename S>
 struct no_representation_for
 {
-    static_assert(repr::dependent_false<S>::value,
-                  "urd::Store: no representation provides this combination of properties. The culprits<...> above name the tags "
-                  "whose removal, one at a time, would make it servable: drop one, or add a representation for them. No "
-                  "culprit named: the key type lacks what the request needs (hashable, orderable, indexable: the booleans "
-                  "above), or two of the tags clash");
+    static_assert(repr::dependent_false<S>::value, "urd::Store: no container serves this request: drop or change a tag");
     /// A stand-in, so that the assertion is the only error.
     using type = std::vector<typename S::element_type>;
 };
 
-template<typename Request, std::size_t... I>
-consteval listed_tags culprits_of(std::index_sequence<I...> /*positions*/)
-{
-    auto result = listed_tags {};
-    ((choose<typename Request::template without<Request::stated_tags.tags[I]>>::found ? void(result.tags[result.count++] = Request::stated_tags.tags[I]) :
-                                                                                        void()),
-     ...);
-    return result;
-}
-template<typename Request, listed_tags Found, std::size_t... I>
-consteval auto diagnosis(std::index_sequence<I...> /*positions*/)
-{
-    using spec = typename Request::type;
-    using probe = std::conditional_t<std::is_void_v<typename spec::key_type>, typename spec::element_type, typename spec::key_type>;
-    return std::type_identity<no_representation_for<spec, culprits<Found.tags[I]...>, hashable<probe>, orderable<probe>, indexable<probe>>> {};
-}
-/// The diagnosis of a request (a to_spec) no representation serves; its type is reached only then.
-template<typename Request>
-struct unservable
-{
-    static constexpr listed_tags found = culprits_of<Request>(std::make_index_sequence<Request::stated_tags.count> {});
-    using type = typename decltype(diagnosis<Request, found>(std::make_index_sequence<found.count> {}))::type::type;
-};
-
-/// The representation for a request (a to_spec), or where none serves it, the diagnosis: the culprit probes run only
-/// then.
+/// The representation for a request (a to_spec), or where none serves it, the error.
 template<typename Request>
 struct resolution
 {
     using spec = typename Request::type;
-    using type = typename std::conditional_t<choose<spec>::found, chosen_type<spec>, unservable<Request>>::type;
+    using type = typename std::conditional_t<choose<spec>::found, chosen_type<spec>, no_representation_for<spec>>::type;
 };
 
 }  // namespace urd::detail

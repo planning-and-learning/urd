@@ -6,7 +6,7 @@
 // not apply to a type, the feature is simply false, as a constraint is simply unsatisfied.
 
 #include "urd/elements.hpp"
-#include "urd/registry/element_concepts.hpp"
+#include "urd/registry/derived.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/traits.hpp"
 
@@ -25,6 +25,10 @@ consteval type_features features_of_type();
 template<typename T>
 inline constexpr store_facts store_facts_v { container_traits<T>::urd_properties, container_traits<T>::required, container_traits<T>::kind };
 
+/// The facts about registered container T held as an element, as a Store's: what it offers, requiring nothing.
+template<typename T>
+inline constexpr store_facts container_facts_v { offer_v<T>->properties, property_set::roots(), offer_v<T>->kind };
+
 /// The facts about T, once per type; a Store's elements' facts are reached through it.
 template<typename T>
 inline constexpr type_features features_v = features_of_type<T>();
@@ -42,11 +46,14 @@ consteval type_features features_of_type()
         result.trivially_copyable = trivially_copyable<T>;
         result.trivially_destructible = trivially_destructible<T>;
         result.default_initializable = slot_value<T>;
-        if constexpr (!is_store<T>)  // asking a Store for a member would complete it
-            result.serializable = requires { T::cista_members(); };
+        if constexpr (is_store<T>)  // asking a Store for a member would complete it
+            result.store = &store_facts_v<T>;
         else
         {
-            result.store = &store_facts_v<T>;
+            result.serializable = requires { T::cista_members(); };
+            if constexpr (declared_container<T>)
+                if constexpr (offer_v<T>.has_value())
+                    result.store = &container_facts_v<T>;
         }
         if constexpr (requires { typename row_element_t<T>; })
             result.element = &features_v<row_element_t<T>>;
@@ -68,8 +75,8 @@ consteval void add_order(request_features& f)
             f.by = order::element;
             f.order_natural = natural_order<C, Ordered>;
         }
-        if constexpr (requires { typename repr::bucket_priority_t<Ordered, C>; })
-            f.order_key = features_v<repr::bucket_priority_t<Ordered, C>>;
+        if constexpr (requires { typename order_key_t<Ordered, C>; })
+            f.order_key = features_v<order_key_t<Ordered, C>>;
     }
 }
 

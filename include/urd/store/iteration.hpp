@@ -46,7 +46,6 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::iteration>
 {
-    static constexpr bool reads_container = false;
     template<typename R, typename S>
     static constexpr bool on()
     { return S::iterable || (S::is_queue && !has<S, monotone_priority>); }

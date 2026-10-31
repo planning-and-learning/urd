@@ -5,7 +5,6 @@
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
@@ -74,8 +73,8 @@ struct change_logged_decl
     struct operation_costs : Part::operation_costs
     {
         using part = Part;
-        static constexpr cost erase = costs::lin_changes_t;
-        static constexpr cost clear = costs::n_changes_t;
+        static constexpr cost erase = costs::lin_changes;
+        static constexpr cost clear = costs::n_changes;
         static constexpr double words = Part::operation_costs::words + 1;
     };
     static constexpr std::string_view description = joined<change_logged_description, Part::description>::value;

@@ -66,8 +66,8 @@ struct flat_entry_map_decl
         static constexpr cost insert = costs::lin_n;
         static constexpr cost lookup = costs::lin_n;
         static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_nt;
-        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost clear = costs::lin_n;
+        static constexpr cost iterate = costs::lin_n;
         static constexpr double words = 1.5;
     };
     static constexpr std::string_view description = "flat entry map (entries in an order that reads their values, found by key)";

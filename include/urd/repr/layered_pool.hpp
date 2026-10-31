@@ -3,7 +3,6 @@
 // A pool over a parent pool: its own rows, numbered after the parent's.
 
 #include "urd/index.hpp"
-#include "urd/interface.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/layered_fwd.hpp"
 #include "urd/repr/pools_fwd.hpp"

@@ -1,5 +1,5 @@
 """The glue names no specific tag: what a tag means is declared beside the tag (urd/tags.hpp), in the rules
-(urd/rules.hpp, urd/incompatible.hpp) or by a container's declaration, and the glue only combines declarations.
+(urd/rules.hpp) or by a container's declaration, and the glue only combines declarations.
 
     python3 -I generic.py <repository root>
 

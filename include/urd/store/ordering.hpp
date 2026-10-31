@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <compare>
+#include <type_traits>
 
 namespace urd::detail::facet
 {
@@ -26,10 +27,14 @@ namespace urd::detail
 template<>
 struct facet_condition<facet_id::ordering>
 {
-    static constexpr bool reads_container = true;
     template<typename R, typename S>
     static constexpr bool on()
-    { return compares_in_order<R, S>(); }
+    {
+        if constexpr (std::is_void_v<R>)  // asked from the spec alone, before a container is chosen
+            return false;
+        else
+            return compares_in_order<R, S>();
+    }
 };
 
 }  // namespace urd::detail
