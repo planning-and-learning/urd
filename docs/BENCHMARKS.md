@@ -1,6 +1,6 @@
 # Benchmarks
 
-What `benchmarks/containers.cpp` measures, and the preference orders in `include/urd/registry.hpp` that cite it.
+What `benchmarks/containers.cpp` measures, and the preference orders in `include/urd/registry/preferences.hpp` that cite it.
 Each number is nanoseconds per element (lower is better); the fastest in a row is bold. Inserting a random
 order into a sorted vector is O(n²), so its insert and clear-and-refill rows stop at 10⁴.
 

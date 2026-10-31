@@ -34,7 +34,7 @@ urd clone, directly on `main`, one milestone at a time, each with its own short 
 
 **For a new representation:**
 - its `container_traits` (constrained on what it needs of its elements);
-- a place in the preference lists in `include/urd/registry.hpp`;
+- a place in the preference lists in `include/urd/registry/preferences.hpp`;
 - an entry in a typed test list;
 - rows in the grid (`tests/grid.hpp`) for the requests it now serves, shown in `docs/RESOLUTION.md`.
 

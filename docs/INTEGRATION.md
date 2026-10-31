@@ -109,7 +109,7 @@ its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it
 
-Add its template to one list in `include/urd/registry.hpp`: `element_preference` for one taking the element
+Add its template to one list in `include/urd/registry/preferences.hpp`: `element_preference` for one taking the element
 type, `map_preference` for a map taking its key and value types. A container with further template parameters
 gets an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order). Nothing
 else is written per container: a request takes the first container in the list that serves it, meaning its
@@ -533,7 +533,7 @@ A workload (`small`) is the one category that only chooses: a request says how t
 changes the representation picked, never what the Store guarantees. Each workload must be backed by a
 benchmark.
 
-The preference lists in `include/urd/registry.hpp` are judged against costs and measurements, both kept as data:
+The preference lists in `include/urd/registry/preferences.hpp` are judged against costs and measurements, both kept as data:
 
 - **Costs.** Each container declares its cost per operation and its memory per element (`urd::container_costs`,
   section 5); `share/urd/complexity.json` is generated from them (`complexity_table`).
