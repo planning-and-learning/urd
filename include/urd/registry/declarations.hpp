@@ -8,11 +8,9 @@
 // promises dense keys reaches them at all (dense is demanded); the indexed set, after them too, only a request for
 // insertion order or positions. Frozen rows are flattened first; rows are kept for reuse only where their memory must
 // be.
-//
-// A downstream project registers its own containers by specializing user_declarations after including this header
-// and before urd/store.hpp: they are tried after urd's.
 
 #include "urd/registry/declaration.hpp"
+
 #include "urd/repr/change_logged_fwd.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/disjoint_sets_fwd.hpp"
@@ -126,13 +124,5 @@ using declarations = type_list<jagged_decl,
                                layered_decl<dense_map_decl, false>,
                                layered_decl<generation_map_decl, false>,
                                flat_entry_map_decl>;
-
-/// A downstream project's declarations, tried after urd's: specialize user_declarations<> with `using type =
-/// type_list<…>` of its own, after this header and before urd/store.hpp. Empty by default.
-template<typename = void>
-struct user_declarations
-{
-    using type = type_list<>;
-};
 
 }  // namespace urd::detail

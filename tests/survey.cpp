@@ -1,4 +1,4 @@
-// Declarations from yggdrasil, loki, tyr and runir (docs/SURVEY.md), restated as Store requests, with what
+// Declarations from yggdrasil, loki, tyr and runir, restated as Store requests, with what
 // each resolves to. The libraries' index and view types are stood in for by a type that names its identity
 // (identifying_members()), from which urd hashes, compares and orders it: nothing is put into namespace std.
 // It compiles or it does not: there is nothing to run.
@@ -172,7 +172,7 @@ static_assert(std::same_as<Marked::representation, urd::repr::SparseSet<Action>>
 // tyr and runir search: the node of each state index, as search proceeds.
 using SearchNodes = Store<key<State>, value<SearchNode>, urd::dense>;
 static_assert(std::same_as<SearchNodes::representation, urd::repr::IndexMap<State, SearchNode, false>>);
-// The same where the search keeps pointers to nodes while states are added (gap 5 of docs/SURVEY.md): slots in
+// The same where the search keeps pointers to nodes while states are added: slots in
 // segments that never move, no lock.
 using PointedNodes = Store<key<State>, value<SearchNode>, urd::dense, urd::stable_refs>;
 static_assert(std::same_as<PointedNodes::representation, urd::repr::IndexMap<State, SearchNode, false, false, true>>);
@@ -368,7 +368,7 @@ using VertexRows = Store<value<DistinctVertexRows::handle_type>>;
 static_assert(std::same_as<PartitionBitsets::representation, urd::repr::RowInterner<PartitionBitset>>);
 static_assert(std::same_as<decltype(PartitionBitsets().view(PartitionBitsets::handle_type {})), urd::repr::BitsetSpan<const std::uint64_t>>);
 
-// The second pass (docs/SURVEY.md, 2026-10-29), on the libraries' newest branches: what the first pass left as a gap
+// The second pass (2026-10-29), on the libraries' newest branches: what the first pass left as a gap
 // and later milestones closed, pinned from the sites that asked for it.
 
 // yggdrasil database/search/a_star.hpp: OpenList, now ordered by f ascending, then larger g, then the later push: a

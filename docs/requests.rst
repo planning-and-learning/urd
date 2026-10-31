@@ -118,7 +118,7 @@ assertion that names what is wrong.
 Resolution
 ----------
 
-The registry (``include/urd/registry.hpp``) lists the containers in an order backed by :doc:`BENCHMARKS`; the first
+The registry (``include/urd/registry/declarations.hpp``) lists the containers in an order backed by :doc:`BENCHMARKS`; the first
 whose declared traits satisfy every property of the request, whose demands the request meets, and whose interface
 matches the request's kind (kept by value where the request is, unique, by handle, flat, a map, a queue exactly
 where the request is), is chosen. A declared guarantee the request left open is free, with one exception: ``dense``

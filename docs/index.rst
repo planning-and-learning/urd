@@ -67,9 +67,6 @@ complexity of each operation per representation.
    :maxdepth: 1
    :caption: Development
 
-   INTEGRATION
    BENCHMARKS
-   SURVEY
-   ROADMAP
 
 Header-only C++20, GPL-3.0. Build: see :ref:`building`.

@@ -49,7 +49,7 @@
 // The tables and the grid.
 #include "complexity.hpp"
 #include "grid.hpp"
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>

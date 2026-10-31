@@ -8,13 +8,24 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
 #include <cstddef>
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P segmented_vector(bool concurrent_)
+{ return props({ tag::dense, tag::positional, tag::stable_refs, tag::growable, tag::retains, tag::proportional_clear, threads(concurrent_) }); }
+
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

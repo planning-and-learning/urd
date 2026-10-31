@@ -6,8 +6,7 @@ Representations
 The containers a Store can resolve to live in ``include/urd/repr``, which code that uses a Store never includes:
 requests use only the vocabulary of ``urd/tags.hpp`` and ``urd/properties.hpp``. Each container declares the
 properties it keeps in ``container_traits``, and the typed tests check every declared property against a reference
-model through thousands of random operations; a deliberately wrong declaration is caught. Adding a container is
-described in :doc:`INTEGRATION`.
+model through thousands of random operations; a deliberately wrong declaration is caught.
 
 Headers
 -------

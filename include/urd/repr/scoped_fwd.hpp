@@ -10,12 +10,28 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/flat_hash.hpp"
+#include "urd/repr/std_map.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <map>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P scoped(const P& part)
+{
+    if (!part || !part->has(tag::unique) || !part->has(tag::functional))
+        return {};
+    return with(*part, { tag::scoped });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {
@@ -59,6 +75,7 @@ struct scoped_map_decl
     }
     struct operation_costs
     {
+        using part = unordered_flat_map_decl;
         static constexpr cost insert = costs::one_ae;
         static constexpr cost lookup = costs::one_e;
         static constexpr cost erase = costs::one_e;
@@ -98,6 +115,7 @@ struct scoped_tree_map_decl
     }
     struct operation_costs
     {
+        using part = map_decl;
         static constexpr cost insert = costs::log_n;
         static constexpr cost lookup = costs::log_n;
         static constexpr cost ordered_lookup = costs::log_n;
@@ -138,6 +156,7 @@ struct scoped_dense_map_decl
     }
     struct operation_costs
     {
+        using part = dense_map_decl;
         static constexpr cost insert = costs::one_at;
         static constexpr cost lookup = costs::one_t;
         static constexpr cost ordered_lookup = costs::lin_keys;

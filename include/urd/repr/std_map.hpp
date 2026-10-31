@@ -6,12 +6,47 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <functional>
 #include <map>
 #include <unordered_map>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P tree_map(const T& key, const F& f)
+{
+    if (!orders(key, f))
+        return {};
+    return props({ tag::sorted, tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+}
+
+constexpr P tree_multimap(const T& key, const F& f)
+{
+    if (!orders(key, f))
+        return {};
+    return props({ tag::sorted, tag::multi, tag::stable_refs, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+}
+
+constexpr P hash_map(const T& key)
+{
+    if (!key.hashable)
+        return {};
+    return props({ tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable });
+}
+
+constexpr P hash_multimap(const T& key)
+{
+    if (!key.hashable)
+        return {};
+    return props({ tag::multi, tag::stable_refs, tag::shrinkable });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd
 {

@@ -48,7 +48,7 @@ struct nth<I, type_list<Ts...>>
 template<typename S>
 inline constexpr serving_entries serving_v = all_serving(shape_of<S>, features_of<S>());
 template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], all_declarations>::type...>;
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], declarations>::type...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 
@@ -85,7 +85,7 @@ struct missing_headers_for<S, Decl, type_list<>>
 template<typename S>
 struct chosen_type
 {
-    using declaration = typename nth<choose<S>::position, all_declarations>::type;
+    using declaration = typename nth<choose<S>::position, declarations>::type;
     using type =
         typename missing_headers_for<S,
                                      declaration,

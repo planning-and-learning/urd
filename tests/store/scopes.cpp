@@ -109,7 +109,7 @@ TEST(Scoped, PopUndoesTheScopesChanges)
     }
 }
 
-// A binding is in the innermost scope where that scope made it (loki's redeclaration check, gap 12 of docs/SURVEY.md).
+// A binding is in the innermost scope where that scope made it (loki's redeclaration check).
 TEST(Scoped, BoundInScopeIsTheInnermostScopesOwn)
 {
     auto symbols = Store<key<std::string>, value<int>, urd::scoped>();

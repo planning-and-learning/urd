@@ -53,7 +53,7 @@
 #include "generated.hpp"
 #include "grid.hpp"
 #include "urd/format.hpp"
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 
 #include <array>
 #include <cstddef>

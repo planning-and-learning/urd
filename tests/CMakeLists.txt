@@ -150,21 +150,19 @@ target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 urd_budget(survey survey survey.cpp 720 650)
 
-# What a file holding Stores costs must not grow with the number of containers (claude.layout.md): tests/scaling.py
-# compiles it with the registry as it is and grown fourfold (URD_REGISTRY_COPIES=3) and compares peak memory.
-foreach(file one ten)
-    add_executable(test_scaling_${file}_control EXCLUDE_FROM_ALL scaling/${file}.cpp)
-    target_link_libraries(test_scaling_${file}_control PRIVATE urd::urd)
-    urd_syntax_only(compile test_scaling_${file}_control scaling/${file}.cpp)
-    add_test(NAME scaling_${file}
-             COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/scaling.py --label ${file} --copies 3 --margin-mb 5 -- ${compile}
+# A file holding a Store pays for its own container and for no other registered one (claude.layout.md): tests/scaling.py
+# compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<key<int>>
+# resolves to Boost's flat hash set.
+find_program(URD_CLANG_FOR_TRACE NAMES clang++ clang++-18)
+if(URD_CLANG_FOR_TRACE)
+    add_executable(test_scaling_one_control EXCLUDE_FROM_ALL scaling/one.cpp)
+    target_link_libraries(test_scaling_one_control PRIVATE urd::urd)
+    urd_syntax_only(compile test_scaling_one_control scaling/one.cpp)
+    add_test(NAME scaling
+             COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/scaling.py --clang ${URD_CLANG_FOR_TRACE}
+                     --allow "boost::unordered::unordered_flat_set<" -- ${compile}
              COMMAND_EXPAND_LISTS)
-    # Selection by value cut the growth (ten Stores: +86 MB to +41 MB at four times the rows, one: +10 to +5), but
-    # scanning rows still costs about 20 KB of constant evaluation per row and request: linear, so they would fail until
-    # a request evaluates only the rows that can match it (the cleanup plan, step 6). One Store sits at the margin,
-    # so until then both are run by hand (tests/scaling.py), not gating.
-    set_tests_properties(scaling_${file} PROPERTIES DISABLED TRUE)
-endforeach()
+endif()
 
 # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
 # of a target that links urd (so the cases build nothing and run in parallel under ctest -j). The control

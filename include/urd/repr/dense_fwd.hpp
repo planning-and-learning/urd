@@ -11,10 +11,60 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P dense_set(const T& t, bool track)
+{
+    if (!t.indexable)
+        return {};
+    return props({ tag::sorted, tag::unique, tag::dense, tag::canonical, tag::shrinkable, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+}
+
+constexpr P sparse_set(const T& t, bool keep_order)
+{
+    if (!t.indexable)
+        return {};
+    return props({ tag::unique,
+                   tag::dense,
+                   tag::positional,
+                   tag::contiguous,
+                   tag::shrinkable,
+                   tag::retains,
+                   t.trivially_destructible ? tag::constant_clear : tag::proportional_clear,
+                   keep_order ? tag::insertion_ordered : tag::any_order });
+}
+
+constexpr P index_map(const T& key, bool stable)
+{
+    if (!key.indexable)
+        return {};
+    return props({ tag::sorted, tag::unique, tag::functional, tag::dense, tag::shrinkable, tag::retains, references(stable) });
+}
+
+constexpr P generation_map(const T& key, const T& mapped, bool concurrent_, bool stable)
+{
+    if (!key.indexable || !mapped.default_initializable)
+        return {};
+    return props({ tag::sorted,
+                   tag::unique,
+                   tag::functional,
+                   tag::dense,
+                   tag::shrinkable,
+                   tag::retains,
+                   tag::constant_clear,
+                   references(stable),
+                   threads(concurrent_) });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

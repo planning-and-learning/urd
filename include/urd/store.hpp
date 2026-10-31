@@ -3,7 +3,7 @@
 #include "urd/index.hpp"
 #include "urd/interface.hpp"
 #include "urd/properties.hpp"
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"

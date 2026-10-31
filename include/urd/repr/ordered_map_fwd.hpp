@@ -8,12 +8,29 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/indexed_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P ordered_map(const P& keys, const T& mapped)
+{
+    if (!keys || !keys->has(tag::insertion_ordered) || !keys->has(tag::unique))
+        return {};
+    const auto clear = (mapped.trivially_destructible && keys->has(tag::constant_clear)) ? tag::constant_clear :
+                       keys->has(tag::proportional_clear)                                ? tag::proportional_clear :
+                                                                                           tag::any_clear;
+    return with(*keys, { tag::functional, tag::by_key, tag::any_layout, clear });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

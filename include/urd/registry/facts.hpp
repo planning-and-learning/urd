@@ -30,7 +30,7 @@ struct store_facts
 
 /// What a type is, in facts general enough that any container states its constraints in them; for a Store, also its
 /// request, its kind, and the same facts about its elements, recursively. Nothing here is one container's: a
-/// container's own precondition is composed from these in its offer (urd/registry/guarantees.hpp).
+/// container's own precondition is composed from these in its offer, in its declaration header.
 struct type_features
 {
     bool hashable = false;                ///< by urd::Hash and urd::EqualTo
@@ -97,3 +97,40 @@ constexpr property_set with(property_set base, std::initializer_list<tag> listed
 }
 
 }  // namespace urd::detail
+
+// What a container's guarantees are computed with, shared by all of them: whether the request's order applies to the
+// elements, which thread and reference tags a flag gives, and what a nested Store is (its own request, and whether a
+// jagged array holds it flattened or in place). Each container's guarantees are in its declaration header.
+namespace urd::detail::guarantees
+{
+
+using P = std::optional<property_set>;
+using T = type_features;
+using F = request_features;
+
+constexpr tag threads(bool concurrent_) { return concurrent_ ? tag::concurrent : tag::single_threaded; }
+constexpr tag references(bool stable) { return stable ? tag::stable_refs : tag::moving_refs; }
+
+/// Whether the request's order applies to `t`: urd::Less where it gives no order_by, else its comparator.
+constexpr bool orders(const T& t, const F& f) { return f.by == order::none ? t.orderable : f.order_natural; }
+/// What a pool of rows gives its rows: their own request.
+constexpr P own_rows(const T& row) { return row.store ? P(row.store->properties) : P(); }
+
+/// Whether a jagged array holds rows `inner` flattened: frozen rows, of elements or (deeper) of rows in order.
+constexpr bool flattenable(const T& inner)
+{ return inner.store && inner.store->properties.has(tag::frozen) && (inner.element == nullptr || !inner.element->store || !keeps_by_value(inner.store->kind)); }
+/// Whether a jagged array holds rows `inner` that change in place: rows of elements, as a sequence, or a dense set's
+/// bits; or fixed-shape rows of such rows, at any depth.
+constexpr bool fixed_rows(const T& inner)
+{
+    if (!inner.store || inner.store->properties.has(tag::frozen))
+        return false;
+    if (inner.element == nullptr || !inner.element->store)
+        return !keeps_by_value(inner.store->kind)
+               || (inner.store->kind == urd::kind::set && inner.store->properties.has(tag::unique) && inner.store->properties.has(tag::dense));
+    return inner.store->properties.has(tag::fixed_shape) && fixed_rows(*inner.element);
+}
+/// Whether a row's elements are rows themselves.
+constexpr bool of_stores(const T& inner) { return inner.element != nullptr && inner.element->store; }
+
+}  // namespace urd::detail::guarantees

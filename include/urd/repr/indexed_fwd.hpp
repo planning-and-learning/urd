@@ -9,10 +9,31 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <cstdint>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P indexed_set(const T& t)
+{
+    if (!t.hashable)
+        return {};
+    return props({ tag::insertion_ordered, tag::unique, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
+}
+
+constexpr P stable_indexed_set(const T& t, bool concurrent_)
+{
+    if (!t.hashable)
+        return {};
+    return with(props({ tag::insertion_ordered, tag::unique, tag::positional, tag::stable_refs, tag::growable, tag::retains }), { threads(concurrent_) });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

@@ -6,12 +6,33 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <functional>
 #include <set>
 #include <unordered_set>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P tree_set(const T& t, const F& f)
+{
+    if (!orders(t, f))
+        return {};
+    return props({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+}
+
+constexpr P hash_set(const T& t)
+{
+    if (!t.hashable)
+        return {};
+    return props({ tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd
 {

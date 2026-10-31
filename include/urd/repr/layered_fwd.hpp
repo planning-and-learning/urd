@@ -9,11 +9,32 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P layered(const P& part)
+{
+    if (!part || !part->has(tag::unique))
+        return {};
+    return with(*part, { tag::layered, tag::any_order });
+}
+
+constexpr P layered_pool(const P& part)
+{
+    if (!part || !part->has(tag::handles) || !part->has(tag::unique))
+        return {};
+    return with(*part, { tag::layered });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {
@@ -46,6 +67,9 @@ struct layered_decl
     static constexpr auto headers = then(Part::headers, Pool ? "urd/repr/layered_pool.hpp" : "urd/repr/layer.hpp");
     static constexpr offered offers(const request_features& f)
     {
+        // Over its part with urd::Less: the wrapper's type is written for it.
+        if (f.by != order::none)
+            return {};
         const auto part = Part::offers(f);
         if (!part)
             return {};

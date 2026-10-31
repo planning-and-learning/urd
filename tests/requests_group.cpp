@@ -5,7 +5,7 @@
 #include "complexity.hpp"
 #include "grid.hpp"
 #include "requests.hpp"
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 
 #include <cstddef>
 #include <string>

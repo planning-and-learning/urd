@@ -6,11 +6,56 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/container/container_fwd.hpp>
 #include <functional>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P flat_set(const T& t, const F& f)
+{
+    if (!orders(t, f))
+        return {};
+    return props(
+        { tag::sorted, tag::unique, tag::positional, tag::sparse, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
+}
+
+constexpr P flat_multiset(const T& t, const F& f)
+{
+    if (!orders(t, f))
+        return {};
+    return props({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
+}
+
+constexpr P flat_map(const T& key, const F& f)
+{
+    if (!orders(key, f))
+        return {};
+    return props({ tag::sorted,
+                   tag::unique,
+                   tag::functional,
+                   tag::positional,
+                   tag::sparse,
+                   tag::contiguous,
+                   tag::canonical,
+                   tag::shrinkable,
+                   tag::retains,
+                   tag::proportional_clear });
+}
+
+constexpr P flat_multimap(const T& key, const F& f)
+{
+    if (!orders(key, f))
+        return {};
+    return props({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd
 {

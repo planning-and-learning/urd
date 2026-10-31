@@ -12,13 +12,43 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <bit>
 #include <cstddef>
 #include <type_traits>
 #include <vector>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P row_interner(const T& row, bool concurrent_)
+{
+    if (row.element == nullptr || !row.element->hashable)
+        return {};
+    return props({ tag::handles, tag::unique, tag::shrinkable, tag::retains, threads(concurrent_) });
+}
+
+constexpr P tree_vector_set(const T& row, bool concurrent_)
+{
+    if (row.element == nullptr || !row.element->hashable || (row.store != nullptr && keeps_by_value(row.store->kind)))
+        return {};
+    return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+}
+
+constexpr P tree_bitset_set(const T& row, bool concurrent_)
+{
+    if (row.store == nullptr || row.element == nullptr || !row.element->indexable || !row.store->properties.has(tag::unique) || !row.store->properties.has(tag::dense))
+        return {};
+    return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+}
+
+constexpr P slot_vector(bool concurrent_) { return props({ tag::handles, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) }); }
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

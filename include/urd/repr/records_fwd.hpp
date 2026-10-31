@@ -10,10 +10,31 @@
 #include "urd/registry/derived.hpp"
 #include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P record_interner(const T& t, bool concurrent_, bool stable)
+{
+    if (!t.trivially_copyable || !t.hashable)
+        return {};
+    return props({ tag::handles, tag::unique, tag::flat, tag::shrinkable, tag::retains, references(stable), threads(concurrent_) });
+}
+
+constexpr P arena_interner(const T& t, bool concurrent_)
+{
+    if (!t.serializable || !t.hashable)
+        return {};
+    return props({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {
@@ -115,7 +136,7 @@ struct thread_safe_record_interner_decl
     {
         if (!accepts_order(natural_order_only, f.by))
             return {};
-        const auto held = guarantees::record_interner(f.element, true, false);
+        const auto held = guarantees::record_interner(f.element, true, true);
         if (!held)
             return {};
         return offer_of(urd::kind::records, *held, f);

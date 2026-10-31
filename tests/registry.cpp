@@ -2,7 +2,7 @@
 // whether the one chosen (the first serving one) answers more categories the request left open than another serving
 // one does. Such a choice is a surprise unless a benchmark backs it: each one is listed below with its reason.
 
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 
 #include "complexity.hpp"
 #include "grid.hpp"

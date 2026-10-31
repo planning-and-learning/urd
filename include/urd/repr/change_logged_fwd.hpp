@@ -9,12 +9,26 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P change_logged(const P& part)
+{
+    if (!part || !part->has(tag::unique))
+        return {};
+    return part->has(tag::dense) ? with(*part, { tag::change_log, tag::any_clear }) : with(*part, { tag::change_log });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {
@@ -44,6 +58,9 @@ struct change_logged_decl
     static constexpr auto headers = then(Part::headers, "urd/repr/change_logged.hpp");
     static constexpr offered offers(const request_features& f)
     {
+        // Over its part with urd::Less: the wrapper's type is written for it.
+        if (f.by != order::none)
+            return {};
         const auto part = Part::offers(f);
         if (!part)
             return {};

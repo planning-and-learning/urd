@@ -9,7 +9,6 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
@@ -18,6 +17,28 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P recycling(const P& part)
+{
+    if (!part)
+        return {};
+    return with(*part, { tag::retains });
+}
+
+constexpr P recycling_set(const P& part)
+{
+    if (!part || !part->has(tag::unique) || !part->has(tag::stable_refs))
+        return {};
+    return with(*part, { tag::retains });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

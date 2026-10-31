@@ -96,7 +96,7 @@ static_assert(urd::has<Store<key<int>, urd::positional>, urd::insertion_ordered,
 static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional>);
 
 // A frozen multimap by dense key: compressed sparse rows, each key's values a span.
-// A dense multimap that grows: a vector of values per index (gap 6 of docs/SURVEY.md: runir's graph builders).
+// A dense multimap that grows: a vector of values per index (runir's graph builders).
 
 // Scopes and layers: a scoped map is a flat hash table with an undo log; a layered Store a flat hash table over a
 // parent.
@@ -104,7 +104,7 @@ static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional
 // Layers over the set or map the other properties pick: nodes with stable_refs, a generation map with constant_clear.
 
 // The log over the set the other properties pick: a tracked bitset for dense keys, a tree for sorted, nodes for
-// stable references (gap 4 of docs/SURVEY.md: runir's denotation states, tyr's delta fact sets).
+// stable references (runir's denotation states, tyr's delta fact sets).
 
 // Sets and maps shared by threads, by hashed keys: gtl's sharded tables.
 // By an indexable key too: without dense, a hash table, not a slot per index.

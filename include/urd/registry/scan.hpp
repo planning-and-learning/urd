@@ -61,11 +61,23 @@ constexpr serving_entries all_serving(const request_shape& s, const request_feat
     return result;
 }
 
-/// The position in the table of the entry chosen for the request, or no_entry.
+/// The position in the table of the entry chosen for the request, or no_entry: the first of all_serving, found
+/// without listing the rest.
 constexpr std::size_t first_serving(const request_shape& s, const request_features& f)
 {
-    const auto serving = all_serving(s, f);
-    return serving.count == 0 ? no_entry : serving.at[0];
+    const bool compact = s.stated.has(tag::frozen) || s.stated.has(tag::small);
+    auto later = no_entry;
+    for (std::size_t each = 0; each < registry_table.size(); ++each)
+    {
+        const auto o = registry_table[each].offers(f);
+        if (!o || !serves(*o, s, f))
+            continue;
+        if (!compact || !o->properties.has(tag::stable_refs))
+            return each;
+        if (later == no_entry)
+            later = each;
+    }
+    return later;
 }
 
 }  // namespace urd::detail

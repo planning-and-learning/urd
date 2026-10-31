@@ -92,7 +92,6 @@ one fails to compile with the headers to include in the error.
   [sequences](https://verdog-ai.github.io/urd/kinds/sequences.html), [queues](https://verdog-ai.github.io/urd/kinds/queues.html), [pools](https://verdog-ai.github.io/urd/kinds/pools.html),
   [records](https://verdog-ai.github.io/urd/kinds/records.html), [partitions](https://verdog-ai.github.io/urd/kinds/partitions.html): members and complexity
 - [What a request resolves to](docs/RESOLUTION.md), generated from the registry and checked by a test
-- [Adding a container](docs/INTEGRATION.md), [benchmarks](docs/BENCHMARKS.md), [roadmap](docs/ROADMAP.md),
-  [examples](examples/)
+- [Benchmarks](docs/BENCHMARKS.md), [examples](examples/)
 
 Header-only C++20, GPL-3.0.

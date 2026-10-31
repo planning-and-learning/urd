@@ -6,7 +6,6 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
@@ -16,6 +15,29 @@
 #include <memory>
 #include <mutex>
 #include <utility>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P parallel_hash_set(const T& t, bool nodes)
+{
+    if (!t.hashable)
+        return {};
+    return with(props({ tag::unique, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+}
+
+constexpr P parallel_hash_map(const T& key, bool nodes)
+{
+    if (!key.hashable)
+        return {};
+    return with(props({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+}
+
+
+}  // namespace urd::detail::guarantees
+
 
 // gtl's sharded hash tables: threads may insert into and look up in them at once, each shard behind its own mutex.
 // Declared here through gtl's forward header; defined by urd/repr/parallel_hash.hpp.

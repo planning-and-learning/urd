@@ -9,7 +9,7 @@
 #include "names.hpp"
 #include "urd/flat.hpp"
 #include "urd/format.hpp"
-#include "urd/registry.hpp"
+#include "urd/registry/select.hpp"
 #include "urd/request.hpp"
 #include "urd/store.hpp"
 
@@ -317,7 +317,7 @@ struct serving_named
         return urd::detail::no_entry;
     }
     static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");
-    using declaration = typename urd::detail::nth<at(), urd::detail::all_declarations>::type;
+    using declaration = typename urd::detail::nth<at(), urd::detail::declarations>::type;
     using type = typename urd::detail::representation_of<declaration, S>::type;
 };
 

@@ -11,7 +11,6 @@
 #include "urd/registry/derived.hpp"
 #include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
@@ -19,6 +18,42 @@
 #include <cstdint>
 #include <functional>
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P fifo() { return props({ tag::fifo, tag::stable_refs, tag::shrinkable }); }
+
+constexpr P lifo() { return props({ tag::lifo, tag::shrinkable, tag::retains }); }
+
+constexpr P ring_fifo() { return props({ tag::fifo, tag::shrinkable, tag::retains }); }
+
+constexpr P heap(const T& t, const F& f)
+{
+    if (!orders(t, f))
+        return {};
+    return props({ tag::by_priority, tag::shrinkable, tag::retains });
+}
+
+constexpr P addressable_heap(const T& t, const F& f)
+{
+    if (!orders(t, f))
+        return {};
+    return props({ tag::by_priority, tag::handles, tag::shrinkable, tag::retains });
+}
+
+constexpr P bucket_queue(const T& t, const F& f)
+{
+    if (!orders(t, f) || !f.order_key.integral)
+        return {};
+    return props({ tag::by_priority, tag::shrinkable, tag::retains });
+}
+
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

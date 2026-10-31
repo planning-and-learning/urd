@@ -10,8 +10,44 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P csr_multimap(const T& key)
+{
+    if (!key.indexable)
+        return {};
+    return props({ tag::sorted, tag::multi, tag::dense, tag::canonical });
+}
+
+constexpr P bidirectional_csr(const T& key, const T& mapped)
+{
+    if (!mapped.indexable)
+        return {};
+    const auto base = csr_multimap(key);
+    return base ? P(with(*base, { tag::bidirectional })) : P();
+}
+
+constexpr P dense_multimap(const T& key)
+{
+    if (!key.indexable)
+        return {};
+    return props({ tag::sorted, tag::multi, tag::dense, tag::shrinkable, tag::retains });
+}
+
+constexpr P posting_map(const T& key)
+{
+    if (!key.hashable)
+        return {};
+    return props({ tag::multi, tag::sparse, tag::shrinkable });
+}
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {

@@ -11,10 +11,44 @@
 #include "urd/registry/derived.hpp"
 #include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/registry/guarantees.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>
+
+// What this file's containers guarantee, as a function of the facts about the elements they are given (urd/registry/facts.hpp):
+// what their declarations below offer, or none where they do not take these elements.
+namespace urd::detail::guarantees
+{
+
+constexpr P jagged(const T& inner, bool track)
+{
+    if (!track && flattenable(inner))
+        return props({ tag::dense, tag::positional, tag::shrinkable, tag::retains, tag::proportional_clear });
+    if (fixed_rows(inner))
+        return props({ tag::dense, tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+    return {};
+}
+
+constexpr P jagged_rows(const T& inner, bool track)
+{
+    if (!track && flattenable(inner))
+        return with(inner.store->properties, { of_stores(inner) ? tag::any_layout : tag::contiguous, tag::moving_refs, tag::retains });
+    if (fixed_rows(inner))
+        return with(inner.store->properties,
+                    { (!of_stores(inner) && !keeps_by_value(inner.store->kind)) ? tag::contiguous : tag::any_layout, tag::moving_refs, tag::retains });
+    return {};
+}
+
+constexpr P row_pool(const T& inner)
+{
+    if (!inner.store || !inner.store->properties.has(tag::shrinkable))
+        return {};
+    return props({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+}
+
+
+}  // namespace urd::detail::guarantees
+
 
 namespace urd::repr
 {
