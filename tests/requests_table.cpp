@@ -11,7 +11,9 @@
 // cover those of every request it serves on that shape (usually one; a second is "#2"), at the sizes of
 // benchmarks/cells.hpp. `containers` lists each one's experiments as (group, position, ordinal) in the grid and
 // `families` its family headers: CMake compiles one benchmark source per container from them
-// (benchmarks/experiment.cpp), which includes and instantiates that container only.
+// (benchmarks/experiment.cpp), which includes and instantiates that container only. `tested` lists, per container,
+// the requests its property tests run for (group, position, ...): those over ints that are no queue, pool or
+// partition; CMake compiles one test object per container from them (tests/container.cpp).
 //
 // The groups are computed in their own objects (tests/requests_group.cpp); this merges them.
 
@@ -38,6 +40,7 @@ namespace
 
 using urd::test::joined;
 using urd::test::json_text;
+using urd::test::op;
 
 std::string json_operations(const urd::test::offers& operations)
 {
@@ -133,6 +136,7 @@ std::string generate()
     }
     auto positions = std::map<std::string, std::string>();
     auto families = std::map<std::string, std::vector<std::string>>();
+    auto tested = std::map<std::string, std::string>();
     out += "\n], \"experiments\": {\n";
     first = true;
     for (const auto& [id, each] : experiments)
@@ -147,6 +151,16 @@ std::string generate()
         for (const auto& family : each.server->families)
             if (std::ranges::find(headers, family) == headers.end())
                 headers.push_back(family);
+        // The property suite (tests/properties.hpp) builds a container from ints: a set or sequence of them, or a map
+        // of them; not a queue, a pool or a partition.
+        const auto& offers = each.row->operations;
+        const auto of = [&](op what) { return offers[static_cast<std::size_t>(what)]; };
+        const bool ints = each.row->shape == "int;-" || each.row->shape == "-;int" || each.row->shape == "int;int";
+        if (ints && !of(op::push) && !of(op::insert_row) && !of(op::merge))
+        {
+            auto& listed = tested[each.container];
+            listed += (listed.empty() ? "" : ", ") + std::to_string(each.group) + ", " + std::to_string(each.row->position);
+        }
     }
     out += "\n}, \"containers\": {\n";
     first = true;
@@ -160,6 +174,13 @@ std::string generate()
     for (const auto& [container, at] : positions)
     {
         out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + joined(families[container], json_text) + "]";
+        first = false;
+    }
+    out += "\n}, \"tested\": {\n";
+    first = true;
+    for (const auto& [container, at] : tested)
+    {
+        out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + at + "]";
         first = false;
     }
     return out + "\n}}\n";

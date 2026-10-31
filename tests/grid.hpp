@@ -9,6 +9,7 @@
 #include "names.hpp"
 #include "urd/flat.hpp"
 #include "urd/format.hpp"
+#include "urd/registry.hpp"
 #include "urd/request.hpp"
 #include "urd/store.hpp"
 
@@ -300,6 +301,26 @@ template<std::size_t P, typename... Rs>
 struct nth_request<P, requests<Rs...>>
 {
     using type = std::tuple_element_t<P, std::tuple<Rs...>>;
+};
+
+/// The candidate named Name that serves spec S: how a per-container object finds its container among a request's
+/// candidates (one name may stand for several types, a layered pool of rows or of records). Reads declarations only.
+template<urd::detail::fixed_string Name, typename S, typename List = typename urd::detail::candidates_for<S>::type>
+struct serving_named;
+template<urd::detail::fixed_string Name, typename S, typename... Rs>
+struct serving_named<Name, S, urd::detail::type_list<Rs...>>
+{
+    static constexpr std::size_t at()
+    {
+        constexpr std::array<std::string_view, sizeof...(Rs)> ids { name<Rs>::id... };
+        constexpr std::array<bool, sizeof...(Rs)> serves { urd::detail::serves<Rs, S>... };
+        for (std::size_t each = 0; each < ids.size(); ++each)
+            if (ids[each] == std::string_view(Name.c_str()) && serves[each])
+                return each;
+        return ids.size();
+    }
+    static_assert(at() < sizeof...(Rs), "serving_named: the container named serves no such request");
+    using type = std::tuple_element_t<at(), std::tuple<Rs...>>;
 };
 
 /// The request at position P of group G: how a benchmark names the request it measures a container for.

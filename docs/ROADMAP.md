@@ -28,7 +28,7 @@ urd clone, directly on `main`, one milestone at a time, each with its own short 
 **For a new property:**
 - a category in `include/urd/tags.hpp`, with a root that promises nothing;
 - the interface it requires or unlocks, in `include/urd/interface.hpp` and `include/urd/store.hpp`;
-- a typed test in `tests/properties.cpp` or its own suite, skipped where the property is not declared;
+- a typed test in `tests/properties.hpp` or its own suite, skipped where the property is not declared;
 - a sabotage that the test catches, not committed;
 - a line in `docs/INTEGRATION.md`.
 

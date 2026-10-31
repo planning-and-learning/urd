@@ -124,7 +124,7 @@ which would drop the candidate rather than fail. So a `container_traits` special
 `has<container_traits<X>, …>`, `indexable`/`hashable`/`orderable` of an element type, type traits of template
 arguments and `detail::row_element_t<Row>` (a row Store's elements, by its request), but not `std::ranges::*` of
 the container, its `value_type`, `mapped_type` or `sizeof`. Two properties exist so that selection can ask them of
-a declaration: `positional` (the container is a random-access range; `tests/properties.cpp` checks the two agree)
+a declaration: `positional` (the container is a random-access range; `tests/properties.hpp` checks the two agree)
 and `functional` (a value per key, a map). A nested Store's own semantics (`Hash`, `EqualTo`, `Less`) and
 properties (`traits_t`) come from its request alone (`semantics/concepts.hpp`, `is_store`).
 
@@ -190,8 +190,11 @@ representation, and the test checks them as defined:
 | `concurrent` | covers inserts and reads of published elements by the kind's paths (`include/urd/tags.hpp` lists them per kind); erase of another thread's element, `clear`, iteration, `reserve`, copy, move and destruction need no other operation running |
 
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
-- Add the container, and a Store that resolves to it, to the type list in `tests/properties.cpp`. That
-  instantiates one typed test per property for it: each declared property is checked through the operations
+- Its property tests come with registering it: each container gets its own test objects (`tests/container.cpp`,
+  compiled once per container from `benchmarks/requests.json`'s `tested`, the requests over ints it serves that are
+  no queue, pool or partition), which instantiate the suite of `tests/properties.hpp` for the container and for the
+  Store over it for each of those requests, and `containers_coverage` fails on a container without them. That gives
+  one typed test per property: each declared property is checked through the operations
   alone (sorted: order and `lower_bound`/`equal_range` after inserts in reverse; stable_refs: an address taken by
   the kind's path, a map's `at`, a sequence's position, a set's `find`, kept through 100000 inserts; retains: no allocation when refilling after a clear or after erasing each element;
   reclaims: a clear frees each element's storage; contiguous, canonical, unique, nonempty, concurrent

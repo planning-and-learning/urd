@@ -29,38 +29,18 @@ namespace
 {
 
 #if defined(URD_CONTAINER)
-constexpr std::string_view container = URD_CONTAINER;
+constexpr urd::detail::fixed_string container = URD_CONTAINER;
 constexpr std::array<std::size_t, std::size(std::initializer_list<std::size_t> { URD_EXPERIMENTS })> positions { URD_EXPERIMENTS };
 #else
-constexpr std::string_view container = "unordered_flat_set";
+constexpr urd::detail::fixed_string container = "unordered_flat_set";
 constexpr std::array<std::size_t, 3> positions { 0, 0, 1 };
 #endif
-
-/// The candidate named `container` that serves S (one name may stand for several types, a layered pool of rows or of
-/// records).
-template<typename S, typename List>
-struct named;
-template<typename S, typename... Rs>
-struct named<S, urd::detail::type_list<Rs...>>
-{
-    static constexpr std::size_t at()
-    {
-        constexpr std::array<std::string_view, sizeof...(Rs)> ids { urd::test::name<Rs>::id... };
-        constexpr std::array<bool, sizeof...(Rs)> serves { urd::detail::serves<Rs, S>... };
-        for (std::size_t each = 0; each < ids.size(); ++each)
-            if (ids[each] == container && serves[each])
-                return each;
-        return ids.size();
-    }
-    static_assert(at() < sizeof...(Rs), "benchmarks/experiment.cpp: the container serves no request it is measured for");
-    using type = std::tuple_element_t<at(), std::tuple<Rs...>>;
-};
 
 template<std::size_t Group, std::size_t Position, std::size_t Ordinal>
 void register_one()
 {
     using S = typename urd::test::request_at<Group, Position>::spec;
-    using R = typename named<S, typename urd::detail::candidates_for<S>::type>::type;
+    using R = typename urd::test::serving_named<container, S>::type;
     static_assert(urd::test::offered<R, S>() == urd::test::offered<S>(),
                   "benchmarks/experiment.cpp: spec_switches (tests/complexity.hpp) no longer agrees with facet_switches");
     urd::bench::register_experiment<R, S>(Ordinal);

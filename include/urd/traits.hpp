@@ -22,7 +22,7 @@ namespace urd
 {
 
 /// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
-/// to declare its properties, and check the declaration by adding the container to tests/properties.cpp:
+/// to declare its properties; a registered container's property tests check the declaration (tests/properties.hpp):
 ///
 ///     template<> struct urd::container_traits<MyList> : urd::properties_of<urd::sorted, urd::shrinkable> {};
 ///
