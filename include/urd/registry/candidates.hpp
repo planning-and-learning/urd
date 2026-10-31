@@ -28,7 +28,7 @@ namespace urd::detail
 /// kept by value must be sorted, or its positions would mean nothing. Where S's elements (a map's values) are Stores (rows), R
 /// holds them with their requested properties (element_traits).
 template<typename R, typename S>
-concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, requirement<S>)
+concept serves_by_traits = container_traits<R>::declared && detail::satisfies(container_traits<R>::urd_properties, S::required)
                            && detail::demands_met(container_traits<R>::urd_properties, S::urd_properties) && by_value<container_traits<R>> == by_value<S>
                            && has<container_traits<R>, unique> == has<S, unique> && has<container_traits<R>, handles> == has<S, handles>
                            && has<container_traits<R>, flat> == has<S, flat> && (!S::is_sequence || !by_value<S> || has<S, sorted>)
@@ -58,7 +58,7 @@ struct row_traits<R, S>
 
 template<typename R, typename S>
 concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || has<container_traits<R>, positional>)
-                 && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, requirement<container_traits<row_of<S>>>));
+                 && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, container_traits<row_of<S>>::required));
 
 /// Stable storage: it keeps references stable, by a node per element or by segments that never move. Under
 /// small or frozen these move last, as contiguous storage is faster for few or unchanging elements.

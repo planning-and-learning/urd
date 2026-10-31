@@ -727,7 +727,7 @@ namespace urd::detail
 {
 
 /// What a request is, as selection reads it: its kind, its properties, and what a container must guarantee for them
-/// (requirement<S>).
+/// (S::required).
 struct request_shape
 {
     urd::kind kind = urd::kind::sequence;

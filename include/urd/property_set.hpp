@@ -5,6 +5,7 @@
 // must meet for a request (satisfies, promises, demands_met). Properties are computed as values, not as types: a
 // request costs the compiler a constant evaluation instead of hundreds of class instantiations.
 
+#include "urd/rules.hpp"
 #include "urd/tag_synopsis.hpp"
 #include "urd/tags.hpp"
 
@@ -212,6 +213,39 @@ constexpr kind kind_of(const property_set& held, bool keyed, bool valued)
         if (root_of(of) != of && held.in(root_of(of)) == of && kinds_made[each] > result)
             result = kinds_made[each];
     }
+    return result;
+}
+
+/// Whether an implication (urd/rules.hpp) applies to a Store of kind `of` holding `held`.
+constexpr bool applies(const implication& rule, kind of, const property_set& held)
+{ return in_kinds(rule.of, of) && (rule.when == tag::count || held.has(rule.when)); }
+
+/// What a request of kind `of` that states `stated` holds: the implications applied in order, each answering only a
+/// category nothing answered yet.
+constexpr property_set implied(property_set stated, kind of)
+{
+    // Answered: stated, or put by an earlier rule. A rule may answer with a root (frozen: immutable), so this is kept
+    // apart from what the categories hold.
+    auto answered = std::array<bool, tag_count> {};
+    for (std::size_t each = 0; each < tag_count; ++each)
+        answered[each] = stated.held[each] != static_cast<tag>(each);
+    for (const auto& rule : implications)
+        if (applies(rule, of, stated) && !answered[index(root_of(rule.then))])
+        {
+            stated.put(rule.then);
+            answered[index(root_of(rule.then))] = true;
+        }
+    return stated;
+}
+
+/// What a container must guarantee for a Store of kind `of` that promises `promised`: the promise, but for what the
+/// Store provides itself (the implications marked provided).
+constexpr property_set required_of(property_set promised, kind of)
+{
+    auto result = promised;
+    for (const auto& rule : implications)
+        if (rule.provided && applies(rule, of, promised))
+            result.put(root_of(rule.then));
     return result;
 }
 

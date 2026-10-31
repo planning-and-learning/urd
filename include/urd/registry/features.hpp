@@ -19,19 +19,6 @@
 namespace urd::detail
 {
 
-/// What a representation must guarantee for spec S: S's properties, except where the Store provides them.
-/// A frozen Store's elements never move whatever the representation; a sequence's positions are dense
-/// in every representation of a sequence.
-template<typename S>
-inline constexpr property_set requirement = []
-{
-    auto result = S::urd_properties;
-    if (result.has(tag::frozen))
-        result.put(tag::moving_refs);
-    if (S::is_sequence)
-        result.put(tag::any_keys);
-    return result;
-}();
 /// The features of T, with P the request's order_by comparator (void where it gives none).
 template<typename T, typename P>
 consteval type_features features_of_type()
@@ -58,15 +45,7 @@ consteval type_features features_of_type()
             result.store = true;
             result.store_properties = traits::urd_properties;
             result.store_kind = traits::kind;
-            result.store_requirement = []
-            {
-                auto requirement = traits::urd_properties;
-                if (requirement.has(tag::frozen))
-                    requirement.put(tag::moving_refs);
-                if (traits::is_sequence)
-                    requirement.put(tag::any_keys);
-                return requirement;
-            }();
+            result.store_requirement = traits::required;
             result.store_of_stores = is_store<typename traits::element_type>;
             result.flattenable = flattenable<T>;
             result.fixed_rows = fixed_rows<T>;
@@ -106,7 +85,7 @@ template<typename S>
 consteval const registry_row* row_choice()
 {
     constexpr auto f = features_of<S>();
-    return first_serving_row(registry_table, request_shape { S::kind, S::urd_properties, requirement<S> }, f);
+    return first_serving_row(registry_table, request_shape { S::kind, S::urd_properties, S::required }, f);
 }
 
 }  // namespace urd::detail

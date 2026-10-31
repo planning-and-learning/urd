@@ -179,6 +179,7 @@ struct spec
     /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
     using order_type = Order;
 
+    /// What the Store promises: the request's tags with what they imply (urd/rules.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
     static constexpr bool declared = true;
 
@@ -193,6 +194,8 @@ struct spec
     /// Values identified by the handles insert gives (handles): a pool.
     static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::records;
     static constexpr bool is_sequence = kind == urd::kind::sequence || kind == urd::kind::multiset;
+    /// What its container must guarantee: the promise, but for what the Store provides itself (urd/rules.hpp).
+    static constexpr detail::property_set required = detail::required_of(urd_properties, kind);
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
@@ -232,39 +235,6 @@ consteval bool one_per_category(std::initializer_list<tag> listed)
 
 /// Whether a kind holds values by position or by value without keys: a sequence, sorted or not.
 constexpr bool sequence_like(kind of) { return of == kind::sequence || of == kind::multiset; }
-
-/// The request rules: what the list implies, in place of what it states.
-consteval property_set implied(property_set stated, kind of)
-{
-    auto result = stated;
-    // A sequence is positional; a set may be too, with its elements in insertion order unless it asks for another
-    // (an interner: each element's position is its index).
-    if (sequence_like(of))
-        result.put(tag::positional);
-    if (of == kind::set && stated.has(tag::positional) && !stated.has(tag::sorted))
-        result.put(tag::insertion_ordered);
-    // A set's keys are its contents, each once; a map's keys are each once unless it is a multimap.
-    if (of == kind::set || (of == kind::map && !stated.has(tag::multi)))
-        result.put(tag::unique);
-    // A map has one value per key unless it says multi; a sequence one value per position.
-    if ((of == kind::map && !stated.has(tag::multi)) || sequence_like(of))
-        result.put(tag::functional);
-    // Positions are 0..n-1; a partition's classes are over indices.
-    if (sequence_like(of) || stated.has(tag::partition))
-        result.put(tag::dense);
-    // Nothing moves once nothing changes.
-    if (stated.has(tag::frozen))
-        result.put(tag::stable_refs);
-    // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty; a queue
-    // offers push and pop whenever it may change, clear too unless it is monotone.
-    if (stated.has(tag::frozen) || stated.has(tag::fixed_shape))
-        result.put(tag::immutable);
-    else if (stated.has(tag::monotone) || stated.has(tag::nonempty))
-        result.put(tag::growable);
-    else
-        result.put(tag::shrinkable);
-    return result;
-}
 
 /// The tags of a set that say more than their category's root, in the order of urd::tag: a spec's arguments.
 struct listed_tags
