@@ -263,32 +263,6 @@ growth classify(double small, double large)
     return growth::n_log_n;
 }
 
-/// Which quantities grow together: the elements, their key range and the capacity are one.
-enum class scale : std::uint8_t
-{
-    n,
-    row,
-    delta,
-    changes,
-};
-constexpr scale scale_of(urd::quantity of)
-{
-    switch (of)
-    {
-        case urd::quantity::row:
-            return scale::row;
-        case urd::quantity::delta:
-            return scale::delta;
-        case urd::quantity::changes:
-            return scale::changes;
-        case urd::quantity::n:
-        case urd::quantity::keys:
-        case urd::quantity::capacity:
-            break;
-    }
-    return scale::n;
-}
-
 struct verified
 {
     growth measured = growth::one;
@@ -340,9 +314,9 @@ struct verify_all<Q, urd::detail::type_list<Rs...>>
                 }
                 // One quantity grows: a row's length for the row operations, the changes for a scope, else the elements
                 // (with their key range and capacity). A cost in another quantity holds it fixed, so it must not grow.
-                const auto varied = what == op::insert_row || what == op::find_row ? scale::row : what == op::scope ? scale::changes : scale::n;
+                const auto varied = what == op::insert_row || what == op::find_row ? urd::scale::row : what == op::scope ? urd::scale::changes : urd::scale::n;
                 if (small && large)
-                    into[key] = { classify(*small, *large), scale_of(how->of) == varied ? how->grows : growth::one, Q::describe() };
+                    into[key] = { classify(*small, *large), urd::scale_of(how->of) == varied ? how->grows : growth::one, Q::describe() };
             }
         }
     }

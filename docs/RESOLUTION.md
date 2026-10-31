@@ -442,8 +442,8 @@ indexable).
 | `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, concurrent>` | unique, concurrent, handles, shrinkable | `thread_safe_row_interner` | pools |
 | `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing, concurrent>` | unique, concurrent, handles, structural_sharing, shrinkable | `tree_bitset_set` | pools |
 | `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone>` | unique, handles, growable, monotone | `row_interner` | pools |
-| `Store<value<std::vector<int, std::allocator<int> >>, handles>` | handles, shrinkable | `slot_vector` | pools |
-| `Store<value<std::vector<int, std::allocator<int> >>, handles, concurrent>` | concurrent, handles, shrinkable | `thread_safe_slot_vector` | pools |
+| `Store<value<std::vector<int>>, handles>` | handles, shrinkable | `slot_vector` | pools |
+| `Store<value<std::vector<int>>, handles, concurrent>` | concurrent, handles, shrinkable | `thread_safe_slot_vector` | pools |
 | `Store<value<int>, handles>` | handles, shrinkable | `slot_vector` | pools |
 | `Store<value<Id>, handles, stable_refs>` | stable_refs, handles, shrinkable | `slot_vector` | pools |
 | `Store<value<Store<value<int>, dense, stable_refs, frozen, functional, positional>>, handles, unique, monotone, layered>` | unique, layered, handles, growable, monotone | `layered_pool` | pools + layers |

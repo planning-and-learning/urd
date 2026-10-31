@@ -4,10 +4,10 @@
 // reads of it, over a flat hash table, a tree or a dense map. Defined in urd/repr/scoped.hpp, which
 // urd/use/scopes.hpp includes; the map it scopes comes with the map's family.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/repr/dense_fwd.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/unordered/unordered_flat_map_fwd.hpp>

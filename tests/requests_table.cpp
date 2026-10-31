@@ -15,6 +15,7 @@
 //
 // The groups are computed in their own objects (tests/requests_group.cpp); this merges them.
 
+#include "format.hpp"
 #include "generated.hpp"
 #include "grid.hpp"
 #include "requests.hpp"
@@ -35,34 +36,16 @@ static_assert(URD_GROUPS == urd::test::request_groups, "requests_table: the grid
 namespace
 {
 
-std::string json_string(std::string_view text)
-{
-    auto result = std::string("\"");
-    for (const char each : text)
-    {
-        if (each == '"' || each == '\\')
-            result += '\\';
-        result += each;
-    }
-    return result + "\"";
-}
+using urd::test::joined;
+using urd::test::json_text;
 
 std::string json_operations(const urd::test::offers& operations)
 {
-    auto result = std::string("[");
+    auto names = std::vector<std::string_view>();
     for (std::size_t each = 0; each < operations.size(); ++each)
         if (operations[each])
-            result += (result.size() > 1 ? ", " : "") + json_string(urd::test::op_names[each]);
-    return result + "]";
-}
-
-template<typename Items, typename Write>
-std::string json_list(const Items& items, Write write)
-{
-    auto result = std::string();
-    for (const auto& each : items)
-        result += (result.empty() ? "" : ", ") + write(each);
-    return result;
+            names.push_back(urd::test::op_names[each]);
+    return "[" + joined(names, json_text) + "]";
 }
 
 std::size_t count(const urd::test::offers& operations) { return static_cast<std::size_t>(std::ranges::count(operations, true)); }
@@ -86,12 +69,12 @@ struct experiment
 
 std::string json_server(const urd::test::server& each)
 {
-    auto result = "{\"container\": " + json_string(each.container);
+    auto result = "{\"container\": " + json_text(each.container);
     if (!each.part.empty())
-        result += ", \"part\": " + json_string(each.part);
+        result += ", \"part\": " + json_text(each.part);
     result += ", \"words\": " + std::to_string(each.words);
     if (!each.uninvited.empty())
-        result += ", \"uninvited\": [" + json_list(each.uninvited, json_string) + "]";
+        result += ", \"uninvited\": [" + joined(each.uninvited, json_text) + "]";
     return result + "}";
 }
 
@@ -107,8 +90,8 @@ std::string generate()
         {
             out += first ? "  " : ",\n  ";
             first = false;
-            out += "{\"request\": " + json_string(row.request) + ", \"shape\": " + json_string(row.shape) + ", \"small\": " + (row.small ? "true" : "false")
-                   + ", \"operations\": " + json_operations(row.operations) + ", \"serving\": [" + json_list(row.serving, json_server) + "]}";
+            out += "{\"request\": " + json_text(row.request) + ", \"shape\": " + json_text(row.shape) + ", \"small\": " + (row.small ? "true" : "false")
+                   + ", \"operations\": " + json_operations(row.operations) + ", \"serving\": [" + joined(row.serving, json_server) + "]}";
             for (const auto& each : row.serving)
             {
                 auto& at = where[each.container + "/" + row.shape + (row.small ? "/small" : "")];
@@ -154,9 +137,9 @@ std::string generate()
     first = true;
     for (const auto& [id, each] : experiments)
     {
-        out += (first ? "  " : ",\n  ") + json_string(id) + ": {\"container\": " + json_string(each.container)
-               + ", \"request\": " + json_string(each.row->request) + ", \"operations\": " + json_operations(each.row->operations) + ", \"sizes\": ["
-               + json_list(each.row->sizes, [](std::size_t size) { return std::to_string(size); }) + "]}";
+        out += (first ? "  " : ",\n  ") + json_text(id) + ": {\"container\": " + json_text(each.container) + ", \"request\": " + json_text(each.row->request)
+               + ", \"operations\": " + json_operations(each.row->operations) + ", \"cheap\": " + (each.row->cheap ? "true" : "false") + ", \"sizes\": ["
+               + joined(each.row->sizes, [](std::size_t size) { return std::to_string(size); }) + "]}";
         first = false;
         auto& at = positions[each.container];
         at += (at.empty() ? "" : ", ") + std::to_string(each.group) + ", " + std::to_string(each.row->position) + ", " + std::to_string(each.ordinal);
@@ -169,14 +152,14 @@ std::string generate()
     first = true;
     for (const auto& [container, at] : positions)
     {
-        out += (first ? "  " : ",\n  ") + json_string(container) + ": [" + at + "]";
+        out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + at + "]";
         first = false;
     }
     out += "\n}, \"families\": {\n";
     first = true;
     for (const auto& [container, at] : positions)
     {
-        out += (first ? "  " : ",\n  ") + json_string(container) + ": [" + json_list(families[container], json_string) + "]";
+        out += (first ? "  " : ",\n  ") + json_text(container) + ": [" + joined(families[container], json_text) + "]";
         first = false;
     }
     return out + "\n}}\n";

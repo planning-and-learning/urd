@@ -18,28 +18,16 @@
 namespace urd::test
 {
 
-/// The operations compared, the same for every kind; which a Store offers follows from its facets.
-enum class op : std::uint8_t
+/// The operations compared (urd::operation): which a Store offers follows from its facets.
+using op = urd::operation;
+/// Their names, in order (urd::name).
+inline constexpr auto op_names = []
 {
-    insert,          ///< a set's or map's insert, a sequence's push_back
-    lookup,          ///< find, contains, a map's value by key
-    ordered_lookup,  ///< lower_bound
-    erase,           ///< by key, or by position
-    clear,
-    iterate,
-    access,  ///< by position or handle
-    push,    ///< a queue's
-    pop,
-    top,
-    merge,       ///< a partition's
-    insert_row,  ///< a pool's insert
-    find_row,    ///< a pool's find
-    scope,       ///< push_scope, changes, pop_scope
-    count
-};
-inline constexpr std::array<std::string_view, static_cast<std::size_t>(op::count)> op_names {
-    "insert", "lookup", "ordered_lookup", "erase", "clear", "iterate", "access", "push", "pop", "top", "merge", "insert_row", "find_row", "scope",
-};
+    auto result = std::array<std::string_view, static_cast<std::size_t>(op::count)> {};
+    for (std::size_t each = 0; each < result.size(); ++each)
+        result[each] = urd::name(static_cast<op>(each));
+    return result;
+}();
 
 /// Which operations a Store offers, by op.
 using offers = std::array<bool, static_cast<std::size_t>(op::count)>;

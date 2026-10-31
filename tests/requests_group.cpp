@@ -17,10 +17,25 @@
 namespace
 {
 
+/// Whether elements of type T are trivially copyable (none, void, counts as such). A Store owns its storage, so it is
+/// not, which is decided before asking the trait: asking it would complete the Store.
+template<typename T>
+consteval bool is_trivial_element()
+{
+    if constexpr (std::is_void_v<T>)
+        return true;
+    else if constexpr (urd::is_store<T>)
+        return false;
+    else
+        return std::is_trivially_copyable_v<T>;
+}
+template<typename T>
+constexpr bool trivially = is_trivial_element<T>();
+
 #if defined(URD_GROUP)
-constexpr std::size_t group = URD_GROUP;
+constexpr std::size_t this_group = URD_GROUP;
 #else
-constexpr std::size_t group = 0;
+constexpr std::size_t this_group = 0;
 #endif
 
 template<typename R, typename S>
@@ -66,18 +81,24 @@ struct servers<S, urd::detail::type_list<Rs...>>
 }  // namespace
 
 template<>
-urd::test::request_group urd::test::requests_of<group>()
+urd::test::request_group urd::test::requests_of<this_group>()
 {
     auto result = request_group {};
     std::size_t position = 0;
     urd::test::for_each_request(
-        std::tuple_element_t<group, groups> {},  // qualified: lookup by argument would complete every Store named in a request
+        typename std::tuple_element_t<this_group, groups>::list {},  // qualified: lookup by argument would complete every Store named in a request
         [&]<typename Q>(std::type_identity<Q>)
         {
             using S = typename Q::spec;
             using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
-            result.rows.push_back(
-                { Q::describe(), shape_of_spec<S>(), urd::has<S, urd::small>, offered<S>(), servers<S, List>::list(), position, sizes_of<S>() });
+            result.rows.push_back({ Q::describe(),
+                                    shape_of_spec<S>(),
+                                    urd::has<S, urd::small>,
+                                    offered<S>(),
+                                    servers<S, List>::list(),
+                                    position,
+                                    sizes_of<S>(),
+                                    trivially<typename S::key_type> && trivially<typename S::value_type> });
             ++position;
         });
     return result;

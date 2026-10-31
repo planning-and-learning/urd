@@ -1,10 +1,10 @@
 #pragma once
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <cstddef>

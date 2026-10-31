@@ -9,8 +9,10 @@
 // complexity sections of docs/kinds/*.rst from this file (docs/_ext/urd_language.py).
 
 #include "complexity.hpp"
+#include "format.hpp"
 #include "generated.hpp"
 #include "grid.hpp"
+#include "urd/format.hpp"
 #include "urd/registry.hpp"
 // Every family: facet_switches reads the representations.
 #include "urd/use/contiguous.hpp"
@@ -43,56 +45,7 @@ namespace
 using urd::test::cost;
 using urd::test::op;
 
-std::string json_string(std::string_view text)
-{
-    auto result = std::string("\"");
-    for (const char each : text)
-    {
-        if (each == '"' || each == '\\')
-            result += '\\';
-        result += each;
-    }
-    return result + "\"";
-}
-
-constexpr std::string_view growth_name(urd::test::growth of)
-{
-    constexpr std::array names { "one", "log", "linear", "n_log_n", "n_times" };
-    return names[static_cast<std::size_t>(of)];
-}
-
-constexpr std::string_view in_name(urd::test::in of)
-{
-    constexpr std::array names { "n", "keys", "capacity", "row", "delta", "changes" };
-    return names[static_cast<std::size_t>(of)];
-}
-
-/// A cost as the docs write it: O(log n), O(1)*~ (amortized, expected).
-std::string written(const cost& how)
-{
-    constexpr std::array quantity { "n", "U", "capacity", "r", "k", "changes" };
-    const auto of = std::string(quantity[static_cast<std::size_t>(how.of)]);
-    auto result = std::string();
-    switch (how.grows)
-    {
-        case urd::test::growth::one:
-            result = "O(1)";
-            break;
-        case urd::test::growth::log:
-            result = "O(log " + of + ")";
-            break;
-        case urd::test::growth::linear:
-            result = "O(" + of + ")";
-            break;
-        case urd::test::growth::n_log_n:
-            result = "O(" + of + " log " + of + ")";
-            break;
-        case urd::test::growth::n_times:
-            result = "O(n " + of + ")";
-            break;
-    }
-    return result + (how.amortized ? "*" : "") + (how.expected ? "~" : "");
-}
+using urd::test::json_text;
 
 struct representation
 {
@@ -188,39 +141,55 @@ std::string generate()
     auto out = std::string("{\"generated_by\": \"complexity_table --write share/urd/complexity.json, from urd::container_costs\", "
                            "\"marks\": {\"*\": \"amortized\", \"~\": \"expected\"}, \"operations\": [");
     for (std::size_t each = 0; each < urd::test::op_names.size(); ++each)
-        out += (each == 0 ? "" : ", ") + json_string(urd::test::op_names[each]);
-    out += "], \"representations\": [\n";
+        out += (each == 0 ? "" : ", ") + json_text(urd::test::op_names[each]);
+    // The growths in order, and the scale each quantity grows on (urd::name, urd::scale_of): what a comparison of costs
+    // reads (benchmarks/record.py).
+    out += "], \"growths\": [";
+    for (auto each = urd::growth::one;; each = static_cast<urd::growth>(static_cast<int>(each) + 1))
+    {
+        out += (each == urd::growth::one ? "" : ", ") + json_text(urd::name(each));
+        if (each == urd::growth::n_times)
+            break;
+    }
+    out += "], \"scales\": {";
+    for (auto each = urd::quantity::n;; each = static_cast<urd::quantity>(static_cast<int>(each) + 1))
+    {
+        out += (each == urd::quantity::n ? "" : ", ") + json_text(urd::name(each)) + ": " + json_text(urd::name(urd::scale_of(each)));
+        if (each == urd::quantity::changes)
+            break;
+    }
+    out += "}, \"representations\": [\n";
     bool first = true;
     for (const auto& each : all)
     {
         auto kinds = std::string("[");
         for (const auto& kind : each.kinds)
-            kinds += (kinds.size() > 1 ? ", " : "") + json_string(kind);
+            kinds += (kinds.size() > 1 ? ", " : "") + json_text(kind);
         auto costs = std::string("{");
         for (std::size_t what = 0; what < urd::test::op_names.size(); ++what)
         {
             const auto& how = each.costs[what];
             if (!how || (each.passed_on[what] && !each.offered[what]))
                 continue;
-            costs += (costs.size() > 1 ? ", " : "") + json_string(urd::test::op_names[what]) + ": ";
+            costs += (costs.size() > 1 ? ", " : "") + json_text(urd::test::op_names[what]) + ": ";
             if (each.passed_on[what])
                 costs += "{\"as_part\": true}";
             else
             {
-                costs += "{\"cost\": " + json_string(written(*how));
-                costs += ", \"growth\": " + json_string(growth_name(how->grows));
-                costs += ", \"in\": " + json_string(in_name(how->of));
-                costs += ", \"verified\": " + json_string(how->timed ? "timed" : "counted") + "}";
+                costs += "{\"cost\": " + json_text(fmt::format("{}", *how));
+                costs += ", \"growth\": " + json_text(urd::name(how->grows));
+                costs += ", \"in\": " + json_text(urd::name(how->of));
+                costs += ", \"verified\": " + json_text(how->timed ? "timed" : "counted") + "}";
             }
         }
         out += first ? "  " : ",\n  ";
         first = false;
-        out += "{\"representation\": " + json_string(each.id);
-        out += ", \"description\": " + json_string(each.description);
+        out += "{\"representation\": " + json_text(each.id);
+        out += ", \"description\": " + json_text(each.description);
         out += ", \"kinds\": " + kinds + "]";
-        out += ", \"holds\": " + json_string(each.holds);
+        out += ", \"holds\": " + json_text(each.holds);
         if (!each.part.empty())
-            out += ", \"part\": " + json_string(each.part);
+            out += ", \"part\": " + json_text(each.part);
         out += ", \"words\": " + std::to_string(each.words);
         out += ", \"costs\": " + costs + "}}";
     }

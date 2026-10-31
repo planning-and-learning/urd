@@ -15,7 +15,7 @@
 namespace urd
 {
 
-// What a Store can be asked for: element types and the property tags of traits.hpp (workloads such as small
+// What a Store can be asked for: element types and the property tags of tags.hpp (workloads such as small
 // among them). Each is a type, so they can be listed together, in any order.
 
 /// The elements are identified by keys of type K. Without value<V>, the keys are the contents: a set.

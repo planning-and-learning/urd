@@ -4,9 +4,9 @@
 // definitions are urd/repr/records.hpp (the record interner) and urd/repr/arena.hpp (the arena interner), which
 // urd/use/records.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>

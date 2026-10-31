@@ -4,10 +4,10 @@
 // comparator (a binary heap, an addressable heap, a bucket queue), and a ring for first-in queues that retain their
 // storage. Defined in urd/repr/queues.hpp, which urd/use/queues.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/semantics/less.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>

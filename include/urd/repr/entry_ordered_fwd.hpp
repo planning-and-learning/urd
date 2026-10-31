@@ -3,9 +3,9 @@
 // A map whose entries are kept in an order that may read the values, declared with what the registry reads of it.
 // Defined in urd/repr/entry_ordered.hpp, which urd/use/contiguous.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 namespace urd::repr

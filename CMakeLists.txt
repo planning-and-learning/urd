@@ -21,8 +21,14 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(URD_WITH_GTL "Concurrent sets and maps by hashed keys: gtl's parallel hash tables." ON)
+option(URD_ENABLE_FMT_FORMATTERS "urd/format.hpp: how urd's types are written, with fmt." ON)
 # The superbuild's prefix comes after any prefix the user set, so a consumer may point at its own Boost.
 list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
+# fmt writes urd's types (urd/format.hpp, with URD_ENABLE_FMT_FORMATTERS) and what the tests, generators and benchmarks
+# print, which need it either way.
+if(URD_ENABLE_FMT_FORMATTERS OR URD_BUILD_TESTS OR URD_BUILD_BENCHMARKS)
+    find_package(fmt CONFIG REQUIRED)
+endif()
 # Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2 (xxHash for
 # urd::Hash, in Boost since 1.89); cista (serialization, for records stored flat). All header-only but for
 # Boost.Container's small runtime library.
@@ -42,6 +48,10 @@ if(URD_WITH_GTL)
     find_package(gtl REQUIRED CONFIG)
     target_link_libraries(urd INTERFACE gtl::gtl)
     target_compile_definitions(urd INTERFACE URD_HAS_GTL=1)
+endif()
+if(URD_ENABLE_FMT_FORMATTERS)
+    target_link_libraries(urd INTERFACE fmt::fmt)
+    target_compile_definitions(urd INTERFACE URD_ENABLE_FMT_FORMATTERS=1)
 endif()
 
 # The package: find_package(urd) after an install, or against this build tree with urd_DIR=<build>.
@@ -169,7 +179,7 @@ if(URD_BUILD_BENCHMARKS)
                     file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/experiments/${object}.cpp
                          CONTENT "${headers}#include \"${PROJECT_SOURCE_DIR}/benchmarks/experiment.cpp\"\n\nvoid register_${object}();\nvoid register_${object}() { register_experiments(); }\n")
                     add_library(${object} OBJECT ${CMAKE_CURRENT_BINARY_DIR}/experiments/${object}.cpp)
-                    target_link_libraries(${object} PRIVATE urd::urd benchmark::benchmark)
+                    target_link_libraries(${object} PRIVATE urd::urd benchmark::benchmark fmt::fmt)
                     target_include_directories(${object} PRIVATE tests benchmarks)
                     target_compile_definitions(${object} PRIVATE URD_CONTAINER="${container}" URD_EXPERIMENTS=${joined})
                     # GCC's -Wmaybe-uninitialized misfires on a slot vector held in a std::optional (a known false
@@ -186,7 +196,7 @@ if(URD_BUILD_BENCHMARKS)
         endforeach()
         configure_file(benchmarks/experiments_main.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp @ONLY)
         add_executable(benchmark_comparisons ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp)
-        target_link_libraries(benchmark_comparisons PRIVATE ${experiment_objects} benchmark::benchmark)
+        target_link_libraries(benchmark_comparisons PRIVATE ${experiment_objects} benchmark::benchmark fmt::fmt)
     endblock()
 endif()
 
@@ -199,7 +209,7 @@ if(URD_BUILD_TESTS)
     # nested Stores. Those below count allocations (tests/allocations.cpp replaces operator new).
     foreach(test store properties rows semantics queues pools registry denials views concurrency complexity complexity_verify)
         add_executable(test_${test} tests/${test}.cpp tests/repr/main.cpp)
-        target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads)
+        target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
         add_test(NAME ${test} COMMAND test_${test})
         set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
     endforeach()
@@ -213,7 +223,7 @@ if(URD_BUILD_TESTS)
 
     # The resolution table: docs/RESOLUTION.md is generated from the request grid and checked against the registry.
     add_executable(resolution_table tests/resolution_table.cpp)
-    target_link_libraries(resolution_table PRIVATE urd::urd)
+    target_link_libraries(resolution_table PRIVATE urd::urd fmt::fmt)
     if(URD_WITH_GTL)  # the table documents the full build: without gtl its concurrent rows read none
         add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/docs/RESOLUTION.md)
     endif()
@@ -225,14 +235,14 @@ if(URD_BUILD_TESTS)
     set(request_group_objects "")
     foreach(group RANGE ${last_group})
         add_library(requests_group_${group} OBJECT tests/requests_group.cpp)
-        target_link_libraries(requests_group_${group} PRIVATE urd::urd)
+        target_link_libraries(requests_group_${group} PRIVATE urd::urd fmt::fmt)
         target_include_directories(requests_group_${group} PRIVATE tests benchmarks)
         target_compile_definitions(requests_group_${group} PRIVATE URD_GROUP=${group})
         urd_small_object(requests_group_${group})
         list(APPEND request_group_objects requests_group_${group})
     endforeach()
     add_executable(requests_table tests/requests_table.cpp)
-    target_link_libraries(requests_table PRIVATE urd::urd ${request_group_objects})
+    target_link_libraries(requests_table PRIVATE urd::urd ${request_group_objects} fmt::fmt)
     target_include_directories(requests_table PRIVATE tests benchmarks)
     target_compile_definitions(requests_table PRIVATE URD_GROUPS=${URD_REQUEST_GROUPS})
     if(URD_WITH_GTL)
@@ -240,12 +250,12 @@ if(URD_BUILD_TESTS)
     endif()
     # The vocabulary: share/urd/vocabulary.json is generated from the tags and their entries, and checked against them.
     add_executable(vocabulary_table tests/vocabulary_table.cpp)
-    target_link_libraries(vocabulary_table PRIVATE urd::urd)
+    target_link_libraries(vocabulary_table PRIVATE urd::urd fmt::fmt)
     add_test(NAME vocabulary COMMAND vocabulary_table --check ${PROJECT_SOURCE_DIR}/share/urd/vocabulary.json)
 
     # The costs: share/urd/complexity.json is generated from the cost table (tests/complexity.hpp) and checked against it.
     add_executable(complexity_table tests/complexity_table.cpp)
-    target_link_libraries(complexity_table PRIVATE urd::urd)
+    target_link_libraries(complexity_table PRIVATE urd::urd fmt::fmt)
     if(URD_WITH_GTL)  # as the resolution table: the full build's representations
         add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
     endif()

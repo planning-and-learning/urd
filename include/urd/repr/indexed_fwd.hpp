@@ -3,9 +3,9 @@
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
 // and what the registry reads of it. Defined in urd/repr/indexed.hpp, which urd/use/hash.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <cstdint>

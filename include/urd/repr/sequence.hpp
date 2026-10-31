@@ -1,7 +1,7 @@
 #pragma once
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <vector>

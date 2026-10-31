@@ -7,11 +7,14 @@
 // (benchmarks/record.py), never measuring them together.
 
 #include "../tests/complexity.hpp"
+#include "../tests/elements.hpp"
 #include "../tests/grid.hpp"
+#include "urd/format.hpp"
 #include "urd/store.hpp"
 
 #include <array>
 #include <cstddef>
+#include <fmt/format.h>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,21 +28,11 @@ inline constexpr std::array<std::size_t, 3> sizes { 1000, 10000, 100000 };
 inline constexpr std::array<std::size_t, 2> small_sizes { 8, 64 };
 inline constexpr std::array<std::size_t, 3> row_lengths { 16, 256, 4096 };
 
-/// An element type as the request writes it (`int`, `std::string`, `Store<value<int>, frozen>`), or "-" for none.
-template<typename T>
-std::string shape_of()
-{
-    if constexpr (std::is_void_v<T>)
-        return "-";
-    else
-        return type_name<T>();
-}
-
-/// The shape of a request's elements: its key and value types, "<key>;<value>". Only containers measured on the same
-/// types are compared.
+/// The shape of a request's elements: its key and value types as the request writes them, "<key>;<value>" ("-" for
+/// none). Only containers measured on the same types are compared.
 template<typename S>
 std::string shape_of_spec()
-{ return shape_of<typename S::key_type>() + ";" + shape_of<typename S::value_type>(); }
+{ return fmt::format("{};{}", urd::spelling<typename S::key_type>(), urd::spelling<typename S::value_type>()); }
 
 /// The experiment of container R for the request spec S.
 template<typename S>

@@ -5,9 +5,9 @@
 // first three are defined in urd/repr/grouped.hpp (urd/use/dense.hpp), the postings in urd/repr/postings.hpp
 // (urd/use/hash.hpp).
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 namespace urd::repr

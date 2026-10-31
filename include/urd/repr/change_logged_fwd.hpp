@@ -3,11 +3,11 @@
 // A set that records what changed since its log was cleared, declared with what the registry reads of it. Defined in
 // urd/repr/change_logged.hpp, which urd/use/hash.hpp includes (its log is two indexed sets).
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/interface.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_set.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>

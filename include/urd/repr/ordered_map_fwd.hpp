@@ -4,8 +4,8 @@
 // Defined in urd/repr/ordered_map.hpp, which the family of its keys includes (urd/use/dense.hpp for a sparse set,
 // urd/use/hash.hpp for an indexed set).
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>

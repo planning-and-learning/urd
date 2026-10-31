@@ -3,9 +3,9 @@
 // Node containers that keep their erased nodes for reuse, declared with what the registry reads of them. Defined in
 // urd/repr/recycling.hpp, which urd/use/nodes.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <map>

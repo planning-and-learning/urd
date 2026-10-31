@@ -4,11 +4,11 @@
 // changes. Declared with what the registry reads of them; defined in urd/repr/layered.hpp, which urd/use/layers.hpp
 // includes. What is layered comes with its own family.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 namespace urd::repr

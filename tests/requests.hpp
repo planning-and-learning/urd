@@ -43,6 +43,9 @@ struct request_row
     std::vector<server> serving;
     std::size_t position = 0;
     std::vector<std::size_t> sizes;
+    /// Whether its elements are cheap to copy and destroy (trivially copyable): where measured times show a container's
+    /// costs, not its elements'.
+    bool cheap = false;
 };
 
 struct request_group

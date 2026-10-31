@@ -3,10 +3,10 @@
 // Representations of nested Stores, whose elements (rows) are Stores themselves, declared with what the registry
 // reads of them. Defined in urd/repr/rows.hpp, which urd/use/sequences.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 #include <type_traits>

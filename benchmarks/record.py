@@ -126,7 +126,9 @@ def stale_or_missing(results: dict, prints: dict[str, str]) -> list[str]:
 # The address space a cell may take: past it the cell fails (recorded), instead of the machine running out of memory.
 memory_limit = 8 << 30
 
-OPERATIONS = ("insert", "lookup", "ordered_lookup", "erase", "clear", "iterate", "access", "push", "pop", "top", "merge", "insert_row", "find_row", "scope")
+def complexity() -> dict:
+    """share/urd/complexity.json: the operations, the growths in order, each quantity's scale, each container's costs."""
+    return json.loads(COMPLEXITY.read_text())
 
 
 def escaped(text: str) -> str:
@@ -151,7 +153,7 @@ def measure(binary: Path, cell: str, cpu: int | None, arguments: argparse.Namesp
     runs = [r for r in json.loads(done.stdout)["benchmarks"] if r.get("run_type") == "iteration" and not r.get("error_occurred")]
     if not runs:
         raise RuntimeError(f"{cell}: no run (" + done.stderr.strip()[:200] + ")")
-    return {op: round(statistics.median(r[op] for r in runs), 3) for op in OPERATIONS if op in runs[0]}
+    return {op: round(statistics.median(r[op] for r in runs), 3) for op in complexity()["operations"] if op in runs[0]}
 
 
 def record(arguments: argparse.Namespace) -> int:
@@ -221,17 +223,14 @@ def coverage(arguments: argparse.Namespace) -> int:
     return 0 if registered == wanted else 1
 
 
-GROWTH_ORDER = ("one", "log", "linear", "n_log_n", "n_times")
-
-
-def scale(quantity: str) -> int:
-    """Which quantity a cost grows in, for comparing: the elements, the key range and the capacity are one."""
-    return {"n": 0, "keys": 0, "capacity": 0, "row": 1, "delta": 2, "changes": 3}[quantity]
+def scale(quantity: str) -> str:
+    """Which quantity a cost grows in, for comparing: the elements, the key range and the capacity are one (urd::scale_of)."""
+    return complexity()["scales"][quantity]
 
 
 def costs() -> dict[str, dict]:
     """Each container's entry of complexity.json, by id."""
-    return {each["representation"]: each for each in json.loads(COMPLEXITY.read_text())["representations"]}
+    return {each["representation"]: each for each in complexity()["representations"]}
 
 
 def cost(table: dict[str, dict], container: str, operation: str, part: str | None = None) -> dict | None:
@@ -252,16 +251,17 @@ def classify(table: dict[str, dict], chosen: dict, other: dict, operations: list
         b = cost(table, other["container"], operation, other.get("part"))
         if not a or not b:
             continue
-        ga, gb = GROWTH_ORDER.index(a["growth"]), GROWTH_ORDER.index(b["growth"])
+        order = complexity()["growths"]
+        ga, gb = order.index(a["growth"]), order.index(b["growth"])
         # O(1) is below any growth in any quantity; O(n changes) above any growth up to linear in the elements;
         # other growths compare only within one quantity.
         if a["growth"] == "one" and b["growth"] != "one":
             chosen_better = True
         elif b["growth"] == "one" and a["growth"] != "one":
             other_better = True
-        elif b["growth"] == "n_times" and scale(a["in"]) == 0 and ga <= GROWTH_ORDER.index("linear"):
+        elif b["growth"] == "n_times" and scale(a["in"]) == "n" and ga <= order.index("linear"):
             chosen_better = True
-        elif a["growth"] == "n_times" and scale(b["in"]) == 0 and gb <= GROWTH_ORDER.index("linear"):
+        elif a["growth"] == "n_times" and scale(b["in"]) == "n" and gb <= order.index("linear"):
             other_better = True
         elif scale(a["in"]) != scale(b["in"]):
             apart = True
@@ -355,14 +355,6 @@ def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str
     return failed, smaller
 
 
-CHEAP = ("-", "int", "unsigned", "std::size_t", "double", "Id")
-
-
-def cheap(shape: str) -> bool:
-    """Whether a shape's elements are cheap to copy and destroy: numbers, ids and indices."""
-    return all(part in CHEAP or part.startswith("index<") for part in shape.split(";"))
-
-
 def growth_failures(results: dict) -> list[str]:
     """Measured times that grow faster than their declared cost from the smallest size to the largest: a cost is an
     upper bound, so only growing faster refutes it (with a factor of ten for caches). Read on cheap elements only:
@@ -373,8 +365,7 @@ def growth_failures(results: dict) -> list[str]:
     times: dict[tuple[str, str], dict[int, float]] = {}
     for name, result in results["cells"].items():
         experiment = name.rsplit("/", 1)[0]
-        shape = experiment.split("/")[1].split("#")[0]
-        if "ns" not in result or "/small" in experiment or not cheap(shape):
+        if "ns" not in result or "/small" in experiment or not experiments.get(experiment, {}).get("cheap"):
             continue
         if any(op in experiments.get(experiment, {}).get("operations", []) for op in ("insert_row", "find_row")):
             continue

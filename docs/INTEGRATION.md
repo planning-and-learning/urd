@@ -56,7 +56,7 @@ already installed (cista's does) keeps an old install until `dependencies-instal
 ## 3. Declare its properties: `container_traits<R>`
 
 What a container guarantees is a type trait, as `graph_traits` is for Boost.Graph: one tag per category
-(`include/urd/traits.hpp`), the root of a category where it promises nothing. List the tags it has:
+(`include/urd/tags.hpp`), the root of a category where it promises nothing. List the tags it has:
 
 ```cpp
 template<typename K, typename Allocator>
@@ -181,13 +181,13 @@ A property is part of what a Store is: it holds from construction (from any elem
 representation puts in the order asked for) and every operation keeps it, or the operation is not offered. A container whose property holds only
 if callers remember to restore it is not a representation.
 
-The exceptions are part of the properties' definitions (`include/urd/traits.hpp`), the same for every
+The exceptions are part of the properties' definitions (`include/urd/tags.hpp`), the same for every
 representation, and the test checks them as defined:
 
 | Property | Exception |
 |---|---|
 | `stable_refs` | the reference is the one the kind's path hands out (a map's value by `at` or an entry's `.second`, a queue's `front`, a pool's `[index]`); `erase` and `clear` end the references to what they remove |
-| `concurrent` | covers inserts and reads of published elements by the kind's paths (`include/urd/traits.hpp` lists them per kind); erase of another thread's element, `clear`, iteration, `reserve`, copy, move and destruction need no other operation running |
+| `concurrent` | covers inserts and reads of published elements by the kind's paths (`include/urd/tags.hpp` lists them per kind); erase of another thread's element, `clear`, iteration, `reserve`, copy, move and destruction need no other operation running |
 
 - Pin what requests now resolve to it (`static_assert` on `Store<…>::representation` in `tests/store.cpp`).
 - Add the container, and a Store that resolves to it, to the type list in `tests/properties.cpp`. That
@@ -554,7 +554,7 @@ A change to an order is backed by these: `docs/BENCHMARKS.md` shows the result.
 A declared guarantee the request left open is free: a request that did not ask for `stable_refs` may receive a
 node-based table. One guarantee is also a demand on the caller, `dense`: a container that stores by index needs
 keys that are indices, its storage grows with the largest key, and a negative key is no index at all. So
-`demands_met` (`include/urd/traits.hpp`) lets a dense container serve only a request that promises `dense`,
+`demands_met` (`include/urd/property_set.hpp`) lets a dense container serve only a request that promises `dense`,
 whatever its place in the list; a partition promises it by rule. Before that rule, a concurrent map by an integer
 key with `sorted` or `retains` silently fell through to the thread-safe generation map and asserted on the first
 negative key.

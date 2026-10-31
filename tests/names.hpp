@@ -3,8 +3,8 @@
 // Names of the containers a Store can resolve to, read from their synopses (urd::container_synopsis), and the
 // vocabulary as the tests and generated files spell it.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/store.hpp"
-#include "urd/synopsis.hpp"
 
 #include <algorithm>
 #include <array>
@@ -38,13 +38,10 @@ struct name<R>
 };
 
 /// The vocabulary as arrays in the order of urd::tag, computed from each tag's words (urd::tag_synopsis, beside the
-/// tag in urd/traits.hpp): for printing a request or a spec, and for share/urd/vocabulary.json
+/// urd/tag_synopsis.hpp): for printing a request or a spec, and for share/urd/vocabulary.json
 /// (tests/vocabulary_table.cpp).
-template<typename... Tags>
-constexpr auto names_of(urd::detail::type_list<Tags...> /*tags*/)
-{ return std::array<std::string_view, sizeof...(Tags)> { urd::tag_synopsis<Tags>::name... }; }
-inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names = names_of(urd::detail::all_tags {});
-constexpr std::string_view tag_name(urd::tag of) { return tag_names[urd::detail::index(of)]; }
+inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names = urd::detail::tag_names;
+using urd::tag_name;
 
 /// What a tag is to the one who writes a request: its role, description and phrases (urd::tag_synopsis). A category's
 /// root has an empty entry: it promises nothing and is never written.

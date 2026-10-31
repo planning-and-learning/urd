@@ -1,4 +1,4 @@
-// What concurrent promises, per kind, as pairs of operations that may overlap (include/urd/traits.hpp): threads
+// What concurrent promises, per kind, as pairs of operations that may overlap (include/urd/tags.hpp): threads
 // insert at once and agree; they read published elements while others insert; maps take updates of the same keys
 // at once and reads beside them; pools hand equal rows equal handles across threads; a layered pool reads a parent
 // no thread changes. Each test runs the pair from four threads. Run under ThreadSanitizer in CI, where a data race

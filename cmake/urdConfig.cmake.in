@@ -10,6 +10,10 @@ if(@URD_WITH_GTL@)
     # gtl: the parallel hash tables behind concurrent sets and maps by hashed keys.
     find_dependency(gtl CONFIG)
 endif()
+if(@URD_ENABLE_FMT_FORMATTERS@)
+    # fmt: how urd's types are written (urd/format.hpp).
+    find_dependency(fmt CONFIG)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/urdTargets.cmake")
 check_required_components(urd)

@@ -26,7 +26,7 @@ urd clone, directly on `main`, one milestone at a time, each with its own short 
 ## Definition of done (every milestone)
 
 **For a new property:**
-- a category in `include/urd/traits.hpp`, with a root that promises nothing;
+- a category in `include/urd/tags.hpp`, with a root that promises nothing;
 - the interface it requires or unlocks, in `include/urd/interface.hpp` and `include/urd/store.hpp`;
 - a typed test in `tests/properties.cpp` or its own suite, skipped where the property is not declared;
 - a sabotage that the test catches, not committed;
@@ -451,7 +451,7 @@ touches).
 tool of `claude.search.md` reads it): its category, its role (a guarantee containers declare, a promise the caller makes
 about its data, a kind of Store, a request the interface enforces, or a hint that only reorders candidates), one line
 on its meaning, a few phrases a need is stated in, what it implies and what it excludes. Role, description and phrases
-are written by hand beside each tag (`urd::tag_synopsis` in `urd/traits.hpp` since M19; a `static_assert` requires them per tag); category,
+are written by hand per tag (`urd::tag_synopsis`, `urd/tag_synopsis.hpp` since M19; a `static_assert` requires them per tag); category,
 implies and excludes come from the tag hierarchy; `vocabulary_table --check` (the `vocabulary` test) holds the file to
 both and rejects a role that does not match its category.
 

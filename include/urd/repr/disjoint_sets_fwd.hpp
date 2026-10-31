@@ -3,9 +3,9 @@
 // A partition of indices into disjoint classes (union-find), declared with what the registry reads of it. Defined in
 // urd/repr/disjoint_sets.hpp, which urd/use/dense.hpp includes.
 
+#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/synopsis.hpp"
 #include "urd/traits.hpp"
 
 namespace urd::repr
