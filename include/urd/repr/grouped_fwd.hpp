@@ -8,6 +8,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 namespace urd::repr
 {
@@ -44,124 +48,172 @@ using PostingMap = GroupedMultiMap<HashGroups<K, V>>;
 namespace urd
 {
 
-/// Values in key order, each key's in the order given; built once, never changed.
-template<indexable K, typename V>
-struct container_traits<repr::CsrMultiMap<K, V>> : properties_of<sorted, multi, dense, canonical>
-{
-};
 
-/// As a CsrMultiMap, answering by value too.
-template<indexable K, indexable V>
-struct container_traits<repr::BidirectionalCsr<K, V>> : with_t<container_traits<repr::CsrMultiMap<K, V>>, bidirectional>
-{
-};
 
-/// Values grouped by key, in no order of keys; erase and clear free what the removed keys' vectors hold.
-template<hashable K, typename V>
-struct container_traits<repr::PostingMap<K, V>> : properties_of<multi, sparse, shrinkable>
-{
-};
 
-/// A row of values per index, in key order; erase and clear keep the rows and their storage.
-template<indexable K, typename V>
-struct container_traits<repr::DenseMultiMap<K, V>> : properties_of<sorted, multi, dense, shrinkable, retains>
-{
-};
 
-template<typename K, typename V>
-inline constexpr auto defined_in<repr::CsrMultiMap<K, V>> = detail::fixed_string("urd/repr/csr_multimap.hpp");
-template<typename K, typename V>
-inline constexpr auto defined_in<repr::BidirectionalCsr<K, V>> = detail::fixed_string("urd/repr/bidirectional_csr.hpp");
-template<typename K, typename V>
-inline constexpr auto defined_in<repr::DenseMultiMap<K, V>> = detail::fixed_string("urd/repr/dense_multimap.hpp");
-template<typename K, typename V>
-inline constexpr auto defined_in<repr::PostingMap<K, V>> = detail::fixed_string("urd/repr/postings.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// csr_multimap.
-template<typename K, typename V>
-struct container_costs<repr::CsrMultiMap<K, V>>
-{
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.2;
-};
 
-/// dense_multimap.
-template<typename K, typename V>
-struct container_costs<repr::DenseMultiMap<K, V>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::lin_row_t;
-    static constexpr cost clear = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 4;
-};
 
-/// posting_map.
-template<typename K, typename V>
-struct container_costs<repr::PostingMap<K, V>>
-{
-    static constexpr cost insert = costs::one_ae;
-    static constexpr cost lookup = costs::one_e;
-    static constexpr cost erase = costs::lin_row_t;
-    static constexpr cost clear = costs::lin_capacity;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 4;
-};
 
-/// bidirectional_csr.
-template<typename K, typename V>
-struct container_costs<repr::BidirectionalCsr<K, V>>
-{
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 2.4;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename K, typename V>
-struct container_synopsis<repr::CsrMultiMap<K, V>>
+namespace detail
+{
+
+/// CSR multimap (each key's values together, in key order)
+struct csr_multimap_decl
 {
     static constexpr std::string_view id = "csr_multimap";
+    static constexpr auto headers = header_list<1> { "urd/repr/csr_multimap.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::csr_multimap(f.key);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.2;
+    };
     static constexpr std::string_view description = "CSR multimap (each key's values together, in key order)";
     static constexpr std::string_view holds = "n values + U + 1 offsets";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::DenseMultiMap<K, V>>
+struct declaration_of<repr::CsrMultiMap<K, V>>
+{
+    using declaration = csr_multimap_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// dense multimap (a vector of values per index, growing)
+struct dense_multimap_decl
 {
     static constexpr std::string_view id = "dense_multimap";
+    static constexpr auto headers = header_list<1> { "urd/repr/dense_multimap.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::dense_multimap(f.key);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::lin_row_t;
+        static constexpr cost clear = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 4;
+    };
     static constexpr std::string_view description = "dense multimap (a vector of values per index, growing)";
     static constexpr std::string_view holds = "a vector per index; retains";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::PostingMap<K, V>>
+struct declaration_of<repr::DenseMultiMap<K, V>>
+{
+    using declaration = dense_multimap_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// postings (a flat hash table of value vectors)
+struct posting_map_decl
 {
     static constexpr std::string_view id = "posting_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/postings.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::posting_map(f.key);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_ae;
+        static constexpr cost lookup = costs::one_e;
+        static constexpr cost erase = costs::lin_row_t;
+        static constexpr cost clear = costs::lin_capacity;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 4;
+    };
     static constexpr std::string_view description = "postings (a flat hash table of value vectors)";
     static constexpr std::string_view holds = "a vector of values per key";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::BidirectionalCsr<K, V>>
+struct declaration_of<repr::PostingMap<K, V>>
+{
+    using declaration = posting_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// bidirectional CSR (each key's values and each value's keys together)
+struct bidirectional_csr_decl
 {
     static constexpr std::string_view id = "bidirectional_csr";
+    static constexpr auto headers = header_list<1> { "urd/repr/bidirectional_csr.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::bidirectional_csr(f.key, f.mapped);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 2.4;
+    };
     static constexpr std::string_view description = "bidirectional CSR (each key's values and each value's keys together)";
     static constexpr std::string_view holds = "n values + U + 1 offsets, both ways";
 };
+template<typename K, typename V>
+struct declaration_of<repr::BidirectionalCsr<K, V>>
+{
+    using declaration = bidirectional_csr_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

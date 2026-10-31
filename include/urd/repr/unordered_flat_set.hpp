@@ -2,7 +2,7 @@
 
 // Boost's open-addressing hash set, defined. Include it where a Store resolves to one.
 
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/traits.hpp"
 
@@ -22,7 +22,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"unordered_flat_set", S>
+struct representation_of<unordered_flat_set_decl, S>
 {
     using type = boost::unordered_flat_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>;
 };

@@ -39,7 +39,7 @@ std::string headers()
     else
     {
         auto result = std::string();
-        for (const auto name : urd::detail::choose<S>::row->headers)
+        for (const auto name : urd::detail::registry_table[urd::detail::choose<S>::position].headers)
             if (!name.empty())
                 result += (result.empty() ? "" : " + ") + std::string(name.substr(name.rfind('/') + 1));
         return result;

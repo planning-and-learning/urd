@@ -3,7 +3,7 @@
 // A map from indices to values, a slot per index, for dense keys: stored by position, not hashed.
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/config.hpp"
@@ -431,27 +431,27 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"dense_map", S>
+struct representation_of<dense_map_decl, S>
 {
     using type = repr::IndexMap<typename S::key_type, typename S::mapped_type, false>;
 };
 template<typename S>
-struct representation_of<"stable_dense_map", S>
+struct representation_of<stable_dense_map_decl, S>
 {
     using type = repr::IndexMap<typename S::key_type, typename S::mapped_type, false, false, true>;
 };
 template<typename S>
-struct representation_of<"generation_map", S>
+struct representation_of<generation_map_decl, S>
 {
     using type = repr::IndexMap<typename S::key_type, typename S::mapped_type, true>;
 };
 template<typename S>
-struct representation_of<"stable_generation_map", S>
+struct representation_of<stable_generation_map_decl, S>
 {
     using type = repr::IndexMap<typename S::key_type, typename S::mapped_type, true, false, true>;
 };
 template<typename S>
-struct representation_of<"thread_safe_generation_map", S>
+struct representation_of<thread_safe_generation_map_decl, S>
 {
     using type = repr::IndexMap<typename S::key_type, typename S::mapped_type, true, true>;
 };

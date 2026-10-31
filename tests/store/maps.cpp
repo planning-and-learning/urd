@@ -3,7 +3,6 @@
 #include "../allocations.hpp"
 #include "urd/compose/family.hpp"
 #include "urd/concepts.hpp"
-#include "urd/registry/aliases.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/change_logged.hpp"
 #include "urd/repr/csr_multimap.hpp"
@@ -53,7 +52,8 @@ namespace
 using urd::key;
 using urd::Store;
 using urd::value;
-using urd::detail::TreeMapOf;
+template<typename K, typename V>
+using TreeMapOf = std::map<K, V, urd::Less<K>>;
 
 // A two-level dense map is two dense Stores nested: cleared at the outer level in O(1), refilled fresh.
 TEST(Nested, TwoLevelDenseMap)

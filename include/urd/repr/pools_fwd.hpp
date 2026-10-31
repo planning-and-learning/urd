@@ -10,6 +10,10 @@
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <bit>
 #include <cstddef>
@@ -39,176 +43,228 @@ class SlotVector;
 namespace urd
 {
 
-/// Rows kept in full, each once; clear keeps the storage.
-template<typename Row, bool ThreadSafe>
-    requires hashable<std::vector<detail::row_element_t<Row>>>
-struct container_traits<repr::RowInterner<Row, ThreadSafe>> :
-    properties_of<handles, unique, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-/// Its rows have the properties Row has: they come back as Rows.
-template<typename Row, bool ThreadSafe>
-struct element_traits<repr::RowInterner<Row, ThreadSafe>> : container_traits<Row>
-{
-};
 
-/// Rows of hashable values, sharing equal subtrees; clear keeps the tables' storage.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires hashable<detail::row_element_t<Row>> && (!by_value<traits_t<Row>>)
-struct container_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> :
-    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct element_traits<repr::TreeVectorSet<Row, Arity, ThreadSafe>> : container_traits<Row>
-{
-};
 
-/// Rows that are sets of indices, sharing equal subtrees; clear keeps the table's storage.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-    requires indexable<detail::row_element_t<Row>> && has<traits_t<Row>, unique, dense>
-struct container_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> :
-    properties_of<handles, unique, structural_sharing, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct element_traits<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> : container_traits<Row>
-{
-};
 
-/// Slots never move and are reused, not freed; with ThreadSafe, the operations above run concurrently.
-template<typename T, bool ThreadSafe>
-struct container_traits<repr::SlotVector<T, ThreadSafe>> :
-    properties_of<handles, stable_refs, shrinkable, retains, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-template<typename Row, bool ThreadSafe>
-inline constexpr auto defined_in<repr::RowInterner<Row, ThreadSafe>> = detail::fixed_string("urd/repr/pools.hpp");
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-inline constexpr auto defined_in<repr::TreeVectorSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/repr/tree_vector.hpp");
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-inline constexpr auto defined_in<repr::TreeBitsetSet<Row, Arity, ThreadSafe>> = detail::fixed_string("urd/repr/tree_bitset.hpp");
-template<typename T, bool ThreadSafe>
-inline constexpr auto defined_in<repr::SlotVector<T, ThreadSafe>> = detail::fixed_string("urd/repr/slots.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// row_interner.
-template<typename Row>
-struct container_costs<repr::RowInterner<Row, false>>
-{
-    static constexpr cost insert_row = costs::lin_row_e;
-    static constexpr cost find_row = costs::lin_row_e;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2.5;
-};
 
-/// slot_vector.
-template<typename T>
-struct container_costs<repr::SlotVector<T, false>>
-{
-    static constexpr cost insert_row = costs::one_at;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 1.5;
-};
 
-/// thread_safe_slot_vector.
-template<typename T>
-struct container_costs<repr::SlotVector<T, true>>
-{
-    static constexpr cost insert_row = costs::one_at;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 1.6;
-};
 
-/// tree_bitset_set.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct container_costs<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
-{
-    static constexpr cost insert_row = costs::lin_row_t;
-    static constexpr cost find_row = costs::lin_row_t;
-    static constexpr cost access = costs::lin_row_t;
-    static constexpr double words = 0.05;
-};
 
-/// tree_vector_set.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct container_costs<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
-{
-    static constexpr cost insert_row = costs::lin_row_e;
-    static constexpr cost find_row = costs::lin_row_e;
-    static constexpr cost access = costs::lin_row_t;
-    static constexpr double words = 1;
-};
 
-/// thread_safe_row_interner.
-template<typename Row>
-struct container_costs<repr::RowInterner<Row, true>>
-{
-    static constexpr cost insert_row = costs::lin_row_e;
-    static constexpr cost find_row = costs::lin_row_e;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2.6;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename Row>
-struct container_synopsis<repr::RowInterner<Row, false>>
+namespace detail
+{
+
+/// row interner (each row once, in full)
+struct row_interner_decl
 {
     static constexpr std::string_view id = "row_interner";
+    static constexpr auto headers = header_list<1> { "urd/repr/pools.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::row_interner(f.element, false);
+        if (!held)
+            return {};
+        auto result = offer_of(urd::kind::pool, *held, f);
+        if (const auto nested = guarantees::own_rows(f.element))
+            result = result.giving_nested(*nested);
+        return result;
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert_row = costs::lin_row_e;
+        static constexpr cost find_row = costs::lin_row_e;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2.5;
+    };
     static constexpr std::string_view description = "row interner (each row once, in full)";
     static constexpr std::string_view holds = "each distinct row once, in full";
 };
+template<typename Row>
+struct declaration_of<repr::RowInterner<Row, false>>
+{
+    using declaration = row_interner_decl;
+    static constexpr request_features features = element_facts<Row>();
+};
 
-template<typename T>
-struct container_synopsis<repr::SlotVector<T, false>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// slot vector (slots that never move, freed ones reused)
+struct slot_vector_decl
 {
     static constexpr std::string_view id = "slot_vector";
+    static constexpr auto headers = header_list<1> { "urd/repr/slots.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::slot_vector(false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::pool, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert_row = costs::one_at;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
     static constexpr std::string_view holds = "stable slots; freed slots reused first";
 };
-
 template<typename T>
-struct container_synopsis<repr::SlotVector<T, true>>
+struct declaration_of<repr::SlotVector<T, false>>
+{
+    using declaration = slot_vector_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// slot vector (slots that never move, freed ones reused)
+struct thread_safe_slot_vector_decl
 {
     static constexpr std::string_view id = "thread_safe_slot_vector";
+    static constexpr auto headers = header_list<1> { "urd/repr/slots.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::slot_vector(true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::pool, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert_row = costs::one_at;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 1.6;
+    };
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
     static constexpr std::string_view holds = "stable slots; freed slots reused first, under a lock";
 };
-
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct container_synopsis<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
+template<typename T>
+struct declaration_of<repr::SlotVector<T, true>>
 {
-    static constexpr std::string_view id = ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set";
-    static constexpr std::string_view description = "tree bitset set (sets of indices as trees of blocks, equal subtrees once)";
-    static constexpr std::string_view holds = "nodes shared across rows; all-zero subtrees take nothing";
+    using declaration = thread_safe_slot_vector_decl;
+    static constexpr request_features features = element_facts<T>();
 };
 
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct container_synopsis<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
+}  // namespace detail
+
+
+
+namespace detail
 {
-    static constexpr std::string_view id = ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set";
-    static constexpr std::string_view description = "tree vector set (rows as trees of values, equal subtrees once)";
-    static constexpr std::string_view holds = "nodes shared across rows: a delta adds about k log r nodes";
+
+/// A pool of rows as trees, equal subtrees stored once: of values (`Bits` false) or of index sets' bits (true),
+/// thread-safe or not.
+template<bool Bits, bool ThreadSafe>
+struct tree_pool_decl
+{
+    static constexpr std::string_view id = Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set")
+                                                : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
+    static constexpr auto headers = header_list<1> { Bits ? "urd/repr/tree_bitset.hpp" : "urd/repr/tree_vector.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = Bits ? guarantees::tree_bitset_set(f.element, ThreadSafe) : guarantees::tree_vector_set(f.element, ThreadSafe);
+        if (!held)
+            return {};
+        auto result = offer_of(urd::kind::pool, *held, f);
+        if (const auto nested = guarantees::own_rows(f.element))
+            result = result.giving_nested(*nested);
+        return result;
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert_row = Bits ? costs::lin_row_t : costs::lin_row_e;
+        static constexpr cost find_row = Bits ? costs::lin_row_t : costs::lin_row_e;
+        static constexpr cost access = costs::lin_row_t;
+        static constexpr double words = Bits ? 0.05 : 1;
+    };
+    static constexpr std::string_view description = Bits ? "tree bitset set (sets of indices as trees of blocks, equal subtrees once)"
+                                                          : "tree vector set (rows as trees of values, equal subtrees once)";
+    static constexpr std::string_view holds = Bits ? "nodes shared across rows; all-zero subtrees take nothing"
+                                                   : "nodes shared across rows: a delta adds about k log r nodes";
+};
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct declaration_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
+{
+    using declaration = tree_pool_decl<true, ThreadSafe>;
+    static constexpr request_features features = element_facts<Row>();
+};
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct declaration_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
+{
+    using declaration = tree_pool_decl<false, ThreadSafe>;
+    static constexpr request_features features = element_facts<Row>();
 };
 
-template<typename Row>
-struct container_synopsis<repr::RowInterner<Row, true>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// row interner, thread-safe
+struct thread_safe_row_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_row_interner";
+    static constexpr auto headers = header_list<1> { "urd/repr/pools.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::row_interner(f.element, true);
+        if (!held)
+            return {};
+        auto result = offer_of(urd::kind::pool, *held, f);
+        if (const auto nested = guarantees::own_rows(f.element))
+            result = result.giving_nested(*nested);
+        return result;
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert_row = costs::lin_row_e;
+        static constexpr cost find_row = costs::lin_row_e;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2.6;
+    };
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };
+template<typename Row>
+struct declaration_of<repr::RowInterner<Row, true>>
+{
+    using declaration = thread_safe_row_interner_decl;
+    static constexpr request_features features = element_facts<Row>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

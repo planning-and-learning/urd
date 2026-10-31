@@ -3,7 +3,7 @@
 // A set of indices as a sparse set (Briggs and Torczon), for dense keys: stored by position, not hashed.
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/semantics/hash.hpp"
@@ -163,12 +163,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"sparse_set", S>
+struct representation_of<sparse_set_decl, S>
 {
     using type = repr::SparseSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"ordered_sparse_set", S>
+struct representation_of<ordered_sparse_set_decl, S>
 {
     using type = repr::SparseSet<typename S::element_type, true>;
 };

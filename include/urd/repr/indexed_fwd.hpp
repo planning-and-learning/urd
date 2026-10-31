@@ -7,6 +7,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <cstdint>
 
@@ -35,94 +39,134 @@ using InterningTable = IndexedSet<T, std::uint32_t, ThreadSafe>;
 namespace urd
 {
 
-/// In insertion order, in one array; erase and clear keep the storage of both the array and the table.
-template<hashable T, typename Index>
-struct container_traits<repr::IndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, contiguous, shrinkable, retains>
-{
-};
 
-/// In insertion order, never moved, only ever added to; clear keeps the segments.
-template<hashable T, typename Index>
-struct container_traits<repr::StableIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains>
-{
-};
 
-/// The same, by threads at once.
-template<hashable T, typename Index>
-struct container_traits<repr::ConcurrentIndexedSet<T, Index>> : properties_of<insertion_ordered, unique, positional, stable_refs, growable, retains, concurrent>
-{
-};
 
-template<typename T, typename Index, bool ThreadSafe, bool Stable>
-inline constexpr auto defined_in<repr::IndexedSet<T, Index, ThreadSafe, Stable>> = detail::fixed_string("urd/repr/indexed.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// indexed_set.
-template<typename T>
-struct container_costs<repr::IndexedSet<T, std::uint32_t>>
-{
-    static constexpr cost insert = costs::one_ae;
-    static constexpr cost lookup = costs::one_e;
-    static constexpr cost erase = costs::lin_n;
-    static constexpr cost clear = costs::lin_capacity;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2.5;
-};
 
-/// stable_indexed_set.
-template<typename T, typename Index>
-struct container_costs<repr::StableIndexedSet<T, Index>>
-{
-    static constexpr cost insert = costs::one_ae;
-    static constexpr cost lookup = costs::one_e;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2.5;
-};
 
-/// concurrent_indexed_set.
-template<typename T, typename Index>
-struct container_costs<repr::ConcurrentIndexedSet<T, Index>>
-{
-    static constexpr cost insert = costs::one_ae;
-    static constexpr cost lookup = costs::one_e;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2.6;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename T>
-struct container_synopsis<repr::IndexedSet<T, std::uint32_t>>
+namespace detail
+{
+
+/// indexed set (a vector in insertion order, plus a hash table of positions)
+struct indexed_set_decl
 {
     static constexpr std::string_view id = "indexed_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::indexed_set(f.element);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_ae;
+        static constexpr cost lookup = costs::one_e;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost clear = costs::lin_capacity;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2.5;
+    };
     static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
     static constexpr std::string_view holds = "n elements in order + a table of positions";
 };
+template<typename T>
+struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
+{
+    using declaration = indexed_set_decl;
+    static constexpr request_features features = element_facts<T>();
+};
 
-template<typename T, typename Index>
-struct container_synopsis<repr::StableIndexedSet<T, Index>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// stable indexed set (segments that never move, a hash table of positions; no lock)
+struct stable_indexed_set_decl
 {
     static constexpr std::string_view id = "stable_indexed_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::stable_indexed_set(f.element, false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_ae;
+        static constexpr cost lookup = costs::one_e;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2.5;
+    };
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
     static constexpr std::string_view holds = "segments that never move + a table of positions";
 };
-
 template<typename T, typename Index>
-struct container_synopsis<repr::ConcurrentIndexedSet<T, Index>>
+struct declaration_of<repr::StableIndexedSet<T, Index>>
+{
+    using declaration = stable_indexed_set_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// concurrent indexed set (segments that never move, a concurrent table of positions)
+struct concurrent_indexed_set_decl
 {
     static constexpr std::string_view id = "concurrent_indexed_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/indexed.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::stable_indexed_set(f.element, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_ae;
+        static constexpr cost lookup = costs::one_e;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2.6;
+    };
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };
+template<typename T, typename Index>
+struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
+{
+    using declaration = concurrent_indexed_set_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

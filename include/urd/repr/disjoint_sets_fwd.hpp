@@ -7,6 +7,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 namespace urd::repr
 {
@@ -22,40 +26,52 @@ class DisjointSets;
 namespace urd
 {
 
-/// Indices in classes; clear keeps the storage.
-template<indexable K>
-struct container_traits<repr::DisjointSets<K>> : properties_of<partition, dense, shrinkable, retains>
-{
-};
 
-template<typename K>
-inline constexpr auto defined_in<repr::DisjointSets<K>> = detail::fixed_string("urd/repr/disjoint_sets.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// disjoint_sets.
-template<typename K>
-struct container_costs<repr::DisjointSets<K>>
-{
-    static constexpr cost lookup = costs::one_at;
-    static constexpr cost merge = costs::one_at;
-    static constexpr double words = 2;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename K>
-struct container_synopsis<repr::DisjointSets<K>>
+namespace detail
+{
+
+/// disjoint sets (union-find by size, path halving)
+struct disjoint_sets_decl
 {
     static constexpr std::string_view id = "disjoint_sets";
+    static constexpr auto headers = header_list<1> { "urd/repr/disjoint_sets.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::disjoint_sets(f.element);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::partition, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost lookup = costs::one_at;
+        static constexpr cost merge = costs::one_at;
+        static constexpr double words = 2;
+    };
     static constexpr std::string_view description = "disjoint sets (union-find by size, path halving)";
     static constexpr std::string_view holds = "a parent and a size per element";
 };
+template<typename K>
+struct declaration_of<repr::DisjointSets<K>>
+{
+    using declaration = disjoint_sets_decl;
+    static constexpr request_features features = element_facts<K>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

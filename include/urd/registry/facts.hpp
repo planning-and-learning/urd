@@ -1,10 +1,10 @@
 #pragma once
 
-// A registered container as data: its row. What a container guarantees depends on the elements it is given (a tree
-// sorts only what urd::Less orders, a dense set takes only indices), so a row's properties are a function of the
-// request's element features, not a constant: one ordinary function per container, which selection calls as a value.
-// Choosing among the rows is then constant evaluation, and only the container chosen is ever instantiated
-// (claude.layout.md). The features are computed once per request (urd/registry/features.hpp).
+// The facts a container's declaration reads (urd/registry/declaration.hpp): what a request's element types are
+// (type_features, general to any type, recursive for Stores), what order it asks for, and what it is as a whole
+// (request_features). What a container guarantees depends on these (a tree sorts only what urd::Less orders, a dense
+// set takes only indices), so its offer is a function of them, evaluated as a value. They are computed once per type
+// and request (urd/registry/features.hpp).
 
 #include "urd/property_set.hpp"
 #include "urd/semantics/less.hpp"
@@ -22,7 +22,7 @@ namespace urd::detail
 
 /// What a type is, in facts general enough that any container states its constraints in them; for a Store, also its
 /// request, its kind, and the same facts about its elements, recursively. Nothing here is one container's: a
-/// container's own precondition is composed from these in its row function (urd/registry/rows.hpp).
+/// container's own precondition is composed from these in its offer (urd/registry/guarantees.hpp).
 struct type_features
 {
     bool hashable = false;                ///< by urd::Hash and urd::EqualTo
@@ -62,37 +62,16 @@ struct request_features
     /// means (natural_order), and the facts about what it compares (its projection's result, else the elements).
     bool order_natural = false;
     type_features order_key;
+    /// Whether hashing uses urd's hash and equality (or ones that agree): always for a request, and for a
+    /// container where its hash and equality arguments are natural (natural_hash).
+    bool hash_natural = true;
 };
 
-/// The orders a row takes, as a mask of urd::detail::order.
+/// The orders a container takes, as a mask of urd::detail::order.
 inline constexpr std::uint8_t natural_order_only = 1U << static_cast<unsigned>(order::none);
 inline constexpr std::uint8_t element_orders = natural_order_only | (1U << static_cast<unsigned>(order::element));
 inline constexpr std::uint8_t entry_orders = 1U << static_cast<unsigned>(order::entry);
 constexpr bool accepts_order(std::uint8_t orders, order of) { return (orders & (1U << static_cast<unsigned>(of))) != 0; }
-
-/// A row's properties for given element features, or none where it does not take these elements.
-using row_function = std::optional<property_set> (*)(const request_features&);
-
-/// A registered container as data. `headers`: those a file holding a Store of it includes, a wrapper's part's first
-/// (urd::defined_in, urd::parts). `rows`: what it guarantees the Stores it holds (element_traits), or none where it
-/// gives them their own, but for memory.
-struct registry_row
-{
-    std::string_view id;
-    std::array<std::string_view, 2> headers {};
-    /// What its Stores are (urd::kind): a wrapper's is its part's.
-    urd::kind kind = urd::kind::sequence;
-    /// The orders it takes (accepts_order): urd::Less only, an order_by over the elements too, or one over entries.
-    std::uint8_t orders = natural_order_only;
-    row_function traits = nullptr;
-    row_function rows = nullptr;
-    property_set relies_on = property_set::roots();
-};
-
-/// The container a row's id names for a spec S; declared only. Each container's own header specializes it
-/// (representation_of<"unordered_flat_set", S>), so a file names only the containers whose headers it includes.
-template<fixed_string Id, typename S>
-struct representation_of;
 
 /// The comparator of a container that takes one: the request's order_by where it gives one, else urd::Less.
 template<typename S>

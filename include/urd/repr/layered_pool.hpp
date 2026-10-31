@@ -4,7 +4,7 @@
 
 #include "urd/index.hpp"
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/layered_fwd.hpp"
 #include "urd/repr/pools_fwd.hpp"
 #include "urd/repr/records_fwd.hpp"
@@ -242,40 +242,11 @@ struct include<"urd/repr/layered_pool.hpp">
 namespace urd::detail
 {
 
-template<typename S>
-struct representation_of<"layered_row_interner", S>
+/// Over its part's container for the request.
+template<typename Part, typename S>
+struct representation_of<layered_decl<Part, true>, S>
 {
-    using type = repr::LayeredPool<repr::RowInterner<typename S::element_type>>;
-};
-template<typename S>
-struct representation_of<"layered_thread_safe_row_interner", S>
-{
-    using type = repr::LayeredPool<repr::RowInterner<typename S::element_type, true>>;
-};
-template<typename S>
-struct representation_of<"layered_record_interner", S>
-{
-    using type = repr::LayeredPool<repr::RecordInterner<typename S::element_type>>;
-};
-template<typename S>
-struct representation_of<"layered_stable_record_interner", S>
-{
-    using type = repr::LayeredPool<repr::RecordInterner<typename S::element_type, false, true>>;
-};
-template<typename S>
-struct representation_of<"layered_thread_safe_record_interner", S>
-{
-    using type = repr::LayeredPool<repr::RecordInterner<typename S::element_type, true>>;
-};
-template<typename S>
-struct representation_of<"layered_arena_interner", S>
-{
-    using type = repr::LayeredPool<repr::ArenaInterner<typename S::element_type>>;
-};
-template<typename S>
-struct representation_of<"layered_thread_safe_arena_interner", S>
-{
-    using type = repr::LayeredPool<repr::ArenaInterner<typename S::element_type, true>>;
+    using type = repr::LayeredPool<typename representation_of<Part, S>::type>;
 };
 
 }  // namespace urd::detail

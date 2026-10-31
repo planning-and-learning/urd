@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/indexed_fwd.hpp"
 #include "urd/repr/ordered_map_fwd.hpp"
@@ -226,12 +226,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"ordered_map", S>
+struct representation_of<ordered_map_decl, S>
 {
     using type = repr::OrderedMap<repr::IndexedSet<typename S::key_type>, typename S::mapped_type>;
 };
 template<typename S>
-struct representation_of<"dense_ordered_map", S>
+struct representation_of<dense_ordered_map_decl, S>
 {
     using type = repr::OrderedMap<repr::SparseSet<typename S::key_type, true>, typename S::mapped_type>;
 };

@@ -54,7 +54,6 @@
 #include "grid.hpp"
 #include "urd/format.hpp"
 #include "urd/registry.hpp"
-#include "urd/registry/candidates.hpp"
 
 #include <array>
 #include <cstddef>
@@ -106,12 +105,6 @@ std::string kind_of()
         return "sequences";
 }
 
-template<typename R, typename S>
-struct serving
-{
-    static constexpr bool value = urd::detail::serves<R, S>;
-};
-
 template<typename S, typename List>
 struct collect;
 template<typename S, typename... Rs>
@@ -120,7 +113,6 @@ struct collect<S, urd::detail::type_list<Rs...>>
     template<typename R>
     static void one(std::vector<representation>& into)
     {
-        if constexpr (serving<R, S>::value)
         {
             const auto id = std::string(urd::test::name<R>::id);
             auto found = std::ranges::find(into, id, &representation::id);
@@ -160,7 +152,7 @@ std::string generate()
                                         [&]<typename Q>(std::type_identity<Q>)
                                         {
                                             using S = typename Q::spec;
-                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            using List = urd::test::serving_containers<S>;
                                             collect<S, List>::run(all);
                                         });
         });

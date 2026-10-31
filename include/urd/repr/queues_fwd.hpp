@@ -10,6 +10,10 @@
 #include "urd/registry/element_concepts.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <concepts>
 #include <cstdint>
@@ -53,197 +57,256 @@ using Heap = Queue<T, leaving::least>;
 namespace urd
 {
 
-/// A deque: a push or pop at either end moves no other element, so the front stays put while elements queue
-/// behind it. Not retains: the deque frees its blocks on clear and as pops leave them.
-template<typename T>
-struct container_traits<repr::Fifo<T>> : properties_of<fifo, stable_refs, shrinkable>
-{
-};
 
-template<typename T>
-struct container_traits<repr::Lifo<T>> : properties_of<lifo, shrinkable, retains>
-{
-};
 
-/// A ring over one vector: pop and clear keep it.
-template<typename T>
-struct container_traits<repr::RingFifo<T>> : properties_of<fifo, shrinkable, retains>
-{
-};
 
-template<typename T, typename C>
-    requires natural_order<C, T>
-struct container_traits<repr::Queue<T, repr::leaving::least, C>> : properties_of<by_priority, shrinkable, retains>
-{
-};
 
-template<typename T, typename C>
-    requires natural_order<C, T>
-struct container_traits<repr::AddressableHeap<T, C>> : properties_of<by_priority, handles, shrinkable, retains>
-{
-};
 
-template<typename T, typename C>
-    requires std::integral<repr::bucket_priority_t<T, C>> && natural_order<C, T>
-struct container_traits<repr::BucketQueue<T, C>> : properties_of<by_priority, shrinkable, retains>
-{
-};
-/// It is fast only where pushes never go below the last popped, so it serves only requests that say so.
-template<typename T, typename C>
-inline constexpr detail::property_set relies_on<repr::BucketQueue<T, C>> = detail::property_set::of({ tag::monotone_priority });
 
-template<typename T, repr::leaving Order, typename C>
-inline constexpr auto defined_in<repr::Queue<T, Order, C>> = detail::fixed_string("urd/repr/queue.hpp");
-template<typename T, typename C>
-inline constexpr auto defined_in<repr::AddressableHeap<T, C>> = detail::fixed_string("urd/repr/addressable_heap.hpp");
-template<typename T, typename C>
-inline constexpr auto defined_in<repr::BucketQueue<T, C>> = detail::fixed_string("urd/repr/bucket_queue.hpp");
-template<typename T>
-inline constexpr auto defined_in<repr::RingFifo<T>> = detail::fixed_string("urd/repr/ring_fifo.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// fifo.
-template<typename T>
-struct container_costs<repr::Fifo<T>>
-{
-    static constexpr cost push = costs::one_a;
-    static constexpr cost pop = costs::one;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.2;
-};
 
-/// ring_fifo.
-template<typename T>
-struct container_costs<repr::RingFifo<T>>
-{
-    static constexpr cost push = costs::one_a;
-    static constexpr cost pop = costs::one;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.5;
-};
 
-/// lifo.
-template<typename T>
-struct container_costs<repr::Lifo<T>>
-{
-    static constexpr cost push = costs::one_a;
-    static constexpr cost pop = costs::one;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.5;
-};
 
-/// heap, by urd::Less or by an order_by.
-template<typename T, typename Compare>
-struct container_costs<repr::Queue<T, repr::leaving::least, Compare>>
-{
-    static constexpr cost push = costs::log_na;
-    static constexpr cost pop = costs::log_n;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.5;
-};
 
-/// addressable_heap.
-template<typename T, typename Compare>
-struct container_costs<repr::AddressableHeap<T, Compare>>
-{
-    static constexpr cost push = costs::log_na;
-    static constexpr cost pop = costs::log_n;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 3;
-};
 
-/// bucket_queue.
-template<typename T, typename Compare>
-struct container_costs<repr::BucketQueue<T, Compare>>
-{
-    static constexpr cost push = costs::one_at;
-    static constexpr cost pop = costs::one_at;
-    static constexpr cost top = costs::one_t;
-    static constexpr cost clear = costs::lin_keys;
-    static constexpr double words = 2;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename T>
-struct container_synopsis<repr::Fifo<T>>
+namespace detail
+{
+
+/// queue (a deque, first in first out)
+struct fifo_decl
 {
     static constexpr std::string_view id = "fifo";
+    static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::fifo();
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::one_a;
+        static constexpr cost pop = costs::one;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 1.2;
+    };
     static constexpr std::string_view description = "queue (a deque, first in first out)";
     static constexpr std::string_view holds = "a deque; stable references";
 };
-
 template<typename T>
-struct container_synopsis<repr::RingFifo<T>>
+struct declaration_of<repr::Fifo<T>>
+{
+    using declaration = fifo_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// ring fifo (one vector used as a ring, kept on pop and clear)
+struct ring_fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
+    static constexpr auto headers = header_list<1> { "urd/repr/ring_fifo.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::ring_fifo();
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::one_a;
+        static constexpr cost pop = costs::one;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
     static constexpr std::string_view holds = "one vector as a ring; retains";
 };
-
 template<typename T>
-struct container_synopsis<repr::Lifo<T>>
+struct declaration_of<repr::RingFifo<T>>
+{
+    using declaration = ring_fifo_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// stack (a vector, last in first out)
+struct lifo_decl
 {
     static constexpr std::string_view id = "lifo";
+    static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::lifo();
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::one_a;
+        static constexpr cost pop = costs::one;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "stack (a vector, last in first out)";
     static constexpr std::string_view holds = "a vector; retains";
 };
+template<typename T>
+struct declaration_of<repr::Lifo<T>>
+{
+    using declaration = lifo_decl;
+    static constexpr request_features features = element_facts<T>();
+};
 
-template<typename T, typename Compare>
-struct container_synopsis<repr::Queue<T, repr::leaving::least, Compare>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// binary heap (a vector, least first, by urd::Less or an order_by)
+struct heap_decl
 {
     static constexpr std::string_view id = "heap";
+    static constexpr auto headers = header_list<1> { "urd/repr/queue.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(element_orders, f.by))
+            return {};
+        const auto held = guarantees::heap(f.element, f);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::log_na;
+        static constexpr cost pop = costs::log_n;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "binary heap (a vector, least first, by urd::Less or an order_by)";
     static constexpr std::string_view holds = "a vector as a binary heap; retains";
 };
-
 template<typename T, typename Compare>
-struct container_synopsis<repr::Queue<T, repr::leaving::first_in, Compare>>
+struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 {
-    static constexpr std::string_view id = "fifo_by";
-    static constexpr std::string_view description = "queue by a given order";
-    static constexpr std::string_view holds = "a deque; stable references";
+    using declaration = heap_decl;
+    static constexpr request_features features = element_facts<T, Compare>();
 };
 
-template<typename T, typename Compare>
-struct container_synopsis<repr::Queue<T, repr::leaving::last_in, Compare>>
-{
-    static constexpr std::string_view id = "lifo_by";
-    static constexpr std::string_view description = "queue by a given order";
-    static constexpr std::string_view holds = "a vector; retains";
-};
+}  // namespace detail
 
-template<typename T, typename Compare>
-struct container_synopsis<repr::AddressableHeap<T, Compare>>
+
+
+namespace detail
+{
+
+/// addressable heap (push gives a handle to update or erase by)
+struct addressable_heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
+    static constexpr auto headers = header_list<1> { "urd/repr/addressable_heap.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(element_orders, f.by))
+            return {};
+        const auto held = guarantees::addressable_heap(f.element, f);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::log_na;
+        static constexpr cost pop = costs::log_n;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 3;
+    };
     static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
     static constexpr std::string_view holds = "a heap of handles + a slot per handle";
 };
-
 template<typename T, typename Compare>
-struct container_synopsis<repr::BucketQueue<T, Compare>>
+struct declaration_of<repr::AddressableHeap<T, Compare>>
+{
+    using declaration = addressable_heap_decl;
+    static constexpr request_features features = element_facts<T, Compare>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// bucket queue (a bucket per integral priority)
+struct bucket_queue_decl
 {
     static constexpr std::string_view id = "bucket_queue";
+    static constexpr auto headers = header_list<1> { "urd/repr/bucket_queue.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(element_orders, f.by))
+            return {};
+        const auto held = guarantees::bucket_queue(f.element, f);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::queue, *held, f).relying_on({ tag::monotone_priority });
+    }
+    struct operation_costs
+    {
+        static constexpr cost push = costs::one_at;
+        static constexpr cost pop = costs::one_at;
+        static constexpr cost top = costs::one_t;
+        static constexpr cost clear = costs::lin_keys;
+        static constexpr double words = 2;
+    };
     static constexpr std::string_view description = "bucket queue (a bucket per integral priority)";
     static constexpr std::string_view holds = "a vector per priority";
 };
+template<typename T, typename Compare>
+struct declaration_of<repr::BucketQueue<T, Compare>>
+{
+    using declaration = bucket_queue_decl;
+    static constexpr request_features features = element_facts<T, Compare>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

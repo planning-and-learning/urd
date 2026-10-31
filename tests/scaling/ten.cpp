@@ -1,5 +1,7 @@
 // Ten Stores of different kinds: what a file holding them costs the compiler must not grow with the number of
-// containers registered (tests/scaling.py compiles it with the registry as it is and grown, URD_REGISTRY_COPIES).
+// containers registered (tests/scaling.py compiles it with the registry as it is and grown, URD_REGISTRY_COPIES, copies.hpp).
+
+#include "copies.hpp"  // first: it extends the registry before anything builds it
 
 #include "urd/repr/addressable_heap.hpp"
 #include "urd/repr/bidirectional_csr.hpp"

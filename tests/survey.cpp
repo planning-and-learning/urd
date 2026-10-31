@@ -5,7 +5,6 @@
 
 #include "urd/compose/family.hpp"
 #include "urd/flat.hpp"
-#include "urd/registry/aliases.hpp"
 #include "urd/repr/addressable_heap.hpp"
 #include "urd/repr/arena.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
@@ -94,10 +93,12 @@ using urd::key;
 using urd::Store;
 using urd::value;
 
-using urd::detail::FlatHashMapOf;
+template<typename K, typename V>
+using FlatHashMapOf = boost::unordered_flat_map<K, V, urd::Hash<K>, urd::EqualTo<K>>;
 template<typename T>
-using FlatHashSetOf = urd::detail::FlatHashSet<T>;
-using urd::detail::TreeMapOf;
+using FlatHashSetOf = boost::unordered_flat_set<T, urd::Hash<T>, urd::EqualTo<T>>;
+template<typename K, typename V>
+using TreeMapOf = std::map<K, V, urd::Less<K>>;
 
 // tyr formalism/unification/substitution.hpp: UnorderedMap<ParameterIndex, size_t> m_positions.
 using Positions = Store<key<ParameterIndex>, value<std::size_t>>;

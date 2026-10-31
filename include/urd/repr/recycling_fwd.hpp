@@ -7,6 +7,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <map>
 #include <set>
@@ -41,117 +45,168 @@ using RecyclingTreeSet = RecyclingSet<std::set<T, Less<T>>>;
 namespace urd
 {
 
-/// As Map, but its erased nodes, and the values in them, are kept for the next keys.
-template<typename Map>
-    requires container_traits<Map>::declared
-struct container_traits<repr::Recycling<Map>> : with_t<container_traits<Map>, retains>
-{
-};
-template<typename Map>
-struct parts<repr::Recycling<Map>>
-{
-    using type = detail::type_list<Map>;
-};
 
-/// Its values keep what they hold when their keys are erased: their own properties, memory included.
-template<typename K, typename V, typename C, typename Allocator>
-struct element_traits<repr::Recycling<std::map<K, V, C, Allocator>>> : container_traits<V>
-{
-};
-template<typename K, typename V, typename H, typename E, typename Allocator>
-struct element_traits<repr::Recycling<std::unordered_map<K, V, H, E, Allocator>>> : container_traits<V>
-{
-};
 
-/// As Set, a node per element, but the erased nodes are kept for the next elements: stable references, retained.
-template<typename Set>
-    requires container_traits<Set>::declared && has<container_traits<Set>, unique> && has<container_traits<Set>, stable_refs>
-struct container_traits<repr::RecyclingSet<Set>> : with_t<container_traits<Set>, retains>
-{
-};
-template<typename Set>
-struct parts<repr::RecyclingSet<Set>>
-{
-    using type = detail::type_list<Set>;
-};
 
-template<typename Map>
-inline constexpr auto defined_in<repr::Recycling<Map>> = detail::fixed_string("urd/repr/recycling.hpp");
-template<typename Set>
-inline constexpr auto defined_in<repr::RecyclingSet<Set>> = detail::fixed_string("urd/repr/recycling.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// recycling_map: its part's costs, but for what it declares here.
-template<typename K, typename V, typename C>
-struct container_costs<repr::Recycling<std::map<K, V, C>>> : part_costs<part_of<repr::Recycling<std::map<K, V, C>>>>
-{
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr double words = 5.5;
-};
 
-/// recycling_hash_set: its part's costs, but for what it declares here.
-template<typename T>
-struct container_costs<repr::RecyclingHashSet<T>> : part_costs<part_of<repr::RecyclingHashSet<T>>>
-{
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr double words = 4.5;
-};
 
-/// recycling_tree_set: its part's costs, but for what it declares here.
-template<typename T>
-struct container_costs<repr::RecyclingTreeSet<T>> : part_costs<part_of<repr::RecyclingTreeSet<T>>>
-{
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr double words = 5.5;
-};
 
-/// recycling_hash_map: its part's costs, but for what it declares here.
-template<typename K, typename V>
-struct container_costs<repr::RecyclingHashMap<K, V>> : part_costs<part_of<repr::RecyclingHashMap<K, V>>>
-{
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr double words = 4.5;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename K, typename V, typename C>
-struct container_synopsis<repr::Recycling<std::map<K, V, C>>>
+namespace detail
+{
+
+/// recycling map (std::map that keeps erased nodes and their values for reuse)
+struct recycling_map_decl
 {
     static constexpr std::string_view id = "recycling_map";
+    static constexpr auto headers = header_list<2> { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(element_orders, f.by))
+            return {};
+        const auto held = guarantees::recycling(guarantees::tree_map(f.key, f));
+        if (!held)
+            return {};
+        auto result = offer_of(urd::kind::map, *held, f);
+        if (const auto nested = guarantees::own_rows(f.mapped))
+            result = result.giving_nested(*nested);
+        return result;
+    }
+    struct operation_costs : map_decl::operation_costs
+    {
+        using part = map_decl;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr double words = 5.5;
+    };
     static constexpr std::string_view description = "recycling map (std::map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };
+template<typename K, typename V, typename C>
+struct declaration_of<repr::Recycling<std::map<K, V, C>>>
+{
+    using declaration = recycling_map_decl;
+    static constexpr request_features features = map_facts<K, V, C>();
+};
 
-template<typename T>
-struct container_synopsis<repr::RecyclingHashSet<T>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// recycling hash set (std::unordered_set that keeps erased nodes for reuse)
+struct recycling_hash_set_decl
 {
     static constexpr std::string_view id = "recycling_hash_set";
+    static constexpr auto headers = header_list<2> { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::recycling_set(guarantees::hash_set(f.element));
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs : unordered_set_decl::operation_costs
+    {
+        using part = unordered_set_decl;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr double words = 4.5;
+    };
     static constexpr std::string_view description = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
-
 template<typename T>
-struct container_synopsis<repr::RecyclingTreeSet<T>>
+struct declaration_of<repr::RecyclingHashSet<T>>
+{
+    using declaration = recycling_hash_set_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// recycling tree set (std::set that keeps erased nodes for reuse)
+struct recycling_tree_set_decl
 {
     static constexpr std::string_view id = "recycling_tree_set";
+    static constexpr auto headers = header_list<2> { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::recycling_set(guarantees::tree_set(f.element, f));
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs : set_decl::operation_costs
+    {
+        using part = set_decl;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr double words = 5.5;
+    };
     static constexpr std::string_view description = "recycling tree set (std::set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
+template<typename T>
+struct declaration_of<repr::RecyclingTreeSet<T>>
+{
+    using declaration = recycling_tree_set_decl;
+    static constexpr request_features features = element_facts<T>();
+};
 
-template<typename K, typename V>
-struct container_synopsis<repr::RecyclingHashMap<K, V>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)
+struct recycling_hash_map_decl
 {
     static constexpr std::string_view id = "recycling_hash_map";
+    static constexpr auto headers = header_list<2> { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::recycling(guarantees::hash_map(f.key));
+        if (!held)
+            return {};
+        auto result = offer_of(urd::kind::map, *held, f);
+        if (const auto nested = guarantees::own_rows(f.mapped))
+            result = result.giving_nested(*nested);
+        return result;
+    }
+    struct operation_costs : unordered_map_decl::operation_costs
+    {
+        using part = unordered_map_decl;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr double words = 4.5;
+    };
     static constexpr std::string_view description = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };
+template<typename K, typename V>
+struct declaration_of<repr::RecyclingHashMap<K, V>>
+{
+    using declaration = recycling_hash_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

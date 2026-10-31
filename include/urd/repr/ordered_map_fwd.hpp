@@ -6,7 +6,12 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/indexed_fwd.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <type_traits>
 
@@ -23,71 +28,86 @@ class OrderedMap;
 namespace urd
 {
 
-/// In the order of its keys, which are as Keys keeps them (dense or not). Its entries are no contiguous pairs. Clear
-/// costs what clearing Keys does where values need no destructor, else at most time in proportion to the entries.
-template<typename Keys, typename V>
-    requires has<container_traits<Keys>, insertion_ordered, unique>
-struct container_traits<repr::OrderedMap<Keys, V>> :
-    with_t<container_traits<Keys>,
-           functional,
-           by_key,  // the keys are positional, the entries are not: a map is reached by key
-           any_layout,
-           std::conditional_t<detail::trivially_destructible<V> && has<container_traits<Keys>, constant_clear>,
-                              constant_clear,
-                              std::conditional_t<has<container_traits<Keys>, proportional_clear>, proportional_clear, any_clear>>>
-{
-};
 
-template<typename Keys, typename V>
-inline constexpr auto defined_in<repr::OrderedMap<Keys, V>> = detail::fixed_string("urd/repr/ordered_map.hpp");
-/// Its keys, whose header is needed too.
-template<typename Keys, typename V>
-struct parts<repr::OrderedMap<Keys, V>>
-{
-    using type = detail::type_list<Keys>;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// ordered_map: its part's costs, but for what it declares here.
-template<typename Keys, typename V>
-struct container_costs<repr::OrderedMap<Keys, V>> : part_costs<Keys>
-{
-    static constexpr cost erase = costs::lin_n;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = part_costs<Keys>::words + 1;
-};
-/// dense_ordered_map: its keys are indices, which no counting element can be, so its erase is timed.
-template<typename K, typename V>
-struct container_costs<repr::OrderedMap<repr::SparseSet<K, true>, V>> : part_costs<repr::SparseSet<K, true>>
-{
-    static constexpr cost erase = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = part_costs<repr::SparseSet<K, true>>::words + 1;
-};
-
-}  // namespace urd
-
 namespace urd
 {
 
-template<typename Keys, typename V>
-struct container_synopsis<repr::OrderedMap<Keys, V>>
+namespace detail
+{
+
+/// ordered map (keys in an insertion-ordered set, values beside them)
+struct ordered_map_decl
 {
     static constexpr std::string_view id = "ordered_map";
+    static constexpr auto headers = header_list<2> { "urd/repr/indexed.hpp", "urd/repr/ordered_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::ordered_map(guarantees::indexed_set(f.key), f.mapped);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs : indexed_set_decl::operation_costs
+    {
+        using part = indexed_set_decl;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = indexed_set_decl::operation_costs::words + 1;
+    };
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
     static constexpr std::string_view holds = "its key set + n values in order";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::OrderedMap<repr::SparseSet<K, true>, V>>
+struct declaration_of<repr::OrderedMap<repr::IndexedSet<K>, V>>
+{
+    using declaration = ordered_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// dense ordered map (indices in an insertion-ordered sparse set, values beside them)
+struct dense_ordered_map_decl
 {
     static constexpr std::string_view id = "dense_ordered_map";
+    static constexpr auto headers = header_list<2> { "urd/repr/sparse_set.hpp", "urd/repr/ordered_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::ordered_map(guarantees::sparse_set(f.key, true), f.mapped);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs : ordered_sparse_set_decl::operation_costs
+    {
+        using part = ordered_sparse_set_decl;
+        static constexpr cost erase = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = ordered_sparse_set_decl::operation_costs::words + 1;
+    };
     static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
     static constexpr std::string_view holds = "its sparse set + n values in order";
 };
+template<typename K, typename V>
+struct declaration_of<repr::OrderedMap<repr::SparseSet<K, true>, V>>
+{
+    using declaration = dense_ordered_map_decl;
+    static constexpr request_features features = map_facts<repr::SparseSet<K, true>, V>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

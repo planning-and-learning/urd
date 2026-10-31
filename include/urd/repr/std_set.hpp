@@ -3,8 +3,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <functional>
 #include <set>
@@ -18,89 +21,99 @@ namespace urd
 // standard's where a type has them (natural_hash).
 // References survive inserts and a hash table's rehash; iterators of a hash table do not. A tree frees the node of
 // what it erases; a hash table frees its nodes but keeps its buckets, so it neither retains nor reclaims.
-template<typename T, typename C, typename Allocator>
-    requires natural_order<C, T>
-struct container_traits<std::set<T, C, Allocator>> : properties_of<sorted, unique, stable_refs, sparse, shrinkable, reclaims, proportional_clear>
-{
-};
 
-template<typename T, typename C, typename Allocator>
-    requires natural_order<C, T>
-struct container_traits<std::multiset<T, C, Allocator>> : properties_of<sorted, stable_refs, shrinkable, reclaims, proportional_clear>
-{
-};
 
-template<typename T, typename H, typename E, typename Allocator>
-    requires natural_hash<H, E, T>
-struct container_traits<std::unordered_set<T, H, E, Allocator>> : properties_of<unique, stable_refs, sparse, shrinkable>
-{
-};
 
-template<typename T, typename C, typename Allocator>
-inline constexpr auto defined_in<std::set<T, C, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
-template<typename T, typename C, typename Allocator>
-inline constexpr auto defined_in<std::multiset<T, C, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
-template<typename T, typename H, typename E, typename Allocator>
-inline constexpr auto defined_in<std::unordered_set<T, H, E, Allocator>> = detail::fixed_string("urd/repr/std_set.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// set.
-template<typename T, typename C, typename A>
-struct container_costs<std::set<T, C, A>>
-{
-    static constexpr cost insert = costs::log_n;
-    static constexpr cost lookup = costs::log_n;
-    static constexpr cost ordered_lookup = costs::log_n;
-    static constexpr cost erase = costs::log_n;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 5;
-};
 
-/// unordered_set.
-template<typename T, typename H, typename E, typename A>
-struct container_costs<std::unordered_set<T, H, E, A>>
-{
-    static constexpr cost insert = costs::one_ae;
-    static constexpr cost lookup = costs::one_e;
-    static constexpr cost erase = costs::one_e;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 4;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename T, typename C, typename A>
-struct container_synopsis<std::set<T, C, A>>
+namespace detail
+{
+
+/// std::set (balanced tree)
+struct set_decl
 {
     static constexpr std::string_view id = "set";
+    static constexpr auto headers = header_list<1> { "urd/repr/std_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(element_orders, f.by))
+            return {};
+        const auto held = guarantees::tree_set(f.element, f);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::log_n;
+        static constexpr cost lookup = costs::log_n;
+        static constexpr cost ordered_lookup = costs::log_n;
+        static constexpr cost erase = costs::log_n;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 5;
+    };
     static constexpr std::string_view description = "std::set (balanced tree)";
     static constexpr std::string_view holds = "a node per element; reclaims";
 };
+template<typename T, typename C, typename A>
+struct declaration_of<std::set<T, C, A>>
+{
+    using declaration = set_decl;
+    static constexpr request_features features = element_facts<T, C>();
+};
 
-template<typename T, typename H, typename E, typename A>
-struct container_synopsis<std::unordered_set<T, H, E, A>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// std::unordered_set (hash table)
+struct unordered_set_decl
 {
     static constexpr std::string_view id = "unordered_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/std_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by) || !f.hash_natural)
+            return {};
+        const auto held = guarantees::hash_set(f.element);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_ae;
+        static constexpr cost lookup = costs::one_e;
+        static constexpr cost erase = costs::one_e;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 4;
+    };
     static constexpr std::string_view description = "std::unordered_set (hash table)";
     static constexpr std::string_view holds = "a node per element + buckets; stable references";
 };
-
-template<typename T, typename C, typename A>
-struct container_synopsis<std::multiset<T, C, A>>
+template<typename T, typename H, typename E, typename A>
+struct declaration_of<std::unordered_set<T, H, E, A>>
 {
-    static constexpr std::string_view id = "multiset";
-    static constexpr std::string_view description = "std::multiset (balanced tree)";
-    static constexpr std::string_view holds = "a node per element; reclaims";
+    using declaration = unordered_set_decl;
+    static constexpr request_features features = hashed_element_facts<T, H, E>();
 };
+
+}  // namespace detail
+
 
 }  // namespace urd
 
@@ -118,12 +131,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"unordered_set", S>
+struct representation_of<unordered_set_decl, S>
 {
     using type = std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>;
 };
 template<typename S>
-struct representation_of<"set", S>
+struct representation_of<set_decl, S>
 {
     using type = std::set<typename S::element_type, element_order_t<S>>;
 };

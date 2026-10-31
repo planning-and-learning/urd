@@ -4,7 +4,7 @@
 // groups; the one grouped container that pulls in Boost.Unordered.
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/grouped_fwd.hpp"
 #include "urd/repr/grouped_multimap.hpp"
 #include "urd/semantics/equal_to.hpp"
@@ -109,7 +109,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"posting_map", S>
+struct representation_of<posting_map_decl, S>
 {
     using type = repr::PostingMap<typename S::key_type, typename S::mapped_type>;
 };

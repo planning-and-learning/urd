@@ -1,6 +1,6 @@
 #pragma once
 
-// What a container declares about itself: its properties (container_traits), the representations it wraps (parts),
+// What a container declares about itself: its properties (container_traits),
 // and the header that defines it (defined_in). The tags it declares them with are in urd/tags.hpp.
 
 #include "urd/property_set.hpp"
@@ -67,12 +67,6 @@ inline constexpr bool included = requires { sizeof(include<Header>); };
 /// has no header; resolution_table --check rejects that for anything the registry chooses.
 template<typename R>
 inline constexpr auto defined_in = detail::fixed_string("urd/repr/<unnamed>.hpp");
-/// The representations a wrapper holds, whose headers are needed too (Layered<R>: R; Scoped<Map>: Map; ...).
-template<typename R>
-struct parts
-{
-    using type = detail::type_list<>;
-};
 
 namespace detail
 {

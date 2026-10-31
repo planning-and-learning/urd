@@ -1,14 +1,13 @@
 #pragma once
 
-// The element features of a request (urd/registry/row.hpp), computed once per request from its element, key and
+// The element features of a request (urd/registry/facts.hpp), computed once per request from its element, key and
 // mapped types and its order_by comparator: everything any container's guarantees depend on, so that the rows can be
 // evaluated as values. Each feature is read as the constraint of the container it stands for is: where a trait does
 // not apply to a type, the feature is simply false, as a constraint is simply unsatisfied.
 
 #include "urd/elements.hpp"
 #include "urd/registry/element_concepts.hpp"
-#include "urd/registry/row.hpp"
-#include "urd/registry/rows.hpp"
+#include "urd/registry/facts.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
@@ -55,7 +54,62 @@ consteval type_features features_of_type()
     return result;
 }
 
-/// The element features of spec S: what every row reads.
+/// The facts an order gives: with C the comparator over `Ordered` (urd::Less<Ordered> where none is given), none, an
+/// order over the elements (whether C orders them as sorted means, and what it compares), or one over entries.
+template<typename Ordered, typename C>
+consteval void add_order(request_features& f)
+{
+    if constexpr (is_entry_less<C>)
+        f.by = order::entry;
+    else
+    {
+        if constexpr (!std::same_as<C, Less<Ordered>>)
+        {
+            f.by = order::element;
+            f.order_natural = natural_order<C, Ordered>;
+        }
+        if constexpr (requires { typename repr::bucket_priority_t<Ordered, C>; })
+            f.order_key = features_v<repr::bucket_priority_t<Ordered, C>>;
+    }
+}
+
+/// The facts of elements T in order C: what a set, sequence, queue or pool's declaration reads.
+template<typename T, typename C = Less<T>>
+consteval request_features element_facts()
+{
+    auto result = request_features {};
+    result.element = features_v<T>;
+    result.key = features_v<T>;
+    add_order<T, C>(result);
+    return result;
+}
+/// The facts of a map from K to V in order C.
+template<typename K, typename V, typename C = Less<K>>
+consteval request_features map_facts()
+{
+    auto result = request_features {};
+    result.key = features_v<K>;
+    result.mapped = features_v<V>;
+    add_order<K, C>(result);
+    return result;
+}
+/// The facts of elements T hashed by H and compared by E.
+template<typename T, typename H, typename E>
+consteval request_features hashed_element_facts()
+{
+    auto result = element_facts<T>();
+    result.hash_natural = natural_hash<H, E, T>;
+    return result;
+}
+template<typename K, typename V, typename H, typename E>
+consteval request_features hashed_map_facts()
+{
+    auto result = map_facts<K, V>();
+    result.hash_natural = natural_hash<H, E, K>;
+    return result;
+}
+
+/// The element features of spec S: what every declaration reads.
 template<typename S>
 consteval request_features features_of()
 {
@@ -67,34 +121,8 @@ consteval request_features features_of()
         result.element = features_v<typename S::element_type>;
     result.key = features_v<typename S::key_type>;
     result.mapped = features_v<typename S::mapped_type>;
-    if constexpr (is_entry_less<P>)
-        result.by = order::entry;
-    else
-    {
-        using compare = std::conditional_t<std::is_void_v<P>, Less<ordered>, P>;
-        if constexpr (!std::is_void_v<P>)
-        {
-            result.by = order::element;
-            result.order_natural = natural_order<P, ordered>;
-        }
-        if constexpr (requires { typename repr::bucket_priority_t<ordered, compare>; })
-            result.order_key = features_v<repr::bucket_priority_t<ordered, compare>>;
-    }
+    add_order<ordered, std::conditional_t<std::is_void_v<P>, Less<ordered>, P>>(result);
     return result;
-}
-
-}  // namespace urd::detail
-
-namespace urd::detail
-{
-
-/// The row of the container spec S resolves to, chosen among the rows as values (urd/registry/rows.hpp), or none:
-/// what choose<S> (urd/registry/select.hpp) resolves by.
-template<typename S>
-consteval const registry_row* row_choice()
-{
-    constexpr auto f = features_of<S>();
-    return first_serving_row(registry_table, request_shape { S::kind, S::urd_properties, S::required }, f);
 }
 
 }  // namespace urd::detail

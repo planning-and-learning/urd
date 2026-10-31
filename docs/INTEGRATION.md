@@ -113,21 +113,41 @@ its interface breaks the adapter's build, not its behavior.
 
 ## 5. Register it
 
-Three entries, at the same place in the registry's order:
-- its template in one list in `include/urd/registry/preferences.hpp`: `element_preference` for one taking the element
-  type, `map_preference` for a map taking its key and value types. A container with further template parameters gets
-  an alias that fixes them (`ConcurrentSegmentedVector`, `TreeMapOf`, which also fixes urd's order);
-- its row in `include/urd/registry/rows.hpp`: its id, its headers, and its properties as a `constexpr` function of the request's
-  element features, the same properties its `container_traits` declare for those elements;
-- its row's headers (its own, after its part's for a wrapper), and `representation_of<"its id", S>` in its own
-  header: its type for a spec, so that a file names only the containers whose headers it includes.
+A container is declared once, in its declaration header (`repr/X_fwd.hpp`), and everything urd knows about it is
+read from that declaration (`include/urd/registry/declaration.hpp`):
 
-A request takes the first row that serves it, meaning its properties for the request's elements satisfy the request
-and it offers the interface a Store for the request offers; only that row's type is then named, so a Store costs the
-compiler the same however many containers are registered. The request tests check, for every request of the grid,
-that the rows pick the container the `container_traits` would (`tests/requests_group.cpp`). Where a request is `small` or `frozen`, containers with stable storage (declaring `stable_refs`: a
-node per element, or segments that never move) move last, as contiguous storage is faster for few or unchanging
-elements.
+```cpp
+struct my_set_decl
+{
+    static constexpr std::string_view id = "my_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/my_set.hpp" };   // a wrapper: its part's, then its own
+    static constexpr offered offers(const request_features& f);              // kind and properties for these elements, or nothing
+    struct operation_costs { static constexpr cost insert = costs::one_ae; … static constexpr double words = 2; };
+    static constexpr std::string_view description = "…", holds = "…";
+};
+```
+
+- `offers` answers what the container gives a request with these element facts (`facts.hpp`): its kind, its
+  properties (composed from the functions of `registry/guarantees.hpp`), what it relies on the request to promise, and
+  what Stores it holds get. It answers nothing where it does not take these elements or the request's `order_by`.
+- Two links tie the declaration to types, each specialized once beside the container: `declaration_of<R>` (the
+  declaration of the type R, with the facts R's template arguments give: `element_facts<T, C>()`, `map_facts<K, V>()`,
+  `hashed_element_facts<T, H, E>()`) and `representation_of<my_set_decl, S>` in the container's own header (its type
+  for a request, so that a file names only the containers whose headers it includes). `container_traits`,
+  `container_costs`, `container_synopsis`, `element_traits`, `relies_on` and `defined_in` are derived from them
+  (`registry/derived.hpp`) and written nowhere else.
+- A wrapper is a template over its part's declaration (`layered_decl<Part, Pool>`), composing the part's offer,
+  headers, costs and words; a container with variants is a template over its flags (`tree_pool_decl<Bits,
+  ThreadSafe>`).
+- Its place in the order is its place in `include/urd/registry/declarations.hpp`. A downstream project registers its
+  own by specializing `user_declarations<>` after that header and before `urd/store.hpp`.
+
+A request takes the first entry whose offer serves it (`registry/scan.hpp`): the kinds match, the offer satisfies what
+the request requires, the request promises what the container relies on and demands, and nested Stores get what they
+ask for. Only that entry's type is then named, so a Store costs the compiler the same instantiations however many
+containers are registered. Where a request is `small` or `frozen`, containers with stable storage (declaring
+`stable_refs`: a node per element, or segments that never move) move last, as contiguous storage is faster for few or
+unchanging elements.
 
 Selection reads traits and template arguments only, never a candidate's members: a request is resolved where the
 candidates are declared but not necessarily defined, and a member read of a declared-only type is silently false,

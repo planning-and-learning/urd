@@ -2,7 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/pools_fwd.hpp"
 #include "urd/traits.hpp"
@@ -147,12 +147,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"slot_vector", S>
+struct representation_of<slot_vector_decl, S>
 {
     using type = repr::SlotVector<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"thread_safe_slot_vector", S>
+struct representation_of<thread_safe_slot_vector_decl, S>
 {
     using type = repr::SlotVector<typename S::element_type, true>;
 };

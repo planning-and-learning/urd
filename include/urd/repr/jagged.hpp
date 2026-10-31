@@ -4,7 +4,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/rows_fwd.hpp"
 #include "urd/repr/sparse_set.hpp"
@@ -364,12 +364,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"jagged", S>
+struct representation_of<jagged_decl, S>
 {
     using type = repr::Jagged<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"tracked_jagged", S>
+struct representation_of<tracked_jagged_decl, S>
 {
     using type = repr::Jagged<typename S::element_type, true>;
 };

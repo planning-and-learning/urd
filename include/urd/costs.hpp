@@ -216,37 +216,11 @@ struct cost
 /// (insert, lookup, ordered_lookup, erase, clear, iterate, access, push, pop, top, merge, insert_row, find_row,
 /// scope; an operation R lacks has none), and its memory: `words`, machine words per element (the element counting 1;
 /// per key or slot for dense keys). What that memory holds is in words in its synopsis (urd/container_synopsis.hpp). Declared
-/// for every registered representation; none here. A wrapper derives from its part's (part_costs) and declares what it changes, naming
-/// its part as `part`.
+/// for every registered representation, derived from its declaration (urd/registry/derived.hpp); none here. A wrapper's derive
+/// from its part's and declare what they change, naming the part's declaration as `part`.
 template<typename R>
 struct container_costs
 {
-};
-
-namespace detail
-{
-
-template<typename List>
-struct front_of
-{
-};
-template<typename P, typename... Ps>
-struct front_of<type_list<P, Ps...>>
-{
-    using type = P;
-};
-
-}  // namespace detail
-
-/// The part a wrapper passes operations on to: the first of urd::parts<R>.
-template<typename R>
-using part_of = typename detail::front_of<typename parts<R>::type>::type;
-
-/// The costs a wrapper starts from: its part's, with the part named.
-template<typename Part>
-struct part_costs : container_costs<Part>
-{
-    using part = Part;
 };
 
 /// The costs, named: growth, then a for amortized, e for expected, t for timed.

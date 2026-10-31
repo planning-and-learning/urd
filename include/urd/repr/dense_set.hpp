@@ -3,7 +3,7 @@
 // A set of indices as a bitset, for dense keys: stored by position, not hashed.
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/repr/dense_fwd.hpp"
@@ -312,12 +312,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"dense_set", S>
+struct representation_of<dense_set_decl, S>
 {
     using type = repr::DenseSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"tracked_dense_set", S>
+struct representation_of<tracked_dense_set_decl, S>
 {
     using type = repr::DenseSet<typename S::element_type, true>;
 };

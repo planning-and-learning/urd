@@ -45,7 +45,6 @@
 #include "complexity.hpp"
 #include "grid.hpp"
 #include "urd/registry.hpp"
-#include "urd/registry/candidates.hpp"
 
 #include <cstddef>
 #include <gtest/gtest.h>
@@ -58,12 +57,6 @@ namespace
 
 using urd::test::op;
 
-template<typename R, typename S>
-struct serving
-{
-    static constexpr bool value = urd::detail::serves<R, S>;
-};
-
 /// For each serving candidate of S: the operations offered without a cost, as "name op"; the costs used (a wrapper's
 /// and its part's); and the costs declared, by a representation itself rather than passed on to its part.
 template<typename S, typename List>
@@ -74,7 +67,6 @@ struct audit<S, urd::detail::type_list<Rs...>>
     template<typename R>
     static void one(std::set<std::string>& missing, std::set<std::pair<std::string, op>>& used, std::set<std::pair<std::string, op>>& declared)
     {
-        if constexpr (serving<R, S>::value)
         {
             for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
                 if (urd::test::cost_of<R>(static_cast<op>(each)) && !urd::test::passed_on<R>(static_cast<op>(each)))
@@ -111,7 +103,7 @@ TEST(Complexity, EveryServingCandidateHasACostForWhatItOffers)
                                         [&]<typename Q>(std::type_identity<Q>)
                                         {
                                             using S = typename Q::spec;
-                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            using List = urd::test::serving_containers<S>;
                                             audit<S, List>::run(missing, used, declared);
                                         });
         });

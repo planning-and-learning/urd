@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/change_logged_fwd.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/flat_hash.hpp"
@@ -148,26 +148,11 @@ struct include<"urd/repr/change_logged.hpp">
 namespace urd::detail
 {
 
-template<typename S>
-struct representation_of<"change_logged_unordered_flat_set", S>
+/// Over its part's container for the request.
+template<typename Part, typename S>
+struct representation_of<change_logged_decl<Part>, S>
 {
-    using type =
-        repr::ChangeLogged<boost::unordered_flat_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
-};
-template<typename S>
-struct representation_of<"change_logged_tracked_dense_set", S>
-{
-    using type = repr::ChangeLogged<repr::DenseSet<typename S::element_type, true>>;
-};
-template<typename S>
-struct representation_of<"change_logged_unordered_set", S>
-{
-    using type = repr::ChangeLogged<std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
-};
-template<typename S>
-struct representation_of<"change_logged_set", S>
-{
-    using type = repr::ChangeLogged<std::set<typename S::element_type, urd::Less<typename S::element_type>>>;
+    using type = repr::ChangeLogged<typename representation_of<Part, S>::type>;
 };
 
 }  // namespace urd::detail

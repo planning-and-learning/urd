@@ -37,11 +37,26 @@ using urd::cost;
 using urd::growth;
 using in = urd::quantity;
 
-/// The cost of `what` in R (urd::container_costs<R>, a wrapper's resolved through its part); none where R lacks it.
+/// The costs of X: a declaration's own (operation_costs), else a container's (urd::container_costs, derived from its
+/// declaration).
+template<typename X>
+struct costs_holder
+{
+    using type = urd::container_costs<X>;
+};
+template<typename X>
+    requires requires { typename X::operation_costs; }
+struct costs_holder<X>
+{
+    using type = typename X::operation_costs;
+};
+
+/// The cost of `what` in R (a container or a declaration), a wrapper's resolved through its part; none where R lacks
+/// it.
 template<typename R>
 constexpr std::optional<cost> cost_of(op what)
 {
-    using C = urd::container_costs<R>;
+    using C = typename costs_holder<R>::type;
     switch (what)
     {
         case op::insert:
@@ -110,10 +125,10 @@ constexpr std::optional<cost> cost_of(op what)
 template<typename R>
 constexpr bool passed_on(op what)
 {
-    using C = urd::container_costs<R>;
+    using C = typename costs_holder<R>::type;
     if constexpr (requires { typename C::part; })
     {
-        using P = urd::container_costs<typename C::part>;
+        using P = typename costs_holder<typename C::part>::type;
         switch (what)
         {
             case op::insert:
@@ -179,15 +194,12 @@ constexpr bool passed_on(op what)
     return false;
 }
 
-/// The part R wraps, by name: the one its costs are passed on to, else the first of urd::parts<R>; empty where R
-/// wraps none.
+/// The part R wraps, by name: the declaration its costs are passed on to; empty where R wraps none.
 template<typename R>
 std::string_view part_name()
 {
-    if constexpr (requires { typename urd::container_costs<R>::part; })
-        return name<typename urd::container_costs<R>::part>::id;
-    else if constexpr (requires { typename urd::part_of<R>; })
-        return name<urd::part_of<R>>::id;
+    if constexpr (requires { typename costs_holder<R>::type::part; })
+        return costs_holder<R>::type::part::id;
     else
         return {};
 }
@@ -196,8 +208,8 @@ std::string_view part_name()
 template<typename R>
 constexpr std::optional<double> words_of()
 {
-    if constexpr (requires { urd::container_costs<R>::words; })
-        return urd::container_costs<R>::words;
+    if constexpr (requires { costs_holder<R>::type::words; })
+        return costs_holder<R>::type::words;
     else
         return std::nullopt;
 }

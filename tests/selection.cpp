@@ -36,18 +36,18 @@ struct representation_of<urd::detail::Store<R, S>>
 template<typename... Ps>
 using chosen = typename representation_of<typename urd::detail::resolve<Ps...>::type>::type;
 
-static_assert(std::same_as<chosen<value<Note>, urd::handles, urd::unique, urd::flat>, urd::detail::ArenaInternerOf<Note>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>>, urd::detail::FlatHashMapOf<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense>, urd::detail::DenseMapOf<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense, urd::constant_clear>, urd::detail::GenerationMapOf<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::scoped>, urd::detail::ScopedMapOf<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::layered>, urd::detail::LayeredHashMapOf<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::sorted>, urd::detail::TreeMapOf<int, Inner>>);
+static_assert(std::same_as<chosen<value<Note>, urd::handles, urd::unique, urd::flat>, urd::repr::ArenaInterner<Note>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>>, boost::unordered_flat_map<int, Inner, urd::Hash<int>, urd::EqualTo<int>>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense>, urd::repr::IndexMap<int, Inner, false>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense, urd::constant_clear>, urd::repr::IndexMap<int, Inner, true>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::scoped>, urd::repr::ScopedMap<int, Inner>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::layered>, urd::repr::Layered<boost::unordered_flat_map<int, Inner, urd::Hash<int>, urd::EqualTo<int>>>>);
+static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::sorted>, std::map<int, Inner, urd::Less<int>>>);
 static_assert(std::same_as<chosen<value<Inner>>, std::vector<Inner>>);
-static_assert(std::same_as<chosen<value<Inner>, urd::stable_refs, urd::monotone>, urd::detail::SegmentedVector<Inner>>);
+static_assert(std::same_as<chosen<value<Inner>, urd::stable_refs, urd::monotone>, urd::repr::SegmentedVector<Inner>>);
 // A pool of rows, the rows a Store: resolved by the rows' request, which says what they iterate.
 using Row = Store<value<int>, urd::frozen>;
-static_assert(std::same_as<chosen<value<Row>, urd::handles, urd::unique>, urd::detail::RowInternerOf<Row>>);
-static_assert(std::same_as<chosen<value<Row>, urd::handles, urd::unique, urd::structural_sharing>, urd::detail::TreeVectorOf<Row>>);
+static_assert(std::same_as<chosen<value<Row>, urd::handles, urd::unique>, urd::repr::RowInterner<Row>>);
+static_assert(std::same_as<chosen<value<Row>, urd::handles, urd::unique, urd::structural_sharing>, urd::repr::TreeVectorSet<Row>>);
 
 }  // namespace

@@ -3,7 +3,7 @@
 // A first-in queue over one vector used as a ring.
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/position_iterator.hpp"
 #include "urd/repr/queues_fwd.hpp"
 #include "urd/semantics/less.hpp"
@@ -127,7 +127,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"ring_fifo", S>
+struct representation_of<ring_fifo_decl, S>
 {
     using type = repr::RingFifo<typename S::element_type>;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/disjoint_sets_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -120,7 +120,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"disjoint_sets", S>
+struct representation_of<disjoint_sets_decl, S>
 {
     using type = repr::DisjointSets<typename S::element_type>;
 };

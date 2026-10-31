@@ -2,7 +2,7 @@
 
 // gtl's sharded hash tables (flat, or a node per element), defined. Include it where a Store resolves to one.
 
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/parallel.hpp"
 #include "urd/traits.hpp"
 
@@ -22,22 +22,22 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"parallel_hash_set", S>
+struct representation_of<parallel_hash_set_decl, S>
 {
     using type = repr::ParallelHashSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"parallel_node_hash_set", S>
+struct representation_of<parallel_node_hash_set_decl, S>
 {
     using type = repr::ParallelNodeHashSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"parallel_hash_map", S>
+struct representation_of<parallel_hash_map_decl, S>
 {
     using type = repr::ParallelHashMap<typename S::key_type, typename S::mapped_type>;
 };
 template<typename S>
-struct representation_of<"parallel_node_hash_map", S>
+struct representation_of<parallel_node_hash_map_decl, S>
 {
     using type = repr::ParallelNodeHashMap<typename S::key_type, typename S::mapped_type>;
 };

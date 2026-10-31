@@ -4,7 +4,7 @@
 
 #include "urd/index.hpp"
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/flat_hash.hpp"
 #include "urd/repr/layered_fwd.hpp"
@@ -192,38 +192,11 @@ struct include<"urd/repr/layer.hpp">
 namespace urd::detail
 {
 
-template<typename S>
-struct representation_of<"layered_unordered_flat_set", S>
+/// Over its part's container for the request.
+template<typename Part, typename S>
+struct representation_of<layered_decl<Part, false>, S>
 {
-    using type =
-        repr::Layered<boost::unordered_flat_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
-};
-template<typename S>
-struct representation_of<"layered_unordered_set", S>
-{
-    using type = repr::Layered<std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>>;
-};
-template<typename S>
-struct representation_of<"layered_unordered_flat_map", S>
-{
-    using type = repr::Layered<
-        boost::unordered_flat_map<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>>;
-};
-template<typename S>
-struct representation_of<"layered_unordered_map", S>
-{
-    using type =
-        repr::Layered<std::unordered_map<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>>;
-};
-template<typename S>
-struct representation_of<"layered_dense_map", S>
-{
-    using type = repr::Layered<repr::IndexMap<typename S::key_type, typename S::mapped_type, false>>;
-};
-template<typename S>
-struct representation_of<"layered_generation_map", S>
-{
-    using type = repr::Layered<repr::IndexMap<typename S::key_type, typename S::mapped_type, true>>;
+    using type = repr::Layered<typename representation_of<Part, S>::type>;
 };
 
 }  // namespace urd::detail

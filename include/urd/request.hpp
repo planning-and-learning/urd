@@ -57,23 +57,14 @@ template<typename F, typename... Rs>
 void for_each_request(requests<Rs...> /*list*/, F f)
 { (f(std::type_identity<Rs> {}), ...); }
 
-/// The headers a Store over representation R needs (`urd/repr/unordered_flat_map.hpp`): R's parts' first (a wrapper's
-/// part comes first, as its error names it), then R's own. Throws for a representation that names none
-/// (urd::defined_in, beside its declaration).
+/// The headers a Store over container R needs (`urd/repr/unordered_flat_map.hpp`): its declaration's, a wrapper's
+/// part's first.
 template<typename R>
 void headers_of(std::vector<std::string>& into)
 {
-    [&]<typename... Ps>(detail::type_list<Ps...>) { (headers_of<Ps>(into), ...); }(typename parts<R>::type {});
-    auto header = std::string(defined_in<R>.c_str());
-    if (header.ends_with("<unnamed>.hpp"))
-    {
-        auto id = std::string("a representation");
-        if constexpr (requires { container_synopsis<R>::id; })
-            id = std::string(container_synopsis<R>::id);
-        throw std::runtime_error(id + " names no header (urd::defined_in, beside its declaration)");
-    }
-    if (std::ranges::find(into, header) == into.end())
-        into.push_back(header);
+    for (const auto header : detail::declaration_t<R>::headers)
+        if (std::ranges::find(into, header) == into.end())
+            into.emplace_back(header);
 }
 
 template<typename T>
@@ -86,7 +77,7 @@ template<typename R, typename S>
 void element_headers_of_store(std::type_identity<detail::Store<R, S>> /*store*/, std::vector<std::string>& into)
 {
     // From the row the Store's request resolves to, which lists them whether or not they are included here.
-    for (const auto header : detail::choose<S>::row->headers)
+    for (const auto header : detail::registry_table[detail::choose<S>::position].headers)
         if (!header.empty() && std::ranges::find(into, header) == into.end())
             into.emplace_back(header);
     if constexpr (!std::is_void_v<typename S::key_type>)

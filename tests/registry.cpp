@@ -6,7 +6,6 @@
 
 #include "complexity.hpp"
 #include "grid.hpp"
-#include "urd/registry/candidates.hpp"
 
 #include <array>
 #include <gtest/gtest.h>
@@ -19,13 +18,13 @@
 namespace
 {
 
-/// How many costly guarantees R gives that the request S did not ask for.
-template<typename S, typename R>
-constexpr int uninvited()
+/// How many costly guarantees `offered` gives that the request S did not ask for.
+template<typename S>
+constexpr int uninvited(const urd::detail::property_set& offered)
 {
     int count = 0;
     for (const auto each : urd::test::costly)
-        if (!S::urd_properties.has(each) && urd::container_traits<R>::urd_properties.has(each))
+        if (!S::urd_properties.has(each) && offered.has(each))
             ++count;
     return count;
 }
@@ -33,32 +32,24 @@ constexpr int uninvited()
 struct candidate
 {
     std::string_view id;
-    bool serves;
     int uninvited;
-    /// Whether the representation stores by index: a demand on the keys, not a guarantee alone.
+    /// Whether the container stores by index: a demand on the keys, not a guarantee alone.
     bool demands_dense;
 };
 
-/// Whether R serves S, read in a class template: a function template with R deduced makes GCC instantiate R itself
-/// while checking the concept, which the registry's selection never does.
-template<typename R, typename S>
-struct serving
+/// The containers serving S, in the order they are preferred, read from their declarations.
+template<typename S>
+std::vector<candidate> candidates()
 {
-    static constexpr bool value = urd::detail::serves<R, S>;
-};
-
-template<typename S, typename List>
-struct candidates;
-template<typename S, typename... Rs>
-struct candidates<S, urd::detail::type_list<Rs...>>
-{
-    static std::vector<candidate> list()
-    {
-        return {
-            candidate { urd::test::name<Rs>::id, serving<Rs, S>::value, uninvited<S, Rs>(), urd::container_traits<Rs>::urd_properties.has(urd::tag::dense) }...
-        };
-    }
-};
+    auto result = std::vector<candidate>();
+    urd::test::for_each_serving<S>(
+        [&]<typename Decl>(std::type_identity<Decl>)
+        {
+            const auto offered = Decl::offers(urd::detail::features_of<S>())->properties;
+            result.push_back({ Decl::id, uninvited<S>(offered), offered.has(urd::tag::dense) });
+        });
+    return result;
+}
 
 /// The surprises the registry's order makes on purpose: the request, and the benchmark or reason behind the order.
 const std::string_view tree_for_changing_order =
@@ -108,15 +99,12 @@ TEST(Registry, TheChosenCandidateAnswersNoMoreThanAnotherServingOne)
                                         [&]<typename R>(std::type_identity<R>)
                                         {
                                             using S = typename R::spec;
-                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
-                                            const auto all = candidates<S, List>::list();
+                                            const auto all = candidates<S>();
                                             ++requests;
                                             const candidate* chosen = nullptr;
                                             const candidate* best = nullptr;
                                             for (const auto& each : all)
                                             {
-                                                if (!each.serves)
-                                                    continue;
                                                 if (chosen == nullptr)
                                                     chosen = &each;
                                                 if (best == nullptr || each.uninvited < best->uninvited)
@@ -136,7 +124,7 @@ TEST(Registry, TheChosenCandidateAnswersNoMoreThanAnotherServingOne)
 }
 
 // The guarantee that is also a demand: a container that stores by index needs the keys it was promised. Selection
-// enforces it (serves_by_traits, include/urd/registry.hpp); this checks it stays enforced for every request of the
+// enforces it (demands_of, urd/property_set.hpp); this checks it stays enforced for every request of the
 // grid and every candidate the registry would accept, so that a change to selection or to a container's traits that
 // lets a dense container take a request with open keys is caught here before it reaches a user. Spelled out rather
 // than through demands_of, so that it is no tautology against the function it guards.
@@ -150,10 +138,9 @@ TEST(Registry, NoServingCandidateDemandsWhatTheRequestDidNotPromise)
                                         [&]<typename R>(std::type_identity<R>)
                                         {
                                             using S = typename R::spec;
-                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
                                             ++requests;
-                                            for (const auto& each : candidates<S, List>::list())
-                                                EXPECT_TRUE(!each.serves || !each.demands_dense || S::urd_properties.has(urd::tag::dense))
+                                            for (const auto& each : candidates<S>())
+                                                EXPECT_TRUE(!each.demands_dense || S::urd_properties.has(urd::tag::dense))
                                                     << R::describe() << ": " << each.id << " stores by index, but the request did not promise dense keys";
                                         });
         });

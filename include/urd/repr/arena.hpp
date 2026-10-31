@@ -5,7 +5,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/index.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
@@ -214,12 +214,12 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"arena_interner", S>
+struct representation_of<arena_interner_decl, S>
 {
     using type = repr::ArenaInterner<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"thread_safe_arena_interner", S>
+struct representation_of<thread_safe_arena_interner_decl, S>
 {
     using type = repr::ArenaInterner<typename S::element_type, true>;
 };

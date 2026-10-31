@@ -2,7 +2,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/indexed.hpp"
 #include "urd/repr/pools.hpp"
 #include "urd/repr/pools_fwd.hpp"
@@ -301,15 +301,10 @@ struct include<"urd/repr/tree_vector.hpp">
 namespace urd::detail
 {
 
-template<typename S>
-struct representation_of<"tree_vector_set", S>
+template<bool ThreadSafe, typename S>
+struct representation_of<tree_pool_decl<false, ThreadSafe>, S>
 {
-    using type = repr::TreeVectorSet<typename S::element_type>;
-};
-template<typename S>
-struct representation_of<"thread_safe_tree_vector_set", S>
-{
-    using type = repr::TreeVectorSet<typename S::element_type, 4, true>;
+    using type = repr::TreeVectorSet<typename S::element_type, 4, ThreadSafe>;
 };
 
 }  // namespace urd::detail

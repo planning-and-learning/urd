@@ -7,6 +7,10 @@
 #include "urd/costs.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -25,61 +29,90 @@ class SegmentedVector;
 namespace urd
 {
 
-/// Segments never move, so references stay valid; it appends but cannot remove from the middle, and clear keeps
-/// the segments.
-template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
-struct container_traits<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> :
-    properties_of<dense, positional, stable_refs, growable, retains, proportional_clear, std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
-inline constexpr auto defined_in<repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>> = detail::fixed_string("urd/repr/segmented.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// segmented_vector.
-template<typename T, std::size_t N, typename I>
-struct container_costs<repr::SegmentedVector<T, N, false, I>>
-{
-    static constexpr cost insert = costs::one_a;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 1.5;
-};
 
-/// concurrent_segmented_vector.
-template<typename T, std::size_t N, typename I>
-struct container_costs<repr::SegmentedVector<T, N, true, I>>
-{
-    static constexpr cost insert = costs::one_a;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 1.6;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename T, std::size_t N, typename I>
-struct container_synopsis<repr::SegmentedVector<T, N, false, I>>
+namespace detail
+{
+
+/// segmented vector (elements never move)
+struct segmented_vector_decl
 {
     static constexpr std::string_view id = "segmented_vector";
+    static constexpr auto headers = header_list<1> { "urd/repr/segmented.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::segmented_vector(false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::sequence, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "segmented vector (elements never move)";
     static constexpr std::string_view holds = "doubling segments; stable references";
 };
-
 template<typename T, std::size_t N, typename I>
-struct container_synopsis<repr::SegmentedVector<T, N, true, I>>
+struct declaration_of<repr::SegmentedVector<T, N, false, I>>
+{
+    using declaration = segmented_vector_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// segmented vector, thread-safe appends
+struct concurrent_segmented_vector_decl
 {
     static constexpr std::string_view id = "concurrent_segmented_vector";
+    static constexpr auto headers = header_list<1> { "urd/repr/segmented.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::segmented_vector(true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::sequence, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_a;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 1.6;
+    };
     static constexpr std::string_view description = "segmented vector, thread-safe appends";
     static constexpr std::string_view holds = "doubling segments; stable references; appends from threads";
 };
+template<typename T, std::size_t N, typename I>
+struct declaration_of<repr::SegmentedVector<T, N, true, I>>
+{
+    using declaration = concurrent_segmented_vector_decl;
+    static constexpr request_features features = element_facts<T>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

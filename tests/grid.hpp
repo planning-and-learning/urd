@@ -10,7 +10,6 @@
 #include "urd/flat.hpp"
 #include "urd/format.hpp"
 #include "urd/registry.hpp"
-#include "urd/registry/candidates.hpp"
 #include "urd/request.hpp"
 #include "urd/store.hpp"
 
@@ -304,25 +303,37 @@ struct nth_request<P, requests<Rs...>>
     using type = std::tuple_element_t<P, std::tuple<Rs...>>;
 };
 
-/// The candidate named Name that serves spec S: how a per-container object finds its container among a request's
-/// candidates (each id names one container; for a request, one type). Reads declarations only.
-template<urd::detail::fixed_string Name, typename S, typename List = typename urd::detail::candidates_for<S>::type>
-struct serving_named;
-template<urd::detail::fixed_string Name, typename S, typename... Rs>
-struct serving_named<Name, S, urd::detail::type_list<Rs...>>
+/// The container named Name that serves spec S: how a per-container object finds its container among those serving a
+/// request. Its declaration is read without its header; its type is named where the header is included.
+template<urd::detail::fixed_string Name, typename S>
+struct serving_named
 {
     static constexpr std::size_t at()
     {
-        constexpr std::array<std::string_view, sizeof...(Rs)> ids { name<Rs>::id... };
-        constexpr std::array<bool, sizeof...(Rs)> serves { urd::detail::serves<Rs, S>... };
-        for (std::size_t each = 0; each < ids.size(); ++each)
-            if (ids[each] == std::string_view(Name.c_str()) && serves[each])
-                return each;
-        return ids.size();
+        constexpr auto serving = urd::detail::serving_v<S>;
+        for (std::size_t each = 0; each < serving.count; ++each)
+            if (urd::detail::registry_table[serving.at[each]].id == std::string_view(Name.c_str()))
+                return serving.at[each];
+        return urd::detail::no_entry;
     }
-    static_assert(at() < sizeof...(Rs), "serving_named: the container named serves no such request");
-    using type = std::tuple_element_t<at(), std::tuple<Rs...>>;
+    static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");
+    using declaration = typename urd::detail::nth<at(), urd::detail::all_declarations>::type;
+    using type = typename urd::detail::representation_of<declaration, S>::type;
 };
+
+/// The containers serving spec S, in the order they are preferred, as types: for files that include every container's
+/// header.
+template<typename S, typename... Decls>
+auto containers_of(urd::detail::type_list<Decls...> /*declarations*/) -> urd::detail::type_list<typename urd::detail::representation_of<Decls, S>::type...>;
+template<typename S>
+using serving_containers = decltype(urd::test::containers_of<S>(urd::detail::serving_declarations<S> {}));
+
+/// Calls f(std::type_identity<Decl>) for each declaration serving spec S, in the order they are preferred.
+template<typename S, typename F>
+void for_each_serving(F f)
+{
+    [&]<typename... Decls>(urd::detail::type_list<Decls...>) { (f(std::type_identity<Decls> {}), ...); }(urd::detail::serving_declarations<S> {});
+}
 
 /// The request at position P of group G: how a benchmark names the request it measures a container for.
 template<std::size_t G, std::size_t P>

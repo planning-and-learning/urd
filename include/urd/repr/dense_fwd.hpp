@@ -9,6 +9,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <type_traits>
 
@@ -35,256 +39,378 @@ class IndexMap;
 namespace urd
 {
 
-/// A bit per key: sorted by index, which urd::Less orders as it does indices. Clear zeroes every word, or with
-/// TrackWords only those not zero, at most one per element: time in proportion to the elements.
-template<indexable K, bool TrackWords>
-struct container_traits<repr::DenseSet<K, TrackWords>> :
-    properties_of<sorted, unique, dense, canonical, shrinkable, retains, std::conditional_t<TrackWords, proportional_clear, any_clear>>
-{
-};
 
-/// Members in one array; clear only forgets them, which is O(1) where they need no destructor.
-/// With KeepOrder, in insertion order.
-template<indexable K, bool KeepOrder>
-struct container_traits<repr::SparseSet<K, KeepOrder>> :
-    properties_of<unique,
-                  dense,
-                  positional,
-                  contiguous,
-                  shrinkable,
-                  retains,
-                  std::conditional_t<std::is_trivially_destructible_v<K>, constant_clear, proportional_clear>,
-                  std::conditional_t<KeepOrder, insertion_ordered, any_order>>
-{
-};
 
-/// A slot per key, in key order: sorted; erase frees what the value owns (std::optional::reset), clear scans every
-/// slot. Stable slots never move: the values keep their addresses.
-template<indexable K, typename V, bool Stable>
-struct container_traits<repr::IndexMap<K, V, false, false, Stable>> :
-    properties_of<sorted, unique, functional, dense, shrinkable, retains, std::conditional_t<Stable, stable_refs, moving_refs>>
-{
-};
 
-/// Clear starts a new generation; stale slots keep their values' storage until written again.
-template<indexable K, typename V, bool ThreadSafe, bool Stable>
-    requires detail::slot_value<V>
-struct container_traits<repr::IndexMap<K, V, true, ThreadSafe, Stable>> :
-    properties_of<sorted,
-                  unique,
-                  functional,
-                  dense,
-                  shrinkable,
-                  retains,
-                  constant_clear,
-                  std::conditional_t<Stable, stable_refs, moving_refs>,
-                  std::conditional_t<ThreadSafe, concurrent, single_threaded>>
-{
-};
 
-template<typename K, bool TrackWords>
-inline constexpr auto defined_in<repr::DenseSet<K, TrackWords>> = detail::fixed_string("urd/repr/dense_set.hpp");
-template<typename K, bool KeepOrder>
-inline constexpr auto defined_in<repr::SparseSet<K, KeepOrder>> = detail::fixed_string("urd/repr/sparse_set.hpp");
-template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
-inline constexpr auto defined_in<repr::IndexMap<K, V, Generations, ThreadSafe, Stable>> = detail::fixed_string("urd/repr/index_map.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// dense_set.
-template<typename K>
-struct container_costs<repr::DenseSet<K, false>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 0.016;
-};
 
-/// tracked_dense_set.
-template<typename K>
-struct container_costs<repr::DenseSet<K, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 0.03;
-};
 
-/// sparse_set.
-template<typename K>
-struct container_costs<repr::SparseSet<K, false>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::one_t;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 2;
-};
 
-/// ordered_sparse_set.
-template<typename K>
-struct container_costs<repr::SparseSet<K, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost erase = costs::lin_nt;
-    static constexpr cost clear = costs::one_t;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr cost access = costs::one_t;
-    static constexpr double words = 2;
-};
 
-/// dense_map.
-template<typename K, typename V>
-struct container_costs<repr::IndexMap<K, V, false>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.2;
-};
 
-/// stable_dense_map.
-template<typename K, typename V>
-struct container_costs<repr::IndexMap<K, V, false, false, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::lin_keys;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.3;
-};
 
-/// generation_map.
-template<typename K, typename V>
-struct container_costs<repr::IndexMap<K, V, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::one_t;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.6;
-};
 
-/// stable_generation_map.
-template<typename K, typename V>
-struct container_costs<repr::IndexMap<K, V, true, false, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::one_t;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.7;
-};
 
-/// thread_safe_generation_map.
-template<typename K, typename V>
-struct container_costs<repr::IndexMap<K, V, true, true>>
-{
-    static constexpr cost insert = costs::one_at;
-    static constexpr cost lookup = costs::one_t;
-    static constexpr cost ordered_lookup = costs::lin_keys;
-    static constexpr cost erase = costs::one_t;
-    static constexpr cost clear = costs::one_t;
-    static constexpr cost iterate = costs::lin_keys;
-    static constexpr double words = 1.8;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename K>
-struct container_synopsis<repr::DenseSet<K, false>>
+namespace detail
+{
+
+/// dense set (a bitset over indices)
+struct dense_set_decl
 {
     static constexpr std::string_view id = "dense_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/dense_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::dense_set(f.element, false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 0.016;
+    };
     static constexpr std::string_view description = "dense set (a bitset over indices)";
     static constexpr std::string_view holds = "U bits";
 };
-
 template<typename K>
-struct container_synopsis<repr::DenseSet<K, true>>
+struct declaration_of<repr::DenseSet<K, false>>
+{
+    using declaration = dense_set_decl;
+    static constexpr request_features features = element_facts<K>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// dense set tracking its words (a bitset over indices, cleared by the words it touched)
+struct tracked_dense_set_decl
 {
     static constexpr std::string_view id = "tracked_dense_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/dense_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::dense_set(f.element, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 0.03;
+    };
     static constexpr std::string_view description = "dense set tracking its words (a bitset over indices, cleared by the words it touched)";
     static constexpr std::string_view holds = "U bits + the indices of the words in use";
 };
-
 template<typename K>
-struct container_synopsis<repr::SparseSet<K, false>>
+struct declaration_of<repr::DenseSet<K, true>>
+{
+    using declaration = tracked_dense_set_decl;
+    static constexpr request_features features = element_facts<K>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// sparse set (members array plus index positions, O(1) clear)
+struct sparse_set_decl
 {
     static constexpr std::string_view id = "sparse_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/sparse_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::sparse_set(f.element, false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::one_t;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 2;
+    };
     static constexpr std::string_view description = "sparse set (members array plus index positions, O(1) clear)";
     static constexpr std::string_view holds = "n members + U positions";
 };
-
 template<typename K>
-struct container_synopsis<repr::SparseSet<K, true>>
+struct declaration_of<repr::SparseSet<K, false>>
+{
+    using declaration = sparse_set_decl;
+    static constexpr request_features features = element_facts<K>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// sparse set keeping insertion order (erase shifts the members after it)
+struct ordered_sparse_set_decl
 {
     static constexpr std::string_view id = "ordered_sparse_set";
+    static constexpr auto headers = header_list<1> { "urd/repr/sparse_set.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::sparse_set(f.element, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::set, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost erase = costs::lin_nt;
+        static constexpr cost clear = costs::one_t;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr cost access = costs::one_t;
+        static constexpr double words = 2;
+    };
     static constexpr std::string_view description = "sparse set keeping insertion order (erase shifts the members after it)";
     static constexpr std::string_view holds = "n members in insertion order + U positions";
 };
+template<typename K>
+struct declaration_of<repr::SparseSet<K, true>>
+{
+    using declaration = ordered_sparse_set_decl;
+    static constexpr request_features features = element_facts<K>();
+};
 
-template<typename K, typename V>
-struct container_synopsis<repr::IndexMap<K, V, false>>
+}  // namespace detail
+
+namespace detail
+{
+
+/// dense map (a slot per index)
+struct dense_map_decl
 {
     static constexpr std::string_view id = "dense_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::index_map(f.key, false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.2;
+    };
     static constexpr std::string_view description = "dense map (a slot per index)";
     static constexpr std::string_view holds = "a slot per index";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::IndexMap<K, V, false, false, true>>
+struct declaration_of<repr::IndexMap<K, V, false>>
+{
+    using declaration = dense_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// dense map over slots that never move (segments)
+struct stable_dense_map_decl
 {
     static constexpr std::string_view id = "stable_dense_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::index_map(f.key, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::lin_keys;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.3;
+    };
     static constexpr std::string_view description = "dense map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot per index, in segments that never move";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::IndexMap<K, V, true>>
+struct declaration_of<repr::IndexMap<K, V, false, false, true>>
+{
+    using declaration = stable_dense_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// generation map (a slot per index, O(1) clear by generation)
+struct generation_map_decl
 {
     static constexpr std::string_view id = "generation_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::generation_map(f.key, f.mapped, false, false);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::one_t;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.6;
+    };
     static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
     static constexpr std::string_view holds = "a slot and a generation per index";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::IndexMap<K, V, true, false, true>>
+struct declaration_of<repr::IndexMap<K, V, true>>
+{
+    using declaration = generation_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// generation map over slots that never move (segments)
+struct stable_generation_map_decl
 {
     static constexpr std::string_view id = "stable_generation_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::generation_map(f.key, f.mapped, false, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::one_t;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.7;
+    };
     static constexpr std::string_view description = "generation map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
 };
-
 template<typename K, typename V>
-struct container_synopsis<repr::IndexMap<K, V, true, true>>
+struct declaration_of<repr::IndexMap<K, V, true, false, true>>
+{
+    using declaration = stable_generation_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
+
+namespace detail
+{
+
+/// generation map, thread-safe updates (a slot and a spin lock per index)
+struct thread_safe_generation_map_decl
 {
     static constexpr std::string_view id = "thread_safe_generation_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/index_map.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(natural_order_only, f.by))
+            return {};
+        const auto held = guarantees::generation_map(f.key, f.mapped, true, true);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::one_at;
+        static constexpr cost lookup = costs::one_t;
+        static constexpr cost ordered_lookup = costs::lin_keys;
+        static constexpr cost erase = costs::one_t;
+        static constexpr cost clear = costs::one_t;
+        static constexpr cost iterate = costs::lin_keys;
+        static constexpr double words = 1.8;
+    };
     static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
     static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
 };
+template<typename K, typename V>
+struct declaration_of<repr::IndexMap<K, V, true, true>>
+{
+    using declaration = thread_safe_generation_map_decl;
+    static constexpr request_features features = map_facts<K, V>();
+};
+
+}  // namespace detail
 
 }  // namespace urd

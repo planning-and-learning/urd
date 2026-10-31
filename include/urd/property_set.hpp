@@ -33,6 +33,22 @@ struct type_list
 {
 };
 
+/// Lists of types, joined in order.
+template<typename... Lists>
+struct join
+{
+    using type = type_list<>;
+};
+template<typename... Ts>
+struct join<type_list<Ts...>>
+{
+    using type = type_list<Ts...>;
+};
+template<typename... As, typename... Bs, typename... Lists>
+struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As..., Bs...>, Lists...>
+{
+};
+
 /// Every tag type, in the order of urd::tag.
 using all_tags = type_list<any_order,
                            sorted,

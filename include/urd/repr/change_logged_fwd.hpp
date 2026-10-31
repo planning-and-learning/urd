@@ -9,6 +9,10 @@
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/std_set.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 #include <type_traits>
 
@@ -25,35 +29,6 @@ class ChangeLogged;
 namespace urd
 {
 
-/// What R guarantees, with the log. Clear logs every element first, which for a dense set means a pass over its
-/// words (O(U/64), not proportional to the elements), so a dense set's clear cost is not promised.
-template<typename R>
-    requires has<container_traits<R>, unique> && (!map_traits<container_traits<R>>)
-struct container_traits<repr::ChangeLogged<R>> :
-    std::conditional_t<has<container_traits<R>, dense>, with_t<container_traits<R>, change_log, any_clear>, with_t<container_traits<R>, change_log>>
-{
-};
-template<typename R>
-struct parts<repr::ChangeLogged<R>>
-{
-    using type = detail::type_list<R>;
-};
-template<typename R>
-inline constexpr auto defined_in<repr::ChangeLogged<R>> = detail::fixed_string("urd/repr/change_logged.hpp");
-
-}  // namespace urd
-
-namespace urd
-{
-
-/// change_logged: its part's costs, but for what it declares here.
-template<typename R>
-struct container_costs<repr::ChangeLogged<R>> : part_costs<part_of<repr::ChangeLogged<R>>>
-{
-    static constexpr cost erase = costs::lin_changes_t;
-    static constexpr cost clear = costs::n_changes_t;
-    static constexpr double words = part_costs<part_of<repr::ChangeLogged<R>>>::words + 1;
-};
 
 }  // namespace urd
 
@@ -62,17 +37,47 @@ namespace urd
 
 namespace detail
 {
+
 inline constexpr std::string_view change_logged_prefix = "change_logged_";
 inline constexpr std::string_view change_logged_description = "change-logged (plus what was added and removed) ";
+
+/// A set that logs its changes, over Part's declaration: its id and words are the part's, prefixed; its offer the
+/// part's with change_log (and any clear for a dense part, whose words a clear must walk).
+template<typename Part>
+struct change_logged_decl
+{
+    static constexpr std::string_view id = joined<change_logged_prefix, Part::id>::value;
+    static constexpr auto headers = then(Part::headers, "urd/repr/change_logged.hpp");
+    static constexpr offered offers(const request_features& f)
+    {
+        const auto part = Part::offers(f);
+        if (!part)
+            return {};
+        const auto held = guarantees::change_logged(part->properties);
+        if (!held)
+            return {};
+        auto result = *part;
+        result.properties = *held;
+        return result;
+    }
+    struct operation_costs : Part::operation_costs
+    {
+        using part = Part;
+        static constexpr cost erase = costs::lin_changes_t;
+        static constexpr cost clear = costs::n_changes_t;
+        static constexpr double words = Part::operation_costs::words + 1;
+    };
+    static constexpr std::string_view description = joined<change_logged_description, Part::description>::value;
+    static constexpr std::string_view holds = "+ the elements added and removed";
+};
+
 }  // namespace detail
 
-/// A change-logged set: `change_logged_` and its part's id (`change_logged_set`).
 template<typename R>
-struct container_synopsis<repr::ChangeLogged<R>>
+struct detail::declaration_of<repr::ChangeLogged<R>>
 {
-    static constexpr std::string_view id = joined<detail::change_logged_prefix, container_synopsis<R>::id>::value;
-    static constexpr std::string_view description = joined<detail::change_logged_description, container_synopsis<R>::description>::value;
-    static constexpr std::string_view holds = "+ the elements added and removed";
+    using declaration = change_logged_decl<declaration_t<R>>;
+    static constexpr request_features features = declaration_of<R>::features;
 };
 
 }  // namespace urd

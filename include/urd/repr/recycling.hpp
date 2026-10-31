@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/recycling_fwd.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
@@ -223,22 +223,22 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"recycling_hash_set", S>
+struct representation_of<recycling_hash_set_decl, S>
 {
     using type = repr::RecyclingHashSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"recycling_tree_set", S>
+struct representation_of<recycling_tree_set_decl, S>
 {
     using type = repr::RecyclingTreeSet<typename S::element_type>;
 };
 template<typename S>
-struct representation_of<"recycling_hash_map", S>
+struct representation_of<recycling_hash_map_decl, S>
 {
     using type = repr::RecyclingHashMap<typename S::key_type, typename S::mapped_type>;
 };
 template<typename S>
-struct representation_of<"recycling_map", S>
+struct representation_of<recycling_map_decl, S>
 {
     using type = repr::Recycling<std::map<typename S::key_type, typename S::mapped_type, key_order_t<S>>>;
 };

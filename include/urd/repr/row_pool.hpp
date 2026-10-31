@@ -4,7 +4,7 @@
 
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/rows_fwd.hpp"
 #include "urd/traits.hpp"
@@ -130,7 +130,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"row_pool", S>
+struct representation_of<row_pool_decl, S>
 {
     using type = repr::RowPool<typename S::element_type>;
 };

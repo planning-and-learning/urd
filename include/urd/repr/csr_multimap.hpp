@@ -2,7 +2,7 @@
 
 // A multimap by key index in compressed sparse rows, defined. Include it where a Store resolves to one.
 
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/grouped_multimap.hpp"
 #include "urd/repr/index_groups.hpp"
 #include "urd/traits.hpp"
@@ -21,7 +21,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"csr_multimap", S>
+struct representation_of<csr_multimap_decl, S>
 {
     using type = repr::CsrMultiMap<typename S::key_type, typename S::mapped_type>;
 };

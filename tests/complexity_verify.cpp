@@ -50,7 +50,6 @@
 #include "complexity.hpp"
 #include "grid.hpp"
 #include "urd/registry.hpp"
-#include "urd/registry/candidates.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -297,12 +296,6 @@ struct verified
     std::string request;
 };
 
-template<typename R, typename S>
-struct serving
-{
-    static constexpr bool value = urd::detail::serves<R, S>;
-};
-
 /// Runs every counted operation of every candidate serving the request Q, once per (representation, operation).
 template<typename Q, typename List>
 struct verify_all;
@@ -314,7 +307,6 @@ struct verify_all<Q, urd::detail::type_list<Rs...>>
     template<typename R>
     static void one(std::map<std::pair<std::string, op>, verified>& into)
     {
-        if constexpr (serving<R, S>::value)
         {
             const auto offers = urd::test::offered<R, S>();
             for (std::size_t each = 0; each < offers.size(); ++each)
@@ -359,7 +351,6 @@ struct counted<S, urd::detail::type_list<Rs...>>
     template<typename R>
     static void one(std::set<std::pair<std::string, op>>& into)
     {
-        if constexpr (serving<R, S>::value)
             for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
             {
                 const auto what = static_cast<op>(each);
@@ -420,7 +411,7 @@ using probe_requests = urd::test::requests<
 
 template<typename... Qs>
 void verify_requests(urd::test::requests<Qs...> /*list*/, std::map<std::pair<std::string, op>, verified>& into)
-{ (verify_all<Qs, typename urd::detail::ordered_for<typename Qs::spec, typename urd::detail::candidates_for<typename Qs::spec>::type>::type>::run(into), ...); }
+{ (verify_all<Qs, urd::test::serving_containers<typename Qs::spec>>::run(into), ...); }
 
 }  // namespace
 
@@ -444,7 +435,7 @@ TEST(Complexity, CountedCostsGrowAsDeclared)
                                         [&]<typename Q>(std::type_identity<Q>)
                                         {
                                             using S = typename Q::spec;
-                                            using List = typename urd::detail::ordered_for<S, typename urd::detail::candidates_for<S>::type>::type;
+                                            using List = urd::test::serving_containers<S>;
                                             counted<S, List>::run(declared);
                                         });
         });

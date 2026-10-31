@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
-#include "urd/registry/row.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/entry_ordered_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -188,7 +188,7 @@ namespace urd::detail
 {
 
 template<typename S>
-struct representation_of<"flat_entry_map", S>
+struct representation_of<flat_entry_map_decl, S>
 {
     using type = repr::FlatEntryMap<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };

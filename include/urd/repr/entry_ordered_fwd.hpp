@@ -7,6 +7,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/traits.hpp"
+#include "urd/registry/declaration.hpp"
+#include "urd/registry/derived.hpp"
+#include "urd/registry/features.hpp"
+#include "urd/registry/guarantees.hpp"
 
 namespace urd::repr
 {
@@ -20,47 +24,58 @@ class FlatEntryMap;
 namespace urd
 {
 
-/// In the order the request gave, in one array; erase and clear keep it.
-template<orderable K, typename V, typename Order>
-    requires detail::is_entry_less<Order>
-struct container_traits<repr::FlatEntryMap<K, V, Order>> : properties_of<sorted, unique, functional, positional, contiguous, shrinkable, retains>
-{
-};
 
 template<typename K, typename V, typename Order>
 inline constexpr bool orders_by_value<repr::FlatEntryMap<K, V, Order>> = true;
 
-template<typename K, typename V, typename Order>
-inline constexpr auto defined_in<repr::FlatEntryMap<K, V, Order>> = detail::fixed_string("urd/repr/entry_ordered.hpp");
 
 }  // namespace urd
 
 namespace urd
 {
 
-/// flat_entry_map.
-template<typename K, typename V, typename Order>
-struct container_costs<repr::FlatEntryMap<K, V, Order>>
-{
-    static constexpr cost insert = costs::lin_n;
-    static constexpr cost lookup = costs::lin_n;
-    static constexpr cost erase = costs::lin_n;
-    static constexpr cost clear = costs::lin_nt;
-    static constexpr cost iterate = costs::lin_nt;
-    static constexpr double words = 1.5;
-};
 
 }  // namespace urd
 
 namespace urd
 {
 
-template<typename K, typename V, typename Order>
-struct container_synopsis<repr::FlatEntryMap<K, V, Order>>
+namespace detail
+{
+
+/// flat entry map (entries in an order that reads their values, found by key)
+struct flat_entry_map_decl
 {
     static constexpr std::string_view id = "flat_entry_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/entry_ordered.hpp" };
+    static constexpr offered offers(const request_features& f)
+    {
+        if (!accepts_order(entry_orders, f.by))
+            return {};
+        const auto held = guarantees::flat_entry_map(f.key);
+        if (!held)
+            return {};
+        return offer_of(urd::kind::map, *held, f);
+    }
+    struct operation_costs
+    {
+        static constexpr cost insert = costs::lin_n;
+        static constexpr cost lookup = costs::lin_n;
+        static constexpr cost erase = costs::lin_n;
+        static constexpr cost clear = costs::lin_nt;
+        static constexpr cost iterate = costs::lin_nt;
+        static constexpr double words = 1.5;
+    };
     static constexpr std::string_view description = "flat entry map (entries in an order that reads their values, found by key)";
     static constexpr std::string_view holds = "n entries in one array; for few";
 };
+template<typename K, typename V, typename Order>
+struct declaration_of<repr::FlatEntryMap<K, V, Order>>
+{
+    using declaration = flat_entry_map_decl;
+    static constexpr request_features features = map_facts<K, V, Order>();
+};
+
+}  // namespace detail
 
 }  // namespace urd
