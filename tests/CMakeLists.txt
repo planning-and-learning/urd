@@ -152,6 +152,19 @@ target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 urd_budget(survey survey survey.cpp 720 650)
 
+# What a file holding Stores costs must not grow with the number of containers (claude.layout.md): tests/scaling.py
+# compiles it with the registry as it is and grown fourfold (URD_REGISTRY_COPIES=3) and compares peak memory. It
+# fails until selection works on values (step 4 of the plan), so it is expected to fail until then.
+foreach(file one ten)
+    add_executable(test_scaling_${file}_control EXCLUDE_FROM_ALL scaling/${file}.cpp)
+    target_link_libraries(test_scaling_${file}_control PRIVATE urd::urd)
+    urd_syntax_only(compile test_scaling_${file}_control scaling/${file}.cpp)
+    add_test(NAME scaling_${file}
+             COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/scaling.py --label ${file} --copies 3 --margin-mb 5 -- ${compile}
+             COMMAND_EXPAND_LISTS)
+    set_tests_properties(scaling_${file} PROPERTIES WILL_FAIL TRUE)
+endforeach()
+
 # Code that must not compile. Each case is one run of the compiler on the source, syntax only, with the flags
 # of a target that links urd (so the cases build nothing and run in parallel under ctest -j). The control
 # case of each file must compile, so each case fails for its own reason; the cases are skipped when it does not.

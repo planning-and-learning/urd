@@ -80,8 +80,9 @@ struct row_traits<R, S>
 };
 
 template<typename R, typename S>
-concept serves = serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || has<container_traits<R>, positional>)
-                 && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, requirement<container_traits<row_of<S>>>));
+concept serves =
+    serves_by_traits<R, S> && detail::promises(S::urd_properties, relies_on<R>) && (!has<S, positional> || has<container_traits<R>, positional>)
+    && (!is_store<row_of<S>> || detail::satisfies(row_traits<R, S>::type::urd_properties, requirement<container_traits<row_of<S>>>)) && !registry_copy<R>;
 
 /// Stable storage: it keeps references stable, by a node per element or by segments that never move. Under
 /// small or frozen these move last, as contiguous storage is faster for few or unchanging elements.
