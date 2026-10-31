@@ -2,7 +2,6 @@
 // containers registered (tests/scaling.py compiles it with the registry as it is and grown, URD_REGISTRY_COPIES, copies.hpp).
 
 #include "copies.hpp"  // first: it extends the registry before anything builds it
-
 #include "urd/repr/addressable_heap.hpp"
 #include "urd/repr/bidirectional_csr.hpp"
 #include "urd/repr/bucket_queue.hpp"

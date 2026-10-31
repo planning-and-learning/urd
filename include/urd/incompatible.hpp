@@ -22,7 +22,7 @@ struct request_facts
     bool valued = false;
     bool value_is_store = false;    ///< value<Store<…>>: rows
     bool value_iterates = false;    ///< the value is a range of elements (a pool's row)
-    order by = order::none;  ///< its order_by: none, over the elements (a map's keys), or over entries
+    order by = order::none;         ///< its order_by: none, over the elements (a map's keys), or over entries
     bool ordered_orderable = true;  ///< what P orders (its keys, else its values) is orderable by urd::Less
 };
 

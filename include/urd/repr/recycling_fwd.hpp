@@ -6,11 +6,13 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/traits.hpp"
 
 #include <map>
 #include <set>
@@ -41,24 +43,6 @@ template<typename T>
 using RecyclingTreeSet = RecyclingSet<std::set<T, Less<T>>>;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {

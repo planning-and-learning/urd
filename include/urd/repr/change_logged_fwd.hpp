@@ -6,13 +6,13 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/interface.hpp"
-#include "urd/repr/dense_fwd.hpp"
-#include "urd/repr/std_set.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/traits.hpp"
 
 #include <type_traits>
 
@@ -25,12 +25,6 @@ template<typename R>
 class ChangeLogged;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-}  // namespace urd
 
 namespace urd
 {

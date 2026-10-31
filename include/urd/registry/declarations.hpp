@@ -12,6 +12,7 @@
 // A downstream project registers its own containers by specializing user_declarations after including this header
 // and before urd/store.hpp: they are tried after urd's.
 
+#include "urd/registry/declaration.hpp"
 #include "urd/repr/change_logged_fwd.hpp"
 #include "urd/repr/dense_fwd.hpp"
 #include "urd/repr/disjoint_sets_fwd.hpp"
@@ -33,7 +34,6 @@
 #include "urd/repr/sequence.hpp"
 #include "urd/repr/std_map.hpp"
 #include "urd/repr/std_set.hpp"
-#include "urd/registry/declaration.hpp"
 
 #include <array>
 

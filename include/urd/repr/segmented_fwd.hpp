@@ -5,12 +5,12 @@
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/repr/containers/segment_sizes.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/repr/containers/segment_sizes.hpp"
+#include "urd/traits.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -25,20 +25,6 @@ template<typename T, std::size_t FirstSegmentSize = default_first_segment_size, 
 class SegmentedVector;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-}  // namespace urd
 
 namespace urd
 {

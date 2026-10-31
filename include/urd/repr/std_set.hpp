@@ -4,10 +4,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <functional>
 #include <set>
@@ -21,16 +21,6 @@ namespace urd
 // standard's where a type has them (natural_hash).
 // References survive inserts and a hash table's rehash; iterators of a hash table do not. A tree frees the node of
 // what it erases; a hash table frees its nodes but keeps its buckets, so it neither retains nor reclaims.
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
 
 }  // namespace urd
 
@@ -113,7 +103,6 @@ struct declaration_of<std::unordered_set<T, H, E, A>>
 };
 
 }  // namespace detail
-
 
 }  // namespace urd
 

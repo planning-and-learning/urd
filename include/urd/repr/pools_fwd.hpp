@@ -9,11 +9,11 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/interface.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <bit>
 #include <cstddef>
@@ -39,30 +39,6 @@ template<typename T, bool ThreadSafe = false>
 class SlotVector;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {
@@ -176,8 +152,6 @@ struct declaration_of<repr::SlotVector<T, true>>
 
 }  // namespace detail
 
-
-
 namespace detail
 {
 
@@ -186,8 +160,8 @@ namespace detail
 template<bool Bits, bool ThreadSafe>
 struct tree_pool_decl
 {
-    static constexpr std::string_view id = Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set")
-                                                : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
+    static constexpr std::string_view id =
+        Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set") : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
     static constexpr auto headers = header_list<1> { Bits ? "urd/repr/tree_bitset.hpp" : "urd/repr/tree_vector.hpp" };
     static constexpr offered offers(const request_features& f)
     {
@@ -208,10 +182,10 @@ struct tree_pool_decl
         static constexpr cost access = costs::lin_row_t;
         static constexpr double words = Bits ? 0.05 : 1;
     };
-    static constexpr std::string_view description = Bits ? "tree bitset set (sets of indices as trees of blocks, equal subtrees once)"
-                                                          : "tree vector set (rows as trees of values, equal subtrees once)";
-    static constexpr std::string_view holds = Bits ? "nodes shared across rows; all-zero subtrees take nothing"
-                                                   : "nodes shared across rows: a delta adds about k log r nodes";
+    static constexpr std::string_view description =
+        Bits ? "tree bitset set (sets of indices as trees of blocks, equal subtrees once)" : "tree vector set (rows as trees of values, equal subtrees once)";
+    static constexpr std::string_view holds =
+        Bits ? "nodes shared across rows; all-zero subtrees take nothing" : "nodes shared across rows: a delta adds about k log r nodes";
 };
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>

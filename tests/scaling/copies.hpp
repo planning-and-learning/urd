@@ -31,8 +31,7 @@ struct copy_decl
 template<std::size_t I, typename... Decls>
 using copies = detail::type_list<copy_decl<I, Decls>...>;
 template<typename... Decls, std::size_t... I>
-auto all_copies(detail::type_list<Decls...> /*declarations*/, std::index_sequence<I...> /*copies*/) ->
-    typename detail::join<copies<I, Decls...>...>::type;
+auto all_copies(detail::type_list<Decls...> /*declarations*/, std::index_sequence<I...> /*copies*/) -> typename detail::join<copies<I, Decls...>...>::type;
 
 }  // namespace urd::test
 

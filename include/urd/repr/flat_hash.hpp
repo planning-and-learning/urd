@@ -3,11 +3,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <boost/unordered/unordered_flat_set_fwd.hpp>
@@ -19,15 +19,6 @@ namespace urd
 // Boost's open-addressing hash tables, with a natural hash on hashable elements. Elements live in one array of
 // slots, so a rehash moves them (no stable_refs); erase and clear keep the slots. Declared here through Boost's
 // forward headers; defined by urd/repr/unordered_flat_set.hpp and urd/repr/unordered_flat_map.hpp.
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
 
 }  // namespace urd
 

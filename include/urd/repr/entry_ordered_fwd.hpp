@@ -6,11 +6,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 namespace urd::repr
 {
@@ -24,23 +24,12 @@ class FlatEntryMap;
 namespace urd
 {
 
-
 template<typename K, typename V, typename Order>
 inline constexpr bool orders_by_value<repr::FlatEntryMap<K, V, Order>> = true;
 
-
 }  // namespace urd
 
-namespace urd
-{
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-namespace detail
+namespace urd::detail
 {
 
 /// flat entry map (entries in an order that reads their values, found by key)
@@ -76,6 +65,4 @@ struct declaration_of<repr::FlatEntryMap<K, V, Order>>
     static constexpr request_features features = map_facts<K, V, Order>();
 };
 
-}  // namespace detail
-
-}  // namespace urd
+}  // namespace urd::detail

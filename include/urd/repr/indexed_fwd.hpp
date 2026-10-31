@@ -6,11 +6,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <cstdint>
 
@@ -35,23 +35,6 @@ template<typename T, bool ThreadSafe>
 using InterningTable = IndexedSet<T, std::uint32_t, ThreadSafe>;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {

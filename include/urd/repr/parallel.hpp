@@ -3,13 +3,13 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/semantics/equal_to.hpp"
+#include "urd/semantics/hash.hpp"
+#include "urd/traits.hpp"
 
 #include <cstddef>
 #include <gtl/phmap_fwd_decl.hpp>
@@ -44,25 +44,6 @@ template<typename K, typename V>
 using ParallelNodeHashMap = gtl::parallel_node_hash_map<K, V, Hash<K>, EqualTo<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {

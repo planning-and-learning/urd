@@ -6,14 +6,14 @@
 
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/repr/dense_fwd.hpp"
-#include "urd/repr/std_map.hpp"
-#include "urd/repr/std_set.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/repr/std_map.hpp"
+#include "urd/repr/std_set.hpp"
+#include "urd/traits.hpp"
 
 namespace urd::repr
 {
@@ -26,14 +26,6 @@ template<typename R>
 class LayeredPool;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {
@@ -68,7 +60,7 @@ struct layered_decl
     {
         using part = Part;
     };
-    static constexpr std::string_view description = joined<Pool ? layered_pool_description : layered_description, Part::description>::value;
+    static constexpr std::string_view description = joined < Pool ? layered_pool_description : layered_description, Part::description > ::value;
     static constexpr std::string_view holds = Pool ? "its own rows, indices after the parent's" : "its own elements; the parent is not owned";
 };
 

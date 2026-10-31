@@ -4,10 +4,10 @@
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <functional>
 #include <map>
@@ -19,19 +19,6 @@ namespace urd
 // The standard library's maps, as its sets: a tree is sorted by its natural order on orderable keys and frees the node
 // of what it erases; a hash table on hashable keys frees its nodes but keeps its buckets. References survive
 // inserts and rehashes.
-
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
 
 }  // namespace urd
 

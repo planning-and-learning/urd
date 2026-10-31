@@ -85,9 +85,7 @@ struct variant_traits<std::variant<Ts...>>
     using resolved = std::variant<resolved_t<Ts, C>...>;
     template<typename F>
     static decltype(auto) visit(F&& function, const std::variant<Ts...>& held)
-    {
-        return std::visit(std::forward<F>(function), held);
-    }
+    { return std::visit(std::forward<F>(function), held); }
 };
 
 /// A record's member, as a view sees it: an index<U> as a view<U, C> where the context resolves U (pointing at the
@@ -147,9 +145,7 @@ public:
     /// A member of the record, resolved through the context (urd::resolve).
     template<auto Member>
     [[nodiscard]] decltype(auto) get() const
-    {
-        return urd::resolve(record().*Member, *m_context);
-    }
+    { return urd::resolve(record().*Member, *m_context); }
 
     /// The identity: the index, and the layer's number where the context has one.
     [[nodiscard]] auto identifying_members() const noexcept

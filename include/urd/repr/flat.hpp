@@ -3,11 +3,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <boost/container/container_fwd.hpp>
 #include <functional>
@@ -19,22 +19,11 @@ namespace urd
 // Their vector keeps its capacity when elements are erased. Declared here through Boost's forward header; defined by
 // urd/repr/flat_set.hpp and urd/repr/flat_map.hpp.
 
-
 // Their maps likewise, sorted by key. Their iterators would let a key be overwritten; a Store hands out only
 // const ones.
 
 // A multimap keeps equal keys' values in insertion order, so equal contents inserted in another order differ:
 // it is not canonical.
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
 
 }  // namespace urd
 

@@ -6,11 +6,11 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 namespace urd::repr
 {
@@ -23,23 +23,7 @@ class DisjointSets;
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-namespace detail
+namespace urd::detail
 {
 
 /// disjoint sets (union-find by size, path halving)
@@ -72,6 +56,4 @@ struct declaration_of<repr::DisjointSets<K>>
     static constexpr request_features features = element_facts<K>();
 };
 
-}  // namespace detail
-
-}  // namespace urd
+}  // namespace urd::detail

@@ -6,12 +6,12 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/registry/element_concepts.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
+#include "urd/registry/element_concepts.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <type_traits>
 
@@ -27,24 +27,6 @@ template<typename T, bool ThreadSafe = false>
 class ArenaInterner;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {

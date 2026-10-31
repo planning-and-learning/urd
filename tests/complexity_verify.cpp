@@ -351,13 +351,13 @@ struct counted<S, urd::detail::type_list<Rs...>>
     template<typename R>
     static void one(std::set<std::pair<std::string, op>>& into)
     {
-            for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
-            {
-                const auto what = static_cast<op>(each);
-                const auto how = urd::test::cost_of<R>(what);
-                if (how && !how->timed && !urd::test::passed_on<R>(what))
-                    into.emplace(std::string(urd::test::name<R>::id), what);
-            }
+        for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
+        {
+            const auto what = static_cast<op>(each);
+            const auto how = urd::test::cost_of<R>(what);
+            if (how && !how->timed && !urd::test::passed_on<R>(what))
+                into.emplace(std::string(urd::test::name<R>::id), what);
+        }
     }
     static void run(std::set<std::pair<std::string, op>>& into) { (one<Rs>(into), ...); }
 };

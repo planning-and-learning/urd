@@ -41,7 +41,8 @@ static_assert(std::same_as<chosen<key<int>, value<Inner>>, boost::unordered_flat
 static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense>, urd::repr::IndexMap<int, Inner, false>>);
 static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::dense, urd::constant_clear>, urd::repr::IndexMap<int, Inner, true>>);
 static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::scoped>, urd::repr::ScopedMap<int, Inner>>);
-static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::layered>, urd::repr::Layered<boost::unordered_flat_map<int, Inner, urd::Hash<int>, urd::EqualTo<int>>>>);
+static_assert(
+    std::same_as<chosen<key<int>, value<Inner>, urd::layered>, urd::repr::Layered<boost::unordered_flat_map<int, Inner, urd::Hash<int>, urd::EqualTo<int>>>>);
 static_assert(std::same_as<chosen<key<int>, value<Inner>, urd::sorted>, std::map<int, Inner, urd::Less<int>>>);
 static_assert(std::same_as<chosen<value<Inner>>, std::vector<Inner>>);
 static_assert(std::same_as<chosen<value<Inner>, urd::stable_refs, urd::monotone>, urd::repr::SegmentedVector<Inner>>);

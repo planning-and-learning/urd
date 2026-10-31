@@ -3,30 +3,14 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/traits.hpp"
 
 #include <vector>
 
-namespace urd
-{
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-namespace detail
+namespace urd::detail
 {
 
 /// std::vector
@@ -62,9 +46,7 @@ struct declaration_of<std::vector<T, A>>
     static constexpr request_features features = element_facts<T>();
 };
 
-}  // namespace detail
-
-}  // namespace urd
+}  // namespace urd::detail
 
 namespace urd
 {

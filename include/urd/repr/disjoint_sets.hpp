@@ -104,11 +104,6 @@ private:
 namespace urd
 {
 
-}  // namespace urd
-
-namespace urd
-{
-
 template<>
 struct include<"urd/repr/disjoint_sets.hpp">
 {

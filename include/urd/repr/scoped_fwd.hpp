@@ -7,12 +7,12 @@
 #include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/repr/dense_fwd.hpp"
-#include "urd/traits.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
 #include "urd/registry/guarantees.hpp"
+#include "urd/repr/dense_fwd.hpp"
+#include "urd/traits.hpp"
 
 #include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <map>
@@ -36,21 +36,6 @@ template<typename K, typename V>
 using ScopedDenseMap = Scoped<IndexMap<K, V, false>>;
 
 }  // namespace urd::repr
-
-namespace urd
-{
-
-
-
-}  // namespace urd
-
-namespace urd
-{
-
-
-
-
-}  // namespace urd
 
 namespace urd
 {

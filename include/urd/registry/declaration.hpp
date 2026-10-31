@@ -43,14 +43,14 @@ struct offer
     /// their storage returned when they are destroyed, as erase and clear do.
     property_set nested = property_set::roots();
 
-    constexpr offer relying_on(std::initializer_list<tag> promised) const
+    [[nodiscard]] constexpr offer relying_on(std::initializer_list<tag> promised) const
     {
         auto result = *this;
         for (const auto each : promised)
             result.relies_on.put(each);
         return result;
     }
-    constexpr offer giving_nested(const property_set& given) const
+    [[nodiscard]] constexpr offer giving_nested(const property_set& given) const
     {
         auto result = *this;
         result.nested = given;
