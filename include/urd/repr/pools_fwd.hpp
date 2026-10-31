@@ -28,24 +28,24 @@ constexpr P row_interner(const T& row, bool concurrent_)
 {
     if (row.element == nullptr || !row.element->hashable)
         return {};
-    return props({ tag::handles, tag::unique, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 
 constexpr P tree_vector_set(const T& row, bool concurrent_)
 {
     if (row.element == nullptr || !row.element->hashable || (row.store != nullptr && keeps_by_value(row.store->kind)))
         return {};
-    return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 
 constexpr P tree_bitset_set(const T& row, bool concurrent_)
 {
     if (row.store == nullptr || row.element == nullptr || !row.element->indexable || !row.store->properties.has(tag::unique) || !row.store->properties.has(tag::dense))
         return {};
-    return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 
-constexpr P slot_vector(bool concurrent_) { return props({ tag::handles, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) }); }
+constexpr P slot_vector(bool concurrent_) { return property_set::of({ tag::handles, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) }); }
 
 }  // namespace urd::detail::guarantees
 

@@ -171,6 +171,10 @@ enum class kind : std::uint8_t
     partition,  ///< keys in disjoint classes
 };
 
+/// The tag of a container's threading and of its references, by a flag of its own: concurrent or not, stable or not.
+constexpr tag threads(bool concurrent_) { return concurrent_ ? tag::concurrent : tag::single_threaded; }
+constexpr tag references(bool stable) { return stable ? tag::stable_refs : tag::moving_refs; }
+
 /// Whether a kind keeps its elements by value (inserted where their value puts them), not where they are put.
 constexpr bool keeps_by_value(kind of) { return of == kind::multiset || of == kind::set || of == kind::map; }
 /// Whether a container of kind `container` holds a request of kind `request`: its own kind; and keys and values

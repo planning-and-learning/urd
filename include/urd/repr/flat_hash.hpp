@@ -21,14 +21,14 @@ constexpr P flat_hash_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return props({ tag::unique, tag::sparse, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::unique, tag::sparse, tag::shrinkable, tag::retains });
 }
 
 constexpr P flat_hash_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return props({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::retains });
 }
 
 }  // namespace urd::detail::guarantees

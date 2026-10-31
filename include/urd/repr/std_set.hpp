@@ -21,14 +21,14 @@ constexpr P tree_set(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return props({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P hash_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return props({ tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable });
 }
 
 }  // namespace urd::detail::guarantees

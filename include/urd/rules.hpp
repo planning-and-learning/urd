@@ -67,4 +67,29 @@ inline constexpr auto implications = std::to_array<implication>({
     { .then = tag::shrinkable },
 });
 
+/// The tags no request states: the library derives them (a map is functional unless it says multi; what a Store's
+/// interface offers follows from frozen, monotone, nonempty and fixed_shape), and containers still declare them. A
+/// public tag changes some resolution or rejects some request; these would only repeat what is derived.
+inline constexpr std::array internal_tags { tag::immutable, tag::growable, tag::shrinkable, tag::functional };
+
+/// The tags that make a pool not know its size: structural_sharing shares parts of its rows and keeps no list of them.
+inline constexpr std::array unsized_tags { tag::structural_sharing };
+
+/// What a Store held as an element of another gets beyond its own request: its storage given back when it is
+/// destroyed, as erase and clear do.
+inline constexpr std::array nested_gives { tag::reclaims };
+
+/// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
+/// Contiguous storage is more compact and faster to search and iterate where elements are few or never change, so
+/// stable storage (a node per element, segments that never move) comes last for them (docs/BENCHMARKS.md).
+struct preference
+{
+    tag when = tag::count;
+    tag later = tag::count;
+};
+inline constexpr auto preferences = std::to_array<preference>({
+    { .when = tag::frozen, .later = tag::stable_refs },
+    { .when = tag::small, .later = tag::stable_refs },
+});
+
 }  // namespace urd::detail

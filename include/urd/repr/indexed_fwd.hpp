@@ -22,14 +22,14 @@ constexpr P indexed_set(const T& t)
 {
     if (!t.hashable)
         return {};
-    return props({ tag::insertion_ordered, tag::unique, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
 }
 
 constexpr P stable_indexed_set(const T& t, bool concurrent_)
 {
     if (!t.hashable)
         return {};
-    return with(props({ tag::insertion_ordered, tag::unique, tag::positional, tag::stable_refs, tag::growable, tag::retains }), { threads(concurrent_) });
+    return with(property_set::of({ tag::insertion_ordered, tag::unique, tag::positional, tag::stable_refs, tag::growable, tag::retains }), { threads(concurrent_) });
 }
 
 }  // namespace urd::detail::guarantees

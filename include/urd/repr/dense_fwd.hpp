@@ -24,14 +24,14 @@ constexpr P dense_set(const T& t, bool track)
 {
     if (!t.indexable)
         return {};
-    return props({ tag::sorted, tag::unique, tag::dense, tag::canonical, tag::shrinkable, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::dense, tag::canonical, tag::shrinkable, tag::retains, track ? tag::proportional_clear : tag::any_clear });
 }
 
 constexpr P sparse_set(const T& t, bool keep_order)
 {
     if (!t.indexable)
         return {};
-    return props({ tag::unique,
+    return property_set::of({ tag::unique,
                    tag::dense,
                    tag::positional,
                    tag::contiguous,
@@ -45,14 +45,14 @@ constexpr P index_map(const T& key, bool stable)
 {
     if (!key.indexable)
         return {};
-    return props({ tag::sorted, tag::unique, tag::functional, tag::dense, tag::shrinkable, tag::retains, references(stable) });
+    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::dense, tag::shrinkable, tag::retains, references(stable) });
 }
 
 constexpr P generation_map(const T& key, const T& mapped, bool concurrent_, bool stable)
 {
     if (!key.indexable || !mapped.default_initializable)
         return {};
-    return props({ tag::sorted,
+    return property_set::of({ tag::sorted,
                    tag::unique,
                    tag::functional,
                    tag::dense,

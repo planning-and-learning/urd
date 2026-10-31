@@ -20,7 +20,7 @@ constexpr P flat_set(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return props(
+    return property_set::of(
         { tag::sorted, tag::unique, tag::positional, tag::sparse, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
 
@@ -28,14 +28,14 @@ constexpr P flat_multiset(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return props({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
 
 constexpr P flat_map(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return props({ tag::sorted,
+    return property_set::of({ tag::sorted,
                    tag::unique,
                    tag::functional,
                    tag::positional,
@@ -51,7 +51,7 @@ constexpr P flat_multimap(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return props({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
 
 }  // namespace urd::detail::guarantees

@@ -25,14 +25,14 @@ constexpr P parallel_hash_set(const T& t, bool nodes)
 {
     if (!t.hashable)
         return {};
-    return with(props({ tag::unique, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+    return with(property_set::of({ tag::unique, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
 }
 
 constexpr P parallel_hash_map(const T& key, bool nodes)
 {
     if (!key.hashable)
         return {};
-    return with(props({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
+    return with(property_set::of({ tag::unique, tag::functional, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
 }
 
 

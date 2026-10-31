@@ -93,6 +93,8 @@ endif()
 
 # The include root holds the vocabulary and the entry point only.
 add_test(NAME layout COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/tests/layout.cmake)
+# The glue names no specific tag: what a tag means is declared beside it, in the rules or by a container (tests/generic.py).
+add_test(NAME generic COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/generic.py ${PROJECT_SOURCE_DIR})
 
 # Declarations from the four libraries as Store requests: compiling them is the test.
 add_library(survey OBJECT survey.cpp)

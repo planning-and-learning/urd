@@ -24,31 +24,31 @@
 namespace urd::detail::guarantees
 {
 
-constexpr P fifo() { return props({ tag::fifo, tag::stable_refs, tag::shrinkable }); }
+constexpr P fifo() { return property_set::of({ tag::fifo, tag::stable_refs, tag::shrinkable }); }
 
-constexpr P lifo() { return props({ tag::lifo, tag::shrinkable, tag::retains }); }
+constexpr P lifo() { return property_set::of({ tag::lifo, tag::shrinkable, tag::retains }); }
 
-constexpr P ring_fifo() { return props({ tag::fifo, tag::shrinkable, tag::retains }); }
+constexpr P ring_fifo() { return property_set::of({ tag::fifo, tag::shrinkable, tag::retains }); }
 
 constexpr P heap(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return props({ tag::by_priority, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::shrinkable, tag::retains });
 }
 
 constexpr P addressable_heap(const T& t, const F& f)
 {
     if (!orders(t, f))
         return {};
-    return props({ tag::by_priority, tag::handles, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::handles, tag::shrinkable, tag::retains });
 }
 
 constexpr P bucket_queue(const T& t, const F& f)
 {
     if (!orders(t, f) || !f.order_key.integral)
         return {};
-    return props({ tag::by_priority, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::by_priority, tag::shrinkable, tag::retains });
 }
 
 

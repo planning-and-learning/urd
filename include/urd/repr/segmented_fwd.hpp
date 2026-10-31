@@ -21,7 +21,7 @@ namespace urd::detail::guarantees
 {
 
 constexpr P segmented_vector(bool concurrent_)
-{ return props({ tag::dense, tag::positional, tag::stable_refs, tag::growable, tag::retains, tag::proportional_clear, threads(concurrent_) }); }
+{ return property_set::of({ tag::dense, tag::positional, tag::stable_refs, tag::growable, tag::retains, tag::proportional_clear, threads(concurrent_) }); }
 
 
 }  // namespace urd::detail::guarantees

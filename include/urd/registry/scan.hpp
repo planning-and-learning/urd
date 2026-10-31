@@ -4,8 +4,8 @@
 // offer for the request's elements, and the first whose offer serves the request is chosen. Serving reads only what
 // the offer and the request declare: the kinds match (holds_kind), the container gives what the request requires
 // (satisfies), the request promises what the container relies on and demands (promises), and nested Stores get what
-// they ask for. Where the request says its elements are few or never change, entries with stable storage come after
-// the others: contiguous storage is more compact and faster to search and iterate (docs/BENCHMARKS.md).
+// they ask for. Where the request holds a tag that prefers some entries later (urd/rules.hpp, preferences), they come
+// after the others.
 
 #include "urd/registry/table.hpp"
 
@@ -32,6 +32,15 @@ constexpr bool serves(const offer& o, const request_shape& s, const request_feat
     return !held.store || satisfies(o.nested, held.store->required);
 }
 
+/// Whether offer `o` comes after the others serving a request of shape `s`, by the preferences (urd/rules.hpp).
+constexpr bool comes_later(const offer& o, const request_shape& s)
+{
+    for (const auto& each : preferences)
+        if (s.stated.has(each.when) && o.properties.has(each.later))
+            return true;
+    return false;
+}
+
 /// No entry: the request is served by none.
 inline constexpr std::size_t no_entry = static_cast<std::size_t>(-1);
 
@@ -43,7 +52,6 @@ struct serving_entries
 };
 constexpr serving_entries all_serving(const request_shape& s, const request_features& f)
 {
-    const bool compact = s.stated.has(tag::frozen) || s.stated.has(tag::small);
     auto result = serving_entries {};
     auto later = serving_entries {};
     for (std::size_t each = 0; each < registry_table.size(); ++each)
@@ -51,7 +59,7 @@ constexpr serving_entries all_serving(const request_shape& s, const request_feat
         const auto o = registry_table[each].offers(f);
         if (!o || !serves(*o, s, f))
             continue;
-        if (compact && o->properties.has(tag::stable_refs))
+        if (comes_later(*o, s))
             later.at[later.count++] = each;
         else
             result.at[result.count++] = each;
@@ -65,14 +73,13 @@ constexpr serving_entries all_serving(const request_shape& s, const request_feat
 /// without listing the rest.
 constexpr std::size_t first_serving(const request_shape& s, const request_features& f)
 {
-    const bool compact = s.stated.has(tag::frozen) || s.stated.has(tag::small);
     auto later = no_entry;
     for (std::size_t each = 0; each < registry_table.size(); ++each)
     {
         const auto o = registry_table[each].offers(f);
         if (!o || !serves(*o, s, f))
             continue;
-        if (!compact || !o->properties.has(tag::stable_refs))
+        if (!comes_later(*o, s))
             return each;
         if (later == no_entry)
             later = each;

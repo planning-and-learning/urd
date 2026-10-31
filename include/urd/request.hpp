@@ -28,44 +28,15 @@ struct request
 
 /// A list of requests.
 template<typename... Rs>
-struct requests
-{
-};
-
-template<typename... Lists>
-struct cat;
-template<>
-struct cat<>
-{
-    using type = requests<>;
-};
-template<typename... Rs>
-struct cat<requests<Rs...>>
-{
-    using type = requests<Rs...>;
-};
-template<typename... As, typename... Bs, typename... Lists>
-struct cat<requests<As...>, requests<Bs...>, Lists...> : cat<requests<As..., Bs...>, Lists...>
-{
-};
+using requests = detail::type_list<Rs...>;
 /// Lists of requests, joined in order.
 template<typename... Lists>
-using cat_t = typename cat<Lists...>::type;
+using cat_t = typename detail::join<Lists...>::type;
 
 /// Calls f on each request type of a list, as std::type_identity<request<...>>.
 template<typename F, typename... Rs>
 void for_each_request(requests<Rs...> /*list*/, F f)
 { (f(std::type_identity<Rs> {}), ...); }
-
-/// The headers a Store over container R needs (`urd/repr/unordered_flat_map.hpp`): its declaration's, a wrapper's
-/// part's first.
-template<typename R>
-void headers_of(std::vector<std::string>& into)
-{
-    for (const auto header : detail::declaration_t<R>::headers)
-        if (std::ranges::find(into, header) == into.end())
-            into.emplace_back(header);
-}
 
 template<typename T>
 void element_headers_of(std::vector<std::string>& into);

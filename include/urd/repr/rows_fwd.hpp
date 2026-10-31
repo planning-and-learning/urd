@@ -20,12 +20,29 @@
 namespace urd::detail::guarantees
 {
 
+/// Whether a jagged array holds rows `inner` flattened: frozen rows, of elements or (deeper) of rows in order.
+constexpr bool flattenable(const T& inner)
+{ return inner.store && inner.store->properties.has(tag::frozen) && (inner.element == nullptr || !inner.element->store || !keeps_by_value(inner.store->kind)); }
+/// Whether a jagged array holds rows `inner` that change in place: rows of elements, as a sequence, or a dense set's
+/// bits; or fixed-shape rows of such rows, at any depth.
+constexpr bool fixed_rows(const T& inner)
+{
+    if (!inner.store || inner.store->properties.has(tag::frozen))
+        return false;
+    if (inner.element == nullptr || !inner.element->store)
+        return !keeps_by_value(inner.store->kind)
+               || (inner.store->kind == urd::kind::set && inner.store->properties.has(tag::unique) && inner.store->properties.has(tag::dense));
+    return inner.store->properties.has(tag::fixed_shape) && fixed_rows(*inner.element);
+}
+/// Whether a row's elements are rows themselves.
+constexpr bool of_stores(const T& inner) { return inner.element != nullptr && inner.element->store; }
+
 constexpr P jagged(const T& inner, bool track)
 {
     if (!track && flattenable(inner))
-        return props({ tag::dense, tag::positional, tag::shrinkable, tag::retains, tag::proportional_clear });
+        return property_set::of({ tag::dense, tag::positional, tag::shrinkable, tag::retains, tag::proportional_clear });
     if (fixed_rows(inner))
-        return props({ tag::dense, tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
+        return property_set::of({ tag::dense, tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
     return {};
 }
 
@@ -43,7 +60,7 @@ constexpr P row_pool(const T& inner)
 {
     if (!inner.store || !inner.store->properties.has(tag::shrinkable))
         return {};
-    return props({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
+    return property_set::of({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
 
 

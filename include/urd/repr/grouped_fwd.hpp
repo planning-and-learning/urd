@@ -21,7 +21,7 @@ constexpr P csr_multimap(const T& key)
 {
     if (!key.indexable)
         return {};
-    return props({ tag::sorted, tag::multi, tag::dense, tag::canonical });
+    return property_set::of({ tag::sorted, tag::multi, tag::dense, tag::canonical });
 }
 
 constexpr P bidirectional_csr(const T& key, const T& mapped)
@@ -36,14 +36,14 @@ constexpr P dense_multimap(const T& key)
 {
     if (!key.indexable)
         return {};
-    return props({ tag::sorted, tag::multi, tag::dense, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::sorted, tag::multi, tag::dense, tag::shrinkable, tag::retains });
 }
 
 constexpr P posting_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return props({ tag::multi, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::multi, tag::sparse, tag::shrinkable });
 }
 
 }  // namespace urd::detail::guarantees

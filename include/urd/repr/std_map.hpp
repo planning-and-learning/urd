@@ -21,28 +21,28 @@ constexpr P tree_map(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return props({ tag::sorted, tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P tree_multimap(const T& key, const F& f)
 {
     if (!orders(key, f))
         return {};
-    return props({ tag::sorted, tag::multi, tag::stable_refs, tag::shrinkable, tag::reclaims, tag::proportional_clear });
+    return property_set::of({ tag::sorted, tag::multi, tag::stable_refs, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
 
 constexpr P hash_map(const T& key)
 {
     if (!key.hashable)
         return {};
-    return props({ tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable });
+    return property_set::of({ tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable });
 }
 
 constexpr P hash_multimap(const T& key)
 {
     if (!key.hashable)
         return {};
-    return props({ tag::multi, tag::stable_refs, tag::shrinkable });
+    return property_set::of({ tag::multi, tag::stable_refs, tag::shrinkable });
 }
 
 }  // namespace urd::detail::guarantees

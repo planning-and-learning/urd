@@ -20,7 +20,7 @@ constexpr P disjoint_sets(const T& t)
 {
     if (!t.indexable)
         return {};
-    return props({ tag::partition, tag::dense, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::partition, tag::dense, tag::shrinkable, tag::retains });
 }
 
 

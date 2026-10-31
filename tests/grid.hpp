@@ -40,7 +40,6 @@ inline constexpr auto by_value = [](const int& /*key*/, const int& value) { retu
 using urd::cat_t;
 using urd::element_headers_of;
 using urd::for_each_request;
-using urd::headers_of;
 using urd::requests;
 
 /// One request of the grid: urd::request, with how it is written.

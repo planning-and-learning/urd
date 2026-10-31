@@ -69,7 +69,7 @@ constexpr offer offer_of(urd::kind of, const property_set& held, const request_f
     return { .kind = of,
              .properties = held,
              .relies_on = property_set::roots(),
-             .nested = elements.store ? with(elements.store->properties, { tag::reclaims }) : property_set::roots() };
+             .nested = elements.store ? with(elements.store->properties, nested_gives) : property_set::roots() };
 }
 
 /// The headers a file holding a Store of a container includes: a wrapper's part's first, then its own.

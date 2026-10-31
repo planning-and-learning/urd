@@ -20,7 +20,7 @@ constexpr P flat_entry_map(const T& key)
 {
     if (!key.orderable)
         return {};
-    return props({ tag::sorted, tag::unique, tag::functional, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
+    return property_set::of({ tag::sorted, tag::unique, tag::functional, tag::positional, tag::contiguous, tag::shrinkable, tag::retains });
 }
 
 

@@ -14,7 +14,7 @@
 namespace urd::detail::guarantees
 {
 
-constexpr P vector() { return props({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear }); }
+constexpr P vector() { return property_set::of({ tag::dense, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear }); }
 
 }  // namespace urd::detail::guarantees
 

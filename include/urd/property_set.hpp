@@ -194,10 +194,6 @@ inline constexpr std::array guaranteed_roots {
     tag::any_handle, tag::any_sharing, tag::any_grouping, tag::any_direction, tag::any_shape,  tag::any_packing,        tag::by_key
 };
 inline constexpr std::array requested_roots { tag::may_change, tag::maybe_empty, tag::any_multiplicity, tag::general, tag::any_priority };
-/// The tags no request states: the library derives them (a map is functional unless it says multi; what a Store's
-/// interface offers follows from frozen, monotone, nonempty and fixed_shape), and containers still declare them. A
-/// public tag changes some resolution or rejects some request; these would only repeat what is derived.
-inline constexpr std::array internal_tags { tag::immutable, tag::growable, tag::shrinkable, tag::functional };
 
 constexpr bool in(tag root, const auto& roots)
 {
@@ -298,6 +294,15 @@ constexpr property_set required_of(property_set promised, kind of)
         if (rule.provided && applies(rule, of, promised))
             result.put(root_of(rule.then));
     return result;
+}
+
+/// Whether `held` holds any of `listed`.
+constexpr bool holds_any(const property_set& held, const auto& listed)
+{
+    for (const auto each : listed)
+        if (held.has(each))
+            return true;
+    return false;
 }
 
 /// Whether `have` provides, in every category a container declares, at least what `want` asks for; exactly that, in

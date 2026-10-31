@@ -80,7 +80,7 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 constexpr bool statable(tag of)
 {
     const auto root = root_of(of);
-    return ((in(root, guaranteed_roots) && root != tag::immutable) || in(root, requested_roots)) && !in(of, internal_tags);
+    return (in(root, guaranteed_roots) || in(root, requested_roots)) && !in(of, internal_tags);
 }
 
 /// Whether P is a tag the library derives and no request states (internal_tags).
@@ -191,10 +191,10 @@ struct spec
     /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
     /// which only answers membership, would not be either.
     static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: all but a pool with structural_sharing, which shares parts of its
-    /// rows and keeps no list of them. A filter would not either. Every other pool counts its rows in O(1), and its
-    /// handles are 0..size()-1: a row inserted new gets handle size().
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !urd_properties.has(tag::structural_sharing));
+    /// Whether it knows how many elements it holds: all but a pool holding a tag that makes it not know (unsized_tags,
+    /// urd/rules.hpp). A filter would not either. Every other pool counts its rows in O(1), and its handles are
+    /// 0..size()-1: a row inserted new gets handle size().
+    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !detail::holds_any(urd_properties, detail::unsized_tags));
 
     /// What a key maps to, in a map.
     using mapped_type = std::conditional_t<is_map, V, void>;

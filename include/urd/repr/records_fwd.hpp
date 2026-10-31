@@ -23,14 +23,14 @@ constexpr P record_interner(const T& t, bool concurrent_, bool stable)
 {
     if (!t.trivially_copyable || !t.hashable)
         return {};
-    return props({ tag::handles, tag::unique, tag::flat, tag::shrinkable, tag::retains, references(stable), threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::shrinkable, tag::retains, references(stable), threads(concurrent_) });
 }
 
 constexpr P arena_interner(const T& t, bool concurrent_)
 {
     if (!t.serializable || !t.hashable)
         return {};
-    return props({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) });
+    return property_set::of({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 
 }  // namespace urd::detail::guarantees

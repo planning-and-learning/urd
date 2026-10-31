@@ -205,3 +205,42 @@ kind. The family as a concept goes.
 - **Directory layout of `repr/`:** with no families, the headers can stay flat, one per container, or go in
   directories by kind, with the two wrappers that serve two kinds (`Layered`, `LayeredPool`) placed by a rule.
   Kind matches how a user reads a request; flat needs no rule.
+
+## Glue audit (2026-10-31, after the declarations)
+
+Every entity left in the glue, with the declarations it combines. A new glue entity adds its row here; one with no
+reason is folded into its caller or its leaf. `tests/generic.py` keeps the glue from naming a specific tag.
+
+| File | Entity | Reason: what it combines |
+|---|---|---|
+| property_set.hpp | `property_set`, `tags` table, `root_of`, `at_least` | the tag hierarchy (tags.hpp), as values |
+| property_set.hpp | `kinds_made`, `roots_exact`, `tags_demanded` | each tag's `makes`, `exact`, `demanded` |
+| property_set.hpp | `kind_of`, `implied`, `restated`, `required_of` | the tags' kinds and the implications (rules.hpp) |
+| property_set.hpp | `satisfies`, `promises`, `demands_of`, `holds_any` | a container's offer against a request |
+| properties.hpp | `to_spec`, `spec` | a request's tags, implications and rules into one spec |
+| incompatible.hpp | `request_facts`, `incompatible_rules` | every rule leaf over one request |
+| registry/facts.hpp | `type_features`, `store_facts`, `request_features`, `order`, `with`, `orders`, `own_rows` | what any container's offer reads |
+| registry/features.hpp | `features_v`, `element_facts`, `map_facts`, `hashed_*_facts`, `features_of` | a type's or request's facts, once |
+| registry/declaration.hpp | `offer`, `offer_of`, `header_list`, `then`, `registry_entry`, `representation_of`, `declaration_of` | a declaration as values, and its two links to types |
+| registry/derived.hpp | `container_traits`, `container_costs`, `container_synopsis`, `element_traits`, `relies_on`, `defined_in` | the traits, from a type's declaration |
+| registry/declarations.hpp | `declarations` | the preference order, the one list |
+| registry/table.hpp | `registry_table` | the declarations as values |
+| registry/scan.hpp | `serves`, `comes_later`, `all_serving`, `first_serving` | offers against a request, and the preferences (rules.hpp) |
+| registry/select.hpp | `choose`, `chosen_type`, `missing_headers`, `serving_declarations`, diagnostics | the scan's choice, as one type or one error |
+| request.hpp | `request`, `requests`, `cat_t`, `for_each_request`, `element_headers_of` | requests as types for tools |
+
+Folded in this pass: `props` (was `property_set::of`), `with_all` (an overload of `with`), `cat` (was `join`),
+`headers_of` (the declaration holds its headers), `registry.hpp`, `user_declarations`, `all_declarations`.
+
+**Measured:** the glue (tags, vocabulary, rules, properties, traits, costs, request, interface, store and facets,
+registry) is 5,951 lines, against 6,670 at the start of the cleanup (2f7f046), with rules.hpp and incompatible.hpp
+new. Per-container customization points in `repr/` went from 348 specializations to 135 (`declaration_of` and
+`representation_of`).
+
+**Still to do (step 3):** the facets (`facet_switches`, `denials.hpp`), interface.hpp's conformance, and store.hpp's
+tag-dependent constructors still name tags; they join `tests/generic.py` once they declare themselves.
+
+**Minor features, for the user to decide:** the small/frozen preference, entry orders (`order_by` over key and
+value), `structural_sharing`, `urd_per_container`'s keyword arguments. Open findings of the group checks:
+`reclaims` changes an insertion-ordered set's interface; `canonical` and `sparse` change no resolution; stating
+`sparse` leaves requests unservable whose containers do not declare it.
