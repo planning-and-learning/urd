@@ -21,6 +21,25 @@ nodes, contiguous, dense, …): including one defines all of its containers, and
 **Stays linear on purpose:** what walks every container by design (the registry tests, the grid generators, the
 per-container tests and benchmarks), and one precompiled table per build (part 2).
 
+## The invariant
+
+`urd/store.hpp` contains the Store machinery, the vocabulary (tags, property sets) and the registry table, whose rows
+are values. It contains no container: no definition, no class declaration, and no standard container header
+(`<set>`, `<map>`, `<unordered_*>`, `<vector>`). A container enters a file only through its own header, which that
+file includes because one of its Stores resolves to it. So what `store.hpp` costs is independent of how many
+containers exist, but for one row of values each, which the precompiled table (part 2) removes from the per-file
+cost too.
+
+**The message.** Where a file holds a Store whose chosen container's header it has not included, compilation stops
+with one error that names the request, the container chosen for it, and exactly the headers missing: the
+container's own, and for a wrapper each part's (`urd::parts`), the part first, as its error must come first. Only
+the missing ones are listed, not those already included. It is a `static_assert` in the Store's check
+(`complete_representation`), reading the paths from the rows, so it comes before any error about an incomplete type.
+For example:
+
+    urd::Store: Store<key<int>, dense, change_log> resolves to change_logged_dense_set; include
+    "urd/repr/dense_set.hpp", "urd/repr/change_logged.hpp"
+
 ## The design
 
 ### 1. Selection by value: a lookup, not a walk
@@ -42,8 +61,10 @@ per-container tests and benchmarks), and one precompiled table per build (part 2
      element and key types.
   2. A `constexpr` function scans its kind's group for the first row that serves. That is a loop over values, with no
      type instantiated. It returns the chosen id.
-  3. Only the chosen container's type is named, by id: one specialization `representation_of<id, K, V, P>` per
-     container, beside its declaration.
+  3. Only the chosen container's type is named, by id: `representation_of<id, K, V, P>`, specialized in the
+     container's own header. `store.hpp` declares only the primary template, so it holds no container type. Where
+     the header is not included, the specialization is missing, and the Store's check fails with the header's path,
+     which the row carries.
 
   So template instantiations per request are constant. The `constexpr` loop is linear in the kind's group, but cheap
   per step. Indexing the group by its most selective category (order, then keys) bounds the loop by the containers
@@ -86,8 +107,10 @@ kind. The family as a concept goes.
   - the `compile_fail_include` cases, one per family, which become one case per kind of miss (a container, a
     wrapper's part);
   - the family vocabulary in the docs (`docs/INTEGRATION.md`, "Register it"; `RESOLUTION.md`'s preamble).
-- **Declarations** (`*_fwd.hpp`) shrink to what a row needs. The class declaration, costs and synopsis stay per
-  container. Only the chosen container's are instantiated.
+- **Declarations go from `store.hpp` entirely.** The `*_fwd.hpp` headers become part of each container's own header:
+  its class, `container_traits`, `container_costs`, `container_synopsis` and `representation_of`. The registry table
+  holds only rows. What the generators and tests need of every container (traits, costs, synopsis) they get by
+  including every container's header, as they do today, which is linear on purpose.
 
 ## Steps (one commit each; pins, grid and gate green)
 
@@ -129,7 +152,12 @@ kind. The family as a concept goes.
 - **The scaling test** (step 1) passes from step 4 on, on GCC and Clang, Debug and Release.
 - **`resolution_table --check`, the requests and the per-container tests** are unchanged at every step: the same
   requests resolve to the same containers.
-- **The compile-fail cases** (`tests/CMakeLists.txt`, `urd_compile_fail_expects`) pass with the same messages.
+- **The compile-fail cases** (`tests/CMakeLists.txt`, `urd_compile_fail_expects`) pass with the same messages, except
+  the missing-include ones (`compile_fail_include`), which change to the new message. They pin:
+  - a plain container whose header is missing: its header named;
+  - a wrapper missing only its part's header: only the part's named;
+  - a wrapper missing both: both, the part first;
+  - a file that holds two Stores of different containers, one included: only the other named.
 - **The budgets** (`tests/budget.py`): `bare` and `survey` drop, and their limits are lowered to the new numbers so
   they guard them.
 - **Sabotages, reverted:**
