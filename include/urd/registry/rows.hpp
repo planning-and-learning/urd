@@ -23,10 +23,11 @@ constexpr tag threads(bool concurrent_) { return concurrent_ ? tag::concurrent :
 constexpr tag references(bool stable) { return stable ? tag::stable_refs : tag::moving_refs; }
 
 // Sets and maps over urd::Less (`ordered` false) or over the request's comparator (true).
-constexpr bool orders(const T& t, bool ordered) { return ordered ? t.ordered_by_request : t.orderable; }
-constexpr P tree_set(const T& t, bool ordered)
+/// Whether the request's order applies to `t`: urd::Less where it gives no order_by, else its comparator.
+constexpr bool orders(const T& t, const F& f) { return f.by == order::none ? t.orderable : f.order_natural; }
+constexpr P tree_set(const T& t, const F& f)
 {
-    if (!orders(t, ordered))
+    if (!orders(t, f))
         return {};
     return props({ tag::sorted, tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
@@ -36,16 +37,16 @@ constexpr P hash_set(const T& t)
         return {};
     return props({ tag::unique, tag::stable_refs, tag::sparse, tag::shrinkable });
 }
-constexpr P flat_set(const T& t, bool ordered)
+constexpr P flat_set(const T& t, const F& f)
 {
-    if (!orders(t, ordered))
+    if (!orders(t, f))
         return {};
     return props(
         { tag::sorted, tag::unique, tag::positional, tag::sparse, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
-constexpr P flat_multiset(const T& t, bool ordered)
+constexpr P flat_multiset(const T& t, const F& f)
 {
-    if (!orders(t, ordered))
+    if (!orders(t, f))
         return {};
     return props({ tag::sorted, tag::positional, tag::contiguous, tag::canonical, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
@@ -61,15 +62,15 @@ constexpr P parallel_hash_set(const T& t, bool nodes)
         return {};
     return with(props({ tag::unique, tag::sparse, tag::shrinkable, tag::concurrent }), { references(nodes) });
 }
-constexpr P tree_map(const T& key, bool ordered)
+constexpr P tree_map(const T& key, const F& f)
 {
-    if (!orders(key, ordered))
+    if (!orders(key, f))
         return {};
     return props({ tag::sorted, tag::unique, tag::functional, tag::stable_refs, tag::sparse, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
-constexpr P tree_multimap(const T& key, bool ordered)
+constexpr P tree_multimap(const T& key, const F& f)
 {
-    if (!orders(key, ordered))
+    if (!orders(key, f))
         return {};
     return props({ tag::sorted, tag::multi, tag::stable_refs, tag::shrinkable, tag::reclaims, tag::proportional_clear });
 }
@@ -85,9 +86,9 @@ constexpr P hash_multimap(const T& key)
         return {};
     return props({ tag::multi, tag::stable_refs, tag::shrinkable });
 }
-constexpr P flat_map(const T& key, bool ordered)
+constexpr P flat_map(const T& key, const F& f)
 {
-    if (!orders(key, ordered))
+    if (!orders(key, f))
         return {};
     return props({ tag::sorted,
                    tag::unique,
@@ -100,9 +101,9 @@ constexpr P flat_map(const T& key, bool ordered)
                    tag::retains,
                    tag::proportional_clear });
 }
-constexpr P flat_multimap(const T& key, bool ordered)
+constexpr P flat_multimap(const T& key, const F& f)
 {
-    if (!orders(key, ordered))
+    if (!orders(key, f))
         return {};
     return props({ tag::sorted, tag::multi, tag::positional, tag::contiguous, tag::shrinkable, tag::retains, tag::proportional_clear });
 }
@@ -128,21 +129,21 @@ constexpr P segmented_vector(bool concurrent_)
 constexpr P fifo() { return props({ tag::fifo, tag::stable_refs, tag::shrinkable }); }
 constexpr P lifo() { return props({ tag::lifo, tag::shrinkable, tag::retains }); }
 constexpr P ring_fifo() { return props({ tag::fifo, tag::shrinkable, tag::retains }); }
-constexpr P heap(const T& t, bool ordered)
+constexpr P heap(const T& t, const F& f)
 {
-    if (!orders(t, ordered))
+    if (!orders(t, f))
         return {};
     return props({ tag::by_priority, tag::shrinkable, tag::retains });
 }
-constexpr P addressable_heap(const T& t, bool ordered)
+constexpr P addressable_heap(const T& t, const F& f)
 {
-    if (!orders(t, ordered))
+    if (!orders(t, f))
         return {};
     return props({ tag::by_priority, tag::handles, tag::shrinkable, tag::retains });
 }
-constexpr P bucket_queue(const T& t, bool ordered)
+constexpr P bucket_queue(const T& t, const F& f)
 {
-    if (!orders(t, ordered) || !(ordered ? t.integral_priority_by_request : t.integral_priority))
+    if (!orders(t, f) || !f.order_key.integral)
         return {};
     return props({ tag::by_priority, tag::shrinkable, tag::retains });
 }
@@ -175,7 +176,7 @@ constexpr P index_map(const T& key, bool stable)
 }
 constexpr P generation_map(const T& key, const T& mapped, bool concurrent_, bool stable)
 {
-    if (!key.indexable || !mapped.slot_value)
+    if (!key.indexable || !mapped.default_initializable)
         return {};
     return props({ tag::sorted,
                    tag::unique,
@@ -248,25 +249,25 @@ constexpr P record_interner(const T& t, bool concurrent_, bool stable)
 }
 constexpr P arena_interner(const T& t, bool concurrent_)
 {
-    if (!t.flat_record)
+    if (!t.serializable || !t.hashable)
         return {};
     return props({ tag::handles, tag::unique, tag::flat, tag::stable_refs, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 constexpr P row_interner(const T& row, bool concurrent_)
 {
-    if (!row.row_vector_hashable)
+    if (row.element == nullptr || !row.element->hashable)
         return {};
     return props({ tag::handles, tag::unique, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 constexpr P tree_vector_set(const T& row, bool concurrent_)
 {
-    if (!row.row_element_hashable || keeps_by_value(row.store_kind))
+    if (row.element == nullptr || !row.element->hashable || keeps_by_value(row.store_kind))
         return {};
     return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
 constexpr P tree_bitset_set(const T& row, bool concurrent_)
 {
-    if (!row.row_element_indexable || !row.store_properties.has(tag::unique) || !row.store_properties.has(tag::dense))
+    if (row.element == nullptr || !row.element->indexable || !row.store_properties.has(tag::unique) || !row.store_properties.has(tag::dense))
         return {};
     return props({ tag::handles, tag::unique, tag::structural_sharing, tag::shrinkable, tag::retains, threads(concurrent_) });
 }
@@ -275,21 +276,37 @@ constexpr P slot_vector(bool concurrent_) { return props({ tag::handles, tag::st
 constexpr P own_rows(const T& row) { return row.store ? P(row.store_properties) : P(); }
 
 // Rows.
+/// Whether a jagged array holds rows `inner` flattened: frozen rows, of elements or (deeper) of rows in order.
+constexpr bool flattenable(const T& inner)
+{ return inner.store && inner.store_properties.has(tag::frozen) && (inner.element == nullptr || !inner.element->store || !keeps_by_value(inner.store_kind)); }
+/// Whether a jagged array holds rows `inner` that change in place: rows of elements, as a sequence, or a dense set's
+/// bits; or fixed-shape rows of such rows, at any depth.
+constexpr bool fixed_rows(const T& inner)
+{
+    if (!inner.store || inner.store_properties.has(tag::frozen))
+        return false;
+    if (inner.element == nullptr || !inner.element->store)
+        return !keeps_by_value(inner.store_kind)
+               || (inner.store_kind == urd::kind::set && inner.store_properties.has(tag::unique) && inner.store_properties.has(tag::dense));
+    return inner.store_properties.has(tag::fixed_shape) && fixed_rows(*inner.element);
+}
+/// Whether a row's elements are rows themselves.
+constexpr bool of_stores(const T& inner) { return inner.element != nullptr && inner.element->store; }
 constexpr P jagged(const T& inner, bool track)
 {
-    if (!track && inner.flattenable)
+    if (!track && flattenable(inner))
         return props({ tag::dense, tag::positional, tag::shrinkable, tag::retains, tag::proportional_clear });
-    if (inner.fixed_rows)
+    if (fixed_rows(inner))
         return props({ tag::dense, tag::positional, tag::fixed_shape, tag::retains, track ? tag::proportional_clear : tag::any_clear });
     return {};
 }
 constexpr P jagged_rows(const T& inner, bool track)
 {
-    if (!track && inner.flattenable)
-        return with(inner.store_properties, { inner.store_of_stores ? tag::any_layout : tag::contiguous, tag::moving_refs, tag::retains });
-    if (inner.fixed_rows)
+    if (!track && flattenable(inner))
+        return with(inner.store_properties, { of_stores(inner) ? tag::any_layout : tag::contiguous, tag::moving_refs, tag::retains });
+    if (fixed_rows(inner))
         return with(inner.store_properties,
-                    { (!inner.store_of_stores && !keeps_by_value(inner.store_kind)) ? tag::contiguous : tag::any_layout, tag::moving_refs, tag::retains });
+                    { (!of_stores(inner) && !keeps_by_value(inner.store_kind)) ? tag::contiguous : tag::any_layout, tag::moving_refs, tag::retains });
     return {};
 }
 constexpr P row_pool(const T& inner)
@@ -374,18 +391,14 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       natural_order_only,
       [](const request_features& f) { return rows::flat_hash_set(f.element); } },
     { "unordered_set", { "urd/repr/std_set.hpp" }, kind::set, natural_order_only, [](const request_features& f) { return rows::hash_set(f.element); } },
-    { "set", { "urd/repr/std_set.hpp" }, kind::set, element_orders, [](const request_features& f) { return rows::tree_set(f.element, f.by != order::none); } },
+    { "set", { "urd/repr/std_set.hpp" }, kind::set, element_orders, [](const request_features& f) { return rows::tree_set(f.element, f); } },
     { "flat_multiset",
       { "urd/repr/flat_set.hpp" },
       kind::multiset,
       element_orders,
-      [](const request_features& f) { return rows::flat_multiset(f.element, f.by != order::none); } },
+      [](const request_features& f) { return rows::flat_multiset(f.element, f); } },
     { "indexed_set", { "urd/repr/indexed.hpp" }, kind::set, natural_order_only, [](const request_features& f) { return rows::indexed_set(f.element); } },
-    { "flat_set",
-      { "urd/repr/flat_set.hpp" },
-      kind::set,
-      element_orders,
-      [](const request_features& f) { return rows::flat_set(f.element, f.by != order::none); } },
+    { "flat_set", { "urd/repr/flat_set.hpp" }, kind::set, element_orders, [](const request_features& f) { return rows::flat_set(f.element, f); } },
     { "recycling_hash_set",
       { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" },
       kind::set,
@@ -395,7 +408,7 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       { "urd/repr/std_set.hpp", "urd/repr/recycling.hpp" },
       kind::set,
       natural_order_only,
-      [](const request_features& f) { return rows::recycling_set(rows::tree_set(f.element, f.by != order::none)); } },
+      [](const request_features& f) { return rows::recycling_set(rows::tree_set(f.element, f)); } },
     { "dense_set", { "urd/repr/dense_set.hpp" }, kind::set, natural_order_only, [](const request_features& f) { return rows::dense_set(f.element, false); } },
     { "tracked_dense_set",
       { "urd/repr/dense_set.hpp" },
@@ -440,15 +453,15 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       { "urd/repr/bucket_queue.hpp" },
       kind::queue,
       element_orders,
-      [](const request_features& f) { return rows::bucket_queue(f.element, f.by != order::none); },
+      [](const request_features& f) { return rows::bucket_queue(f.element, f); },
       nullptr,
       property_set::of({ tag::monotone_priority }) },
-    { "heap", { "urd/repr/queue.hpp" }, kind::queue, element_orders, [](const request_features& f) { return rows::heap(f.element, f.by != order::none); } },
+    { "heap", { "urd/repr/queue.hpp" }, kind::queue, element_orders, [](const request_features& f) { return rows::heap(f.element, f); } },
     { "addressable_heap",
       { "urd/repr/addressable_heap.hpp" },
       kind::queue,
       element_orders,
-      [](const request_features& f) { return rows::addressable_heap(f.element, f.by != order::none); } },
+      [](const request_features& f) { return rows::addressable_heap(f.element, f); } },
     { "layered_unordered_flat_set",
       { "urd/repr/unordered_flat_set.hpp", "urd/repr/layer.hpp" },
       kind::set,
@@ -478,7 +491,7 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       { "urd/repr/std_set.hpp", "urd/repr/change_logged.hpp" },
       kind::set,
       natural_order_only,
-      [](const request_features& f) { return rows::change_logged(rows::tree_set(f.element, f.by != order::none)); } },
+      [](const request_features& f) { return rows::change_logged(rows::tree_set(f.element, f)); } },
     { "row_interner",
       { "urd/repr/pools.hpp" },
       kind::pool,
@@ -617,22 +630,10 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       kind::map,
       natural_order_only,
       [](const request_features& f) { return rows::parallel_hash_map(f.key, true); } },
-    { "map", { "urd/repr/std_map.hpp" }, kind::map, element_orders, [](const request_features& f) { return rows::tree_map(f.key, f.by != order::none); } },
-    { "multimap",
-      { "urd/repr/std_map.hpp" },
-      kind::map,
-      element_orders,
-      [](const request_features& f) { return rows::tree_multimap(f.key, f.by != order::none); } },
-    { "flat_multimap",
-      { "urd/repr/flat_map.hpp" },
-      kind::map,
-      element_orders,
-      [](const request_features& f) { return rows::flat_multimap(f.key, f.by != order::none); } },
-    { "flat_map",
-      { "urd/repr/flat_map.hpp" },
-      kind::map,
-      element_orders,
-      [](const request_features& f) { return rows::flat_map(f.key, f.by != order::none); } },
+    { "map", { "urd/repr/std_map.hpp" }, kind::map, element_orders, [](const request_features& f) { return rows::tree_map(f.key, f); } },
+    { "multimap", { "urd/repr/std_map.hpp" }, kind::map, element_orders, [](const request_features& f) { return rows::tree_multimap(f.key, f); } },
+    { "flat_multimap", { "urd/repr/flat_map.hpp" }, kind::map, element_orders, [](const request_features& f) { return rows::flat_multimap(f.key, f); } },
+    { "flat_map", { "urd/repr/flat_map.hpp" }, kind::map, element_orders, [](const request_features& f) { return rows::flat_map(f.key, f); } },
     { "recycling_hash_map",
       { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" },
       kind::map,
@@ -643,7 +644,7 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       { "urd/repr/std_map.hpp", "urd/repr/recycling.hpp" },
       kind::map,
       element_orders,
-      [](const request_features& f) { return rows::recycling(rows::tree_map(f.key, f.by != order::none)); },
+      [](const request_features& f) { return rows::recycling(rows::tree_map(f.key, f)); },
       [](const request_features& f) { return rows::own_rows(f.mapped); } },
     { "dense_map", { "urd/repr/index_map.hpp" }, kind::map, natural_order_only, [](const request_features& f) { return rows::index_map(f.key, false); } },
     { "stable_dense_map", { "urd/repr/index_map.hpp" }, kind::map, natural_order_only, [](const request_features& f) { return rows::index_map(f.key, true); } },
@@ -692,7 +693,7 @@ inline constexpr auto registry_table = std::to_array<registry_row>({
       { "urd/repr/std_map.hpp", "urd/repr/scoped.hpp" },
       kind::map,
       natural_order_only,
-      [](const request_features& f) { return rows::scoped(rows::tree_map(f.key, f.by != order::none)); } },
+      [](const request_features& f) { return rows::scoped(rows::tree_map(f.key, f)); } },
     { "scoped_dense_map",
       { "urd/repr/index_map.hpp", "urd/repr/scoped.hpp" },
       kind::map,
@@ -750,7 +751,7 @@ constexpr bool row_serves(const registry_row& row, const request_shape& s, const
     if (!held.store)
         return true;
     const auto given = row.rows ? row.rows(f) : std::optional<property_set>(with(held.store_properties, { tag::reclaims }));
-    return given && satisfies(*given, held.store_requirement);
+    return given && satisfies(*given, held.store_required);
 }
 
 /// The first row of `table` serving the request, or none. Where elements are few or never

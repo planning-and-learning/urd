@@ -20,30 +20,25 @@
 namespace urd::detail
 {
 
-/// What a type of a request's elements is, as far as any container's guarantees depend on it.
+/// What a type is, in facts general enough that any container states its constraints in them; for a Store, also its
+/// request, its kind, and the same facts about its elements, recursively. Nothing here is one container's: a
+/// container's own precondition is composed from these in its row function (urd/registry/rows.hpp).
 struct type_features
 {
-    bool present = false;                                    ///< not void
-    bool hashable = false;                                   ///< by urd::Hash and urd::EqualTo
-    bool orderable = false;                                  ///< by urd::Less
-    bool ordered_by_request = false;                         ///< by the request's order_by comparator (natural_order<P, T>)
-    bool indexable = false;                                  ///< an index 0..n-1 (index_of)
-    bool trivially_copyable = false;                         ///< as a record stored flat may be (a Store is not)
-    bool trivially_destructible = false;                     ///< cleared without destructors (a Store is not)
-    bool slot_value = false;                                 ///< default-constructible and movable, as a generation map's slots need
-    bool flat_record = false;                                ///< serialized by cista into an arena
-    bool integral_priority = false;                          ///< a bucket queue's priority under urd::Less is integral
-    bool integral_priority_by_request = false;               ///< and under the request's comparator
-    bool store = false;                                      ///< a Store: a row
-    property_set store_properties = property_set::roots();   ///< a row's request
-    urd::kind store_kind = urd::kind::sequence;              ///< a row's kind
-    property_set store_requirement = property_set::roots();  ///< what a container must guarantee for a row's request
-    bool store_of_stores = false;                            ///< a row whose elements are rows
-    bool flattenable = false;                                ///< frozen rows a jagged array holds
-    bool fixed_rows = false;                                 ///< rows a jagged array changes in place
-    bool row_vector_hashable = false;                        ///< a row's elements, as a vector, are hashable (an interner keys by them)
-    bool row_element_hashable = false;                       ///< a row's elements are hashable
-    bool row_element_indexable = false;                      ///< a row's elements are indices
+    bool hashable = false;                ///< by urd::Hash and urd::EqualTo
+    bool orderable = false;               ///< by urd::Less
+    bool indexable = false;               ///< an index 0..n-1 (index_of)
+    bool integral = false;                ///< an integral number
+    bool trivially_copyable = false;      ///< copied as bytes (a Store is not)
+    bool trivially_destructible = false;  ///< destroyed without code (a Store is not)
+    bool default_initializable = false;   ///< default-constructible and movable (a Store unless nonempty or fixed_shape)
+    bool serializable = false;            ///< names its members for cista (cista_members), so it is stored as bytes
+    bool store = false;                   ///< a Store, whose request follows
+    property_set store_properties = property_set::roots();
+    property_set store_required = property_set::roots();
+    urd::kind store_kind = urd::kind::sequence;
+    /// The facts about its elements, where it is a range of them (a Store that iterates, or another range).
+    const type_features* element = nullptr;
 };
 
 /// The order a request asks its elements in, beyond their own: none (urd::Less, or no order), an order_by over the
@@ -63,6 +58,10 @@ struct request_features
     type_features key;
     type_features mapped;
     order by = order::none;
+    /// Where it gives order_by over its elements (a map's keys): whether that comparator orders them as `sorted`
+    /// means (natural_order), and the facts about what it compares (its projection's result, else the elements).
+    bool order_natural = false;
+    type_features order_key;
 };
 
 /// The orders a row takes, as a mask of urd::detail::order.

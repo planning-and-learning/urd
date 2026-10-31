@@ -19,40 +19,38 @@
 namespace urd::detail
 {
 
-/// The features of T, with P the request's order_by comparator (void where it gives none).
-template<typename T, typename P>
+template<typename T>
+consteval type_features features_of_type();
+
+/// The facts about T, once per type; a Store's elements' facts are reached through it.
+template<typename T>
+inline constexpr type_features features_v = features_of_type<T>();
+
+template<typename T>
 consteval type_features features_of_type()
 {
     auto result = type_features {};
     if constexpr (!std::is_void_v<T>)
     {
-        result.present = true;
         result.hashable = hashable<T>;
         result.orderable = orderable<T>;
-        if constexpr (!std::is_void_v<P>)
-            result.ordered_by_request = natural_order<P, T>;
         result.indexable = indexable<T>;
+        result.integral = std::integral<T>;
         result.trivially_copyable = trivially_copyable<T>;
         result.trivially_destructible = trivially_destructible<T>;
-        result.slot_value = slot_value<T>;
-        result.flat_record = repr::flat_record<T>;
-        result.integral_priority = requires { requires std::integral<repr::bucket_priority_t<T, Less<T>>>; };
-        if constexpr (!std::is_void_v<P> && !is_entry_less<P>)  // an entry order projects entries, not elements
-            result.integral_priority_by_request = requires { requires std::integral<repr::bucket_priority_t<T, P>>; };
-        if constexpr (is_store<T>)
+        result.default_initializable = slot_value<T>;
+        if constexpr (!is_store<T>)  // asking a Store for a member would complete it
+            result.serializable = requires { T::cista_members(); };
+        else
         {
             using traits = container_traits<T>;
             result.store = true;
             result.store_properties = traits::urd_properties;
+            result.store_required = traits::required;
             result.store_kind = traits::kind;
-            result.store_requirement = traits::required;
-            result.store_of_stores = is_store<typename traits::element_type>;
-            result.flattenable = flattenable<T>;
-            result.fixed_rows = fixed_rows<T>;
         }
-        result.row_vector_hashable = requires { requires hashable<std::vector<row_element_t<T>>>; };
-        result.row_element_hashable = requires { requires hashable<row_element_t<T>>; };
-        result.row_element_indexable = requires { requires indexable<row_element_t<T>>; };
+        if constexpr (requires { typename row_element_t<T>; })
+            result.element = &features_v<row_element_t<T>>;
     }
     return result;
 }
@@ -62,15 +60,26 @@ template<typename S>
 consteval request_features features_of()
 {
     using P = typename S::order_type;
+    /// What an order orders: a map's keys, else the elements.
+    using ordered = std::conditional_t<S::is_map, typename S::key_type, typename S::element_type>;
     auto result = request_features {};
     if constexpr (!S::is_map)
-        result.element = features_of_type<typename S::element_type, P>();
-    result.key = features_of_type<typename S::key_type, P>();
-    result.mapped = features_of_type<typename S::mapped_type, void>();
+        result.element = features_v<typename S::element_type>;
+    result.key = features_v<typename S::key_type>;
+    result.mapped = features_v<typename S::mapped_type>;
     if constexpr (is_entry_less<P>)
         result.by = order::entry;
-    else if constexpr (!std::is_void_v<P>)
-        result.by = order::element;
+    else
+    {
+        using compare = std::conditional_t<std::is_void_v<P>, Less<ordered>, P>;
+        if constexpr (!std::is_void_v<P>)
+        {
+            result.by = order::element;
+            result.order_natural = natural_order<P, ordered>;
+        }
+        if constexpr (requires { typename repr::bucket_priority_t<ordered, compare>; })
+            result.order_key = features_v<repr::bucket_priority_t<ordered, compare>>;
+    }
     return result;
 }
 
