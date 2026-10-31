@@ -85,7 +85,10 @@ namespace detail
 template<typename R, typename S>
 void element_headers_of_store(std::type_identity<detail::Store<R, S>> /*store*/, std::vector<std::string>& into)
 {
-    headers_of<R>(into);
+    // From the row the Store's request resolves to, which lists them whether or not they are included here.
+    for (const auto header : detail::choose<S>::row->headers)
+        if (!header.empty() && std::ranges::find(into, header) == into.end())
+            into.emplace_back(header);
     if constexpr (!std::is_void_v<typename S::key_type>)
         element_headers_of<typename S::key_type>(into);
     if constexpr (!std::is_void_v<typename S::value_type>)

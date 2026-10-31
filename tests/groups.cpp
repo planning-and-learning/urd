@@ -45,7 +45,10 @@ struct seen
 template<typename S>
 seen seen_of()
 {
-    auto result = seen { S::is_queue, S::is_pool, S::is_partition };
+    auto result = seen {};
+    result.queue = S::is_queue;
+    result.pool = S::is_pool;
+    result.partition = S::is_partition;
     for (std::size_t each = 0; each < result.facets.size(); ++each)
         result.facets[each] = urd::test::spec_switches<S>::on(static_cast<facet_id>(each));
     result.offers = urd::test::offered<S>();
