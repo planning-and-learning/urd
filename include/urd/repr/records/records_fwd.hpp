@@ -37,9 +37,9 @@ struct record_interner_decl
 {
     static constexpr std::string_view id = "record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
-    static constexpr urd::kind kind = urd::kind::records;
+    using kind = records_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::none, threading::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ copying::copies_as_bytes, hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::copies_as_bytes, trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -68,9 +68,9 @@ struct stable_record_interner_decl
 {
     static constexpr std::string_view id = "stable_record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
-    static constexpr urd::kind kind = urd::kind::records;
+    using kind = records_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ copying::copies_as_bytes, hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::copies_as_bytes, trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -99,9 +99,9 @@ struct thread_safe_record_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
-    static constexpr urd::kind kind = urd::kind::records;
+    using kind = records_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::concurrent });
-    static constexpr role_tags relies_on { .element = property_set::of({ copying::copies_as_bytes, hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::copies_as_bytes, trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -130,9 +130,9 @@ struct arena_interner_decl
 {
     static constexpr std::string_view id = "arena_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/arena.hpp" };
-    static constexpr urd::kind kind = urd::kind::records;
+    using kind = records_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash, member_naming::names_members }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash, trait::names_members>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -161,9 +161,9 @@ struct thread_safe_arena_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_arena_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/arena.hpp" };
-    static constexpr urd::kind kind = urd::kind::records;
+    using kind = records_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash, member_naming::names_members }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash, trait::names_members>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

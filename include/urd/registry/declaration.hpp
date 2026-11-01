@@ -8,9 +8,9 @@
 //     {
 //         static constexpr std::string_view id = "set";
 //         static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
-//         static constexpr urd::kind kind = urd::kind::set;
+//         using kind = set_kind;                                        // urd/kinds.hpp
 //         static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, … });
-//         static constexpr role_tags relies_on { .element = property_set::of({ natural_order_source::natural_ordered }) };
+//         static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
 //         struct operation_costs { … };                                       // urd::container_costs, by operation
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
@@ -26,6 +26,7 @@
 // with the facts its template arguments give). urd::container_traits, container_costs, container_synopsis,
 // relies_on, parts and defined_in are derived from them (urd/registry/derived.hpp).
 
+#include "urd/kinds.hpp"
 #include "urd/registry/facts.hpp"
 
 #include <array>
@@ -54,7 +55,7 @@ struct registry_entry
 {
     std::string_view id;
     std::span<const std::string_view> headers;
-    urd::kind kind = urd::kind::sequence;
+    std::string_view kind;  ///< its kind's name (urd/kinds.hpp)
     property_set provides = property_set::roots();
     role_tags relies_on;
     std::span<const tag> gives_elements;
@@ -64,7 +65,7 @@ struct registry_entry
 template<typename Decl>
 constexpr registry_entry entry_of()
 {
-    return { Decl::id, std::span<const std::string_view>(Decl::headers), Decl::kind, Decl::provides, Decl::relies_on,
+    return { Decl::id, std::span<const std::string_view>(Decl::headers), Decl::kind::name, Decl::provides, Decl::relies_on,
              std::span<const tag>(Decl::gives_elements), Decl::description, Decl::holds };
 }
 

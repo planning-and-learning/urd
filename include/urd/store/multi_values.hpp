@@ -33,11 +33,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::multi_values>
+struct facet_condition<facet::multi_values>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_map && !has<S, unique>; }
+    { return !has<S, unique>; }
+};
+template<>
+struct facet_operations<facet::multi_values>
+{
+    static constexpr std::array offered { operation::lookup };
 };
 
 }  // namespace urd::detail

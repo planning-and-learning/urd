@@ -20,11 +20,11 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::inverse>
+struct facet_condition<facet::inverse>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_map && has<S, bidirectional>; }
+    { return has<S, bidirectional>; }
 };
 
 }  // namespace urd::detail

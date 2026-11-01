@@ -31,11 +31,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::ordered_lookup>
+struct facet_condition<facet::ordered_lookup>
 {
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, sorted> && !is_entry_less<typename S::order_type>; }
+};
+template<>
+struct facet_operations<facet::ordered_lookup>
+{
+    static constexpr std::array offered { operation::ordered_lookup };
 };
 
 }  // namespace urd::detail

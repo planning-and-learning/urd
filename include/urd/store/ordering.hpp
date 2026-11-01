@@ -25,7 +25,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S and its representation R.
 template<>
-struct facet_condition<facet_id::ordering>
+struct facet_condition<facet::ordering>
 {
     template<typename R, typename S>
     static constexpr bool on()

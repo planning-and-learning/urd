@@ -73,11 +73,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::removal>
+struct facet_condition<facet::removal>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return shrinks<S> && S::iterable; }
+    { return shrinks<S>; }
+};
+template<>
+struct facet_operations<facet::removal>
+{
+    static constexpr std::array offered { operation::erase, operation::clear };
 };
 
 }  // namespace urd::detail

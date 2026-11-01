@@ -107,12 +107,6 @@ template<typename C, typename T>
 concept natural_order =
     (orderable<T> && (std::same_as<C, Less<T>> || (std::same_as<C, std::less<T>> && std::totally_ordered<T>) )) || detail::is_projected_less<C, T>;
 
-/// H and E hash and compare T as a hash table needs: urd's, or the standard's where T has them.
-template<typename H, typename E, typename T>
-concept natural_hash = hashable<T>
-                       && ((std::same_as<H, Hash<T>> && std::same_as<E, EqualTo<T>>)
-                           || (std::same_as<H, std::hash<T>> && std::same_as<E, std::equal_to<T>> && std::invocable<const std::hash<T>&, const T&>) );
-
 namespace detail
 {
 

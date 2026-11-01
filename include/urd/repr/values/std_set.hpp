@@ -16,8 +16,7 @@ namespace urd
 {
 
 // std::set orders by its comparator; only urd::Less (or std::less, where it agrees) on orderable elements is the
-// order that `sorted` means (natural_order). Hash tables likewise need urd's hash and equality, or the
-// standard's where a type has them (natural_hash).
+// order that `sorted` means (natural_order). Hash tables hash with urd::Hash and urd::EqualTo.
 // References survive inserts and a hash table's rehash; iterators of a hash table do not. A tree frees the node of
 // what it erases; a hash table frees its nodes but keeps its buckets, so it neither retains nor reclaims.
 
@@ -34,9 +33,9 @@ struct set_decl
 {
     static constexpr std::string_view id = "set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ natural_order_source::natural_ordered }) };
+    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -68,9 +67,9 @@ struct unordered_set_decl
 {
     static constexpr std::string_view id = "unordered_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash, hash_source::urd_hashed }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -88,7 +87,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<std::unordered_set<T, H, E, A>>
 {
     using declaration = unordered_set_decl;
-    static constexpr role_tags roles = hashed_element_roles<T, H, E>();
+    static constexpr role_tags roles = element_roles<T>();
 };
 
 }  // namespace detail

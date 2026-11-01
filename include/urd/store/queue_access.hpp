@@ -81,11 +81,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::queue_access>
+struct facet_condition<facet::queue_access>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_queue; }
+    { return true; }
+};
+template<>
+struct facet_operations<facet::queue_access>
+{
+    static constexpr std::array offered { operation::push, operation::pop, operation::top, operation::clear };
 };
 
 }  // namespace urd::detail

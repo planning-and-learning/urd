@@ -37,11 +37,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::scopes>
+struct facet_condition<facet::scopes>
 {
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, scoped>; }
+};
+template<>
+struct facet_operations<facet::scopes>
+{
+    static constexpr std::array offered { operation::scope };
 };
 
 }  // namespace urd::detail

@@ -82,11 +82,11 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::set_algebra>
+struct facet_condition<facet::set_algebra>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_set; }
+    { return true; }
 };
 
 }  // namespace urd::detail

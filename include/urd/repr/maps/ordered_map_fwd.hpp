@@ -36,9 +36,9 @@ struct ordered_map_decl
 {
     static constexpr std::string_view id = "ordered_map";
     static constexpr auto headers = header_list<2> { "urd/repr/values/indexed.hpp", "urd/repr/maps/ordered_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::none, layout::none, memory::retains });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : indexed_set_decl::operation_costs
     {
@@ -67,9 +67,9 @@ struct dense_ordered_map_decl
 {
     static constexpr std::string_view id = "dense_ordered_map";
     static constexpr auto headers = header_list<2> { "urd/repr/values/sparse_set.hpp", "urd/repr/maps/ordered_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, keys::dense, position::none, layout::none, memory::retains, clearing::constant_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ indexing::an_index, destruction::destroys_trivially }), .mapped = property_set::of({ destruction::destroys_trivially }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index, trait::destroys_trivially>(), .mapped = trait_set_of<trait::destroys_trivially>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : ordered_sparse_set_decl::operation_costs
     {

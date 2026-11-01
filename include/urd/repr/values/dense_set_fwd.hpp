@@ -41,9 +41,9 @@ struct dense_set_decl
 {
     static constexpr std::string_view id = "dense_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/dense_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, representation::canonical, memory::retains, clearing::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -75,9 +75,9 @@ struct tracked_dense_set_decl
 {
     static constexpr std::string_view id = "tracked_dense_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/dense_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, representation::canonical, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -109,9 +109,9 @@ struct sparse_set_decl
 {
     static constexpr std::string_view id = "sparse_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/sparse_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::dense, position::positional, layout::contiguous, memory::retains, clearing::constant_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ indexing::an_index, destruction::destroys_trivially }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index, trait::destroys_trivially>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -142,9 +142,9 @@ struct ordered_sparse_set_decl
 {
     static constexpr std::string_view id = "ordered_sparse_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/sparse_set.hpp" };
-    static constexpr urd::kind kind = urd::kind::set;
+    using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::dense, position::positional, layout::contiguous, memory::retains, clearing::constant_clear, order::insertion_ordered });
-    static constexpr role_tags relies_on { .element = property_set::of({ indexing::an_index, destruction::destroys_trivially }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index, trait::destroys_trivially>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

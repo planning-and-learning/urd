@@ -57,6 +57,7 @@
 #include "urd/registry/select.hpp"
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <optional>
 #include <set>
@@ -74,14 +75,33 @@ using urd::test::op;
 
 using urd::test::json_text;
 
-/// Tags by role as a JSON list of names, each prefixed by its role ("element:can_hash"); the roots left out.
-std::string tag_list(std::initializer_list<std::pair<std::string_view, urd::detail::property_set>> roles)
+/// Tags as a JSON list of names, in the vocabulary's order; the roots left out.
+std::string tag_list(const urd::detail::property_set& held, std::string_view role = "", std::string result = "[")
 {
-    auto result = std::string("[");
-    for (const auto& [role, held] : roles)
-        for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
-            if (held.held[each] != urd::detail::tag_at(each))
-                result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(urd::tag_name(held.held[each])));
+    for (const auto* category : urd::test::category_tables)  // in the vocabulary's order
+        if (const auto each = held.in(category); each.answer != 0)
+            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(urd::tag_name(each)));
+    return result;
+}
+/// Traits as names prefixed by their role ("element:can_hash"), in the vocabulary's order, appended to a JSON list.
+std::string trait_list(std::string result, std::string_view role, const urd::detail::trait_set& held)
+{
+    for (const auto* each : urd::test::vocabulary_traits)
+        if (held.has(each))
+            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(each->name));
+    return result;
+}
+/// What a declaration relies on, by role, as a JSON list.
+std::string roles_list(const urd::detail::role_tags& roles)
+{
+    using namespace urd::detail;
+    auto result = tag_list(roles.stated);
+    result = trait_list(result, "element:", roles.element);
+    result = trait_list(result, "element:", roles.order);
+    result = trait_list(result, "element:", roles.rows);
+    result = trait_list(result, "mapped:", roles.mapped);
+    result = tag_list(roles.row, "row:", result);
+    result = trait_list(result, "row_element:", roles.row_element);
     return result + "]";
 }
 
@@ -106,15 +126,15 @@ struct representation
 template<typename S>
 std::string kind_of()
 {
-    if constexpr (S::is_partition)
+    if constexpr (std::same_as<typename S::kind, urd::partition_kind>)
         return "partitions";
-    else if constexpr (S::is_pool)
+    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>)
         return urd::has<S, urd::flat> ? "records" : "pools";
-    else if constexpr (S::is_queue)
+    else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
         return "queues";
-    else if constexpr (S::is_map)
+    else if constexpr (std::same_as<typename S::kind, urd::map_kind>)
         return "maps";
-    else if constexpr (S::is_set)
+    else if constexpr (std::same_as<typename S::kind, urd::set_kind>)
         return "sets";
     else
         return "sequences";
@@ -141,12 +161,8 @@ struct collect<S, urd::detail::type_list<Rs...>>
                 else
                     throw std::runtime_error("no synopsis declared for " + id + " (urd::container_synopsis, beside its container_traits)");
                 using declaration = urd::detail::declaration_t<R>;
-                made.provides = tag_list({ { "", declaration::provides } });
-                made.relies_on = tag_list({ { "", declaration::relies_on.stated },
-                                            { "element:", declaration::relies_on.element },
-                                            { "mapped:", declaration::relies_on.mapped },
-                                            { "row:", declaration::relies_on.row },
-                                            { "row_element:", declaration::relies_on.row_element } });
+                made.provides = tag_list(declaration::provides) + "]";
+                made.relies_on = roles_list(declaration::relies_on);
                 for (std::size_t what = 0; what < made.costs.size(); ++what)
                 {
                     made.costs[what] = urd::test::cost_of<R>(static_cast<op>(what));

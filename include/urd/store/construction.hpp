@@ -21,7 +21,7 @@ struct construction
     /// Whether what it holds after construction must be an element at least.
     static constexpr bool needs_an_element = has<S, nonempty>;
     /// Whether its contents fix the order its elements come in: hashed by it (sorted, canonical, a sequence).
-    static constexpr bool hashed_in_order = S::iterable && (has<S, sorted> || has<S, canonical> || S::is_sequence);
+    static constexpr bool hashed_in_order = S::iterable && (has<S, sorted> || has<S, canonical> || S::kind::positional);
     /// Whether it is iterated in an order the request fixes: ordered by it (sorted, insertion_ordered, a sequence).
     static constexpr bool ordered_in_order = store_types<void, S>::ordered;
 };

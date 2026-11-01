@@ -38,9 +38,9 @@ struct jagged_decl
 {
     static constexpr std::string_view id = "jagged";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
-    static constexpr urd::kind kind = urd::kind::sequence;
+    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ row_flattening::rows_flatten }) };
+    static constexpr role_tags relies_on { .rows = trait_set_of<trait::rows_flatten>() };
     /// Rows move with the data array and keep its memory; laid out contiguously where they hold plain elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs
@@ -61,9 +61,9 @@ struct fixed_jagged_decl
 {
     static constexpr std::string_view id = "fixed_jagged";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
-    static constexpr urd::kind kind = urd::kind::sequence;
+    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::none });
-    static constexpr role_tags relies_on { .stated = property_set::of({ shape::fixed_shape }), .element = property_set::of({ row_updates::rows_in_place }) };
+    static constexpr role_tags relies_on { .stated = property_set::of({ shape::fixed_shape }), .rows = trait_set_of<trait::rows_in_place>() };
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs
@@ -92,9 +92,9 @@ struct row_pool_decl
 {
     static constexpr std::string_view id = "row_pool";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/row_pool.hpp" };
-    static constexpr urd::kind kind = urd::kind::sequence;
+    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .element = property_set::of({ row_reuse::rows_reused }) };
+    static constexpr role_tags relies_on { .rows = trait_set_of<trait::rows_reused>() };
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -125,9 +125,9 @@ struct tracked_jagged_decl
 {
     static constexpr std::string_view id = "tracked_jagged";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
-    static constexpr urd::kind kind = urd::kind::sequence;
+    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .stated = property_set::of({ shape::fixed_shape }), .element = property_set::of({ row_updates::rows_in_place }) };
+    static constexpr role_tags relies_on { .stated = property_set::of({ shape::fixed_shape }), .rows = trait_set_of<trait::rows_in_place>() };
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs

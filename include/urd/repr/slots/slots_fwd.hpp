@@ -38,9 +38,9 @@ struct slot_vector_decl
 {
     static constexpr std::string_view id = "slot_vector";
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
-    static constexpr urd::kind kind = urd::kind::slots;
+    using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -68,9 +68,9 @@ struct thread_safe_slot_vector_decl
 {
     static constexpr std::string_view id = "thread_safe_slot_vector";
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
-    static constexpr urd::kind kind = urd::kind::slots;
+    using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

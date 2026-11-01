@@ -55,9 +55,9 @@ struct csr_multimap_decl
 {
     static constexpr std::string_view id = "csr_multimap";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/csr_multimap.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, representation::canonical });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::frozen }), .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .stated = property_set::of({ change::frozen }), .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -86,9 +86,9 @@ struct dense_multimap_decl
 {
     static constexpr std::string_view id = "dense_multimap";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/dense_multimap.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, memory::retains });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -120,9 +120,9 @@ struct posting_map_decl
 {
     static constexpr std::string_view id = "posting_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/postings.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ multiplicity::multi, keys::sparse });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -153,9 +153,9 @@ struct bidirectional_csr_decl
 {
     static constexpr std::string_view id = "bidirectional_csr";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/bidirectional_csr.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, representation::canonical, direction::bidirectional });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::frozen }), .element = property_set::of({ order_source::own_order, indexing::an_index }), .mapped = property_set::of({ indexing::an_index }) };
+    static constexpr role_tags relies_on { .stated = property_set::of({ change::frozen }), .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>(), .mapped = trait_set_of<trait::an_index>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

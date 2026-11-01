@@ -17,14 +17,14 @@ namespace urd::detail
 /// elements).
 template<typename S>
 using spec_order_t = std::conditional_t<std::is_void_v<typename S::order_type>,
-                                        Less<std::conditional_t<S::is_map, typename S::key_type, typename S::element_type>>,
+                                        Less<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::key_type>>,
                                         typename S::order_type>;
 
 /// The roles of spec S: what it promises, and what its data and its order are.
 template<typename S>
 consteval role_tags request_roles()
 {
-    if constexpr (S::is_map)
+    if constexpr (!std::is_void_v<typename S::mapped_type>)
         return map_roles<typename S::key_type, typename S::mapped_type, spec_order_t<S>>(S::promised);
     else
         return element_roles<typename S::element_type, spec_order_t<S>>(S::promised);

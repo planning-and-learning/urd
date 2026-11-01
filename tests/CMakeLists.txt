@@ -30,7 +30,7 @@ target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-fr
 target_sources(test_rows PRIVATE allocations.cpp)
 target_sources(test_queues PRIVATE allocations.cpp)
 # A Store's behavior, by topic: each file includes the headers of the containers its Stores resolve to.
-foreach(topic rules sets maps multimaps scopes queues pools rows)
+foreach(topic rules sets maps multimaps scopes queues pools rows outside_kind)
     add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp allocations.cpp)
     target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME store_${topic} COMMAND test_store_${topic})
@@ -166,7 +166,7 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 59)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 60)
 # A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
@@ -182,6 +182,7 @@ urd_compile_fail_expects(compile_fail_store 33 "no container serves this request
 urd_compile_fail_expects(compile_fail_store 39 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 40 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 12 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 60 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 43 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 41 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 42 "no container serves this request")

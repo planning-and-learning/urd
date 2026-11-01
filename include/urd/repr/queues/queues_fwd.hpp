@@ -63,9 +63,9 @@ struct fifo_decl
 {
     static constexpr std::string_view id = "fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, referencing::stable_refs });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -96,9 +96,9 @@ struct ring_fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/ring_fifo.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, memory::retains });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -129,9 +129,9 @@ struct lifo_decl
 {
     static constexpr std::string_view id = "lifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::lifo, memory::retains });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -162,9 +162,9 @@ struct heap_decl
 {
     static constexpr std::string_view id = "heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on { .element = property_set::of({ natural_order_source::natural_ordered }) };
+    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -195,9 +195,9 @@ struct addressable_heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
-    static constexpr role_tags relies_on { .element = property_set::of({ natural_order_source::natural_ordered }) };
+    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -228,9 +228,9 @@ struct bucket_queue_decl
 {
     static constexpr std::string_view id = "bucket_queue";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/bucket_queue.hpp" };
-    static constexpr urd::kind kind = urd::kind::queue;
+    using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on { .stated = property_set::of({ priority::monotone_priority }), .element = property_set::of({ natural_order_source::natural_ordered, priority_key::integral_priority }) };
+    static constexpr role_tags relies_on { .stated = property_set::of({ priority::monotone_priority }), .order = trait_set_of<trait::natural_ordered, trait::integral_priority>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

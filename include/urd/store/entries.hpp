@@ -28,11 +28,11 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::entries>
+struct facet_condition<facet::entries>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_map && has<S, insertion_ordered>; }
+    { return has<S, insertion_ordered>; }
 };
 
 }  // namespace urd::detail

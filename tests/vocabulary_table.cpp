@@ -24,36 +24,37 @@ namespace
 {
 
 using urd::detail::at_least;
-using urd::detail::root_of;
-using urd::detail::tag_count;
 
 using urd::test::json_text;
 
-/// The tags, other than `of`, that are no root and pass `keep`, as a JSON array.
+/// A category's none: what names the category.
+urd::tag none_of(urd::tag of) { return { of.in, 0 }; }
+
+/// The tags, other than `of`, that are no category's none and pass `keep`, as a JSON array.
 template<typename Keep>
 std::string tags_where(urd::tag of, Keep keep)
 {
     auto result = std::string("[");
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto other = urd::detail::tag_at(each);
-        if (other == of || root_of(other) == other || !keep(other))
-            continue;
-        if (result.size() > 1)
-            result += ", ";
-        result += json_text(urd::test::tag_name(other));
-    }
+    urd::test::for_each_tag(
+        [&](urd::tag other)
+        {
+            if (other == of || other.answer == 0 || !keep(other))
+                return;
+            if (result.size() > 1)
+                result += ", ";
+            result += json_text(urd::test::tag_name(other));
+        });
     return result + "]";
 }
 
 /// The entry of `of`'s category.
-const urd::test::category_entry& category_of(urd::tag of) { return urd::test::category_vocabulary[urd::detail::index(root_of(of))]; }
+const urd::test::category_entry& category_of(urd::tag of) { return urd::test::category_entry_of(of); }
 
 /// A derived role is consistent with the category: kinds and guarantees are of categories containers declare, requests
 /// and hints of categories only a request states; a demand may be either.
 void check_role(urd::tag of, std::string_view role)
 {
-    const bool guaranteed = urd::detail::in(root_of(of), urd::detail::guaranteed_roots);
+    const bool guaranteed = !of.in->request_only;
     const bool consistent =
         role == "demand" || ((role == "guarantee" || role == "kind") && guaranteed) || ((role == "request" || role == "hint") && !guaranteed);
     if (!consistent)
@@ -66,12 +67,10 @@ std::string generate()
     auto out = std::string("{\"generated_by\": \"vocabulary_table --write share/urd/vocabulary.json, from urd/tags.hpp\", "
                            "\"incompatible\": \"docs/language/index.rst, Incompatible combinations\", \"tags\": [\n");
     bool first = true;
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto of = urd::detail::tag_at(each);
-        if (root_of(of) == of)
-            continue;
-        const auto& entry = urd::test::tag_vocabulary[each];
+    urd::test::for_each_tag([&](urd::tag of) {
+        if (of.answer == 0)
+            return;
+        const auto& entry = urd::test::tag_entry_of(of);
         check_role(of, entry.role);
         auto phrases = std::string("[");
         for (const auto phrase : entry.phrases)
@@ -80,27 +79,25 @@ std::string generate()
         phrases += "]";
         out += first ? "  " : ",\n  ";
         first = false;
-        out += "{\"tag\": " + json_text(urd::test::tag_name(of)) + ", \"category\": " + json_text(urd::test::tag_name(root_of(of)))
+        out += "{\"tag\": " + json_text(urd::test::tag_name(of)) + ", \"category\": " + json_text(urd::test::tag_name(none_of(of)))
                + ", \"role\": " + json_text(entry.role) + ", \"description\": " + json_text(entry.description) + ", \"phrases\": " + phrases
                + ", \"implies\": " + tags_where(of, [of](urd::tag other) { return at_least(of, other); })
-               + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == root_of(of); })
+               + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return other.in == of.in; })
                + ", \"group\": " + json_text(category_of(of).group) + (entry.promise.empty() ? std::string() : ", \"promise\": " + json_text(entry.promise))
-               + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false") + "}";
-    }
+               + ", \"statable\": true}";
+    });
     out += "\n], \"categories\": [\n";
     first = true;
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto of = urd::detail::tag_at(each);
-        if (root_of(of) != of)
-            continue;
+    urd::test::for_each_tag([&](urd::tag of) {
+        if (of.answer != 0)
+            return;
         out += first ? "  " : ",\n  ";
         first = false;
         out += "{\"category\": " + json_text(urd::test::tag_name(of)) + ", \"group\": " + json_text(category_of(of).group)
                + (category_of(of).heading.empty() ? std::string() : ", \"heading\": " + json_text(category_of(of).heading))
-               + ", \"question\": " + json_text(category_of(of).question) + ", \"statable\": " + (urd::detail::statable(of) ? "true" : "false")
-               + ", \"tags\": " + tags_where(of, [of](urd::tag other) { return root_of(other) == of; }) + "}";
-    }
+               + ", \"question\": " + json_text(category_of(of).question) + ", \"statable\": true"
+               + ", \"tags\": " + tags_where(of, [of](urd::tag other) { return other.in == of.in; }) + "}";
+    });
     out += "\n], \"groups\": [\n";
     first = true;
     for (const auto& group : urd::test::group_vocabulary)

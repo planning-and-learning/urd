@@ -36,9 +36,9 @@ struct dense_map_decl
 {
     static constexpr std::string_view id = "dense_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -70,9 +70,9 @@ struct stable_dense_map_decl
 {
     static constexpr std::string_view id = "stable_dense_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::stable_refs });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -104,9 +104,9 @@ struct generation_map_decl
 {
     static constexpr std::string_view id = "generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }), .mapped = property_set::of({ refilling::refillable }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -138,9 +138,9 @@ struct stable_generation_map_decl
 {
     static constexpr std::string_view id = "stable_generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }), .mapped = property_set::of({ refilling::refillable }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -172,9 +172,9 @@ struct thread_safe_generation_map_decl
 {
     static constexpr std::string_view id = "thread_safe_generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }), .mapped = property_set::of({ refilling::refillable }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

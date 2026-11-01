@@ -110,11 +110,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::records>
+struct facet_condition<facet::records>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_pool && has<S, unique> && has<S, flat>; }
+    { return has<S, unique>; }
+};
+template<>
+struct facet_operations<facet::records>
+{
+    static constexpr std::array offered { operation::insert_row, operation::find_row, operation::access };
 };
 
 }  // namespace urd::detail

@@ -25,16 +25,17 @@ namespace urd
 template<typename R>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
-    constexpr auto of = urd::kind_of(container_traits<R>::urd_properties, false, false);
-    if constexpr (of == kind::queue)
+    constexpr detail::property_set properties = container_traits<R>::urd_properties;  // a copy: GCC 13 fails on the member
+    using of = urd::kind_of<properties, false, false>;
+    if constexpr (kind_below<of, queue_kind>)
         return detail::run_queue(range, seed, steps);
-    else if constexpr (of == kind::records && has<container_traits<R>, layered>)
+    else if constexpr (std::same_as<of, records_kind> && has<container_traits<R>, layered>)
         return detail::run_layered_records(range, seed, steps);
-    else if constexpr (of == kind::records)
+    else if constexpr (std::same_as<of, records_kind>)
         return detail::run_records(range, seed, steps);
-    else if constexpr (of == kind::pool)
+    else if constexpr (std::same_as<of, pool_kind>)
         return detail::run_pool(range, seed, steps);
-    else if constexpr (of == kind::slots)
+    else if constexpr (std::same_as<of, slots_kind>)
         return detail::run_slots(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);

@@ -260,6 +260,9 @@ int main()
     };
     using S = Store<value<Name>, urd::handles, urd::unique, urd::flat, urd::layered>;
     (void) S().begin();
+#elif URD_CASE == 60  // a queue has no direction: bidirectional is no question its requests answer
+    using S = Store<value<int>, urd::fifo, urd::bidirectional>;
+    (void) S();
 #elif URD_CASE == 25  // unique keys ordered by a projection need their own order to break ties
     struct Unordered
     {

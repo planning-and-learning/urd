@@ -26,7 +26,7 @@ namespace urd::detail
 /// What spec S is, as the scan reads it: what it requires, its roles, and the elements it holds; computed once.
 template<typename S>
 inline constexpr request_shape shape_of = [] {
-    using held = held_as<std::conditional_t<S::is_map, typename S::mapped_type, typename S::element_type>>;
+    using held = held_as<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::mapped_type>>;
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
 
@@ -35,7 +35,7 @@ inline constexpr request_shape shape_of = [] {
 template<typename S>
 struct choose
 {
-    using node = node_t<S>;
+    using node = typename S::kind;
     static constexpr std::size_t position = first_serving<node>(shape_of<S>);
     static constexpr bool found = position != no_entry;
     static constexpr std::string_view id = found ? table_of<node>[position].id : std::string_view();
@@ -55,10 +55,10 @@ struct nth<I, type_list<Ts...>>
 
 /// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
 template<typename S>
-inline constexpr serving_entries<node_t<S>> serving_v = all_serving<node_t<S>>(shape_of<S>);
+inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
 template<typename S, std::size_t... I>
 auto serving_declarations_of(std::index_sequence<I...> /*serving*/)
-    -> type_list<typename nth<serving_v<S>.at[I], typename node_t<S>::declarations>::type...>;
+    -> type_list<typename nth<serving_v<S>.at[I], declarations_t<typename S::kind>>::type...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 
@@ -66,7 +66,7 @@ using serving_declarations = decltype(serving_declarations_of<S>(std::make_index
 template<typename S, std::size_t... I>
 consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 {
-    constexpr auto entry = table_of<node_t<S>>[choose<S>::position];
+    constexpr auto entry = table_of<typename S::kind>[choose<S>::position];
     return typename join<std::conditional_t<included<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>,
                                             type_list<>,
                                             type_list<include<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>>>...>::type {};
@@ -95,7 +95,7 @@ struct missing_headers_for<S, Decl, type_list<>>
 template<typename S>
 struct chosen_type
 {
-    using declaration = typename nth<choose<S>::position, typename node_t<S>::declarations>::type;
+    using declaration = typename nth<choose<S>::position, declarations_t<typename S::kind>>::type;
     using type = typename missing_headers_for<S, declaration, decltype(missing_headers<S>(std::make_index_sequence<choose<S>::headers.size()> {}))>::type;
 };
 

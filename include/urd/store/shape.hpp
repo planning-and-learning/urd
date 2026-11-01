@@ -22,11 +22,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::shape>
+struct facet_condition<facet::shape>
 {
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, fixed_shape>; }
+};
+template<>
+struct facet_operations<facet::shape>
+{
+    static constexpr std::array offered { operation::access };
 };
 
 }  // namespace urd::detail

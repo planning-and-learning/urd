@@ -12,8 +12,7 @@
 namespace urd::detail::facet
 {
 
-/// Positional (a sequence, or a set with positions, such as an interner): its elements by position, changeable in
-/// place where the Store's elements are.
+/// Positional: its elements by position, changeable in place where the Store's elements are.
 template<typename Derived, typename R, typename S>
 class positions
 {
@@ -23,34 +22,6 @@ class positions
     static constexpr bool writable = types::writable;
 
 public:
-    /// A set's elements by index (urd::index<T>): what a positional set mints, and what a view<T, Store> holds.
-    using index_type = urd::index<typename types::value_type>;
-
-    [[nodiscard]] const_reference_type operator[](index_type at) const
-        requires S::is_set
-    {
-        return (*this)[static_cast<std::size_t>(at.value)];
-    }
-    [[nodiscard]] const_reference_type at(index_type at) const
-        requires S::is_set
-    {
-        if (at.is_none())
-            throw std::out_of_range("urd::Store::at: none is no index");
-        return this->at(static_cast<std::size_t>(at.value));
-    }
-    /// The index of the element at `it`.
-    [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
-        requires S::is_set
-    {
-        return index_type(static_cast<std::uint32_t>(position(it)));
-    }
-    /// A view of the element at `at`, through this Store (urd/view.hpp must be included where views are made).
-    [[nodiscard]] auto view(index_type at) const
-        requires S::is_set
-    {
-        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
-        return urd::view<typename types::value_type, Derived>(at, self());
-    }
     [[nodiscard]] const_reference_type operator[](std::size_t pos) const
     {
         assert(pos < self().size());
@@ -107,20 +78,72 @@ private:
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
 };
 
+/// A set's positions: where it asks for them, or where it numbers its keys as they come and never frees one
+/// (insertion_ordered without reclaims, an interner), so that a key's position is its number.
+template<typename Derived, typename R, typename S>
+class insertion_positions : public positions<Derived, R, S>
+{
+    using base = positions<Derived, R, S>;
+    using types = store_types<R, S>;
+    using const_reference_type = typename iterator_types<R, S>::const_reference;
+
+public:
+    /// A set's elements by index (urd::index<T>): what a positional set mints, and what a view<T, Store> holds.
+    using index_type = urd::index<typename types::value_type>;
+
+    using base::operator[];
+    using base::at;
+
+    [[nodiscard]] const_reference_type operator[](index_type at) const { return (*this)[static_cast<std::size_t>(at.value)]; }
+    [[nodiscard]] const_reference_type at(index_type at) const
+    {
+        if (at.is_none())
+            throw std::out_of_range("urd::Store::at: none is no index");
+        return this->at(static_cast<std::size_t>(at.value));
+    }
+    /// The index of the element at `it`.
+    [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
+    { return index_type(static_cast<std::uint32_t>(this->position(it))); }
+    /// A view of the element at `at`, through this Store (urd/view.hpp must be included where views are made).
+    [[nodiscard]] auto view(index_type at) const
+    {
+        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
+        return urd::view<typename types::value_type, Derived>(at, static_cast<const Derived&>(*this));
+    }
+};
+
 }  // namespace urd::detail::facet
 
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
-/// Every insertion-ordered set is kept in one array (an interner, a sparse set): its elements have
-/// positions whether the request names them or not.
+/// When a Store has this facet: its kind keeps its elements by position (a sequence, a multiset), or it asks for
+/// positions.
 template<>
-struct facet_condition<facet_id::positions>
+struct facet_condition<facet::positions>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_sequence || has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>); }
+    { return S::kind::positional || has<S, positional>; }
+};
+template<>
+struct facet_operations<facet::positions>
+{
+    static constexpr std::array offered { operation::access };
+};
+/// When a set has positions: it asks for them, or it is insertion-ordered and never frees a key (kept in one
+/// array: an interner, a sparse set), so its keys have positions whether the request names them or not.
+template<>
+struct facet_condition<facet::insertion_positions>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, positional> || (has<S, insertion_ordered> && !has<S, reclaims>); }
+};
+template<>
+struct facet_operations<facet::insertion_positions>
+{
+    static constexpr std::array offered { operation::access };
 };
 
 }  // namespace urd::detail

@@ -44,10 +44,18 @@
 namespace urd::detail
 {
 
+/// The containers of a kind (urd/kinds.hpp), in order of preference: specialized for each kind, a kind added outside
+/// urd included.
+template<typename Kind>
+struct declarations_of;
+template<typename Kind>
+using declarations_t = typename declarations_of<Kind>::type;
+
 /// Sequences: the declarations, in order of preference.
-struct sequence_node
+template<>
+struct declarations_of<sequence_kind>
 {
-    using declarations = type_list<jagged_decl,
+    using type = type_list<jagged_decl,
                                    fixed_jagged_decl,
                                    tracked_jagged_decl,
                                    vector_decl,
@@ -57,9 +65,8 @@ struct sequence_node
 };
 
 /// Sets and multisets: values kept by value: the declarations, in order of preference.
-struct values_node
-{
-    using declarations = type_list<unordered_flat_set_decl,
+/// Sets and multisets: values kept by value, the same containers (a set requires unique, which no multiset container provides).
+using values_declarations = type_list<unordered_flat_set_decl,
                                    unordered_set_decl,
                                    set_decl,
                                    flat_multiset_decl,
@@ -81,12 +88,22 @@ struct values_node
                                    parallel_hash_set_decl,
                                    parallel_node_hash_set_decl,
                                    concurrent_indexed_set_decl>;
+template<>
+struct declarations_of<set_kind>
+{
+    using type = values_declarations;
+};
+template<>
+struct declarations_of<multiset_kind>
+{
+    using type = values_declarations;
 };
 
 /// Maps and multimaps: the declarations, in order of preference.
-struct map_node
+template<>
+struct declarations_of<map_kind>
 {
-    using declarations = type_list<unordered_flat_map_decl,
+    using type = type_list<unordered_flat_map_decl,
                                    unordered_map_decl,
                                    posting_map_decl,
                                    unordered_multimap_decl,
@@ -118,21 +135,27 @@ struct map_node
                                    flat_entry_map_decl>;
 };
 
-/// Queues: the declarations, in order of preference.
-struct queue_node
+/// Queues, by arrival and by priority: the declarations, in order of preference.
+template<>
+struct declarations_of<arrival_queue_kind>
 {
-    using declarations = type_list<fifo_decl,
-                                   ring_fifo_decl,
-                                   lifo_decl,
-                                   bucket_queue_decl,
-                                   heap_decl,
-                                   addressable_heap_decl>;
+    using type = type_list<fifo_decl,
+                           ring_fifo_decl,
+                           lifo_decl>;
+};
+template<>
+struct declarations_of<priority_queue_kind>
+{
+    using type = type_list<bucket_queue_decl,
+                           heap_decl,
+                           addressable_heap_decl>;
 };
 
 /// Pools interning rows: the declarations, in order of preference.
-struct pool_node
+template<>
+struct declarations_of<pool_kind>
 {
-    using declarations = type_list<row_interner_decl,
+    using type = type_list<row_interner_decl,
                                    tree_pool_decl<false, false>,
                                    tree_pool_decl<true, false>,
                                    thread_safe_row_interner_decl,
@@ -143,16 +166,18 @@ struct pool_node
 };
 
 /// Pools of slots: the declarations, in order of preference.
-struct slots_node
+template<>
+struct declarations_of<slots_kind>
 {
-    using declarations = type_list<slot_vector_decl,
+    using type = type_list<slot_vector_decl,
                                    thread_safe_slot_vector_decl>;
 };
 
 /// Pools of records stored flat: the declarations, in order of preference.
-struct records_node
+template<>
+struct declarations_of<records_kind>
 {
-    using declarations = type_list<record_interner_decl,
+    using type = type_list<record_interner_decl,
                                    arena_interner_decl,
                                    stable_record_interner_decl,
                                    thread_safe_record_interner_decl,
@@ -165,63 +190,10 @@ struct records_node
 };
 
 /// Partitions: the declarations, in order of preference.
-struct partition_node
-{
-    using declarations = type_list<disjoint_sets_decl>;
-};
-
-/// The node a request of kind K is found in: a set and a multiset are both values kept by value.
-template<urd::kind K>
-struct node_of_kind;
 template<>
-struct node_of_kind<urd::kind::sequence>
+struct declarations_of<partition_kind>
 {
-    using type = sequence_node;
+    using type = type_list<disjoint_sets_decl>;
 };
-template<>
-struct node_of_kind<urd::kind::set>
-{
-    using type = values_node;
-};
-template<>
-struct node_of_kind<urd::kind::multiset>
-{
-    using type = values_node;
-};
-template<>
-struct node_of_kind<urd::kind::map>
-{
-    using type = map_node;
-};
-template<>
-struct node_of_kind<urd::kind::queue>
-{
-    using type = queue_node;
-};
-template<>
-struct node_of_kind<urd::kind::pool>
-{
-    using type = pool_node;
-};
-template<>
-struct node_of_kind<urd::kind::slots>
-{
-    using type = slots_node;
-};
-template<>
-struct node_of_kind<urd::kind::records>
-{
-    using type = records_node;
-};
-template<>
-struct node_of_kind<urd::kind::partition>
-{
-    using type = partition_node;
-};
-template<typename S>
-using node_t = typename node_of_kind<S::kind>::type;
-
-/// Every node, for what walks them all (the tables and tests).
-using nodes = type_list<sequence_node, values_node, map_node, queue_node, pool_node, slots_node, records_node, partition_node>;
 
 }  // namespace urd::detail

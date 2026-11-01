@@ -11,6 +11,7 @@
 #include <array>
 #include <benchmark/benchmark.h>
 #include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -156,15 +157,15 @@ struct workload
     using Store = urd::detail::Store<R, S>;
     using K = typename S::key_type;
     using V = typename S::value_type;
-    using E = std::conditional_t<S::is_set || S::is_partition || S::is_map, K, V>;  // keyed: by key
+    using E = std::conditional_t<std::same_as<typename S::kind, urd::set_kind> || std::same_as<typename S::kind, urd::partition_kind> || std::same_as<typename S::kind, urd::map_kind>, K, V>;  // keyed: by key
     /// What a Store is built from: entries for a map, else its elements.
-    using Element = typename element_of<S::is_map, K, V, E>::type;
+    using Element = typename element_of<std::same_as<typename S::kind, urd::map_kind>, K, V, E>::type;
 
     static void add(Store& store, std::size_t at)
     {
-        if constexpr (S::is_map)
+        if constexpr (std::same_as<typename S::kind, urd::map_kind>)
             store.emplace(make<K>(at), make<V>(at));
-        else if constexpr (S::is_queue)
+        else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
             store.push(make<V>(at));
         else if constexpr (requires { store.push_back(make<E>(at)); })
             store.push_back(make<E>(at));
@@ -202,7 +203,7 @@ struct workload
         {
             auto elements = std::vector<Element>();
             for (const auto at : order)
-                if constexpr (S::is_map)
+                if constexpr (std::same_as<typename S::kind, urd::map_kind>)
                     elements.emplace_back(make<K>(at), make<V>(at));
                 else
                     elements.push_back(make<E>(at));
@@ -295,7 +296,7 @@ struct workload
                 }
                 into.stop(op::top, probes);
             }
-        if constexpr (!S::is_queue)
+        if constexpr (!urd::kind_below<typename S::kind, urd::queue_kind>)
             if (has(op::erase))
             {
                 const std::size_t erased = std::min<std::size_t>(size / 2, probes);
@@ -424,7 +425,7 @@ void register_experiment(std::size_t ordinal)
                                          for (auto _ : state)
                                              for (std::size_t round = 0; round < rounds; ++round)
                                              {
-                                                 if constexpr (S::is_pool)
+                                                 if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>))
                                                      row_workload<R, S>::lifecycle(at, into);
                                                  else
                                                      workload<R, S>::lifecycle(at, into);

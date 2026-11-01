@@ -1,6 +1,8 @@
 #pragma once
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
+#include "urd/kinds.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -37,13 +39,13 @@ struct store_types
     /// Elements change in place: nothing depends on their values, and the Store may change.
     static constexpr bool writable = !keyed && !has<S, monotone>;
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::is_sequence);
+    static constexpr bool ordered = S::kind::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::kind::positional);
 
     using value_type = typename S::element_type;
     using key_type = typename S::key_type;
     using mapped_type = typename S::mapped_type;
     /// What lookups take: a map's key, else an element.
-    using lookup_type = std::conditional_t<S::is_map, key_type, value_type>;
+    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, value_type, key_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 };
@@ -71,53 +73,35 @@ consteval bool compares_in_order()
         return false;
 }
 
-/// The facets by name: which ones a Store inherits is read from facet_switches, by the Store's base list.
-enum class facet_id : std::uint8_t
-{
-    sizing,
-    iteration,
-    equality,
-    ordering,
-    lookup,
-    ordered_lookup,
-    reverse_iteration,
-    positions,
-    contiguous_data,
-    capacity,
-    growth,
-    removal,
-    values_by_key,
-    multi_values,
-    set_algebra,
-    queue_access,
-    scopes,
-    layers,
-    changes,
-    pool,
-    records,
-    slots,
-    grouping,
-    entries,
-    inverse,
-    shape,
-    sorted_ends,
-    count
-};
-
-/// When a Store has the facet `Id`, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`. Most read only
-/// the spec S; with R void, it is asked from the spec alone, before a container is chosen.
-template<facet_id Id>
+/// When a Store has facet F, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`, asked only of the facets
+/// its kind lists (urd/kinds.hpp). Most read only the spec S; with R void, it is asked from the spec alone, before a
+/// container is chosen.
+template<template<typename, typename, typename> class F>
 struct facet_condition;
 
-/// Which facets a Store for spec S over representation R has: each facet's own condition.
-template<typename R, typename S>
-struct facet_switches
+/// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet: what a Store's container is
+/// asked to state a cost for, and what a search knows a kind offers. None by default.
+template<template<typename, typename, typename> class F>
+struct facet_operations
 {
-    static constexpr auto table = []<std::size_t... I>(std::index_sequence<I...> /*facets*/)
-    { return std::array<bool, sizeof...(I)> { facet_condition<static_cast<facet_id>(I)>::template on<R, S>()... }; }(
-        std::make_index_sequence<static_cast<std::size_t>(facet_id::count)> {});
-    static constexpr bool on(facet_id id) { return table[static_cast<std::size_t>(id)]; }
+    static constexpr std::array<operation, 0> offered {};
 };
+
+/// Whether F is among the facets of a list.
+template<template<typename, typename, typename> class F, typename List>
+inline constexpr bool listed_facet = false;
+template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
+inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
+
+/// Whether a Store for spec S over representation R has facet F: its kind lists F, and F's condition holds.
+template<typename R, typename S, template<typename, typename, typename> class F>
+consteval bool facet_on()
+{
+    if constexpr (listed_facet<F, typename S::kind::facets>)
+        return facet_condition<F>::template on<R, S>();
+    else
+        return false;
+}
 
 /// How facets reach the Store's representation, which is private to the Store.
 struct store_access
@@ -139,6 +123,14 @@ struct facet_if : Facet
 };
 template<typename Facet>
 struct facet_if<false, Facet>
+{
+};
+
+/// The facets a Store inherits: those its kind lists (urd/kinds.hpp) whose conditions hold.
+template<typename Derived, typename R, typename S, typename List>
+struct facet_bases;
+template<typename Derived, typename R, typename S, template<typename, typename, typename> class... Fs>
+struct facet_bases<Derived, R, S, facet_list<Fs...>> : facet_if<facet_condition<Fs>::template on<R, S>(), Fs<Derived, R, S>>...
 {
 };
 

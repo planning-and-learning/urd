@@ -42,15 +42,16 @@ struct change_logged_decl
     static constexpr std::string_view id = joined<change_logged_prefix, Part::id>::value;
     static constexpr auto headers = then(Part::headers, "urd/repr/wrappers/change_logged.hpp");
     static_assert(Part::provides.has(uniqueness::unique), "change_logged_decl: a change log is kept over a set");
-    static constexpr urd::kind kind = Part::kind;
+    using kind = typename Part::kind;
     static constexpr property_set provides =
         Part::provides.has(keys::dense) ? with(Part::provides, { tracking::change_log, clearing::none }) : with(Part::provides, { tracking::change_log });
     /// The part's, and its own order: the wrapper's type is written for urd::Less.
-    static constexpr role_tags relies_on { .stated = Part::relies_on.stated,
-                                           .element = with(Part::relies_on.element, { order_source::own_order }),
-                                           .mapped = Part::relies_on.mapped,
-                                           .row = Part::relies_on.row,
-                                           .row_element = Part::relies_on.row_element };
+    static constexpr role_tags relies_on = []
+    {
+        auto result = Part::relies_on;
+        result.order.put(trait_v<trait::own_order>);
+        return result;
+    }();
     static constexpr auto gives_elements = Part::gives_elements;
     struct operation_costs : Part::operation_costs
     {

@@ -45,9 +45,9 @@ struct parallel_hash_map_decl
 {
     static constexpr std::string_view id = "parallel_hash_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/parallel_hash_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -78,9 +78,9 @@ struct parallel_node_hash_map_decl
 {
     static constexpr std::string_view id = "parallel_node_hash_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/parallel_hash_map.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

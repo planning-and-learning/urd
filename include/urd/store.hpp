@@ -75,37 +75,11 @@ struct complete_representation<missing_container<S, Container, Missing>>
 /// allow (its facets), and container_traits reports S's properties, not the representation's, so code cannot
 /// come to rely on what it never asked for. The Store itself holds only what every Store has, whatever its
 /// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
-/// which its kind and properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
+/// which its kind lists (urd/kinds.hpp) and its properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
 class Store :
     public complete_representation<R>,
-    public facet_if<facet_switches<R, S>::on(facet_id::sizing), facet::sizing<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::iteration), facet::iteration<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::equality), facet::equality<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::ordering), facet::ordering<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::lookup), facet::lookup<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::ordered_lookup), facet::ordered_lookup<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::reverse_iteration), facet::reverse_iteration<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::positions), facet::positions<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::contiguous_data), facet::contiguous_data<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::capacity), facet::capacity<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::growth), facet::growth<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::removal), facet::removal<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::values_by_key), facet::values_by_key<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::multi_values), facet::multi_values<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::set_algebra), facet::set_algebra<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::queue_access), facet::queue_access<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::scopes), facet::scopes<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::layers), facet::layers<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::changes), facet::changes<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::pool), facet::pool<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::records), facet::records<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::slots), facet::slots<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::grouping), facet::grouping<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::entries), facet::entries<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::inverse), facet::inverse<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::shape), facet::shape<Store<R, S>, R, S>>,
-    public facet_if<facet_switches<R, S>::on(facet_id::sorted_ends), facet::sorted_ends<Store<R, S>, R, S>>
+    public facet_bases<Store<R, S>, R, S, typename S::kind::facets>
 {
     using types = store_types<R, S>;
 

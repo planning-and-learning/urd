@@ -30,9 +30,9 @@ struct disjoint_sets_decl
 {
     static constexpr std::string_view id = "disjoint_sets";
     static constexpr auto headers = header_list<1> { "urd/repr/partitions/disjoint_sets.hpp" };
-    static constexpr urd::kind kind = urd::kind::partition;
+    using kind = partition_kind;
     static constexpr property_set provides = property_set::of({ grouping::partition, memory::retains });
-    static constexpr role_tags relies_on { .element = property_set::of({ indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

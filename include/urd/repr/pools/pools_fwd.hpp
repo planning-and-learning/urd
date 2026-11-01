@@ -48,9 +48,9 @@ struct row_interner_decl
 {
     static constexpr std::string_view id = "row_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
-    static constexpr urd::kind kind = urd::kind::pool;
+    using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none });
-    static constexpr role_tags relies_on { .row_element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .row_element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -82,11 +82,11 @@ struct tree_pool_decl
     static constexpr std::string_view id =
         Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set") : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
     static constexpr auto headers = header_list<1> { Bits ? "urd/repr/pools/tree_bitset.hpp" : "urd/repr/pools/tree_vector.hpp" };
-    static constexpr urd::kind kind = urd::kind::pool;
+    using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, sharing::structural_sharing, memory::retains, threads(ThreadSafe) });
     /// Of bits: rows that are dense sets of indices. Of values: sequence rows of hashable elements.
-    static constexpr role_tags relies_on = Bits ? role_tags { .row = property_set::of({ uniqueness::unique, keys::dense }), .row_element = property_set::of({ indexing::an_index }) }
-                                                : role_tags { .row = property_set::of({ position::positional }), .row_element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on = Bits ? role_tags { .row = property_set::of({ uniqueness::unique, keys::dense }), .row_element = trait_set_of<trait::an_index>() }
+                                                : role_tags { .row = property_set::of({ position::positional }), .row_element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -123,9 +123,9 @@ struct thread_safe_row_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_row_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
-    static constexpr urd::kind kind = urd::kind::pool;
+    using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on { .row_element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .row_element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {

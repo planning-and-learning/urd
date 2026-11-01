@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/kinds.hpp"
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
@@ -75,22 +76,10 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 {
 };
 
-/// Whether a request may state `of`: a tag of a category a container declares or a request states.
-constexpr bool statable(tag of)
-{
-    const auto root = root_of(of);
-    return in(root, guaranteed_roots) || in(root, requested_roots);
-}
-
-/// Whether P is a tag a Store may be asked for (statable).
+/// Whether P is a tag a Store may be asked for.
 template<typename P>
 consteval bool is_tag()
-{
-    if constexpr (a_tag<P>)
-        return statable(P::value);
-    else
-        return false;
-}
+{ return a_tag<P>; }
 
 template<typename P>
 inline constexpr bool is_order_by = false;
@@ -165,30 +154,19 @@ struct spec
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
 
-    /// What the Store is (urd::kind): from its key and value types and the tags that make a kind.
-    static constexpr urd::kind kind = urd::kind_of(urd_properties, !std::is_void_v<K>, !std::is_void_v<V>);
-    /// Keys grouped into disjoint classes (partition), reached by merge and find.
-    static constexpr bool is_partition = kind == urd::kind::partition;
-    static constexpr bool is_set = kind == urd::kind::set;
-    static constexpr bool is_map = kind == urd::kind::map;
-    /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
-    static constexpr bool is_queue = kind == urd::kind::queue;
-    /// Values identified by the handles insert gives (handles): a pool.
-    static constexpr bool is_pool = kind == urd::kind::pool || kind == urd::kind::slots || kind == urd::kind::records;
-    static constexpr bool is_sequence = kind == urd::kind::sequence || kind == urd::kind::multiset;
+    /// What the Store is (urd/kinds.hpp): the kind that claims its key and value types and the tags it states.
+    using kind = urd::kind_of<urd_properties, !std::is_void_v<K>, !std::is_void_v<V>>;
     /// What its container must guarantee: the promise, but for what the Store keeps itself (asked_of_container).
     static constexpr detail::property_set required = urd::asked_of_container(urd_properties);
     /// What it promises its container (promised_to_container): what a container may rely on.
     static constexpr detail::property_set promised = urd::promised_to_container(urd_properties);
-    /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
-    /// which only answers membership, would not be either.
-    static constexpr bool iterable = is_set || is_map || is_sequence;
+    /// Whether its elements can be visited in turn: as its kind says (a queue is reached by its front or top).
+    static constexpr bool iterable = kind::iterable;
 
-
-    /// What a key maps to, in a map.
-    using mapped_type = std::conditional_t<is_map, V, void>;
-    /// What a Store's elements are: keys in a set, values in a sequence, key-value pairs in a map.
-    using element_type = std::conditional_t<is_set || is_partition, K, std::conditional_t<is_map, std::pair<const K, V>, V>>;
+    /// What a key maps to, where its kind maps keys to values; else void.
+    using mapped_type = typename kind::template mapped_type<K, V>;
+    /// What a Store's elements are, by its kind: keys in a set, values in a sequence, key-value pairs in a map.
+    using element_type = typename kind::template element_type<K, V>;
 };
 
 namespace detail
@@ -207,32 +185,36 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 /// Whether at most one listed tag answers each category.
 consteval bool one_per_category(std::initializer_list<tag> listed)
 {
-    auto answers = std::array<int, tag_count> {};
-    for (const auto each : listed)
-        if (each != tag {} && ++answers[index(root_of(each))] > 1)
+    for (const auto* each = listed.begin(); each != listed.end(); ++each)
+        for (const auto* other = listed.begin(); other != each; ++other)
+            if (*each != tag {} && other->in == each->in)
+                return false;
+    return true;
+}
+
+/// Whether every tag of `stated` answers a category of Format.
+template<category_enum... Es>
+consteval bool in_format(request_format<Es...> /*format*/, const property_set& stated)
+{
+    for (std::size_t each = 0; each < stated.count; ++each)
+        if (((stated.held[each].in != urd::category<Es>) && ...))
             return false;
     return true;
 }
 
-/// The tags of a set that say more than their category's root, in the order of urd::tag: a spec's arguments.
-struct listed_tags
+/// The spec whose answers are those of Meant beyond none, in the order of Format: S with them appended.
+template<typename S, typename Format, property_set Meant>
+struct spec_answers
 {
-    std::array<tag, tag_count> tags {};
-    std::size_t count = 0;
+    using type = S;
 };
-consteval listed_tags non_roots(const property_set& properties)
+template<typename K, typename V, typename Order, auto... As, category_enum E, category_enum... Es, property_set Meant>
+struct spec_answers<spec<K, V, Order, As...>, request_format<E, Es...>, Meant>
+    : spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<K, V, Order, As...>, spec<K, V, Order, As..., Meant.template get<E>()>>,
+                   request_format<Es...>,
+                   Meant>
 {
-    auto result = listed_tags {};
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto root = tag_at(each);
-        if (root_of(root) == root && properties.in(root) != root)
-            result.tags[result.count++] = properties.in(root);
-    }
-    return result;
-}
-template<typename K, typename V, typename Order, listed_tags Listed, std::size_t... I>
-spec<K, V, Order, answer_of<Listed.tags[I]>...> spec_of(std::index_sequence<I...> /*positions*/);
+};
 
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
 template<typename... Ps>
@@ -254,7 +236,7 @@ struct to_spec
     static constexpr property_set stated = stated_of({ tag_of<Ps>()... });
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
-    static constexpr kind of = kind_of(stated, keyed, valued);
+    using kind = urd::kind_of<stated, keyed, valued>;
 
     /// What order_by orders: keys, or a sequence's or queue's values.
     using ordered_type = std::conditional_t<keyed, key_type, value_type>;
@@ -262,13 +244,16 @@ struct to_spec
     static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
 
+    static_assert(in_format(typename kind::format {}, stated),
+                  "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
+                  "request format (urd/kinds.hpp, format)");
     static_assert(well_formed(stated, keyed, valued, ordered_by, orderable<ordered_type>),
                   "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, "
                   "monotone_priority without by_priority, order_by<P> without sorted or by_priority, or order_by<P> on "
                   "unique keys that are not orderable (urd/tags.hpp, well_formed)");
 
-    static constexpr listed_tags listed = non_roots(meaning(stated, of));
-    using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
+    static constexpr property_set meant = meaning<kind>(stated);
+    using type = typename spec_answers<spec<key_type, value_type, order_type>, typename kind::format, meant>::type;
 };
 
 }  // namespace detail

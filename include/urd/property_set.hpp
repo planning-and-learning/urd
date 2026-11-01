@@ -1,9 +1,10 @@
 #pragma once
 
-// What computes with the tags (urd/tags.hpp): each tag's category and what it is at least, the properties of a
-// container or a request as one constexpr value per category (property_set), and what a container's properties
-// must meet for a request (satisfies, promises, demands_of). Properties are computed as values, not as types: a
-// request costs the compiler a constant evaluation instead of hundreds of class instantiations.
+// What computes with the tags (urd/tags.hpp): each category's table (its answers, which is at least which), a tag as
+// its category's table and its answer, the properties of a container or a request as the answers it holds
+// (property_set), and what a container's properties must meet for a request (satisfies, promises, demands_of).
+// Properties are computed as values, not as types: a request costs the compiler a constant evaluation instead of
+// hundreds of class instantiations. Categories are open: any enum with tag types (urd/tags.hpp, tags_of) is one.
 
 #include "urd/tags.hpp"
 
@@ -25,12 +26,6 @@ namespace urd
 namespace detail
 {
 
-/// A list of types.
-template<typename... Ts>
-struct type_list
-{
-};
-
 /// Lists of types, joined in order.
 template<typename... Lists>
 struct join
@@ -47,144 +42,22 @@ struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As...
 {
 };
 
-/// Every tag type, in the order of urd::tag.
-using all_tags = type_list<any_order,
-                           sorted,
-                           insertion_ordered,
-                           duplicates,
-                           unique,
-                           any_keys,
-                           dense,
-                           sparse,
-                           moving_refs,
-                           stable_refs,
-                           any_layout,
-                           contiguous,
-                           any_representation,
-                           canonical,
-                           single_threaded,
-                           concurrent,
-                           any_memory,
-                           retains,
-                           reclaims,
-                           any_clear,
-                           proportional_clear,
-                           constant_clear,
-                           any_access,
-                           fifo,
-                           lifo,
-                           by_priority,
-                           any_scope,
-                           scoped,
-                           any_layering,
-                           layered,
-                           any_handle,
-                           handles,
-                           any_sharing,
-                           structural_sharing,
-                           any_direction,
-                           bidirectional,
-                           any_shape,
-                           fixed_shape,
-                           any_packing,
-                           flat,
-                           any_grouping,
-                           partition,
-                           any_tracking,
-                           change_log,
-                           may_change,
-                           monotone,
-                           frozen,
-                           maybe_empty,
-                           nonempty,
-                           any_multiplicity,
-                           multi,
-                           by_key,
-                           positional,
-                           general,
-                           small,
-                           any_priority,
-                           monotone_priority,
-                           any_can_hash,
-                           can_hash,
-                           any_can_order,
-                           can_order,
-                           any_an_index,
-                           an_index,
-                           any_copies_as_bytes,
-                           copies_as_bytes,
-                           any_destroys_trivially,
-                           destroys_trivially,
-                           any_refillable,
-                           refillable,
-                           any_own_order,
-                           own_order,
-                           any_natural_ordered,
-                           natural_ordered,
-                           any_by_entry,
-                           by_entry,
-                           any_integral_priority,
-                           integral_priority,
-                           any_urd_hashed,
-                           urd_hashed,
-                           any_rows_flatten,
-                           rows_flatten,
-                           any_rows_in_place,
-                           rows_in_place,
-                           any_rows_reused,
-                           rows_reused,
-                           any_names_members,
-                           names_members>;
+/// The most answers a category has, its none included.
+inline constexpr std::size_t most_answers = 4;
 
-/// How many tags there are, every category's none included.
-template<typename... Ts>
-consteval std::size_t count_of(type_list<Ts...> /*tags*/)
-{ return sizeof...(Ts); }
-inline constexpr std::size_t tag_count = count_of(all_tags {});
-static_assert(tag_count == all_tag_count, "urd: the tag types and the categories' enums must list the same tags");
-inline constexpr std::size_t category_count = static_cast<std::size_t>(category::count);
-
-/// Every tag in the order of the tag types: each category's none, then its answers, in its enum's order.
-template<typename... Ts>
-consteval std::array<tag, sizeof...(Ts)> tags_in_order(type_list<Ts...> /*tags*/)
-{ return { tag(Ts::value)... }; }
-inline constexpr auto all_tag_values = tags_in_order(all_tags {});
-
-/// A tag's position among all tags, and the tag at a position: what the tables below are indexed by.
-constexpr std::size_t index(tag of) { return of.position; }
-constexpr tag tag_at(std::size_t position) { return all_tag_values[position]; }
-
-static_assert(
-    []
-    {
-        for (std::size_t each = 0; each < tag_count; ++each)
-            if (index(all_tag_values[each]) != each)
-                return false;
-        return true;
-    }(),
-    "urd: each category's tag types must list its none first, then its answers in the order of its enum");
-template<typename... Tags>
-constexpr auto tag_names_of(type_list<Tags...> /*tags*/)
-{ return std::array<std::string_view, sizeof...(Tags)> { Tags::name... }; }
-/// Every tag's name, in the order of urd::tag.
-inline constexpr auto tag_names = tag_names_of(all_tags {});
-
-/// For each tag, its category's root and which tags it is at least (itself, and those it derives from).
-struct tag_table
+/// What the machinery knows of a category, from its tag types (urd/tags.hpp, tags_of): its name (its none's), its
+/// answers' names, which answer is at least which (an answer derived from another), whether it is exact, which answers
+/// are demanded, and whether only a request states it.
+struct category_table
 {
-    std::array<tag, tag_count> root;
-    std::array<std::array<bool, tag_count>, tag_count> at_least;
+    std::string_view name;
+    std::uint8_t answers = 0;
+    std::array<std::string_view, most_answers> names {};
+    std::array<std::array<bool, most_answers>, most_answers> at_least {};
+    bool exact = false;
+    std::array<bool, most_answers> demanded {};
+    bool request_only = false;
 };
-template<typename Tag, typename... Ts>
-consteval std::array<bool, tag_count> at_least_row(type_list<Ts...> /*tags*/)
-{ return { std::is_base_of_v<Ts, Tag>... }; }
-template<typename... Ts>
-consteval tag_table make_tag_table(type_list<Ts...> tags)
-{ return { { Ts::root::value... }, { at_least_row<Ts>(tags)... } }; }
-inline constexpr tag_table tags = make_tag_table(all_tags {});
-
-
-/// The categories whose root declares itself exact, and the tags that declare themselves demanded (urd/tags.hpp).
 template<typename Tag>
 consteval bool exact_of()
 {
@@ -201,48 +74,84 @@ consteval bool demanded_of()
     else
         return false;
 }
-template<typename... Ts>
-consteval std::array<bool, tag_count> make_exact_table(type_list<Ts...> /*tags*/)
-{ return { exact_of<Ts>()... }; }
-template<typename... Ts>
-consteval std::array<bool, tag_count> make_demanded_table(type_list<Ts...> /*tags*/)
-{ return { demanded_of<Ts>()... }; }
-inline constexpr std::array<bool, tag_count> roots_exact = make_exact_table(all_tags {});
-inline constexpr std::array<bool, tag_count> tags_demanded = make_demanded_table(all_tags {});
-
-constexpr tag root_of(tag of) { return tags.root[index(of)]; }
-constexpr bool at_least(tag have, tag want) { return tags.at_least[index(have)][index(want)]; }
-
-/// The roots of the categories a container declares, then those a request states.
-inline constexpr std::array<tag, 20> guaranteed_roots {
-    order::none,  uniqueness::none,  keys::none,     referencing::none,   layout::none, representation::none, threading::none,
-    memory::none,  clearing::none,    access::none,    scoping::none,  layering::none,       tracking::none,
-    handling::none, sharing::none, grouping::none, direction::none, shape::none,  packing::none,        position::none
-};
-inline constexpr std::array<tag, 5> requested_roots { change::none, emptiness::none, multiplicity::none, workload::none, priority::none };
-
-constexpr bool in(tag root, const auto& roots)
+template<typename Tag>
+consteval bool request_only_of()
 {
-    for (const auto each : roots)
-        if (each == root)
-            return true;
-    return false;
+    if constexpr (requires { Tag::request_only; })
+        return Tag::request_only;
+    else
+        return false;
+}
+template<typename Root, typename... Ts>
+consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
+{
+    static_assert(sizeof...(Ts) + 1 <= most_answers, "urd: a category has more answers than most_answers");
+    static_assert(std::is_same_v<typename Root::root, Root>, "urd: a category's tag types list its none first");
+    auto result = category_table { .name = Root::name, .answers = sizeof...(Ts) + 1, .names = { Root::name, Ts::name... } };
+    constexpr std::array<std::uint8_t, sizeof...(Ts) + 1> values { static_cast<std::uint8_t>(Root::value), static_cast<std::uint8_t>(Ts::value)... };
+    for (std::size_t each = 0; each < values.size(); ++each)
+        if (values[each] != each)
+            throw "urd: a category's tag types must list its none first, then its answers in the order of its enum";
+    std::size_t have = 0;
+    const auto row = [&]<typename Have>(std::type_identity<Have> /*have*/)
+    {
+        result.at_least[have] = { std::is_base_of_v<Root, Have>, std::is_base_of_v<Ts, Have>... };
+        result.demanded[have] = demanded_of<Have>();
+        ++have;
+    };
+    row(std::type_identity<Root> {});
+    (row(std::type_identity<Ts> {}), ...);
+    result.exact = exact_of<Root>();
+    result.request_only = request_only_of<Root>();
+    return result;
 }
 
-/// The properties of something, as a value: for each category, the tag it holds there (by the root's number; the
-/// entries of tags that are no root are unused). Equal properties are equal values.
+/// The table of the category whose enum is E.
+template<category_enum E>
+inline constexpr category_table category_table_v = table_of_tags(typename tags_of<E>::type {});
+
+}  // namespace detail
+
+/// A property: a category (its table) and its answer, from any category's enum (order::sorted, uniqueness::unique, …).
+/// What the machinery computes with; users name the tag types (urd/tags.hpp).
+struct tag
+{
+    const detail::category_table* in = nullptr;  ///< nullptr: no tag
+    std::uint8_t answer = 0;                     ///< 0: the category's none
+
+    constexpr tag() = default;
+    constexpr tag(const detail::category_table* of, std::uint8_t value) : in(of), answer(value) {}
+    template<category_enum E>
+    constexpr tag(E value)  // NOLINT(google-explicit-constructor): every category's answer is a tag
+        : in(&detail::category_table_v<E>), answer(static_cast<std::uint8_t>(value))
+    {
+    }
+    friend constexpr bool operator==(tag, tag) = default;
+};
+
+/// The table of category E.
+template<category_enum E>
+inline constexpr const detail::category_table* category = &detail::category_table_v<E>;
+
+namespace detail
+{
+
+/// Whether answer `have` is at least `want`, both of category `of`.
+constexpr bool at_least(const category_table* of, std::uint8_t have, std::uint8_t want) { return of->at_least[have][want]; }
+constexpr bool at_least(tag have, tag want) { return have.in == want.in && at_least(have.in, have.answer, want.answer); }
+
+/// The most categories one set answers.
+inline constexpr std::size_t most_categories = 32;
+
+/// The properties of something, as a value: the answers it holds beyond none, one per category, in the order they
+/// were put. Equal properties are equal values, whatever that order.
 struct property_set
 {
-    std::array<tag, tag_count> held {};
+    std::array<tag, most_categories> held {};
+    std::size_t count = 0;
 
-    /// Nothing said: every category at its root.
-    static constexpr property_set roots()
-    {
-        auto result = property_set {};
-        for (std::size_t each = 0; each < tag_count; ++each)
-            result.held[each] = tag_at(each);
-        return result;
-    }
+    /// Nothing said: every category at none.
+    static constexpr property_set roots() { return {}; }
     /// The given tags (any category's answers: order::sorted, …), at most one per category, the others at none.
     static constexpr property_set of(std::initializer_list<tag> stated)
     {
@@ -252,35 +161,87 @@ struct property_set
         return result;
     }
 
-    /// The tag held in the category whose root is `root`.
-    [[nodiscard]] constexpr tag in(tag root) const { return held[index(root)]; }
+    /// The tag held in category `of` (its none where it holds none).
+    [[nodiscard]] constexpr tag in(const category_table* of) const
+    {
+        for (std::size_t each = 0; each < count; ++each)
+            if (held[each].in == of)
+                return held[each];
+        return { of, 0 };
+    }
+    /// The answer held in the category of enum E.
+    template<category_enum E>
+    [[nodiscard]] constexpr E get() const
+    { return static_cast<E>(in(urd::category<E>).answer); }
     /// Whether the tag held in `of`'s category is at least `of`.
-    [[nodiscard]] constexpr bool has(tag of) const { return at_least(in(root_of(of)), of); }
-    /// Holds `of` in its category, replacing what was there.
+    [[nodiscard]] constexpr bool has(tag of) const { return at_least(of.in, in(of.in).answer, of.answer); }
+    /// Holds `of` in its category, replacing what was there (none: nothing).
     constexpr property_set& put(tag of)
     {
-        held[index(root_of(of))] = of;
+        for (std::size_t each = 0; each < count; ++each)
+            if (held[each].in == of.in)
+            {
+                if (of.answer != 0)
+                    held[each] = of;
+                else
+                {
+                    for (std::size_t later = each + 1; later < count; ++later)
+                        held[later - 1] = held[later];
+                    held[--count] = tag {};
+                }
+                return *this;
+            }
+        if (of.answer != 0)
+        {
+            if (count == most_categories)
+                throw "urd: a property set answers more categories than most_categories";
+            held[count++] = of;
+        }
         return *this;
     }
+    /// The tags it holds beyond none, in the order they were put.
+    template<typename F>
+    constexpr void for_each(F f) const
+    {
+        for (std::size_t each = 0; each < count; ++each)
+            f(held[each]);
+    }
 
-    friend constexpr bool operator==(const property_set&, const property_set&) = default;
+    friend constexpr bool operator==(const property_set& lhs, const property_set& rhs)
+    {
+        if (lhs.count != rhs.count)
+            return false;
+        for (std::size_t each = 0; each < lhs.count; ++each)
+            if (rhs.in(lhs.held[each].in) != lhs.held[each])
+                return false;
+        return true;
+    }
 };
 
 /// Whether `have` provides, in every category a container declares, at least what `want` asks for; exactly that, in
 /// the categories that declare themselves exact (urd/tags.hpp).
 constexpr bool satisfies(const property_set& have, const property_set& want)
 {
-    for (const auto root : guaranteed_roots)
-        if (roots_exact[index(root)] ? have.in(root) != want.in(root) : !at_least(have.in(root), want.in(root)))
+    for (std::size_t each = 0; each < want.count; ++each)
+    {
+        const auto asked = want.held[each];
+        if (!asked.in->request_only && !(asked.in->exact ? have.in(asked.in) == asked : have.has(asked)))
             return false;
+    }
+    for (std::size_t each = 0; each < have.count; ++each)  // an exact category answered beyond what is asked
+    {
+        const auto given = have.held[each];
+        if (given.in->exact && !given.in->request_only && want.in(given.in).answer == 0)
+            return false;
+    }
     return true;
 }
 
 /// Whether a request that holds `stated` makes every promise in `needed`.
 constexpr bool promises(const property_set& stated, const property_set& needed)
 {
-    for (std::size_t each = 0; each < tag_count; ++each)
-        if (!at_least(stated.held[each], needed.held[each]))
+    for (std::size_t each = 0; each < needed.count; ++each)
+        if (!stated.has(needed.held[each]))
             return false;
     return true;
 }
@@ -290,9 +251,12 @@ constexpr bool promises(const property_set& stated, const property_set& needed)
 constexpr property_set demands_of(const property_set& declared)
 {
     auto result = property_set::roots();
-    for (std::size_t each = 0; each < tag_count; ++each)
-        if (tags_demanded[each] && declared.has(tag_at(each)))
-            result.put(tag_at(each));
+    declared.for_each(
+        [&result](tag each)
+        {
+            if (each.in->demanded[each.answer])
+                result.put(each);
+        });
     return result;
 }
 
@@ -305,7 +269,7 @@ concept a_tag = requires {
 }  // namespace detail
 
 /// A tag's name, as a request writes it.
-constexpr std::string_view tag_name(tag of) { return detail::tag_names[detail::index(of)]; }
+constexpr std::string_view tag_name(tag of) { return of.in->names[of.answer]; }
 
 /// The properties stated by Tags, in any order, at most one per category; categories no tag answers keep their root.
 template<typename... Tags>
@@ -340,8 +304,8 @@ using with_t = detail::replaced<Traits, Tags...>;
 
 /// Whether Tag answers a category a container declares, or one only a request has.
 template<typename Tag>
-inline constexpr bool is_guarantee = detail::in(detail::root_of(Tag::value), detail::guaranteed_roots);
+inline constexpr bool is_guarantee = !tag(Tag::value).in->request_only;
 template<typename Tag>
-inline constexpr bool is_request_only = detail::in(detail::root_of(Tag::value), detail::requested_roots);
+inline constexpr bool is_request_only = tag(Tag::value).in->request_only;
 
 }  // namespace urd

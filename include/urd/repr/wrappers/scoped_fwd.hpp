@@ -51,9 +51,9 @@ struct scoped_map_decl
 {
     static constexpr std::string_view id = "scoped_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/unordered_flat_map.hpp", "urd/repr/wrappers/scoped.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, memory::retains, scoping::scoped });
-    static constexpr role_tags relies_on { .element = property_set::of({ hashability::can_hash }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -86,9 +86,9 @@ struct scoped_tree_map_decl
 {
     static constexpr std::string_view id = "scoped_tree_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/scoped.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear, scoping::scoped });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, natural_order_source::natural_ordered }) };
+    static constexpr role_tags relies_on { .order = trait_set_of<trait::own_order, trait::natural_ordered>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -122,9 +122,9 @@ struct scoped_dense_map_decl
 {
     static constexpr std::string_view id = "scoped_dense_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/index_map.hpp", "urd/repr/wrappers/scoped.hpp" };
-    static constexpr urd::kind kind = urd::kind::map;
+    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none, scoping::scoped });
-    static constexpr role_tags relies_on { .element = property_set::of({ order_source::own_order, indexing::an_index }) };
+    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>(), .order = trait_set_of<trait::own_order>() };
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

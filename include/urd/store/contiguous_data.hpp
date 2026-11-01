@@ -30,7 +30,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::contiguous_data>
+struct facet_condition<facet::contiguous_data>
 {
     template<typename R, typename S>
     static constexpr bool on()

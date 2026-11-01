@@ -90,7 +90,7 @@ std::string spelling()
 }
 
 /// Spec S as the request that states its tags: its key and value types, then the tags that say more than their
-/// category's root, in the order of urd::tag.
+/// category's none, in the order of the categories.
 template<typename S>
 std::string spelling_of_spec()
 {
@@ -99,12 +99,7 @@ std::string spelling_of_spec()
         parts.push_back(fmt::format("key<{}>", spelling<typename S::key_type>()));
     if constexpr (!std::is_void_v<typename S::value_type>)
         parts.push_back(fmt::format("value<{}>", spelling<typename S::value_type>()));
-    for (std::size_t each = 0; each < detail::tag_count; ++each)
-    {
-        const auto root = detail::tag_at(each);
-        if (detail::root_of(root) == root && S::urd_properties.in(root) != root)
-            parts.emplace_back(tag_name(S::urd_properties.in(root)));
-    }
+    S::urd_properties.for_each([&parts](tag each) { parts.emplace_back(tag_name(each)); });
     if constexpr (!std::is_void_v<typename S::order_type>)
         parts.emplace_back("order_by<P>");
     return fmt::format("Store<{}>", fmt::join(parts, ", "));

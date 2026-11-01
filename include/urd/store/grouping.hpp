@@ -43,11 +43,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::grouping>
+struct facet_condition<facet::grouping>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::is_partition; }
+    { return true; }
+};
+template<>
+struct facet_operations<facet::grouping>
+{
+    static constexpr std::array offered { operation::merge, operation::lookup };
 };
 
 }  // namespace urd::detail

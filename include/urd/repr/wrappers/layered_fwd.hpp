@@ -45,7 +45,7 @@ struct layered_decl
     static constexpr std::string_view id = joined<layered_prefix, Part::id>::value;
     static constexpr auto headers = then(Part::headers, Pool ? "urd/repr/wrappers/layered_pool.hpp" : "urd/repr/wrappers/layer.hpp");
     static_assert(Part::provides.has(uniqueness::unique) && (!Pool || Part::provides.has(handling::handles)), "layered_decl: a layer is over a set, map or pool");
-    static constexpr urd::kind kind = Part::kind;
+    using kind = typename Part::kind;
     static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered }) : with(Part::provides, { layering::layered, order::none });
     static constexpr role_tags relies_on = Part::relies_on;
     static constexpr auto gives_elements = Part::gives_elements;

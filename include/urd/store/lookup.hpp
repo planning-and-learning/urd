@@ -34,11 +34,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::lookup>
+struct facet_condition<facet::lookup>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return store_types<R, S>::keyed && S::iterable; }
+    { return store_types<R, S>::keyed; }
+};
+template<>
+struct facet_operations<facet::lookup>
+{
+    static constexpr std::array offered { operation::lookup };
 };
 
 }  // namespace urd::detail

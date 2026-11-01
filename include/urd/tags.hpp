@@ -16,6 +16,17 @@
 namespace urd
 {
 
+namespace detail
+{
+
+/// A list of types.
+template<typename... Ts>
+struct type_list
+{
+};
+
+}  // namespace detail
+
 // The groups, by what leaving out a tag one needs causes. Every category is in exactly one.
 struct kind_group
 {
@@ -89,54 +100,9 @@ struct no_heading
 };
 
 
-/// The categories of properties, each a question a request may answer (its words: the category's root type below),
-/// in the order of urd's tag types. Each has an enum of its own whose first value, none, is no answer: what a category
-/// left unstated means.
-enum class category : std::uint8_t
-{
-    order,
-    uniqueness,
-    keys,
-    referencing,
-    layout,
-    representation,
-    threading,
-    memory,
-    clearing,
-    access,
-    scoping,
-    layering,
-    handling,
-    sharing,
-    direction,
-    shape,
-    packing,
-    grouping,
-    tracking,
-    change,
-    emptiness,
-    multiplicity,
-    position,
-    workload,
-    priority,
-    hashability,
-    comparing,
-    indexing,
-    copying,
-    destruction,
-    refilling,
-    order_source,
-    natural_order_source,
-    entry_order,
-    priority_key,
-    hash_source,
-    row_flattening,
-    row_updates,
-    row_reuse,
-    member_naming,
-    count  ///< not a category: how many there are
-};
-
+/// The categories of properties, each a question a request may answer (its words: the category's root type below).
+/// Each is an enum of its own whose first value, none, is no answer: what a category left unstated means. A category
+/// is open: another enum with tag types (tags_of) is another category.
 enum class order : std::uint8_t
 {
     none,
@@ -269,697 +235,15 @@ enum class priority : std::uint8_t
     none,
     monotone_priority,
 };
-enum class hashability : std::uint8_t
-{
-    none,
-    can_hash,
-};
-enum class comparing : std::uint8_t
-{
-    none,
-    can_order,
-};
-enum class indexing : std::uint8_t
-{
-    none,
-    an_index,
-};
-enum class copying : std::uint8_t
-{
-    none,
-    copies_as_bytes,
-};
-enum class destruction : std::uint8_t
-{
-    none,
-    destroys_trivially,
-};
-enum class refilling : std::uint8_t
-{
-    none,
-    refillable,
-};
-enum class order_source : std::uint8_t
-{
-    none,
-    own_order,
-};
-enum class natural_order_source : std::uint8_t
-{
-    none,
-    natural_ordered,
-};
-enum class entry_order : std::uint8_t
-{
-    none,
-    by_entry,
-};
-enum class priority_key : std::uint8_t
-{
-    none,
-    integral_priority,
-};
-enum class hash_source : std::uint8_t
-{
-    none,
-    urd_hashed,
-};
-enum class row_flattening : std::uint8_t
-{
-    none,
-    rows_flatten,
-};
-enum class row_updates : std::uint8_t
-{
-    none,
-    rows_in_place,
-};
-enum class row_reuse : std::uint8_t
-{
-    none,
-    rows_reused,
-};
-enum class member_naming : std::uint8_t
-{
-    none,
-    names_members,
-};
 
-/// The category of enum E, and the enum of a category.
+/// The tag types of a category's enum E: its none, then its answers, in the order of E (each category's, beside its
+/// tags below).
 template<typename E>
-struct category_of;
-template<category C>
-struct enum_of;
-template<>
-struct category_of<order>
-{
-    static constexpr category value = category::order;
-    static constexpr std::uint8_t offset = 0;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::order>
-{
-    using type = order;
-};
-template<>
-struct category_of<uniqueness>
-{
-    static constexpr category value = category::uniqueness;
-    static constexpr std::uint8_t offset = 3;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::uniqueness>
-{
-    using type = uniqueness;
-};
-template<>
-struct category_of<keys>
-{
-    static constexpr category value = category::keys;
-    static constexpr std::uint8_t offset = 5;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::keys>
-{
-    using type = keys;
-};
-template<>
-struct category_of<referencing>
-{
-    static constexpr category value = category::referencing;
-    static constexpr std::uint8_t offset = 8;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::referencing>
-{
-    using type = referencing;
-};
-template<>
-struct category_of<layout>
-{
-    static constexpr category value = category::layout;
-    static constexpr std::uint8_t offset = 10;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::layout>
-{
-    using type = layout;
-};
-template<>
-struct category_of<representation>
-{
-    static constexpr category value = category::representation;
-    static constexpr std::uint8_t offset = 12;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::representation>
-{
-    using type = representation;
-};
-template<>
-struct category_of<threading>
-{
-    static constexpr category value = category::threading;
-    static constexpr std::uint8_t offset = 14;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::threading>
-{
-    using type = threading;
-};
-template<>
-struct category_of<memory>
-{
-    static constexpr category value = category::memory;
-    static constexpr std::uint8_t offset = 16;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::memory>
-{
-    using type = memory;
-};
-template<>
-struct category_of<clearing>
-{
-    static constexpr category value = category::clearing;
-    static constexpr std::uint8_t offset = 19;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::clearing>
-{
-    using type = clearing;
-};
-template<>
-struct category_of<access>
-{
-    static constexpr category value = category::access;
-    static constexpr std::uint8_t offset = 22;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::access>
-{
-    using type = access;
-};
-template<>
-struct category_of<scoping>
-{
-    static constexpr category value = category::scoping;
-    static constexpr std::uint8_t offset = 26;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::scoping>
-{
-    using type = scoping;
-};
-template<>
-struct category_of<layering>
-{
-    static constexpr category value = category::layering;
-    static constexpr std::uint8_t offset = 28;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::layering>
-{
-    using type = layering;
-};
-template<>
-struct category_of<handling>
-{
-    static constexpr category value = category::handling;
-    static constexpr std::uint8_t offset = 30;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::handling>
-{
-    using type = handling;
-};
-template<>
-struct category_of<sharing>
-{
-    static constexpr category value = category::sharing;
-    static constexpr std::uint8_t offset = 32;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::sharing>
-{
-    using type = sharing;
-};
-template<>
-struct category_of<direction>
-{
-    static constexpr category value = category::direction;
-    static constexpr std::uint8_t offset = 34;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::direction>
-{
-    using type = direction;
-};
-template<>
-struct category_of<shape>
-{
-    static constexpr category value = category::shape;
-    static constexpr std::uint8_t offset = 36;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::shape>
-{
-    using type = shape;
-};
-template<>
-struct category_of<packing>
-{
-    static constexpr category value = category::packing;
-    static constexpr std::uint8_t offset = 38;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::packing>
-{
-    using type = packing;
-};
-template<>
-struct category_of<grouping>
-{
-    static constexpr category value = category::grouping;
-    static constexpr std::uint8_t offset = 40;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::grouping>
-{
-    using type = grouping;
-};
-template<>
-struct category_of<tracking>
-{
-    static constexpr category value = category::tracking;
-    static constexpr std::uint8_t offset = 42;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::tracking>
-{
-    using type = tracking;
-};
-template<>
-struct category_of<change>
-{
-    static constexpr category value = category::change;
-    static constexpr std::uint8_t offset = 44;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::change>
-{
-    using type = change;
-};
-template<>
-struct category_of<emptiness>
-{
-    static constexpr category value = category::emptiness;
-    static constexpr std::uint8_t offset = 47;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::emptiness>
-{
-    using type = emptiness;
-};
-template<>
-struct category_of<multiplicity>
-{
-    static constexpr category value = category::multiplicity;
-    static constexpr std::uint8_t offset = 49;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::multiplicity>
-{
-    using type = multiplicity;
-};
-template<>
-struct category_of<position>
-{
-    static constexpr category value = category::position;
-    static constexpr std::uint8_t offset = 51;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::position>
-{
-    using type = position;
-};
-template<>
-struct category_of<workload>
-{
-    static constexpr category value = category::workload;
-    static constexpr std::uint8_t offset = 53;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::workload>
-{
-    using type = workload;
-};
-template<>
-struct category_of<priority>
-{
-    static constexpr category value = category::priority;
-    static constexpr std::uint8_t offset = 55;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::priority>
-{
-    using type = priority;
-};
-template<>
-struct category_of<hashability>
-{
-    static constexpr category value = category::hashability;
-    static constexpr std::uint8_t offset = 57;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::hashability>
-{
-    using type = hashability;
-};
-template<>
-struct category_of<comparing>
-{
-    static constexpr category value = category::comparing;
-    static constexpr std::uint8_t offset = 59;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::comparing>
-{
-    using type = comparing;
-};
-template<>
-struct category_of<indexing>
-{
-    static constexpr category value = category::indexing;
-    static constexpr std::uint8_t offset = 61;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::indexing>
-{
-    using type = indexing;
-};
-template<>
-struct category_of<copying>
-{
-    static constexpr category value = category::copying;
-    static constexpr std::uint8_t offset = 63;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::copying>
-{
-    using type = copying;
-};
-template<>
-struct category_of<destruction>
-{
-    static constexpr category value = category::destruction;
-    static constexpr std::uint8_t offset = 65;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::destruction>
-{
-    using type = destruction;
-};
-template<>
-struct category_of<refilling>
-{
-    static constexpr category value = category::refilling;
-    static constexpr std::uint8_t offset = 67;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::refilling>
-{
-    using type = refilling;
-};
-template<>
-struct category_of<order_source>
-{
-    static constexpr category value = category::order_source;
-    static constexpr std::uint8_t offset = 69;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::order_source>
-{
-    using type = order_source;
-};
-template<>
-struct category_of<natural_order_source>
-{
-    static constexpr category value = category::natural_order_source;
-    static constexpr std::uint8_t offset = 71;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::natural_order_source>
-{
-    using type = natural_order_source;
-};
-template<>
-struct category_of<entry_order>
-{
-    static constexpr category value = category::entry_order;
-    static constexpr std::uint8_t offset = 73;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::entry_order>
-{
-    using type = entry_order;
-};
-template<>
-struct category_of<priority_key>
-{
-    static constexpr category value = category::priority_key;
-    static constexpr std::uint8_t offset = 75;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::priority_key>
-{
-    using type = priority_key;
-};
-template<>
-struct category_of<hash_source>
-{
-    static constexpr category value = category::hash_source;
-    static constexpr std::uint8_t offset = 77;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::hash_source>
-{
-    using type = hash_source;
-};
-template<>
-struct category_of<row_flattening>
-{
-    static constexpr category value = category::row_flattening;
-    static constexpr std::uint8_t offset = 79;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::row_flattening>
-{
-    using type = row_flattening;
-};
-template<>
-struct category_of<row_updates>
-{
-    static constexpr category value = category::row_updates;
-    static constexpr std::uint8_t offset = 81;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::row_updates>
-{
-    using type = row_updates;
-};
-template<>
-struct category_of<row_reuse>
-{
-    static constexpr category value = category::row_reuse;
-    static constexpr std::uint8_t offset = 83;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::row_reuse>
-{
-    using type = row_reuse;
-};
-template<>
-struct category_of<member_naming>
-{
-    static constexpr category value = category::member_naming;
-    static constexpr std::uint8_t offset = 85;  ///< where its answers start among all tags
-};
-template<>
-struct enum_of<category::member_naming>
-{
-    using type = member_naming;
-};
+struct tags_of;
 
 /// Whether E is a category's enum.
 template<typename E>
-concept category_enum = requires { category_of<E>::value; };
-
-/// How many tags there are, every category's none included, and each one's category and answer, by its position
-/// among all tags (each category's none, then its answers, in the order of the categories).
-inline constexpr std::size_t all_tag_count = 87;
-inline constexpr std::array<category, all_tag_count> category_at_position { category::order, category::order, category::order, category::uniqueness, category::uniqueness, category::keys, category::keys, category::keys, category::referencing, category::referencing, category::layout, category::layout, category::representation, category::representation, category::threading, category::threading, category::memory, category::memory, category::memory, category::clearing, category::clearing, category::clearing, category::access, category::access, category::access, category::access, category::scoping, category::scoping, category::layering, category::layering, category::handling, category::handling, category::sharing, category::sharing, category::direction, category::direction, category::shape, category::shape, category::packing, category::packing, category::grouping, category::grouping, category::tracking, category::tracking, category::change, category::change, category::change, category::emptiness, category::emptiness, category::multiplicity, category::multiplicity, category::position, category::position, category::workload, category::workload, category::priority, category::priority, category::hashability, category::hashability, category::comparing, category::comparing, category::indexing, category::indexing, category::copying, category::copying, category::destruction, category::destruction, category::refilling, category::refilling, category::order_source, category::order_source, category::natural_order_source, category::natural_order_source, category::entry_order, category::entry_order, category::priority_key, category::priority_key, category::hash_source, category::hash_source, category::row_flattening, category::row_flattening, category::row_updates, category::row_updates, category::row_reuse, category::row_reuse, category::member_naming, category::member_naming };
-inline constexpr std::array<std::uint8_t, all_tag_count> answer_at_position { 0, 1, 2, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 };
-
-/// A property: a category and its answer, from any category's enum (order::sorted, uniqueness::unique, …), held as its
-/// position among all tags. What the machinery computes with; users name the tag types below.
-struct tag
-{
-    std::uint8_t position = all_tag_count;  ///< all_tag_count: no tag
-
-    constexpr tag() = default;
-    template<category_enum E>
-    constexpr tag(E answer)  // NOLINT(google-explicit-constructor): every category's answer is a tag
-        : position(static_cast<std::uint8_t>(category_of<E>::offset + static_cast<std::uint8_t>(answer)))
-    {
-    }
-    [[nodiscard]] constexpr category of() const { return category_at_position[position]; }
-    [[nodiscard]] constexpr std::uint8_t value() const { return answer_at_position[position]; }
-    friend constexpr bool operator==(tag, tag) = default;
-};
-
-/// The answer of tag `t` in its category's own enum.
-template<tag T>
-inline constexpr auto answer_of = static_cast<typename enum_of<T.of()>::type>(T.value());
-
-/// What a Store is, by how its elements are placed and reached (kind_of below).
-enum class kind : std::uint8_t
-{
-    sequence,   ///< values by position
-    multiset,   ///< values kept by value, in order, duplicates kept
-    set,        ///< keys, each once
-    map,        ///< a value per key, or several
-    pool,       ///< rows interned by handle (handles, unique)
-    slots,      ///< values in slots, by handle (handles)
-    records,    ///< records stored flat, by handle
-    queue,      ///< reached by front or top
-    partition,  ///< keys in disjoint classes
-};
-
-/// A kind's name, as a request or a tool writes it.
-constexpr std::string_view name(kind of)
-{
-    switch (of)
-    {
-        case kind::sequence:
-            return "sequence";
-        case kind::multiset:
-            return "multiset";
-        case kind::set:
-            return "set";
-        case kind::map:
-            return "map";
-        case kind::pool:
-            return "pool";
-        case kind::slots:
-            return "slots";
-        case kind::records:
-            return "records";
-        case kind::queue:
-            return "queue";
-        case kind::partition:
-            return "partition";
-    }
-    return {};
-}
-
-/// The tag of a container's threading and of its references, by a flag of its own: concurrent or not, stable or not.
-constexpr tag threads(bool concurrent_) { return concurrent_ ? threading::concurrent : threading::none; }
-constexpr tag references(bool stable) { return stable ? referencing::stable_refs : referencing::none; }
-
-/// Whether a kind keeps its elements by value (inserted where their value puts them), not where they are put.
-constexpr bool keeps_by_value(kind of) { return of == kind::multiset || of == kind::set || of == kind::map; }
-/// The kind of a request: from the tags it states, else from its shape (key<K>: a set, key<K> and value<V>: a map,
-/// value<V>: a sequence). A priority queue with handles is a queue; a pool of records stored flat is records.
-template<typename Set>
-constexpr kind kind_of(const Set& stated, bool keyed, bool valued)
-{
-    if (stated.has(grouping::partition))
-        return kind::partition;
-    if (stated.has(access::fifo) || stated.has(access::lifo) || stated.has(access::by_priority) || stated.has(priority::monotone_priority))
-        return kind::queue;
-    if (stated.has(packing::flat))
-        return kind::records;
-    if (stated.has(handling::handles))
-        return stated.has(uniqueness::unique) ? kind::pool : kind::slots;
-    if (keyed)
-        return valued ? kind::map : kind::set;
-    if (stated.has(order::sorted) || stated.has(uniqueness::unique) || stated.has(multiplicity::multi))
-        return kind::multiset;
-    return kind::sequence;
-}
-
-/// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
-/// Contiguous storage is more compact and faster to search and iterate where elements are few or never change, so
-/// stable storage (a node per element, segments that never move) comes last for them (docs/BENCHMARKS.md).
-struct preference
-{
-    tag when = tag {};
-    tag later = tag {};
-};
-inline constexpr std::array preferences { preference { .when = change::frozen, .later = referencing::stable_refs },
-                                          preference { .when = workload::small, .later = referencing::stable_refs } };
-
-/// What a Store held as an element of another gets beyond its own request: its storage given back when it is
-/// destroyed, as erase and clear do.
-inline constexpr std::array<tag, 1> nested_gives { memory::reclaims };
-
-/// The registry tree's levels: the categories its containers are told apart by, high level first, below the kind:
-/// what the interface is, then what holds, then what it costs. urd's selection checks each container's tags as a
-/// whole (urd/registry/scan.hpp); a view of the registry (urd-search) follows this order.
-inline constexpr std::array<tag, 21> registry_levels { uniqueness::none,      multiplicity::none, handling::none,   access::none,   packing::none,
-                                              grouping::none,    position::none,           order::none,    keys::none,     referencing::none,
-                                              threading::none, layering::none,     scoping::none,    tracking::none, direction::none,
-                                              shape::none,       layout::none,       memory::none,   clearing::none,    representation::none,
-                                              sharing::none };
-
-/// What a request asks of its container: what it means, but for what the Store keeps itself: once nothing changes
-/// (frozen), nothing moves, so stable references need nothing of the container.
-template<typename Set>
-constexpr Set asked_of_container(Set stated)
-{
-    if (stated.has(change::frozen))
-        stated.put(referencing::none);
-    return stated;
-}
-
-/// Whether a request means something, whatever container would hold it: a partition groups keys, without values; a
-/// pool (handles) is reached by handle, not by key; monotone_priority is a promise of a priority queue; order_by<P>
-/// orders a sorted Store or a priority queue, and on unique keys breaks ties by the keys' own order, so they must be
-/// orderable. Anything else no container serves fails in the registry.
-template<typename Set>
-constexpr bool well_formed(const Set& stated, bool keyed, bool valued, bool ordered_by, bool orderable)
-{
-    return (!stated.has(grouping::partition) || !valued) && (!stated.has(handling::handles) || !keyed)
-           && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority))
-           && (!ordered_by || stated.has(order::sorted) || stated.has(access::by_priority))
-           && (!ordered_by || !keyed || stated.has(multiplicity::multi) || orderable);
-}
-
-/// What a request means beyond what it states, by its kind and by what its Store's interface keeps: a set, and a map
-/// without multi, keep each key once; a set with positions numbers its keys as they come (an interner), unless it
-/// asks for another order; once nothing changes (frozen), nothing moves.
-template<typename Set>
-constexpr Set meaning(Set stated, kind of)
-{
-    if (of == kind::set || (of == kind::map && !stated.has(multiplicity::multi)))
-        stated.put(uniqueness::unique);
-    if (of == kind::set && stated.has(position::positional) && stated.in(order::none) == order::none)
-        stated.put(order::insertion_ordered);
-    if (stated.has(change::frozen))
-        stated.put(referencing::stable_refs);
-    return stated;
-}
-
-/// What a request promises its container: what it means, and that a Store which must stay nonempty never erases, so
-/// a container that only grows serves it.
-template<typename Set>
-constexpr Set promised_to_container(Set meant)
-{
-    if (meant.has(emptiness::nonempty) && !meant.has(change::monotone))
-        meant.put(change::monotone);
-    return meant;
-}
+concept category_enum = requires { typename tags_of<E>::type; };
 
 // Properties, in the style of Boost.Graph's graph_traits: each answers one question (a category) with a tag
 // type, and a tag derived from another means "at least that". The root of a category promises nothing, and names
@@ -996,6 +280,13 @@ struct insertion_ordered : any_order
     static constexpr std::array<std::string_view, 3> phrases { "insertion order", "first come first listed", "keeps the order added" };
 };
 
+/// The tag types oforder: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<order>
+{
+    using type = detail::type_list<any_order, sorted, insertion_ordered>;
+};
+
 struct duplicates
 {
     using root = duplicates;
@@ -1016,6 +307,13 @@ struct unique : duplicates
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No two elements are equal.";
     static constexpr std::array<std::string_view, 3> phrases { "no duplicates", "distinct", "each at most once" };
+};
+
+/// The tag types ofuniqueness: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<uniqueness>
+{
+    using type = detail::type_list<duplicates, unique>;
 };
 
 struct any_keys
@@ -1049,6 +347,13 @@ struct sparse : any_keys
     static constexpr std::array<std::string_view, 3> phrases { "few keys in a large range", "scattered keys", "arbitrary keys" };
 };
 
+/// The tag types ofkeys: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<keys>
+{
+    using type = detail::type_list<any_keys, dense, sparse>;
+};
+
 struct moving_refs
 {
     using root = moving_refs;
@@ -1073,6 +378,13 @@ struct stable_refs : moving_refs
     static constexpr std::array<std::string_view, 3> phrases { "pointers stay valid", "stable addresses", "references survive inserts" };
 };
 
+/// The tag types ofreferencing: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<referencing>
+{
+    using type = detail::type_list<moving_refs, stable_refs>;
+};
+
 struct any_layout
 {
     using root = any_layout;
@@ -1092,6 +404,13 @@ struct contiguous : any_layout
     static constexpr std::array<std::string_view, 4> phrases { "contiguous", "cache friendly", "as a span", "one array" };
 };
 
+/// The tag types oflayout: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<layout>
+{
+    using type = detail::type_list<any_layout, contiguous>;
+};
+
 struct any_representation
 {
     using root = any_representation;
@@ -1109,6 +428,13 @@ struct canonical : any_representation
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Equal contents have equal representations.";
     static constexpr std::array<std::string_view, 3> phrases { "canonical", "same contents same bytes", "hashable by contents" };
+};
+
+/// The tag types ofrepresentation: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<representation>
+{
+    using type = detail::type_list<any_representation, canonical>;
 };
 
 struct single_threaded
@@ -1139,6 +465,13 @@ struct concurrent : single_threaded
     static constexpr std::array<std::string_view, 3> phrases { "thread safe", "shared between threads", "parallel inserts" };
 };
 
+/// The tag types ofthreading: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<threading>
+{
+    using type = detail::type_list<single_threaded, concurrent>;
+};
+
 struct any_memory
 {
     using root = any_memory;
@@ -1167,6 +500,13 @@ struct reclaims : any_memory
     static constexpr std::array<std::string_view, 3> phrases { "frees memory", "shrinks", "gives memory back" };
 };
 
+/// The tag types ofmemory: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<memory>
+{
+    using type = detail::type_list<any_memory, retains, reclaims>;
+};
+
 struct any_clear
 {
     using root = any_clear;
@@ -1193,6 +533,13 @@ struct constant_clear : proportional_clear
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Clear takes constant time, as with a generation counter.";
     static constexpr std::array<std::string_view, 3> phrases { "reset every round", "cleared per search", "O(1) clear" };
+};
+
+/// The tag types ofclearing: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<clearing>
+{
+    using type = detail::type_list<any_clear, proportional_clear, constant_clear>;
 };
 
 struct any_access
@@ -1232,6 +579,13 @@ struct by_priority : any_access
     static constexpr std::array<std::string_view, 4> phrases { "priority queue", "heap", "best first", "open list" };
 };
 
+/// The tag types ofaccess: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<access>
+{
+    using type = detail::type_list<any_access, fifo, lifo, by_priority>;
+};
+
 struct any_scope
 {
     using root = any_scope;
@@ -1251,6 +605,13 @@ struct scoped : any_scope
     static constexpr std::array<std::string_view, 3> phrases { "nested scopes", "undo on backtrack", "symbol table" };
 };
 
+/// The tag types ofscoping: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<scoping>
+{
+    using type = detail::type_list<any_scope, scoped>;
+};
+
 struct any_layering
 {
     using root = any_layering;
@@ -1268,6 +629,13 @@ struct layered : any_layering
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.";
     static constexpr std::array<std::string_view, 3> phrases { "falls through to a parent", "overlay", "phase over phase" };
+};
+
+/// The tag types oflayering: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<layering>
+{
+    using type = detail::type_list<any_layering, layered>;
 };
 
 struct any_handle
@@ -1293,6 +661,13 @@ struct handles : any_handle
     static constexpr std::array<std::string_view, 4> phrases { "interning", "handles", "deduplicated rows", "hash consing" };
 };
 
+/// The tag types ofhandling: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<handling>
+{
+    using type = detail::type_list<any_handle, handles>;
+};
+
 struct any_sharing
 {
     using root = any_sharing;
@@ -1312,6 +687,13 @@ struct structural_sharing : any_sharing
     static constexpr std::array<std::string_view, 3> phrases { "rows differing in a few places", "persistent", "shared structure" };
 };
 
+/// The tag types ofsharing: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<sharing>
+{
+    using type = detail::type_list<any_sharing, structural_sharing>;
+};
+
 struct any_direction
 {
     using root = any_direction;
@@ -1329,6 +711,13 @@ struct bidirectional : any_direction
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A map that answers by value too: keys(v) gives the keys that map to v.";
     static constexpr std::array<std::string_view, 3> phrases { "predecessors", "reverse edges", "inverse map" };
+};
+
+/// The tag types ofdirection: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<direction>
+{
+    using type = detail::type_list<any_direction, bidirectional>;
 };
 
 struct any_shape
@@ -1351,6 +740,13 @@ struct fixed_shape : any_shape
     static constexpr std::array<std::string_view, 3> phrases { "fixed rows", "matrix", "table of known shape" };
 };
 
+/// The tag types ofshape: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<shape>
+{
+    using type = detail::type_list<any_shape, fixed_shape>;
+};
+
 struct any_packing
 {
     using root = any_packing;
@@ -1369,6 +765,13 @@ struct flat : any_packing
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Each record is one self-contained block of bytes, frozen once stored and read by index.";
     static constexpr std::array<std::string_view, 3> phrases { "flat records", "serialized", "one block per record" };
+};
+
+/// The tag types ofpacking: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<packing>
+{
+    using type = detail::type_list<any_packing, flat>;
 };
 
 struct any_grouping
@@ -1390,6 +793,13 @@ struct partition : any_grouping
     static constexpr std::array<std::string_view, 3> phrases { "union find", "disjoint sets", "equivalence classes" };
 };
 
+/// The tag types ofgrouping: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<grouping>
+{
+    using type = detail::type_list<any_grouping, partition>;
+};
+
 struct any_tracking
 {
     using root = any_tracking;
@@ -1409,11 +819,19 @@ struct change_log : any_tracking
     static constexpr std::array<std::string_view, 3> phrases { "delta", "what changed", "semi-naive evaluation" };
 };
 
+/// The tag types oftracking: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<tracking>
+{
+    using type = detail::type_list<any_tracking, change_log>;
+};
+
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on
 // monotone, one that cannot insert on frozen. Multiplicity a multimap declares (multi), and a request states it.
 struct may_change
 {
     using root = may_change;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
     static constexpr auto value = change::none;
     static constexpr std::string_view name = "may_change";
     using group = semantics_group;
@@ -1440,9 +858,17 @@ struct frozen : monotone
     static constexpr std::array<std::string_view, 3> phrases { "built once", "read only", "immutable after building" };
 };
 
+/// The tag types ofchange: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<change>
+{
+    using type = detail::type_list<may_change, monotone, frozen>;
+};
+
 struct maybe_empty
 {
     using root = maybe_empty;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
     static constexpr auto value = emptiness::none;
     static constexpr std::string_view name = "maybe_empty";
     using group = semantics_group;
@@ -1459,9 +885,17 @@ struct nonempty : maybe_empty
     static constexpr std::array<std::string_view, 2> phrases { "never empty", "nonempty" };
 };
 
+/// The tag types ofemptiness: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<emptiness>
+{
+    using type = detail::type_list<maybe_empty, nonempty>;
+};
+
 struct any_multiplicity
 {
     using root = any_multiplicity;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
     static constexpr auto value = multiplicity::none;
     static constexpr std::string_view name = "any_multiplicity";
     using group = semantics_group;
@@ -1476,6 +910,13 @@ struct multi : any_multiplicity
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Any number of values per key: a multimap.";
     static constexpr std::array<std::string_view, 3> phrases { "multimap", "many values per key", "adjacency lists" };
+};
+
+/// The tag types ofmultiplicity: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<multiplicity>
+{
+    using type = detail::type_list<any_multiplicity, multi>;
 };
 
 struct by_key
@@ -1497,11 +938,19 @@ struct positional : by_key
     static constexpr std::array<std::string_view, 3> phrases { "by position", "numbered as inserted", "interner" };
 };
 
+/// The tag types ofposition: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<position>
+{
+    using type = detail::type_list<by_key, positional>;
+};
+
 // How a Store is used: it changes which representation is chosen, never what the Store guarantees. Only a
 // request says it; docs/BENCHMARKS.md backs what each one chooses.
 struct general
 {
     using root = general;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
     static constexpr auto value = workload::none;
     static constexpr std::string_view name = "general";
     using group = hints_group;
@@ -1518,9 +967,17 @@ struct small : general
     static constexpr std::array<std::string_view, 3> phrases { "few elements", "small", "tiny" };
 };
 
+/// The tag types ofworkload: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<workload>
+{
+    using type = detail::type_list<general, small>;
+};
+
 struct any_priority
 {
     using root = any_priority;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
     static constexpr auto value = priority::none;
     static constexpr std::string_view name = "any_priority";
     using group = semantics_group;
@@ -1538,307 +995,11 @@ struct monotone_priority : any_priority
     static constexpr std::array<std::string_view, 3> phrases { "dijkstra", "non-negative lengths", "event simulation" };
 };
 
-// What the data is: derived from the element types (urd/registry/features.hpp), never stated; a container relies on
-// them per role (its key or elements, its mapped values, its rows).
-
-// Can urd hash it?
-struct any_can_hash
+/// The tag types ofpriority: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<priority>
 {
-    using root = any_can_hash;
-    static constexpr auto value = hashability::none;
-    static constexpr std::string_view name = "any_can_hash";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Can urd hash it?";
-};
-/// urd::Hash and urd::EqualTo hash it and compare it for equality. Derived from the types, never stated.
-struct can_hash : any_can_hash
-{
-    static constexpr auto value = hashability::can_hash;
-    static constexpr std::string_view name = "can_hash";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "urd::Hash and urd::EqualTo hash it and compare it for equality.";
-    static constexpr std::array<std::string_view, 2> phrases { "hashable", "has a hash" };
-};
-
-// Can urd order it?
-struct any_can_order
-{
-    using root = any_can_order;
-    static constexpr auto value = comparing::none;
-    static constexpr std::string_view name = "any_can_order";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Can urd order it?";
-};
-/// urd::Less orders it. Derived from the types, never stated.
-struct can_order : any_can_order
-{
-    static constexpr auto value = comparing::can_order;
-    static constexpr std::string_view name = "can_order";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "urd::Less orders it.";
-    static constexpr std::array<std::string_view, 2> phrases { "orderable", "comparable" };
-};
-
-// Is it an index?
-struct any_an_index
-{
-    using root = any_an_index;
-    static constexpr auto value = indexing::none;
-    static constexpr std::string_view name = "any_an_index";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Is it an index?";
-};
-/// It is an index 0..n-1 (urd::index_of gives its position). Derived from the types, never stated.
-struct an_index : any_an_index
-{
-    static constexpr auto value = indexing::an_index;
-    static constexpr std::string_view name = "an_index";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It is an index 0..n-1 (urd::index_of gives its position).";
-    static constexpr std::array<std::string_view, 2> phrases { "index", "id" };
-};
-
-// Copied as bytes?
-struct any_copies_as_bytes
-{
-    using root = any_copies_as_bytes;
-    static constexpr auto value = copying::none;
-    static constexpr std::string_view name = "any_copies_as_bytes";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Copied as bytes?";
-};
-/// It is trivially copyable: copied as bytes. Derived from the types, never stated.
-struct copies_as_bytes : any_copies_as_bytes
-{
-    static constexpr auto value = copying::copies_as_bytes;
-    static constexpr std::string_view name = "copies_as_bytes";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It is trivially copyable: copied as bytes.";
-    static constexpr std::array<std::string_view, 2> phrases { "trivially copyable", "plain data" };
-};
-
-// Destroyed without code?
-struct any_destroys_trivially
-{
-    using root = any_destroys_trivially;
-    static constexpr auto value = destruction::none;
-    static constexpr std::string_view name = "any_destroys_trivially";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Destroyed without code?";
-};
-/// It is trivially destructible: destroyed without running code. Derived from the types, never stated.
-struct destroys_trivially : any_destroys_trivially
-{
-    static constexpr auto value = destruction::destroys_trivially;
-    static constexpr std::string_view name = "destroys_trivially";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It is trivially destructible: destroyed without running code.";
-    static constexpr std::array<std::string_view, 2> phrases { "trivially destructible", "no destructor" };
-};
-
-// Can it fill an emptied slot?
-struct any_refillable
-{
-    using root = any_refillable;
-    static constexpr auto value = refilling::none;
-    static constexpr std::string_view name = "any_refillable";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Can it fill an emptied slot?";
-};
-/// It is default-constructible and movable, so a slot emptied can be filled again. Derived from the types, never stated.
-struct refillable : any_refillable
-{
-    static constexpr auto value = refilling::refillable;
-    static constexpr std::string_view name = "refillable";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It is default-constructible and movable, so a slot emptied can be filled again.";
-    static constexpr std::array<std::string_view, 2> phrases { "default constructible", "movable" };
-};
-
-// Its own order?
-struct any_own_order
-{
-    using root = any_own_order;
-    static constexpr auto value = order_source::none;
-    static constexpr std::string_view name = "any_own_order";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Its own order?";
-};
-/// The request gives no order_by: the elements are in their own order. Derived from the types, never stated.
-struct own_order : any_own_order
-{
-    static constexpr auto value = order_source::own_order;
-    static constexpr std::string_view name = "own_order";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "The request gives no order_by: the elements are in their own order.";
-    static constexpr std::array<std::string_view, 2> phrases { "no order_by", "natural keys" };
-};
-
-// Ordered as sorted means?
-struct any_natural_ordered
-{
-    using root = any_natural_ordered;
-    static constexpr auto value = natural_order_source::none;
-    static constexpr std::string_view name = "any_natural_ordered";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Ordered as sorted means?";
-};
-/// What orders the elements orders them as sorted means: urd::Less on orderable elements, or an order_by that agrees with it. Derived from the types, never stated.
-struct natural_ordered : any_natural_ordered
-{
-    static constexpr auto value = natural_order_source::natural_ordered;
-    static constexpr std::string_view name = "natural_ordered";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "What orders the elements orders them as sorted means: urd::Less on orderable elements, or an order_by that agrees with it.";
-    static constexpr std::array<std::string_view, 2> phrases { "sortable", "ordered by Less" };
-};
-
-// Ordered by entry?
-struct any_by_entry
-{
-    using root = any_by_entry;
-    static constexpr auto value = entry_order::none;
-    static constexpr std::string_view name = "any_by_entry";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Ordered by entry?";
-};
-/// The order_by orders a map's entries, by key and value. Derived from the types, never stated.
-struct by_entry : any_by_entry
-{
-    static constexpr auto value = entry_order::by_entry;
-    static constexpr std::string_view name = "by_entry";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "The order_by orders a map's entries, by key and value.";
-    static constexpr std::array<std::string_view, 2> phrases { "ordered by value", "entry order" };
-};
-
-// Integral priority?
-struct any_integral_priority
-{
-    using root = any_integral_priority;
-    static constexpr auto value = priority_key::none;
-    static constexpr std::string_view name = "any_integral_priority";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Integral priority?";
-};
-/// What the order compares is an integral number (a bucket per value). Derived from the types, never stated.
-struct integral_priority : any_integral_priority
-{
-    static constexpr auto value = priority_key::integral_priority;
-    static constexpr std::string_view name = "integral_priority";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "What the order compares is an integral number (a bucket per value).";
-    static constexpr std::array<std::string_view, 2> phrases { "integer priority", "bucketed priority" };
-};
-
-// Hashed by urd?
-struct any_urd_hashed
-{
-    using root = any_urd_hashed;
-    static constexpr auto value = hash_source::none;
-    static constexpr std::string_view name = "any_urd_hashed";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Hashed by urd?";
-};
-/// It is hashed by urd's own hash and equality, or ones that agree with them. Derived from the types, never stated.
-struct urd_hashed : any_urd_hashed
-{
-    static constexpr auto value = hash_source::urd_hashed;
-    static constexpr std::string_view name = "urd_hashed";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It is hashed by urd's own hash and equality, or ones that agree with them.";
-    static constexpr std::array<std::string_view, 2> phrases { "natural hash", "urd hash" };
-};
-
-// Rows that flatten?
-struct any_rows_flatten
-{
-    using root = any_rows_flatten;
-    static constexpr auto value = row_flattening::none;
-    static constexpr std::string_view name = "any_rows_flatten";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Rows that flatten?";
-};
-/// Its rows are frozen and hold elements, or rows kept in order: a jagged array stores them flattened. Derived from the types, never stated.
-struct rows_flatten : any_rows_flatten
-{
-    static constexpr auto value = row_flattening::rows_flatten;
-    static constexpr std::string_view name = "rows_flatten";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "Its rows are frozen and hold elements, or rows kept in order: a jagged array stores them flattened.";
-    static constexpr std::array<std::string_view, 2> phrases { "frozen rows", "flattenable rows" };
-};
-
-// Rows changing in place?
-struct any_rows_in_place
-{
-    using root = any_rows_in_place;
-    static constexpr auto value = row_updates::none;
-    static constexpr std::string_view name = "any_rows_in_place";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Rows changing in place?";
-};
-/// Its rows change in place: sequences, dense sets' bits, or fixed-shape rows of such rows at any depth. Derived from the types, never stated.
-struct rows_in_place : any_rows_in_place
-{
-    static constexpr auto value = row_updates::rows_in_place;
-    static constexpr std::string_view name = "rows_in_place";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "Its rows change in place: sequences, dense sets' bits, or fixed-shape rows of such rows at any depth.";
-    static constexpr std::array<std::string_view, 2> phrases { "fixed rows", "rows changed in place" };
-};
-
-// Rows kept for reuse?
-struct any_rows_reused
-{
-    using root = any_rows_reused;
-    static constexpr auto value = row_reuse::none;
-    static constexpr std::string_view name = "any_rows_reused";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Rows kept for reuse?";
-};
-/// Its rows are Stores that may shrink (not frozen, monotone, nonempty or of a fixed shape): emptied rows can be kept and refilled. Derived from the types, never stated.
-struct rows_reused : any_rows_reused
-{
-    static constexpr auto value = row_reuse::rows_reused;
-    static constexpr std::string_view name = "rows_reused";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "Its rows are Stores that may shrink (not frozen, monotone, nonempty or of a fixed shape): emptied rows can be kept and refilled.";
-    static constexpr std::array<std::string_view, 2> phrases { "reusable rows", "rows cleared and refilled" };
-};
-
-// Names its members?
-struct any_names_members
-{
-    using root = any_names_members;
-    static constexpr auto value = member_naming::none;
-    static constexpr std::string_view name = "any_names_members";
-    using group = semantics_group;
-    using heading = promise_heading;
-    static constexpr std::string_view question = "Names its members?";
-};
-/// It names its members for serialization (static constexpr cista_members()), so cista can store it as bytes. Derived from the types, never stated.
-struct names_members : any_names_members
-{
-    static constexpr auto value = member_naming::names_members;
-    static constexpr std::string_view name = "names_members";
-    static constexpr std::string_view promise = "data";
-    static constexpr std::string_view description = "It names its members for serialization (static constexpr cista_members()), so cista can store it as bytes.";
-    static constexpr std::array<std::string_view, 2> phrases { "serializable", "cista members" };
+    using type = detail::type_list<any_priority, monotone_priority>;
 };
 
 }  // namespace urd

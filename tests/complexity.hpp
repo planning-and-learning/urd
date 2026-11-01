@@ -156,62 +156,25 @@ inline constexpr std::array<urd::tag, 12> costly { urd::keys::dense,       urd::
                                      urd::layering::layered,     urd::tracking::change_log,   urd::handling::handles,    urd::sharing::structural_sharing, urd::grouping::partition,
                                      urd::shape::fixed_shape, urd::direction::bidirectional };
 
-/// The operations a Store offers, read from its facets (`On::on`); the facets not listed here (sizing, equality, set
-/// algebra, ...) are not compared.
-template<typename S, typename On>
-constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered_by()
-{
-    using urd::detail::facet_id;
-    auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
-    const auto offer = [&](op what) { result[static_cast<std::size_t>(what)] = true; };
-    // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
-    if (On::on(facet_id::growth) && !urd::has<S, urd::fixed_shape>)
-        offer(op::insert);
-    if (On::on(facet_id::removal))
-    {
-        offer(op::erase);
-        offer(op::clear);
-    }
-    if (On::on(facet_id::lookup) || On::on(facet_id::values_by_key) || On::on(facet_id::multi_values))
-        offer(op::lookup);
-    if (On::on(facet_id::ordered_lookup))
-        offer(op::ordered_lookup);
-    if (On::on(facet_id::iteration))
-        offer(op::iterate);
-    if (On::on(facet_id::positions) || On::on(facet_id::shape))
-        offer(op::access);
-    if (On::on(facet_id::queue_access))
-    {
-        offer(op::push);
-        offer(op::pop);
-        offer(op::top);
-        offer(op::clear);
-    }
-    if (On::on(facet_id::grouping))
-    {
-        offer(op::merge);
-        offer(op::lookup);
-    }
-    if (On::on(facet_id::pool) || On::on(facet_id::records))
-    {
-        offer(op::insert_row);
-        offer(op::find_row);
-        offer(op::access);
-    }
-    if (On::on(facet_id::slots))
-    {
-        offer(op::insert_row);
-        offer(op::access);
-    }
-    if (On::on(facet_id::scopes))
-        offer(op::scope);
-    return result;
-}
-
-/// The operations a Store of R for S offers.
+/// The operations a Store of R for S offers: those its facets offer (urd::detail::facet_operations, beside each
+/// facet) where they are on.
 template<typename R, typename S>
 constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
-{ return offered_by<S, urd::detail::facet_switches<R, S>>(); }
+{
+    auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
+    const auto offer = [&]<template<typename, typename, typename> class F>()
+    {
+        if (urd::detail::facet_on<R, S, F>())
+            for (const auto each : urd::detail::facet_operations<F>::offered)
+                result[static_cast<std::size_t>(each)] = true;
+    };
+    []<template<typename, typename, typename> class... Fs>(urd::detail::facet_list<Fs...> /*facets*/, const auto& each_facet)
+    { (each_facet.template operator()<Fs>(), ...); }(typename S::kind::facets {}, offer);
+    // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
+    if (urd::has<S, urd::fixed_shape>)
+        result[static_cast<std::size_t>(op::insert)] = false;
+    return result;
+}
 
 /// The operations a request's Store offers, from its spec alone: no container is named (R is void).
 template<typename S>

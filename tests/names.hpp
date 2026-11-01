@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace urd::test
@@ -37,37 +38,74 @@ struct name<R>
     static constexpr std::string_view value = urd::container_synopsis<R>::description;
 };
 
-/// The vocabulary as arrays in the order of urd::tag, computed from each tag's words (beside the tag, urd/tags.hpp): for printing a request or a spec, and for share/urd/vocabulary.json
-/// (tests/vocabulary_table.cpp).
-inline constexpr std::array<std::string_view, urd::detail::tag_count> tag_names = urd::detail::tag_names;
+/// The vocabulary as arrays by category, then by answer, computed from each tag's words (beside the tag, urd/tags.hpp):
+/// for printing a request or a spec, and for share/urd/vocabulary.json (tests/vocabulary_table.cpp).
 using urd::tag_name;
+using urd::detail::most_answers;
+
+/// urd's categories, in the order its documentation and share/urd/vocabulary.json list them; every kind's request
+/// format (urd/kinds.hpp) answers only these.
+using vocabulary_categories = urd::detail::request_format<urd::order, urd::uniqueness, urd::keys, urd::referencing, urd::layout, urd::representation,
+                                                          urd::threading, urd::memory, urd::clearing, urd::access, urd::scoping, urd::layering,
+                                                          urd::handling, urd::sharing, urd::direction, urd::shape, urd::packing, urd::grouping,
+                                                          urd::tracking, urd::change, urd::emptiness, urd::multiplicity, urd::position,
+                                                          urd::workload, urd::priority>;
+template<typename... Es>
+constexpr auto tables_of(urd::detail::request_format<Es...> /*categories*/)
+{ return std::array<const urd::detail::category_table*, sizeof...(Es)> { urd::category<Es>... }; }
+inline constexpr auto category_tables = tables_of(vocabulary_categories {});
+inline constexpr std::size_t category_count = category_tables.size();
+/// The position of a category among vocabulary_categories.
+constexpr std::size_t category_index(const urd::detail::category_table* of)
+{
+    for (std::size_t each = 0; each < category_count; ++each)
+        if (category_tables[each] == of)
+            return each;
+    throw "urd: a category outside the vocabulary (tests/names.hpp, vocabulary_categories)";
+}
+/// Every tag of the vocabulary, each category's none first.
+template<typename F>
+constexpr void for_each_tag(F f)
+{
+    for (const auto* each : category_tables)
+        for (std::uint8_t answer = 0; answer < each->answers; ++answer)
+            f(urd::tag(each, answer));
+}
+/// urd's type traits (urd::trait), in the order share/urd/complexity.json lists them.
+inline constexpr std::array<const urd::trait_info*, 12> vocabulary_traits {
+    urd::trait_v<urd::trait::can_hash>,        urd::trait_v<urd::trait::an_index>,          urd::trait_v<urd::trait::copies_as_bytes>,
+    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,  urd::trait_v<urd::trait::own_order>,
+    urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::by_entry>,          urd::trait_v<urd::trait::integral_priority>,
+    urd::trait_v<urd::trait::rows_flatten>,    urd::trait_v<urd::trait::rows_in_place>,     urd::trait_v<urd::trait::rows_reused>
+};
+
+/// Every kind's format answers only the vocabulary's categories.
+template<typename... Es>
+constexpr bool within_vocabulary(urd::detail::request_format<Es...> /*format*/)
+{ return ((category_index(urd::category<Es>) < category_count) && ...); }
+static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/) { return (within_vocabulary(typename Kinds::format {}) && ...); }(urd::leaf_kinds<> {}));
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
-/// tags answer (the words of its root). Whether a request may state its tags comes from the code
-/// (urd::detail::statable).
+/// tags answer (the words of its none).
 struct category_entry
 {
     std::string_view group;
     std::string_view heading;
     std::string_view question;
 };
-template<typename Tag>
-constexpr category_entry category_of()
-{
-    if constexpr (!std::is_same_v<typename Tag::root, Tag>)
-        return {};
-    else
-        return { Tag::group::id, Tag::heading::id, Tag::question };
-}
-template<typename... Tags>
-constexpr auto categories_of(urd::detail::type_list<Tags...> /*tags*/)
-{ return std::array<category_entry, sizeof...(Tags)> { category_of<Tags>()... }; }
-inline constexpr std::array<category_entry, urd::detail::tag_count> category_vocabulary = categories_of(urd::detail::all_tags {});
+template<typename Root, typename... Tags>
+constexpr category_entry category_of(urd::detail::type_list<Root, Tags...> /*tags*/)
+{ return { Root::group::id, Root::heading::id, Root::question }; }
+template<typename... Es>
+constexpr auto categories_of(urd::detail::request_format<Es...> /*categories*/)
+{ return std::array<category_entry, sizeof...(Es)> { category_of(typename urd::tags_of<Es>::type {})... }; }
+inline constexpr std::array<category_entry, category_count> category_vocabulary = categories_of(vocabulary_categories {});
+constexpr const category_entry& category_entry_of(urd::tag of) { return category_vocabulary[category_index(of.in)]; }
 
 /// What a tag is to the one who writes a request: who keeps it (semantics only), its description and phrases
 /// (urd/tags.hpp), and its role, derived: kind in the kind group; demand where the caller promises it; hint in the
-/// hints group; else guarantee where a container declares its category (guaranteed_roots), request where only a
-/// request states it. A category's root has an empty entry: it promises nothing and is never written.
+/// hints group; else guarantee where a container declares its category, request where only a request states it
+/// (request_only). A category's none has an empty entry: it promises nothing and is never written.
 struct tag_entry
 {
     std::string_view role;
@@ -83,7 +121,7 @@ constexpr std::string_view role_of(urd::tag of, std::string_view group, std::str
         return "demand";
     if (group == "hints")
         return "hint";
-    return urd::detail::in(urd::detail::root_of(of), urd::detail::guaranteed_roots) ? "guarantee" : "request";
+    return of.in->request_only ? "request" : "guarantee";
 }
 template<typename Tag>
 constexpr tag_entry entry_of()
@@ -95,15 +133,18 @@ constexpr tag_entry entry_of()
         result.description = Tag::description;
         for (std::size_t each = 0; each < Tag::phrases.size(); ++each)
             result.phrases[each] = Tag::phrases[each];
-        const auto& category = category_vocabulary[urd::detail::index(urd::detail::root_of(Tag::value))];
-        result.role = role_of(Tag::value, category.group, result.promise);
+        result.role = role_of(Tag::value, category_entry_of(Tag::value).group, result.promise);
     }
     return result;
 }
 template<typename... Tags>
-constexpr auto entries_of(urd::detail::type_list<Tags...> /*tags*/)
-{ return std::array<tag_entry, sizeof...(Tags)> { entry_of<Tags>()... }; }
-inline constexpr std::array<tag_entry, urd::detail::tag_count> tag_vocabulary = entries_of(urd::detail::all_tags {});
+constexpr std::array<tag_entry, most_answers> entries_of(urd::detail::type_list<Tags...> /*tags*/)
+{ return { entry_of<Tags>()... }; }
+template<typename... Es>
+constexpr auto all_entries_of(urd::detail::request_format<Es...> /*categories*/)
+{ return std::array<std::array<tag_entry, most_answers>, sizeof...(Es)> { entries_of(typename urd::tags_of<Es>::type {})... }; }
+inline constexpr auto tag_vocabulary = all_entries_of(vocabulary_categories {});
+constexpr const tag_entry& tag_entry_of(urd::tag of) { return tag_vocabulary[category_index(of.in)][of.answer]; }
 
 /// The groups, by what leaving out a needed tag causes (urd::all_groups), and the reading headings of semantics.
 struct group_entry
@@ -126,31 +167,31 @@ struct heading_entry
 inline constexpr auto heading_vocabulary = []<typename... Headings>(std::type_identity<std::tuple<Headings...>> /*headings*/)
 { return std::array<heading_entry, sizeof...(Headings)> { heading_entry { Headings::id, Headings::title }... }; }(std::type_identity<urd::all_headings> {});
 
-// Every tag has its words: a name, and either a category's group and question (a root) or a description (any other
+// Every tag has its words: a name, and either a category's group and question (a none) or a description (any other
 // tag); a heading exactly for the categories of semantics, a promise exactly for its tags. A tag added without them
 // fails here.
 static_assert(
     []
     {
-        for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
-        {
-            const auto of = urd::detail::tag_at(each);
-            const bool root = urd::detail::root_of(of) == of;
-            const auto& category = category_vocabulary[urd::detail::index(urd::detail::root_of(of))];
-            const bool semantics = category.group == "semantics";
-            if (tag_names[each].empty() || tag_vocabulary[each].description.empty() != root || category_vocabulary[each].question.empty() == root
-                || category.group.empty() || category.heading.empty() == semantics || (!root && tag_vocabulary[each].promise.empty() == semantics))
-                return false;
-        }
-        return true;
+        bool fine = true;
+        for_each_tag(
+            [&fine](urd::tag of)
+            {
+                const bool root = of.answer == 0;
+                const auto& category = category_entry_of(of);
+                const bool semantics = category.group == "semantics";
+                if (tag_name(of).empty() || tag_entry_of(of).description.empty() != root || category.question.empty() || category.group.empty()
+                    || category.heading.empty() == semantics || (!root && tag_entry_of(of).promise.empty() == semantics))
+                    fine = false;
+            });
+        return fine;
     }(),
-    "urd/tags.hpp: every tag has a name; a root a group and a question, and a heading in semantics; any other tag a "
-    "description and phrases, and a promise in semantics");
-static_assert(tag_name(urd::order::sorted) == "sorted" && tag_vocabulary[urd::detail::index(urd::priority::monotone_priority)].role == "demand"
-              && tag_vocabulary[urd::detail::index(urd::workload::small)].role == "hint" && tag_vocabulary[urd::detail::index(urd::access::fifo)].role == "kind"
-              && tag_vocabulary[urd::detail::index(urd::change::frozen)].role == "request"
-              && category_vocabulary[urd::detail::index(urd::threading::none)].group == "semantics"
-              && category_vocabulary[urd::detail::index(urd::clearing::none)].group == "costs");
+    "urd/tags.hpp: every tag has a name; a category's none a group and a question, and a heading in semantics; any "
+    "other tag a description and phrases, and a promise in semantics");
+static_assert(tag_name(urd::order::sorted) == "sorted" && tag_entry_of(urd::priority::monotone_priority).role == "demand"
+              && tag_entry_of(urd::workload::small).role == "hint" && tag_entry_of(urd::access::fifo).role == "kind"
+              && tag_entry_of(urd::change::frozen).role == "request" && category_entry_of(urd::threading::none).group == "semantics"
+              && category_entry_of(urd::clearing::none).group == "costs");
 
 /// Names typed tests by container: a Store as "Store_" and its representation, with the index for uniqueness.
 struct Names

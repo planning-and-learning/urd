@@ -13,6 +13,7 @@
 #include "urd/store.hpp"
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <fmt/format.h>
 #include <string>
@@ -44,7 +45,7 @@ std::vector<std::size_t> sizes_of()
 {
     if constexpr (urd::has<S, urd::small>)
         return { small_sizes.begin(), small_sizes.end() };
-    else if constexpr (S::is_pool)
+    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>)
         return { row_lengths.begin(), row_lengths.end() };
     else
         return { sizes.begin(), sizes.end() };

@@ -76,11 +76,16 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet_id::growth>
+struct facet_condition<facet::growth>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return grows<S> && S::iterable; }
+    { return grows<S>; }
+};
+template<>
+struct facet_operations<facet::growth>
+{
+    static constexpr std::array offered { operation::insert };
 };
 
 }  // namespace urd::detail

@@ -14,8 +14,11 @@ template<typename... Decls>
 constexpr auto entries_from(type_list<Decls...> /*declarations*/)
 { return std::array<registry_entry, sizeof...(Decls)> { entry_of<Decls>()... }; }
 
-/// Node's table as values, one entry per declaration, in the same order.
-template<typename Node>
-inline constexpr auto table_of = entries_from(typename Node::declarations {});
+/// A list of declarations as values, one entry each, in the same order; and a kind's table (kinds sharing their
+/// containers share one).
+template<typename List>
+inline constexpr auto table_of_list = entries_from(List {});
+template<typename Kind>
+inline constexpr const auto& table_of = table_of_list<declarations_t<Kind>>;
 
 }  // namespace urd::detail

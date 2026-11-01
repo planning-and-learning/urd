@@ -51,16 +51,13 @@ template<typename S>
 std::string spec_tags()
 {
     auto result = std::string();
-    for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
-    {
-        const auto root = urd::detail::tag_at(each);
-        if (urd::detail::root_of(root) == root && S::urd_properties.in(root) != root)
+    S::urd_properties.for_each(
+        [&result](urd::tag each)
         {
             if (!result.empty())
                 result += ", ";
-            result += urd::test::tag_name(S::urd_properties.in(root));
-        }
-    }
+            result += urd::test::tag_name(each);
+        });
     return result;
 }
 

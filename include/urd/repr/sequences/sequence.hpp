@@ -17,9 +17,9 @@ struct vector_decl
 {
     static constexpr std::string_view id = "vector";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/sequence.hpp" };
-    static constexpr urd::kind kind = urd::kind::sequence;
+    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on {  };
+    static constexpr role_tags relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
