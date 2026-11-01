@@ -3,10 +3,36 @@ Extending urd
 
 .. cpp:namespace:: urd
 
-urd's vocabulary is open. A container, a category, a type trait, a role, an operation, a facet, a type slot and a kind
-are each a declaration of its own; none is a number in a shared list, and adding one edits no file of urd. Each is
-identified by itself (the address of its words, or its type), so a library can add its own beside urd's.
-``tests/store/outside_kind.cpp`` adds a kind with all of them and resolves a Store to it; it is the example below.
+urd's vocabulary is open. A container, a category, a type trait, a role, an operation, a facet and a kind are each a
+declaration of its own, identified by itself (the address of its words, or its type), so a library can add its own
+beside urd's. Adding one is its own file, plus its entry in the one list it belongs to:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Addition
+     - Its entry
+   * - A container
+     - ``declarations_of<Kind>`` (``include/urd/registry/declarations.hpp``: its place is its preference) and the
+       include of its ``*_fwd.hpp`` there
+   * - A kind
+     - ``urd::kinds`` (``include/urd/kinds.hpp``) and its ``declarations_of<Kind>``
+   * - A tag answer, or a category
+     - its ``tags_of`` list (``include/urd/tags.hpp``); a category also in the formats of the kinds that ask it
+   * - A type trait
+     - its role's ``traits_of_role`` list
+   * - A role
+     - ``urd::roles`` (``include/urd/registry/facts.hpp``), and the ``played`` of the kinds whose types play it
+   * - An operation
+     - the ``facet_operations`` of the facet that offers it
+   * - A facet
+     - the ``facets`` of the kinds that offer it; for now also its declaration in ``include/urd/kinds.hpp`` and its
+       include in ``include/urd/store.hpp``
+
+What a tag means for a Store is the tag's own data (``urd::tag_defaults``: what it implies, keeps, promises, puts
+later, stops or fixes), a trait's meaning is its ``holds``, a facet's is its condition (``facet_defaults``), and the
+tables, tests and docs derive their lists from these registries. ``tests/store/outside_kind.cpp`` adds a kind with a
+category, a facet, operations and a container, and resolves a Store to it; it is the example below.
 
 A container
 -----------
