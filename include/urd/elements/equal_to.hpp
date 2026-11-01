@@ -17,8 +17,7 @@
 
 // Copied from yggdrasil (include/yggdrasil/semantics/equal_to.hpp); names moved from ygg to urd.
 
-#ifndef URD_SEMANTICS_EQUAL_TO_HPP_
-#define URD_SEMANTICS_EQUAL_TO_HPP_
+#pragma once
 
 #include "urd/elements/concepts.hpp"
 
@@ -33,12 +32,6 @@
 
 namespace urd
 {
-
-/// Whether `lhs` and `rhs` hold equal elements, by EqualTo, in the same order: two ranges of the same element type.
-template<std::ranges::input_range Range>
-    requires EqualityComparableByEqualTo<std::ranges::range_value_t<Range>>
-constexpr bool ranges_equal(const Range& lhs, const Range& rhs)
-{ return std::ranges::equal(lhs, rhs, EqualTo<std::ranges::range_value_t<Range>> {}); }
 
 /// @brief `EqualTo` is our custom equality comparator, like std::equal_to.
 ///
@@ -76,7 +69,7 @@ struct EqualTo<R>
 {
     constexpr bool operator()(const R& lhs, const R& rhs) const
         requires EqualityComparableByEqualTo<std::ranges::range_value_t<R>>
-    { return ranges_equal(lhs, rhs); }
+    { return std::ranges::equal(lhs, rhs, EqualTo<std::ranges::range_value_t<R>> {}); }
 };
 
 template<typename T>
@@ -150,5 +143,3 @@ struct EqualTo<T>
 };
 
 }  // namespace urd
-
-#endif

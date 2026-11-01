@@ -41,9 +41,9 @@ struct rows_flatten
     static consteval bool holds()
     {
         using row = detail::held_as<T>;
-        if constexpr (!row::store)
+        if constexpr (!row::row)
             return false;
-        else if constexpr (!detail::held_as<typename row::elements>::store)
+        else if constexpr (!detail::held_as<typename row::elements>::row)
             return row::properties.has(change::frozen);
         else
             return row::properties.has(change::frozen) && detail::appends<typename row::kind>;
@@ -58,9 +58,9 @@ struct rows_in_place
     static consteval bool holds()
     {
         using row = detail::held_as<T>;
-        if constexpr (!row::store)
+        if constexpr (!row::row)
             return false;
-        else if constexpr (!detail::held_as<typename row::elements>::store)
+        else if constexpr (!detail::held_as<typename row::elements>::row)
             return !row::properties.has(change::frozen) && row::kind::changes_in_place(row::properties);
         else
             return !row::properties.has(change::frozen) && row::properties.has(shape::fixed_shape) && holds<typename row::elements>();
@@ -74,7 +74,7 @@ struct rows_reused
     static consteval bool holds()
     {
         using row = detail::held_as<T>;
-        return row::store && !row::properties.has(change::monotone) && !row::properties.has(emptiness::nonempty) && !row::properties.has(shape::fixed_shape);
+        return row::row && !row::properties.has(change::monotone) && !row::properties.has(emptiness::nonempty) && !row::properties.has(shape::fixed_shape);
     }
 };
 

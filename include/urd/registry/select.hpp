@@ -7,7 +7,6 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/scan.hpp"
 #include "urd/repr/core/dependent_false.hpp"
-#include "urd/repr/core/numbered.hpp"
 #include "urd/spec.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
@@ -33,37 +32,26 @@ inline constexpr request_shape shape_of = []
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
 
-/// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
+/// Every entry serving spec S, in the order they are preferred: what the tables and tests read of a request.
 template<typename S>
 inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
-/// The entry for spec S: the first serving it (its position in its kind's table), or no_entry. `found` is false where
-/// none serves.
+template<typename S, std::size_t... I>
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.held[I], declarations_t<typename S::kind>>::type...>;
+template<typename S>
+using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
+
+/// The entry chosen for spec S: the first serving it (its position in its kind's table), or no_entry. `found` is false
+/// where none serves.
 template<typename S>
 struct choose
 {
     using kind = typename S::kind;
-    static constexpr std::size_t position = serving_v<S>.count != 0 ? serving_v<S>.at[0] : no_entry;
+    static constexpr std::size_t position = serving_v<S>.count != 0 ? serving_v<S>.held[0] : no_entry;
     static constexpr bool found = position != no_entry;
     static constexpr std::string_view id = found ? table_of<kind>[position].id : std::string_view();
     /// The headers of the chosen container, a wrapper's part's first.
     static constexpr std::span<const std::string_view> headers = found ? table_of<kind>[position].headers : std::span<const std::string_view>();
 };
-
-template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], declarations_t<typename S::kind>>::type...>;
-template<typename S>
-using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
-
-/// The headers of S's entry that this file lacks, as urd::include<"..."> in a type_list, a wrapper's part's first.
-template<typename S, std::size_t... I>
-consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
-{
-    constexpr auto entry = table_of<typename S::kind>[choose<S>::position];
-    return typename concat<type_list<>,
-                           std::conditional_t<included<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>,
-                                              type_list<>,
-                                              type_list<include<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>>>...>::type {};
-}
 
 /// What a request resolves to where this file lacks headers of its container: a type declared only, whose arguments
 /// name the request (S), the container, and every missing header, a wrapper's part first. Naming a Store over it is
@@ -72,41 +60,37 @@ consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 template<typename S, fixed_string Container, typename Missing>
 struct missing_container;
 
-/// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
-/// the facets its kind lists, each by its own condition.
-template<typename S, template<typename, typename, typename> class F>
-consteval bool hands_out_indices_by()
+/// The headers of S's chosen container that this file lacks, as urd::include<"..."> in a type_list, a wrapper's
+/// part's first.
+template<typename S, std::size_t... I>
+consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 {
-    if constexpr (facet_condition<F>::hands_out_indices)
-        return facet_condition<F>::template on<void, S>();
-    else
-        return false;
+    constexpr auto headers = choose<S>::headers;
+    return typename concat<type_list<>,
+                           std::conditional_t<included<fixed_string<headers[I].size() + 1>(headers[I])>,
+                                              type_list<>,
+                                              type_list<include<fixed_string<headers[I].size() + 1>(headers[I])>>>...>::type {};
 }
-template<typename S, template<typename, typename, typename> class... Fs>
-consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
-{ return (hands_out_indices_by<S, Fs>() || ...); }
-/// The container of a Store that hands out indices for views is numbered (urd::layer).
-template<typename S, typename R>
-using numbered_t = std::conditional_t<hands_out_indices<S>(facets_of<typename S::kind> {}), repr::Numbered<R>, R>;
 
+/// The container declaration Decl names for spec S, numbered where the Store hands out indices (numbered_t), where
+/// this file includes its headers (Missing is empty); else the missing_container naming them.
 template<typename S, typename Decl, typename Missing>
-struct missing_headers_for
+struct container_of_declaration
 {
     using type = missing_container<S, fixed_string<Decl::id.size() + 1>(Decl::id), Missing>;
 };
 template<typename S, typename Decl>
-struct missing_headers_for<S, Decl, type_list<>>
+struct container_of_declaration<S, Decl, type_list<>>
 {
     using type = numbered_t<S, typename representation_of<Decl, S>::type>;
 };
 
-/// The container for spec S, reached only where an entry serves it: the type its declaration names, where this file
-/// includes the entry's headers; else the error naming them.
+/// The container for spec S, reached only where an entry serves it.
 template<typename S>
 struct chosen_type
 {
     using declaration = typename nth<choose<S>::position, declarations_t<typename S::kind>>::type;
-    using type = typename missing_headers_for<S, declaration, decltype(missing_headers<S>(std::make_index_sequence<choose<S>::headers.size()> {}))>::type;
+    using type = typename container_of_declaration<S, declaration, decltype(missing_headers<S>(std::make_index_sequence<choose<S>::headers.size()> {}))>::type;
 };
 
 /// The static assertion a request no container serves fails with; S, in its instantiation, names the request.

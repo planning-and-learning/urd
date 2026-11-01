@@ -219,7 +219,7 @@ struct verifier<pool_kind>
     template<typename R>
     static std::optional<std::string> run(R& range, unsigned seed, int steps)
     {
-        if constexpr (held_as<typename R::value_type>::store)
+        if constexpr (held_as<typename R::value_type>::row)
             return run_pool(range, seed, steps);
         else if constexpr (has<container_traits<R>, layered>)
             return run_layered_records(range, seed, steps);

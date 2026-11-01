@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/store/construction.hpp"
+#include "urd/store/store_facts.hpp"
 #include "urd/store/types.hpp"
 
 #include <type_traits>

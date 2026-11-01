@@ -17,8 +17,7 @@
 
 // Copied from yggdrasil (include/yggdrasil/core/concepts.hpp); names moved from ygg to urd.
 
-#ifndef URD_SEMANTICS_CONCEPTS_HPP_
-#define URD_SEMANTICS_CONCEPTS_HPP_
+#pragma once
 
 #include <array>
 #include <concepts>
@@ -57,20 +56,6 @@ struct Hash;
 template<typename T>
 struct Less;
 
-namespace detail
-{
-template<typename R, typename S>
-class Store;
-}
-
-/// Whether T is a Store. Known from its name alone, so that what a Store's semantics are (Hash, EqualTo, Less) is
-/// decided by its request and never by completing it: a Store's representation is defined only where the Store is
-/// held, not where it is named as another Store's element.
-template<typename T>
-inline constexpr bool is_store = false;
-template<typename R, typename S>
-inline constexpr bool is_store<detail::Store<R, S>> = true;
-
 /// The members that identify a record, as member pointers:
 /// `static constexpr auto identifying_members() noexcept { return urd::Members<&Data::a, &Data::b> {}; }`.
 template<auto... Ms>
@@ -90,15 +75,10 @@ inline constexpr bool is_members_v<Members<Ms...>> = true;
 template<typename T>
 concept MemberIdentified = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
 
-/// @brief T has a function that returns the members that identify it.
+/// @brief T names what identifies it: its identifying members, or a function that returns what identifies it; Hash,
+/// EqualTo and Less then follow from that.
 template<typename T>
-concept FunctionIdentified = !MemberIdentified<T> && requires(const T a) {
-    { a.identifying_members() };
-};
-
-/// @brief T names what identifies it, in either way; Hash, EqualTo and Less then follow from that.
-template<typename T>
-concept Identifiable = FunctionIdentified<T> || MemberIdentified<T>;
+concept Identifiable = MemberIdentified<T> || requires(const T& x) { x.identifying_members(); };
 
 namespace detail
 {
@@ -153,5 +133,3 @@ concept OrderedByLess = requires(const T& lhs, const T& rhs) {
 };
 
 }  // namespace urd
-
-#endif

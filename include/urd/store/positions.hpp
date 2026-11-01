@@ -59,7 +59,7 @@ private:
 template<typename Derived, typename R, typename S>
 class insertion_positions : public positions<Derived, R, S>
 {
-    using base = positions<Derived, R, S>;
+    using positions_base = positions<Derived, R, S>;
     using types = store_types<S>;
     using const_reference_type = typename iterator_types<R, S>::const_reference;
 
@@ -67,8 +67,8 @@ public:
     /// A set's elements by index (urd::index<T>): what a positional set mints, and what a view<T, Store> holds.
     using index_type = urd::index<typename types::value_type>;
 
-    using base::operator[];
-    using base::at;
+    using positions_base::operator[];
+    using positions_base::at;
 
     [[nodiscard]] const_reference_type operator[](index_type at) const { return (*this)[static_cast<std::size_t>(at.value)]; }
     [[nodiscard]] const_reference_type at(index_type at) const

@@ -27,22 +27,6 @@ concept orderable = OrderedByLess<T> && EqualityComparableByEqualTo<T>;
 template<typename T>
 concept hashable = Hashable<T> && EqualityComparableByEqualTo<T>;
 
-/// Compares by P(element) under urd::Less, and nothing else: two elements P does not separate are equivalent (in a
-/// unique Store, one element). P is a member pointer or a stateless callable; a request orders by it as by any other
-/// comparator: order_by<by<&Job::deadline>>.
-template<auto P>
-struct by
-{
-    static constexpr auto projection = P;
-
-    template<typename T>
-    constexpr bool operator()(const T& lhs, const T& rhs) const
-    {
-        using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const T&>>;
-        return Less<Projected> {}(std::invoke(P, lhs), std::invoke(P, rhs));
-    }
-};
-
 namespace detail
 {
 
@@ -62,6 +46,19 @@ template<typename T, typename Compare>
 using order_key_t = typename order_key_of<T, Compare>::type;
 
 }  // namespace detail
+
+/// Compares by P(element) under urd::Less, and nothing else: two elements P does not separate are equivalent (in a
+/// unique Store, one element). P is a member pointer or a stateless callable; a request orders by it as by any other
+/// comparator: order_by<by<&Job::deadline>>.
+template<auto P>
+struct by
+{
+    static constexpr auto projection = P;
+
+    template<typename T>
+    constexpr bool operator()(const T& lhs, const T& rhs) const
+    { return Less<detail::order_key_t<T, by>> {}(std::invoke(P, lhs), std::invoke(P, rhs)); }
+};
 
 /// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses (totally
 /// ordered, and no floating point, which urd::Less orders NaN in), over an orderable T; or any other comparator of

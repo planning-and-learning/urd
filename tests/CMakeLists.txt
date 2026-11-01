@@ -172,7 +172,7 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 61)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 62)
 # A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
@@ -182,6 +182,7 @@ urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd tag
 urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 24 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 62 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 27 "C compares two elements")
 urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")

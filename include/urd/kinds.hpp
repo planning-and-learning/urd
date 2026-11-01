@@ -271,6 +271,9 @@ struct map_kind : detail::any_kind
             stated.put(uniqueness::unique);
         return any_kind::meaning(stated);
     }
+    /// Positions are a multimap's: a map with each key once is reached by key (at, []), which positions would name
+    /// again.
+    static constexpr bool well_formed(const property_set& stated) { return !stated.has(position::positional) || stated.has(multiplicity::multi); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 

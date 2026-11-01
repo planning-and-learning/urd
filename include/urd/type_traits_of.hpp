@@ -21,12 +21,12 @@
 namespace urd::detail
 {
 
-/// What T is held as an element: a Store (its tags, what it requires, its kind, its elements' type), a registered
-/// container holding elements (the same, from its declaration, requiring nothing), or plain.
+/// What T is held as an element: a row (`row`: a Store, with its tags, what it requires, its kind and its elements'
+/// type; or a registered container holding elements, the same from its declaration, requiring nothing), or plain.
 template<typename T>
 struct held_as
 {
-    static constexpr bool store = false;
+    static constexpr bool row = false;
     static constexpr property_set properties = property_set::roots();
     static constexpr property_set required = property_set::roots();
     using kind = void;
@@ -36,7 +36,7 @@ template<typename T>
     requires is_store<T>
 struct held_as<T>
 {
-    static constexpr bool store = true;
+    static constexpr bool row = true;
     static constexpr property_set properties = container_traits<T>::urd_properties;
     static constexpr property_set required = container_traits<T>::required;
     using kind = typename container_traits<T>::kind;
@@ -46,11 +46,11 @@ template<typename T>
     requires(!is_store<T> && declared_container<T> && std::ranges::range<T>)
 struct held_as<T>
 {
-    static constexpr bool store = takes_v<T>;
-    static constexpr property_set properties = store ? declaration_t<T>::provides : property_set::roots();
+    static constexpr bool row = takes_v<T>;
+    static constexpr property_set properties = row ? declaration_t<T>::provides : property_set::roots();
     static constexpr property_set required = property_set::roots();
     using kind = typename declaration_t<T>::kind;
-    using elements = std::conditional_t<store, std::ranges::range_value_t<T>, void>;
+    using elements = std::conditional_t<row, std::ranges::range_value_t<T>, void>;
 };
 
 }  // namespace urd::detail
@@ -60,7 +60,7 @@ namespace urd::trait
 
 // What a type is, for the containers that hold it: derived from the types, never stated. Each trait is its words and
 // what it means of a plain type (holds), read for its role by urd::detail::traits_holding (urd/registry/facts.hpp); a
-// Store answers for itself (urd/store/construction.hpp, store_facts), so no trait is asked of one.
+// Store answers for itself (urd/store/store_facts.hpp, store_facts), so no trait is asked of one.
 
 // What an element, a map's value or a row's element is (role element, mapped, row_element).
 struct can_hash
@@ -111,7 +111,7 @@ struct whole_value
     static constexpr std::string_view description = "a value interned whole: no Store and no container of elements, which a pool holds as rows";
     template<typename T>
     static consteval bool holds()
-    { return !detail::held_as<T>::store; }
+    { return !detail::held_as<T>::row; }
 };
 
 // What an order C over elements Ordered is (role order).

@@ -3,6 +3,7 @@
 #include "urd/costs.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
+#include "urd/repr/core/numbered.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -21,7 +22,8 @@ namespace urd::detail
 // A Store is its core (store.hpp) and facets (namespace facet): one class per group of properties, holding
 // the members those properties allow, inherited where the Store's properties switch them on. Within one Store a member
 // name must live in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
-// recur (insert in insertion, appending, pool, slots and grouping).
+// recur (insert in insertion, appending, pool, records, slots and grouping). Within map_kind, entries shares names with
+// positions (position), multi_values (values) and inverse (keys): no container serves a request that has both.
 
 /// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
 /// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
@@ -35,9 +37,11 @@ inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.templat
 template<typename S>
 struct store_types
 {
+    /// What it holds may change after it is built: no tag stops that (frozen).
+    static constexpr bool changeable = !S::urd_properties.template any_says<&category_table::stops_changes>();
     /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
     /// and it is not frozen.
-    static constexpr bool writable = appends<typename S::kind> && !S::urd_properties.template any_says<&category_table::stops_changes>();
+    static constexpr bool writable = appends<typename S::kind> && changeable;
     /// Iterated in an order the request fixes (sorted, insertion_ordered, a sequence): ordered by it.
     static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&category_table::fixes_iteration_order>();
     /// Its contents fix the order its elements come in (sorted, canonical, a sequence): hashed by it.
@@ -81,6 +85,23 @@ struct facet_condition : facet_defaults
     { return true; }
 };
 
+/// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
+/// the facets its kind lists, each by its own condition from the spec alone.
+template<typename S, template<typename, typename, typename> class F>
+consteval bool hands_out_indices_by()
+{
+    if constexpr (facet_condition<F>::hands_out_indices)
+        return facet_condition<F>::template on<void, S>();
+    else
+        return false;
+}
+template<typename S, template<typename, typename, typename> class... Fs>
+consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
+{ return (hands_out_indices_by<S, Fs>() || ...); }
+/// The container R of a Store for spec S, numbered where the Store hands out indices for views (urd::layer).
+template<typename S, typename R>
+using numbered_t = std::conditional_t<hands_out_indices<S>(facets_of<typename S::kind> {}), repr::Numbered<R>, R>;
+
 /// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet as an operation_list: what a Store's container is
 /// asked to state a cost for, and what a search knows a kind offers. None by default.
 template<template<typename, typename, typename> class F>
@@ -88,16 +109,6 @@ struct facet_operations
 {
     using offered = operation_list<>;
 };
-
-/// Whether a Store for spec S over representation R has facet F: its kind lists F, and F's condition holds.
-template<typename R, typename S, template<typename, typename, typename> class F>
-consteval bool facet_on()
-{
-    if constexpr (listed_facet<F, facets_of<typename S::kind>>)
-        return facet_condition<F>::template on<R, S>();
-    else
-        return false;
-}
 
 /// How facets reach the Store's representation, which is private to the Store: a Store's, or from within one of its
 /// facets, `of<Derived>(*this)`.

@@ -86,7 +86,6 @@ struct spec : Kind
     using order_type = Compare;
     /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
-    static constexpr bool declared = true;
 
     /// What its container must guarantee: the promise, but for what the Store keeps itself (its kind's asks).
     static constexpr detail::property_set required = kind::asks(urd_properties);
@@ -163,8 +162,9 @@ struct to_spec
                   "request format (urd/kinds.hpp, format)");
     static_assert(well_formed<kind>(stated),
                   "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): a "
-                  "queue reached neither by fifo, lifo nor by_priority, monotone_priority without by_priority, or "
-                  "order_by<C> where its kind orders by nothing asked for (a set without sorted)");
+                  "queue reached neither by fifo, lifo nor by_priority, monotone_priority without by_priority, a "
+                  "positional map without multi, or order_by<C> where its kind orders by nothing asked for (a set "
+                  "without sorted)");
 
     static constexpr property_set meant = kind::meaning(stated);
     using type = typename spec_answers<spec<Kind, compare>, format, meant>::type;

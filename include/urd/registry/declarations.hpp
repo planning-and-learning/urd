@@ -58,7 +58,6 @@ struct declarations_of<sequence_kind>
         type_list<jagged_decl, fixed_jagged_decl, tracked_jagged_decl, vector_decl, segmented_vector_decl, concurrent_segmented_vector_decl, row_pool_decl>;
 };
 
-/// Sets and multisets: values kept by value: the declarations, in order of preference.
 /// Sets and multisets: values kept by value, the same containers (a set requires unique, which no multiset container provides).
 using values_declarations = type_list<unordered_flat_set_decl,
                                       unordered_set_decl,

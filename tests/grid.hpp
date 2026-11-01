@@ -309,8 +309,8 @@ struct serving_named
     {
         constexpr auto serving = urd::detail::serving_v<S>;
         for (std::size_t each = 0; each < serving.count; ++each)
-            if (urd::detail::table_of<typename S::kind>[serving.at[each]].id == std::string_view(Name.c_str()))
-                return serving.at[each];
+            if (urd::detail::table_of<typename S::kind>[serving.held[each]].id == std::string_view(Name.c_str()))
+                return serving.held[each];
         return urd::detail::no_entry;
     }
     static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");

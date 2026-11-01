@@ -107,7 +107,7 @@ struct facet_condition<facet::pool> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return held_as<typename S::element_type>::store; }
+    { return held_as<typename S::element_type>::row; }
 };
 template<>
 struct facet_operations<facet::pool>

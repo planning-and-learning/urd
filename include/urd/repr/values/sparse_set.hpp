@@ -5,7 +5,6 @@
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/core/config.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/traits.hpp"
 

@@ -39,16 +39,12 @@ template<typename... Ts>
 
 }  // namespace detail
 
-/// The same byte hash as Hash<std::string>, so equal text hashes alike across representations.
+/// Text hashes as its bytes (Hash<std::string_view>), so equal text hashes alike in every representation; it compares
+/// by cista's ==.
 template<>
 struct Hash<flat_string>
 {
-    hash_t operator()(const flat_string& text) const noexcept { return hashing::hash_bytes(text.data(), text.size()); }
-};
-template<>
-struct EqualTo<flat_string>
-{
-    bool operator()(const flat_string& lhs, const flat_string& rhs) const noexcept { return ranges_equal(lhs, rhs); }
+    hash_t operator()(const flat_string& text) const noexcept { return Hash<std::string_view> {}(text.view()); }
 };
 
 /// A flat vector is a value range: hashed, compared and ordered as its elements.
@@ -88,29 +84,17 @@ struct EqualTo<flat_variant<Ts...>>
 
 /// A view resolves a flat variant as it does a std::variant: the variant of its alternatives resolved.
 template<typename... Ts>
-struct resolution<::cista::variant<Ts...>>
+struct resolution<flat_variant<Ts...>>
 {
     template<typename C>
-    static auto of(const ::cista::variant<Ts...>& member, const C& context)
+    static auto of(const flat_variant<Ts...>& member, const C& context)
     {
         using resolved = std::variant<resolved_t<Ts, C>...>;
         if (!member.valid())
             throw std::bad_variant_access();
-        return ::cista::variant<Ts...>::apply([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); },
-                                              detail::held_index(member),
-                                              member);
-    }
-};
-
-/// And a flat optional as a std::optional of its value resolved.
-template<typename T>
-struct resolution<::cista::optional<T>>
-{
-    template<typename C>
-    static auto of(const ::cista::optional<T>& member, const C& context)
-    {
-        using resolved = std::optional<resolved_t<T, C>>;
-        return member.has_value() ? resolved(urd::resolve(*member, context)) : resolved();
+        return flat_variant<Ts...>::apply([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); },
+                                          detail::held_index(member),
+                                          member);
     }
 };
 
