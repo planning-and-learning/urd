@@ -4,15 +4,19 @@ Representations
 .. cpp:namespace:: urd::repr
 
 The containers a Store can resolve to live in ``include/urd/repr``, which code that uses a Store never includes:
-requests use only the vocabulary of ``urd/tags.hpp`` and ``urd/properties.hpp``. Each container declares the
-properties it keeps in ``container_traits``, and the typed tests check every declared property against a reference
-model through thousands of random operations; a deliberately wrong declaration is caught.
+requests use only the vocabulary of ``urd/tags.hpp`` and ``urd/properties.hpp``. Each container has a declaration
+(``include/urd/repr/<kind>/*_fwd.hpp``): its kind, what it ``provides``, what it ``relies_on`` (what a request must
+state, and by role the type traits of its data), what Stores held as its elements get, its ``operation_costs`` and
+its words. ``container_traits`` is derived from it, and the typed tests check every declared property against a
+reference model through thousands of random operations; a deliberately wrong declaration is caught. How to add a
+container, or a kind, is on :doc:`extending`.
 
 Headers
 -------
 
 ``urd/store.hpp`` declares the representations and defines none (``include/urd/repr/<kind>/*_fwd.hpp``: the declaration,
-its defaults, its traits, and the header that defines it), and a request names only the container it resolves to. A
+its defaults, and the header that defines it; ``include/urd/registry/declarations.hpp`` lists them by kind), and a
+request names only the container it resolves to. A
 file includes the header of each container its Stores resolve to, in ``urd/repr/``, and nothing grouped; a Store whose
 container's header is missing fails to compile naming the headers to include, a wrapper's part before the wrapper.
 ``docs/RESOLUTION.md`` gives each request's headers.

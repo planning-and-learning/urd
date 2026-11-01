@@ -1,7 +1,7 @@
 #pragma once
 
-// The registry's tables: each node's declarations (urd/registry/declarations.hpp) as values, one entry each, in order
-// of preference.
+// The registry's tables: each kind's declarations (urd/registry/declarations.hpp, declarations_of) as values, one
+// entry each, in order of preference.
 
 #include "urd/registry/declarations.hpp"
 

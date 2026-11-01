@@ -90,7 +90,7 @@ struct facet_condition<facet::queue_access>
 template<>
 struct facet_operations<facet::queue_access>
 {
-    static constexpr std::array offered { operation::push, operation::pop, operation::top, operation::clear };
+    using offered = operation_list<operation::push, operation::pop, operation::top, operation::clear>;
 };
 
 }  // namespace urd::detail

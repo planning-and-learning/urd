@@ -17,16 +17,40 @@
 namespace urd::test
 {
 
-/// The operations compared (urd::operation): which a Store offers follows from its facets.
-using op = urd::operation;
-/// Their names, in order (urd::name).
-inline constexpr auto op_names = []
+/// The operations compared: urd's (urd::operation), by their position here, the order the tables list them in.
+enum class op : std::uint8_t
 {
-    auto result = std::array<std::string_view, static_cast<std::size_t>(op::count)> {};
-    for (std::size_t each = 0; each < result.size(); ++each)
-        result[each] = urd::name(static_cast<op>(each));
-    return result;
-}();
+    insert,
+    lookup,
+    ordered_lookup,
+    erase,
+    clear,
+    iterate,
+    access,
+    push,
+    pop,
+    top,
+    merge,
+    insert_row,
+    find_row,
+    scope,
+    count  ///< not an operation: how many there are
+};
+using operations = urd::operation_list<urd::operation::insert, urd::operation::lookup, urd::operation::ordered_lookup, urd::operation::erase, urd::operation::clear, urd::operation::iterate, urd::operation::access, urd::operation::push, urd::operation::pop, urd::operation::top, urd::operation::merge, urd::operation::insert_row, urd::operation::find_row, urd::operation::scope>;
+/// Their names, in order.
+inline constexpr auto op_names = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
+{ return std::array<std::string_view, sizeof...(Ops)> { Ops::name... }; }(operations {});
+static_assert(op_names.size() == static_cast<std::size_t>(op::count));
+/// The op of operation `of`.
+constexpr op op_of(const urd::operation_info* of)
+{
+    const auto infos = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
+    { return std::array<const urd::operation_info*, sizeof...(Ops)> { urd::operation_v<Ops>... }; }(operations {});
+    for (std::size_t each = 0; each < infos.size(); ++each)
+        if (infos[each] == of)
+            return static_cast<op>(each);
+    throw "urd: an operation the tables do not list (tests/complexity.hpp, operations)";
+}
 
 /// Which operations a Store offers, by op.
 using offers = std::array<bool, static_cast<std::size_t>(op::count)>;
@@ -50,84 +74,37 @@ struct costs_holder<X>
     using type = typename X::operation_costs;
 };
 
+/// The costs C states, and whether C passes each on from P, in the order of `operations`: one array per container.
+template<typename C, typename... Ops>
+constexpr std::array<std::optional<cost>, sizeof...(Ops)> costs_in(urd::operation_list<Ops...> /*operations*/)
+{ return { Ops::template in<C>()... }; }
+template<typename C, typename P, typename... Ops>
+constexpr std::array<bool, sizeof...(Ops)> passed_in(urd::operation_list<Ops...> /*operations*/)
+{ return { Ops::template passed_on<C, P>()... }; }
+template<typename R>
+inline constexpr auto costs_v = costs_in<typename costs_holder<R>::type>(operations {});
+template<typename R>
+consteval std::array<bool, static_cast<std::size_t>(op::count)> passed_of()
+{
+    using C = typename costs_holder<R>::type;
+    if constexpr (requires { typename C::part; })
+        return passed_in<C, typename costs_holder<typename C::part>::type>(operations {});
+    else
+        return {};
+}
+template<typename R>
+inline constexpr auto passed_v = passed_of<R>();
+
 /// The cost of `what` in R (a container or a declaration), a wrapper's resolved through its part; none where R lacks
 /// it.
 template<typename R>
 constexpr std::optional<cost> cost_of(op what)
-{ return urd::cost_of<typename costs_holder<R>::type>(what); }
+{ return costs_v<R>[static_cast<std::size_t>(what)]; }
 
 /// Whether R passes `what` on to its part: a wrapper's cost it inherits rather than declares (the same object).
 template<typename R>
 constexpr bool passed_on(op what)
-{
-    using C = typename costs_holder<R>::type;
-    if constexpr (requires { typename C::part; })
-    {
-        using P = typename costs_holder<typename C::part>::type;
-        switch (what)
-        {
-            case op::insert:
-                if constexpr (requires { P::insert; })
-                    return &C::insert == &P::insert;
-                break;
-            case op::lookup:
-                if constexpr (requires { P::lookup; })
-                    return &C::lookup == &P::lookup;
-                break;
-            case op::ordered_lookup:
-                if constexpr (requires { P::ordered_lookup; })
-                    return &C::ordered_lookup == &P::ordered_lookup;
-                break;
-            case op::erase:
-                if constexpr (requires { P::erase; })
-                    return &C::erase == &P::erase;
-                break;
-            case op::clear:
-                if constexpr (requires { P::clear; })
-                    return &C::clear == &P::clear;
-                break;
-            case op::iterate:
-                if constexpr (requires { P::iterate; })
-                    return &C::iterate == &P::iterate;
-                break;
-            case op::access:
-                if constexpr (requires { P::access; })
-                    return &C::access == &P::access;
-                break;
-            case op::push:
-                if constexpr (requires { P::push; })
-                    return &C::push == &P::push;
-                break;
-            case op::pop:
-                if constexpr (requires { P::pop; })
-                    return &C::pop == &P::pop;
-                break;
-            case op::top:
-                if constexpr (requires { P::top; })
-                    return &C::top == &P::top;
-                break;
-            case op::merge:
-                if constexpr (requires { P::merge; })
-                    return &C::merge == &P::merge;
-                break;
-            case op::insert_row:
-                if constexpr (requires { P::insert_row; })
-                    return &C::insert_row == &P::insert_row;
-                break;
-            case op::find_row:
-                if constexpr (requires { P::find_row; })
-                    return &C::find_row == &P::find_row;
-                break;
-            case op::scope:
-                if constexpr (requires { P::scope; })
-                    return &C::scope == &P::scope;
-                break;
-            case op::count:
-                break;
-        }
-    }
-    return false;
-}
+{ return passed_v<R>[static_cast<std::size_t>(what)]; }
 
 /// The part R wraps, by name: the declaration its costs are passed on to; empty where R wraps none.
 template<typename R>
@@ -156,20 +133,31 @@ inline constexpr std::array<urd::tag, 12> costly { urd::keys::dense,       urd::
                                      urd::layering::layered,     urd::tracking::change_log,   urd::handling::handles,    urd::sharing::structural_sharing, urd::grouping::partition,
                                      urd::shape::fixed_shape, urd::direction::bidirectional };
 
+/// The ops of operations Ops, by position.
+template<typename... Ops>
+constexpr std::array<op, sizeof...(Ops)> ops_of(urd::operation_list<Ops...> /*operations*/)
+{ return { op_of(urd::operation_v<Ops>)... }; }
+template<typename List>
+inline constexpr auto ops_v = ops_of(List {});
+/// Marks the operations of facet F of a Store of R for S where it is on, and of all its facets.
+template<typename R, typename S, template<typename, typename, typename> class F>
+constexpr void mark_facet(offers& into)
+{
+    if constexpr (urd::detail::facet_on<R, S, F>())
+        for (const auto each : ops_v<typename urd::detail::facet_operations<F>::offered>)
+            into[static_cast<std::size_t>(each)] = true;
+}
+template<typename R, typename S, template<typename, typename, typename> class... Fs>
+constexpr void mark_offered(urd::detail::facet_list<Fs...> /*facets*/, offers& into)
+{ (mark_facet<R, S, Fs>(into), ...); }
+
 /// The operations a Store of R for S offers: those its facets offer (urd::detail::facet_operations, beside each
 /// facet) where they are on.
 template<typename R, typename S>
 constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
 {
     auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
-    const auto offer = [&]<template<typename, typename, typename> class F>()
-    {
-        if (urd::detail::facet_on<R, S, F>())
-            for (const auto each : urd::detail::facet_operations<F>::offered)
-                result[static_cast<std::size_t>(each)] = true;
-    };
-    []<template<typename, typename, typename> class... Fs>(urd::detail::facet_list<Fs...> /*facets*/, const auto& each_facet)
-    { (each_facet.template operator()<Fs>(), ...); }(typename S::kind::facets {}, offer);
+    mark_offered<R, S>(typename S::kind::facets {}, result);
     // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
     if (urd::has<S, urd::fixed_shape>)
         result[static_cast<std::size_t>(op::insert)] = false;

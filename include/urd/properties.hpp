@@ -139,7 +139,7 @@ consteval tag tag_of()
 }  // namespace detail
 
 /// A Store's request in canonical form: its key and value types (void where absent), and its answers, one per category
-/// that says more than none, each in its category's enum, in the order of the categories (urd::category). Whatever
+/// that says more than none, each in its category's enum, in the order of its kind's request format. Whatever
 /// order the properties were listed in, equal requests give equal specs, and so equal Store types; compilers print the
 /// answers by name (urd::order::sorted).
 template<typename K, typename V, typename Order, auto... Answers>
@@ -150,7 +150,7 @@ struct spec
     /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
     using order_type = Order;
 
-    /// What the Store promises: the request's tags, with what they mean (meaning, urd/tags.hpp).
+    /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
 

@@ -31,7 +31,7 @@ struct facet_condition<facet::shape>
 template<>
 struct facet_operations<facet::shape>
 {
-    static constexpr std::array offered { operation::access };
+    using offered = operation_list<operation::access>;
 };
 
 }  // namespace urd::detail

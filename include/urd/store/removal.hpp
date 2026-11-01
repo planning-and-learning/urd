@@ -82,7 +82,7 @@ struct facet_condition<facet::removal>
 template<>
 struct facet_operations<facet::removal>
 {
-    static constexpr std::array offered { operation::erase, operation::clear };
+    using offered = operation_list<operation::erase, operation::clear>;
 };
 
 }  // namespace urd::detail

@@ -15,65 +15,6 @@
 namespace urd
 {
 
-/// The operations a cost is declared for, the same for every kind of Store; a representation declares a cost per
-/// operation it has, as a member named for it (container_costs).
-enum class operation : std::uint8_t
-{
-    insert,          ///< a set's or map's insert, a sequence's push_back
-    lookup,          ///< find, contains, a map's value by key
-    ordered_lookup,  ///< lower_bound
-    erase,           ///< by key, or by position
-    clear,
-    iterate,
-    access,  ///< by position or handle
-    push,    ///< a queue's
-    pop,
-    top,
-    merge,       ///< a partition's
-    insert_row,  ///< a pool's insert
-    find_row,    ///< a pool's find
-    scope,       ///< push_scope, changes, pop_scope
-    count        ///< not an operation: how many there are
-};
-
-/// An operation's name, as its member in container_costs.
-constexpr std::string_view name(operation of)
-{
-    switch (of)
-    {
-        case operation::insert:
-            return "insert";
-        case operation::lookup:
-            return "lookup";
-        case operation::ordered_lookup:
-            return "ordered_lookup";
-        case operation::erase:
-            return "erase";
-        case operation::clear:
-            return "clear";
-        case operation::iterate:
-            return "iterate";
-        case operation::access:
-            return "access";
-        case operation::push:
-            return "push";
-        case operation::pop:
-            return "pop";
-        case operation::top:
-            return "top";
-        case operation::merge:
-            return "merge";
-        case operation::insert_row:
-            return "insert_row";
-        case operation::find_row:
-            return "find_row";
-        case operation::scope:
-            return "scope";
-        case operation::count:
-            break;
-    }
-    return {};
-}
 
 /// How a cost grows, in which quantity.
 enum class growth : std::uint8_t
@@ -209,74 +150,346 @@ struct cost
     bool expected = false;
 };
 
-/// The cost of `what` in costs C (a declaration's operation_costs, or urd::container_costs<R>): its member named for
-/// the operation, or none where C has none.
-template<typename C>
-constexpr std::optional<cost> cost_of(operation what)
+/// An operation's words. An operation is identified by its words' address, as a category or a trait is: a kind added
+/// outside urd adds its own, with costs its containers declare as members named for it.
+struct operation_info
 {
-    switch (what)
+    std::string_view name;
+    std::string_view description;
+};
+template<typename Op>
+inline constexpr operation_info operation_info_v { Op::name, Op::description };
+/// The operation Op (a struct with its name, its description, and how costs name it).
+template<typename Op>
+inline constexpr const operation_info* operation_v = &operation_info_v<Op>;
+
+/// A list of operations: what a facet offers.
+template<typename... Ops>
+struct operation_list
+{
+};
+
+/// urd's operations, each with the member of a container's costs named for it (in) and whether a wrapper's costs pass
+/// it on from its part's (passed_on).
+namespace operation
+{
+
+struct insert
+{
+    static constexpr std::string_view name = "insert";
+    static constexpr std::string_view description = "a set's or map's insert, a sequence's push_back";
+    template<typename C>
+    static constexpr std::optional<cost> in()
     {
-        case operation::insert:
-            if constexpr (requires { C::insert; })
-                return C::insert;
-            break;
-        case operation::lookup:
-            if constexpr (requires { C::lookup; })
-                return C::lookup;
-            break;
-        case operation::ordered_lookup:
-            if constexpr (requires { C::ordered_lookup; })
-                return C::ordered_lookup;
-            break;
-        case operation::erase:
-            if constexpr (requires { C::erase; })
-                return C::erase;
-            break;
-        case operation::clear:
-            if constexpr (requires { C::clear; })
-                return C::clear;
-            break;
-        case operation::iterate:
-            if constexpr (requires { C::iterate; })
-                return C::iterate;
-            break;
-        case operation::access:
-            if constexpr (requires { C::access; })
-                return C::access;
-            break;
-        case operation::push:
-            if constexpr (requires { C::push; })
-                return C::push;
-            break;
-        case operation::pop:
-            if constexpr (requires { C::pop; })
-                return C::pop;
-            break;
-        case operation::top:
-            if constexpr (requires { C::top; })
-                return C::top;
-            break;
-        case operation::merge:
-            if constexpr (requires { C::merge; })
-                return C::merge;
-            break;
-        case operation::insert_row:
-            if constexpr (requires { C::insert_row; })
-                return C::insert_row;
-            break;
-        case operation::find_row:
-            if constexpr (requires { C::find_row; })
-                return C::find_row;
-            break;
-        case operation::scope:
-            if constexpr (requires { C::scope; })
-                return C::scope;
-            break;
-        case operation::count:
-            break;
+        if constexpr (requires { C::insert; })
+            return C::insert;
+        else
+            return std::nullopt;
     }
-    return std::nullopt;
-}
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::insert; P::insert; })
+            return &C::insert == &P::insert;
+        else
+            return false;
+    }
+};
+struct lookup
+{
+    static constexpr std::string_view name = "lookup";
+    static constexpr std::string_view description = "find, contains, a map's value by key";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::lookup; })
+            return C::lookup;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::lookup; P::lookup; })
+            return &C::lookup == &P::lookup;
+        else
+            return false;
+    }
+};
+struct ordered_lookup
+{
+    static constexpr std::string_view name = "ordered_lookup";
+    static constexpr std::string_view description = "lower_bound";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::ordered_lookup; })
+            return C::ordered_lookup;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::ordered_lookup; P::ordered_lookup; })
+            return &C::ordered_lookup == &P::ordered_lookup;
+        else
+            return false;
+    }
+};
+struct erase
+{
+    static constexpr std::string_view name = "erase";
+    static constexpr std::string_view description = "by key, or by position";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::erase; })
+            return C::erase;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::erase; P::erase; })
+            return &C::erase == &P::erase;
+        else
+            return false;
+    }
+};
+struct clear
+{
+    static constexpr std::string_view name = "clear";
+    static constexpr std::string_view description = "every element at once";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::clear; })
+            return C::clear;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::clear; P::clear; })
+            return &C::clear == &P::clear;
+        else
+            return false;
+    }
+};
+struct iterate
+{
+    static constexpr std::string_view name = "iterate";
+    static constexpr std::string_view description = "every element in turn";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::iterate; })
+            return C::iterate;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::iterate; P::iterate; })
+            return &C::iterate == &P::iterate;
+        else
+            return false;
+    }
+};
+struct access
+{
+    static constexpr std::string_view name = "access";
+    static constexpr std::string_view description = "by position or handle";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::access; })
+            return C::access;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::access; P::access; })
+            return &C::access == &P::access;
+        else
+            return false;
+    }
+};
+struct push
+{
+    static constexpr std::string_view name = "push";
+    static constexpr std::string_view description = "a queue's";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::push; })
+            return C::push;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::push; P::push; })
+            return &C::push == &P::push;
+        else
+            return false;
+    }
+};
+struct pop
+{
+    static constexpr std::string_view name = "pop";
+    static constexpr std::string_view description = "a queue's";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::pop; })
+            return C::pop;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::pop; P::pop; })
+            return &C::pop == &P::pop;
+        else
+            return false;
+    }
+};
+struct top
+{
+    static constexpr std::string_view name = "top";
+    static constexpr std::string_view description = "a queue's";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::top; })
+            return C::top;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::top; P::top; })
+            return &C::top == &P::top;
+        else
+            return false;
+    }
+};
+struct merge
+{
+    static constexpr std::string_view name = "merge";
+    static constexpr std::string_view description = "a partition's";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::merge; })
+            return C::merge;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::merge; P::merge; })
+            return &C::merge == &P::merge;
+        else
+            return false;
+    }
+};
+struct insert_row
+{
+    static constexpr std::string_view name = "insert_row";
+    static constexpr std::string_view description = "a pool's insert";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::insert_row; })
+            return C::insert_row;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::insert_row; P::insert_row; })
+            return &C::insert_row == &P::insert_row;
+        else
+            return false;
+    }
+};
+struct find_row
+{
+    static constexpr std::string_view name = "find_row";
+    static constexpr std::string_view description = "a pool's find";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::find_row; })
+            return C::find_row;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::find_row; P::find_row; })
+            return &C::find_row == &P::find_row;
+        else
+            return false;
+    }
+};
+struct scope
+{
+    static constexpr std::string_view name = "scope";
+    static constexpr std::string_view description = "push_scope, changes, pop_scope";
+    template<typename C>
+    static constexpr std::optional<cost> in()
+    {
+        if constexpr (requires { C::scope; })
+            return C::scope;
+        else
+            return std::nullopt;
+    }
+    /// Whether costs C pass it on from costs P: C inherits P's member (the same object), a wrapper's from its part's.
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    {
+        if constexpr (requires { C::scope; P::scope; })
+            return &C::scope == &P::scope;
+        else
+            return false;
+    }
+};
+
+}  // namespace operation
+
+/// The cost of operation Op in costs C (a declaration's operation_costs, or urd::container_costs<R>): its member named
+/// for the operation, or none where C has none.
+template<typename Op, typename C>
+constexpr std::optional<cost> cost_of()
+{ return Op::template in<C>(); }
 
 /// The costs of the operations of representation R, each a `static constexpr cost` member named for the operation
 /// (insert, lookup, ordered_lookup, erase, clear, iterate, access, push, pop, top, merge, insert_row, find_row,

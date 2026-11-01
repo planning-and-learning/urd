@@ -3,7 +3,7 @@
 // Choosing a container as constant evaluation: the entries of the request's kind's table (urd/registry/table.hpp)
 // whose tags match the request's, the first of them chosen. Matching reads only tags: the container provides what the
 // request requires (satisfies), the request's roles promise what the container relies on and demands (promises), and
-// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/tags.hpp, preferences), they come
+// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/kinds.hpp, preferences), they come
 // after the others.
 
 #include "urd/registry/table.hpp"
@@ -33,7 +33,7 @@ constexpr bool serves(const registry_entry& e, const request_shape& s)
     return satisfies(with(s.held, e.gives_elements), s.held_required);
 }
 
-/// Whether entry `e` comes after the others serving request `s`, by the preferences (urd/tags.hpp).
+/// Whether entry `e` comes after the others serving request `s`, by the preferences (urd/kinds.hpp).
 constexpr bool comes_later(const registry_entry& e, const request_shape& s)
 {
     for (const auto& each : preferences)

@@ -108,18 +108,18 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
+/// When a Store has this facet: its values are records or values interned whole, not rows.
 template<>
 struct facet_condition<facet::records>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, unique>; }
+    { return !holds_rows<typename S::element_type>(); }
 };
 template<>
 struct facet_operations<facet::records>
 {
-    static constexpr std::array offered { operation::insert_row, operation::find_row, operation::access };
+    using offered = operation_list<operation::insert_row, operation::find_row, operation::access>;
 };
 
 }  // namespace urd::detail

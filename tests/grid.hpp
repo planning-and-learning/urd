@@ -252,7 +252,11 @@ using flat_pools = requests<request<value<Id>, handles, unique, flat>,
                             request<value<Text>, handles, unique, flat>,
                             request<value<Text>, handles, unique, flat, monotone, concurrent>,
                             request<value<Id>, handles, unique, flat, monotone, layered>,
-                            request<value<Text>, handles, unique, flat, layered, concurrent>>;
+                            request<value<Text>, handles, unique, flat, layered, concurrent>,
+                            request<value<Id>, handles, unique>,
+                            request<value<Text>, handles, unique>,
+                            request<value<Text>, handles, unique, stable_refs>,
+                            request<value<std::string>, handles, unique>>;
 
 /// A group of the table: its title beside its requests.
 template<urd::detail::fixed_string Title, typename List>
@@ -283,7 +287,7 @@ using groups = std::tuple<group<"Sets of int", sets_of<int>>,
                           group<"Pools", pools>,
                           group<"Stores as keys", stores_as_keys>,
                           group<"Partitions of sparse keys", sparse_partitions>,
-                          group<"Records stored flat", flat_pools>>;
+                          group<"Records and values interned", flat_pools>>;
 
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>

@@ -38,7 +38,7 @@ struct flat_entry_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/entry_ordered.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, position::positional, layout::contiguous, memory::retains });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::by_entry>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::by_entry>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

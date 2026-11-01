@@ -85,7 +85,7 @@ struct facet_condition<facet::growth>
 template<>
 struct facet_operations<facet::growth>
 {
-    static constexpr std::array offered { operation::insert };
+    using offered = operation_list<operation::insert>;
 };
 
 }  // namespace urd::detail

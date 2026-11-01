@@ -91,17 +91,18 @@ std::string trait_list(std::string result, std::string_view role, const urd::det
             result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(each->name));
     return result;
 }
-/// What a declaration relies on, by role, as a JSON list.
+/// What a declaration relies on, by role, as a JSON list: what a request states, then each role's tags and traits
+/// prefixed by its name ("element:can_hash"), in the vocabulary's order.
 std::string roles_list(const urd::detail::role_tags& roles)
 {
-    using namespace urd::detail;
     auto result = tag_list(roles.stated);
-    result = trait_list(result, "element:", roles.element);
-    result = trait_list(result, "element:", roles.order);
-    result = trait_list(result, "element:", roles.rows);
-    result = trait_list(result, "mapped:", roles.mapped);
-    result = tag_list(roles.row, "row:", result);
-    result = trait_list(result, "row_element:", roles.row_element);
+    for (const auto* role : urd::test::vocabulary_roles)
+        if (const auto* entry = roles.find(role))
+        {
+            const auto prefix = std::string(role->name) + ":";
+            result = tag_list(entry->tags, prefix, result);
+            result = trait_list(result, prefix, entry->traits);
+        }
     return result + "]";
 }
 
@@ -128,7 +129,7 @@ std::string kind_of()
 {
     if constexpr (std::same_as<typename S::kind, urd::partition_kind>)
         return "partitions";
-    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>)
+    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
         return urd::has<S, urd::flat> ? "records" : "pools";
     else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
         return "queues";

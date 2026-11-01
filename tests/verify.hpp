@@ -29,12 +29,15 @@ template<typename R>
     using of = urd::kind_of<properties, false, false>;
     if constexpr (kind_below<of, queue_kind>)
         return detail::run_queue(range, seed, steps);
-    else if constexpr (std::same_as<of, records_kind> && has<container_traits<R>, layered>)
-        return detail::run_layered_records(range, seed, steps);
-    else if constexpr (std::same_as<of, records_kind>)
-        return detail::run_records(range, seed, steps);
     else if constexpr (std::same_as<of, pool_kind>)
-        return detail::run_pool(range, seed, steps);
+    {
+        if constexpr (detail::holds_rows<typename R::value_type>())
+            return detail::run_pool(range, seed, steps);
+        else if constexpr (has<container_traits<R>, layered>)
+            return detail::run_layered_records(range, seed, steps);
+        else
+            return detail::run_records(range, seed, steps);
+    }
     else if constexpr (std::same_as<of, slots_kind>)
         return detail::run_slots(range, seed, steps);
     else if constexpr (detail::map_container<R>)

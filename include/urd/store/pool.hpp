@@ -101,18 +101,18 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
+/// When a Store has this facet: its values are rows (ranges of elements).
 template<>
 struct facet_condition<facet::pool>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return true; }
+    { return holds_rows<typename S::element_type>(); }
 };
 template<>
 struct facet_operations<facet::pool>
 {
-    static constexpr std::array offered { operation::insert_row, operation::find_row, operation::access };
+    using offered = operation_list<operation::insert_row, operation::find_row, operation::access>;
 };
 
 }  // namespace urd::detail

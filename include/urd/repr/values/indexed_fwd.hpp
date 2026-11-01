@@ -48,7 +48,7 @@ struct indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, layout::contiguous, memory::retains });
-    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -82,7 +82,7 @@ struct stable_indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::monotone }), .element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -114,7 +114,7 @@ struct concurrent_indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::monotone }), .element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

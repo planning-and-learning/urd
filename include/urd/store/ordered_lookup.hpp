@@ -40,7 +40,7 @@ struct facet_condition<facet::ordered_lookup>
 template<>
 struct facet_operations<facet::ordered_lookup>
 {
-    static constexpr std::array offered { operation::ordered_lookup };
+    using offered = operation_list<operation::ordered_lookup>;
 };
 
 }  // namespace urd::detail

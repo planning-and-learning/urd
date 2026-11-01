@@ -38,7 +38,7 @@ struct segmented_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/segmented.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::none });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::monotone }) };
+    static constexpr role_tags relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -69,7 +69,7 @@ struct concurrent_segmented_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/segmented.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::concurrent });
-    static constexpr role_tags relies_on { .stated = property_set::of({ change::monotone }) };
+    static constexpr role_tags relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

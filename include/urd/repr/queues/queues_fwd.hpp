@@ -164,7 +164,7 @@ struct heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -197,7 +197,7 @@ struct addressable_heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -230,7 +230,7 @@ struct bucket_queue_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/bucket_queue.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on { .stated = property_set::of({ priority::monotone_priority }), .order = trait_set_of<trait::natural_ordered, trait::integral_priority>() };
+    static constexpr role_tags relies_on = relies(stated({ priority::monotone_priority }), traits<role::order, trait::natural_ordered, trait::integral_priority>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

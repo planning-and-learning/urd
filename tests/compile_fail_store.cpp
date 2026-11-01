@@ -153,15 +153,14 @@ int main()
     struct B;
     auto by_a = Store<key<urd::index<A>>, value<int>, urd::dense>();
     (void) by_a.contains(urd::index<B>(0));
-#elif URD_CASE == 32  // a pool of records (no range of elements) stores them flat: it must say so
+#elif URD_CASE == 32  // a pool interns each distinct value once: values urd cannot hash cannot be interned
     struct Point
     {
         int x = 0;
-        static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
     };
     using S = Store<value<Point>, urd::handles, urd::unique>;
     (void) S();
-#elif URD_CASE == 33  // flat is how an interning pool stores records, not a property of a set
+#elif URD_CASE == 33  // flat is how a pool stores records, a question a set does not answer
     using S = Store<key<int>, urd::flat>;
     (void) S();
 #elif URD_CASE == 34  // a record with a std::string is neither trivially copyable nor serializable: nothing stores it flat

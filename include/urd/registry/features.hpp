@@ -1,10 +1,10 @@
 #pragma once
 
-// The roles of a request (urd/registry/facts.hpp): what its spec states, and the data tags of its elements, keys,
-// values and rows and of its order (urd/data_tags.hpp), computed once per spec; the registry matches containers'
-// tags against them (urd/registry/scan.hpp).
+// The roles of a request (urd/registry/facts.hpp: role_tags): what its spec states, and by role (urd::role) the type
+// traits of its elements, keys, values and rows, of its order, and its rows' own tags (urd/type_traits_of.hpp),
+// computed once per spec; the registry matches containers' reliances against them (urd/registry/scan.hpp).
 
-#include "urd/data_tags.hpp"
+#include "urd/type_traits_of.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/semantics/less.hpp"
 

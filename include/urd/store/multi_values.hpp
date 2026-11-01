@@ -42,7 +42,7 @@ struct facet_condition<facet::multi_values>
 template<>
 struct facet_operations<facet::multi_values>
 {
-    static constexpr std::array offered { operation::lookup };
+    using offered = operation_list<operation::lookup>;
 };
 
 }  // namespace urd::detail

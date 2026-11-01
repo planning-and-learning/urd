@@ -6,7 +6,8 @@
 //
 // One line per tag, then one per category, one per group and one per heading. Description, phrases, promise, groups,
 // headings and questions are written by hand; the role is derived from the group and the promise (tests/names.hpp),
-// and category, implies, excludes and statable come from the tag hierarchy, so they cannot drift from it.
+// and category, implies and excludes come from the tag hierarchy, and a category's kinds from the kinds' request
+// formats (urd/kinds.hpp), so they cannot drift from them.
 // A request holds one tag per category: a tag excludes every other of its category, even one it implies (frozen and
 // monotone).
 
@@ -47,6 +48,23 @@ std::string tags_where(urd::tag of, Keep keep)
     return result + "]";
 }
 
+/// The kinds whose request format answers `of`'s category, as a JSON array.
+std::string kinds_answering(urd::tag of)
+{
+    auto result = std::string("[");
+    [&]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
+    {
+        (
+            [&]<typename... Es>(urd::detail::request_format<Es...> /*format*/)
+            {
+                if (((urd::category<Es> == of.in) || ...))
+                    result += (result.size() > 1 ? ", " : "") + json_text(Kinds::name);
+            }(typename Kinds::format {}),
+            ...);
+    }(urd::leaf_kinds<> {});
+    return result + "]";
+}
+
 /// The entry of `of`'s category.
 const urd::test::category_entry& category_of(urd::tag of) { return urd::test::category_entry_of(of); }
 
@@ -84,7 +102,7 @@ std::string generate()
                + ", \"implies\": " + tags_where(of, [of](urd::tag other) { return at_least(of, other); })
                + ", \"excludes\": " + tags_where(of, [of](urd::tag other) { return other.in == of.in; })
                + ", \"group\": " + json_text(category_of(of).group) + (entry.promise.empty() ? std::string() : ", \"promise\": " + json_text(entry.promise))
-               + ", \"statable\": true}";
+               + "}";
     });
     out += "\n], \"categories\": [\n";
     first = true;
@@ -95,7 +113,7 @@ std::string generate()
         first = false;
         out += "{\"category\": " + json_text(urd::test::tag_name(of)) + ", \"group\": " + json_text(category_of(of).group)
                + (category_of(of).heading.empty() ? std::string() : ", \"heading\": " + json_text(category_of(of).heading))
-               + ", \"question\": " + json_text(category_of(of).question) + ", \"statable\": true"
+               + ", \"question\": " + json_text(category_of(of).question) + ", \"kinds\": " + kinds_answering(of)
                + ", \"tags\": " + tags_where(of, [of](urd::tag other) { return other.in == of.in; }) + "}";
     });
     out += "\n], \"groups\": [\n";

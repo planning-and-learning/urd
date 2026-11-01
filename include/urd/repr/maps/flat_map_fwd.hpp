@@ -38,7 +38,7 @@ struct flat_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/flat_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, position::positional, keys::sparse, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -72,7 +72,7 @@ struct flat_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/flat_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

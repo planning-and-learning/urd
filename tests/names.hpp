@@ -72,12 +72,17 @@ constexpr void for_each_tag(F f)
             f(urd::tag(each, answer));
 }
 /// urd's type traits (urd::trait), in the order share/urd/complexity.json lists them.
-inline constexpr std::array<const urd::trait_info*, 12> vocabulary_traits {
+inline constexpr std::array<const urd::trait_info*, 13> vocabulary_traits {
     urd::trait_v<urd::trait::can_hash>,        urd::trait_v<urd::trait::an_index>,          urd::trait_v<urd::trait::copies_as_bytes>,
-    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,  urd::trait_v<urd::trait::own_order>,
+    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,  urd::trait_v<urd::trait::whole_value>, urd::trait_v<urd::trait::own_order>,
     urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::by_entry>,          urd::trait_v<urd::trait::integral_priority>,
     urd::trait_v<urd::trait::rows_flatten>,    urd::trait_v<urd::trait::rows_in_place>,     urd::trait_v<urd::trait::rows_reused>
 };
+
+/// urd's roles (urd::role), in the order share/urd/complexity.json lists them.
+inline constexpr std::array<const urd::role_info*, 6> vocabulary_roles { urd::role_v<urd::role::element>, urd::role_v<urd::role::order>,
+                                                                         urd::role_v<urd::role::rows>,    urd::role_v<urd::role::mapped>,
+                                                                         urd::role_v<urd::role::row>,     urd::role_v<urd::role::row_element> };
 
 /// Every kind's format answers only the vocabulary's categories.
 template<typename... Es>

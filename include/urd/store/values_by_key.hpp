@@ -177,7 +177,7 @@ struct facet_condition<facet::values_by_key>
 template<>
 struct facet_operations<facet::values_by_key>
 {
-    static constexpr std::array offered { operation::lookup };
+    using offered = operation_list<operation::lookup>;
 };
 
 }  // namespace urd::detail

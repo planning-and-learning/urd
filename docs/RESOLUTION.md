@@ -470,7 +470,7 @@ indexable).
 |---|---|---|---|
 | `Store<key<std::string>, partition>` | partition | `none` — missing: a partition over hashed keys (a map from key to position plus the forest); no site asks |  |
 
-## Records stored flat
+## Records and values interned
 
 | Request | Spec | Representation | Include |
 |---|---|---|---|
@@ -482,3 +482,7 @@ indexable).
 | `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, monotone | `thread_safe_arena_interner` | arena.hpp |
 | `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, layered, handles, flat, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
 | `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, concurrent, layered, handles, flat | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |
+| `Store<value<Id>, handles, unique>` | unique, handles | `value_interner` | records.hpp |
+| `Store<value<Text>, handles, unique>` | unique, handles | `value_interner` | records.hpp |
+| `Store<value<Text>, handles, unique, stable_refs>` | unique, stable_refs, handles | `stable_value_interner` | records.hpp |
+| `Store<value<std::string>, handles, unique>` | unique, handles | `value_interner` | records.hpp |

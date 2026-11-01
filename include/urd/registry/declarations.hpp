@@ -1,7 +1,8 @@
 #pragma once
 
-// Every container's declaration (urd/repr/*_fwd.hpp and the like), by node (the kind of Store it serves, each with its
-// own request format), in the order of preference within the node, the first that serves a request being chosen
+// Every container's declaration (urd/repr/*_fwd.hpp and the like), by kind (urd/kinds.hpp: declarations_of<Kind>,
+// which a kind added outside urd specializes too), in the order of preference within the kind, the first that serves
+// a request being chosen
 // (urd/registry/scan.hpp): the one source of that order. The order follows docs/BENCHMARKS.md:
 // an open-addressing hash table is fastest at insert, lookup and clear-and-refill at every size, so it comes first
 // wherever order is not asked for; node tables and segments remain for stable_refs; where order is asked for, a tree
@@ -151,18 +152,32 @@ struct declarations_of<priority_queue_kind>
                            addressable_heap_decl>;
 };
 
-/// Pools interning rows: the declarations, in order of preference.
+/// Pools interning values by handle: rows first (a Store or a registered container is interned as a row), then values
+/// interned whole, then records stored flat (which a request asks for by flat); in order of preference.
 template<>
 struct declarations_of<pool_kind>
 {
     using type = type_list<row_interner_decl,
-                                   tree_pool_decl<false, false>,
-                                   tree_pool_decl<true, false>,
-                                   thread_safe_row_interner_decl,
-                                   tree_pool_decl<false, true>,
-                                   tree_pool_decl<true, true>,
-                                   layered_decl<row_interner_decl, true>,
-                                   layered_decl<thread_safe_row_interner_decl, true>>;
+                           tree_pool_decl<false, false>,
+                           tree_pool_decl<true, false>,
+                           thread_safe_row_interner_decl,
+                           tree_pool_decl<false, true>,
+                           tree_pool_decl<true, true>,
+                           layered_decl<row_interner_decl, true>,
+                           layered_decl<thread_safe_row_interner_decl, true>,
+                           value_interner_decl,
+                           stable_value_interner_decl,
+                           thread_safe_value_interner_decl,
+                           record_interner_decl,
+                           arena_interner_decl,
+                           stable_record_interner_decl,
+                           thread_safe_record_interner_decl,
+                           thread_safe_arena_interner_decl,
+                           layered_decl<record_interner_decl, true>,
+                           layered_decl<arena_interner_decl, true>,
+                           layered_decl<stable_record_interner_decl, true>,
+                           layered_decl<thread_safe_record_interner_decl, true>,
+                           layered_decl<thread_safe_arena_interner_decl, true>>;
 };
 
 /// Pools of slots: the declarations, in order of preference.
@@ -171,22 +186,6 @@ struct declarations_of<slots_kind>
 {
     using type = type_list<slot_vector_decl,
                                    thread_safe_slot_vector_decl>;
-};
-
-/// Pools of records stored flat: the declarations, in order of preference.
-template<>
-struct declarations_of<records_kind>
-{
-    using type = type_list<record_interner_decl,
-                                   arena_interner_decl,
-                                   stable_record_interner_decl,
-                                   thread_safe_record_interner_decl,
-                                   thread_safe_arena_interner_decl,
-                                   layered_decl<record_interner_decl, true>,
-                                   layered_decl<arena_interner_decl, true>,
-                                   layered_decl<stable_record_interner_decl, true>,
-                                   layered_decl<thread_safe_record_interner_decl, true>,
-                                   layered_decl<thread_safe_arena_interner_decl, true>>;
 };
 
 /// Partitions: the declarations, in order of preference.

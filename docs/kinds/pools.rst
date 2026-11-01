@@ -16,6 +16,10 @@ Pools
 
 .. cpp:namespace:: urd::Pool
 
+A pool is one kind (``pool``, ``handles`` with ``unique``) whatever it holds: rows (a Store or a registered
+container of elements) are interned as rows, on this page; values that are not rows are interned whole, on
+:doc:`records`. Slots (``handles`` without ``unique``) are a kind of their own.
+
 A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in
 full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
 with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its

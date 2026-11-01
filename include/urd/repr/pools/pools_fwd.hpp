@@ -50,7 +50,7 @@ struct row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
     using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none });
-    static constexpr role_tags relies_on { .row_element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -85,8 +85,8 @@ struct tree_pool_decl
     using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, sharing::structural_sharing, memory::retains, threads(ThreadSafe) });
     /// Of bits: rows that are dense sets of indices. Of values: sequence rows of hashable elements.
-    static constexpr role_tags relies_on = Bits ? role_tags { .row = property_set::of({ uniqueness::unique, keys::dense }), .row_element = trait_set_of<trait::an_index>() }
-                                                : role_tags { .row = property_set::of({ position::positional }), .row_element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = Bits ? relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>())
+                                                : relies(tags<role::row>({ position::positional }), traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -125,7 +125,7 @@ struct thread_safe_row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
     using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on { .row_element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {

@@ -32,10 +32,11 @@ struct disjoint_sets_decl
     static constexpr auto headers = header_list<1> { "urd/repr/partitions/disjoint_sets.hpp" };
     using kind = partition_kind;
     static constexpr property_set provides = property_set::of({ grouping::partition, memory::retains });
-    static constexpr role_tags relies_on { .element = trait_set_of<trait::an_index>() };
+    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
+        static constexpr cost insert = costs::one_a;  ///< each new index set once, the arrays grown amortized
         static constexpr cost lookup = costs::one_a;
         static constexpr cost merge = costs::one_a;
         static constexpr double words = 2;

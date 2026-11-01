@@ -34,7 +34,7 @@ struct map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -68,7 +68,7 @@ struct multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, referencing::stable_refs, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -102,7 +102,7 @@ struct unordered_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
-    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -135,7 +135,7 @@ struct unordered_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ multiplicity::multi, referencing::stable_refs });
-    static constexpr role_tags relies_on { .element = trait_set_of<trait::can_hash>() };
+    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {

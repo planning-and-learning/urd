@@ -1,10 +1,13 @@
 // A kind of Store defined outside urd, with a category, a facet and a container of its own: a tally, which counts
 // how often each value was added. Nothing in include/urd/ names any of it; it plugs in through urd::extra_kinds,
-// urd::detail::declarations_of, urd::detail::representation_of, urd::include and urd::detail::facet_condition.
+// urd::detail::declarations_of, urd::detail::representation_of, urd::include, urd::detail::facet_condition and
+// urd::detail::facet_operations; its operations are its own (add, count), costed by its container.
 
+#include "urd/costs.hpp"
 #include "urd/kinds.hpp"
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -41,6 +44,41 @@ struct urd::tags_of<tally::tallying>
 namespace tally
 {
 
+/// Its operation `add`: adds a value once more; a container states its cost as a member named `add`.
+struct add
+{
+    static constexpr std::string_view name = "add";
+    static constexpr std::string_view description = "adds a value once more";
+    template<typename C>
+    static constexpr std::optional<urd::cost> in()
+    {
+        if constexpr (requires { C::add; })
+            return C::add;
+        else
+            return std::nullopt;
+    }
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    { return false; }
+};
+/// Its operation `count`: how often a value was added; a container states its cost as a member named `count`.
+struct count
+{
+    static constexpr std::string_view name = "count";
+    static constexpr std::string_view description = "how often a value was added";
+    template<typename C>
+    static constexpr std::optional<urd::cost> in()
+    {
+        if constexpr (requires { C::count; })
+            return C::count;
+        else
+            return std::nullopt;
+    }
+    template<typename C, typename P>
+    static constexpr bool passed_on()
+    { return false; }
+};
+
 /// The facet a tally offers.
 template<typename Derived, typename R, typename S>
 class counting;
@@ -50,6 +88,7 @@ struct tally_kind
 {
     static constexpr std::string_view name = "tally";
     using format = urd::detail::request_format<tallying, urd::threading>;
+    using roles = urd::detail::role_list<>;
     template<typename K, typename V>
     using element_type = V;
     template<typename K, typename V>
@@ -113,7 +152,8 @@ struct tally_decl
     static constexpr std::array<urd::tag, 0> gives_elements {};
     struct operation_costs
     {
-        static constexpr urd::cost insert = urd::costs::one_a;
+        static constexpr urd::cost add = urd::costs::one_ae;
+        static constexpr urd::cost count = urd::costs::one_e;
         static constexpr double words = 3;
     };
     static constexpr std::string_view description = "a count per value";
@@ -128,6 +168,11 @@ struct urd::detail::facet_condition<tally::counting>
     template<typename R, typename S>
     static constexpr bool on()
     { return true; }
+};
+template<>
+struct urd::detail::facet_operations<tally::counting>
+{
+    using offered = urd::operation_list<tally::add, tally::count>;
 };
 template<>
 struct urd::detail::declarations_of<tally::tally_kind>
@@ -151,6 +196,9 @@ using Words = urd::Store<urd::value<std::string>, tally::tallied>;
 
 static_assert(std::same_as<Words::representation, tally::Tally<std::string>>);
 static_assert(std::same_as<urd::container_traits<Words>::kind, tally::tally_kind>);
+// Its own operations, with the costs its container states.
+static_assert(tally::add::in<tally::tally_decl::operation_costs>().has_value() && tally::count::in<tally::tally_decl::operation_costs>().has_value());
+static_assert(!tally::add::in<urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
 // urd's own kinds are untouched by the new one.
 static_assert(std::same_as<urd::Store<urd::value<int>>::representation, std::vector<int>>);
 

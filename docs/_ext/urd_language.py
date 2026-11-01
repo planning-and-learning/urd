@@ -77,11 +77,10 @@ def on_page(group: str) -> list[dict]:
 
 
 def category_table(roots: list[dict]) -> list[str]:
-    out = [".. list-table::", "   :header-rows: 1", "   :widths: 40 45 15", "",
-           "   * - Question", "     - Tags", "     - Stated"]
+    out = [".. list-table::", "   :header-rows: 1", "   :widths: 35 35 30", "",
+           "   * - Question", "     - Tags", "     - Kinds"]
     for c in roots:
-        out += [f"   * - {category_link(c['category'])}", f"     - {code(c['tags'])}",
-                "     - yes" if c["statable"] else "     - no: derived"]
+        out += [f"   * - {category_link(c['category'])}", f"     - {code(c['tags'])}", f"     - {', '.join(c['kinds'])}"]
     return out
 
 
@@ -163,7 +162,7 @@ class Category(Generated):
         env.urd_categories.setdefault(root, []).append(env.docname)
 
         question = category["question"]
-        stated = "" if category["statable"] else " Not stated in a request: it follows from other tags."
+        stated = f" Asked of: {', '.join(category['kinds'])}."
         out = [f".. _category-{root}:", "", question, "-" * len(question), "",
                f"Category ``{root}``, which promises nothing: a request that leaves the question open gets it.{stated}",
                "", ".. graphviz::", "", f"   digraph {root} {{",
@@ -180,7 +179,7 @@ class Category(Generated):
     @staticmethod
     def card(tag: dict) -> list[str]:
         name = tag["tag"]
-        example = shortest_request(name) if tag["statable"] else None
+        example = shortest_request(name)
         out = [f".. _tag-{name}:", "", f"``{name}``", "~" * (len(name) + 4), "", tag["description"], "",
                f"- **Role:** {ROLES[tag['role']]}.", f"- **In plain words:** {', '.join(tag['phrases'])}."]
         if "promise" in tag:
@@ -191,9 +190,7 @@ class Category(Generated):
         others = [t for t in tag["excludes"] if t not in implied]
         if others:
             out.append(f"- **Instead of:** {code(others)} (one answer per question).")
-        if not tag["statable"]:
-            out.append("- **Not stated:** it follows from the answer to another question.")
-        elif example:
+        if example:
             out.append(f"- **Shortest served request:** ``{example}``.")
         else:
             out.append("- **Shortest served request:** none in :doc:`/RESOLUTION`.")

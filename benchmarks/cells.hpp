@@ -45,7 +45,7 @@ std::vector<std::size_t> sizes_of()
 {
     if constexpr (urd::has<S, urd::small>)
         return { small_sizes.begin(), small_sizes.end() };
-    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>)
+    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
         return { row_lengths.begin(), row_lengths.end() };
     else
         return { sizes.begin(), sizes.end() };

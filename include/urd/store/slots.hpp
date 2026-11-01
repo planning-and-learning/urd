@@ -61,7 +61,7 @@ struct facet_condition<facet::slots>
 template<>
 struct facet_operations<facet::slots>
 {
-    static constexpr std::array offered { operation::insert_row, operation::access };
+    using offered = operation_list<operation::insert_row, operation::access>;
 };
 
 }  // namespace urd::detail

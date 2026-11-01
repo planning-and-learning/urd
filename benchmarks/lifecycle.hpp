@@ -425,7 +425,7 @@ void register_experiment(std::size_t ordinal)
                                          for (auto _ : state)
                                              for (std::size_t round = 0; round < rounds; ++round)
                                              {
-                                                 if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind> || std::same_as<typename S::kind, urd::records_kind>))
+                                                 if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>))
                                                      row_workload<R, S>::lifecycle(at, into);
                                                  else
                                                      workload<R, S>::lifecycle(at, into);

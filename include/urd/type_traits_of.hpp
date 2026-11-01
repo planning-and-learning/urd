@@ -104,6 +104,7 @@ consteval trait_set type_traits_of()
         result.put_if<trait::copies_as_bytes>(trivially_copyable<T>);
         result.put_if<trait::destroys_trivially>(trivially_destructible<T>);
         result.put_if<trait::names_members>(names_members<T>());
+        result.put_if<trait::whole_value>(!held_as<T>::store);
     }
     return result;
 }
@@ -165,20 +166,27 @@ consteval trait_set order_traits_of()
 /// The roles of elements T in order C (a set's keys, a sequence's, queue's or pool's values), with what a Store
 /// states.
 template<typename T, typename C = Less<T>>
-consteval role_tags element_roles(const property_set& stated = property_set::roots())
+consteval role_tags element_roles(const property_set& stated_tags = property_set::roots())
 {
-    return { .stated = stated, .element = type_traits_v<T>, .order = order_traits_of<T, C>(), .row = row_tags_of<T>(), .rows = row_traits_of<T>(),
-             .row_element = row_element_traits_of<T>() };
+    auto result = role_tags { .stated = stated_tags };
+    result.at(role_v<role::element>).traits = type_traits_v<T>;
+    result.at(role_v<role::order>).traits = order_traits_of<T, C>();
+    result.at(role_v<role::row>).tags = row_tags_of<T>();
+    result.at(role_v<role::rows>).traits = row_traits_of<T>();
+    result.at(role_v<role::row_element>).traits = row_element_traits_of<T>();
+    return result;
 }
 /// The roles of a map from K to V in order C (over keys, or over entries: is_entry_less).
 template<typename K, typename V, typename C = Less<K>>
-consteval role_tags map_roles(const property_set& stated = property_set::roots())
+consteval role_tags map_roles(const property_set& stated_tags = property_set::roots())
 {
     auto order = trait_set_of<trait::by_entry>();
     if constexpr (!is_entry_less<C>)
         order = order_traits_of<K, C>();
-    return { .stated = stated, .element = type_traits_v<K>, .order = order, .mapped = type_traits_v<V>, .row = row_tags_of<K>(), .rows = row_traits_of<K>(),
-             .row_element = row_element_traits_of<K>() };
+    auto result = element_roles<K>(stated_tags);
+    result.at(role_v<role::order>).traits = order;
+    result.at(role_v<role::mapped>).traits = type_traits_v<V>;
+    return result;
 }
 
 }  // namespace urd::detail

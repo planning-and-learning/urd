@@ -29,7 +29,12 @@ the groups:
 
 - **A category** is one question, such as *Which keys?* (semantics). A request answers each category at most once:
   ``dense`` and ``sparse`` both answer *Which keys?*, so a request holds one of them. A category left unanswered
-  stays at its **root**, which promises nothing: urd may pick anything there.
+  stays at its **none**, which promises nothing: urd may pick anything there. In code a category is an enum, none
+  first (``urd::keys { none, dense, sparse }``), and each answer has a tag type (``urd::dense``). Categories are open:
+  another enum with tag types is another category (:doc:`/extending`).
+- **A kind** answers a set of categories, its *request format*: a queue has no ``bidirectional``, a set no
+  ``fifo``. A tag outside the format of the request's kind does not compile (*a property means nothing for this kind
+  of Store*). Each category's page lists the kinds that answer it.
 - **A tag** is one answer to a category. Within a category some answers promise more than others:
   ``constant_clear`` (clear in O(1)) is at least ``proportional_clear`` (clear in O(elements present)), so a
   container that clears in O(1) also serves a request for ``proportional_clear``. Each category's diagram draws
@@ -64,7 +69,7 @@ Take ``Distance`` from the example on the :doc:`front page </index>`:
      - nothing to say about the workload
    * - Every other category
      - (unanswered)
-     - its root: no promise
+     - its none: no promise
 
 urd picks the cheapest container that keeps every answer: here a map with a generation counter per slot
 (``generation_map``). A Store has the properties it was asked for, not those of its representation: a set that
@@ -77,15 +82,21 @@ Tags also differ in who makes the promise, shown on each tag's card. The role fo
 semantics from who keeps the tag:
 
 - a **kind** makes the Store a queue, a pool or a partition (``fifo``, ``handles``, ``partition``);
-- a **guarantee** is kept by the container (``sorted``, ``stable_refs``, and the costs); containers declare their
-  guarantees in ``container_traits``, and the typed tests check them against a reference model;
+- a **guarantee** is kept by the container (``sorted``, ``stable_refs``, and the costs); a container declares its
+  guarantees in its declaration's ``provides`` (:doc:`/representations`), and the typed tests check them against a
+  reference model;
 - a **demand** is a promise you make about the data (``dense``: the keys really are indices);
 - a **request** only a request states, and the Store's interface enforces it (``frozen``, ``positional``);
 - a **hint** (``small``) changes the choice, never a guarantee.
 
-A request is what it states, and what that means (``urd::meaning`` in ``include/urd/tags.hpp``): a set, and a map
-without ``multi``, keep each key once; a positional set numbers its keys as they come; a frozen Store's references
-are stable. What the Store's interface offers follows from ``frozen``, ``monotone``, ``nonempty`` and
+A request is what it states, and what that means (each kind's ``meaning``, ``include/urd/kinds.hpp``): a set, and a
+map without ``multi``, keep each key once; a positional set numbers its keys as they come; a frozen Store's
+references are stable (``urd::implied``, whatever the kind).
+
+Tags are what a request states. What its data *is* (whether a key can be hashed, is an index, copies as bytes, ...)
+is not stated but derived from the types: these are **type traits** (``urd::trait::can_hash``, ...,
+``include/urd/registry/facts.hpp``), which containers rely on by role (the elements, the order, a map's values, the
+rows). They never appear in a request; see :doc:`/semantics` for the concepts they are derived from. What the Store's interface offers follows from ``frozen``, ``monotone``, ``nonempty`` and
 ``fixed_shape``. Each container declares everything it guarantees, and what it relies on: one that never erases relies
 on ``monotone``, one built once on ``frozen``.
 
@@ -120,7 +131,7 @@ Incompatible combinations
 A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). ``to_spec`` rejects only what is
 ill-formed whatever container would hold it; the ``handles``, ``partition`` and ``order_by`` ties rows share one
-message (``well_formed`` in ``include/urd/tags.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+message (``well_formed`` in ``include/urd/kinds.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::

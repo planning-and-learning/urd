@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/costs.hpp"
+#include "urd/type_traits_of.hpp"
 #include "urd/elements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/traits.hpp"
@@ -79,12 +80,18 @@ consteval bool compares_in_order()
 template<template<typename, typename, typename> class F>
 struct facet_condition;
 
-/// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet: what a Store's container is
+/// Whether a pool's values are rows: Stores or registered containers holding elements (held_as, as the pools'
+/// containers read them). A Store is not completed to ask (its container's header may be absent here).
+template<typename V>
+consteval bool holds_rows()
+{ return held_as<V>::store; }
+
+/// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet as an operation_list: what a Store's container is
 /// asked to state a cost for, and what a search knows a kind offers. None by default.
 template<template<typename, typename, typename> class F>
 struct facet_operations
 {
-    static constexpr std::array<operation, 0> offered {};
+    using offered = operation_list<>;
 };
 
 /// Whether F is among the facets of a list.

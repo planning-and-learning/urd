@@ -129,7 +129,7 @@ struct facet_condition<facet::positions>
 template<>
 struct facet_operations<facet::positions>
 {
-    static constexpr std::array offered { operation::access };
+    using offered = operation_list<operation::access>;
 };
 /// When a set has positions: it asks for them, or it is insertion-ordered and never frees a key (kept in one
 /// array: an interner, a sparse set), so its keys have positions whether the request names them or not.
@@ -143,7 +143,7 @@ struct facet_condition<facet::insertion_positions>
 template<>
 struct facet_operations<facet::insertion_positions>
 {
-    static constexpr std::array offered { operation::access };
+    using offered = operation_list<operation::access>;
 };
 
 }  // namespace urd::detail

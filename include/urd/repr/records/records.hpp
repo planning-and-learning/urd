@@ -60,6 +60,14 @@ private:
     Records m_records;
 };
 
+/// A pool of values interned whole: the record interner's indexed set for any hashable value, not stored as bytes.
+template<typename T, bool ThreadSafe, bool Stable>
+class ValueInterner : public RecordInterner<T, ThreadSafe, Stable>
+{
+public:
+    using RecordInterner<T, ThreadSafe, Stable>::RecordInterner;
+};
+
 }  // namespace urd::repr
 
 namespace urd
@@ -89,6 +97,21 @@ template<typename S>
 struct representation_of<thread_safe_record_interner_decl, S>
 {
     using type = repr::RecordInterner<typename S::element_type, true>;
+};
+template<typename S>
+struct representation_of<value_interner_decl, S>
+{
+    using type = repr::ValueInterner<typename S::element_type>;
+};
+template<typename S>
+struct representation_of<stable_value_interner_decl, S>
+{
+    using type = repr::ValueInterner<typename S::element_type, false, true>;
+};
+template<typename S>
+struct representation_of<thread_safe_value_interner_decl, S>
+{
+    using type = repr::ValueInterner<typename S::element_type, true>;
 };
 
 }  // namespace urd::detail

@@ -61,6 +61,7 @@ complexity of each operation per representation.
    :caption: Representations
 
    representations
+   extending
    RESOLUTION
 
 .. toctree::

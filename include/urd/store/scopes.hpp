@@ -46,7 +46,7 @@ struct facet_condition<facet::scopes>
 template<>
 struct facet_operations<facet::scopes>
 {
-    static constexpr std::array offered { operation::scope };
+    using offered = operation_list<operation::scope>;
 };
 
 }  // namespace urd::detail

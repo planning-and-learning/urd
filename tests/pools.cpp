@@ -113,6 +113,11 @@ class Records : public testing::Test
 using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    urd::repr::RecordInterner<Point, false, true>,
                                    urd::repr::RecordInterner<Point, true>,
+                                   urd::repr::ValueInterner<Point>,
+                                   urd::repr::ValueInterner<Named, false, true>,
+                                   urd::repr::ValueInterner<Named, true>,
+                                   Store<value<Point>, urd::handles, urd::unique>,
+                                   Store<value<Named>, urd::handles, urd::unique, urd::concurrent>,
                                    urd::repr::ArenaInterner<Named>,
                                    urd::repr::ArenaInterner<Named, true>,
                                    urd::repr::ArenaInterner<Point>,
@@ -132,6 +137,10 @@ TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
 
 }  // namespace
 
+// Values interned whole, where the request does not ask for flat: the value interner, whatever the value.
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<Point>>);
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::stable_refs>::representation, urd::repr::ValueInterner<Named, false, true>>);
+static_assert(std::same_as<Store<value<std::string>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<std::string>>);
 // Records stored flat: trivially copyable ones in memory, the others serialized into an arena; thread-safe on request.
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::RecordInterner<Point>>);
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);

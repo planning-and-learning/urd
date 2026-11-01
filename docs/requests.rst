@@ -54,7 +54,7 @@ Most rows are held as Stores, each owning its storage. Where the outer request s
 Kinds
 -----
 
-The kind of a Store follows from its arguments:
+The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims its request (:doc:`language/kind`):
 
 .. list-table::
    :header-rows: 1
@@ -72,15 +72,21 @@ The kind of a Store follows from its arguments:
    * - ``Store<value<V>, ...>``
      - a sequence
      - :doc:`kinds/sequences`
-   * - ``Store<value<V>, fifo | lifo | by_priority, ...>``
-     - a queue
+   * - ``Store<value<V>, sorted | unique | multi, ...>``
+     - a multiset: values kept by value
+     - :doc:`kinds/sequences`
+   * - ``Store<value<V>, fifo | lifo, ...>``
+     - a queue by arrival
      - :doc:`kinds/queues`
-   * - ``Store<value<Row>, handles, ...>``
-     - a pool of rows (``unique``: interned) or of slots
+   * - ``Store<value<V>, by_priority, ...>``
+     - a priority queue
+     - :doc:`kinds/queues`
+   * - ``Store<value<V>, handles, unique, ...>``
+     - a pool: rows interned as rows, records and values interned whole (``flat``: records stored as bytes)
+     - :doc:`kinds/pools`, :doc:`kinds/records`
+   * - ``Store<value<V>, handles, ...>``
+     - slots
      - :doc:`kinds/pools`
-   * - ``Store<value<Record>, handles, unique, flat, ...>``
-     - a pool of records stored flat
-     - :doc:`kinds/records`
    * - ``Store<key<I>, partition>``
      - a partition of indices
      - :doc:`kinds/partitions`
@@ -99,15 +105,19 @@ assertion that names what is wrong.
   Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
 * A pool (``handles``) holds ``value<V>`` rows reached by handle, not by key; a ``partition`` groups keys, without
   values; ``order_by`` on unique keys needs orderable keys, to break ties.
+* Every tag answers a question of the request's kind (its request format): ``bidirectional`` means nothing for a
+  queue, ``flat`` nothing for a set.
 * Any other request no container serves fails in the registry.
 
 Resolution
 ----------
 
-The registry (``include/urd/registry/declarations.hpp``) lists the containers in an order backed by :doc:`BENCHMARKS`; the first
-whose declared traits satisfy every property of the request, whose demands the request meets, and whose interface
-matches the request's kind (kept by value where the request is, unique, by handle, flat, a map, a queue exactly
-where the request is), is chosen. A declared guarantee the request left open is free, with one exception: ``dense``
+The request's kind is found first (:doc:`language/kind`); then only that kind's containers are tried
+(``declarations_of<Kind>`` in ``include/urd/registry/declarations.hpp``), in an order backed by :doc:`BENCHMARKS`. The
+first whose declaration provides every property of the request, whose reliances the request promises (what it
+states, and the type traits of its elements, order, values and rows), and whose demands the request meets, is chosen;
+where the request is ``frozen`` or ``small``, containers with stable storage come after the others (``preferences``
+in ``include/urd/kinds.hpp``). A declared guarantee the request left open is free, with one exception: ``dense``
 is also a demand, since a container that stores by index needs keys that are indices, so a dense container serves
 only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
 and checked by a test, and a second test checks that no serving candidate demands what a request did not promise.
@@ -116,7 +126,7 @@ A request no container serves fails with a static assertion; its instantiation n
 
 .. code-block:: text
 
-   In instantiation of 'no_representation_for<spec<std::string, void, ..., urd::tag::dense, ...>>'
+   In instantiation of 'no_representation_for<spec<std::string, void, void, urd::uniqueness::unique, urd::keys::dense>>'
    error: static assertion failed: urd::Store: no container serves this request: drop or change a tag
 
 A call to an operation the properties rule out is a plain compile error: the Store has no such member.

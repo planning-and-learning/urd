@@ -49,7 +49,7 @@ struct change_logged_decl
     static constexpr role_tags relies_on = []
     {
         auto result = Part::relies_on;
-        result.order.put(trait_v<trait::own_order>);
+        result.at(role_v<role::order>).traits.put(trait_v<trait::own_order>);
         return result;
     }();
     static constexpr auto gives_elements = Part::gives_elements;

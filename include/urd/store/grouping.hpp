@@ -52,7 +52,7 @@ struct facet_condition<facet::grouping>
 template<>
 struct facet_operations<facet::grouping>
 {
-    static constexpr std::array offered { operation::merge, operation::lookup };
+    using offered = operation_list<operation::insert, operation::merge, operation::lookup>;
 };
 
 }  // namespace urd::detail

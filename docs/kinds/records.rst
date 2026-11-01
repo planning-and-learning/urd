@@ -14,6 +14,10 @@ Records, repositories, views
 
 .. cpp:namespace:: urd::Records
 
+Records are the pool kind (:doc:`pools`) holding values that are not rows: each distinct value once, interned whole.
+Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an indexed set of the values: a pool of
+strings is ``Store<value<std::string>, handles, unique>``). With ``flat``, records are stored as bytes:
+
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
 A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista

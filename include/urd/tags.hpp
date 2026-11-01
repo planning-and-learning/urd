@@ -1,11 +1,12 @@
 #pragma once
 
-// The vocabulary as code: every property a container declares or a request states, as a number (urd::tag) and as a
-// type (urd::sorted, ...), with its words beside it. A tag derived from another means "at least that". A category's
-// root names it: its question, its group (kind, semantics, costs, hints), and in semantics its reading heading; any
-// other tag has its description, the phrases a need is put in, and in semantics who keeps it (`promise`: guaranteed or
-// caller). The machinery that computes with them is in urd/property_set.hpp; share/urd/vocabulary.json is generated
-// from them.
+// The vocabulary as code: each category is an enum of its own, none first (urd::order { none, sorted,
+// insertion_ordered }), with a tag type per answer (urd::sorted, ...) listed by tags_of<E>, and its words beside them.
+// A tag type derived from another means "at least that". A category's none type names it: its question, its group
+// (kind, semantics, costs, hints), and in semantics its reading heading; any other tag has its description, the phrases
+// a need is put in, and in semantics who keeps it (`promise`: guaranteed or caller). Categories are open: another enum
+// with tag types is another category, and a kind lists the categories its requests answer (urd/kinds.hpp, format).
+// The machinery that computes with them is in urd/property_set.hpp; share/urd/vocabulary.json is generated from them.
 
 #include <array>
 #include <cstddef>
@@ -246,10 +247,11 @@ template<typename E>
 concept category_enum = requires { typename tags_of<E>::type; };
 
 // Properties, in the style of Boost.Graph's graph_traits: each answers one question (a category) with a tag
-// type, and a tag derived from another means "at least that". The root of a category promises nothing, and names
-// itself as `root`, which every tag of its category inherits. Each tag also carries its number in urd::tag, so that
-// properties are computed as constexpr values, not as types: a request costs the compiler a constant evaluation
-// instead of hundreds of class instantiations.
+// type, and a tag derived from another means "at least that". A category's none type promises nothing, and names
+// itself as `root`, which every tag of its category inherits. Each tag type's `value` is its answer in the category's
+// enum, from which urd::tag is made (its category's table and its answer), so that properties are computed as
+// constexpr values, not as types: a request costs the compiler a constant evaluation instead of hundreds of class
+// instantiations.
 
 // What a container guarantees by itself.
 struct any_order

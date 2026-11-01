@@ -1,7 +1,8 @@
 #pragma once
 
-// What a container declares about itself: its properties (container_traits),
-// and the header that defines it (defined_in). The tags it declares them with are in urd/tags.hpp.
+// What urd knows about a container: its properties (container_traits) and the header that defines it (defined_in).
+// For a registered container both are derived from its declaration (urd/registry/derived.hpp); the tags are in
+// urd/tags.hpp.
 
 #include "urd/property_set.hpp"
 #include "urd/semantics/concepts.hpp"
@@ -21,8 +22,9 @@
 namespace urd
 {
 
-/// What a container guarantees, by itself, through every operation it offers. Specialize it for a container
-/// to declare its properties; a registered container's property tests check the declaration (tests/properties.hpp):
+/// What a container guarantees, by itself, through every operation it offers. A registered container's is derived
+/// from its declaration's `provides` (urd/registry/derived.hpp), and its property tests check it
+/// (tests/properties.hpp). A container outside the registry may specialize it:
 ///
 ///     template<> struct urd::container_traits<MyList> : urd::properties_of<urd::sorted, urd::unique> {};
 ///

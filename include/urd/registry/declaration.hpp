@@ -10,14 +10,15 @@
 //         static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
 //         using kind = set_kind;                                        // urd/kinds.hpp
 //         static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, … });
-//         static constexpr role_tags relies_on { .order = trait_set_of<trait::natural_ordered>() };
+//         static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
 //         struct operation_costs { … };                                       // urd::container_costs, by operation
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
 //     };
 //
 // What it provides is matched against what a request requires, what it relies on against what the request's roles
-// promise (urd/registry/facts.hpp): the data tags of its elements, its order, its rows. What depends on the elements
+// promise by role (urd/registry/facts.hpp: role_tags): the type traits (urd::trait) of its elements, its order, its
+// rows, and the rows' own tags. What depends on the elements
 // beyond the tags is in its description. A wrapper is a template over its part's declaration
 // (urd/repr/wrappers/layered_fwd.hpp, …), composing the part's tags, headers, costs and words; a container with
 // variants is a template over its flags. Two links tie a declaration to
@@ -62,9 +63,21 @@ struct registry_entry
     std::string_view description;
     std::string_view holds;
 };
+/// Whether every role `relies` holds is one of `roles` (a kind's).
+template<typename... Roles>
+consteval bool roles_within(role_list<Roles...> /*roles*/, const role_tags& relies)
+{
+    for (std::size_t each = 0; each < relies.count; ++each)
+        if (((relies.roles[each].of != role_v<Roles>) && ...))
+            return false;
+    return true;
+}
+
 template<typename Decl>
 constexpr registry_entry entry_of()
 {
+    static_assert(roles_within(typename Decl::kind::roles {}, Decl::relies_on),
+                  "urd: a container relies on a role its kind has not (urd/kinds.hpp, roles)");
     return { Decl::id, std::span<const std::string_view>(Decl::headers), Decl::kind::name, Decl::provides, Decl::relies_on,
              std::span<const tag>(Decl::gives_elements), Decl::description, Decl::holds };
 }

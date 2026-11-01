@@ -53,7 +53,7 @@ struct facet_condition<facet::iteration>
 template<>
 struct facet_operations<facet::iteration>
 {
-    static constexpr std::array offered { operation::iterate };
+    using offered = operation_list<operation::iterate>;
 };
 
 }  // namespace urd::detail
