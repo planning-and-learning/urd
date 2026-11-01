@@ -24,12 +24,9 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
        static constexpr urd::detail::property_set relies_on =                            // what a request must promise
            urd::detail::relies(urd::detail::traits<urd::role::order, urd::trait::natural_ordered>());
        static constexpr std::array<urd::tag, 0> gives_elements {};                       // what Stores held in it get
-       struct operation_costs                                                            // by operation, see costs.hpp
-       {
-           static constexpr urd::cost insert = urd::costs::log_n;
-           static constexpr urd::cost lookup = urd::costs::log_n;
-           static constexpr double words = 3;
-       };
+       using operation_costs = urd::cost_table<urd::cost_entry<urd::operation::insert, urd::costs::log_n>,  // see costs.hpp
+                                               urd::cost_entry<urd::operation::lookup, urd::costs::log_n>>;
+       static constexpr double words = 3;                                                // memory per element
        static constexpr std::string_view description = "my set", holds = "a node per element";
    };
 
@@ -74,10 +71,9 @@ promises it.
 An operation and a facet
 ------------------------
 
-An operation is a struct with its words, the member of a container's ``operation_costs`` named for it (``in``), and
-whether a wrapper's costs pass it on from its part's (``passed_on``): ``urd::operation::insert`` in
-``include/urd/costs.hpp``, where urd's are written by a local macro (a member's name cannot be a template argument);
-``tests/store/outside_kind.cpp`` writes its two by hand. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
+An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/costs.hpp``); a container
+states its cost by an entry for it in its ``operation_costs``, a ``cost_table`` (a wrapper's, ``costs_over`` its part's
+declaration, passes on every operation it has no entry for). ``tests/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
 ``facet_condition<F>`` (when a Store has it) and ``facet_operations<F>`` (the operations it offers), as in
 ``include/urd/store/*.hpp``.
 

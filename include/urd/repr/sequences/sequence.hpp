@@ -20,15 +20,12 @@ struct vector_decl
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "std::vector";
     static constexpr std::string_view holds = "one array; retains";
 };

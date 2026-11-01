@@ -49,10 +49,8 @@ struct layered_decl
     static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered }) : with(Part::provides, { layering::layered, order::none });
     static constexpr property_set relies_on = Part::relies_on;
     static constexpr auto gives_elements = Part::gives_elements;
-    struct operation_costs : Part::operation_costs
-    {
-        using part = Part;
-    };
+    using operation_costs = costs_over<Part>;
+    static constexpr double words = Part::words;
     static constexpr std::string_view description = joined < Pool ? layered_pool_description : layered_description, Part::description > ::value;
     static constexpr std::string_view holds = Pool ? "its own rows, indices after the parent's" : "its own elements; the parent is not owned";
 };

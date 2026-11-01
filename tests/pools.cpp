@@ -561,7 +561,7 @@ TEST(Records, ViewsResolveFlatMembers)
     EXPECT_TRUE(shop.items.contains(lamp));
 
     EXPECT_EQ(shop.items.view(lamp).get<&Item::name>(), "lamp");  // the Store alone reads members that are no index
-    const auto whole = urd::view<Item, Shop>(lamp, shop);  // the shop resolves owners too
+    const auto whole = urd::view<Item, Shop>(lamp, shop);         // the shop resolves owners too
     EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
     EXPECT_EQ((std::get<urd::view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
 }

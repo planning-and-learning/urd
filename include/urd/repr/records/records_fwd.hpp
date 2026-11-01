@@ -47,13 +47,10 @@ struct record_interner_decl
         property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::none, threading::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row;
-        static constexpr cost find_row = costs::lin_row;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row>,
+                                       cost_entry<operation::find_row, costs::lin_row>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.5;
     static constexpr std::string_view description = "record interner (trivially copyable records in an indexed set)";
     static constexpr std::string_view holds = "each distinct record once, as one block of bytes";
 };
@@ -67,6 +64,7 @@ struct value_interner_decl
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash, trait::whole_value>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = record_interner_decl::operation_costs;
+    static constexpr double words = record_interner_decl::words;
     static constexpr std::string_view description = "value interner (distinct values in an indexed set)";
     static constexpr std::string_view holds = "each distinct value once";
 };
@@ -98,13 +96,10 @@ struct stable_record_interner_decl
         property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row;
-        static constexpr cost find_row = costs::lin_row;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.6;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row>,
+                                       cost_entry<operation::find_row, costs::lin_row>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.6;
     static constexpr std::string_view description = "record interner over segments that never move (no lock)";
     static constexpr std::string_view holds = "each distinct record once, in segments that never move";
 };
@@ -119,6 +114,7 @@ struct stable_value_interner_decl
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash, trait::whole_value>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = stable_record_interner_decl::operation_costs;
+    static constexpr double words = stable_record_interner_decl::words;
     static constexpr std::string_view description = "value interner over segments that never move (no lock)";
     static constexpr std::string_view holds = "each distinct value once, in segments that never move";
 };
@@ -150,13 +146,10 @@ struct thread_safe_record_interner_decl
         property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::concurrent });
     static constexpr property_set relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row;
-        static constexpr cost find_row = costs::lin_row;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.7;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row>,
+                                       cost_entry<operation::find_row, costs::lin_row>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.7;
     static constexpr std::string_view description = "record interner, thread-safe";
     static constexpr std::string_view holds = "each distinct record once; inserts under a lock";
 };
@@ -171,6 +164,7 @@ struct thread_safe_value_interner_decl
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash, trait::whole_value>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = thread_safe_record_interner_decl::operation_costs;
+    static constexpr double words = thread_safe_record_interner_decl::words;
     static constexpr std::string_view description = "value interner, thread-safe";
     static constexpr std::string_view holds = "each distinct value once; inserts under a lock";
 };
@@ -202,13 +196,10 @@ struct arena_interner_decl
         property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash, trait::names_members>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row;
-        static constexpr cost find_row = costs::lin_row;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row>,
+                                       cost_entry<operation::find_row, costs::lin_row>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.5;
     static constexpr std::string_view description = "arena interner (records serialized by cista into a byte arena)";
     static constexpr std::string_view holds = "each distinct record once, serialized into an arena";
 };
@@ -234,13 +225,10 @@ struct thread_safe_arena_interner_decl
         property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::concurrent });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash, trait::names_members>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row;
-        static constexpr cost find_row = costs::lin_row;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.7;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row>,
+                                       cost_entry<operation::find_row, costs::lin_row>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.7;
     static constexpr std::string_view description = "arena interner, thread-safe";
     static constexpr std::string_view holds = "each distinct record once, serialized; inserts under a lock";
 };

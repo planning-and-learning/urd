@@ -59,13 +59,10 @@ struct csr_multimap_decl
     static constexpr property_set relies_on =
         relies(stated({ change::frozen }), traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.2;
-    };
+    using operation_costs = cost_table<cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.2;
     static constexpr std::string_view description = "CSR multimap (each key's values together, in key order)";
     static constexpr std::string_view holds = "n values + U + 1 offsets";
 };
@@ -90,16 +87,13 @@ struct dense_multimap_decl
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::lin_row;
-        static constexpr cost clear = costs::lin_keys;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::lin_row>,
+                                       cost_entry<operation::clear, costs::lin_keys>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 4;
     static constexpr std::string_view description = "dense multimap (a vector of values per index, growing)";
     static constexpr std::string_view holds = "a vector per index; retains";
 };
@@ -124,15 +118,12 @@ struct posting_map_decl
     static constexpr property_set provides = property_set::of({ multiplicity::multi, keys::sparse });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::lin_row;
-        static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::lin_row>,
+                                       cost_entry<operation::clear, costs::lin_capacity>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 4;
     static constexpr std::string_view description = "postings (a flat hash table of value vectors)";
     static constexpr std::string_view holds = "a vector of values per key";
 };
@@ -161,13 +152,10 @@ struct bidirectional_csr_decl
                                                      traits<role::order, trait::own_order>(),
                                                      traits<role::mapped, trait::an_index>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 2.4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 2.4;
     static constexpr std::string_view description = "bidirectional CSR (each key's values and each value's keys together)";
     static constexpr std::string_view holds = "n values + U + 1 offsets, both ways";
 };

@@ -38,16 +38,13 @@ struct set_decl
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::log_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::log_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::log_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 5;
     static constexpr std::string_view description = "std::set (balanced tree)";
     static constexpr std::string_view holds = "a node per element; reclaims";
 };
@@ -72,15 +69,12 @@ struct unordered_set_decl
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::one_e>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 4;
     static constexpr std::string_view description = "std::unordered_set (hash table)";
     static constexpr std::string_view holds = "a node per element + buckets; stable references";
 };

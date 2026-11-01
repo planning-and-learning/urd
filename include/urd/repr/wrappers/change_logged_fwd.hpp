@@ -47,14 +47,11 @@ struct change_logged_decl
     /// The part's, and its own order: the wrapper's type is written for urd::Less.
     static constexpr property_set relies_on = with(Part::relies_on, { trait_tag<trait::own_order>.about(role_v<role::order>) });
     static constexpr auto gives_elements = Part::gives_elements;
-    struct operation_costs : Part::operation_costs
-    {
-        using part = Part;
-        static constexpr cost erase = costs::lin_changes;
-        // A clear walks the elements, then clears the part: in every part logged, iterating costs at least clearing.
-        static constexpr cost clear = Part::operation_costs::iterate;
-        static constexpr double words = Part::operation_costs::words + 1;
-    };
+    using operation_costs = costs_over<Part,
+                                       cost_entry<operation::erase, costs::lin_changes>,
+                                       // A clear walks the elements, then clears the part: in every part logged, iterating costs at least clearing.
+                                       cost_entry<operation::clear, cost_of<operation::iterate, typename Part::operation_costs>().value()>>;
+    static constexpr double words = Part::words + 1;
     static constexpr std::string_view description = joined<change_logged_description, Part::description>::value;
     static constexpr std::string_view holds = "+ the elements added and removed";
 };

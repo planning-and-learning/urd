@@ -39,13 +39,8 @@ struct ordered_map_decl
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::none, layout::none, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : indexed_set_decl::operation_costs
-    {
-        using part = indexed_set_decl;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = indexed_set_decl::operation_costs::words + 1;
-    };
+    using operation_costs = costs_over<indexed_set_decl, cost_entry<operation::erase, costs::lin_n>, cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = indexed_set_decl::words + 1;
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
     static constexpr std::string_view holds = "its key set + n values in order";
 };
@@ -72,13 +67,8 @@ struct dense_ordered_map_decl
     static constexpr property_set relies_on =
         relies(traits<role::element, trait::an_index, trait::destroys_trivially>(), traits<role::mapped, trait::destroys_trivially>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : ordered_sparse_set_decl::operation_costs
-    {
-        using part = ordered_sparse_set_decl;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = ordered_sparse_set_decl::operation_costs::words + 1;
-    };
+    using operation_costs = costs_over<ordered_sparse_set_decl, cost_entry<operation::erase, costs::lin_n>, cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = ordered_sparse_set_decl::words + 1;
     static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
     static constexpr std::string_view holds = "its sparse set + n values in order";
 };

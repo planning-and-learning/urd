@@ -8,6 +8,7 @@
 
 #include "urd/traits.hpp"
 
+#include <concepts>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -162,73 +163,135 @@ struct operation_list
 {
 };
 
-/// urd's operations, each with the member of a container's costs named for it (in) and whether a wrapper's costs pass
-/// it on from its part's (passed_on).
+/// urd's operations: each its words, and the key of its entry in a container's costs (cost_table).
 namespace operation
 {
 
-// One struct per operation: its words, the member of a container's costs named for it (in), and whether a wrapper's
-// costs pass it on from its part's (passed_on: the wrapper inherits the part's member, the same object). A member's
-// name cannot be a template argument, so the structs are written by this macro, local to this header.
-// NOLINTBEGIN(cppcoreguidelines-macro-usage)
-#define URD_OPERATION(member, words)                           \
-    struct member                                              \
-    {                                                          \
-        static constexpr std::string_view name = #member;      \
-        static constexpr std::string_view description = words; \
-        template<typename C>                                   \
-        static constexpr std::optional<cost> in()              \
-        {                                                      \
-            if constexpr (requires { C::member; })             \
-                return C::member;                              \
-            else                                               \
-                return std::nullopt;                           \
-        }                                                      \
-        template<typename C, typename P>                       \
-        static constexpr bool passed_on()                      \
-        {                                                      \
-            if constexpr (requires {                           \
-                              C::member;                       \
-                              P::member;                       \
-                          })                                   \
-                return &C::member == &P::member;               \
-            else                                               \
-                return false;                                  \
-        }                                                      \
-    }
-// NOLINTEND(cppcoreguidelines-macro-usage)
-
-URD_OPERATION(insert, "a set's or map's insert, a sequence's push_back");
-URD_OPERATION(lookup, "find, contains, a map's value by key");
-URD_OPERATION(ordered_lookup, "lower_bound");
-URD_OPERATION(erase, "by key, or by position");
-URD_OPERATION(clear, "every element at once");
-URD_OPERATION(iterate, "every element in turn");
-URD_OPERATION(access, "by position or handle");
-URD_OPERATION(push, "a queue's");
-URD_OPERATION(pop, "a queue's");
-URD_OPERATION(top, "a queue's");
-URD_OPERATION(merge, "a partition's");
-URD_OPERATION(insert_row, "a pool's insert");
-URD_OPERATION(find_row, "a pool's find");
-URD_OPERATION(scope, "push_scope, changes, pop_scope");
-
-#undef URD_OPERATION
+struct insert
+{
+    static constexpr std::string_view name = "insert";
+    static constexpr std::string_view description = "a set's or map's insert, a sequence's push_back";
+};
+struct lookup
+{
+    static constexpr std::string_view name = "lookup";
+    static constexpr std::string_view description = "find, contains, a map's value by key";
+};
+struct ordered_lookup
+{
+    static constexpr std::string_view name = "ordered_lookup";
+    static constexpr std::string_view description = "lower_bound";
+};
+struct erase
+{
+    static constexpr std::string_view name = "erase";
+    static constexpr std::string_view description = "by key, or by position";
+};
+struct clear
+{
+    static constexpr std::string_view name = "clear";
+    static constexpr std::string_view description = "every element at once";
+};
+struct iterate
+{
+    static constexpr std::string_view name = "iterate";
+    static constexpr std::string_view description = "every element in turn";
+};
+struct access
+{
+    static constexpr std::string_view name = "access";
+    static constexpr std::string_view description = "by position or handle";
+};
+struct push
+{
+    static constexpr std::string_view name = "push";
+    static constexpr std::string_view description = "a queue's";
+};
+struct pop
+{
+    static constexpr std::string_view name = "pop";
+    static constexpr std::string_view description = "a queue's";
+};
+struct top
+{
+    static constexpr std::string_view name = "top";
+    static constexpr std::string_view description = "a queue's";
+};
+struct merge
+{
+    static constexpr std::string_view name = "merge";
+    static constexpr std::string_view description = "a partition's";
+};
+struct insert_row
+{
+    static constexpr std::string_view name = "insert_row";
+    static constexpr std::string_view description = "a pool's insert";
+};
+struct find_row
+{
+    static constexpr std::string_view name = "find_row";
+    static constexpr std::string_view description = "a pool's find";
+};
+struct scope
+{
+    static constexpr std::string_view name = "scope";
+    static constexpr std::string_view description = "push_scope, changes, pop_scope";
+};
 
 }  // namespace operation
 
-/// The cost of operation Op in costs C (a declaration's operation_costs, or urd::container_costs<R>): its member named
-/// for the operation, or none where C has none.
+/// What operation Op costs in a container: one entry of its costs.
+template<typename Op, cost Cost>
+struct cost_entry
+{
+    using operation = Op;
+    static constexpr cost value = Cost;
+};
+
+/// A container's costs: one entry per operation it offers. `of<Op>()` is Op's cost, or none where it has no entry.
+template<typename... Entries>
+struct cost_table
+{
+    template<typename Op>
+    static constexpr std::optional<cost> of()
+    {
+        auto found = std::optional<cost>();
+        ((std::same_as<Op, typename Entries::operation> ? void(found = Entries::value) : void()), ...);
+        return found;
+    }
+    template<typename Op>
+    static constexpr bool passed_on()
+    { return false; }
+};
+
+/// A wrapper's costs: its own entries, and for every other operation its part's (Part, a declaration). An operation it
+/// has no entry for is passed on to its part.
+template<typename Part, typename... Entries>
+struct costs_over
+{
+    using part = Part;
+    template<typename Op>
+    static constexpr std::optional<cost> of()
+    {
+        const auto own = cost_table<Entries...>::template of<Op>();
+        return own ? own : Part::operation_costs::template of<Op>();
+    }
+    template<typename Op>
+    static constexpr bool passed_on()
+    { return !cost_table<Entries...>::template of<Op>() && Part::operation_costs::template of<Op>(); }
+};
+
+/// The cost of operation Op in costs C (a declaration's operation_costs, or urd::container_costs<R>); none where C has
+/// none.
 template<typename Op, typename C>
 constexpr std::optional<cost> cost_of()
-{ return Op::template in<C>(); }
+{ return C::template of<Op>(); }
 
-/// The costs of the operations of representation R, each a `static constexpr cost` member named for the operation
-/// (insert, lookup, ordered_lookup, erase, clear, iterate, access, push, pop, top, merge, insert_row, find_row,
-/// scope; an operation R lacks has none), and its memory: `words`, machine words per element (the element counting 1;
-/// per key or slot for dense keys). What that memory holds is in words in its synopsis (urd/registry/derived.hpp, container_synopsis). Declared
-/// for every registered representation, derived from its declaration (urd/registry/derived.hpp); none here. A wrapper's derive
-/// from its part's and declare what they change, naming the part's declaration as `part`.
+/// The costs of the operations of representation R: its declaration's operation_costs, a cost_table with an entry per
+/// operation R offers (a wrapper's, costs_over its part's declaration). Its memory is the declaration's `words`: machine
+/// words per element (the element counting 1; per key or slot for dense keys); what that memory holds is in words in its
+/// synopsis (urd/registry/derived.hpp, container_synopsis). Declared for every registered representation, derived from
+/// its declaration (urd/registry/derived.hpp); none here.
 template<typename R>
 struct container_costs
 {

@@ -12,7 +12,8 @@
 //         static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, … });
 //         static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
-//         struct operation_costs { … };                                       // urd::container_costs, by operation
+//         using operation_costs = cost_table<cost_entry<operation::insert, costs::one>, …>;  // urd::container_costs
+//         static constexpr double words = …;                                  // memory per element
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
 //     };
 //

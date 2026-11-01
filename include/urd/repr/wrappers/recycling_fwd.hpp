@@ -58,12 +58,8 @@ struct recycling_map_decl
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs : map_decl::operation_costs
-    {
-        using part = map_decl;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr double words = 5.5;
-    };
+    using operation_costs = costs_over<map_decl, cost_entry<operation::clear, costs::lin_n>>;
+    static constexpr double words = 5.5;
     static constexpr std::string_view description = "recycling map (std::map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };
@@ -88,12 +84,8 @@ struct recycling_hash_set_decl
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : unordered_set_decl::operation_costs
-    {
-        using part = unordered_set_decl;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr double words = 4.5;
-    };
+    using operation_costs = costs_over<unordered_set_decl, cost_entry<operation::clear, costs::lin_n>>;
+    static constexpr double words = 4.5;
     static constexpr std::string_view description = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
@@ -119,12 +111,8 @@ struct recycling_tree_set_decl
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : set_decl::operation_costs
-    {
-        using part = set_decl;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr double words = 5.5;
-    };
+    using operation_costs = costs_over<set_decl, cost_entry<operation::clear, costs::lin_n>>;
+    static constexpr double words = 5.5;
     static constexpr std::string_view description = "recycling tree set (std::set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
@@ -149,12 +137,8 @@ struct recycling_hash_map_decl
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs : unordered_map_decl::operation_costs
-    {
-        using part = unordered_map_decl;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr double words = 4.5;
-    };
+    using operation_costs = costs_over<unordered_map_decl, cost_entry<operation::clear, costs::lin_n>>;
+    static constexpr double words = 4.5;
     static constexpr std::string_view description = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };

@@ -50,15 +50,12 @@ struct parallel_hash_set_decl
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_capacity;
-        static constexpr double words = 1.3;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::one_e>,
+                                       cost_entry<operation::clear, costs::lin_capacity>,
+                                       cost_entry<operation::iterate, costs::lin_capacity>>;
+    static constexpr double words = 1.3;
     static constexpr std::string_view description = "parallel hash set (gtl: shards, each behind its mutex)";
     static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
 };
@@ -83,15 +80,12 @@ struct parallel_node_hash_set_decl
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_capacity;
-        static constexpr double words = 3;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::one_e>,
+                                       cost_entry<operation::clear, costs::lin_capacity>,
+                                       cost_entry<operation::iterate, costs::lin_capacity>>;
+    static constexpr double words = 3;
     static constexpr std::string_view description = "parallel node hash set (gtl: shards behind mutexes, a node per element that never moves)";
     static constexpr std::string_view holds = "16 shards, a node per element; stable references";
 };

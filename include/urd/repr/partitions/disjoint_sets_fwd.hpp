@@ -33,13 +33,9 @@ struct disjoint_sets_decl
     static constexpr property_set provides = property_set::of({ grouping::partition, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;  ///< each new index set once, the arrays grown amortized
-        static constexpr cost lookup = costs::one_a;
-        static constexpr cost merge = costs::one_a;
-        static constexpr double words = 2;
-    };
+    using operation_costs =
+        cost_table<cost_entry<operation::insert, costs::one_a>, cost_entry<operation::lookup, costs::one_a>, cost_entry<operation::merge, costs::one_a>>;
+    static constexpr double words = 2;
     static constexpr std::string_view description = "disjoint sets (union-find by size, path halving)";
     static constexpr std::string_view holds = "a parent and a size per element";
 };

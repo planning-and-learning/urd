@@ -46,16 +46,13 @@ struct flat_map_decl
                                                                 clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::lin_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "boost::container::flat_map (sorted vector)";
     static constexpr std::string_view holds = "n entries in one array; retains";
 };
@@ -81,16 +78,13 @@ struct flat_multimap_decl
         property_set::of({ order::sorted, multiplicity::multi, position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::lin_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "boost::container::flat_multimap (sorted vector)";
     static constexpr std::string_view holds = "n entries in one array; retains";
 };

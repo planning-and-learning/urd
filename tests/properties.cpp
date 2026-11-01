@@ -59,10 +59,8 @@ struct test_declaration
     static constexpr urd::detail::property_set provides = Provides;
     static constexpr urd::detail::property_set relies_on = Relies;
     static constexpr std::array<urd::tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr double words = 1;
-    };
+    using operation_costs = urd::cost_table<>;
+    static constexpr double words = 1;
     static constexpr std::string_view description = "a container a test declares";
     static constexpr std::string_view holds = "its elements";
 };

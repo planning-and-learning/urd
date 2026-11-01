@@ -39,16 +39,13 @@ struct dense_map_decl
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::lin_keys;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.2;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::lin_keys>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.2;
     static constexpr std::string_view description = "dense map (a slot per index)";
     static constexpr std::string_view holds = "a slot per index";
 };
@@ -73,16 +70,13 @@ struct stable_dense_map_decl
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::stable_refs });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::lin_keys;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.3;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::lin_keys>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.3;
     static constexpr std::string_view description = "dense map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot per index, in segments that never move";
 };
@@ -108,16 +102,13 @@ struct generation_map_decl
         property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::one;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.6;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::one>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.6;
     static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
     static constexpr std::string_view holds = "a slot and a generation per index";
 };
@@ -143,16 +134,13 @@ struct stable_generation_map_decl
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::one;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.7;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::one>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.7;
     static constexpr std::string_view description = "generation map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
 };
@@ -178,16 +166,13 @@ struct thread_safe_generation_map_decl
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost lookup = costs::one;
-        static constexpr cost ordered_lookup = costs::lin_keys;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::one;
-        static constexpr cost iterate = costs::lin_keys;
-        static constexpr double words = 1.8;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::lookup, costs::one>,
+                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::one>,
+                                       cost_entry<operation::iterate, costs::lin_keys>>;
+    static constexpr double words = 1.8;
     static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
     static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
 };

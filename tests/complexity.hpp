@@ -90,23 +90,14 @@ struct costs_holder<X>
 /// The costs C states, and whether C passes each on from P, in the order of `operations`: one array per container.
 template<typename C, typename... Ops>
 constexpr std::array<std::optional<cost>, sizeof...(Ops)> costs_in(urd::operation_list<Ops...> /*operations*/)
-{ return { Ops::template in<C>()... }; }
-template<typename C, typename P, typename... Ops>
+{ return { C::template of<Ops>()... }; }
+template<typename C, typename... Ops>
 constexpr std::array<bool, sizeof...(Ops)> passed_in(urd::operation_list<Ops...> /*operations*/)
-{ return { Ops::template passed_on<C, P>()... }; }
+{ return { C::template passed_on<Ops>()... }; }
 template<typename R>
 inline constexpr auto costs_v = costs_in<typename costs_holder<R>::type>(operations {});
 template<typename R>
-consteval std::array<bool, static_cast<std::size_t>(op::count)> passed_of()
-{
-    using C = typename costs_holder<R>::type;
-    if constexpr (requires { typename C::part; })
-        return passed_in<C, typename costs_holder<typename C::part>::type>(operations {});
-    else
-        return {};
-}
-template<typename R>
-inline constexpr auto passed_v = passed_of<R>();
+inline constexpr auto passed_v = passed_in<typename costs_holder<R>::type>(operations {});
 
 /// The cost of `what` in R (a container or a declaration), a wrapper's resolved through its part; none where R lacks
 /// it.
@@ -133,8 +124,10 @@ std::string_view part_name()
 template<typename R>
 constexpr std::optional<double> words_of()
 {
-    if constexpr (requires { costs_holder<R>::type::words; })
-        return costs_holder<R>::type::words;
+    if constexpr (requires { R::words; })
+        return R::words;
+    else if constexpr (requires { urd::detail::declaration_t<R>::words; })
+        return urd::detail::declaration_t<R>::words;
     else
         return std::nullopt;
 }

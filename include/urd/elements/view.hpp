@@ -38,9 +38,10 @@ struct view_mixin
 template<typename M>
 struct resolution
 {
+    // The member lives in the record, which outlives the call: never a temporary.
     template<typename C>
     static const M& of(const M& member, const C& /*context*/) noexcept
-    { return member; }
+    { return member; }  // NOLINT(bugprone-return-const-ref-from-parameter)
 };
 
 /// A record's member, as a view sees it: what its resolution makes of it.
@@ -93,7 +94,9 @@ struct resolution<M>
 {
     template<typename C>
     static auto of(const M& member, const C& context)
-    { return std::views::transform(member, [&context](auto at) { return context.view(at); }); }
+    {
+        return std::views::transform(member, [&context](auto at) { return context.view(at); });
+    }
 };
 
 /// A reference to an element held by index: the index and the context that resolves it, nothing else. It reads the

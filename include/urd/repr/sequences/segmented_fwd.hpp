@@ -40,13 +40,9 @@ struct segmented_vector_decl
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::none });
     static constexpr property_set relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs =
+        cost_table<cost_entry<operation::insert, costs::one_a>, cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "segmented vector (elements never move)";
     static constexpr std::string_view holds = "doubling segments; stable references";
 };
@@ -72,13 +68,9 @@ struct concurrent_segmented_vector_decl
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::concurrent });
     static constexpr property_set relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.6;
-    };
+    using operation_costs =
+        cost_table<cost_entry<operation::insert, costs::one_a>, cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.6;
     static constexpr std::string_view description = "segmented vector, thread-safe appends";
     static constexpr std::string_view holds = "doubling segments; stable references; appends from threads";
 };

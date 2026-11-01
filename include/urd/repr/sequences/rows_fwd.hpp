@@ -42,15 +42,12 @@ struct jagged_decl
     static constexpr property_set relies_on = relies(traits<role::rows, trait::rows_flatten>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they hold plain elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::lin_row;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.2;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_row>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.2;
     static constexpr std::string_view description = "jagged array (CSR: offsets + one data array)";
     static constexpr std::string_view holds = "one offsets array per level";
 };
@@ -65,12 +62,8 @@ struct fixed_jagged_decl
     static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
-    struct operation_costs
-    {
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.2;
-    };
+    using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.2;
     static constexpr std::string_view description = "jagged array of rows changed in place (fixed shape: offsets + one data array)";
     static constexpr std::string_view holds = "one offsets array per level";
 };
@@ -95,15 +88,12 @@ struct row_pool_decl
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
     static constexpr property_set relies_on = relies(traits<role::rows, trait::rows_reused>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_a;
-        static constexpr cost erase = costs::one;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 4;
     static constexpr std::string_view description = "row pool (cleared rows are kept for reuse)";
     static constexpr std::string_view holds = "rows kept with their storage";
 };
@@ -129,12 +119,8 @@ struct tracked_jagged_decl
     static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
-    struct operation_costs
-    {
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.3;
-    };
+    using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.3;
     static constexpr std::string_view description = "jagged rows that track the rows handed out to change";
     static constexpr std::string_view holds = "one array, + the rows handed out to change";
 };

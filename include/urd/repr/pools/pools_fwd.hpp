@@ -51,13 +51,10 @@ struct row_interner_decl
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none });
     static constexpr property_set relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row_e;
-        static constexpr cost find_row = costs::lin_row_e;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
+                                       cost_entry<operation::find_row, costs::lin_row_e>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.5;
     static constexpr std::string_view description = "row interner (each row once, in full)";
     static constexpr std::string_view holds = "each distinct row once, in full";
 };
@@ -92,13 +89,10 @@ struct tree_pool_decl
                                                   relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>()) :
                                                   relies(tags<role::row>({ position::positional }), traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr cost insert_row = Bits ? costs::lin_row : costs::lin_row_e;
-        static constexpr cost find_row = Bits ? costs::lin_row : costs::lin_row_e;
-        static constexpr cost access = costs::lin_row;
-        static constexpr double words = Bits ? 0.05 : 1;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, Bits ? costs::lin_row : costs::lin_row_e>,
+                                       cost_entry<operation::find_row, Bits ? costs::lin_row : costs::lin_row_e>,
+                                       cost_entry<operation::access, costs::lin_row>>;
+    static constexpr double words = Bits ? 0.05 : 1;
     static constexpr std::string_view description =
         Bits ? "tree bitset set (sets of indices as trees of blocks, equal subtrees once)" : "tree vector set (rows as trees of values, equal subtrees once)";
     static constexpr std::string_view holds =
@@ -131,13 +125,10 @@ struct thread_safe_row_interner_decl
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent });
     static constexpr property_set relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::lin_row_e;
-        static constexpr cost find_row = costs::lin_row_e;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.6;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
+                                       cost_entry<operation::find_row, costs::lin_row_e>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.6;
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };

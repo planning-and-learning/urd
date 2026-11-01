@@ -49,39 +49,17 @@ namespace
 namespace tally
 {
 
-/// Its operation `add`: adds a value once more; a container states its cost as a member named `add`.
+/// Its operation `add`: adds a value once more; a container states its cost by an entry for it (urd::cost_entry).
 struct add
 {
     static constexpr std::string_view name = "add";
     static constexpr std::string_view description = "adds a value once more";
-    template<typename C>
-    static constexpr std::optional<urd::cost> in()
-    {
-        if constexpr (requires { C::add; })
-            return C::add;
-        else
-            return std::nullopt;
-    }
-    template<typename C, typename P>
-    static constexpr bool passed_on()
-    { return false; }
 };
-/// Its operation `count`: how often a value was added; a container states its cost as a member named `count`.
+/// Its operation `count`: how often a value was added; a container states its cost by an entry for it.
 struct count
 {
     static constexpr std::string_view name = "count";
     static constexpr std::string_view description = "how often a value was added";
-    template<typename C>
-    static constexpr std::optional<urd::cost> in()
-    {
-        if constexpr (requires { C::count; })
-            return C::count;
-        else
-            return std::nullopt;
-    }
-    template<typename C, typename P>
-    static constexpr bool passed_on()
-    { return false; }
 };
 
 /// The facet a tally offers.
@@ -178,12 +156,8 @@ struct tally_decl
     static constexpr urd::detail::property_set provides = urd::detail::property_set::of({ tallying::tallied });
     static constexpr urd::detail::property_set relies_on {};
     static constexpr std::array<urd::tag, 0> gives_elements {};
-    struct operation_costs
-    {
-        static constexpr urd::cost add = urd::costs::one_ae;
-        static constexpr urd::cost count = urd::costs::one_e;
-        static constexpr double words = 3;
-    };
+    using operation_costs = urd::cost_table<urd::cost_entry<add, urd::costs::one_ae>, urd::cost_entry<count, urd::costs::one_e>>;
+    static constexpr double words = 3;
     static constexpr std::string_view description = "a count per value";
     static constexpr std::string_view holds = "a hash table of counts";
 };
@@ -226,15 +200,16 @@ using Words = urd::Store<tally::counted<std::string>, tally::tallied>;
 static_assert(std::same_as<Words::representation, tally::Tally<std::string>>);
 static_assert(std::same_as<urd::container_traits<Words>::kind, tally::tally_kind>);
 // Its own operations, with the costs its container states.
-static_assert(tally::add::in<tally::tally_decl::operation_costs>().has_value() && tally::count::in<tally::tally_decl::operation_costs>().has_value());
-static_assert(!tally::add::in<urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
+static_assert(urd::cost_of<tally::add, tally::tally_decl::operation_costs>().has_value()
+              && urd::cost_of<tally::count, tally::tally_decl::operation_costs>().has_value());
+static_assert(!urd::cost_of<tally::add, urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
 // What tools read of the kind (urd-search): its operations' words, how it keeps its elements, its memory.
 static_assert(urd::operation_v<tally::add>->name == "add" && !urd::operation_v<tally::count>->description.empty());
 static_assert(!urd::container_traits<Words>::iterable && !urd::has<Words, urd::positional>);
 // Every kind's questions are its own too (threading).
 static_assert(urd::detail::in_format(urd::detail::format_of<tally::tally_kind> {},
                                      urd::detail::property_set::of({ tally::tallying::tallied, urd::threading::concurrent })));
-static_assert(tally::tally_decl::operation_costs::words == 3);
+static_assert(tally::tally_decl::words == 3);
 // urd's own kinds are untouched by the new one.
 static_assert(std::same_as<urd::Store<urd::value<int>>::representation, std::vector<int>>);
 
