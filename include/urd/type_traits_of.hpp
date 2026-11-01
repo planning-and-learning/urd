@@ -43,34 +43,9 @@ struct row_element<Row>
 template<typename Row>
 using row_element_t = typename row_element<Row>::type;
 
-// Three questions about an element type that a trait or rule may ask, answered for a Store from its request and
-// never by completing it (a template argument evaluates every operand, so `!is_store<V> && std::trait<V>` would
-// still complete V: these are specialized instead).
-
-/// Whether V can fill a slot that is emptied and filled again: default-constructible and movable. Every Store is
-/// movable, and one not asked to be nonempty or given a fixed shape has an empty value.
-template<typename V>
-inline constexpr bool slot_value = std::default_initializable<V> && std::movable<V>;
-template<typename R, typename S>
-inline constexpr bool slot_value<Store<R, S>> = !S::urd_properties.has(emptiness::nonempty) && !S::urd_properties.has(shape::fixed_shape);
-
-/// Whether destroying a V does nothing. A Store owns storage, so never.
-template<typename V>
-inline constexpr bool trivially_destructible = std::is_trivially_destructible_v<V>;
-template<typename R, typename S>
-inline constexpr bool trivially_destructible<Store<R, S>> = false;
-
-/// Whether a V is its own block of bytes (copied by memcpy). A Store owns storage, so never.
-template<typename V>
-inline constexpr bool trivially_copyable = std::is_trivially_copyable_v<V>;
-template<typename R, typename S>
-inline constexpr bool trivially_copyable<Store<R, S>> = false;
-
-/// Whether V is iterated as a range of elements. A Store is where its request says so (a set, map or sequence).
-template<typename V>
-inline constexpr bool iterates = std::ranges::input_range<V>;
-template<typename R, typename S>
-inline constexpr bool iterates<Store<R, S>> = S::iterable;
+/// What a Store is built, hashed and ordered by (urd/store/construction.hpp), read when a request is resolved.
+template<typename S>
+struct construction;
 
 /// What T is held as an element: a Store (its tags, what it requires, its kind, its elements' type), a registered
 /// container holding elements (the same, from its declaration, requiring nothing), or plain.
@@ -134,14 +109,11 @@ consteval bool rows_reused()
     return row::store && !row::properties.has(change::monotone) && !row::properties.has(emptiness::nonempty) && !row::properties.has(shape::fixed_shape);
 }
 
-/// Whether T names its members for cista; never asked of a Store, which asking would complete.
+/// Whether T names its members for cista.
 template<typename T>
 consteval bool names_members()
 {
-    if constexpr (is_store<T>)
-        return false;
-    else
-        return requires { T::cista_members(); };
+    return requires { T::cista_members(); };
 }
 
 /// What type T is.
@@ -149,12 +121,19 @@ template<typename T>
 consteval property_set type_traits_of()
 {
     auto result = property_set::roots();
-    if constexpr (!std::is_void_v<T>)
+    if constexpr (is_store<T>)
+    {
+        // A Store is asked by its request, never completed (its container's header may be absent where it is named):
+        // it owns storage, and hashes where its contents fix their order and its elements hash.
+        using S = container_traits<T>;
+        put_trait<trait::can_hash>(result, construction<S>::hashed_in_order && type_traits_of<typename S::element_type>().has(trait_tag<trait::can_hash>));
+    }
+    else if constexpr (!std::is_void_v<T>)
     {
         put_trait<trait::can_hash>(result, hashable<T>);
         put_trait<trait::an_index>(result, indexable<T>);
-        put_trait<trait::copies_as_bytes>(result, trivially_copyable<T>);
-        put_trait<trait::destroys_trivially>(result, trivially_destructible<T>);
+        put_trait<trait::copies_as_bytes>(result, std::is_trivially_copyable_v<T>);
+        put_trait<trait::destroys_trivially>(result, std::is_trivially_destructible_v<T>);
         put_trait<trait::names_members>(result, names_members<T>());
         put_trait<trait::whole_value>(result, !held_as<T>::store);
     }
@@ -201,6 +180,16 @@ consteval property_set order_traits_of()
 {
     if constexpr (is_entry_less<C>)  // a map ordered by its entries: what is ordered is no one type
         return trait_set_of<trait::by_entry>();
+    else if constexpr (std::same_as<C, Less<Ordered>> && is_store<Ordered>)
+    {
+        // A Store is asked by its request, never completed: it orders by its contents where they come in an order its
+        // request fixes and its elements order.
+        using S = container_traits<Ordered>;
+        using E = typename S::element_type;
+        auto result = trait_set_of<trait::own_order>();
+        put_trait<trait::natural_ordered>(result, construction<S>::ordered_in_order && order_traits_of<E, Less<E>>().has(trait_tag<trait::natural_ordered>));
+        return result;
+    }
     else
     {
         auto result = property_set::roots();

@@ -50,13 +50,12 @@ constexpr bool less_range(LhsRange&& lhs, RhsRange&& rhs);
 /// Forwards to std::less by default.
 /// Specializations can be injected into the namespace.
 /// Every specialization must define a total order whose equivalence agrees
-/// with `EqualTo`. A Store's order is given by its request (store.hpp), never found here: asking whether a Store
-/// has < would complete it.
+/// with `EqualTo`.
 template<typename T = void>
 struct Less
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::less<T> {}(lhs, rhs)))
-        requires(!is_store<T>) && requires {
+        requires requires {
             { lhs < rhs } -> std::convertible_to<bool>;
         }
     { return std::less<T> {}(lhs, rhs); }

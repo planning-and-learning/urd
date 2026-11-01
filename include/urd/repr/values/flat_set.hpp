@@ -2,6 +2,7 @@
 
 // Boost's flat set and multiset (a sorted vector), defined. Include it where a Store resolves to one.
 
+#include "urd/elements/hash.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/order.hpp"
 #include "urd/repr/values/flat_set_fwd.hpp"
@@ -34,3 +35,17 @@ struct representation_of<flat_multiset_decl, S>
 };
 
 }  // namespace urd::detail
+
+namespace urd
+{
+
+/// A flat set hashes as its keys, in order.
+template<typename K, typename Compare, typename Allocator>
+struct Hash<boost::container::flat_set<K, Compare, Allocator>>
+{
+    hash_t operator()(const boost::container::flat_set<K, Compare, Allocator>& set) const
+        requires Hashable<K>
+    { return urd::hash_range(set); }
+};
+
+}  // namespace urd

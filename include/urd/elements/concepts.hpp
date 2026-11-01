@@ -80,13 +80,13 @@ template<auto... Ms>
 inline constexpr bool is_members_v<Members<Ms...>> = true;
 }  // namespace detail
 
-/// @brief T lists its identifying members as a Members type. A Store never does: asking would complete it.
+/// @brief T lists its identifying members as a Members type.
 template<typename T>
-concept MemberIdentified = !is_store<T> && requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
+concept MemberIdentified = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
 
 /// @brief T has a function that returns the members that identify it.
 template<typename T>
-concept FunctionIdentified = !is_store<T> && !MemberIdentified<T> && requires(const T a) {
+concept FunctionIdentified = !MemberIdentified<T> && requires(const T a) {
     { a.identifying_members() };
 };
 

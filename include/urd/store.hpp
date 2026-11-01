@@ -165,45 +165,4 @@ struct container_traits<detail::Store<R, S>> : S
 {
 };
 
-// A Store's semantics as an element of another Store, Hash, EqualTo and Less, are decided by its request S alone:
-// whether a Store hashes, compares or orders is asked while the outer Store is resolved, where the inner's
-// representation is named but not yet defined. Only the bodies touch R, and they are instantiated where the Store
-// is held. (elements/concepts.hpp excludes Stores from the identity concepts for the same reason.)
-
-/// Hashed by its contents where they fix the order its elements come in: sorted, canonical, or a sequence (positions
-/// are contents). An unordered Store iterates in an order its contents do not determine, so it has no Hash and cannot
-/// be a hashed key: ask for sorted (or canonical) on the inner Store. Equality is the facet's (equality.hpp), which
-/// compares in that order, so equal Stores hash equally.
-template<typename R, typename S>
-    requires(detail::construction<S>::hashed_in_order && Hashable<typename S::element_type>)
-struct Hash<detail::Store<R, S>>
-{
-    hash_t operator()(const detail::Store<R, S>& store) const
-    {
-        // The representation's own hash where it has one (a bitset hashes its words).
-        if constexpr (Hashable<R>)
-            return Hash<R> {}(detail::store_access::representation(store));
-        else
-            return urd::hash_range(store);
-    }
-};
-
-/// Equal contents, as the Store's == compares them (equality.hpp): an iterable Store of comparable elements.
-template<typename R, typename S>
-    requires(S::iterable && EqualityComparableByEqualTo<typename S::element_type>)
-struct EqualTo<detail::Store<R, S>>
-{
-    bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const { return lhs == rhs; }
-};
-
-/// Ordered lexicographically by urd::Less over the elements, in the order the request fixes (sorted,
-/// insertion_ordered, a sequence): a strict weak order agreeing with EqualTo, as the standard's ordered containers'.
-template<typename R, typename S>
-    requires(detail::construction<S>::ordered_in_order && OrderedByLess<typename S::element_type>)
-struct Less<detail::Store<R, S>>
-{
-    bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const
-    { return std::ranges::lexicographical_compare(lhs, rhs, Less<typename S::element_type> {}); }
-};
-
 }  // namespace urd

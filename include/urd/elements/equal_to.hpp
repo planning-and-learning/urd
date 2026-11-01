@@ -46,13 +46,12 @@ constexpr bool equal_range(LhsRange&& lhs, RhsRange&& rhs);
 /// @brief `EqualTo` is our custom equality comparator, like std::equal_to.
 ///
 /// Forwards to std::equal_to by default.
-/// Specializations can be injected into the namespace. A Store's equality is given by its request (store.hpp), never
-/// found here: asking whether a Store has == would complete it.
+/// Specializations can be injected into the namespace.
 template<typename T = void>
 struct EqualTo
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::equal_to<T> {}(lhs, rhs)))
-        requires(!is_store<T>) && requires {
+        requires requires {
             { lhs == rhs } -> std::convertible_to<bool>;
         }
     { return std::equal_to<T> {}(lhs, rhs); }

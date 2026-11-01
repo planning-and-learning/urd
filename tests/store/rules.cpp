@@ -14,6 +14,8 @@
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/queues/queue.hpp"
+#include "urd/repr/queues/ring_fifo.hpp"
 #include "urd/repr/sequences/jagged.hpp"
 #include "urd/repr/sequences/row_pool.hpp"
 #include "urd/repr/sequences/segmented.hpp"

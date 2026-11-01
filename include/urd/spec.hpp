@@ -168,6 +168,17 @@ struct arguments_in<slot_list<Slots...>, Ps...>
     using type = typename join<typename filling<Slots, Ps...>::type...>::type;
 };
 
+/// Whether T is orderable by itself, asked only where order_by<P> orders it (its ties then fall back to T's own order):
+/// a type nothing orders is never asked, so a nested Store is not completed to answer.
+template<typename T, bool OrderedBy>
+consteval bool orderable_if_ordered()
+{
+    if constexpr (OrderedBy)
+        return orderable<T>;
+    else
+        return false;
+}
+
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
 template<typename... Ps>
 struct to_spec
@@ -196,7 +207,9 @@ struct to_spec
     static_assert(in_format(format {}, stated),
                   "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
                   "request format (urd/kinds.hpp, format)");
-    static_assert(well_formed<kind>(request_facts { .stated = stated, .slots = filled, .orderable = orderable<typename data::ordered_type> }),
+    static_assert(well_formed<kind>(request_facts { .stated = stated,
+                                                    .slots = filled,
+                                                    .orderable = orderable_if_ordered<typename data::ordered_type, filled.has<order_slot>()>() }),
                   "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): "
                   "monotone_priority without by_priority, order_by<P> where its kind takes none (a set without sorted), "
                   "or order_by<P> on unique keys that are not orderable");
