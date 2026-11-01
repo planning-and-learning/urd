@@ -74,6 +74,7 @@ struct category_table
     std::array<bool, most_answers> needs_an_element {};
     std::array<bool, most_answers> fixes_iteration_order {};
     std::array<bool, most_answers> fixes_hash_order {};
+    std::array<bool, most_answers> costly {};
 };
 /// The tags of a type list of tag types (defined once `tag` is, below).
 template<typename List>
@@ -104,6 +105,7 @@ consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
         result.needs_an_element[have] = Have::needs_an_element;
         result.fixes_iteration_order[have] = Have::fixes_iteration_order;
         result.fixes_hash_order[have] = Have::fixes_hash_order;
+        result.costly[have] = Have::costly;
         ++have;
     };
     row(std::type_identity<Root> {});

@@ -71,6 +71,7 @@ namespace
 
 using urd::test::cost;
 using urd::test::op;
+using urd::test::op_count;
 
 using urd::test::json_text;
 
@@ -117,8 +118,8 @@ struct representation
     std::string provides;
     std::string relies_on;
     /// Each operation's cost, where R has one, and whether R passes it on to its part.
-    std::array<std::optional<cost>, static_cast<std::size_t>(op::count)> costs {};
-    std::array<bool, static_cast<std::size_t>(op::count)> passed_on {};
+    std::array<std::optional<cost>, op_count> costs {};
+    std::array<bool, op_count> passed_on {};
     /// The operations some request's Store over it offers: a cost passed on to the part is listed only for these.
     urd::test::offers offered {};
 };

@@ -143,6 +143,9 @@ struct row_element
 
 }  // namespace role
 
+/// urd's roles: what its tables list (a role added outside urd is a struct like these, in its own list).
+using roles = detail::type_list<role::element, role::order, role::rows, role::mapped, role::row, role::row_element>;
+
 }  // namespace urd
 
 namespace urd::detail

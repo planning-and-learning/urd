@@ -43,6 +43,10 @@ struct tag_defaults
     static constexpr bool needs_an_element = false;
     static constexpr bool fixes_iteration_order = false;
     static constexpr bool fixes_hash_order = false;
+    /// Whether giving it costs something (storage by index, nodes, locks, generations, a log, a parent, shared parts):
+    /// a container that gives it unasked is a surprise, unlike one that also happens to keep its memory or lie
+    /// contiguous.
+    static constexpr bool costly = false;
 };
 
 // The groups, by what leaving out a tag one needs causes. Every category is in exactly one.
@@ -240,6 +244,7 @@ struct any_keys : tag_defaults
 struct dense : any_keys
 {
     static constexpr auto value = keys::dense;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "dense";
     static constexpr std::string_view promise = "caller";
     static constexpr std::string_view description = "The keys are 0..n-1, or nearly so: indices filling their range.";
@@ -289,6 +294,7 @@ struct moving_refs : tag_defaults
 struct stable_refs : moving_refs
 {
     static constexpr auto value = referencing::stable_refs;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "stable_refs";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A reference to an element stays valid until that element is removed.";
@@ -396,6 +402,7 @@ struct single_threaded : tag_defaults
 struct concurrent : single_threaded
 {
     static constexpr auto value = threading::concurrent;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "concurrent";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Threads share it: inserts from several threads at once, and the reads each kind allows beside them.";
@@ -480,6 +487,7 @@ struct proportional_clear : any_clear
 struct constant_clear : proportional_clear
 {
     static constexpr auto value = clearing::constant_clear;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "constant_clear";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Clear takes constant time, as with a generation counter.";
@@ -564,6 +572,7 @@ struct any_scope : tag_defaults
 struct scoped : any_scope
 {
     static constexpr auto value = scoping::scoped;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "scoped";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "push_scope and pop_scope: popping undoes every change since the matching push.";
@@ -596,6 +605,7 @@ struct any_layering : tag_defaults
 struct layered : any_layering
 {
     static constexpr auto value = layering::layered;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "layered";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.";
@@ -632,6 +642,7 @@ struct any_handle : tag_defaults
 struct handles : any_handle
 {
     static constexpr auto value = handling::handles;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "handles";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A pool: insert gives a handle; with unique, equal elements get equal handles.";
@@ -664,6 +675,7 @@ struct any_sharing : tag_defaults
 struct structural_sharing : any_sharing
 {
     static constexpr auto value = sharing::structural_sharing;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "structural_sharing";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Parts that are equal across rows are stored once.";
@@ -696,6 +708,7 @@ struct any_direction : tag_defaults
 struct bidirectional : any_direction
 {
     static constexpr auto value = direction::bidirectional;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "bidirectional";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A map that answers by value too: keys(v) gives the keys that map to v.";
@@ -729,6 +742,7 @@ struct any_shape : tag_defaults
 struct fixed_shape : any_shape
 {
     static constexpr auto value = shape::fixed_shape;
+    static constexpr bool costly = true;
     /// Its rows keep their lengths: nothing is inserted or erased.
     static constexpr bool stops_growth = true;
     static constexpr std::string_view name = "fixed_shape";
@@ -797,6 +811,7 @@ struct any_grouping : tag_defaults
 struct partitioned : any_grouping
 {
     static constexpr auto value = grouping::partition;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "partition";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A partition: elements fall into disjoint classes that merge joins.";
@@ -829,6 +844,7 @@ struct any_tracking : tag_defaults
 struct change_log : any_tracking
 {
     static constexpr auto value = tracking::change_log;
+    static constexpr bool costly = true;
     static constexpr std::string_view name = "change_log";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "added() and removed(): the elements changed since clear_changes().";

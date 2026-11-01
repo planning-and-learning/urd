@@ -29,8 +29,11 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
 target_sources(test_rows PRIVATE allocations.cpp)
 target_sources(test_queues PRIVATE allocations.cpp)
-# A Store's behavior, by topic: each file includes the headers of the containers its Stores resolve to.
-foreach(topic rules sets maps multimaps scopes queues pools rows outside_kind)
+# A Store's behavior, by topic (every tests/store/*.cpp): each file includes the headers of the containers its Stores
+# resolve to.
+file(GLOB store_topics CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/store/*.cpp)
+list(TRANSFORM store_topics REPLACE ".*/([^/]+)\\.cpp$" "\\1")
+foreach(topic ${store_topics})
     add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp allocations.cpp)
     target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME store_${topic} COMMAND test_store_${topic})
@@ -45,7 +48,10 @@ add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/
 # What serves each request and what each container is measured for (benchmarks/requests.json): one object per
 # group of the grid (requests_group.cpp), so no translation unit walks the whole grid; requests_table.cpp
 # merges them.
-set(URD_REQUEST_GROUPS 21)  # the groups of tests/grid.hpp: requests_table checks the number
+# The groups of tests/grid.hpp, counted from it (one `group<"` each): requests_table checks the number.
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/grid.hpp grid_groups REGEX "group<\"")
+list(LENGTH grid_groups URD_REQUEST_GROUPS)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/grid.hpp)
 math(EXPR last_group "${URD_REQUEST_GROUPS} - 1")
 set(request_group_objects "")
 foreach(group RANGE ${last_group})

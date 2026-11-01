@@ -54,34 +54,43 @@ struct name<R>
 using urd::tag_name;
 using urd::detail::most_answers;
 
-/// urd's categories, in the order its documentation and share/urd/vocabulary.json list them; every kind's request
-/// format (urd/kinds.hpp) answers only these.
-using vocabulary_categories = urd::detail::request_format<urd::order,
-                                                          urd::uniqueness,
-                                                          urd::keys,
-                                                          urd::referencing,
-                                                          urd::layout,
-                                                          urd::representation,
-                                                          urd::threading,
-                                                          urd::memory,
-                                                          urd::clearing,
-                                                          urd::access,
-                                                          urd::scoping,
-                                                          urd::layering,
-                                                          urd::handling,
-                                                          urd::sharing,
-                                                          urd::direction,
-                                                          urd::shape,
-                                                          urd::packing,
-                                                          urd::grouping,
-                                                          urd::tracking,
-                                                          urd::change,
-                                                          urd::emptiness,
-                                                          urd::multiplicity,
-                                                          urd::position,
-                                                          urd::workload,
-                                                          urd::priority,
-                                                          urd::comparison>;
+/// List L<Xs…> with each of Ts appended where it is not in it yet: the union of lists, in first-seen order.
+template<typename List, typename... Ts>
+struct append_unique
+{
+    using type = List;
+};
+template<template<typename...> class L, typename... Xs, typename T, typename... Ts>
+struct append_unique<L<Xs...>, T, Ts...> : append_unique<std::conditional_t<(std::is_same_v<Xs, T> || ...), L<Xs...>, L<Xs..., T>>, Ts...>
+{
+};
+template<typename List, typename Other>
+struct append_list;
+template<typename List, template<typename...> class L, typename... Ts>
+struct append_list<List, L<Ts...>> : append_unique<List, Ts...>
+{
+};
+
+/// The union of what each of Items gives (Of<Item>::type, a list), in first-seen order.
+template<typename Acc, template<typename> class Of, typename Items>
+struct union_of
+{
+    using type = Acc;
+};
+template<typename Acc, template<typename> class Of, typename Item, typename... Items>
+struct union_of<Acc, Of, urd::detail::type_list<Item, Items...>> :
+    union_of<typename append_list<Acc, typename Of<Item>::type>::type, Of, urd::detail::type_list<Items...>>
+{
+};
+
+template<typename Kind>
+struct format_of_kind
+{
+    using type = urd::detail::format_of<Kind>;
+};
+/// urd's categories: every one a kind of urd::kinds asks (its own, then every kind's), in first-seen order: the order of
+/// share/urd/vocabulary.json and its documentation. A kind's format answers only these, by construction.
+using vocabulary_categories = union_of<urd::detail::request_format<>, format_of_kind, urd::kinds>::type;
 template<typename... Es>
 constexpr auto tables_of(urd::detail::request_format<Es...> /*categories*/)
 { return std::array<const urd::detail::category_table*, sizeof...(Es)> { urd::category<Es>... }; }
@@ -104,24 +113,27 @@ constexpr void for_each_tag(F f)
             f(urd::tag(each, answer));
 }
 /// urd's type traits (urd::trait), in the order share/urd/complexity.json lists them.
-inline constexpr std::array<const urd::trait_info*, 12> vocabulary_traits {
-    urd::trait_v<urd::trait::can_hash>,           urd::trait_v<urd::trait::an_index>,        urd::trait_v<urd::trait::copies_as_bytes>,
-    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,   urd::trait_v<urd::trait::whole_value>,
-    urd::trait_v<urd::trait::own_order>,          urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::integral_priority>,
-    urd::trait_v<urd::trait::rows_flatten>,       urd::trait_v<urd::trait::rows_in_place>,   urd::trait_v<urd::trait::rows_reused>
+template<typename Role>
+struct traits_of_role_or_none
+{
+    using type = urd::detail::type_list<>;
 };
+template<typename Role>
+    requires requires { typename urd::traits_of_role<Role>::type; }
+struct traits_of_role_or_none<Role>
+{
+    using type = typename urd::traits_of_role<Role>::type;
+};
+template<typename... Traits>
+constexpr auto trait_infos(urd::detail::type_list<Traits...> /*traits*/)
+{ return std::array<const urd::trait_info*, sizeof...(Traits)> { urd::trait_v<Traits>... }; }
+inline constexpr auto vocabulary_traits = trait_infos(typename union_of<urd::detail::type_list<>, traits_of_role_or_none, urd::roles>::type {});
 
-/// urd's roles (urd::role), in the order share/urd/complexity.json lists them.
-inline constexpr std::array<const urd::role_info*, 6> vocabulary_roles { urd::role_v<urd::role::element>, urd::role_v<urd::role::order>,
-                                                                         urd::role_v<urd::role::rows>,    urd::role_v<urd::role::mapped>,
-                                                                         urd::role_v<urd::role::row>,     urd::role_v<urd::role::row_element> };
-
-/// Every kind's format answers only the vocabulary's categories.
-template<typename... Es>
-constexpr bool within_vocabulary(urd::detail::request_format<Es...> /*format*/)
-{ return ((category_index(urd::category<Es>) < category_count) && ...); }
-static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
-              { return (within_vocabulary(urd::detail::format_of<Kinds> {}) && ...); }(urd::kinds {}));
+/// urd's roles (urd::roles), in the order share/urd/complexity.json lists them.
+template<typename... Roles>
+constexpr auto role_infos(urd::detail::type_list<Roles...> /*roles*/)
+{ return std::array<const urd::role_info*, sizeof...(Roles)> { urd::role_v<Roles>... }; }
+inline constexpr auto vocabulary_roles = role_infos(urd::roles {});
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
 /// tags answer (the words of its none).
