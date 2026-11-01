@@ -169,7 +169,7 @@ struct workload
     {
         if constexpr (maps)
             store.emplace(make<K>(at), make<V>(at));
-        else if constexpr (urd::detail::listed_facet<urd::detail::facet::queue_access, urd::detail::facets_of<typename S::kind>>)
+        else if constexpr (requires { store.push(make<V>(at)); })
             store.push(make<V>(at));
         else if constexpr (requires { store.push_back(make<E>(at)); })
             store.push_back(make<E>(at));
@@ -305,7 +305,7 @@ struct workload
                 }
                 into.stop(op::top, probes);
             }
-        if constexpr (!urd::detail::listed_facet<urd::detail::facet::queue_access, urd::detail::facets_of<typename S::kind>>)
+        if constexpr (offers[static_cast<std::size_t>(op::erase)])
             if (has(op::erase))
             {
                 const std::size_t erased = std::min<std::size_t>(size / 2, probes);

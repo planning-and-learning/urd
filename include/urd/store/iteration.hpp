@@ -48,7 +48,7 @@ namespace urd::detail
 
 /// When a Store has this facet: wherever its kind lists it (sets, maps, sequences: ranges urd reads).
 template<>
-struct facet_condition<facet::iteration>
+struct facet_condition<facet::iteration> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
@@ -62,7 +62,7 @@ struct facet_operations<facet::iteration>
 
 /// When a queue has this facet: not a bucket queue (monotone_priority), which would visit every priority's bucket.
 template<>
-struct facet_condition<facet::visiting>
+struct facet_condition<facet::visiting> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

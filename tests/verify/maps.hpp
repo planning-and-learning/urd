@@ -296,4 +296,13 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
     }
 }
 
+/// A map is checked against its pairs.
+template<>
+struct verifier<map_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return run_map(range, seed, steps); }
+};
+
 }  // namespace urd::detail

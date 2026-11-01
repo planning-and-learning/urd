@@ -112,8 +112,10 @@ namespace urd::detail
 
 /// When a Store has this facet: its values are records or values interned whole, not rows.
 template<>
-struct facet_condition<facet::records>
+struct facet_condition<facet::records> : facet_defaults
 {
+    /// It hands out indices for views, so the Store's container is numbered (urd::layer).
+    static constexpr bool hands_out_indices = true;
     template<typename R, typename S>
     static constexpr bool on()
     { return !holds_rows<typename S::element_type>(); }

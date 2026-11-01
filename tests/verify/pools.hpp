@@ -298,4 +298,13 @@ std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
     return std::nullopt;
 }
 
+/// Slots are checked by handle.
+template<>
+struct verifier<slots_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return run_slots(range, seed, steps); }
+};
+
 }  // namespace urd::detail

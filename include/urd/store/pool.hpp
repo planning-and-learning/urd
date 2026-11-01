@@ -103,7 +103,7 @@ namespace urd::detail
 
 /// When a Store has this facet: its values are rows (ranges of elements).
 template<>
-struct facet_condition<facet::pool>
+struct facet_condition<facet::pool> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

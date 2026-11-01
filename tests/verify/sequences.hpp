@@ -318,4 +318,13 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
     }
 }
 
+/// By default, a container is checked as a set or a sequence.
+template<typename Kind>
+struct verifier
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return detail::run(range, seed, steps); }
+};
+
 }  // namespace urd::detail

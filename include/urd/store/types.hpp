@@ -76,6 +76,12 @@ consteval bool compares_in_order()
 /// container is chosen.
 template<template<typename, typename, typename> class F>
 struct facet_condition;
+/// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet
+/// hands out indices for views (records, insertion_positions), so that the Store's container is numbered (urd::layer).
+struct facet_defaults
+{
+    static constexpr bool hands_out_indices = false;
+};
 
 /// Whether a pool's values are rows: Stores or registered containers holding elements (held_as, as the pools'
 /// containers read them). A Store is not completed to ask (its container's header may be absent here).

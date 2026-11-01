@@ -52,7 +52,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet::slots>
+struct facet_condition<facet::slots> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

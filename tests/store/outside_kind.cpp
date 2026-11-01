@@ -138,7 +138,7 @@ struct tally_decl
 }  // namespace
 
 template<>
-struct urd::detail::facet_condition<tally::counting>
+struct urd::detail::facet_condition<tally::counting> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

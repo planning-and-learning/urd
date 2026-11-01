@@ -190,6 +190,8 @@ struct any_kind
             });
         return result;
     }
+    /// The page of the docs (docs/kinds/<page>.rst) and tables that describes a Store of it, by what it states.
+    static constexpr std::string_view page(const property_set& /*stated*/) { return {}; }
     static constexpr bool well_formed(const property_set& /*stated*/) { return true; }
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(order::sorted); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return true; }
@@ -204,6 +206,7 @@ struct any_kind
 struct partition_kind : detail::any_kind
 {
     static constexpr std::string_view name = "partition";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "partitions"; }
     using format = detail::request_format<order, uniqueness, keys, grouping>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::grouping>;
     /// Its keys fall into classes.
@@ -216,6 +219,7 @@ struct partition_kind : detail::any_kind
 struct queue_kind : detail::any_kind
 {
     static constexpr std::string_view name = "queue";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "queues"; }
     using format = detail::request_format<order, uniqueness, access, handling, priority>;
     using facets = detail::facet_list<detail::facet::visiting, detail::facet::positions, detail::facet::queue_access>;
     /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
@@ -230,6 +234,8 @@ struct queue_kind : detail::any_kind
 struct pool_kind : detail::any_kind
 {
     static constexpr std::string_view name = "pool";
+    /// Records stored flat have a page of their own.
+    static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
     using format = detail::request_format<order, uniqueness, keys, handling, packing>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::records, detail::facet::pool>;
     /// Each distinct value once, by handle.
@@ -240,6 +246,8 @@ struct pool_kind : detail::any_kind
 struct slots_kind : detail::any_kind
 {
     static constexpr std::string_view name = "slots";
+    /// Records stored flat have a page of their own.
+    static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
     using format = detail::request_format<order, uniqueness, keys, handling>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::slots>;
     /// Its values are reached by handle.
@@ -250,6 +258,7 @@ struct slots_kind : detail::any_kind
 struct map_kind : detail::any_kind
 {
     static constexpr std::string_view name = "map";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "maps"; }
     using format = detail::request_format<order, uniqueness, keys, direction, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -276,6 +285,7 @@ struct map_kind : detail::any_kind
 struct set_kind : detail::any_kind
 {
     static constexpr std::string_view name = "set";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sets"; }
     using format = detail::request_format<order, uniqueness, keys>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -301,6 +311,7 @@ struct set_kind : detail::any_kind
 struct multiset_kind : detail::any_kind
 {
     static constexpr std::string_view name = "multiset";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, uniqueness, keys, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -317,6 +328,7 @@ struct multiset_kind : detail::any_kind
 struct sequence_kind : detail::any_kind
 {
     static constexpr std::string_view name = "sequence";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, keys, shape>;
     using facets = detail::
         facet_list<detail::facet::iteration, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;

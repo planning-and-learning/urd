@@ -51,8 +51,8 @@ struct kind_group
     static constexpr std::string_view id = "kind";
     static constexpr std::string_view title = "Kind";
     static constexpr std::string_view test = "Leaving it out does not compile: the operation does not exist.";
-    static constexpr std::string_view summary =
-        "Whether the Store is a set, map or sequence, a queue, a pool or a partition: the first decision, which every other changes with.";
+    static constexpr std::string_view summary = "What the Store is: its kind, named first (a set, a map, a sequence, …), and the tags that say how it is "
+                                                "reached: the first decision, which every other changes with.";
     static constexpr std::string_view literature = "Abstract data types: a type is the operations it offers (Liskov and Zilles, 1974).";
 };
 struct semantics_group

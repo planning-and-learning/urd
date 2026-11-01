@@ -125,20 +125,7 @@ struct representation
 
 template<typename S>
 std::string kind_of()
-{
-    if constexpr (std::same_as<typename S::kind, urd::partition_kind>)
-        return "partitions";
-    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
-        return urd::has<S, urd::flat> ? "records" : "pools";
-    else if constexpr (std::same_as<typename S::kind, urd::queue_kind>)
-        return "queues";
-    else if constexpr (std::same_as<typename S::kind, urd::map_kind>)
-        return "maps";
-    else if constexpr (std::same_as<typename S::kind, urd::set_kind>)
-        return "sets";
-    else
-        return "sequences";
-}
+{ return std::string(S::kind::page(S::urd_properties)); }
 
 template<typename S, typename List>
 struct collect;

@@ -105,4 +105,13 @@ std::optional<std::string> run_queue(Q& queue, unsigned seed, int steps)
     return std::nullopt;
 }
 
+/// A queue is checked by what leaves it.
+template<>
+struct verifier<queue_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return run_queue(range, seed, steps); }
+};
+
 }  // namespace urd::detail

@@ -146,8 +146,8 @@ template<typename Kind, typename... Tags>
 struct to_spec
 {
     static_assert(a_kind<Kind>,
-                  "urd::Store: the first argument is the kind, with its element types: set<K>, map<K, V>, multiset<V>, "
-                  "sequence<V>, queue<V>, pool<V>, slots<V> or partition<K> (urd/kinds.hpp)");
+                  "urd::Store: the first argument is the kind, with its element types (set<K>, map<K, V>, …: urd::kinds, "
+                  "docs/language/kind.rst)");
     static_assert((a_tag<Tags> && ...),
                   "urd::Store: after the kind, every argument must be an urd tag (sorted, unique, …, order_by<C>, or a "
                   "workload such as small)");

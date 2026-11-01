@@ -81,7 +81,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet::queue_access>
+struct facet_condition<facet::queue_access> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

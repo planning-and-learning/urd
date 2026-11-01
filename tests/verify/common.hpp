@@ -36,6 +36,11 @@ struct kind_of_range<R>
 {
     using type = typename container_traits<R>::kind;
 };
+/// How urd::verify checks a container or Store of Kind: `verifier<Kind>::run(range, seed, steps)`. By default as a set
+/// or sequence (urd/verify/sequences.hpp); a kind's checks specialize it beside them (verify/<kind>.hpp).
+template<typename Kind>
+struct verifier;
+
 /// Whether R places its elements by their value or key (its kind does not append, as a sequence does).
 template<typename R>
 inline constexpr bool keyed_range = !appends<typename kind_of_range<R>::type>;

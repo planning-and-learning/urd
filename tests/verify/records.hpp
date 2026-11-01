@@ -4,6 +4,7 @@
 
 #include "../names.hpp"
 #include "common.hpp"
+#include "pools.hpp"
 #include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
@@ -210,5 +211,21 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
     }
     return std::nullopt;
 }
+
+/// A pool is checked as rows interned by handle, or as records (layered over a parent where it is layered).
+template<>
+struct verifier<pool_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    {
+        if constexpr (holds_rows<typename R::value_type>())
+            return run_pool(range, seed, steps);
+        else if constexpr (has<container_traits<R>, layered>)
+            return run_layered_records(range, seed, steps);
+        else
+            return run_records(range, seed, steps);
+    }
+};
 
 }  // namespace urd::detail

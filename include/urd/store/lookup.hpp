@@ -32,7 +32,7 @@ namespace urd::detail
 
 /// When a Store has this facet: always, where its kind lists it (the kinds that place elements by value).
 template<>
-struct facet_condition<facet::lookup>
+struct facet_condition<facet::lookup> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

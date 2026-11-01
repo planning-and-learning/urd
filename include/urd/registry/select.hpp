@@ -70,10 +70,26 @@ consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 template<typename S, fixed_string Container, typename Missing>
 struct missing_container;
 
-/// The container of a Store whose facets hand out views (records, insertion_positions) is numbered (urd::layer): as
-/// those facets' own conditions say, so that the rule has one source.
+/// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
+/// the facets its kind lists, each by its own condition.
+template<typename S>
+consteval bool hands_out_indices()
+{
+    return []<template<typename, typename, typename> class... Fs>(facet_list<Fs...> /*facets*/)
+    {
+        const auto one = []<template<typename, typename, typename> class F>()
+        {
+            if constexpr (facet_condition<F>::hands_out_indices)
+                return facet_condition<F>::template on<void, S>();
+            else
+                return false;
+        };
+        return (one.template operator()<Fs>() || ...);
+    }(facets_of<typename S::kind> {});
+}
+/// The container of a Store that hands out indices for views is numbered (urd::layer).
 template<typename S, typename R>
-using numbered_t = std::conditional_t<facet_on<void, S, facet::records>() || facet_on<void, S, facet::insertion_positions>(), repr::Numbered<R>, R>;
+using numbered_t = std::conditional_t<hands_out_indices<S>(), repr::Numbered<R>, R>;
 
 template<typename S, typename Decl, typename Missing>
 struct missing_headers_for
