@@ -23,31 +23,28 @@
 #include "urd/elements/concepts.hpp"
 
 #include <algorithm>
-#include <array>
 #include <functional>
-#include <map>
 #include <optional>
 #include <ranges>
-#include <set>
-#include <span>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
-#include <vector>
 
 namespace urd
 {
 
-template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
-    requires EqualityComparableByEqualTo<std::ranges::range_value_t<LhsRange>> && EqualityComparableByEqualTo<std::ranges::range_value_t<RhsRange>>
-constexpr bool equal_range(LhsRange&& lhs, RhsRange&& rhs);
+/// Whether `lhs` and `rhs` hold equal elements, by EqualTo, in the same order: two ranges of the same element type.
+template<std::ranges::input_range Range>
+    requires EqualityComparableByEqualTo<std::ranges::range_value_t<Range>>
+constexpr bool ranges_equal(const Range& lhs, const Range& rhs)
+{ return std::ranges::equal(lhs, rhs, EqualTo<std::ranges::range_value_t<Range>> {}); }
 
 /// @brief `EqualTo` is our custom equality comparator, like std::equal_to.
 ///
 /// Forwards to std::equal_to by default.
 /// Specializations can be injected into the namespace.
-template<typename T = void>
+template<typename T>
 struct EqualTo
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::equal_to<T> {}(lhs, rhs)))
@@ -55,17 +52,6 @@ struct EqualTo
             { lhs == rhs } -> std::convertible_to<bool>;
         }
     { return std::equal_to<T> {}(lhs, rhs); }
-};
-
-template<>
-struct EqualTo<void>
-{
-    using is_transparent = void;
-
-    template<typename T, typename U>
-        requires EqualToFor<EqualTo<std::remove_cvref_t<T>>, T, U>
-    constexpr bool operator()(const T& lhs, const U& rhs) const
-    { return EqualTo<std::remove_cvref_t<T>> {}(lhs, rhs); }
 };
 
 template<std::floating_point T>
@@ -83,12 +69,14 @@ struct EqualTo<T>
     }
 };
 
-template<typename T, size_t N>
-struct EqualTo<std::array<T, N>>
+/// A value range equals another holding equal elements in the same order.
+template<typename R>
+    requires value_range<R>
+struct EqualTo<R>
 {
-    constexpr bool operator()(const std::array<T, N>& lhs, const std::array<T, N>& rhs) const
-        requires EqualityComparableByEqualTo<T>
-    { return equal_range(lhs, rhs); }
+    constexpr bool operator()(const R& lhs, const R& rhs) const
+        requires EqualityComparableByEqualTo<std::ranges::range_value_t<R>>
+    { return ranges_equal(lhs, rhs); }
 };
 
 template<typename T>
@@ -99,49 +87,24 @@ struct EqualTo<std::reference_wrapper<T>>
     { return EqualTo<std::remove_cvref_t<T>> {}(lhs.get(), rhs.get()); }
 };
 
-template<typename Key, typename Compare, typename Allocator>
-struct EqualTo<std::set<Key, Compare, Allocator>>
-{
-    bool operator()(const std::set<Key, Compare, Allocator>& lhs, const std::set<Key, Compare, Allocator>& rhs) const
-        requires EqualityComparableByEqualTo<Key>
-    { return equal_range(lhs, rhs); }
-};
-
-template<typename Key, typename T, typename Compare, typename Allocator>
-struct EqualTo<std::map<Key, T, Compare, Allocator>>
-{
-    bool operator()(const std::map<Key, T, Compare, Allocator>& lhs, const std::map<Key, T, Compare, Allocator>& rhs) const
-        requires EqualityComparableByEqualTo<Key> && EqualityComparableByEqualTo<T>
-    { return equal_range(lhs, rhs); }
-};
-
-template<typename T, typename Allocator>
-struct EqualTo<std::vector<T, Allocator>>
-{
-    constexpr bool operator()(const std::vector<T, Allocator>& lhs, const std::vector<T, Allocator>& rhs) const
-        requires EqualityComparableByEqualTo<T>
-    { return equal_range(lhs, rhs); }
-};
-
-template<typename T1, typename T2>
-struct EqualTo<std::pair<T1, T2>>
-{
-    constexpr bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const
-        requires EqualityComparableByEqualTo<T1> && EqualityComparableByEqualTo<T2>
-    { return EqualTo<std::remove_cvref_t<T1>>()(lhs.first, rhs.first) && EqualTo<std::remove_cvref_t<T2>> {}(lhs.second, rhs.second); }
-};
-
 template<typename... Ts>
 struct EqualTo<std::tuple<Ts...>>
 {
     constexpr bool operator()(const std::tuple<Ts...>& lhs, const std::tuple<Ts...>& rhs) const
         requires(EqualityComparableByEqualTo<Ts> && ...)
     {
-        return std::apply(
-            [&rhs](const Ts&... lhs_args)
-            { return std::apply([&lhs_args...](const Ts&... rhs_args) { return (EqualTo<std::remove_cvref_t<Ts>> {}(lhs_args, rhs_args) && ...); }, rhs); },
-            lhs);
+        return [&]<std::size_t... I>(std::index_sequence<I...> /*members*/)
+        { return (EqualTo<std::remove_cvref_t<Ts>> {}(std::get<I>(lhs), std::get<I>(rhs)) && ...); }(std::index_sequence_for<Ts...> {});
     }
+};
+
+/// A pair equals as the tuple of its two members.
+template<typename T1, typename T2>
+struct EqualTo<std::pair<T1, T2>>
+{
+    constexpr bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const
+        requires EqualityComparableByEqualTo<T1> && EqualityComparableByEqualTo<T2>
+    { return EqualTo<std::tuple<const T1&, const T2&>> {}(std::tie(lhs.first, lhs.second), std::tie(rhs.first, rhs.second)); }
 };
 
 template<typename... Ts>
@@ -171,84 +134,20 @@ struct EqualTo<std::optional<T>>
     constexpr bool operator()(const std::optional<T>& lhs, const std::optional<T>& rhs) const
         requires EqualityComparableByEqualTo<T>
     {
-        // Check for presence of values
         if (lhs.has_value() != rhs.has_value())
             return false;
-
-        // If both are empty, they're equal
-        if (!lhs.has_value() && !rhs.has_value())
-            return true;
-
-        // Compare the contained values using EqualTo
-        return EqualTo<std::remove_cvref_t<T>> {}(lhs.value(), rhs.value());
+        return !lhs.has_value() || EqualTo<std::remove_cvref_t<T>> {}(*lhs, *rhs);
     }
 };
 
-template<typename T, std::size_t Extent>
-struct EqualTo<std::span<T, Extent>>
-{
-    constexpr bool operator()(const std::span<T, Extent>& lhs, const std::span<T, Extent>& rhs) const
-        requires EqualityComparableByEqualTo<T>
-    { return equal_range(lhs, rhs); }
-};
-
-template<MemberIdentified T>
+/// An identified type equals as what identifies it (detail::identity).
+template<Identifiable T>
 struct EqualTo<T>
 {
-    using is_transparent = void;
-
     constexpr bool operator()(const T& lhs, const T& rhs) const
-    {
-        return []<auto... Ms>(const T& a, const T& b, Members<Ms...>)
-        { return (EqualTo<std::remove_cvref_t<decltype(a.*Ms)>> {}(a.*Ms, b.*Ms) && ...); }(lhs, rhs, T::identifying_members());
-    }
+        requires EqualityComparableByEqualTo<detail::identity_t<T>>
+    { return EqualTo<detail::identity_t<T>> {}(detail::identity(lhs), detail::identity(rhs)); }
 };
-
-template<FunctionIdentified T>
-struct EqualTo<T>
-{
-    using is_transparent = void;
-
-    constexpr bool operator()(const T& lhs, const T& rhs) const
-        requires EqualityComparableByEqualTo<IdentifyingMembers<T>>
-    { return EqualTo<std::remove_cvref_t<IdentifyingMembers<T>>> {}(lhs.identifying_members(), rhs.identifying_members()); }
-
-    template<SameAsIgnoringCvref<IdentifyingMembers<T>> U>
-    constexpr bool operator()(const T& a, const U& v) const
-        requires EqualityComparableByEqualTo<IdentifyingMembers<T>>
-    { return EqualTo<std::remove_cvref_t<IdentifyingMembers<T>>> {}(a.identifying_members(), v); }
-
-    template<SameAsIgnoringCvref<IdentifyingMembers<T>> U>
-    constexpr bool operator()(const U& v, const T& b) const
-        requires EqualityComparableByEqualTo<IdentifyingMembers<T>>
-    { return EqualTo<std::remove_cvref_t<IdentifyingMembers<T>>> {}(v, b.identifying_members()); }
-
-    template<SameAsIgnoringCvref<IdentifyingMembers<T>> U, SameAsIgnoringCvref<IdentifyingMembers<T>> V>
-    constexpr bool operator()(const U& u, const V& v) const
-        requires EqualityComparableByEqualTo<IdentifyingMembers<T>>
-    { return EqualTo<std::remove_cvref_t<IdentifyingMembers<T>>> {}(u, v); }
-};
-
-template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
-    requires EqualityComparableByEqualTo<std::ranges::range_value_t<LhsRange>> && EqualityComparableByEqualTo<std::ranges::range_value_t<RhsRange>>
-constexpr bool equal_range(LhsRange&& lhs, RhsRange&& rhs)
-{
-    if constexpr (std::ranges::sized_range<LhsRange> && std::ranges::sized_range<RhsRange>)
-    {
-        if (std::ranges::size(lhs) != std::ranges::size(rhs))
-            return false;
-    }
-
-    using LhsValue = std::ranges::range_value_t<LhsRange>;
-    using RhsValue = std::ranges::range_value_t<RhsRange>;
-    // The ranges go to the algorithms as given: std::views::all would need a copy of a const
-    // view, which move-only views (std::ranges::owning_view inside) do not have.
-    if constexpr (std::same_as<LhsValue, RhsValue>)
-        return std::ranges::equal(std::forward<LhsRange>(lhs), std::forward<RhsRange>(rhs), EqualTo<LhsValue> {});
-    else  // Ranges of different values are equal only when both are empty.
-        return std::ranges::none_of(std::forward<LhsRange>(lhs), [](const auto&) { return true; })
-               && std::ranges::none_of(std::forward<RhsRange>(rhs), [](const auto&) { return true; });
-}
 
 }  // namespace urd
 

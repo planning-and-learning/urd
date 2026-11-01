@@ -52,16 +52,40 @@ struct type_spelling
 
 template<typename S>
 std::string spelling_of_spec();
-
-namespace detail
-{
-
 template<typename T>
-inline constexpr bool is_std_vector = false;
-template<typename T, typename A>
-inline constexpr bool is_std_vector<std::vector<T, A>> = true;
+std::string spelling();
 
-}  // namespace detail
+// How urd's own types and the standard ones a request names are written, where the demangled name says more.
+template<>
+struct type_spelling<unsigned>
+{
+    static std::string spelled() { return "unsigned"; }
+};
+template<>
+struct type_spelling<std::size_t>
+{
+    static std::string spelled() { return "std::size_t"; }
+};
+template<>
+struct type_spelling<std::string>
+{
+    static std::string spelled() { return "std::string"; }
+};
+template<typename T>
+struct type_spelling<index<T>>
+{
+    static std::string spelled() { return fmt::format("index<{}>", spelling<T>()); }
+};
+template<typename T, typename A>
+struct type_spelling<std::vector<T, A>>
+{
+    static std::string spelled() { return fmt::format("std::vector<{}>", spelling<T>()); }
+};
+template<typename R, typename S>
+struct type_spelling<detail::Store<R, S>>
+{
+    static std::string spelled() { return spelling_of_spec<S>(); }
+};
 
 /// Type T as a request names it; "-" for none (void).
 template<typename T>
@@ -69,22 +93,6 @@ std::string spelling()
 {
     if constexpr (std::is_void_v<T>)
         return "-";
-    else if constexpr (std::is_same_v<T, int>)
-        return "int";
-    else if constexpr (std::is_same_v<T, unsigned>)
-        return "unsigned";
-    else if constexpr (std::is_same_v<T, std::size_t>)
-        return "std::size_t";
-    else if constexpr (std::is_same_v<T, double>)
-        return "double";
-    else if constexpr (std::is_same_v<T, std::string>)
-        return "std::string";
-    else if constexpr (is_index<T>)
-        return fmt::format("index<{}>", spelling<typename T::element_type>());
-    else if constexpr (detail::is_std_vector<T>)
-        return fmt::format("std::vector<{}>", spelling<typename T::value_type>());
-    else if constexpr (is_store<T>)
-        return spelling_of_spec<traits_t<T>>();
     else
         return type_spelling<T>::spelled();
 }

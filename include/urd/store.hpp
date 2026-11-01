@@ -11,6 +11,7 @@
 #include "urd/store/changes.hpp"
 #include "urd/store/construction.hpp"
 #include "urd/store/contiguous_data.hpp"
+#include "urd/store/ends.hpp"
 #include "urd/store/entries.hpp"
 #include "urd/store/equality.hpp"
 #include "urd/store/grouping.hpp"
@@ -27,13 +28,11 @@
 #include "urd/store/queue_access.hpp"
 #include "urd/store/records.hpp"
 #include "urd/store/removal.hpp"
-#include "urd/store/reverse_iteration.hpp"
 #include "urd/store/scopes.hpp"
 #include "urd/store/set_algebra.hpp"
 #include "urd/store/shape.hpp"
 #include "urd/store/sizing.hpp"
 #include "urd/store/slots.hpp"
-#include "urd/store/sorted_ends.hpp"
 #include "urd/store/types.hpp"
 #include "urd/store/values_by_key.hpp"
 #include "urd/traits.hpp"
@@ -75,21 +74,21 @@ struct complete_representation<missing_container<S, Container, Missing>>
 /// A Store resolved to representation R for spec S. It offers the standard interface its requested properties
 /// allow (its facets), and container_traits reports S's properties, not the representation's, so code cannot
 /// come to rely on what it never asked for. The Store itself holds only what every Store has, whatever its
-/// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
+/// representation: construction from elements, assign and swap. Everything else is in its facets (include/urd/store/),
 /// which its kind lists (urd/kinds.hpp) and its properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
 class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, facets_of<typename S::kind>>
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
 
 public:
     using representation = R;
     using value_type = typename types::value_type;
     // The other member types come with the facets that use them: size_type with sizing, the iterator types and
-    // difference_type with iteration, key_type, lookup_type and mapped_type with lookup.
+    // difference_type with iteration, key_type and lookup_type with lookup, mapped_type with values_by_key and multi_values.
 
     Store()
-        requires(construction<S>::default_constructible)
+        requires(!store_types<S>::needs_an_element)
     = default;
 
     // Construction stays here, as a facet's constructor could not initialize the Store's representation.
@@ -98,10 +97,7 @@ public:
     template<std::input_iterator InputIt>
         requires std::constructible_from<R, InputIt, InputIt>
     Store(InputIt first, InputIt last) : m_representation(first, last)
-    {
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
-    }
+    { check_holds_one(); }
 
     Store(std::initializer_list<value_type> elements)
         requires std::constructible_from<R, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
@@ -114,10 +110,7 @@ public:
     template<typename... Args>
         requires std::constructible_from<R, urd::layer, Args...>
     explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
-    {
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
-    }
+    { check_holds_one(); }
     Store(urd::layer number, std::initializer_list<value_type> elements)
         requires std::
             constructible_from<R, urd::layer, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
@@ -134,8 +127,7 @@ public:
             m_representation.assign(first, last);
         else
             m_representation = representation(first, last);
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+        check_holds_one();
     }
 
     /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from
@@ -144,10 +136,7 @@ public:
     template<typename From>
         requires(S::kind::template builds_from<S, From> && std::constructible_from<R, const From&>)
     explicit Store(const From& source) : m_representation(source)
-    {
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
-    }
+    { check_holds_one(); }
 
     void swap(Store& other) noexcept
     {
@@ -159,15 +148,19 @@ public:
 private:
     friend struct store_access;
 
+    /// A nonempty Store holds an element once built.
+    void check_holds_one() const
+    {
+        if constexpr (store_types<S>::needs_an_element)
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+    }
+
     representation m_representation;
 };
 
-template<typename Kind, typename... Tags>
-struct resolve
-{
-    using spec_type = typename to_spec<Kind, Tags...>::type;
-    using type = Store<typename resolution<to_spec<Kind, Tags...>>::type, spec_type>;
-};
+/// The Store for spec S: over the container chosen for it.
+template<typename S>
+using store_for = Store<container_for<S>, S>;
 
 }  // namespace detail
 
@@ -178,7 +171,7 @@ struct resolve
 ///
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
 template<typename Kind, typename... Tags>
-using Store = typename detail::resolve<Kind, Tags...>::type;
+using Store = detail::store_for<typename detail::to_spec<Kind, Tags...>::type>;
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>

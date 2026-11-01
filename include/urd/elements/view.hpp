@@ -89,7 +89,7 @@ struct resolution<std::optional<T>>
 
 /// A range of indices as a range of views.
 template<std::ranges::input_range M>
-    requires is_index<std::ranges::range_value_t<M>>
+    requires is_index_type<std::ranges::range_value_t<M>>
 struct resolution<M>
 {
     template<typename C>

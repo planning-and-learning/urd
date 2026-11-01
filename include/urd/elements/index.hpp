@@ -60,10 +60,11 @@ struct index_of<index<T>>
     [[nodiscard]] static constexpr index<T> from_index(std::size_t at) noexcept { return index<T>(static_cast<std::uint32_t>(at)); }
 };
 
+/// Whether T is an index<…> (index_of<K>::is_index asks whether a key is one).
 template<typename T>
-inline constexpr bool is_index = false;
+inline constexpr bool is_index_type = false;
 template<typename T>
-inline constexpr bool is_index<index<T>> = true;
+inline constexpr bool is_index_type<index<T>> = true;
 
 /// A change to a row of a pool: the value at `position` becomes `value`. A pool of sequence rows takes a sorted
 /// span of them, with unique positions, to insert a row that differs from another in few positions.

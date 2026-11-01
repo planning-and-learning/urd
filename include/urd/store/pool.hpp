@@ -92,8 +92,8 @@ public:
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet
@@ -107,7 +107,7 @@ struct facet_condition<facet::pool> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return holds_rows<typename S::element_type>(); }
+    { return held_as<typename S::element_type>::store; }
 };
 template<>
 struct facet_operations<facet::pool>

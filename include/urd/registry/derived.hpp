@@ -37,7 +37,7 @@ using declaration_t = typename declaration_of<R>::declaration;
 /// Whether R takes the elements its template arguments give: what they are meets what its declaration relies on (its
 /// elements', values' and rows' tags; what a Store must state is a request's to promise, relies_on below).
 template<declared_container R>
-inline constexpr bool takes_v = [] { return promises(declaration_of<R>::roles, about_roles(declaration_t<R>::relies_on)); }();
+inline constexpr bool takes_v = [] { return promises(declaration_of<R>::roles, facts_where(declaration_t<R>::relies_on, true)); }();
 
 }  // namespace detail
 

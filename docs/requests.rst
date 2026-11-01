@@ -120,8 +120,8 @@ The request's kind is found first (:doc:`language/kind`); then only that kind's 
 (``declarations_of<Kind>`` in ``include/urd/registry/declarations.hpp``), in an order backed by :doc:`BENCHMARKS`. The
 first whose declaration provides every property of the request, whose reliances the request promises (what it
 states, and the type traits of its elements, order, values and rows), and whose demands the request meets, is chosen;
-where the request is ``frozen`` or ``small``, containers with stable storage come after the others (``prefers`` of ``any_kind``
-in ``include/urd/kinds.hpp``). A declared guarantee the request left open is free, with one exception: ``dense``
+where the request is ``frozen`` or ``small``, containers with stable storage come after the others (the tags' ``later``, ``urd::tag_defaults``
+in ``include/urd/tags.hpp``). A declared guarantee the request left open is free, with one exception: ``dense``
 is also a demand, since a container that stores by index needs keys that are indices, so a dense container serves
 only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
 and checked by a test, and a second test checks that no serving candidate demands what a request did not promise.
@@ -130,7 +130,7 @@ A request no container serves fails with a static assertion; its instantiation n
 
 .. code-block:: text
 
-   In instantiation of 'no_representation_for<spec<std::string, void, void, urd::uniqueness::unique, urd::keys::dense>>'
+   In instantiation of 'no_representation_for<spec<urd::set<std::string>, urd::Less<std::string>, urd::uniqueness::unique, urd::keys::dense>>'
    error: static assertion failed: urd::Store: no container serves this request: drop or change a tag
 
 A call to an operation the properties rule out is a plain compile error: the Store has no such member.

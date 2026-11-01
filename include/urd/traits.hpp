@@ -1,7 +1,7 @@
 #pragma once
 
 // What urd knows about a container: its properties (container_traits), and the
-// questions asked of a container, a Store or a request's spec alike (has, satisfies). For a registered container they
+// questions asked of a container, a Store or a request's spec alike (has). For a registered container they
 // are derived from its declaration (urd/registry/derived.hpp); the tags are in urd/tags.hpp.
 
 #include "urd/elements/concepts.hpp"
@@ -57,9 +57,5 @@ using traits_t = typename detail::traits_of<X>::type;
 template<typename X, typename... Tags>
     requires(detail::a_tag<Tags> && ...)
 inline constexpr bool has = (traits_t<X>::urd_properties.has(Tags::value) && ...);
-
-/// Whether Have provides, in every category a container declares, at least what Want asks for.
-template<typename Have, typename Want>
-inline constexpr bool satisfies = detail::satisfies(traits_t<Have>::urd_properties, traits_t<Want>::urd_properties);
 
 }  // namespace urd

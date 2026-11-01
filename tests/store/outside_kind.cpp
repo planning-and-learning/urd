@@ -76,10 +76,11 @@ struct tally_kind : urd::detail::any_kind
     static constexpr urd::detail::property_set meaning(urd::detail::property_set stated) { return any_kind::meaning(stated.put(tallying::tallied)); }
 };
 
-/// What a request names: a tally of values of type T, as urd's kinds name theirs (urd::detail::values_of).
+/// What a request names: a tally of values of type T, as urd's kinds name theirs (urd::detail::data_of).
 template<typename T>
-struct tally : urd::detail::values_of<tally_kind, T>
+struct tally : urd::detail::data_of<tally_kind, T>
 {
+    using value_type = T;
 };
 
 }  // namespace tally
@@ -172,9 +173,8 @@ using Words = urd::Store<tally::tally<std::string>>;
 static_assert(std::same_as<Words::representation, tally::Tally<std::string>>);
 static_assert(std::same_as<urd::container_traits<Words>::kind, tally::tally_kind>);
 // Its own operations, with the costs its container states.
-static_assert(urd::cost_of<tally::add, tally::tally_decl::operation_costs>().has_value()
-              && urd::cost_of<tally::count, tally::tally_decl::operation_costs>().has_value());
-static_assert(!urd::cost_of<tally::add, urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
+static_assert(tally::tally_decl::operation_costs::of<tally::add>().has_value() && tally::tally_decl::operation_costs::of<tally::count>().has_value());
+static_assert(!urd::detail::vector_decl::operation_costs::of<tally::add>().has_value());  // urd's containers state no cost for it
 // What tools read of the kind (urd-search): its operations' words, how it keeps its elements, its memory.
 static_assert(urd::operation_v<tally::add>->name == "add" && !urd::operation_v<tally::count>->description.empty());
 static_assert(!urd::container_traits<Words>::iterable && !urd::has<Words, urd::positional>);

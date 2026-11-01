@@ -23,13 +23,12 @@
 namespace urd::repr
 {
 
-/// Update and read go through the table's lazy_emplace_l and if_contains, under the key's shard lock (the
-/// values_by_key facet).
+/// gtl's sharded tables, whose update and read go through lazy_emplace_l and if_contains, under the key's shard lock
+/// (what the values_by_key facet calls); defined in urd/repr/maps/parallel_hash_map.hpp.
 template<typename K, typename V>
-using ParallelHashMap = gtl::parallel_flat_hash_map<K, V, Hash<K>, EqualTo<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>;
-
+class ParallelHashMap;
 template<typename K, typename V>
-using ParallelNodeHashMap = gtl::parallel_node_hash_map<K, V, Hash<K>, EqualTo<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>;
+class ParallelNodeHashMap;
 
 }  // namespace urd::repr
 

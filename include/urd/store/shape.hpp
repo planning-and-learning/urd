@@ -33,7 +33,7 @@ class shape
 public:
     /// Every element back to its default, every bit unset; with proportional_clear, in the rows handed out to change
     /// since the last reset only.
-    void reset() { store_access::representation(static_cast<Derived&>(*this)).reset(); }
+    void reset() { store_access::of<Derived>(*this).reset(); }
 };
 
 }  // namespace urd::detail::facet

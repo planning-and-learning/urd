@@ -20,12 +20,18 @@
 #ifndef URD_SEMANTICS_CONCEPTS_HPP_
 #define URD_SEMANTICS_CONCEPTS_HPP_
 
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <map>
+#include <set>
+#include <span>
+#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace urd
 {
@@ -94,39 +100,57 @@ concept FunctionIdentified = !MemberIdentified<T> && requires(const T a) {
 template<typename T>
 concept Identifiable = FunctionIdentified<T> || MemberIdentified<T>;
 
-/// @brief The type returned by identifying_members().
-template<FunctionIdentified T>
-using IdentifyingMembers = decltype(std::declval<const T&>().identifying_members());
+namespace detail
+{
+
+/// What identifies `x`, as one value that Hash, EqualTo and Less read: its identifying members as a tuple of
+/// references, or what its identifying_members() returns.
+template<Identifiable T>
+constexpr decltype(auto) identity(const T& x)
+{
+    if constexpr (MemberIdentified<T>)
+        return []<auto... Ms>(const T& of, Members<Ms...> /*members*/) { return std::tie(of.*Ms...); }(x, T::identifying_members());
+    else
+        return x.identifying_members();
+}
+template<Identifiable T>
+using identity_t = std::remove_cvref_t<decltype(identity(std::declval<const T&>()))>;
+
+}  // namespace detail
+
+/// Whether a range's elements, in the order it iterates them, are its value: Hash, EqualTo and Less then follow from
+/// its elements'. True for the standard containers that keep an order of their own; a container type opts in by
+/// specializing it (a hash table does not: its order is not its contents').
+template<typename R>
+inline constexpr bool value_range = false;
+template<typename T, std::size_t N>
+inline constexpr bool value_range<std::array<T, N>> = true;
+template<typename T, typename Allocator>
+inline constexpr bool value_range<std::vector<T, Allocator>> = true;
+template<typename Key, typename Compare, typename Allocator>
+inline constexpr bool value_range<std::set<Key, Compare, Allocator>> = true;
+template<typename Key, typename T, typename Compare, typename Allocator>
+inline constexpr bool value_range<std::map<Key, T, Compare, Allocator>> = true;
+template<typename T, std::size_t Extent>
+inline constexpr bool value_range<std::span<T, Extent>> = true;
 
 template<typename T>
 concept Enumeration = std::is_enum_v<T>;
 
-template<typename T, typename U>
-concept SameAsIgnoringCvref = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
-
-template<typename H, typename T>
-concept HashFor = requires(const H& hash, const T& value) {
-    { hash(value) } -> std::same_as<hash_t>;
-};
-
-template<typename E, typename Lhs, typename Rhs = Lhs>
-concept EqualToFor = requires(const E& equal_to, const Lhs& lhs, const Rhs& rhs) {
-    { equal_to(lhs, rhs) } -> std::same_as<bool>;
-};
-
-template<typename C, typename Lhs, typename Rhs = Lhs>
-concept LessFor = requires(const C& less, const Lhs& lhs, const Rhs& rhs) {
-    { less(lhs, rhs) } -> std::same_as<bool>;
+template<typename T>
+concept Hashable = requires(const T& value) {
+    { Hash<std::remove_cvref_t<T>> {}(value) } -> std::same_as<hash_t>;
 };
 
 template<typename T>
-concept Hashable = HashFor<Hash<std::remove_cvref_t<T>>, T>;
+concept EqualityComparableByEqualTo = requires(const T& lhs, const T& rhs) {
+    { EqualTo<std::remove_cvref_t<T>> {}(lhs, rhs) } -> std::same_as<bool>;
+};
 
 template<typename T>
-concept EqualityComparableByEqualTo = EqualToFor<EqualTo<std::remove_cvref_t<T>>, T>;
-
-template<typename T>
-concept OrderedByLess = LessFor<Less<std::remove_cvref_t<T>>, T>;
+concept OrderedByLess = requires(const T& lhs, const T& rhs) {
+    { Less<std::remove_cvref_t<T>> {}(lhs, rhs) } -> std::same_as<bool>;
+};
 
 }  // namespace urd
 

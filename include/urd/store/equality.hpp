@@ -46,7 +46,7 @@ namespace urd
 /// canonical, or a sequence (positions are contents). An unordered Store iterates in an order its contents do not
 /// determine, so it has no Hash and cannot be a hashed key: ask for sorted (or canonical) on the inner Store.
 template<typename R, typename S>
-    requires(detail::construction<S>::hashed_in_order && Hashable<R>)
+    requires(detail::store_types<S>::hashed_in_order && Hashable<R>)
 struct Hash<detail::Store<R, S>>
 {
     hash_t operator()(const detail::Store<R, S>& store) const { return Hash<R> {}(detail::store_access::representation(store)); }

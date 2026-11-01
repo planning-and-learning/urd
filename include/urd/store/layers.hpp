@@ -4,6 +4,16 @@
 
 #include <cstddef>
 
+namespace urd::detail
+{
+
+/// Whether a layered container chains its layers (a pool continues its parent's indices, from its base): its Store
+/// then knows which layer owns an index (layers::owner).
+template<typename R>
+concept chains_layers = requires(const R& representation) { representation.base(); };
+
+}  // namespace urd::detail
+
 namespace urd::detail::facet
 {
 
@@ -14,7 +24,7 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class layers
 {
-    static constexpr bool chained = requires(const R& representation) { representation.base(); };
+    static constexpr bool chained = chains_layers<R>;
 
 public:
     /// Answers from `parent` too, from now on; nullptr ends it (a pool: makes it a root again, while empty).
@@ -44,8 +54,8 @@ public:
     }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 
     const Derived* m_parent = nullptr;
 };

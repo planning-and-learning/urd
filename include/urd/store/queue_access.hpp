@@ -7,8 +7,6 @@
 namespace urd::detail::facet
 {
 
-/// A queue: push, pop, clear, and the next element to leave, by the standard adaptors' names: front() where the first in leaves
-/// first (std::queue), top() otherwise (std::stack, std::priority_queue).
 /// What reaches an element of a queue with handles: the representation's handle_type; void for other queues.
 template<typename R, bool Handles>
 struct queue_handle
@@ -21,10 +19,12 @@ struct queue_handle<R, true>
     using type = typename R::handle_type;
 };
 
+/// A queue: push, pop, clear, and the next element to leave, by the standard adaptors' names: front() where the first in leaves
+/// first (std::queue), top() otherwise (std::stack, std::priority_queue).
 template<typename Derived, typename R, typename S>
 class queue_access
 {
-    using value_type = typename store_types<R, S>::value_type;
+    using value_type = typename store_types<S>::value_type;
 
 public:
     using handle_type = typename queue_handle<R, has<S, handles>>::type;
@@ -70,8 +70,8 @@ public:
     { return representation()[handle]; }
 
 private:
-    [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet
@@ -79,14 +79,6 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
-template<>
-struct facet_condition<facet::queue_access> : facet_defaults
-{
-    template<typename R, typename S>
-    static constexpr bool on()
-    { return true; }
-};
 template<>
 struct facet_operations<facet::queue_access>
 {

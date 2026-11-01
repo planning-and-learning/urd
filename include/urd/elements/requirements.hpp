@@ -63,11 +63,13 @@ using order_key_t = typename order_key_of<T, Compare>::type;
 
 }  // namespace detail
 
-/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses, over an
-/// orderable T; or any other comparator of T's, as a request gives it by order_by<C>.
+/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses (totally
+/// ordered, and no floating point, which urd::Less orders NaN in), over an orderable T; or any other comparator of
+/// T's, as a request gives it by order_by<C>.
 template<typename C, typename T>
-concept natural_order = (std::same_as<C, Less<T>> && orderable<T>) || (std::same_as<C, std::less<T>> && orderable<T> && std::totally_ordered<T>)
-                        || (!std::same_as<C, Less<T>> && !std::same_as<C, std::less<T>> && std::strict_weak_order<C, const T&, const T&>);
+concept natural_order =
+    (std::same_as<C, Less<T>> && orderable<T>) || (std::same_as<C, std::less<T>> && orderable<T> && std::totally_ordered<T> && !std::floating_point<T>)
+    || (!std::same_as<C, Less<T>> && !std::same_as<C, std::less<T>> && std::strict_weak_order<C, const T&, const T&>);
 
 namespace detail
 {

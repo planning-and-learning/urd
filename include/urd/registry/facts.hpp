@@ -158,25 +158,14 @@ constexpr property_set about(const role_info* of, const property_set& set)
     set.for_each([&result, of](tag each) { result.put(each.about(of)); });
     return result;
 }
-/// The facts of `set` about the Store itself (what it states or provides), and those about its roles.
-constexpr property_set about_itself(const property_set& set)
+/// The facts of `set` about a role (about_role), or about the Store itself (what it states or provides).
+constexpr property_set facts_where(const property_set& set, bool about_role)
 {
     auto result = property_set::roots();
     set.for_each(
-        [&result](tag each)
+        [&result, about_role](tag each)
         {
-            if (each.role == nullptr)
-                result.put(each);
-        });
-    return result;
-}
-constexpr property_set about_roles(const property_set& set)
-{
-    auto result = property_set::roots();
-    set.for_each(
-        [&result](tag each)
-        {
-            if (each.role != nullptr)
+            if ((each.role != nullptr) == about_role)
                 result.put(each);
         });
     return result;

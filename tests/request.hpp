@@ -32,7 +32,7 @@ template<typename... Rs>
 using requests = detail::type_list<Rs...>;
 /// Lists of requests, joined in order.
 template<typename... Lists>
-using cat_t = typename detail::join<Lists...>::type;
+using cat_t = typename detail::concat<detail::type_list<>, Lists...>::type;
 
 /// Calls f on each request type of a list, as std::type_identity<request<...>>.
 template<typename F, typename... Rs>

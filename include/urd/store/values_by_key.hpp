@@ -18,23 +18,20 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class values_by_key
 {
-    using types = store_types<R, S>;
     using map_key = typename S::key_type;
     using iterator_type = typename iterator_types<R, S>::iterator;
 
-    using mapped = typename S::mapped_type;
-
 public:
     /// What a key maps to.
-    using mapped_type = mapped;
+    using mapped_type = typename S::mapped_type;
 
-    [[nodiscard]] const mapped& at(const map_key& key) const { return representation().at(key); }
-    [[nodiscard]] mapped& at(const map_key& key)
+    [[nodiscard]] const mapped_type& at(const map_key& key) const { return representation().at(key); }
+    [[nodiscard]] mapped_type& at(const map_key& key)
         requires(!has<S, frozen>)
     { return representation().at(key); }
     /// The value for `key`, inserted as a default first where there is none.
-    mapped& operator[](const map_key& key)
-        requires(grows<S> && std::default_initializable<mapped>)
+    mapped_type& operator[](const map_key& key)
+        requires(grows<S> && std::default_initializable<mapped_type>)
     {
         representation().try_emplace(key);
         return representation().at(key);
@@ -54,14 +51,12 @@ public:
     /// false), and returns what update returns. A map cleared by generation hands over the value it kept from before
     /// the clear, storage and all, for update to reuse. With concurrent, threads may update at once.
     template<typename Update>
-        requires std::invocable<Update&, mapped&, bool>
+        requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const map_key& key, Update update)
-        requires(grows<S> && std::default_initializable<mapped>)
+        requires(grows<S> && std::default_initializable<mapped_type>)
     {
         if constexpr (requires { representation().update(key, update); })
             return representation().update(key, update);
-        else if constexpr (locks_by_key)
-            return locked_update(key, update);
         else
         {
             const bool held = !representation().try_emplace(key).second;
@@ -70,17 +65,11 @@ public:
     }
     /// read(value) where `key` has a value, else `missing`. With concurrent, safe while others update.
     template<typename Read, typename Result>
-        requires std::invocable<Read&, const mapped&>
+        requires std::invocable<Read&, const mapped_type&>
     [[nodiscard]] Result read(const map_key& key, Read read, Result missing) const
     {
         if constexpr (requires { representation().read(key, read, missing); })
             return representation().read(key, read, missing);
-        else if constexpr (locks_by_key)
-        {
-            auto result = std::move(missing);
-            representation().if_contains(key, [&read, &result](const auto& entry) { result = Result(read(entry.second)); });
-            return result;
-        }
         else
             return representation().contains(key) ? Result(read(representation().at(key))) : missing;
     }
@@ -88,62 +77,23 @@ public:
     /// Inserts `value` where `key` has none, else replaces the value by combine(value held, value): a hull of
     /// intervals, the lower of two costs. Whether the Store changed, as fixpoints ask.
     template<typename Combine>
-        requires std::invocable<Combine&, const mapped&, const mapped&>
-    bool merge(const map_key& key, const mapped& value, Combine combine)
+        requires std::invocable<Combine&, const mapped_type&, const mapped_type&>
+    bool merge(const map_key& key, const mapped_type& value, Combine combine)
         requires grows<S>
     {
         if (representation().try_emplace(key, value).second)
             return true;
         auto& held = representation().at(key);
-        auto combined = mapped(combine(std::as_const(held), value));
-        if (EqualTo<mapped> {}(combined, held))
+        auto combined = mapped_type(combine(std::as_const(held), value));
+        if (EqualTo<mapped_type> {}(combined, held))
             return false;
         held = std::move(combined);
         return true;
     }
 
 private:
-    /// The representation changes and reads a key's value under a lock of its own, as gtl's sharded tables do with
-    /// lazy_emplace_l and if_contains: update and read then go through them, safe while other threads do the same.
-    static constexpr bool locks_by_key = requires(R& table, const R& constant, const map_key& key) {
-        table.lazy_emplace_l(key, [](auto&) {}, [](const auto&) {});
-        constant.if_contains(key, [](const auto&) {});
-    };
-
-    /// update(value, held) under the key's lock; a new value is built and updated before it goes in, still under it.
-    template<typename Update>
-    auto locked_update(const map_key& key, Update& update)
-    {
-        using Result = std::invoke_result_t<Update&, mapped&, bool>;
-        static_assert(!std::is_reference_v<Result>, "urd::Store::update: a reference would outlive the lock of the key");
-        if constexpr (std::is_void_v<Result>)
-            representation().lazy_emplace_l(
-                key,
-                [&update](auto& entry) { update(entry.second, true); },
-                [&key, &update](const auto& construct)
-                {
-                    auto value = mapped();
-                    update(value, false);
-                    construct(key, std::move(value));
-                });
-        else
-        {
-            auto result = std::optional<Result>();
-            representation().lazy_emplace_l(
-                key,
-                [&update, &result](auto& entry) { result.emplace(update(entry.second, true)); },
-                [&key, &update, &result](const auto& construct)
-                {
-                    auto value = mapped();
-                    result.emplace(update(value, false));
-                    construct(key, std::move(value));
-                });
-            return std::move(*result);
-        }
-    }
-
-    [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

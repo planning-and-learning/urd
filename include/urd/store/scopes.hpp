@@ -17,17 +17,17 @@ public:
     /// Undoes every change since the matching push_scope; a scope must be open.
     void pop_scope() { representation().pop_scope(); }
     /// How many scopes are open.
-    [[nodiscard]] std::size_t depth() const { return store_access::representation(static_cast<const Derived&>(*this)).depth(); }
+    [[nodiscard]] std::size_t depth() const { return store_access::of<Derived>(*this).depth(); }
     /// Whether `key` is bound and the innermost open scope bound it (with no scope open, whether it is bound): a
     /// redeclaration check.
     template<typename Key>
     [[nodiscard]] bool bound_in_scope(const Key& key) const
     // A string literal key decays to the pointer a heterogeneous lookup takes.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-    { return store_access::representation(static_cast<const Derived&>(*this)).bound_in_scope(key); }
+    { return store_access::of<Derived>(*this).bound_in_scope(key); }
 
 private:
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

@@ -48,24 +48,12 @@ struct Hash<flat_string>
 template<>
 struct EqualTo<flat_string>
 {
-    bool operator()(const flat_string& lhs, const flat_string& rhs) const noexcept { return equal_range(lhs, rhs); }
+    bool operator()(const flat_string& lhs, const flat_string& rhs) const noexcept { return ranges_equal(lhs, rhs); }
 };
 
+/// A flat vector is a value range: hashed, compared and ordered as its elements.
 template<typename T, template<typename> typename Ptr, bool IndexPointers, typename SizeType, class Allocator>
-struct Hash<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>>
-{
-    hash_t operator()(const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& elements) const
-        requires Hashable<T>
-    { return urd::hash_range(elements); }
-};
-template<typename T, template<typename> typename Ptr, bool IndexPointers, typename SizeType, class Allocator>
-struct EqualTo<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>>
-{
-    bool operator()(const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& lhs,
-                    const ::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>& rhs) const
-        requires EqualityComparableByEqualTo<T>
-    { return equal_range(lhs, rhs); }
-};
+inline constexpr bool value_range<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>> = true;
 
 template<typename... Ts>
 struct Hash<flat_variant<Ts...>>
