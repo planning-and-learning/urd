@@ -6,7 +6,6 @@
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
@@ -372,22 +371,31 @@ struct Node
 };
 }  // namespace
 
-TEST(OrderBy, SortsByTheProjectionAndBreaksTiesByTheElement)
+// The order is the projection and nothing else: two nodes with equal f are one element of a unique Store, as with
+// any comparator; to keep both, the projection names what tells them apart.
+TEST(OrderBy, EqualProjectionsAreOneElement)
 {
-    using ByF = Store<set<Node>, urd::sorted, urd::order_by<&Node::f>>;
-    static_assert(std::same_as<ByF::representation, std::set<Node, urd::ProjectedLess<Node, &Node::f>>>);
-    auto nodes = ByF { Node { 1, 5, 0 }, Node { 2, 3, 0 }, Node { 3, 5, 0 }, Node { 4, 1, 0 } };
-    auto ids = std::vector<int>();
-    for (const auto& node : nodes)
-        ids.push_back(node.id);
-    EXPECT_EQ(ids, (std::vector<int> { 4, 2, 1, 3 }));
-    EXPECT_EQ(nodes.size(), 4U);
-    EXPECT_TRUE(nodes.contains(Node { 3, 5, 0 }));
+    using ByF = Store<set<Node>, urd::sorted, urd::order_by<urd::by<&Node::f>>>;
+    static_assert(std::same_as<ByF::representation, std::set<Node, urd::by<&Node::f>>>);
+    const auto ids = [](const auto& nodes)
+    {
+        auto result = std::vector<int>();
+        for (const auto& node : nodes)
+            result.push_back(node.id);
+        return result;
+    };
+    const auto nodes = ByF { Node { 1, 5, 0 }, Node { 2, 3, 0 }, Node { 3, 5, 0 }, Node { 4, 1, 0 } };
+    EXPECT_EQ(ids(nodes), (std::vector<int> { 4, 2, 1 }));
+    EXPECT_TRUE(nodes.contains(Node { 3, 5, 0 }));  // equivalent to node 1
+
+    using ByFThenId = Store<set<Node>, urd::sorted, urd::order_by<urd::by<[](const Node& node) { return std::tuple(node.f, node.id); }>>>;
+    const auto distinct = ByFThenId { Node { 1, 5, 0 }, Node { 2, 3, 0 }, Node { 3, 5, 0 }, Node { 4, 1, 0 } };
+    EXPECT_EQ(ids(distinct), (std::vector<int> { 4, 2, 1, 3 }));
 }
 
 TEST(OrderBy, MapsOrderTheirKeysByTheProjection)
 {
-    auto costs = Store<map<Node, std::string>, urd::sorted, urd::order_by<&Node::f>>();
+    auto costs = Store<map<Node, std::string>, urd::sorted, urd::order_by<urd::by<&Node::f>>>();
     costs.insert_or_assign(Node { 1, 9, 0 }, "late");
     costs.insert_or_assign(Node { 2, 2, 0 }, "early");
     EXPECT_EQ(costs.begin()->second, "early");
@@ -395,7 +403,7 @@ TEST(OrderBy, MapsOrderTheirKeysByTheProjection)
 
 TEST(OrderBy, PriorityQueuePopsByTheProjection)
 {
-    using Open = Store<queue<Node>, urd::by_priority, urd::order_by<[](const Node& node) { return std::tuple(node.f, -node.g); }>>;
+    using Open = Store<queue<Node>, urd::by_priority, urd::order_by<urd::by<[](const Node& node) { return std::tuple(node.f, -node.g); }>>>;
     auto open = Open();
     open.push(Node { 1, 4, 1 });
     open.push(Node { 2, 4, 3 });
@@ -409,7 +417,7 @@ TEST(OrderBy, PriorityQueuePopsByTheProjection)
     EXPECT_EQ(ids, (std::vector<int> { 3, 2, 1 }));
 }
 
-// A queue's elements need no order of their own where a projection gives one.
+// A queue's elements need no order of their own where its comparator gives one.
 TEST(OrderBy, QueueOfUnorderedElements)
 {
     struct Task
@@ -417,73 +425,10 @@ TEST(OrderBy, QueueOfUnorderedElements)
         int cost;
         std::string name;
     };
-    auto tasks = Store<queue<Task>, urd::by_priority, urd::order_by<&Task::cost>>();
+    auto tasks = Store<queue<Task>, urd::by_priority, urd::order_by<urd::by<&Task::cost>>>();
     tasks.push(Task { 7, "b" });
     tasks.push(Task { 2, "a" });
     EXPECT_EQ(tasks.top().name, "a");
-}
-
-// Entries identified by one thing and ordered by another: offers per interval, kept cheapest first. merge inserts or
-// keeps the cheaper; every change puts the entry back in order; equal costs go by the interval.
-namespace
-{
-struct Span
-{
-    int lower;
-    int upper;
-    static constexpr auto identifying_members() noexcept { return urd::Members<&Span::lower, &Span::upper> {}; }
-};
-struct Offer
-{
-    double cost;
-    int source;
-    friend bool operator==(const Offer&, const Offer&) = default;
-};
-constexpr auto cheapest_first = [](const Span& span, const Offer& offer) { return std::tuple(offer.cost, span.lower, span.upper); };
-using Offers = Store<map<Span, Offer>, urd::sorted, urd::small, urd::order_by<cheapest_first>>;
-template<typename S>
-concept changes_values_by_reference = requires(S offers, Span span) { offers.at(span).cost = 0; } || requires(S offers, Span span) { offers[span]; };
-}  // namespace
-
-TEST(OrderByValue, KeepsEntriesInTheOrderTheirValuesGive)
-{
-    static_assert(std::same_as<Offers::representation, urd::repr::FlatEntryMap<Span, Offer, urd::EntryLess<Span, Offer, cheapest_first>>>);
-    static_assert(!changes_values_by_reference<Offers> && changes_values_by_reference<Store<map<Span, Offer>, urd::sorted>>);
-    const auto cheaper = [](const Offer& held, const Offer& next) { return next.cost < held.cost ? next : held; };
-    auto offers = Offers();
-    EXPECT_TRUE(offers.merge(Span { 0, 4 }, Offer { 5.0, 1 }, cheaper));
-    EXPECT_TRUE(offers.merge(Span { 2, 3 }, Offer { 2.0, 2 }, cheaper));
-    EXPECT_TRUE(offers.merge(Span { 1, 1 }, Offer { 2.0, 3 }, cheaper));
-    EXPECT_FALSE(offers.merge(Span { 0, 4 }, Offer { 7.0, 4 }, cheaper));  // not cheaper: unchanged
-    const auto sources = [&offers]
-    {
-        auto order = std::vector<int>();
-        for (const auto& [span, offer] : offers)
-            order.push_back(offer.source);
-        return order;
-    };
-    EXPECT_EQ(sources(), (std::vector<int> { 3, 2, 1 }));                 // equal costs by span: {1, 1} before {2, 3}
-    EXPECT_TRUE(offers.merge(Span { 0, 4 }, Offer { 1.0, 5 }, cheaper));  // cheaper: moves to the front
-    EXPECT_EQ(sources(), (std::vector<int> { 5, 3, 2 }));
-    offers.update(Span { 1, 1 }, [](Offer& offer, bool) { offer.cost = 9.0; });
-    EXPECT_EQ(sources(), (std::vector<int> { 5, 2, 3 }));
-    EXPECT_EQ(std::prev(offers.end())->first.lower, 1);  // the most expensive last
-    EXPECT_EQ(offers.at(Span { 2, 3 }).source, 2);       // found by its span
-    EXPECT_EQ(offers.read(Span { 7, 7 }, [](const Offer& offer) { return offer.source; }, -1), -1);
-    offers.insert_or_assign(Span { 2, 3 }, Offer { 0.5, 6 });
-    EXPECT_EQ(sources(), (std::vector<int> { 6, 5, 3 }));
-}
-
-// Entries whose projections tie come in key order, whatever order they were inserted in.
-TEST(OrderByValue, TiesGoByKey)
-{
-    auto ranked = Store<map<int, int>, urd::sorted, urd::small, urd::order_by<[](int, int score) { return score; }>>();
-    for (const int key : { 5, 1, 3, 4, 2 })
-        ranked.insert_or_assign(key, key % 2);
-    auto keys = std::vector<int>();
-    for (const auto& [key, score] : ranked)
-        keys.push_back(key);
-    EXPECT_EQ(keys, (std::vector<int> { 2, 4, 1, 3, 5 }));
 }
 
 }  // namespace

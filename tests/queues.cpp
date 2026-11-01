@@ -62,9 +62,10 @@ static_assert(std::same_as<Store<queue<int>, urd::by_priority, urd::monotone_pri
 // A monotone queue keeps pop: pop is how a queue is consumed, monotone only takes clear away.
 static_assert(requires(Store<queue<int>, urd::by_priority, urd::monotone> queue) { queue.pop(); });
 static_assert(std::same_as<Store<queue<double>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::Heap<double>>);
-static_assert(std::same_as<
-              Store<queue<std::pair<unsigned, int>>, urd::by_priority, urd::monotone_priority, urd::order_by<&std::pair<unsigned, int>::first>>::representation,
-              urd::repr::BucketQueue<std::pair<unsigned, int>, urd::ProjectedLess<std::pair<unsigned, int>, &std::pair<unsigned, int>::first>>>);
+static_assert(
+    std::same_as<Store<queue<std::pair<unsigned, int>>, urd::by_priority, urd::monotone_priority, urd::order_by<urd::by<&std::pair<unsigned, int>::first>>>::
+                     representation,
+                 urd::repr::BucketQueue<std::pair<unsigned, int>, urd::by<&std::pair<unsigned, int>::first>>>);
 // Reused per search, it keeps its storage; a monotone one never clears.
 template<typename Q>
 concept clearable = requires(Q queue) { queue.clear(); };

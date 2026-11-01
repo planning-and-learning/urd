@@ -19,7 +19,7 @@ namespace urd
 {
 
 // What a Store is asked for: its kind with its element types (set<K>, map<K, V>, …; urd/kinds.hpp), then tags
-// (urd/tags.hpp), workloads such as small and order_by<P> among them, in any order.
+// (urd/tags.hpp), workloads such as small and order_by<C> among them, in any order.
 
 namespace detail
 {
@@ -31,7 +31,7 @@ concept a_kind = std::derived_from<K, any_kind> && requires {
     typename K::element_types;
 };
 
-/// The first of Tags answering the category whose root is Root (order_by<P>: any_projection), else void.
+/// The first of Tags answering the category whose root is Root (order_by<C>: any_comparison), else void.
 template<typename Root, typename... Tags>
 struct tag_in
 {
@@ -44,8 +44,35 @@ struct tag_in<Root, Tag, Tags...> : std::conditional_t<std::is_same_v<typename T
 
 }  // namespace detail
 
+namespace detail
+{
+
+/// The comparator an order_by<C> gives (Order), else urd::Less over Ordered (Order is void).
+template<typename Order, typename Ordered>
+struct comparator_of
+{
+    using type = typename Order::compare;
+};
+template<typename Ordered>
+struct comparator_of<void, Ordered>
+{
+    using type = Less<Ordered>;
+};
+
+/// Whether order_by's comparator (Order, or void for none) compares two of Ordered.
+template<typename Order, typename Ordered>
+consteval bool compares()
+{
+    if constexpr (std::is_void_v<Order>)
+        return true;
+    else
+        return std::strict_weak_order<typename Order::compare, const Ordered&, const Ordered&>;
+}
+
+}  // namespace detail
+
 /// A Store's request in canonical form: its kind with its element types (set<K>, map<K, V>, …), what orders it (an
-/// order_by<P>, or void), and its answers, one per category that says more than none, each in its category's enum, in
+/// order_by<C>, or void), and its answers, one per category that says more than none, each in its category's enum, in
 /// the order of its kind's request format. Whatever order the tags were listed in, equal requests give equal specs, and
 /// so equal Store types; compilers print the kind and the answers by name (urd::order::sorted). Its types are its
 /// kind's: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
@@ -54,8 +81,8 @@ struct spec : Kind
 {
     /// What the Store is (urd/kinds.hpp).
     using kind = typename Kind::kind;
-    /// What orders it: order_by<P> over what it orders, else its own order (void).
-    using order_type = typename Kind::template order_over<Order>;
+    /// What orders it: the comparator its order_by<C> gives, else urd::Less over what it orders.
+    using order_type = typename detail::comparator_of<Order, typename Kind::ordered_type>::type;
     /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
@@ -114,17 +141,6 @@ struct spec_answers<spec<Kind, Order, As...>, request_format<E, Es...>, Meant> :
 {
 };
 
-/// Whether T is orderable by itself, asked only where order_by<P> orders it (its ties then fall back to T's own order):
-/// a type nothing orders is never asked, so a nested Store is not completed to answer.
-template<typename T, bool OrderedBy>
-consteval bool orderable_if_ordered()
-{
-    if constexpr (OrderedBy)
-        return orderable<T>;
-    else
-        return false;
-}
-
 /// Checks a request, its kind and its tags, and turns it into its spec. Each static_assert names what is wrong.
 template<typename Kind, typename... Tags>
 struct to_spec
@@ -133,7 +149,7 @@ struct to_spec
                   "urd::Store: the first argument is the kind, with its element types: set<K>, map<K, V>, multiset<V>, "
                   "sequence<V>, queue<V>, pool<V>, slots<V> or partition<K> (urd/kinds.hpp)");
     static_assert((a_tag<Tags> && ...),
-                  "urd::Store: after the kind, every argument must be an urd tag (sorted, unique, …, order_by<P>, or a "
+                  "urd::Store: after the kind, every argument must be an urd tag (sorted, unique, …, order_by<C>, or a "
                   "workload such as small)");
     static_assert(one_per_category({ Tags::value... }),
                   "urd::Store: two properties answer the same question (dense and sparse, frozen and monotone, two "
@@ -141,19 +157,21 @@ struct to_spec
 
     static constexpr property_set stated = stated_of({ Tags::value... });
     using kind = typename Kind::kind;
-    /// What the request orders by: its order_by<P>, or void.
-    using order = typename tag_in<any_projection, Tags...>::type;
+    /// What the request orders by: its order_by<C>, or void.
+    using order = typename tag_in<any_comparison, Tags...>::type;
+
+    static_assert(compares<order, typename Kind::ordered_type>(),
+                  "urd::Store: order_by<C>: C compares two elements (in a map, two keys), as std::set's comparator does; "
+                  "urd::by<P> compares by P(element)");
 
     using format = format_of<kind>;
     static_assert(in_format(format {}, stated),
                   "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
                   "request format (urd/kinds.hpp, format)");
-    static_assert(well_formed<kind>(request_facts { .stated = stated,
-                                                    .orderable = orderable_if_ordered<typename Kind::ordered_type, !std::is_void_v<order>>() }),
+    static_assert(well_formed<kind>(stated),
                   "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): a "
-                  "queue reached neither by fifo, lifo nor by_priority, monotone_priority without by_priority, "
-                  "order_by<P> where its kind orders by nothing asked for (a set without sorted), or order_by<P> on "
-                  "unique keys that are not orderable");
+                  "queue reached neither by fifo, lifo nor by_priority, monotone_priority without by_priority, or "
+                  "order_by<C> where its kind orders by nothing asked for (a set without sorted)");
 
     static constexpr property_set meant = meaning<kind>(stated);
     using type = typename spec_answers<spec<Kind, order>, format, meant>::type;

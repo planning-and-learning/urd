@@ -34,13 +34,6 @@ struct preference
 namespace detail
 {
 
-/// What a kind's rules read of a request: the tags it states, and whether what it orders is orderable by itself.
-struct request_facts
-{
-    property_set stated = property_set::roots();
-    bool orderable = false;
-};
-
 /// A list of facets (urd/store/): what a kind's Store offers, each where its condition holds.
 template<template<typename, typename, typename> class... Facets>
 struct facet_list
@@ -137,41 +130,6 @@ struct role_types
 {
 };
 
-/// order_by<P> on keys that are each once breaks ties by the keys' own order, so they must be orderable (a rule of
-/// the kinds with keys).
-constexpr bool orderable_keys(const request_facts& request)
-{ return !request.stated.has(projection::projected) || request.stated.has(multiplicity::multi) || request.orderable; }
-
-/// The comparator Order (an order_by<P>, or void) makes over Ordered: urd::ProjectedLess, or void for its own order.
-template<typename Ordered, typename Order>
-consteval auto projection_over()
-{
-    if constexpr (std::is_void_v<Order>)
-        return std::type_identity<void> {};
-    else
-    {
-        static_assert(std::invocable<decltype(Order::projection), const Ordered&>,
-                      "urd::Store: order_by<P> takes P(element) (a map's P(key)), or for a map P(key, value); P is neither");
-        return std::type_identity<ProjectedLess<Ordered, Order::projection>> {};
-    }
-}
-/// What orders a Store of one ordered type: Order (an order_by<P>, or void) over it, else its own order (void).
-template<typename Ordered, typename Order>
-using projected_order_t = typename decltype(projection_over<Ordered, Order>())::type;
-
-/// What orders a map: Order (an order_by<P>, or void) over its entries where P takes a key and a value, else over its
-/// keys.
-template<typename K, typename V, typename Order>
-consteval auto map_order()
-{
-    if constexpr (std::is_void_v<Order>)
-        return std::type_identity<void> {};
-    else if constexpr (std::invocable<decltype(Order::projection), const K&, const V&>)
-        return std::type_identity<EntryLess<K, V, Order::projection>> {};
-    else
-        return projection_over<K, Order>();
-}
-
 /// What every Store is, and what a kind is unless it says otherwise. A kind derives from it and restates what
 /// differs: its own questions (asked before the common ones), its own facets (after the common ones), what a request
 /// means, its rules.
@@ -191,7 +149,7 @@ struct any_kind
                                          change,
                                          emptiness,
                                          position,
-                                         projection,
+                                         comparison,
                                          workload>;
     /// The facets every kind's Store has, each where its condition holds.
     using common_facets = facet_list<facet::sizing,
@@ -236,7 +194,7 @@ struct any_kind
     /// move) comes last for them (docs/BENCHMARKS.md).
     static constexpr std::array prefers { preference { .when = change::frozen, .later = referencing::stable_refs },
                                           preference { .when = workload::small, .later = referencing::stable_refs } };
-    static constexpr bool well_formed(const request_facts& /*request*/) { return true; }
+    static constexpr bool well_formed(const property_set& /*stated*/) { return true; }
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(order::sorted); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return true; }
     /// What a Store of it is built from besides its elements (spec S): nothing.
@@ -254,11 +212,10 @@ struct partition_kind : detail::any_kind
     using facets = detail::facet_list<detail::facet::positions, detail::facet::grouping>;
     /// Its keys fall into classes.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(grouping::partition)); }
-    static constexpr bool well_formed(const detail::request_facts& request) { return detail::orderable_keys(request); }
 };
 
 /// Values reached by their front or top: by arrival, first in first out (fifo) or last in first out (lifo), or by
-/// priority (by_priority: the top is the greatest by the order, order_by<P>, else the values' own). Visited in no order
+/// priority (by_priority: the top is the greatest by the order, order_by<C>, else urd::Less). Visited in no order
 /// urd reads.
 struct queue_kind : detail::any_kind
 {
@@ -266,8 +223,8 @@ struct queue_kind : detail::any_kind
     using format = detail::request_format<order, uniqueness, access, handling, priority>;
     using facets = detail::facet_list<detail::facet::visiting, detail::facet::positions, detail::facet::queue_access>;
     /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
-    static constexpr bool well_formed(const detail::request_facts& request)
-    { return request.stated.get<access>() != access::none && (!request.stated.has(priority::monotone_priority) || request.stated.has(access::by_priority)); }
+    static constexpr bool well_formed(const property_set& stated)
+    { return stated.get<access>() != access::none && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority)); }
     /// Its order, by priority.
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(access::by_priority); }
 };
@@ -316,7 +273,6 @@ struct map_kind : detail::any_kind
             stated.put(uniqueness::unique);
         return any_kind::meaning(stated);
     }
-    static constexpr bool well_formed(const detail::request_facts& request) { return detail::orderable_keys(request); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 
@@ -341,7 +297,6 @@ struct set_kind : detail::any_kind
             stated.put(order::insertion_ordered);
         return any_kind::meaning(stated);
     }
-    static constexpr bool well_formed(const detail::request_facts& request) { return detail::orderable_keys(request); }
     /// A set of dense keys is bits, set and cleared in place.
     static constexpr bool changes_in_place(const property_set& row) { return row.has(uniqueness::unique) && row.has(keys::dense); }
 };
@@ -387,7 +342,6 @@ namespace detail
 {
 
 /// A kind Kind with values of type V as its data (a sequence, multiset, queue, pool, slots): what a request names.
-/// Order (an order_by<P>, or void) is what the request orders it by.
 template<typename Kind, typename V>
 struct values_of : Kind
 {
@@ -402,9 +356,6 @@ struct values_of : Kind
     /// What its order compares.
     using ordered_type = V;
     using played = role_types<plays<role::element, V>>;
-    /// What orders it: order_by<P> over its values, else their own order (void).
-    template<typename Order>
-    using order_over = projected_order_t<V, Order>;
 };
 
 /// A kind Kind with keys of type K as its data (a set, a partition).
@@ -419,8 +370,6 @@ struct keys_of : Kind
     using lookup_type = K;
     using ordered_type = K;
     using played = role_types<plays<role::element, K>>;
-    template<typename Order>
-    using order_over = projected_order_t<K, Order>;
 };
 
 }  // namespace detail
@@ -445,9 +394,6 @@ struct map : map_kind
     using lookup_type = K;
     using ordered_type = K;
     using played = detail::role_types<detail::plays<role::element, K>, detail::plays<role::mapped, V>>;
-    /// order_by<P> over its entries where P takes a key and a value, else over its keys.
-    template<typename Order>
-    using order_over = typename decltype(detail::map_order<K, V, Order>())::type;
 };
 /// Values of type V kept by value, in order.
 template<typename V>
@@ -493,10 +439,10 @@ using facets_of = typename concat<typename any_kind::common_facets, typename Kin
 }  // namespace detail
 
 /// Whether a request of kind Kind contradicts itself, whatever container would hold it: by its kind's rule, and
-/// order_by<P> where its kind orders by nothing it asks for. Anything else no container serves fails in the registry.
+/// order_by<C> where its kind orders by nothing it asks for. Anything else no container serves fails in the registry.
 template<typename Kind>
-constexpr bool well_formed(const detail::request_facts& request)
-{ return Kind::well_formed(request) && (!request.stated.has(projection::projected) || Kind::accepts_order_by(request.stated)); }
+constexpr bool well_formed(const property_set& stated)
+{ return Kind::well_formed(stated) && (!stated.has(comparison::given) || Kind::accepts_order_by(stated)); }
 
 /// What a request of kind Kind means beyond what it states: what its kind keeps (a set keeps each key once; a map
 /// without multi too; a sequence's elements have positions), and what its tags imply.

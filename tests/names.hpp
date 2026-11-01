@@ -81,7 +81,7 @@ using vocabulary_categories = urd::detail::request_format<urd::order,
                                                           urd::position,
                                                           urd::workload,
                                                           urd::priority,
-                                                          urd::projection>;
+                                                          urd::comparison>;
 template<typename... Es>
 constexpr auto tables_of(urd::detail::request_format<Es...> /*categories*/)
 { return std::array<const urd::detail::category_table*, sizeof...(Es)> { urd::category<Es>... }; }
@@ -104,12 +104,11 @@ constexpr void for_each_tag(F f)
             f(urd::tag(each, answer));
 }
 /// urd's type traits (urd::trait), in the order share/urd/complexity.json lists them.
-inline constexpr std::array<const urd::trait_info*, 13> vocabulary_traits {
+inline constexpr std::array<const urd::trait_info*, 12> vocabulary_traits {
     urd::trait_v<urd::trait::can_hash>,           urd::trait_v<urd::trait::an_index>,        urd::trait_v<urd::trait::copies_as_bytes>,
     urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,   urd::trait_v<urd::trait::whole_value>,
-    urd::trait_v<urd::trait::own_order>,          urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::by_entry>,
-    urd::trait_v<urd::trait::integral_priority>,  urd::trait_v<urd::trait::rows_flatten>,    urd::trait_v<urd::trait::rows_in_place>,
-    urd::trait_v<urd::trait::rows_reused>
+    urd::trait_v<urd::trait::own_order>,          urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::integral_priority>,
+    urd::trait_v<urd::trait::rows_flatten>,       urd::trait_v<urd::trait::rows_in_place>,   urd::trait_v<urd::trait::rows_reused>
 };
 
 /// urd's roles (urd::role), in the order share/urd/complexity.json lists them.

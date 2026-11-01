@@ -64,8 +64,8 @@ container's header is missing fails to compile naming the headers to include, a 
    * - ``change_logged.hpp``
      - the change log (with the logged set's header)
      - Boost.Unordered
-   * - ``flat_set.hpp``, ``flat_map.hpp``, ``entry_ordered.hpp``
-     - Boost's flat sorted containers; the map ordered by its values
+   * - ``flat_set.hpp``, ``flat_map.hpp``
+     - Boost's flat sorted containers
      - Boost.Container
    * - ``pools.hpp``, ``tree_vector.hpp``, ``tree_bitset.hpp``, ``slots.hpp``
      - the row interner, the tree pools, the slot vector
@@ -133,9 +133,6 @@ urd's own
    * - ``Recycling``, ``RecyclingSet``
      - a map that keeps erased nodes and their values for the next keys; a node set that keeps erased nodes
      - maps of ``retains`` rows; sets with ``stable_refs, retains``
-   * - ``FlatEntryMap``
-     - entries in the order their values give, found by key
-     - ``sorted, order_by<P(key, value)>``
    * - ``Queue``, ``AddressableHeap``, ``BucketQueue``
      - deque, vector or binary heap; a heap of handles; a bucket per priority
      - queues

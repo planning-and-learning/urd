@@ -35,7 +35,7 @@ template<typename Trait>
 inline constexpr tag trait_tag { trait_v<Trait>, 1 };
 
 /// What a type is, for the containers that hold it: derived from the types (urd/type_traits_of.hpp), never stated. What a
-/// key, value or row element type is; what an order is (order_by<P>, else urd::Less); what rows (Stores held as
+/// key, value or row element type is; what an order is (order_by<C>, else urd::Less); what rows (Stores held as
 /// elements) allow.
 namespace trait
 {
@@ -79,11 +79,6 @@ struct natural_ordered
 {
     static constexpr std::string_view name = "natural_ordered";
     static constexpr std::string_view description = "ordered as sorted means";
-};
-struct by_entry
-{
-    static constexpr std::string_view name = "by_entry";
-    static constexpr std::string_view description = "the order compares a map's entries, key and value";
 };
 struct integral_priority
 {

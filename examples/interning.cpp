@@ -2,7 +2,6 @@
 // repeats, in the order first seen.
 
 #include "show.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"

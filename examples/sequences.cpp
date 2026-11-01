@@ -1,7 +1,6 @@
 // Sequences: values identified by position. The properties choose the container, and decide what may change.
 
 #include "show.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/sequences/jagged.hpp"
 #include "urd/repr/sequences/row_pool.hpp"

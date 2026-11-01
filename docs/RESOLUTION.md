@@ -305,9 +305,6 @@ indexable).
 | Request | Spec | Representation | Include |
 |---|---|---|---|
 | `Store<map<int, int>, sorted, order_by>` | sorted, unique, order_by | `map` | std_map.hpp |
-| `Store<map<int, int>, sorted, small, order_by>` | sorted, unique, order_by, small | `flat_entry_map` | entry_ordered.hpp |
-| `Store<map<int, int>, sorted, small, multi, order_by>` | sorted, multi, order_by, small | `none` — missing: a multimap ordered by its values (FlatEntryMap is unique); no site asks |  |
-| `Store<map<int, int>, sorted, small, stable_refs, order_by>` | sorted, unique, stable_refs, order_by, small | `none` — missing: entries ordered by value in nodes (a tree keyed by the entry); no site asks |  |
 | `Store<map<int, int>, sorted, frozen, order_by>` | sorted, unique, stable_refs, frozen, order_by | `flat_map` | flat_map.hpp |
 
 ## Dense maps int to int

@@ -4,7 +4,6 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/repr/core/order.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -176,12 +175,12 @@ struct representation_of<unordered_multimap_decl, S>
 template<typename S>
 struct representation_of<map_decl, S>
 {
-    using type = std::map<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+    using type = std::map<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
 template<typename S>
 struct representation_of<multimap_decl, S>
 {
-    using type = std::multimap<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+    using type = std::multimap<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

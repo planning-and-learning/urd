@@ -42,9 +42,6 @@ using urd::test::allocations;
 using urd::test::Counted;
 using urd::test::deallocations;
 
-/// Orders a map by its values, ties by key: what order_by<P> with P(key, value) asks for.
-constexpr auto by_value = [](int /*key*/, int value) { return value; };
-
 template<typename R>
 class Properties : public testing::Test
 {
@@ -161,10 +158,6 @@ TYPED_TEST_P(Properties, Sorted)
         if constexpr (growable<TypeParam>)
             for (const int element : descending(300))
                 add(range, element);
-        if constexpr (urd::detail::entry_ordered<TypeParam>)
-            // In the order the request gave, which reads the values; there are no bounds by key.
-            EXPECT_TRUE(std::ranges::is_sorted(range, urd::detail::value_order_t<TypeParam> {}));
-        else
         {
             EXPECT_TRUE(std::ranges::is_sorted(range, {}, key_of));
             for (const int element : { -1, 0, 50, 299, 300 })

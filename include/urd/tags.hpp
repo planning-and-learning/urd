@@ -1018,47 +1018,47 @@ struct tags_of<priority>
     using type = detail::type_list<any_priority, monotone_priority>;
 };
 
-enum class projection : std::uint8_t
+enum class comparison : std::uint8_t
 {
     none,
-    projected,
+    given,
 };
 
-struct any_projection
+struct any_comparison
 {
-    using root = any_projection;
+    using root = any_comparison;
     static constexpr bool request_only = true;  ///< no container declares it: only a request states it
-    static constexpr auto value = projection::none;
-    static constexpr std::string_view name = "any_projection";
+    static constexpr auto value = comparison::none;
+    static constexpr std::string_view name = "any_comparison";
     using group = semantics_group;
     using heading = promise_heading;
-    static constexpr std::string_view question = "What orders the elements?";
+    static constexpr std::string_view question = "What compares the elements?";
 };
-/// Ordered by a projection of the elements (order_by<P>), not by the elements themselves: the words of the answer.
-struct projected : any_projection
+/// Compared by a comparator the request gives (order_by<C>), not by urd::Less: the words of the answer.
+struct given_comparison : any_comparison
 {
-    static constexpr auto value = projection::projected;
+    static constexpr auto value = comparison::given;
     static constexpr std::string_view name = "order_by";
     static constexpr std::string_view promise = "caller";
-    static constexpr std::string_view description = "Ordered by P(element) (in a map P(key) or P(key, value)), not the element.";
-    static constexpr std::array<std::string_view, 3> phrases { "order by", "sort key", "priority function" };
+    static constexpr std::string_view description = "Ordered by the given comparator (in a map, over its keys), not urd::Less.";
+    static constexpr std::array<std::string_view, 3> phrases { "order by", "comparator", "priority function" };
 };
 
-/// The tag types of projection: its none, then its answers, in the order of its enum.
+/// The tag types of comparison: its none, then its answers, in the order of its enum.
 template<>
-struct tags_of<projection>
+struct tags_of<comparison>
 {
-    using type = detail::type_list<any_projection, projected>;
+    using type = detail::type_list<any_comparison, given_comparison>;
 };
 
-/// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
-/// pointer (&Job::deadline) or a stateless lambda ([](const Job& job) { return std::tuple(job.deadline, -job.weight); }).
-/// Ties fall back to the element's own order where it has one. A tag like any other, answering `projected`, that also
-/// carries P.
-template<auto P>
-struct order_by : projected
+/// Orders a sorted Store, or a by_priority queue, by comparator Compare instead of urd::Less: Compare compares two
+/// elements (in a map, two keys), as std::set's does; urd::by<P> compares by a projection (order_by<by<&Job::deadline>>).
+/// The order is Compare and nothing else: two elements it does not separate are equivalent, so in a unique Store they
+/// are one. A tag like any other, answering `given`, that also carries Compare.
+template<typename Compare>
+struct order_by : given_comparison
 {
-    static constexpr auto projection = P;
+    using compare = Compare;
 };
 
 }  // namespace urd

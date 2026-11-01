@@ -33,7 +33,7 @@ What holds
 
    Iteration ascending by :cpp:class:`urd::Less`, or in the order elements first came. ``sorted`` adds
    ``lower_bound``, ``upper_bound``, ``equal_range`` and ``operator<=>``; either adds ``rbegin``, ``rend``. To order
-   by something else, see ``order_by<P>`` in :doc:`index`.
+   by something else, see ``order_by<C>`` in :doc:`index`.
 
 .. urd-category:: by_key
 

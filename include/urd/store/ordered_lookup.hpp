@@ -35,7 +35,7 @@ struct facet_condition<facet::ordered_lookup>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, sorted> && !is_entry_less<typename S::order_type>; }
+    { return has<S, sorted>; }
 };
 template<>
 struct facet_operations<facet::ordered_lookup>

@@ -4,7 +4,6 @@
 
 #include "urd/elements/hash.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/core/order.hpp"
 #include "urd/repr/values/flat_set_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -26,12 +25,12 @@ namespace urd::detail
 template<typename S>
 struct representation_of<flat_set_decl, S>
 {
-    using type = boost::container::flat_set<typename S::element_type, element_order_t<S>>;
+    using type = boost::container::flat_set<typename S::element_type, typename S::order_type>;
 };
 template<typename S>
 struct representation_of<flat_multiset_decl, S>
 {
-    using type = boost::container::flat_multiset<typename S::element_type, element_order_t<S>>;
+    using type = boost::container::flat_multiset<typename S::element_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

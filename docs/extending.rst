@@ -106,7 +106,7 @@ are ``positional``) or a facet it lists (iteration).
 
 The template gives the kind's element types: ``element_types`` (for spelling and headers), what it holds and finds
 (``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), which type plays which
-role (``played``), and what orders it given an ``order_by<P>`` (``order_over``). ``urd::detail::values_of<Kind, V>``
+role (``played``). ``urd::detail::values_of<Kind, V>``
 and ``keys_of<Kind, K>`` give them for a kind of values or of keys; ``urd::map<K, V>`` writes its own.
 ``urd::Store<tally<std::string>>`` is a tally of strings. Nothing registers the kind: naming it is enough.
 

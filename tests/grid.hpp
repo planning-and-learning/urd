@@ -30,9 +30,9 @@
 namespace urd::test
 {
 
-/// Projections for order_by: by the negated element, and a map's entries by their values.
+/// A comparator for order_by: by the negated element.
 inline constexpr auto negated = [](int element) { return -element; };
-inline constexpr auto by_value = [](const int& /*key*/, const int& value) { return value; };
+using by_negated = urd::by<negated>;
 
 // Requests as types, and the headers a Store needs, come from tests/request.hpp; a request is written as
 // urd::spelling_of_request says (urd/format.hpp).
@@ -89,7 +89,7 @@ using sets_of = requests<request<set<K>>,
                          request<set<K>, sorted, monotone>,
                          request<set<K>, contiguous, frozen>,
                          request<set<K>, sorted, contiguous, frozen>>;
-using ordered_sets = requests<request<set<int>, sorted, order_by<negated>>, request<set<int>, sorted, frozen, order_by<negated>>>;
+using ordered_sets = requests<request<set<int>, sorted, order_by<by_negated>>, request<set<int>, sorted, frozen, order_by<by_negated>>>;
 
 using indices = requests<request<set<index<Id>>, dense>,
                          request<map<index<Id>, int>, dense>,
@@ -147,11 +147,7 @@ using maps_of = requests<request<map<K, V>>,
                          request<map<K, Store<sequence<V>, retains>>, sorted>,
                          request<map<K, Store<sequence<V>>>>,
                          request<map<K, Store<set<V>>>>>;
-using ordered_maps = requests<request<map<int, int>, sorted, order_by<negated>>,
-                              request<map<int, int>, sorted, small, order_by<by_value>>,
-                              request<map<int, int>, sorted, small, multi, order_by<by_value>>,
-                              request<map<int, int>, sorted, small, stable_refs, order_by<by_value>>,
-                              request<map<int, int>, sorted, frozen, order_by<negated>>>;
+using ordered_maps = requests<request<map<int, int>, sorted, order_by<by_negated>>, request<map<int, int>, sorted, frozen, order_by<by_negated>>>;
 
 template<typename I, typename V>
 using dense_maps_of = requests<request<map<I, V>, dense>,
@@ -214,9 +210,9 @@ using queues_of = requests<request<queue<T>, fifo>,
                            request<queue<T>, by_priority, constant_clear>,
                            request<queue<T>, by_priority, monotone>>;
 using ordered_queues = requests<request<queue<int>, by_priority, monotone_priority>,
-                                request<queue<int>, by_priority, order_by<negated>>,
-                                request<queue<int>, by_priority, handles, order_by<negated>>,
-                                request<queue<int>, by_priority, monotone_priority, order_by<negated>>>;
+                                request<queue<int>, by_priority, order_by<by_negated>>,
+                                request<queue<int>, by_priority, handles, order_by<by_negated>>,
+                                request<queue<int>, by_priority, monotone_priority, order_by<by_negated>>>;
 
 using pools = requests<request<pool<Store<sequence<int>, frozen>>>,
                        request<pool<Store<set<int>, dense, frozen>>>,

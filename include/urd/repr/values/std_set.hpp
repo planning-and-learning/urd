@@ -4,7 +4,6 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/repr/core/order.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -110,7 +109,7 @@ struct representation_of<unordered_set_decl, S>
 template<typename S>
 struct representation_of<set_decl, S>
 {
-    using type = std::set<typename S::element_type, element_order_t<S>>;
+    using type = std::set<typename S::element_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

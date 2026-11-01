@@ -7,7 +7,6 @@
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
@@ -136,13 +135,11 @@ int main()
 #elif URD_CASE == 24  // handles are a pool's (or a queue's): a set reaches its keys by themselves
     using S = Store<set<int>, urd::handles>;
     (void) S();
-#elif URD_CASE == 26  // a map ordered by its values hands out no value to change: writing through it would break the order
-    using S = Store<map<int, int>, urd::sorted, urd::small, urd::order_by<[](int, int value) { return value; }>>;
-    auto ordered = S();
-    ordered.insert_or_assign(1, 2);
-    ordered.at(1) = 3;
-#elif URD_CASE == 27  // a set has no values to order by
-    using S = Store<set<int>, urd::sorted, urd::order_by<[](int key, int value) { return key + value; }>>;
+#elif URD_CASE == 26  // order_by<C> orders a queue by priority only: one reached by arrival has no order to give
+    using S = Store<queue<int>, urd::fifo, urd::order_by<urd::Less<int>>>;
+    (void) S();
+#elif URD_CASE == 27  // a comparator compares two elements (in a map, two keys)
+    using S = Store<set<int>, urd::sorted, urd::order_by<urd::Less<std::string>>>;
     (void) S();
 #elif URD_CASE == 28  // an unordered Store iterates in no order its contents fix, so it is no hashed key
     using S = Store<set<Store<set<int>>>>;
@@ -219,7 +216,7 @@ int main()
     using S = Store<set<int>, urd::constant_clear>;
     (void) S();
 #elif URD_CASE == 46  // dense keys are iterated by index: no order_by applies
-    using S = Store<set<int>, urd::dense, urd::sorted, urd::order_by<[](int key) { return -key; }>>;
+    using S = Store<set<int>, urd::dense, urd::sorted, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();
 #elif URD_CASE == 47  // a layer iterates its own elements, not its parent's: no order holds over both
     using S = Store<set<int>, urd::layered, urd::sorted>;
@@ -271,12 +268,8 @@ int main()
 #elif URD_CASE == 61  // a Store that hands out indices for views is numbered by its builder: none without urd::layer
     using S = Store<set<int>, urd::positional>;
     (void) S();
-#elif URD_CASE == 25  // unique keys ordered by a projection need their own order to break ties
-    struct Unordered
-    {
-        int cost;
-    };
-    using S = Store<set<Unordered>, urd::sorted, urd::order_by<&Unordered::cost>>;
+#elif URD_CASE == 25  // order_by<C> orders a set only where it is sorted: unsorted, it orders nothing asked for
+    using S = Store<set<int>, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();
 #endif
 }

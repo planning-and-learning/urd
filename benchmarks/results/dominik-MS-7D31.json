@@ -2280,28 +2280,6 @@
    },
    "recorded": "2026-11-01"
   },
-  "flat_entry_map/int;int/small/64": {
-   "fingerprint": "49f402ca6f9d79de",
-   "ns": {
-    "clear": 0.221,
-    "erase": 16.006,
-    "insert": 24.518,
-    "iterate": 0.574,
-    "lookup": 22.228
-   },
-   "recorded": "2026-11-01"
-  },
-  "flat_entry_map/int;int/small/8": {
-   "fingerprint": "49f402ca6f9d79de",
-   "ns": {
-    "clear": 1.445,
-    "erase": 4.774,
-    "insert": 9.411,
-    "iterate": 1.534,
-    "lookup": 2.786
-   },
-   "recorded": "2026-11-01"
-  },
   "flat_map/Id;Id/1000": {
    "fingerprint": "31acc1e083f3ef58",
    "ns": {

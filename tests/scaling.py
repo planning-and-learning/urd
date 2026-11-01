@@ -21,7 +21,7 @@ from pathlib import Path
 URD = ("Jagged", "RowPool", "IndexedSet", "Queue", "AddressableHeap", "BucketQueue", "RingFifo", "DenseSet", "SparseSet",
        "IndexMap", "GroupedMultiMap", "BidirectionalCsr", "DisjointSets", "Layered", "LayeredPool", "ChangeLogged",
        "OrderedMap", "SegmentedVector", "RecordInterner", "ArenaInterner", "RowInterner", "TreeVectorSet", "TreeBitsetSet",
-       "SlotVector", "Scoped", "Recycling", "RecyclingSet", "FlatEntryMap")
+       "SlotVector", "Scoped", "Recycling", "RecyclingSet")
 CONTAINERS = (*(f"urd::repr::{each}<" for each in URD), "std::set<", "std::multiset<", "std::map<", "std::multimap<",
               "std::unordered_set<", "std::unordered_map<", "std::unordered_multimap<",
               "boost::container::flat_set<", "boost::container::flat_multiset<", "boost::container::flat_map<",

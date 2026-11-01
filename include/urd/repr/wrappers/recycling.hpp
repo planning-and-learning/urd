@@ -2,7 +2,6 @@
 
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/core/order.hpp"
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/wrappers/recycling_fwd.hpp"
@@ -236,7 +235,7 @@ struct representation_of<recycling_hash_map_decl, S>
 template<typename S>
 struct representation_of<recycling_map_decl, S>
 {
-    using type = repr::Recycling<std::map<typename S::key_type, typename S::mapped_type, key_order_t<S>>>;
+    using type = repr::Recycling<std::map<typename S::key_type, typename S::mapped_type, typename S::order_type>>;
 };
 
 }  // namespace urd::detail

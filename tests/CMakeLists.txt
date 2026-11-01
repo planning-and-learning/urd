@@ -176,7 +176,7 @@ urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd tag
 urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 24 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
-urd_compile_fail_expects(compile_fail_store 27 "P is neither")
+urd_compile_fail_expects(compile_fail_store 27 "C compares two elements")
 urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 39 "means nothing for this kind of Store")

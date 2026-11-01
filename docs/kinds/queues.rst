@@ -30,8 +30,8 @@ A queue is reached by its front or top, and visited by iteration (not a bucket q
      - ``Lifo`` (a vector)
    * - ``Store<queue<T>, by_priority>``
      - ``Heap`` (a binary heap; the least element leaves first)
-   * - ``Store<queue<T>, by_priority, order_by<&T::cost>>``
-     - ``Heap`` by the cost, ties by the element's own order
+   * - ``Store<queue<T>, by_priority, order_by<by<&T::cost>>>``
+     - ``Heap`` by the cost: the comparator given, nothing else
    * - ``Store<queue<T>, by_priority, handles>``
      - ``AddressableHeap``: ``push`` gives a handle; ``update(h, e)``, ``erase(h)``
    * - ``Store<queue<I>, by_priority, monotone_priority>``
@@ -106,7 +106,7 @@ Example
 .. code-block:: cpp
 
    struct Node { double f; State state; static constexpr auto identifying_members() noexcept { return Members<&Node::f, &Node::state> {}; } };
-   using Open = Store<queue<Node>, by_priority, order_by<&Node::f>>;
+   using Open = Store<queue<Node>, by_priority, order_by<by<&Node::f>>>;
    auto open = Open();
    open.push({ 3.5, start });
    while (!open.empty()) { const auto node = open.top(); open.pop(); /* expand */ }

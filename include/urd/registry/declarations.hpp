@@ -13,7 +13,6 @@
 
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
-#include "urd/repr/maps/entry_ordered_fwd.hpp"
 #include "urd/repr/maps/flat_map_fwd.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/repr/maps/ordered_map_fwd.hpp"
@@ -126,8 +125,7 @@ struct declarations_of<map_kind>
                            layered_decl<unordered_flat_map_decl, false>,
                            layered_decl<unordered_map_decl, false>,
                            layered_decl<dense_map_decl, false>,
-                           layered_decl<generation_map_decl, false>,
-                           flat_entry_map_decl>;
+                           layered_decl<generation_map_decl, false>>;
 };
 
 /// Queues, by arrival and by priority: the declarations, in order of preference (each serves one access).

@@ -118,13 +118,14 @@ see :doc:`needs`.
    hints
    needs
 
-Order by a projection
+Order by a comparator
 ---------------------
 
-``order_by<P>`` is no tag: it orders a ``sorted`` Store or a ``by_priority`` queue by ``P(element)`` (``P(key)`` in
-a map), or a map by ``P(key, value)``. ``P`` is a member pointer or a stateless lambda; ties are broken by the
-element's (the key's) own order. Ordered by values, a map's values change only through ``update``, ``merge`` and
-``insert_or_assign``, and the request says ``small`` or ``frozen`` too (a flat scan). See :cpp:class:`urd::order_by`.
+``order_by<C>`` is a tag that carries a comparator ``C``: it orders a ``sorted`` Store or a ``by_priority`` queue by
+``C`` instead of :cpp:class:`urd::Less`, as ``std::set``'s comparator does. ``C`` compares two elements, in a map two
+keys. :cpp:class:`urd::by` compares by a projection: ``order_by<by<&Job::deadline>>``. The order is ``C`` and nothing
+else: elements ``C`` does not separate are equivalent, so a unique Store keeps one of them. See
+:cpp:class:`urd::order_by`.
 
 Incompatible combinations
 -------------------------
@@ -134,7 +135,7 @@ grid of requests (a ``none`` row carries a note saying what is missing). ``to_sp
 ill-formed whatever container would hold it: a first argument that is no kind, an argument after it that is no tag,
 a tag its kind's format does not ask, and the rules its kind states (``well_formed`` in ``include/urd/kinds.hpp``: a
 queue is reached by ``fifo``, ``lifo`` or ``by_priority``, ``monotone_priority`` needs ``by_priority``, ``order_by``
-needs an orderable key), each with its message. A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+needs ``sorted`` or ``by_priority``), each with its message. A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::
@@ -150,7 +151,7 @@ each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
      - ``Store<set<int>, sorted>``.
      - 8
    * - An argument after the kind that is no tag
-     - Every argument after the kind is a tag, ``order_by<P>`` among them.
+     - Every argument after the kind is a tag, ``order_by<C>`` among them.
      - Move the type into the kind: ``map<K, V>``, or a tuple element.
      - 9
    * - Two tags of one category: ``dense, sparse``; ``retains, reclaims``; ``frozen, monotone``;
@@ -166,13 +167,13 @@ each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
      - A partition groups keys, each once.
      - A ``map<K, V>, multi``.
      - 39
-   * - ``order_by<P>`` on unique keys that are not orderable
-     - Ties under ``P`` are broken by the keys' own order; without one, two keys with equal ``P(key)`` would be one.
-     - Give the key an order, or ask for ``multi``.
+   * - ``order_by<C>`` on a set without ``sorted``
+     - ``order_by`` orders a sorted Store (or a ``by_priority`` queue); an unsorted set has no order to give.
+     - Add ``sorted``.
      - 25
-   * - ``order_by<P>`` with a ``P`` that fits neither ``P(element)`` nor a map's ``P(key, value)``
-     - ``P`` takes the element (a map's key), or a map's key and value.
-     - Fix ``P``'s signature.
+   * - ``order_by<C>`` with a ``C`` that does not compare two elements
+     - ``C`` compares two elements, in a map two keys.
+     - Fix ``C``, or compare by a projection with ``by<P>``.
      - 27
 
 Every other request no container serves is rejected by the registry, with one message: "no container serves

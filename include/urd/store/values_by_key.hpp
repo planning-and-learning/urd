@@ -23,8 +23,6 @@ class values_by_key
     using iterator_type = typename iterator_types<R, S>::iterator;
 
     using mapped = typename S::mapped_type;
-    /// Ordered by its values (order_by<P> with P(key, value)): a value changes only through what puts it back in order.
-    static constexpr bool ordered_by_value = is_entry_less<typename S::order_type>;
 
 public:
     /// What a key maps to.
@@ -32,11 +30,11 @@ public:
 
     [[nodiscard]] const mapped& at(const map_key& key) const { return representation().at(key); }
     [[nodiscard]] mapped& at(const map_key& key)
-        requires(!has<S, frozen> && !ordered_by_value)
+        requires(!has<S, frozen>)
     { return representation().at(key); }
     /// The value for `key`, inserted as a default first where there is none.
     mapped& operator[](const map_key& key)
-        requires(grows<S> && std::default_initializable<mapped> && !ordered_by_value)
+        requires(grows<S> && std::default_initializable<mapped>)
     {
         representation().try_emplace(key);
         return representation().at(key);
@@ -94,30 +92,14 @@ public:
     bool merge(const map_key& key, const mapped& value, Combine combine)
         requires grows<S>
     {
-        if constexpr (ordered_by_value)
-        {
-            // Through update, which puts the entry back in order.
-            auto changed = false;
-            representation().update(key,
-                                    [&](mapped& held, bool had)
-                                    {
-                                        auto next = had ? mapped(combine(std::as_const(held), value)) : value;
-                                        changed = !had || !EqualTo<mapped> {}(next, held);
-                                        held = std::move(next);
-                                    });
-            return changed;
-        }
-        else
-        {
-            if (representation().try_emplace(key, value).second)
-                return true;
-            auto& held = representation().at(key);
-            auto combined = mapped(combine(std::as_const(held), value));
-            if (EqualTo<mapped> {}(combined, held))
-                return false;
-            held = std::move(combined);
+        if (representation().try_emplace(key, value).second)
             return true;
-        }
+        auto& held = representation().at(key);
+        auto combined = mapped(combine(std::as_const(held), value));
+        if (EqualTo<mapped> {}(combined, held))
+            return false;
+        held = std::move(combined);
+        return true;
     }
 
 private:

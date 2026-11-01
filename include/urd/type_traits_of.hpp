@@ -178,9 +178,7 @@ consteval property_set row_element_traits_of()
 template<typename Ordered, typename C>
 consteval property_set order_traits_of()
 {
-    if constexpr (is_entry_less<C>)  // a map ordered by its entries: what is ordered is no one type
-        return trait_set_of<trait::by_entry>();
-    else if constexpr (std::same_as<C, Less<Ordered>> && is_store<Ordered>)
+    if constexpr (std::same_as<C, Less<Ordered>> && is_store<Ordered>)
     {
         // A Store is asked by its request, never completed: it orders by its contents where they come in an order its
         // request fixes and its elements order.
@@ -220,7 +218,7 @@ consteval property_set element_roles(const property_set& stated_tags = property_
         each.for_each([&result](tag fact) { result.put(fact); });
     return result;
 }
-/// The roles of a map from K to V in order C (over keys, or over entries: is_entry_less).
+/// The roles of a map from K to V in order C over its keys.
 template<typename K, typename V, typename C = Less<K>>
 consteval property_set map_roles(const property_set& stated_tags = property_set::roots())
 {
@@ -228,10 +226,6 @@ consteval property_set map_roles(const property_set& stated_tags = property_set:
     about(role_v<role::mapped>, type_traits_v<V>).for_each([&result](tag fact) { result.put(fact); });
     return result;
 }
-
-/// The comparator spec S orders by: its order_by, else urd::Less over what its kind's data orders.
-template<typename S>
-using spec_order_t = std::conditional_t<std::is_void_v<typename S::order_type>, Less<typename S::ordered_type>, typename S::order_type>;
 
 /// The roles of spec S, whatever its kind: what it promises; the traits of each type its data says plays a role (its
 /// elements, a map's values); what its order is; and what the Stores it holds (held_type) are as rows.
@@ -242,7 +236,7 @@ consteval property_set request_roles()
     const auto put_all = [&result](const property_set& facts) { facts.for_each([&result](tag fact) { result.put(fact); }); };
     [&put_all]<typename... Plays>(role_types<Plays...> /*played*/)
     { (put_all(about(role_v<typename Plays::role>, type_traits_v<typename Plays::type>)), ...); }(typename S::played {});
-    put_all(about(role_v<role::order>, order_traits_of<typename S::ordered_type, spec_order_t<S>>()));
+    put_all(about(role_v<role::order>, order_traits_of<typename S::ordered_type, typename S::order_type>()));
     using held = typename S::held_type;
     put_all(about(role_v<role::row>, row_tags_of<held>()));
     put_all(about(role_v<role::rows>, row_traits_of<held>()));

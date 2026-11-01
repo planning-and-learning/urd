@@ -27,64 +27,26 @@ concept orderable = OrderedByLess<T> && EqualityComparableByEqualTo<T>;
 template<typename T>
 concept hashable = Hashable<T> && EqualityComparableByEqualTo<T>;
 
-/// What order_by<P> means: T ordered by P(T) under urd::Less, ties by T itself where T is ordered. P is a member
-/// pointer or a stateless callable.
-template<typename T, auto P>
-struct ProjectedLess
+/// Compares by P(element) under urd::Less, and nothing else: two elements P does not separate are equivalent (in a
+/// unique Store, one element). P is a member pointer or a stateless callable; a request orders by it as by any other
+/// comparator: order_by<by<&Job::deadline>>.
+template<auto P>
+struct by
 {
     static constexpr auto projection = P;
 
+    template<typename T>
     constexpr bool operator()(const T& lhs, const T& rhs) const
     {
         using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const T&>>;
-        // Projected twice rather than held: a member is projected for free, and holding a reference to what a
-        // callable returns could outlive it.
-        if (Less<Projected> {}(std::invoke(P, lhs), std::invoke(P, rhs)))
-            return true;
-        if (Less<Projected> {}(std::invoke(P, rhs), std::invoke(P, lhs)))
-            return false;
-        if constexpr (OrderedByLess<T>)
-            return Less<T> {}(lhs, rhs);
-        else
-            return false;
-    }
-};
-
-/// What order_by<P> means for a map whose P takes the key and the value: entries ordered by P(key, value) under
-/// urd::Less, ties by the key, which identifies an entry. Compares any pair-like entries (std::pair<const K, V>, or
-/// std::pair<K, V> as a flat representation keeps them).
-template<typename K, typename V, auto P>
-struct EntryLess
-{
-    static constexpr auto projection = P;
-
-    template<typename Entry>
-    constexpr bool operator()(const Entry& lhs, const Entry& rhs) const
-    {
-        using Projected = std::remove_cvref_t<std::invoke_result_t<decltype(P), const K&, const V&>>;
-        // Projected twice rather than held, as in ProjectedLess.
-        if (Less<Projected> {}(std::invoke(P, lhs.first, lhs.second), std::invoke(P, rhs.first, rhs.second)))
-            return true;
-        if (Less<Projected> {}(std::invoke(P, rhs.first, rhs.second), std::invoke(P, lhs.first, lhs.second)))
-            return false;
-        return Less<K> {}(lhs.first, rhs.first);
+        return Less<Projected> {}(std::invoke(P, lhs), std::invoke(P, rhs));
     }
 };
 
 namespace detail
 {
 
-template<typename C>
-inline constexpr bool is_entry_less = false;
-template<typename K, typename V, auto P>
-inline constexpr bool is_entry_less<EntryLess<K, V, P>> = true;
-
-template<typename C, typename T>
-inline constexpr bool is_projected_less = false;
-template<typename T, auto P>
-inline constexpr bool is_projected_less<ProjectedLess<T, P>, T> = true;
-
-/// What order Compare compares elements T by: its projection's result where it projects (order_by<P>), else T.
+/// What order Compare compares elements T by: its projection's result where it projects (urd::by<P>), else T.
 template<typename T, typename Compare>
 struct order_key_of
 {
@@ -101,11 +63,11 @@ using order_key_t = typename order_key_of<T, Compare>::type;
 
 }  // namespace detail
 
-/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses; or the
-/// order a request gave by order_by.
+/// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses, over an
+/// orderable T; or any other comparator of T's, as a request gives it by order_by<C>.
 template<typename C, typename T>
-concept natural_order =
-    (orderable<T> && (std::same_as<C, Less<T>> || (std::same_as<C, std::less<T>> && std::totally_ordered<T>) )) || detail::is_projected_less<C, T>;
+concept natural_order = (std::same_as<C, Less<T>> && orderable<T>) || (std::same_as<C, std::less<T>> && orderable<T> && std::totally_ordered<T>)
+                        || (!std::same_as<C, Less<T>> && !std::same_as<C, std::less<T>> && std::strict_weak_order<C, const T&, const T&>);
 
 namespace detail
 {

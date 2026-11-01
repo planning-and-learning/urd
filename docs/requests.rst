@@ -3,32 +3,39 @@ The request language
 
 .. cpp:namespace:: urd
 
-A Store is a request: the element types and a list of property tags, in any order.
+A Store is a request: its kind with its element types, then a list of property tags, in any order.
 
-.. cpp:class:: template<typename... Properties> Store
+.. cpp:class:: template<typename Kind, typename... Tags> Store
 
-   An alias (``urd/store.hpp``) for the Store class resolved from the request ``Properties``: among them exactly
-   one :cpp:class:`key` or :cpp:class:`value`, or both, and property tags from :doc:`language/index`, at most one per
-   category. Equal requests, in whatever order, are the same type. ``Store<...>::representation`` names the
-   container chosen, for tests that pin it; code that uses a Store never needs it.
+   An alias (``urd/store.hpp``) for the Store class resolved from the request: ``Kind`` is one of the kinds below with
+   its element types, and ``Tags`` are property tags from :doc:`language/index`, at most one per category. Equal
+   requests, in whatever order, are the same type. ``Store<...>::representation`` names the container chosen, for
+   tests that pin it; code that uses a Store never needs it.
 
-.. cpp:class:: template<typename K> key
+.. cpp:class:: template<typename K> set
+.. cpp:class:: template<typename K, typename V> map
+.. cpp:class:: template<typename V> multiset
+.. cpp:class:: template<typename V> sequence
+.. cpp:class:: template<typename V> queue
+.. cpp:class:: template<typename V> pool
+.. cpp:class:: template<typename V> slots
+.. cpp:class:: template<typename K> partition
 
-   The elements are identified by keys of type ``K``. Without :cpp:class:`value`, the keys are the contents: a
-   set. ``K`` must be :cpp:concept:`hashable` (the default), :cpp:concept:`orderable` (with ``sorted``) or
-   :cpp:concept:`indexable` (with ``dense``); see :doc:`semantics`.
+   The kinds (``urd/kinds.hpp``), each with its element types: keys ``K`` identify elements, values ``V`` are
+   carried. ``K`` must be :cpp:concept:`hashable` (the default), :cpp:concept:`orderable` (with ``sorted``) or
+   :cpp:concept:`indexable` (with ``dense``); see :doc:`semantics`. ``V`` has no requirements of its own.
 
-.. cpp:class:: template<typename V> value
+.. cpp:class:: template<typename Compare> order_by
 
-   Each element carries a value of type ``V``. Without :cpp:class:`key`, values are identified by position (a
-   sequence), by the order they leave (a queue), or by a handle (a pool). ``V`` has no requirements of its own.
+   A tag that orders a ``sorted`` Store or a ``by_priority`` queue by ``Compare`` instead of :cpp:class:`Less`:
+   ``Compare`` compares two elements (in a map, two keys), as ``std::set``'s comparator does. The order is ``Compare``
+   and nothing else: two elements it does not separate are equivalent, so a unique Store keeps one of them.
 
-.. cpp:class:: template<auto P> order_by
+.. cpp:class:: template<auto P> by
 
-   Orders a ``sorted`` Store or a ``by_priority`` queue by ``P(element)`` (``P(key)`` in a map) instead of the
-   element, or a map by ``P(key, value)``: a member pointer (``&Job::deadline``) or a stateless lambda. Ties fall
-   back to the element's own order where it has one. A map ordered by its values changes its values only
-   through ``update``, ``merge`` and ``insert_or_assign``.
+   A comparator by ``P(element)`` under :cpp:class:`Less`, for ``order_by<by<&Job::deadline>>``: ``P`` is a member
+   pointer or a stateless lambda. Name what tells elements apart in ``P`` (``std::tuple(job.deadline, job.id)``) to
+   keep elements with equal deadlines distinct.
 
 .. cpp:struct:: row_lengths
 
@@ -54,7 +61,7 @@ Most rows are held as Stores, each owning its storage. Where the outer request s
 Kinds
 -----
 
-The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims its request (:doc:`language/kind`):
+The kind of a Store is its first argument (:doc:`language/kind`):
 
 .. list-table::
    :header-rows: 1
@@ -72,14 +79,11 @@ The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims i
    * - ``Store<sequence<V>, ...>``
      - a sequence
      - :doc:`kinds/sequences`
-   * - ``Store<sequence<V>, sorted | unique | multi, ...>``
+   * - ``Store<multiset<V>, ...>``
      - a multiset: values kept by value
      - :doc:`kinds/sequences`
-   * - ``Store<sequence<V>, fifo | lifo, ...>``
-     - a queue by arrival
-     - :doc:`kinds/queues`
-   * - ``Store<queue<V>, by_priority, ...>``
-     - a priority queue
+   * - ``Store<queue<V>, fifo | lifo | by_priority, ...>``
+     - a queue, by arrival or by priority
      - :doc:`kinds/queues`
    * - ``Store<pool<V>, ...>``
      - a pool: rows interned as rows, records and values interned whole (``flat``: records stored as bytes)
@@ -103,8 +107,8 @@ assertion that names what is wrong.
 * What you state is what you get, with what it means: a set, and a map without ``multi``, keep each key once; a
   positional set numbers its keys as they come; a ``frozen`` Store has ``stable_refs``. ``frozen`` or ``fixed_shape``
   Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
-* A queue is reached by ``fifo``, ``lifo`` or ``by_priority``; ``order_by`` on unique keys needs orderable keys, to
-  break ties.
+* A queue is reached by ``fifo``, ``lifo`` or ``by_priority``; ``order_by`` orders a ``sorted`` Store or a
+  ``by_priority`` queue.
 * Every tag answers a question of the request's kind (its request format): ``bidirectional`` means nothing for a
   queue, ``flat`` nothing for a set.
 * Any other request no container serves fails in the registry.

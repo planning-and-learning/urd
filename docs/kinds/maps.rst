@@ -53,8 +53,6 @@ A map holds one value per key, or many (``multi``: a multimap). Its elements are
    * - ``Store<map<K, V>, layered>``
      - ``Layered`` over a flat hash map; over a node map with ``stable_refs``; with ``dense``, over an ``IndexMap``
        (with generations under ``constant_clear``)
-   * - ``Store<map<K, V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
-     - ``FlatEntryMap``: found by key, in the order the values give
 
 Template parameters
 -------------------
