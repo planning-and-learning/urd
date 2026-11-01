@@ -4,9 +4,9 @@
 // traits of its elements, keys, values and rows, of its order, and its rows' own tags (urd/type_traits_of.hpp),
 // computed once per spec; the registry matches containers' reliances against them (urd/registry/scan.hpp).
 
-#include "urd/type_traits_of.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/semantics/less.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <type_traits>
 

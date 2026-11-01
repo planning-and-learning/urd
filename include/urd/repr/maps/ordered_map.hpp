@@ -2,9 +2,9 @@
 
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
+#include "urd/repr/maps/ordered_map_fwd.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
-#include "urd/repr/maps/ordered_map_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

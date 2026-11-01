@@ -83,10 +83,11 @@ struct tree_pool_decl
         Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set") : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
     static constexpr auto headers = header_list<1> { Bits ? "urd/repr/pools/tree_bitset.hpp" : "urd/repr/pools/tree_vector.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, sharing::structural_sharing, memory::retains, threads(ThreadSafe) });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, sharing::structural_sharing, memory::retains, threads(ThreadSafe) });
     /// Of bits: rows that are dense sets of indices. Of values: sequence rows of hashable elements.
-    static constexpr role_tags relies_on = Bits ? relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>())
-                                                : relies(tags<role::row>({ position::positional }), traits<role::row_element, trait::can_hash>());
+    static constexpr role_tags relies_on = Bits ? relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>()) :
+                                                  relies(tags<role::row>({ position::positional }), traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {

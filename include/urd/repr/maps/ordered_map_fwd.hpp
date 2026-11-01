@@ -68,8 +68,10 @@ struct dense_ordered_map_decl
     static constexpr std::string_view id = "dense_ordered_map";
     static constexpr auto headers = header_list<2> { "urd/repr/values/sparse_set.hpp", "urd/repr/maps/ordered_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, keys::dense, position::none, layout::none, memory::retains, clearing::constant_clear });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index, trait::destroys_trivially>(), traits<role::mapped, trait::destroys_trivially>());
+    static constexpr property_set provides = property_set::of(
+        { order::insertion_ordered, uniqueness::unique, keys::dense, position::none, layout::none, memory::retains, clearing::constant_clear });
+    static constexpr role_tags relies_on =
+        relies(traits<role::element, trait::an_index, trait::destroys_trivially>(), traits<role::mapped, trait::destroys_trivially>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : ordered_sparse_set_decl::operation_costs
     {

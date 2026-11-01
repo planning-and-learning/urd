@@ -2,15 +2,15 @@
 // parent's entries, and a memo kept for two generations.
 
 #include "show.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
-#include "urd/repr/values/indexed.hpp"
-#include "urd/repr/wrappers/layer.hpp"
-#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
-#include "urd/repr/wrappers/scoped.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/wrappers/scoped.hpp"
 #include "urd/store.hpp"
 
 #include <cstdint>

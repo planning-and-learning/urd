@@ -49,9 +49,10 @@ template<typename T, bool ThreadSafe>
 class ArenaInterner
 {
     static_assert(alignof(T) <= alignof(std::max_align_t), "urd::repr::ArenaInterner: over-aligned records cannot be placed in the arena");
-    static_assert(requires { T::cista_members(); },
-                  "urd::Store: flat stores a record as bytes; one that is not trivially copyable is serialized by cista, which needs "
-                  "its members named: give it static constexpr auto cista_members() (urd::Members<&T::a, ...>), or drop flat");
+    static_assert(
+        requires { T::cista_members(); },
+        "urd::Store: flat stores a record as bytes; one that is not trivially copyable is serialized by cista, which needs "
+        "its members named: give it static constexpr auto cista_members() (urd::Members<&T::a, ...>), or drop flat");
     using Records = std::conditional_t<ThreadSafe, SegmentedVector<const T*, default_first_segment_size, true, std::uint32_t>, std::vector<const T*>>;
 
     struct Position

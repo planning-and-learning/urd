@@ -1,8 +1,8 @@
 #pragma once
 
 // How a request chooses its container: the entry the scan chooses (urd/registry/scan.hpp), then the one type its
-// declaration names for the request (representation_of); and where none serves, an error. No container type is named but the one chosen, so what resolving a request
-// costs the compiler in instantiations does not grow with the number of containers.
+// declaration names for the request (representation_of); and where none serves, an error. No container type is named but the one chosen, so what resolving a
+// request costs the compiler in instantiations does not grow with the number of containers.
 
 #include "urd/elements.hpp"
 #include "urd/properties.hpp"
@@ -25,7 +25,8 @@ namespace urd::detail
 
 /// What spec S is, as the scan reads it: what it requires, its roles, and the elements it holds; computed once.
 template<typename S>
-inline constexpr request_shape shape_of = [] {
+inline constexpr request_shape shape_of = []
+{
     using held = held_as<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::mapped_type>>;
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
@@ -40,8 +41,7 @@ struct choose
     static constexpr bool found = position != no_entry;
     static constexpr std::string_view id = found ? table_of<node>[position].id : std::string_view();
     /// The headers of the chosen container, a wrapper's part's first.
-    static constexpr std::span<const std::string_view> headers =
-        found ? table_of<node>[position].headers : std::span<const std::string_view>();
+    static constexpr std::span<const std::string_view> headers = found ? table_of<node>[position].headers : std::span<const std::string_view>();
 };
 
 /// The I-th type of a list.
@@ -57,8 +57,7 @@ struct nth<I, type_list<Ts...>>
 template<typename S>
 inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
 template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/)
-    -> type_list<typename nth<serving_v<S>.at[I], declarations_t<typename S::kind>>::type...>;
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], declarations_t<typename S::kind>>::type...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 

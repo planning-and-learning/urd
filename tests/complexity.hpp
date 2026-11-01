@@ -36,7 +36,20 @@ enum class op : std::uint8_t
     scope,
     count  ///< not an operation: how many there are
 };
-using operations = urd::operation_list<urd::operation::insert, urd::operation::lookup, urd::operation::ordered_lookup, urd::operation::erase, urd::operation::clear, urd::operation::iterate, urd::operation::access, urd::operation::push, urd::operation::pop, urd::operation::top, urd::operation::merge, urd::operation::insert_row, urd::operation::find_row, urd::operation::scope>;
+using operations = urd::operation_list<urd::operation::insert,
+                                       urd::operation::lookup,
+                                       urd::operation::ordered_lookup,
+                                       urd::operation::erase,
+                                       urd::operation::clear,
+                                       urd::operation::iterate,
+                                       urd::operation::access,
+                                       urd::operation::push,
+                                       urd::operation::pop,
+                                       urd::operation::top,
+                                       urd::operation::merge,
+                                       urd::operation::insert_row,
+                                       urd::operation::find_row,
+                                       urd::operation::scope>;
 /// Their names, in order.
 inline constexpr auto op_names = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
 { return std::array<std::string_view, sizeof...(Ops)> { Ops::name... }; }(operations {});
@@ -129,9 +142,11 @@ constexpr std::optional<double> words_of()
 /// The guarantees that cost something to give: storage by index, nodes, locks, generations, a log, a parent, shared
 /// parts. A container that gives one nobody asked for is a surprise, unlike one that also happens to keep its memory,
 /// lie contiguous, or iterate in order (a dense container's order is its index order, at no cost).
-inline constexpr std::array<urd::tag, 12> costly { urd::keys::dense,       urd::referencing::stable_refs,  urd::threading::concurrent, urd::clearing::constant_clear,     urd::scoping::scoped,
-                                     urd::layering::layered,     urd::tracking::change_log,   urd::handling::handles,    urd::sharing::structural_sharing, urd::grouping::partition,
-                                     urd::shape::fixed_shape, urd::direction::bidirectional };
+inline constexpr std::array<urd::tag, 12> costly {
+    urd::keys::dense,        urd::referencing::stable_refs, urd::threading::concurrent, urd::clearing::constant_clear,    urd::scoping::scoped,
+    urd::layering::layered,  urd::tracking::change_log,     urd::handling::handles,     urd::sharing::structural_sharing, urd::grouping::partition,
+    urd::shape::fixed_shape, urd::direction::bidirectional
+};
 
 /// The ops of operations Ops, by position.
 template<typename... Ops>

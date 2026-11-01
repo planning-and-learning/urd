@@ -30,7 +30,8 @@ using declaration_t = typename declaration_of<R>::declaration;
 /// Whether R takes the elements its template arguments give: what they are meets what its declaration relies on (its
 /// elements', values' and rows' tags; what a Store must state is a request's to promise, relies_on below).
 template<declared_container R>
-inline constexpr bool takes_v = [] {
+inline constexpr bool takes_v = []
+{
     auto data = declaration_t<R>::relies_on;
     data.stated = property_set::roots();
     return promises(declaration_of<R>::roles, data);

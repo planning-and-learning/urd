@@ -105,7 +105,8 @@ struct generation_map_decl
     static constexpr std::string_view id = "generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -139,7 +140,8 @@ struct stable_generation_map_decl
     static constexpr std::string_view id = "stable_generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
+    static constexpr property_set provides = property_set::of(
+        { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -173,7 +175,8 @@ struct thread_safe_generation_map_decl
     static constexpr std::string_view id = "thread_safe_generation_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
+    static constexpr property_set provides = property_set::of(
+        { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs

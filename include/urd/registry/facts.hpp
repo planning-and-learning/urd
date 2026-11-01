@@ -301,9 +301,11 @@ struct stated_piece
 };
 constexpr stated_piece stated(std::initializer_list<tag> listed) { return { property_set::of(listed) }; }
 template<typename Role, typename... Traits>
-constexpr role_entry traits() { return { .of = role_v<Role>, .traits = trait_set_of<Traits...>() }; }
+constexpr role_entry traits()
+{ return { .of = role_v<Role>, .traits = trait_set_of<Traits...>() }; }
 template<typename Role>
-constexpr role_entry tags(std::initializer_list<tag> listed) { return { .of = role_v<Role>, .tags = property_set::of(listed) }; }
+constexpr role_entry tags(std::initializer_list<tag> listed)
+{ return { .of = role_v<Role>, .tags = property_set::of(listed) }; }
 constexpr void put_piece(role_tags& into, const stated_piece& piece) { into.stated = piece.tags; }
 constexpr void put_piece(role_tags& into, const role_entry& piece)
 {
@@ -342,4 +344,3 @@ constexpr property_set with(property_set base, std::initializer_list<tag> listed
 }
 
 }  // namespace urd::detail
-

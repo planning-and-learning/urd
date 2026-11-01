@@ -13,6 +13,8 @@
 #include <unordered_map>
 
 // The category: does the Store count its values?
+namespace
+{
 namespace tally
 {
 
@@ -34,6 +36,7 @@ struct tallied : any_tallying
 };
 
 }  // namespace tally
+}  // namespace
 
 template<>
 struct urd::tags_of<tally::tallying>
@@ -41,6 +44,8 @@ struct urd::tags_of<tally::tallying>
     using type = detail::type_list<tally::any_tallying, tally::tallied>;
 };
 
+namespace
+{
 namespace tally
 {
 
@@ -102,6 +107,7 @@ struct tally_kind
 };
 
 }  // namespace tally
+}  // namespace
 
 template<>
 struct urd::extra_kinds<void>
@@ -113,6 +119,8 @@ struct urd::extra_kinds<void>
 
 #include <gtest/gtest.h>
 
+namespace
+{
 namespace tally
 {
 
@@ -161,6 +169,7 @@ struct tally_decl
 };
 
 }  // namespace tally
+}  // namespace
 
 template<>
 struct urd::detail::facet_condition<tally::counting>
@@ -199,6 +208,10 @@ static_assert(std::same_as<urd::container_traits<Words>::kind, tally::tally_kind
 // Its own operations, with the costs its container states.
 static_assert(tally::add::in<tally::tally_decl::operation_costs>().has_value() && tally::count::in<tally::tally_decl::operation_costs>().has_value());
 static_assert(!tally::add::in<urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
+// What tools read of the kind (urd-search): its operations' words, how it keeps its elements, its memory.
+static_assert(urd::operation_v<tally::add>->name == "add" && !urd::operation_v<tally::count>->description.empty());
+static_assert(!tally::tally_kind::iterable && !tally::tally_kind::keeps_by_value && !tally::tally_kind::positional);
+static_assert(tally::tally_decl::operation_costs::words == 3);
 // urd's own kinds are untouched by the new one.
 static_assert(std::same_as<urd::Store<urd::value<int>>::representation, std::vector<int>>);
 

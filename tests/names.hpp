@@ -45,11 +45,31 @@ using urd::detail::most_answers;
 
 /// urd's categories, in the order its documentation and share/urd/vocabulary.json list them; every kind's request
 /// format (urd/kinds.hpp) answers only these.
-using vocabulary_categories = urd::detail::request_format<urd::order, urd::uniqueness, urd::keys, urd::referencing, urd::layout, urd::representation,
-                                                          urd::threading, urd::memory, urd::clearing, urd::access, urd::scoping, urd::layering,
-                                                          urd::handling, urd::sharing, urd::direction, urd::shape, urd::packing, urd::grouping,
-                                                          urd::tracking, urd::change, urd::emptiness, urd::multiplicity, urd::position,
-                                                          urd::workload, urd::priority>;
+using vocabulary_categories = urd::detail::request_format<urd::order,
+                                                          urd::uniqueness,
+                                                          urd::keys,
+                                                          urd::referencing,
+                                                          urd::layout,
+                                                          urd::representation,
+                                                          urd::threading,
+                                                          urd::memory,
+                                                          urd::clearing,
+                                                          urd::access,
+                                                          urd::scoping,
+                                                          urd::layering,
+                                                          urd::handling,
+                                                          urd::sharing,
+                                                          urd::direction,
+                                                          urd::shape,
+                                                          urd::packing,
+                                                          urd::grouping,
+                                                          urd::tracking,
+                                                          urd::change,
+                                                          urd::emptiness,
+                                                          urd::multiplicity,
+                                                          urd::position,
+                                                          urd::workload,
+                                                          urd::priority>;
 template<typename... Es>
 constexpr auto tables_of(urd::detail::request_format<Es...> /*categories*/)
 { return std::array<const urd::detail::category_table*, sizeof...(Es)> { urd::category<Es>... }; }
@@ -73,10 +93,11 @@ constexpr void for_each_tag(F f)
 }
 /// urd's type traits (urd::trait), in the order share/urd/complexity.json lists them.
 inline constexpr std::array<const urd::trait_info*, 13> vocabulary_traits {
-    urd::trait_v<urd::trait::can_hash>,        urd::trait_v<urd::trait::an_index>,          urd::trait_v<urd::trait::copies_as_bytes>,
-    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,  urd::trait_v<urd::trait::whole_value>, urd::trait_v<urd::trait::own_order>,
-    urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::by_entry>,          urd::trait_v<urd::trait::integral_priority>,
-    urd::trait_v<urd::trait::rows_flatten>,    urd::trait_v<urd::trait::rows_in_place>,     urd::trait_v<urd::trait::rows_reused>
+    urd::trait_v<urd::trait::can_hash>,           urd::trait_v<urd::trait::an_index>,        urd::trait_v<urd::trait::copies_as_bytes>,
+    urd::trait_v<urd::trait::destroys_trivially>, urd::trait_v<urd::trait::names_members>,   urd::trait_v<urd::trait::whole_value>,
+    urd::trait_v<urd::trait::own_order>,          urd::trait_v<urd::trait::natural_ordered>, urd::trait_v<urd::trait::by_entry>,
+    urd::trait_v<urd::trait::integral_priority>,  urd::trait_v<urd::trait::rows_flatten>,    urd::trait_v<urd::trait::rows_in_place>,
+    urd::trait_v<urd::trait::rows_reused>
 };
 
 /// urd's roles (urd::role), in the order share/urd/complexity.json lists them.
@@ -88,7 +109,8 @@ inline constexpr std::array<const urd::role_info*, 6> vocabulary_roles { urd::ro
 template<typename... Es>
 constexpr bool within_vocabulary(urd::detail::request_format<Es...> /*format*/)
 { return ((category_index(urd::category<Es>) < category_count) && ...); }
-static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/) { return (within_vocabulary(typename Kinds::format {}) && ...); }(urd::leaf_kinds<> {}));
+static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
+              { return (within_vocabulary(typename Kinds::format {}) && ...); }(urd::leaf_kinds<> {}));
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
 /// tags answer (the words of its none).

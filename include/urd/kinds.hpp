@@ -105,7 +105,17 @@ class sorted_ends;
 
 /// The facets of every kind: each where its condition holds.
 template<template<typename, typename, typename> class... Own>
-using with_common_facets = facet_list<facet::sizing, facet::equality, facet::ordering, facet::ordered_lookup, facet::contiguous_data, facet::capacity, facet::scopes, facet::layers, facet::changes, facet::shape, Own...>;
+using with_common_facets = facet_list<facet::sizing,
+                                      facet::equality,
+                                      facet::ordering,
+                                      facet::ordered_lookup,
+                                      facet::contiguous_data,
+                                      facet::capacity,
+                                      facet::scopes,
+                                      facet::layers,
+                                      facet::changes,
+                                      facet::shape,
+                                      Own...>;
 
 }  // namespace detail
 
@@ -170,7 +180,24 @@ struct partition_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, sharing, grouping, tracking, change, emptiness, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          sharing,
+                                          grouping,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = K;
@@ -211,9 +238,24 @@ struct arrival_queue_kind : detail::queue_leaf
 {
     static constexpr std::string_view name = "queue/arrival";
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<uniqueness, referencing, layout, representation, threading, memory, clearing, access, scoping, layering, handling, sharing, tracking, change, emptiness, position, workload>;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
-    { return stated.has(access::fifo) || stated.has(access::lifo); }
+    using format = detail::request_format<uniqueness,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          access,
+                                          scoping,
+                                          layering,
+                                          handling,
+                                          sharing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
+    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(access::fifo) || stated.has(access::lifo); }
 };
 
 /// Values reached by their priority: the top is the greatest by the order (order_by<P>, else the values' own).
@@ -221,7 +263,25 @@ struct priority_queue_kind : detail::queue_leaf
 {
     static constexpr std::string_view name = "queue/priority";
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, referencing, layout, representation, threading, memory, clearing, access, scoping, layering, handling, sharing, tracking, change, emptiness, position, workload, priority>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          access,
+                                          scoping,
+                                          layering,
+                                          handling,
+                                          sharing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload,
+                                          priority>;
     static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
     { return stated.has(access::by_priority) || stated.has(priority::monotone_priority); }
 };
@@ -243,7 +303,25 @@ struct pool_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::row, role::row_element>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, handling, sharing, packing, tracking, change, emptiness, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          handling,
+                                          sharing,
+                                          packing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = V;
@@ -265,7 +343,24 @@ struct slots_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, handling, sharing, tracking, change, emptiness, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          handling,
+                                          sharing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = V;
@@ -286,14 +381,42 @@ struct map_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order, role::mapped>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, sharing, direction, tracking, change, emptiness, multiplicity, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          sharing,
+                                          direction,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          multiplicity,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = std::pair<const K, V>;
     template<typename K, typename V>
     using mapped_type = V;
     static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration, detail::facet::lookup, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::growth, detail::facet::removal, detail::facet::values_by_key, detail::facet::multi_values, detail::facet::entries, detail::facet::inverse, detail::facet::sorted_ends>;
+    using facets = detail::with_common_facets<detail::facet::iteration,
+                                              detail::facet::lookup,
+                                              detail::facet::reverse_iteration,
+                                              detail::facet::positions,
+                                              detail::facet::growth,
+                                              detail::facet::removal,
+                                              detail::facet::values_by_key,
+                                              detail::facet::multi_values,
+                                              detail::facet::entries,
+                                              detail::facet::inverse,
+                                              detail::facet::sorted_ends>;
     static constexpr bool keeps_by_value = true;
     static constexpr bool positional = false;
     static constexpr bool claims(const property_set& /*stated*/, bool keyed, bool valued) { return keyed && valued; }
@@ -312,14 +435,37 @@ struct set_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, sharing, tracking, change, emptiness, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          sharing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = K;
     template<typename K, typename V>
     using mapped_type = void;
     static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration, detail::facet::lookup, detail::facet::reverse_iteration, detail::facet::insertion_positions, detail::facet::growth, detail::facet::removal, detail::facet::set_algebra, detail::facet::sorted_ends>;
+    using facets = detail::with_common_facets<detail::facet::iteration,
+                                              detail::facet::lookup,
+                                              detail::facet::reverse_iteration,
+                                              detail::facet::insertion_positions,
+                                              detail::facet::growth,
+                                              detail::facet::removal,
+                                              detail::facet::set_algebra,
+                                              detail::facet::sorted_ends>;
     static constexpr bool keeps_by_value = true;
     static constexpr bool positional = false;
     static constexpr bool claims(const property_set& /*stated*/, bool keyed, bool /*valued*/) { return keyed; }
@@ -339,14 +485,36 @@ struct multiset_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, uniqueness, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, sharing, tracking, change, emptiness, multiplicity, position, workload>;
+    using format = detail::request_format<order,
+                                          uniqueness,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          sharing,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          multiplicity,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = V;
     template<typename K, typename V>
     using mapped_type = void;
     static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration, detail::facet::lookup, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::growth, detail::facet::removal>;
+    using facets = detail::with_common_facets<detail::facet::iteration,
+                                              detail::facet::lookup,
+                                              detail::facet::reverse_iteration,
+                                              detail::facet::positions,
+                                              detail::facet::growth,
+                                              detail::facet::removal>;
     static constexpr bool keeps_by_value = true;
     static constexpr bool positional = true;
     static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
@@ -361,14 +529,35 @@ struct sequence_kind
     /// The roles its containers rely on, beside what a request states.
     using roles = detail::role_list<role::element, role::order, role::rows>;
     /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order, keys, referencing, layout, representation, threading, memory, clearing, scoping, layering, sharing, shape, tracking, change, emptiness, position, workload>;
+    using format = detail::request_format<order,
+                                          keys,
+                                          referencing,
+                                          layout,
+                                          representation,
+                                          threading,
+                                          memory,
+                                          clearing,
+                                          scoping,
+                                          layering,
+                                          sharing,
+                                          shape,
+                                          tracking,
+                                          change,
+                                          emptiness,
+                                          position,
+                                          workload>;
     /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
     template<typename K, typename V>
     using element_type = V;
     template<typename K, typename V>
     using mapped_type = void;
     static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration, detail::facet::lookup, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::growth, detail::facet::removal>;
+    using facets = detail::with_common_facets<detail::facet::iteration,
+                                              detail::facet::lookup,
+                                              detail::facet::reverse_iteration,
+                                              detail::facet::positions,
+                                              detail::facet::growth,
+                                              detail::facet::removal>;
     static constexpr bool keeps_by_value = false;
     static constexpr bool positional = true;
     static constexpr bool claims(const property_set& /*stated*/, bool /*keyed*/, bool /*valued*/) { return true; }
@@ -387,7 +576,9 @@ struct extra_kinds
 /// priority queue with handles is a queue). The last claims every request.
 /// A template, so that kinds added outside urd are read where a request is resolved, not here.
 template<typename Unused = void>
-using kinds = typename detail::join<typename extra_kinds<Unused>::type, detail::type_list<partition_kind, queue_kind, pool_kind, slots_kind, map_kind, set_kind, multiset_kind, sequence_kind>>::type;
+using kinds =
+    typename detail::join<typename extra_kinds<Unused>::type,
+                          detail::type_list<partition_kind, queue_kind, pool_kind, slots_kind, map_kind, set_kind, multiset_kind, sequence_kind>>::type;
 
 namespace detail
 {

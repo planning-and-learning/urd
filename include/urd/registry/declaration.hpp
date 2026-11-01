@@ -76,10 +76,9 @@ consteval bool roles_within(role_list<Roles...> /*roles*/, const role_tags& reli
 template<typename Decl>
 constexpr registry_entry entry_of()
 {
-    static_assert(roles_within(typename Decl::kind::roles {}, Decl::relies_on),
-                  "urd: a container relies on a role its kind has not (urd/kinds.hpp, roles)");
-    return { Decl::id, std::span<const std::string_view>(Decl::headers), Decl::kind::name, Decl::provides, Decl::relies_on,
-             std::span<const tag>(Decl::gives_elements), Decl::description, Decl::holds };
+    static_assert(roles_within(typename Decl::kind::roles {}, Decl::relies_on), "urd: a container relies on a role its kind has not (urd/kinds.hpp, roles)");
+    return { Decl::id,        std::span<const std::string_view>(Decl::headers), Decl::kind::name,  Decl::provides,
+             Decl::relies_on, std::span<const tag>(Decl::gives_elements),       Decl::description, Decl::holds };
 }
 
 /// The container declaration Decl names for spec S; declared only. The container's own header specializes it, so a

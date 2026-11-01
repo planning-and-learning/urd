@@ -4,8 +4,8 @@
 #include "urd/index.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
-#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

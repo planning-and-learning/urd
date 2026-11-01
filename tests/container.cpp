@@ -11,12 +11,12 @@
 // definitions), the hash set of `Store<key<int>>` stands in.
 
 #if !defined(URD_CONTAINER)
-#include "urd/repr/wrappers/change_logged.hpp"
-#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
 #endif
 
 #include "grid.hpp"

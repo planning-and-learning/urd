@@ -15,7 +15,6 @@
 namespace urd
 {
 
-
 /// How a cost grows, in which quantity.
 enum class growth : std::uint8_t
 {
@@ -190,7 +189,10 @@ struct insert
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::insert; P::insert; })
+        if constexpr (requires {
+                          C::insert;
+                          P::insert;
+                      })
             return &C::insert == &P::insert;
         else
             return false;
@@ -212,7 +214,10 @@ struct lookup
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::lookup; P::lookup; })
+        if constexpr (requires {
+                          C::lookup;
+                          P::lookup;
+                      })
             return &C::lookup == &P::lookup;
         else
             return false;
@@ -234,7 +239,10 @@ struct ordered_lookup
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::ordered_lookup; P::ordered_lookup; })
+        if constexpr (requires {
+                          C::ordered_lookup;
+                          P::ordered_lookup;
+                      })
             return &C::ordered_lookup == &P::ordered_lookup;
         else
             return false;
@@ -256,7 +264,10 @@ struct erase
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::erase; P::erase; })
+        if constexpr (requires {
+                          C::erase;
+                          P::erase;
+                      })
             return &C::erase == &P::erase;
         else
             return false;
@@ -278,7 +289,10 @@ struct clear
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::clear; P::clear; })
+        if constexpr (requires {
+                          C::clear;
+                          P::clear;
+                      })
             return &C::clear == &P::clear;
         else
             return false;
@@ -300,7 +314,10 @@ struct iterate
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::iterate; P::iterate; })
+        if constexpr (requires {
+                          C::iterate;
+                          P::iterate;
+                      })
             return &C::iterate == &P::iterate;
         else
             return false;
@@ -322,7 +339,10 @@ struct access
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::access; P::access; })
+        if constexpr (requires {
+                          C::access;
+                          P::access;
+                      })
             return &C::access == &P::access;
         else
             return false;
@@ -344,7 +364,10 @@ struct push
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::push; P::push; })
+        if constexpr (requires {
+                          C::push;
+                          P::push;
+                      })
             return &C::push == &P::push;
         else
             return false;
@@ -366,7 +389,10 @@ struct pop
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::pop; P::pop; })
+        if constexpr (requires {
+                          C::pop;
+                          P::pop;
+                      })
             return &C::pop == &P::pop;
         else
             return false;
@@ -388,7 +414,10 @@ struct top
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::top; P::top; })
+        if constexpr (requires {
+                          C::top;
+                          P::top;
+                      })
             return &C::top == &P::top;
         else
             return false;
@@ -410,7 +439,10 @@ struct merge
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::merge; P::merge; })
+        if constexpr (requires {
+                          C::merge;
+                          P::merge;
+                      })
             return &C::merge == &P::merge;
         else
             return false;
@@ -432,7 +464,10 @@ struct insert_row
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::insert_row; P::insert_row; })
+        if constexpr (requires {
+                          C::insert_row;
+                          P::insert_row;
+                      })
             return &C::insert_row == &P::insert_row;
         else
             return false;
@@ -454,7 +489,10 @@ struct find_row
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::find_row; P::find_row; })
+        if constexpr (requires {
+                          C::find_row;
+                          P::find_row;
+                      })
             return &C::find_row == &P::find_row;
         else
             return false;
@@ -476,7 +514,10 @@ struct scope
     template<typename C, typename P>
     static constexpr bool passed_on()
     {
-        if constexpr (requires { C::scope; P::scope; })
+        if constexpr (requires {
+                          C::scope;
+                          P::scope;
+                      })
             return &C::scope == &P::scope;
         else
             return false;

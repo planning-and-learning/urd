@@ -22,9 +22,9 @@ public:
     /// redeclaration check.
     template<typename Key>
     [[nodiscard]] bool bound_in_scope(const Key& key) const
-    {
-        return store_access::representation(static_cast<const Derived&>(*this)).bound_in_scope(key);
-    }
+    // A string literal key decays to the pointer a heterogeneous lookup takes.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    { return store_access::representation(static_cast<const Derived&>(*this)).bound_in_scope(key); }
 
 private:
     [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }

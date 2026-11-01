@@ -34,7 +34,8 @@ struct set_decl
     static constexpr std::string_view id = "set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs

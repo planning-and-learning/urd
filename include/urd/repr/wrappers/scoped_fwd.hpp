@@ -10,11 +10,11 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/registry/features.hpp"
-#include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
-#include "urd/repr/values/unordered_flat_set_fwd.hpp"
-#include "urd/repr/maps/unordered_flat_map_fwd.hpp"
 #include "urd/repr/maps/std_map.hpp"
+#include "urd/repr/maps/unordered_flat_map_fwd.hpp"
+#include "urd/repr/values/dense_set_fwd.hpp"
+#include "urd/repr/values/unordered_flat_set_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/unordered/unordered_flat_map_fwd.hpp>
@@ -87,7 +87,8 @@ struct scoped_tree_map_decl
     static constexpr std::string_view id = "scoped_tree_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/scoped.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear, scoping::scoped });
+    static constexpr property_set provides = property_set::of(
+        { order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear, scoping::scoped });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -123,7 +124,8 @@ struct scoped_dense_map_decl
     static constexpr std::string_view id = "scoped_dense_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/index_map.hpp", "urd/repr/wrappers/scoped.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none, scoping::scoped });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none, scoping::scoped });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs

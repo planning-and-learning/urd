@@ -6,11 +6,11 @@
 #include "names.hpp"
 #include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
-#include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/sequences/jagged.hpp"
 #include "urd/repr/sequences/row_pool.hpp"
 #include "urd/repr/sequences/segmented.hpp"
 #include "urd/repr/sequences/sequence.hpp"
+#include "urd/repr/values/flat_set.hpp"
 #include "urd/store.hpp"
 
 #include <cstddef>

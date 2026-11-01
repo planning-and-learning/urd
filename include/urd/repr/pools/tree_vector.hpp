@@ -2,9 +2,9 @@
 
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/pools/pools.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

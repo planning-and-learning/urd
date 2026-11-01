@@ -68,12 +68,12 @@ consteval bool rows_in_place()
     using row = held_as<T>;
     if constexpr (!row::store)
         return false;
-    else if (row::properties.has(change::frozen))
-        return false;
     else if constexpr (!held_as<typename row::elements>::store)
-        return !row::kind::keeps_by_value || (std::same_as<typename row::kind, set_kind> && row::properties.has(uniqueness::unique) && row::properties.has(keys::dense));
+        return !row::properties.has(change::frozen)
+               && (!row::kind::keeps_by_value
+                   || (std::same_as<typename row::kind, set_kind> && row::properties.has(uniqueness::unique) && row::properties.has(keys::dense)));
     else
-        return row::properties.has(shape::fixed_shape) && rows_in_place<typename row::elements>();
+        return !row::properties.has(change::frozen) && row::properties.has(shape::fixed_shape) && rows_in_place<typename row::elements>();
 }
 template<typename T>
 consteval bool rows_reused()

@@ -37,7 +37,14 @@ struct flat_set_decl
     static constexpr std::string_view id = "flat_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/flat_set.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, position::positional, keys::sparse, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear });
+    static constexpr property_set provides = property_set::of({ order::sorted,
+                                                                uniqueness::unique,
+                                                                position::positional,
+                                                                keys::sparse,
+                                                                layout::contiguous,
+                                                                representation::canonical,
+                                                                memory::retains,
+                                                                clearing::proportional_clear });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -72,7 +79,8 @@ struct flat_multiset_decl
     static constexpr std::string_view id = "flat_multiset";
     static constexpr auto headers = header_list<1> { "urd/repr/values/flat_set.hpp" };
     using kind = multiset_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, position::positional, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, position::positional, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs

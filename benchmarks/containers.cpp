@@ -2,12 +2,12 @@
 // hash, equality and order as the registry instantiates them. The numbers
 // back the preference orders in include/urd/registry.hpp; docs/BENCHMARKS.md records them.
 
-#include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/maps/index_map.hpp"
-#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/maps/postings.hpp"
 #include "urd/repr/queues/queue.hpp"
 #include "urd/repr/queues/ring_fifo.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "urd/costs.hpp"
-#include "urd/type_traits_of.hpp"
 #include "urd/elements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <array>
 #include <compare>

@@ -55,7 +55,8 @@ struct recycling_map_decl
     static constexpr std::string_view id = "recycling_map";
     static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/recycling.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs : map_decl::operation_costs
@@ -115,7 +116,8 @@ struct recycling_tree_set_decl
     static constexpr std::string_view id = "recycling_tree_set";
     static constexpr auto headers = header_list<2> { "urd/repr/values/std_set.hpp", "urd/repr/wrappers/recycling.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
+    static constexpr property_set provides =
+        property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
     static constexpr role_tags relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : set_decl::operation_costs

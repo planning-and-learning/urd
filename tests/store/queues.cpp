@@ -1,18 +1,18 @@
 // Queues: handles, iteration, and reading by handle. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/repr/queues/addressable_heap.hpp"
-#include "urd/repr/queues/bucket_queue.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
-#include "urd/repr/values/indexed.hpp"
-#include "urd/repr/wrappers/layer.hpp"
-#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
+#include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/queues/addressable_heap.hpp"
+#include "urd/repr/queues/bucket_queue.hpp"
 #include "urd/repr/queues/queue.hpp"
 #include "urd/repr/queues/ring_fifo.hpp"
-#include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>

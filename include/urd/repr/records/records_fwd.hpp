@@ -44,7 +44,8 @@ struct record_interner_decl
     static constexpr std::string_view id = "record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::none, threading::none });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::none, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -94,7 +95,8 @@ struct stable_record_interner_decl
     static constexpr std::string_view id = "stable_record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::none });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -113,7 +115,8 @@ struct stable_value_interner_decl
     static constexpr std::string_view id = "stable_value_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, referencing::stable_refs, threading::none });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, referencing::stable_refs, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash, trait::whole_value>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = stable_record_interner_decl::operation_costs;
@@ -144,7 +147,8 @@ struct thread_safe_record_interner_decl
     static constexpr std::string_view id = "thread_safe_record_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::concurrent });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, packing::flat, memory::retains, referencing::stable_refs, threading::concurrent });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::copies_as_bytes, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -163,7 +167,8 @@ struct thread_safe_value_interner_decl
     static constexpr std::string_view id = "thread_safe_value_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/records.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, referencing::stable_refs, threading::concurrent });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, referencing::stable_refs, threading::concurrent });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash, trait::whole_value>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = thread_safe_record_interner_decl::operation_costs;
@@ -194,7 +199,8 @@ struct arena_interner_decl
     static constexpr std::string_view id = "arena_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/arena.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::none });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::none });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash, trait::names_members>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -225,7 +231,8 @@ struct thread_safe_arena_interner_decl
     static constexpr std::string_view id = "thread_safe_arena_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/records/arena.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::concurrent });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, packing::flat, referencing::stable_refs, memory::retains, threading::concurrent });
     static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash, trait::names_members>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs

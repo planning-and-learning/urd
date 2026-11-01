@@ -4,10 +4,10 @@
 
 #include "urd/index.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/wrappers/layered_fwd.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
-#include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/repr/records/records_fwd.hpp"
+#include "urd/repr/slots/slots_fwd.hpp"
+#include "urd/repr/wrappers/layered_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

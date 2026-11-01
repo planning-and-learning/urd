@@ -100,7 +100,6 @@ struct no_heading
     static constexpr std::string_view title = "";
 };
 
-
 /// The categories of properties, each a question a request may answer (its words: the category's root type below).
 /// Each is an enum of its own whose first value, none, is no answer: what a category left unstated means. A category
 /// is open: another enum with tag types (tags_of) is another category.

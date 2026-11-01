@@ -23,7 +23,6 @@
 namespace urd::repr
 {
 
-
 /// How many shards a parallel table has: 2^shard_bits, each with its own mutex.
 inline constexpr std::size_t shard_bits = 4;
 

@@ -20,10 +20,7 @@ namespace urd
 // forward headers; defined by urd/repr/values/unordered_flat_set.hpp and urd/repr/maps/unordered_flat_map.hpp.
 
 }  // namespace urd
-namespace urd
-{
-
-namespace detail
+namespace urd::detail
 {
 
 /// boost::unordered_flat_map (open-addressing hash table)
@@ -54,6 +51,4 @@ struct declaration_of<boost::unordered_flat_map<K, V, H, E, A>>
     static constexpr role_tags roles = map_roles<K, V>();
 };
 
-}  // namespace detail
-
-}  // namespace urd
+}  // namespace urd::detail

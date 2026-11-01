@@ -157,7 +157,10 @@ struct workload
     using Store = urd::detail::Store<R, S>;
     using K = typename S::key_type;
     using V = typename S::value_type;
-    using E = std::conditional_t<std::same_as<typename S::kind, urd::set_kind> || std::same_as<typename S::kind, urd::partition_kind> || std::same_as<typename S::kind, urd::map_kind>, K, V>;  // keyed: by key
+    using E = std::conditional_t<std::same_as<typename S::kind, urd::set_kind> || std::same_as<typename S::kind, urd::partition_kind>
+                                     || std::same_as<typename S::kind, urd::map_kind>,
+                                 K,
+                                 V>;  // keyed: by key
     /// What a Store is built from: entries for a map, else its elements.
     using Element = typename element_of<std::same_as<typename S::kind, urd::map_kind>, K, V, E>::type;
 
@@ -416,24 +419,24 @@ void register_experiment(std::size_t ordinal)
     for (const auto size : urd::test::sizes_of<S>())
     {
         const auto at = urd::test::cell { id + "/" + std::to_string(size), urd::test::offered<R, S>(), size };
-        benchmark::RegisterBenchmark(at.id,
-                                     [at](benchmark::State& state)
-                                     {
-                                         auto into = timing {};
-                                         const std::size_t rounds =
-                                             std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
-                                         for (auto _ : state)
-                                             for (std::size_t round = 0; round < rounds; ++round)
-                                             {
-                                                 if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>))
-                                                     row_workload<R, S>::lifecycle(at, into);
-                                                 else
-                                                     workload<R, S>::lifecycle(at, into);
-                                             }
-                                         for (std::size_t what = 0; what < into.operations.size(); ++what)
-                                             if (into.operations[what] > 0)
-                                                 state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
-                                     })
+        benchmark::RegisterBenchmark(
+            at.id,
+            [at](benchmark::State& state)
+            {
+                auto into = timing {};
+                const std::size_t rounds = std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
+                for (auto _ : state)
+                    for (std::size_t round = 0; round < rounds; ++round)
+                    {
+                        if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>) )
+                            row_workload<R, S>::lifecycle(at, into);
+                        else
+                            workload<R, S>::lifecycle(at, into);
+                    }
+                for (std::size_t what = 0; what < into.operations.size(); ++what)
+                    if (into.operations[what] > 0)
+                        state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
+            })
             ->Iterations(1)
             ->Unit(benchmark::kMillisecond);
     }

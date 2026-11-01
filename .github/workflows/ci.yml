@@ -76,16 +76,23 @@ jobs:
         run: |
           cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
             -DCMAKE_CXX_FLAGS=-fsanitize=thread -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=thread
-          cmake --build build --target test_properties test_rows test_pools test_store test_concurrency example_sequences
+          cmake --build build --target test_properties test_rows test_pools test_store_rules test_store_sets test_store_maps test_store_multimaps test_store_scopes test_store_queues test_store_pools test_store_rows test_concurrency example_sequences
 
       # A data race makes ThreadSanitizer report and the program exit non-zero.
       - name: Run concurrent code
         env:
           TSAN_OPTIONS: halt_on_error=1
         run: |
-          build/test_properties
-          build/test_rows
-          build/test_pools
-          build/test_store
-          build/test_concurrency
-          build/example_sequences
+          build/tests/test_properties
+          build/tests/test_rows
+          build/tests/test_pools
+          build/tests/test_store_rules
+          build/tests/test_store_sets
+          build/tests/test_store_maps
+          build/tests/test_store_multimaps
+          build/tests/test_store_scopes
+          build/tests/test_store_queues
+          build/tests/test_store_pools
+          build/tests/test_store_rows
+          build/tests/test_concurrency
+          build/examples/example_sequences

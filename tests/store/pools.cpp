@@ -1,21 +1,21 @@
 // Interners, partitions and pools of records. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
-#include "urd/repr/records/arena.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
-#include "urd/repr/values/dense_set.hpp"
-#include "urd/repr/partitions/disjoint_sets.hpp"
 #include "urd/repr/maps/index_map.hpp"
-#include "urd/repr/values/indexed.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
-#include "urd/repr/records/records.hpp"
-#include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/records/arena.hpp"
+#include "urd/repr/records/records.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>

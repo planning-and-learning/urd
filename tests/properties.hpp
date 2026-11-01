@@ -119,7 +119,7 @@ void add(R& range, int key)
         range.push_back(key);
 }
 
-std::vector<int> descending(int count)
+[[maybe_unused]] std::vector<int> descending(int count)
 {
     auto result = std::vector<int>();
     for (int element = count - 1; element >= 0; --element)

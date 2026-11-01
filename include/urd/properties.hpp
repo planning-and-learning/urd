@@ -185,10 +185,19 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 /// Whether at most one listed tag answers each category.
 consteval bool one_per_category(std::initializer_list<tag> listed)
 {
-    for (const auto* each = listed.begin(); each != listed.end(); ++each)
-        for (const auto* other = listed.begin(); other != each; ++other)
-            if (*each != tag {} && other->in == each->in)
+    std::size_t at = 0;
+    for (const auto each : listed)
+    {
+        std::size_t before = 0;
+        for (const auto other : listed)
+        {
+            if (before++ == at)
+                break;
+            if (each != tag {} && other.in == each.in)
                 return false;
+        }
+        ++at;
+    }
     return true;
 }
 
@@ -209,10 +218,10 @@ struct spec_answers
     using type = S;
 };
 template<typename K, typename V, typename Order, auto... As, category_enum E, category_enum... Es, property_set Meant>
-struct spec_answers<spec<K, V, Order, As...>, request_format<E, Es...>, Meant>
-    : spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<K, V, Order, As...>, spec<K, V, Order, As..., Meant.template get<E>()>>,
-                   request_format<Es...>,
-                   Meant>
+struct spec_answers<spec<K, V, Order, As...>, request_format<E, Es...>, Meant> :
+    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<K, V, Order, As...>, spec<K, V, Order, As..., Meant.template get<E>()>>,
+                 request_format<Es...>,
+                 Meant>
 {
 };
 

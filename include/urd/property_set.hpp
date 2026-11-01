@@ -123,7 +123,9 @@ struct tag
     constexpr tag(const detail::category_table* of, std::uint8_t value) : in(of), answer(value) {}
     template<category_enum E>
     constexpr tag(E value)  // NOLINT(google-explicit-constructor): every category's answer is a tag
-        : in(&detail::category_table_v<E>), answer(static_cast<std::uint8_t>(value))
+        :
+        in(&detail::category_table_v<E>),
+        answer(static_cast<std::uint8_t>(value))
     {
     }
     friend constexpr bool operator==(tag, tag) = default;
@@ -172,7 +174,7 @@ struct property_set
     /// The answer held in the category of enum E.
     template<category_enum E>
     [[nodiscard]] constexpr E get() const
-    { return static_cast<E>(in(urd::category<E>).answer); }
+    { return static_cast<E>(in(urd::category<E>) .answer); }
     /// Whether the tag held in `of`'s category is at least `of`.
     [[nodiscard]] constexpr bool has(tag of) const { return at_least(of.in, in(of.in).answer, of.answer); }
     /// Holds `of` in its category, replacing what was there (none: nothing).

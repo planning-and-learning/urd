@@ -77,9 +77,7 @@ struct complete_representation<missing_container<S, Container, Missing>>
 /// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
 /// which its kind lists (urd/kinds.hpp) and its properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
-class Store :
-    public complete_representation<R>,
-    public facet_bases<Store<R, S>, R, S, typename S::kind::facets>
+class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, typename S::kind::facets>
 {
     using types = store_types<R, S>;
 
@@ -168,7 +166,6 @@ struct resolve
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
-
 
 /// A Store is ordered by its values where its representation is.
 template<typename R, typename S>
