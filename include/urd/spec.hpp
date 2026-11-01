@@ -5,6 +5,7 @@
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -55,32 +56,6 @@ struct row_lengths
 namespace detail
 {
 
-template<template<typename> class Template, typename T>
-inline constexpr bool is_a = false;
-template<template<typename> class Template, typename T>
-inline constexpr bool is_a<Template, Template<T>> = true;
-
-/// The type inside the first Template<…> among Ps, else void.
-template<template<typename> class Template, typename... Ps>
-struct first_of
-{
-    using type = void;
-};
-template<template<typename> class Template, typename T, typename... Ps>
-struct first_of<Template, Template<T>, Ps...>
-{
-    using type = T;
-};
-template<template<typename> class Template, typename P, typename... Ps>
-struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
-{
-};
-
-/// Whether P is a tag a Store may be asked for.
-template<typename P>
-consteval bool is_tag()
-{ return a_tag<P>; }
-
 template<typename P>
 inline constexpr bool is_order_by = false;
 template<auto P>
@@ -124,7 +99,7 @@ struct order_of<T, K, V, P, Ps...> : order_of<T, K, V, Ps...>
 };
 
 template<typename P>
-inline constexpr bool is_property = is_tag<P>() || is_a<key, P> || is_a<value, P> || is_order_by<P>;
+inline constexpr bool is_property = a_tag<P> || is_a<key, P> || is_a<value, P> || is_order_by<P>;
 
 /// P's number, where P is a tag; tag {} for key<K> and value<V>.
 template<typename P>
@@ -167,6 +142,10 @@ struct spec
     using mapped_type = typename kind::template mapped_type<K, V>;
     /// What a Store's elements are, by its kind: keys in a set, values in a sequence, key-value pairs in a map.
     using element_type = typename kind::template element_type<K, V>;
+    /// What it holds per element, which may be a Store (a row): a key's mapped value where it maps keys, else the element.
+    using held_type = std::conditional_t<std::is_void_v<mapped_type>, element_type, mapped_type>;
+    /// What lookups take: a key where it maps keys, else an element.
+    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, element_type, K>;
 };
 
 namespace detail
@@ -185,18 +164,14 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 /// Whether at most one listed tag answers each category.
 consteval bool one_per_category(std::initializer_list<tag> listed)
 {
-    std::size_t at = 0;
+    auto seen = property_set::roots();
     for (const auto each : listed)
     {
-        std::size_t before = 0;
-        for (const auto other : listed)
-        {
-            if (before++ == at)
-                break;
-            if (each != tag {} && other.in == each.in)
-                return false;
-        }
-        ++at;
+        if (each.in == nullptr)
+            continue;
+        if (std::ranges::find(seen, each.in, &tag::in) != seen.end())
+            return false;
+        seen.push(each);
     }
     return true;
 }
@@ -205,10 +180,7 @@ consteval bool one_per_category(std::initializer_list<tag> listed)
 template<category_enum... Es>
 consteval bool in_format(request_format<Es...> /*format*/, const property_set& stated)
 {
-    for (std::size_t each = 0; each < stated.count; ++each)
-        if (((stated.held[each].in != urd::category<Es>) && ...))
-            return false;
-    return true;
+    return std::ranges::all_of(stated, [](tag each) { return ((each.in == urd::category<Es>) || ...); });
 }
 
 /// The spec whose answers are those of Meant beyond none, in the order of Format: S with them appended.
@@ -256,10 +228,11 @@ struct to_spec
     static_assert(in_format(typename kind::format {}, stated),
                   "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
                   "request format (urd/kinds.hpp, format)");
-    static_assert(well_formed(stated, keyed, valued, ordered_by, orderable<ordered_type>),
-                  "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, "
-                  "monotone_priority without by_priority, order_by<P> without sorted or by_priority, or order_by<P> on "
-                  "unique keys that are not orderable (urd/tags.hpp, well_formed)");
+    static_assert(well_formed<kind>(stated, keyed, valued, ordered_by, orderable<ordered_type>),
+                  "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): a "
+                  "partition with value<V>, handles with key<K>, monotone_priority without by_priority, order_by<P> "
+                  "where its kind takes none (a set without sorted), or order_by<P> on unique keys that are not "
+                  "orderable");
 
     static constexpr property_set meant = meaning<kind>(stated);
     using type = typename spec_answers<spec<key_type, value_type, order_type>, typename kind::format, meant>::type;

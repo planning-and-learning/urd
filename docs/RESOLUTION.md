@@ -198,8 +198,8 @@ indexable).
 | `Store<key<index<Id>>>` | unique | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<key<index<Id>>, sorted>` | sorted, unique | `set` | std_set.hpp |
 | `Store<key<index<Id>>, value<int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, layered, handles, monotone>>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, concurrent, layered, handles, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, handles, layered, monotone>>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
+| `Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, handles, concurrent, layered, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
 
 ## Maps int to int
 
@@ -211,9 +211,9 @@ indexable).
 | `Store<key<int>, value<int>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<int>, value<int>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
 | `Store<key<int>, value<int>, multi>` | multi | `posting_map` | postings.hpp |
-| `Store<key<int>, value<int>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<int>, value<int>, multi, stable_refs>` | multi, stable_refs | `unordered_multimap` | std_map.hpp |
 | `Store<key<int>, value<int>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
-| `Store<key<int>, value<int>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
+| `Store<key<int>, value<int>, multi, frozen>` | multi, stable_refs, frozen | `posting_map` | postings.hpp |
 | `Store<key<int>, value<int>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
 | `Store<key<int>, value<int>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<int>, value<int>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
@@ -244,9 +244,9 @@ indexable).
 | `Store<key<std::string>, value<double>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<std::string>, value<double>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
 | `Store<key<std::string>, value<double>, multi>` | multi | `posting_map` | postings.hpp |
-| `Store<key<std::string>, value<double>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<std::string>, value<double>, multi, stable_refs>` | multi, stable_refs | `unordered_multimap` | std_map.hpp |
 | `Store<key<std::string>, value<double>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
-| `Store<key<std::string>, value<double>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
+| `Store<key<std::string>, value<double>, multi, frozen>` | multi, stable_refs, frozen | `posting_map` | postings.hpp |
 | `Store<key<std::string>, value<double>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
 | `Store<key<std::string>, value<double>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<std::string>, value<double>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
@@ -277,9 +277,9 @@ indexable).
 | `Store<key<Id>, value<Id>, frozen>` | unique, stable_refs, frozen | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<Id>, value<Id>, sorted, frozen>` | sorted, unique, stable_refs, frozen | `flat_map` | flat_map.hpp |
 | `Store<key<Id>, value<Id>, multi>` | multi | `posting_map` | postings.hpp |
-| `Store<key<Id>, value<Id>, multi, stable_refs>` | stable_refs, multi | `unordered_multimap` | std_map.hpp |
+| `Store<key<Id>, value<Id>, multi, stable_refs>` | multi, stable_refs | `unordered_multimap` | std_map.hpp |
 | `Store<key<Id>, value<Id>, multi, sorted>` | sorted, multi | `multimap` | std_map.hpp |
-| `Store<key<Id>, value<Id>, multi, frozen>` | stable_refs, frozen, multi | `posting_map` | postings.hpp |
+| `Store<key<Id>, value<Id>, multi, frozen>` | multi, stable_refs, frozen | `posting_map` | postings.hpp |
 | `Store<key<Id>, value<Id>, stable_refs>` | unique, stable_refs | `unordered_map` | std_map.hpp |
 | `Store<key<Id>, value<Id>, retains>` | unique, retains | `unordered_flat_map` | unordered_flat_map.hpp |
 | `Store<key<Id>, value<Id>, reclaims>` | unique, reclaims | `map` | std_map.hpp |
@@ -329,9 +329,9 @@ indexable).
 | `Store<key<int>, value<int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
 | `Store<key<int>, value<int>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<key<int>, value<int>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
-| `Store<key<int>, value<int>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
-| `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
-| `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | bidirectional_csr.hpp |
+| `Store<key<int>, value<int>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
+| `Store<key<int>, value<int>, multi, dense, frozen, sorted>` | sorted, dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
+| `Store<key<int>, value<int>, multi, dense, frozen, bidirectional>` | dense, bidirectional, multi, stable_refs, frozen | `bidirectional_csr` | bidirectional_csr.hpp |
 | `Store<key<int>, value<int>, multi, dense, bidirectional>` | dense, bidirectional, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
 | `Store<key<int>, value<Store<key<int>, unique, dense>>, dense>` | unique, dense | `dense_map` | index_map.hpp |
 | `Store<key<int>, value<Store<key<int>, unique, dense, constant_clear>>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
@@ -356,9 +356,9 @@ indexable).
 | `Store<key<Id>, value<double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
 | `Store<key<Id>, value<double>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<key<Id>, value<double>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
-| `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
-| `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, stable_refs, frozen, multi | `csr_multimap` | csr_multimap.hpp |
-| `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, stable_refs, bidirectional, frozen, multi | `bidirectional_csr` | bidirectional_csr.hpp |
+| `Store<key<Id>, value<double>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
+| `Store<key<Id>, value<double>, multi, dense, frozen, sorted>` | sorted, dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
+| `Store<key<Id>, value<Id>, multi, dense, frozen, bidirectional>` | dense, bidirectional, multi, stable_refs, frozen | `bidirectional_csr` | bidirectional_csr.hpp |
 | `Store<key<Id>, value<Id>, multi, dense, bidirectional>` | dense, bidirectional, multi | `none` — missing: the dynamic bidirectional graph (Bidirectional over DenseGroups) |  |
 | `Store<key<Id>, value<Store<key<Id>, unique, dense>>, dense>` | unique, dense | `dense_map` | index_map.hpp |
 | `Store<key<Id>, value<Store<key<Id>, unique, dense, constant_clear>>, dense, constant_clear>` | unique, dense, constant_clear | `generation_map` | index_map.hpp |
@@ -390,7 +390,7 @@ indexable).
 | `Store<value<Store<value<int>, retains>>, retains>` | retains | `row_pool` | row_pool.hpp |
 | `Store<value<Store<value<int>>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
 | `Store<value<Store<key<int>, unique, dense>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
-| `Store<value<Store<key<int>, unique, dense>>, fixed_shape, proportional_clear>` | proportional_clear, fixed_shape | `tracked_jagged` | jagged.hpp |
+| `Store<value<Store<key<int>, unique, dense>>, fixed_shape, proportional_clear>` | fixed_shape, proportional_clear | `tracked_jagged` | jagged.hpp |
 | `Store<value<Store<value<Store<key<int>, unique, dense>>, fixed_shape>>, fixed_shape>` | fixed_shape | `fixed_jagged` | jagged.hpp |
 
 ## Queues of int
@@ -402,10 +402,10 @@ indexable).
 | `Store<value<int>, by_priority>` | by_priority | `heap` | queue.hpp |
 | `Store<value<int>, by_priority, handles>` | by_priority, handles | `addressable_heap` | addressable_heap.hpp |
 | `Store<value<int>, fifo, small>` | fifo, small | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<int>, fifo, stable_refs>` | stable_refs, fifo | `fifo` | queue.hpp |
-| `Store<value<int>, fifo, retains>` | retains, fifo | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<int>, lifo, constant_clear>` | constant_clear, lifo | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
-| `Store<value<int>, by_priority, constant_clear>` | constant_clear, by_priority | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
+| `Store<value<int>, fifo, stable_refs>` | fifo, stable_refs | `fifo` | queue.hpp |
+| `Store<value<int>, fifo, retains>` | fifo, retains | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<int>, lifo, constant_clear>` | lifo, constant_clear | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
+| `Store<value<int>, by_priority, constant_clear>` | by_priority, constant_clear | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
 | `Store<value<int>, by_priority, monotone>` | by_priority, monotone | `heap` | queue.hpp |
 
 ## Queues of Id
@@ -417,10 +417,10 @@ indexable).
 | `Store<value<Id>, by_priority>` | by_priority | `heap` | queue.hpp |
 | `Store<value<Id>, by_priority, handles>` | by_priority, handles | `addressable_heap` | addressable_heap.hpp |
 | `Store<value<Id>, fifo, small>` | fifo, small | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<Id>, fifo, stable_refs>` | stable_refs, fifo | `fifo` | queue.hpp |
-| `Store<value<Id>, fifo, retains>` | retains, fifo | `ring_fifo` | ring_fifo.hpp |
-| `Store<value<Id>, lifo, constant_clear>` | constant_clear, lifo | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
-| `Store<value<Id>, by_priority, constant_clear>` | constant_clear, by_priority | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
+| `Store<value<Id>, fifo, stable_refs>` | fifo, stable_refs | `fifo` | queue.hpp |
+| `Store<value<Id>, fifo, retains>` | fifo, retains | `ring_fifo` | ring_fifo.hpp |
+| `Store<value<Id>, lifo, constant_clear>` | lifo, constant_clear | `none` — missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared |  |
+| `Store<value<Id>, by_priority, constant_clear>` | by_priority, constant_clear | `none` — missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared |  |
 | `Store<value<Id>, by_priority, monotone>` | by_priority, monotone | `heap` | queue.hpp |
 
 ## Queues ordered by a projection
@@ -440,17 +440,17 @@ indexable).
 | `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique>` | unique, handles | `row_interner` | pools.hpp |
 | `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing | `tree_vector_set` | tree_vector.hpp |
 | `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing>` | unique, handles, structural_sharing | `tree_bitset_set` | tree_bitset.hpp |
-| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, concurrent>` | unique, concurrent, handles | `thread_safe_row_interner` | pools.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing, concurrent>` | unique, concurrent, handles, structural_sharing | `thread_safe_tree_bitset_set` | tree_bitset.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, concurrent>` | unique, handles, concurrent | `thread_safe_row_interner` | pools.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, structural_sharing, concurrent>` | unique, handles, concurrent, structural_sharing | `thread_safe_tree_bitset_set` | tree_bitset.hpp |
 | `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, monotone>` | unique, handles, monotone | `row_interner` | pools.hpp |
 | `Store<value<std::vector<int>>, handles>` | handles | `slot_vector` | slots.hpp |
-| `Store<value<std::vector<int>>, handles, concurrent>` | concurrent, handles | `thread_safe_slot_vector` | slots.hpp |
+| `Store<value<std::vector<int>>, handles, concurrent>` | handles, concurrent | `thread_safe_slot_vector` | slots.hpp |
 | `Store<value<int>, handles>` | handles | `slot_vector` | slots.hpp |
-| `Store<value<Id>, handles, stable_refs>` | stable_refs, handles | `slot_vector` | slots.hpp |
-| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, monotone, layered>` | unique, layered, handles, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
-| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, concurrent, layered, handles | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
-| `Store<value<int>, handles, layered>` | layered, handles | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
-| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, structural_sharing, layered>` | unique, layered, handles, structural_sharing | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |
+| `Store<value<Id>, handles, stable_refs>` | handles, stable_refs | `slot_vector` | slots.hpp |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, monotone, layered>` | unique, handles, layered, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<value<Store<key<int>, unique, dense, stable_refs, frozen>>, handles, unique, layered, concurrent>` | unique, handles, concurrent, layered | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<value<int>, handles, layered>` | handles, layered | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
+| `Store<value<Store<value<int>, stable_refs, frozen>>, handles, unique, structural_sharing, layered>` | unique, handles, layered, structural_sharing | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |
 
 ## Stores as keys
 
@@ -476,13 +476,13 @@ indexable).
 |---|---|---|---|
 | `Store<value<Id>, handles, unique, flat>` | unique, handles, flat | `record_interner` | records.hpp |
 | `Store<value<Id>, handles, unique, flat, monotone>` | unique, handles, flat, monotone | `record_interner` | records.hpp |
-| `Store<value<Id>, handles, unique, flat, stable_refs>` | unique, stable_refs, handles, flat | `stable_record_interner` | records.hpp |
-| `Store<value<Id>, handles, unique, flat, concurrent>` | unique, concurrent, handles, flat | `thread_safe_record_interner` | records.hpp |
+| `Store<value<Id>, handles, unique, flat, stable_refs>` | unique, handles, flat, stable_refs | `stable_record_interner` | records.hpp |
+| `Store<value<Id>, handles, unique, flat, concurrent>` | unique, handles, flat, concurrent | `thread_safe_record_interner` | records.hpp |
 | `Store<value<Text>, handles, unique, flat>` | unique, handles, flat | `arena_interner` | arena.hpp |
-| `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, concurrent, handles, flat, monotone | `thread_safe_arena_interner` | arena.hpp |
-| `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, layered, handles, flat, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
-| `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, concurrent, layered, handles, flat | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |
+| `Store<value<Text>, handles, unique, flat, monotone, concurrent>` | unique, handles, flat, concurrent, monotone | `thread_safe_arena_interner` | arena.hpp |
+| `Store<value<Id>, handles, unique, flat, monotone, layered>` | unique, handles, flat, layered, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
+| `Store<value<Text>, handles, unique, flat, layered, concurrent>` | unique, handles, flat, concurrent, layered | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |
 | `Store<value<Id>, handles, unique>` | unique, handles | `value_interner` | records.hpp |
 | `Store<value<Text>, handles, unique>` | unique, handles | `value_interner` | records.hpp |
-| `Store<value<Text>, handles, unique, stable_refs>` | unique, stable_refs, handles | `stable_value_interner` | records.hpp |
+| `Store<value<Text>, handles, unique, stable_refs>` | unique, handles, stable_refs | `stable_value_interner` | records.hpp |
 | `Store<value<std::string>, handles, unique>` | unique, handles | `value_interner` | records.hpp |

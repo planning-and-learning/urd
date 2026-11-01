@@ -130,8 +130,8 @@ Incompatible combinations
 
 A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). ``to_spec`` rejects only what is
-ill-formed whatever container would hold it; the ``handles``, ``partition`` and ``order_by`` ties rows share one
-message (``well_formed`` in ``include/urd/kinds.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+ill-formed whatever container would hold it: each kind's ``well_formed`` (a partition takes no ``value<V>``, a pool or
+slots no ``key<K>``) and the ``order_by`` rules share one message (``well_formed`` in ``include/urd/kinds.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::

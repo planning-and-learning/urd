@@ -5,11 +5,11 @@
 // request costs the compiler in instantiations does not grow with the number of containers.
 
 #include "urd/elements.hpp"
-#include "urd/properties.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/registry/scan.hpp"
 #include "urd/repr/core/dependent_false.hpp"
+#include "urd/spec.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <array>
 #include <cstddef>
@@ -27,30 +27,20 @@ namespace urd::detail
 template<typename S>
 inline constexpr request_shape shape_of = []
 {
-    using held = held_as<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::mapped_type>>;
+    using held = held_as<typename S::held_type>;
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
 
-/// The entry for spec S: its node (by its kind), its position in the node's table, or no_entry. `found` is false
-/// where none serves.
+/// The entry for spec S: its position in its kind's table, or no_entry. `found` is false where none serves.
 template<typename S>
 struct choose
 {
-    using node = typename S::kind;
-    static constexpr std::size_t position = first_serving<node>(shape_of<S>);
+    using kind = typename S::kind;
+    static constexpr std::size_t position = first_serving<kind>(shape_of<S>);
     static constexpr bool found = position != no_entry;
-    static constexpr std::string_view id = found ? table_of<node>[position].id : std::string_view();
+    static constexpr std::string_view id = found ? table_of<kind>[position].id : std::string_view();
     /// The headers of the chosen container, a wrapper's part's first.
-    static constexpr std::span<const std::string_view> headers = found ? table_of<node>[position].headers : std::span<const std::string_view>();
-};
-
-/// The I-th type of a list.
-template<std::size_t I, typename List>
-struct nth;
-template<std::size_t I, typename... Ts>
-struct nth<I, type_list<Ts...>>
-{
-    using type = std::tuple_element_t<I, std::tuple<Ts...>>;
+    static constexpr std::span<const std::string_view> headers = found ? table_of<kind>[position].headers : std::span<const std::string_view>();
 };
 
 /// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.

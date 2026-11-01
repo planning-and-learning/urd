@@ -11,8 +11,9 @@ sequence. A kind may split further: a queue is either by arrival (``fifo``, ``li
 request reaches is its kind.
 
 A kind decides what the Store is: which operations it has (its facets, see the :doc:`kinds </kinds/sets>`), what its
-elements are, and which questions its requests answer (its request format). A tag outside that format does not
-compile. Answer the questions below first: every other answer is read against them. A kind added outside urd plugs
+elements are, and which questions its requests answer (its request format: the questions every kind answers, how it
+stores, what it costs and how it is used, after its own). A tag outside that format does not compile, and nor does a
+request its kind's rules call contradictory (a partition with ``value<V>``). Answer the questions below first: every other answer is read against them. A kind added outside urd plugs
 into the same tree (:doc:`/extending`).
 
 .. urd-group:: kind

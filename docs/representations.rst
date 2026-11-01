@@ -4,7 +4,7 @@ Representations
 .. cpp:namespace:: urd::repr
 
 The containers a Store can resolve to live in ``include/urd/repr``, which code that uses a Store never includes:
-requests use only the vocabulary of ``urd/tags.hpp`` and ``urd/properties.hpp``. Each container has a declaration
+requests use only the vocabulary of ``urd/tags.hpp`` and ``urd/spec.hpp``. Each container has a declaration
 (``include/urd/repr/<kind>/*_fwd.hpp``): its kind, what it ``provides``, what it ``relies_on`` (what a request must
 state, and by role the type traits of its data), what Stores held as its elements get, its ``operation_costs`` and
 its words. ``container_traits`` is derived from it, and the typed tests check every declared property against a

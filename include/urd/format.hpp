@@ -11,8 +11,8 @@
 
 #include "urd/costs.hpp"
 #include "urd/index.hpp"
-#include "urd/properties.hpp"
 #include "urd/semantics/concepts.hpp"
+#include "urd/spec.hpp"
 #include "urd/traits.hpp"
 
 #include <array>

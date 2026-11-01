@@ -89,21 +89,13 @@ template<typename Derived, typename R, typename S>
 class counting;
 
 /// The kind: values added and counted, never iterated.
-struct tally_kind
+struct tally_kind : urd::detail::kind_defaults
 {
     static constexpr std::string_view name = "tally";
     using format = urd::detail::request_format<tallying, urd::threading>;
     using roles = urd::detail::role_list<>;
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = false;
     using facets = urd::detail::facet_list<counting>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = false;
     static constexpr bool claims(const urd::detail::property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(tallying::tallied); }
-    static constexpr urd::detail::property_set meaning(urd::detail::property_set stated) { return stated; }
 };
 
 }  // namespace tally
@@ -210,7 +202,7 @@ static_assert(tally::add::in<tally::tally_decl::operation_costs>().has_value() &
 static_assert(!tally::add::in<urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
 // What tools read of the kind (urd-search): its operations' words, how it keeps its elements, its memory.
 static_assert(urd::operation_v<tally::add>->name == "add" && !urd::operation_v<tally::count>->description.empty());
-static_assert(!tally::tally_kind::iterable && !tally::tally_kind::keeps_by_value && !tally::tally_kind::positional);
+static_assert(!tally::tally_kind::iterable && !tally::tally_kind::positional && tally::tally_kind::changes_in_place({}));
 static_assert(tally::tally_decl::operation_costs::words == 3);
 // urd's own kinds are untouched by the new one.
 static_assert(std::same_as<urd::Store<urd::value<int>>::representation, std::vector<int>>);

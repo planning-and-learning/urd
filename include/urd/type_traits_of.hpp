@@ -21,6 +21,57 @@
 namespace urd::detail
 {
 
+/// The elements of a row type, read without completing it: a Store's by its request (where it iterates: a pool or
+/// queue has no elements to hand out), else what iterating a range gives. Undefined otherwise, so a constraint
+/// naming it is simply not satisfied.
+template<typename Row>
+struct row_element
+{
+};
+template<typename Row>
+    requires(!is_store<Row>) && std::ranges::range<Row>
+struct row_element<Row>
+{
+    using type = std::ranges::range_value_t<Row>;
+};
+template<typename Row>
+    requires(is_store<Row> && container_traits<Row>::iterable)
+struct row_element<Row>
+{
+    using type = typename container_traits<Row>::element_type;
+};
+template<typename Row>
+using row_element_t = typename row_element<Row>::type;
+
+// Three questions about an element type that a trait or rule may ask, answered for a Store from its request and
+// never by completing it (a template argument evaluates every operand, so `!is_store<V> && std::trait<V>` would
+// still complete V: these are specialized instead).
+
+/// Whether V can fill a slot that is emptied and filled again: default-constructible and movable. Every Store is
+/// movable, and one not asked to be nonempty or given a fixed shape has an empty value.
+template<typename V>
+inline constexpr bool slot_value = std::default_initializable<V> && std::movable<V>;
+template<typename R, typename S>
+inline constexpr bool slot_value<Store<R, S>> = !S::urd_properties.has(emptiness::nonempty) && !S::urd_properties.has(shape::fixed_shape);
+
+/// Whether destroying a V does nothing. A Store owns storage, so never.
+template<typename V>
+inline constexpr bool trivially_destructible = std::is_trivially_destructible_v<V>;
+template<typename R, typename S>
+inline constexpr bool trivially_destructible<Store<R, S>> = false;
+
+/// Whether a V is its own block of bytes (copied by memcpy). A Store owns storage, so never.
+template<typename V>
+inline constexpr bool trivially_copyable = std::is_trivially_copyable_v<V>;
+template<typename R, typename S>
+inline constexpr bool trivially_copyable<Store<R, S>> = false;
+
+/// Whether V is iterated as a range of elements. A Store is where its request says so (a set, map or sequence).
+template<typename V>
+inline constexpr bool iterates = std::ranges::input_range<V>;
+template<typename R, typename S>
+inline constexpr bool iterates<Store<R, S>> = S::iterable;
+
 /// What T is held as an element: a Store (its tags, what it requires, its kind, its elements' type), a registered
 /// container holding elements (the same, from its declaration, requiring nothing), or plain.
 template<typename T>
@@ -29,7 +80,7 @@ struct held_as
     static constexpr bool store = false;
     static constexpr property_set properties = property_set::roots();
     static constexpr property_set required = property_set::roots();
-    using kind = sequence_kind;
+    using kind = void;
     using elements = void;
 };
 template<typename T>
@@ -60,7 +111,10 @@ template<typename T>
 consteval bool rows_flatten()
 {
     using row = held_as<T>;
-    return row::store && row::properties.has(change::frozen) && (!held_as<typename row::elements>::store || !row::kind::keeps_by_value);
+    if constexpr (!row::store)
+        return false;
+    else
+        return row::properties.has(change::frozen) && (!held_as<typename row::elements>::store || !by_value<T>);
 }
 template<typename T>
 consteval bool rows_in_place()
@@ -69,9 +123,7 @@ consteval bool rows_in_place()
     if constexpr (!row::store)
         return false;
     else if constexpr (!held_as<typename row::elements>::store)
-        return !row::properties.has(change::frozen)
-               && (!row::kind::keeps_by_value
-                   || (std::same_as<typename row::kind, set_kind> && row::properties.has(uniqueness::unique) && row::properties.has(keys::dense)));
+        return !row::properties.has(change::frozen) && row::kind::changes_in_place(row::properties);
     else
         return !row::properties.has(change::frozen) && row::properties.has(shape::fixed_shape) && rows_in_place<typename row::elements>();
 }
@@ -132,8 +184,9 @@ consteval property_set row_tags_of()
 {
     using row = held_as<T>;
     auto result = row::properties;
-    if (row::store && row::kind::positional)
-        result.put(position::positional);
+    if constexpr (row::store)
+        if (row::kind::positional)
+            result.put(position::positional);
     return result;
 }
 template<typename T>
@@ -168,7 +221,8 @@ consteval trait_set order_traits_of()
 template<typename T, typename C = Less<T>>
 consteval role_tags element_roles(const property_set& stated_tags = property_set::roots())
 {
-    auto result = role_tags { .stated = stated_tags };
+    auto result = role_tags {};
+    result.stated = stated_tags;
     result.at(role_v<role::element>).traits = type_traits_v<T>;
     result.at(role_v<role::order>).traits = order_traits_of<T, C>();
     result.at(role_v<role::row>).tags = row_tags_of<T>();
@@ -187,6 +241,29 @@ consteval role_tags map_roles(const property_set& stated_tags = property_set::ro
     result.at(role_v<role::order>).traits = order;
     result.at(role_v<role::mapped>).traits = type_traits_v<V>;
     return result;
+}
+
+/// The comparator of a container that takes one: the request's order_by where it gives one, else urd::Less over its
+/// elements, or its keys.
+template<typename S>
+using element_order_t = std::conditional_t<std::is_void_v<typename S::order_type>, Less<typename S::element_type>, typename S::order_type>;
+template<typename S>
+using key_order_t = std::conditional_t<std::is_void_v<typename S::order_type>, Less<typename S::key_type>, typename S::order_type>;
+/// The comparator spec S orders by: its order_by, else urd::Less over what it orders (a map's keys, else its
+/// elements).
+template<typename S>
+using spec_order_t = std::conditional_t<std::is_void_v<typename S::order_type>,
+                                        Less<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::key_type>>,
+                                        typename S::order_type>;
+
+/// The roles of spec S: what it promises, and what its data and its order are.
+template<typename S>
+consteval role_tags request_roles()
+{
+    if constexpr (!std::is_void_v<typename S::mapped_type>)
+        return map_roles<typename S::key_type, typename S::mapped_type, spec_order_t<S>>(S::promised);
+    else
+        return element_roles<typename S::element_type, spec_order_t<S>>(S::promised);
 }
 
 }  // namespace urd::detail

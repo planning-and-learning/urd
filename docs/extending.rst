@@ -71,7 +71,8 @@ An operation and a facet
 
 An operation is a struct with its words, the member of a container's ``operation_costs`` named for it (``in``), and
 whether a wrapper's costs pass it on from its part's (``passed_on``): ``urd::operation::insert`` in
-``include/urd/costs.hpp``. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
+``include/urd/costs.hpp``, where urd's are written by a local macro (a member's name cannot be a template argument);
+``tests/store/outside_kind.cpp`` writes its two by hand. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
 ``facet_condition<F>`` (when a Store has it) and ``facet_operations<F>`` (the operations it offers), as in
 ``include/urd/store/*.hpp``.
 
@@ -82,25 +83,25 @@ A kind is a node of the tree in ``include/urd/kinds.hpp``:
 
 .. code-block:: cpp
 
-   struct tally_kind
+   struct tally_kind : urd::detail::kind_defaults
    {
        static constexpr std::string_view name = "tally";
        using format = urd::detail::request_format<tallying, urd::threading>;  // the questions its requests answer
        using roles = urd::detail::role_list<>;                                // what its containers rely on
-       template<typename K, typename V> using element_type = V;
-       template<typename K, typename V> using mapped_type = void;
-       static constexpr bool iterable = false;
        using facets = urd::detail::facet_list<counting>;                     // its Store's interface
-       static constexpr bool keeps_by_value = false;
-       static constexpr bool positional = false;
        static constexpr bool claims(const urd::detail::property_set& stated, bool keyed, bool valued) { return stated.has(tallying::tallied); }
-       static constexpr urd::detail::property_set meaning(urd::detail::property_set stated) { return stated; }
    };
    template<> struct urd::extra_kinds<void> { using type = urd::detail::type_list<tally_kind>; };
 
+``urd::detail::kind_defaults`` says what a kind is unless it says otherwise, each a member a kind may restate: its
+elements and mapped values (``element_type``, ``mapped_type``), ``iterable``, ``positional``, ``meaning`` (what a
+request means beyond what it states), ``well_formed`` (which requests contradict themselves), ``accepts_order_by``
+and ``changes_in_place`` (whether rows of it change in place). urd's kinds answer the questions every kind shares
+after their own (``with_common_format<…>``); a kind from outside lists only the questions it answers.
+
 Kinds added by ``extra_kinds`` are tried before urd's own; specialize it before the first Store is named. A kind with
 ``children`` (a list of kinds) instead of a format and facets splits further, as the queue does into arrival and
-priority: a request's kind is the leaf it reaches.
+priority: it claims a request where one of them does, and a request's kind is the leaf it reaches.
 
 urd-search reads the same declarations: a kind, container, trait or operation added this way appears in its
 registry tree and evidence once it is built with them.

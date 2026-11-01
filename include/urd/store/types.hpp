@@ -46,7 +46,7 @@ struct store_types
     using key_type = typename S::key_type;
     using mapped_type = typename S::mapped_type;
     /// What lookups take: a map's key, else an element.
-    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, value_type, key_type>;
+    using lookup_type = typename S::lookup_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 };

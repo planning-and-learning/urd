@@ -14,7 +14,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <iterator>
 #include <ranges>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -25,22 +27,6 @@ namespace urd
 
 namespace detail
 {
-
-/// Lists of types, joined in order.
-template<typename... Lists>
-struct join
-{
-    using type = type_list<>;
-};
-template<typename... Ts>
-struct join<type_list<Ts...>>
-{
-    using type = type_list<Ts...>;
-};
-template<typename... As, typename... Bs, typename... Lists>
-struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As..., Bs...>, Lists...>
-{
-};
 
 /// The most answers a category has, its none included.
 inline constexpr std::size_t most_answers = 4;
@@ -58,29 +44,24 @@ struct category_table
     std::array<bool, most_answers> demanded {};
     bool request_only = false;
 };
-template<typename Tag>
-consteval bool exact_of()
+/// What a tag type says of how its category is matched (urd/tags.hpp): each false unless it says so.
+struct tag_flags
 {
+    bool exact = false;
+    bool demanded = false;
+    bool request_only = false;
+};
+template<typename Tag>
+consteval tag_flags flags_of()
+{
+    auto result = tag_flags {};
     if constexpr (requires { Tag::exact; })
-        return Tag::exact;
-    else
-        return false;
-}
-template<typename Tag>
-consteval bool demanded_of()
-{
+        result.exact = Tag::exact;
     if constexpr (requires { Tag::demanded; })
-        return Tag::demanded;
-    else
-        return false;
-}
-template<typename Tag>
-consteval bool request_only_of()
-{
+        result.demanded = Tag::demanded;
     if constexpr (requires { Tag::request_only; })
-        return Tag::request_only;
-    else
-        return false;
+        result.request_only = Tag::request_only;
+    return result;
 }
 template<typename Root, typename... Ts>
 consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
@@ -96,13 +77,13 @@ consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
     const auto row = [&]<typename Have>(std::type_identity<Have> /*have*/)
     {
         result.at_least[have] = { std::is_base_of_v<Root, Have>, std::is_base_of_v<Ts, Have>... };
-        result.demanded[have] = demanded_of<Have>();
+        result.demanded[have] = flags_of<Have>().demanded;
         ++have;
     };
     row(std::type_identity<Root> {});
     (row(std::type_identity<Ts> {}), ...);
-    result.exact = exact_of<Root>();
-    result.request_only = request_only_of<Root>();
+    result.exact = flags_of<Root>().exact;
+    result.request_only = flags_of<Root>().request_only;
     return result;
 }
 
@@ -111,6 +92,19 @@ template<category_enum E>
 inline constexpr category_table category_table_v = table_of_tags(typename tags_of<E>::type {});
 
 }  // namespace detail
+
+/// The words of a thing identified by them, by their address, as a category is by its table: a type trait, a role, an
+/// operation (Of tells them apart, so no trait's words pass for a role's). No number and no list of all of them, so a
+/// kind added outside urd adds its own.
+template<typename Of>
+struct words
+{
+    std::string_view name;
+    std::string_view description;
+};
+/// The words of T (a struct with its name and description), as Of.
+template<typename Of, typename T>
+inline constexpr words<Of> words_of { T::name, T::description };
 
 /// A property: a category (its table) and its answer, from any category's enum (order::sorted, uniqueness::unique, …).
 /// What the machinery computes with; users name the tag types (urd/tags.hpp).
@@ -145,13 +139,41 @@ constexpr bool at_least(tag have, tag want) { return have.in == want.in && at_le
 /// The most categories one set answers.
 inline constexpr std::size_t most_categories = 32;
 
-/// The properties of something, as a value: the answers it holds beyond none, one per category, in the order they
-/// were put. Equal properties are equal values, whatever that order.
-struct property_set
+/// At most N values, in the order they were put: the storage of the small sets urd computes with (property_set,
+/// trait_set, role_tags), each with its own lookup and equality on top.
+template<typename T, std::size_t N>
+struct fixed_list
 {
-    std::array<tag, most_categories> held {};
+    std::array<T, N> held {};
     std::size_t count = 0;
 
+    [[nodiscard]] constexpr auto begin() const { return held.begin(); }
+    [[nodiscard]] constexpr auto end() const { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
+    [[nodiscard]] constexpr auto begin() { return held.begin(); }
+    [[nodiscard]] constexpr auto end() { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
+    /// Appends `value`; past N, constant evaluation fails (raise most_categories, most_traits or most_roles).
+    constexpr T& push(const T& value)
+    {
+        if (count == N)
+            throw "urd: a set holds more than its most (most_categories, most_traits, most_roles)";
+        held[count] = value;
+        return held[count++];
+    }
+    /// Removes the value at `at`, keeping the order of the others.
+    constexpr void erase(auto at)
+    {
+        std::move(std::next(at), end(), at);
+        held[--count] = T {};
+    }
+    template<typename F>
+    constexpr void for_each(F f) const
+    { std::ranges::for_each(*this, f); }
+};
+
+/// The properties of something, as a value: the answers it holds beyond none, one per category, in the order they
+/// were put. Equal properties are equal values, whatever that order.
+struct property_set : fixed_list<tag, most_categories>
+{
     /// Nothing said: every category at none.
     static constexpr property_set roots() { return {}; }
     /// The given tags (any category's answers: order::sorted, …), at most one per category, the others at none.
@@ -166,10 +188,8 @@ struct property_set
     /// The tag held in category `of` (its none where it holds none).
     [[nodiscard]] constexpr tag in(const category_table* of) const
     {
-        for (std::size_t each = 0; each < count; ++each)
-            if (held[each].in == of)
-                return held[each];
-        return { of, 0 };
+        const auto found = std::ranges::find(*this, of, &tag::in);
+        return found != end() ? *found : tag { of, 0 };
     }
     /// The answer held in the category of enum E.
     template<category_enum E>
@@ -180,43 +200,22 @@ struct property_set
     /// Holds `of` in its category, replacing what was there (none: nothing).
     constexpr property_set& put(tag of)
     {
-        for (std::size_t each = 0; each < count; ++each)
-            if (held[each].in == of.in)
-            {
-                if (of.answer != 0)
-                    held[each] = of;
-                else
-                {
-                    for (std::size_t later = each + 1; later < count; ++later)
-                        held[later - 1] = held[later];
-                    held[--count] = tag {};
-                }
-                return *this;
-            }
-        if (of.answer != 0)
+        const auto found = std::ranges::find(*this, of.in, &tag::in);
+        if (found == end())
         {
-            if (count == most_categories)
-                throw "urd: a property set answers more categories than most_categories";
-            held[count++] = of;
+            if (of.answer != 0)
+                push(of);
         }
+        else if (of.answer != 0)
+            *found = of;
+        else
+            erase(found);
         return *this;
-    }
-    /// The tags it holds beyond none, in the order they were put.
-    template<typename F>
-    constexpr void for_each(F f) const
-    {
-        for (std::size_t each = 0; each < count; ++each)
-            f(held[each]);
     }
 
     friend constexpr bool operator==(const property_set& lhs, const property_set& rhs)
     {
-        if (lhs.count != rhs.count)
-            return false;
-        for (std::size_t each = 0; each < lhs.count; ++each)
-            if (rhs.in(lhs.held[each].in) != lhs.held[each])
-                return false;
-        return true;
+        return lhs.count == rhs.count && std::ranges::all_of(lhs, [&rhs](tag each) { return rhs.in(each.in) == each; });
     }
 };
 
@@ -224,28 +223,16 @@ struct property_set
 /// the categories that declare themselves exact (urd/tags.hpp).
 constexpr bool satisfies(const property_set& have, const property_set& want)
 {
-    for (std::size_t each = 0; each < want.count; ++each)
-    {
-        const auto asked = want.held[each];
-        if (!asked.in->request_only && !(asked.in->exact ? have.in(asked.in) == asked : have.has(asked)))
-            return false;
-    }
-    for (std::size_t each = 0; each < have.count; ++each)  // an exact category answered beyond what is asked
-    {
-        const auto given = have.held[each];
-        if (given.in->exact && !given.in->request_only && want.in(given.in).answer == 0)
-            return false;
-    }
-    return true;
+    const auto provided = [&have](tag asked) { return asked.in->request_only || (asked.in->exact ? have.in(asked.in) == asked : have.has(asked)); };
+    // and no exact category answered beyond what is asked
+    const auto unasked = [&want](tag given) { return given.in->exact && !given.in->request_only && want.in(given.in).answer == 0; };
+    return std::ranges::all_of(want, provided) && std::ranges::none_of(have, unasked);
 }
 
 /// Whether a request that holds `stated` makes every promise in `needed`.
 constexpr bool promises(const property_set& stated, const property_set& needed)
 {
-    for (std::size_t each = 0; each < needed.count; ++each)
-        if (!stated.has(needed.held[each]))
-            return false;
-    return true;
+    return std::ranges::all_of(needed, [&stated](tag each) { return stated.has(each); });
 }
 
 /// What a container that holds `declared` asks of the request in turn: the tags it holds that declare themselves
@@ -261,6 +248,15 @@ constexpr property_set demands_of(const property_set& declared)
         });
     return result;
 }
+
+/// `base` with every tag of `listed` (a range of tags, or a braced list) put in its category.
+constexpr property_set with(property_set base, const auto& listed)
+{
+    for (const auto each : listed)
+        base.put(each);
+    return base;
+}
+constexpr property_set with(property_set base, std::initializer_list<tag> listed) { return with(base, std::span<const tag>(listed.begin(), listed.size())); }
 
 template<typename P>
 concept a_tag = requires {
@@ -280,9 +276,6 @@ struct properties
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags::value... });
     static constexpr bool declared = true;
 };
-template<typename... Tags>
-using properties_of = properties<Tags...>;
-
 namespace detail
 {
 
@@ -303,11 +296,5 @@ struct replaced
 /// Traits with the categories of Tags replaced by them.
 template<typename Traits, typename... Tags>
 using with_t = detail::replaced<Traits, Tags...>;
-
-/// Whether Tag answers a category a container declares, or one only a request has.
-template<typename Tag>
-inline constexpr bool is_guarantee = !tag(Tag::value).in->request_only;
-template<typename Tag>
-inline constexpr bool is_request_only = tag(Tag::value).in->request_only;
 
 }  // namespace urd

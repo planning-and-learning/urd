@@ -73,7 +73,7 @@ const std::map<std::string, std::string>& notes()
         { "Store<key<int>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
         { "Store<key<Id>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
         { "Store<key<index<Id>>, value<Store<value<Store<value<index<Id>>, stable_refs, frozen>>, unique, "
-          "concurrent, layered, handles, monotone>>, dense, layered, concurrent>",
+          "handles, concurrent, layered, monotone>>, dense, layered, concurrent>",
           "missing: the concurrent slot directory (compile-fail case 38)" },
         { "Store<key<int>, value<int>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
         { "Store<key<std::string>, value<double>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },

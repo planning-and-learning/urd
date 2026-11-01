@@ -8,10 +8,10 @@
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <map>
 #include <set>

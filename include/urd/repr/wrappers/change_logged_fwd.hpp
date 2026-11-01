@@ -7,11 +7,11 @@
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <type_traits>
 
@@ -40,7 +40,7 @@ template<typename Part>
 struct change_logged_decl
 {
     static constexpr std::string_view id = joined<change_logged_prefix, Part::id>::value;
-    static constexpr auto headers = then(Part::headers, "urd/repr/wrappers/change_logged.hpp");
+    static constexpr auto headers = with_header(Part::headers, "urd/repr/wrappers/change_logged.hpp");
     static_assert(Part::provides.has(uniqueness::unique), "change_logged_decl: a change log is kept over a set");
     using kind = typename Part::kind;
     static constexpr property_set provides =

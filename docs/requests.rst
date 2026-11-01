@@ -94,7 +94,7 @@ The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims i
 Rules
 -----
 
-A request is checked when the Store type is formed (``include/urd/properties.hpp``); each failure is a static
+A request is checked when the Store type is formed (``include/urd/spec.hpp``); each failure is a static
 assertion that names what is wrong.
 
 * Every argument is a property; at most one ``key``, one ``value``, one ``order_by``.

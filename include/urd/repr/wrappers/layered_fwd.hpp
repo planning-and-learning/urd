@@ -8,12 +8,12 @@
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 namespace urd::repr
 {
@@ -43,7 +43,7 @@ template<typename Part, bool Pool>
 struct layered_decl
 {
     static constexpr std::string_view id = joined<layered_prefix, Part::id>::value;
-    static constexpr auto headers = then(Part::headers, Pool ? "urd/repr/wrappers/layered_pool.hpp" : "urd/repr/wrappers/layer.hpp");
+    static constexpr auto headers = with_header(Part::headers, Pool ? "urd/repr/wrappers/layered_pool.hpp" : "urd/repr/wrappers/layer.hpp");
     static_assert(Part::provides.has(uniqueness::unique) && (!Pool || Part::provides.has(handling::handles)),
                   "layered_decl: a layer is over a set, map or pool");
     using kind = typename Part::kind;

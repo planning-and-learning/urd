@@ -67,9 +67,9 @@ std::optional<std::string> violation(const R& range,
     if (contents != expected)
         return "the contents differ from what the same operations give";
 
-    if (has<Traits, sorted> && !holds<properties_of<sorted>>(range))
+    if (has<Traits, sorted> && !holds<properties<sorted>>(range))
         return "sorted: the elements are out of order";
-    if (has<Traits, unique> && !holds<properties_of<unique>>(range))
+    if (has<Traits, unique> && !holds<properties<unique>>(range))
         return "unique: an element occurs twice";
     if (has<Traits, nonempty> && std::ranges::empty(range))
         return "nonempty: no element left";

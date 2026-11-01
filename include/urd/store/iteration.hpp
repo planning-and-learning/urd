@@ -5,8 +5,9 @@
 namespace urd::detail::facet
 {
 
-/// Iterable (sets, sequences and maps): the elements in turn, changeable in place where the Store's elements
-/// are. Kinds whose elements are reached otherwise, such as a queue by its front, leave it off.
+/// The elements in turn (sets, sequences and maps; a queue too, in the order it keeps them), changeable in place where
+/// the Store's elements are. Not what a kind's `iterable` says: that its elements form a range urd reads (equality,
+/// hashing, a row's elements), which a queue's do not.
 template<typename Derived, typename R, typename S>
 class iteration
 {

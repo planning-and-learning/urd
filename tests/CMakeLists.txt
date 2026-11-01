@@ -167,7 +167,7 @@ function(urd_compile_fail_expects name case regex)
 endfunction()
 
 urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 60)
-# A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
+# A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 6 "no container serves this request")

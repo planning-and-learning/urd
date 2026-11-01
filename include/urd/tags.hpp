@@ -8,6 +8,8 @@
 // with tag types is another category, and a kind lists the categories its requests answer (urd/kinds.hpp, format).
 // The machinery that computes with them is in urd/property_set.hpp; share/urd/vocabulary.json is generated from them.
 
+#include "urd/detail/type_list.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,17 +18,6 @@
 
 namespace urd
 {
-
-namespace detail
-{
-
-/// A list of types.
-template<typename... Ts>
-struct type_list
-{
-};
-
-}  // namespace detail
 
 // The groups, by what leaving out a tag one needs causes. Every category is in exactly one.
 struct kind_group
@@ -100,142 +91,6 @@ struct no_heading
     static constexpr std::string_view title = "";
 };
 
-/// The categories of properties, each a question a request may answer (its words: the category's root type below).
-/// Each is an enum of its own whose first value, none, is no answer: what a category left unstated means. A category
-/// is open: another enum with tag types (tags_of) is another category.
-enum class order : std::uint8_t
-{
-    none,
-    sorted,
-    insertion_ordered,
-};
-enum class uniqueness : std::uint8_t
-{
-    none,
-    unique,
-};
-enum class keys : std::uint8_t
-{
-    none,
-    dense,
-    sparse,
-};
-enum class referencing : std::uint8_t
-{
-    none,
-    stable_refs,
-};
-enum class layout : std::uint8_t
-{
-    none,
-    contiguous,
-};
-enum class representation : std::uint8_t
-{
-    none,
-    canonical,
-};
-enum class threading : std::uint8_t
-{
-    none,
-    concurrent,
-};
-enum class memory : std::uint8_t
-{
-    none,
-    retains,
-    reclaims,
-};
-enum class clearing : std::uint8_t
-{
-    none,
-    proportional_clear,
-    constant_clear,
-};
-enum class access : std::uint8_t
-{
-    none,
-    fifo,
-    lifo,
-    by_priority,
-};
-enum class scoping : std::uint8_t
-{
-    none,
-    scoped,
-};
-enum class layering : std::uint8_t
-{
-    none,
-    layered,
-};
-enum class handling : std::uint8_t
-{
-    none,
-    handles,
-};
-enum class sharing : std::uint8_t
-{
-    none,
-    structural_sharing,
-};
-enum class direction : std::uint8_t
-{
-    none,
-    bidirectional,
-};
-enum class shape : std::uint8_t
-{
-    none,
-    fixed_shape,
-};
-enum class packing : std::uint8_t
-{
-    none,
-    flat,
-};
-enum class grouping : std::uint8_t
-{
-    none,
-    partition,
-};
-enum class tracking : std::uint8_t
-{
-    none,
-    change_log,
-};
-enum class change : std::uint8_t
-{
-    none,
-    monotone,
-    frozen,
-};
-enum class emptiness : std::uint8_t
-{
-    none,
-    nonempty,
-};
-enum class multiplicity : std::uint8_t
-{
-    none,
-    multi,
-};
-enum class position : std::uint8_t
-{
-    none,
-    positional,
-};
-enum class workload : std::uint8_t
-{
-    none,
-    small,
-};
-enum class priority : std::uint8_t
-{
-    none,
-    monotone_priority,
-};
-
 /// The tag types of a category's enum E: its none, then its answers, in the order of E (each category's, beside its
 /// tags below).
 template<typename E>
@@ -245,6 +100,11 @@ struct tags_of;
 template<typename E>
 concept category_enum = requires { typename tags_of<E>::type; };
 
+// The categories of properties, each a question a request may answer (its words: the category's root type below).
+// Each is an enum of its own whose first value, none, is no answer: what a category left unstated means. A category
+// is open: another enum with tag types (tags_of) is another category. Each category below is its enum, its tag types
+// and its tags_of, together.
+//
 // Properties, in the style of Boost.Graph's graph_traits: each answers one question (a category) with a tag
 // type, and a tag derived from another means "at least that". A category's none type promises nothing, and names
 // itself as `root`, which every tag of its category inherits. Each tag type's `value` is its answer in the category's
@@ -253,6 +113,12 @@ concept category_enum = requires { typename tags_of<E>::type; };
 // instantiations.
 
 // What a container guarantees by itself.
+enum class order : std::uint8_t
+{
+    none,
+    sorted,
+    insertion_ordered,
+};
 struct any_order
 {
     using root = any_order;
@@ -288,6 +154,12 @@ struct tags_of<order>
     using type = detail::type_list<any_order, sorted, insertion_ordered>;
 };
 
+enum class uniqueness : std::uint8_t
+{
+    none,
+    unique,
+};
+
 struct duplicates
 {
     using root = duplicates;
@@ -315,6 +187,13 @@ template<>
 struct tags_of<uniqueness>
 {
     using type = detail::type_list<duplicates, unique>;
+};
+
+enum class keys : std::uint8_t
+{
+    none,
+    dense,
+    sparse,
 };
 
 struct any_keys
@@ -355,6 +234,12 @@ struct tags_of<keys>
     using type = detail::type_list<any_keys, dense, sparse>;
 };
 
+enum class referencing : std::uint8_t
+{
+    none,
+    stable_refs,
+};
+
 struct moving_refs
 {
     using root = moving_refs;
@@ -386,6 +271,12 @@ struct tags_of<referencing>
     using type = detail::type_list<moving_refs, stable_refs>;
 };
 
+enum class layout : std::uint8_t
+{
+    none,
+    contiguous,
+};
+
 struct any_layout
 {
     using root = any_layout;
@@ -412,6 +303,12 @@ struct tags_of<layout>
     using type = detail::type_list<any_layout, contiguous>;
 };
 
+enum class representation : std::uint8_t
+{
+    none,
+    canonical,
+};
+
 struct any_representation
 {
     using root = any_representation;
@@ -436,6 +333,12 @@ template<>
 struct tags_of<representation>
 {
     using type = detail::type_list<any_representation, canonical>;
+};
+
+enum class threading : std::uint8_t
+{
+    none,
+    concurrent,
 };
 
 struct single_threaded
@@ -473,6 +376,13 @@ struct tags_of<threading>
     using type = detail::type_list<single_threaded, concurrent>;
 };
 
+enum class memory : std::uint8_t
+{
+    none,
+    retains,
+    reclaims,
+};
+
 struct any_memory
 {
     using root = any_memory;
@@ -508,6 +418,13 @@ struct tags_of<memory>
     using type = detail::type_list<any_memory, retains, reclaims>;
 };
 
+enum class clearing : std::uint8_t
+{
+    none,
+    proportional_clear,
+    constant_clear,
+};
+
 struct any_clear
 {
     using root = any_clear;
@@ -541,6 +458,14 @@ template<>
 struct tags_of<clearing>
 {
     using type = detail::type_list<any_clear, proportional_clear, constant_clear>;
+};
+
+enum class access : std::uint8_t
+{
+    none,
+    fifo,
+    lifo,
+    by_priority,
 };
 
 struct any_access
@@ -587,6 +512,12 @@ struct tags_of<access>
     using type = detail::type_list<any_access, fifo, lifo, by_priority>;
 };
 
+enum class scoping : std::uint8_t
+{
+    none,
+    scoped,
+};
+
 struct any_scope
 {
     using root = any_scope;
@@ -613,6 +544,12 @@ struct tags_of<scoping>
     using type = detail::type_list<any_scope, scoped>;
 };
 
+enum class layering : std::uint8_t
+{
+    none,
+    layered,
+};
+
 struct any_layering
 {
     using root = any_layering;
@@ -637,6 +574,12 @@ template<>
 struct tags_of<layering>
 {
     using type = detail::type_list<any_layering, layered>;
+};
+
+enum class handling : std::uint8_t
+{
+    none,
+    handles,
 };
 
 struct any_handle
@@ -669,6 +612,12 @@ struct tags_of<handling>
     using type = detail::type_list<any_handle, handles>;
 };
 
+enum class sharing : std::uint8_t
+{
+    none,
+    structural_sharing,
+};
+
 struct any_sharing
 {
     using root = any_sharing;
@@ -695,6 +644,12 @@ struct tags_of<sharing>
     using type = detail::type_list<any_sharing, structural_sharing>;
 };
 
+enum class direction : std::uint8_t
+{
+    none,
+    bidirectional,
+};
+
 struct any_direction
 {
     using root = any_direction;
@@ -719,6 +674,12 @@ template<>
 struct tags_of<direction>
 {
     using type = detail::type_list<any_direction, bidirectional>;
+};
+
+enum class shape : std::uint8_t
+{
+    none,
+    fixed_shape,
 };
 
 struct any_shape
@@ -748,6 +709,12 @@ struct tags_of<shape>
     using type = detail::type_list<any_shape, fixed_shape>;
 };
 
+enum class packing : std::uint8_t
+{
+    none,
+    flat,
+};
+
 struct any_packing
 {
     using root = any_packing;
@@ -775,6 +742,12 @@ struct tags_of<packing>
     using type = detail::type_list<any_packing, flat>;
 };
 
+enum class grouping : std::uint8_t
+{
+    none,
+    partition,
+};
+
 struct any_grouping
 {
     using root = any_grouping;
@@ -799,6 +772,12 @@ template<>
 struct tags_of<grouping>
 {
     using type = detail::type_list<any_grouping, partition>;
+};
+
+enum class tracking : std::uint8_t
+{
+    none,
+    change_log,
 };
 
 struct any_tracking
@@ -829,6 +808,12 @@ struct tags_of<tracking>
 
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on
 // monotone, one that cannot insert on frozen. Multiplicity a multimap declares (multi), and a request states it.
+enum class change : std::uint8_t
+{
+    none,
+    monotone,
+    frozen,
+};
 struct may_change
 {
     using root = may_change;
@@ -866,6 +851,12 @@ struct tags_of<change>
     using type = detail::type_list<may_change, monotone, frozen>;
 };
 
+enum class emptiness : std::uint8_t
+{
+    none,
+    nonempty,
+};
+
 struct maybe_empty
 {
     using root = maybe_empty;
@@ -893,6 +884,12 @@ struct tags_of<emptiness>
     using type = detail::type_list<maybe_empty, nonempty>;
 };
 
+enum class multiplicity : std::uint8_t
+{
+    none,
+    multi,
+};
+
 struct any_multiplicity
 {
     using root = any_multiplicity;
@@ -918,6 +915,12 @@ template<>
 struct tags_of<multiplicity>
 {
     using type = detail::type_list<any_multiplicity, multi>;
+};
+
+enum class position : std::uint8_t
+{
+    none,
+    positional,
 };
 
 struct by_key
@@ -948,6 +951,11 @@ struct tags_of<position>
 
 // How a Store is used: it changes which representation is chosen, never what the Store guarantees. Only a
 // request says it; docs/BENCHMARKS.md backs what each one chooses.
+enum class workload : std::uint8_t
+{
+    none,
+    small,
+};
 struct general
 {
     using root = general;
@@ -973,6 +981,12 @@ template<>
 struct tags_of<workload>
 {
     using type = detail::type_list<general, small>;
+};
+
+enum class priority : std::uint8_t
+{
+    none,
+    monotone_priority,
 };
 
 struct any_priority

@@ -72,7 +72,7 @@ private:
 
 // What it guarantees: entries keep their address; and what it relies on: it only grows.
 template<>
-struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd::stable_refs>
+struct urd::container_traits<Journal> : urd::properties<urd::positional, urd::stable_refs>
 {
 };
 template<>
@@ -103,7 +103,7 @@ struct ClaimsStableRefs
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_refs>
+struct urd::container_traits<ClaimsStableRefs> : urd::properties<urd::stable_refs>
 {
 };
 template<>
@@ -128,7 +128,7 @@ struct ClaimsStableValues : urd::repr::IndexMap<int, int, false>
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableValues> : urd::properties_of<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::retains>
+struct urd::container_traits<ClaimsStableValues> : urd::properties<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::retains>
 {
 };
 

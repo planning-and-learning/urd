@@ -1,11 +1,11 @@
 #pragma once
 
 #include "urd/index.hpp"
-#include "urd/properties.hpp"
 #include "urd/registry/select.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
+#include "urd/spec.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
 #include "urd/store/construction.hpp"

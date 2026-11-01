@@ -30,10 +30,51 @@
 #include "urd/kinds.hpp"
 #include "urd/registry/facts.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <span>
 #include <string_view>
+
+namespace urd
+{
+
+namespace detail
+{
+
+/// A string literal as a template argument: a header's path, or a container's id.
+template<std::size_t N>
+struct fixed_string
+{
+    std::array<char, N> text {};
+
+    consteval fixed_string(const char (&literal)[N]) { std::ranges::copy(literal, text.begin()); }
+    /// From a string computed at compile time (a row's id), N its size plus the terminating zero.
+    consteval explicit fixed_string(std::string_view computed) { std::ranges::copy(computed, text.begin()); }
+
+    [[nodiscard]] constexpr const char* c_str() const noexcept { return text.data(); }
+};
+
+}  // namespace detail
+
+// The registry declares representations and does not define them: a file pays for the definition of each container
+// its Stores resolve to, by including that container's own header (urd/repr/<kind>/<container>.hpp), and for nothing else.
+// That a header is included is told by a marker it defines, never by looking at a representation (completing a
+// wrapper of an undefined part is an error, not a false); a Store whose container's header is absent names it in its
+// error (store.hpp).
+
+/// Declared only; each container's header urd/repr/<kind>/X.hpp defines include<"urd/repr/<kind>/X.hpp">.
+template<detail::fixed_string Header>
+struct include;
+/// Whether the header's marker is defined here.
+template<detail::fixed_string Header>
+inline constexpr bool included = requires { sizeof(include<Header>); };
+/// The header that defines representation R, specialized beside R's declaration. A representation that names none
+/// has no header; resolution_table --check rejects that for anything the registry chooses.
+template<typename R>
+inline constexpr auto defined_in = detail::fixed_string("urd/repr/<unnamed>.hpp");
+
+}  // namespace urd
 
 namespace urd::detail
 {
@@ -42,7 +83,7 @@ namespace urd::detail
 template<std::size_t N>
 using header_list = std::array<std::string_view, N>;
 template<std::size_t N>
-constexpr header_list<N + 1> then(const header_list<N>& part, std::string_view own)
+constexpr header_list<N + 1> with_header(const header_list<N>& part, std::string_view own)
 {
     auto result = header_list<N + 1> {};
     for (std::size_t each = 0; each < N; ++each)
@@ -67,10 +108,7 @@ struct registry_entry
 template<typename... Roles>
 consteval bool roles_within(role_list<Roles...> /*roles*/, const role_tags& relies)
 {
-    for (std::size_t each = 0; each < relies.count; ++each)
-        if (((relies.roles[each].of != role_v<Roles>) && ...))
-            return false;
-    return true;
+    return std::ranges::all_of(relies, [](const role_entry& each) { return ((each.of == role_v<Roles>) || ...); });
 }
 
 template<typename Decl>

@@ -5,10 +5,10 @@
 #include "urd/elements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <cstddef>
 #include <gtl/phmap_fwd_decl.hpp>
