@@ -3,15 +3,14 @@
 // A map in insertion order over an insertion-ordered set of keys, declared with what the registry reads of it.
 // Defined in urd/repr/maps/ordered_map.hpp; its keys (an indexed set or a sparse set) in theirs.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <type_traits>
 
@@ -38,15 +37,10 @@ struct ordered_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/values/indexed.hpp", "urd/repr/maps/ordered_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::none, layout::none, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : indexed_set_decl::operation_costs
-    {
-        using part = indexed_set_decl;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = indexed_set_decl::operation_costs::words + 1;
-    };
+    using operation_costs = costs_over<indexed_set_decl, cost_entry<operation::erase, costs::lin_n>, cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = indexed_set_decl::words + 1;
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
     static constexpr std::string_view holds = "its key set + n values in order";
 };
@@ -54,7 +48,7 @@ template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::IndexedSet<K>, V>>
 {
     using declaration = ordered_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -70,16 +64,11 @@ struct dense_ordered_map_decl
     using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::insertion_ordered, uniqueness::unique, keys::dense, position::none, layout::none, memory::retains, clearing::constant_clear });
-    static constexpr role_tags relies_on =
+    static constexpr property_set relies_on =
         relies(traits<role::element, trait::an_index, trait::destroys_trivially>(), traits<role::mapped, trait::destroys_trivially>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs : ordered_sparse_set_decl::operation_costs
-    {
-        using part = ordered_sparse_set_decl;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = ordered_sparse_set_decl::operation_costs::words + 1;
-    };
+    using operation_costs = costs_over<ordered_sparse_set_decl, cost_entry<operation::erase, costs::lin_n>, cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = ordered_sparse_set_decl::words + 1;
     static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
     static constexpr std::string_view holds = "its sparse set + n values in order";
 };
@@ -87,7 +76,7 @@ template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::SparseSet<K, true>, V>>
 {
     using declaration = dense_ordered_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

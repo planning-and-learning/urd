@@ -5,7 +5,6 @@
 // relies_on (what a request must state for it), container_costs and container_synopsis (the declaration's), and
 // defined_in (its own header, the last of its headers).
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/traits.hpp"
@@ -14,6 +13,14 @@
 
 namespace urd
 {
+
+/// What representation R is: `id`, a short stable name (`unordered_flat_set`); `description`, what it is
+/// (`boost::unordered_flat_set (open-addressing hash table)`); and `holds`, what it keeps besides its elements, where
+/// its memory goes. Declared for every registered representation; none here.
+template<typename R>
+struct container_synopsis
+{
+};
 
 namespace detail
 {
@@ -30,12 +37,7 @@ using declaration_t = typename declaration_of<R>::declaration;
 /// Whether R takes the elements its template arguments give: what they are meets what its declaration relies on (its
 /// elements', values' and rows' tags; what a Store must state is a request's to promise, relies_on below).
 template<declared_container R>
-inline constexpr bool takes_v = []
-{
-    auto data = declaration_t<R>::relies_on;
-    data.stated = property_set::roots();
-    return promises(declaration_of<R>::roles, data);
-}();
+inline constexpr bool takes_v = [] { return promises(declaration_of<R>::roles, about_roles(declaration_t<R>::relies_on)); }();
 
 }  // namespace detail
 
@@ -45,10 +47,6 @@ struct container_traits<R>
     static constexpr bool declared = detail::takes_v<R>;
     static constexpr detail::property_set urd_properties = declared ? detail::declaration_t<R>::provides : detail::property_set::roots();
 };
-
-template<detail::declared_container R>
-    requires(detail::takes_v<R>)
-inline constexpr detail::property_set relies_on<R> = detail::declaration_t<R>::relies_on.stated;
 
 template<detail::declared_container R>
 struct container_costs<R> : detail::declaration_t<R>::operation_costs

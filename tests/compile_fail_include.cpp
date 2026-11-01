@@ -53,7 +53,7 @@ struct Note
 #if URD_CASE == 12
 // The header included after a Store was instantiated: the check fired already, and the error names the header all
 // the same (the marker is read once per file, so a container's header goes before the first Store that needs it).
-inline auto early = urd::Store<urd::key<int>>();
+inline auto early = urd::Store<urd::set<int>>();
 #include <urd/repr/values/unordered_flat_set.hpp>
 #endif
 
@@ -63,57 +63,57 @@ inline auto early = urd::Store<urd::key<int>>();
 int main()
 {
 #if URD_HOLDS(1)  // the arena interner, without urd/repr/records/arena.hpp
-    auto notes = urd::Store<urd::value<Note>, urd::handles, urd::unique, urd::flat>();
+    auto notes = urd::Store<urd::pool<Note>, urd::flat>(urd::layer { 0 });
     (void) notes.size();
 #endif
 #if URD_HOLDS(2)  // the bitset, without urd/repr/values/dense_set.hpp
-    auto bits = urd::Store<urd::key<int>, urd::dense>();
+    auto bits = urd::Store<urd::set<int>, urd::dense>();
     (void) bits.size();
 #endif
 #if URD_HOLDS(3)  // Boost's flat hash set, declared through Boost's forward header, without its definition
-    auto keys = urd::Store<urd::key<int>>();
+    auto keys = urd::Store<urd::set<int>>();
     (void) keys.size();
 #endif
 #if URD_HOLDS(4)  // Boost's flat set likewise
-    auto sorted = urd::Store<urd::key<int>, urd::sorted, urd::contiguous>();
+    auto sorted = urd::Store<urd::set<int>, urd::sorted, urd::contiguous>();
     (void) sorted.size();
 #endif
 #if URD_HOLDS(5)  // gtl's sharded table
-    auto shared = urd::Store<urd::key<int>, urd::concurrent>();
+    auto shared = urd::Store<urd::set<int>, urd::concurrent>();
     (void) shared.size();
 #endif
 #if URD_HOLDS(6)  // the queue
-    auto fifo = urd::Store<urd::value<int>, urd::fifo>();
+    auto fifo = urd::Store<urd::queue<int>, urd::fifo>();
     (void) fifo.size();
 #endif
 #if URD_HOLDS(7)  // the row interner (its rows are vectors, always declared)
-    using Row = urd::Store<urd::value<int>, urd::frozen>;
-    auto rows = urd::Store<urd::value<Row>, urd::handles, urd::unique>();
+    using Row = urd::Store<urd::sequence<int>, urd::frozen>;
+    auto rows = urd::Store<urd::pool<Row>>();
     (void) rows;
 #endif
 #if URD_HOLDS(8)  // a layered map missing its part's header and its own: one error names both, the part first
-    auto layered = urd::Store<urd::key<int>, urd::value<int>, urd::layered>();
+    auto layered = urd::Store<urd::map<int, int>, urd::layered>();
     (void) layered.size();
 #endif
 #if URD_HOLDS(9)  // a layered map whose part is included: only the wrapper's header is named
-    auto layered_only = urd::Store<urd::key<int>, urd::value<int>, urd::layered>();
+    auto layered_only = urd::Store<urd::map<int, int>, urd::layered>();
     (void) layered_only.size();
 #endif
 #if URD_HOLDS(10)  // a scoped map: the wrapper's header
-    auto scoped = urd::Store<urd::key<int>, urd::value<int>, urd::scoped>();
+    auto scoped = urd::Store<urd::map<int, int>, urd::scoped>();
     (void) scoped.size();
 #endif
 #if URD_HOLDS(11)  // a dense map of hash sets: the inner Store's header is needed where the outer is held
-    using Inner = urd::Store<urd::key<int>>;
-    auto nested = urd::Store<urd::key<int>, urd::value<Inner>, urd::dense>();
+    using Inner = urd::Store<urd::set<int>>;
+    auto nested = urd::Store<urd::map<int, Inner>, urd::dense>();
     (void) nested.size();
 #endif
 #if URD_CASE == 12
     (void) early.size();
 #endif
 #if URD_HOLDS(13)  // two Stores, one container's header included: only the other's is named
-    auto included_bits = urd::Store<urd::key<int>, urd::dense>();
-    auto missing_keys = urd::Store<urd::key<int>>();
+    auto included_bits = urd::Store<urd::set<int>, urd::dense>();
+    auto missing_keys = urd::Store<urd::set<int>>();
     (void) included_bits.size();
     (void) missing_keys.size();
 #endif

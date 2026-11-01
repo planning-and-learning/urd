@@ -20,7 +20,7 @@
 #ifndef URD_SEMANTICS_LESS_HPP_
 #define URD_SEMANTICS_LESS_HPP_
 
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
 
 #include <algorithm>
 #include <array>
@@ -50,18 +50,15 @@ constexpr bool less_range(LhsRange&& lhs, RhsRange&& rhs);
 /// Forwards to std::less by default.
 /// Specializations can be injected into the namespace.
 /// Every specialization must define a total order whose equivalence agrees
-/// with `EqualTo`. A Store's order is given by its request (store.hpp), never found here: asking whether a Store
-/// has < would complete it.
+/// with `EqualTo`.
 template<typename T = void>
 struct Less
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::less<T> {}(lhs, rhs)))
-        requires(!is_store<T>) && requires {
+        requires requires {
             { lhs < rhs } -> std::convertible_to<bool>;
         }
-    {
-        return std::less<T> {}(lhs, rhs);
-    }
+    { return std::less<T> {}(lhs, rhs); }
 };
 
 template<>
@@ -72,9 +69,7 @@ struct Less<void>
     template<typename T, typename U>
         requires LessFor<Less<std::remove_cvref_t<T>>, T, U>
     constexpr bool operator()(const T& lhs, const U& rhs) const noexcept(noexcept(Less<std::remove_cvref_t<T>> {}(lhs, rhs)))
-    {
-        return Less<std::remove_cvref_t<T>> {}(lhs, rhs);
-    }
+    { return Less<std::remove_cvref_t<T>> {}(lhs, rhs); }
 };
 
 template<std::floating_point T>
@@ -97,9 +92,7 @@ struct Less<std::tuple<Ts...>>
 {
     constexpr bool operator()(const std::tuple<Ts...>& lhs, const std::tuple<Ts...>& rhs) const
         requires(OrderedByLess<Ts> && ...)
-    {
-        return less_impl<0>(lhs, rhs);
-    }
+    { return less_impl<0>(lhs, rhs); }
 
 private:
     template<size_t I>
@@ -129,9 +122,7 @@ struct Less<std::array<T, N>>
 {
     constexpr bool operator()(const std::array<T, N>& lhs, const std::array<T, N>& rhs) const
         requires OrderedByLess<T>
-    {
-        return less_range(lhs, rhs);
-    }
+    { return less_range(lhs, rhs); }
 };
 
 template<typename T, typename Allocator>
@@ -139,9 +130,7 @@ struct Less<std::vector<T, Allocator>>
 {
     constexpr bool operator()(const std::vector<T, Allocator>& lhs, const std::vector<T, Allocator>& rhs) const
         requires OrderedByLess<T>
-    {
-        return less_range(lhs, rhs);
-    }
+    { return less_range(lhs, rhs); }
 };
 
 template<typename Key, typename Compare, typename Allocator>
@@ -149,9 +138,7 @@ struct Less<std::set<Key, Compare, Allocator>>
 {
     bool operator()(const std::set<Key, Compare, Allocator>& lhs, const std::set<Key, Compare, Allocator>& rhs) const
         requires OrderedByLess<Key>
-    {
-        return less_range(lhs, rhs);
-    }
+    { return less_range(lhs, rhs); }
 };
 
 template<typename Key, typename T, typename Compare, typename Allocator>
@@ -159,9 +146,7 @@ struct Less<std::map<Key, T, Compare, Allocator>>
 {
     bool operator()(const std::map<Key, T, Compare, Allocator>& lhs, const std::map<Key, T, Compare, Allocator>& rhs) const
         requires OrderedByLess<Key> && OrderedByLess<T>
-    {
-        return less_range(lhs, rhs);
-    }
+    { return less_range(lhs, rhs); }
 };
 
 template<typename T1, typename T2>
@@ -186,9 +171,7 @@ struct Less<std::reference_wrapper<T>>
     constexpr bool operator()(const std::reference_wrapper<T>& lhs, const std::reference_wrapper<T>& rhs) const
         noexcept(noexcept(Less<std::remove_cvref_t<T>> {}(lhs.get(), rhs.get())))
         requires OrderedByLess<T>
-    {
-        return Less<std::remove_cvref_t<T>> {}(lhs.get(), rhs.get());
-    }
+    { return Less<std::remove_cvref_t<T>> {}(lhs.get(), rhs.get()); }
 };
 
 template<typename T>
@@ -230,9 +213,7 @@ struct Less<std::span<T, Extent>>
 {
     constexpr bool operator()(const std::span<T, Extent>& lhs, const std::span<T, Extent>& rhs) const
         requires OrderedByLess<T>
-    {
-        return less_range(lhs, rhs);
-    }
+    { return less_range(lhs, rhs); }
 };
 
 namespace detail
@@ -276,30 +257,22 @@ struct Less<T>
 
     constexpr bool operator()(const T& lhs, const T& rhs) const
         requires OrderedByLess<IdentifyingMembers<T>>
-    {
-        return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(lhs.identifying_members(), rhs.identifying_members());
-    }
+    { return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(lhs.identifying_members(), rhs.identifying_members()); }
 
     template<SameAsIgnoringCvref<IdentifyingMembers<T>> U>
     constexpr bool operator()(const T& a, const U& v) const
         requires OrderedByLess<IdentifyingMembers<T>>
-    {
-        return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(a.identifying_members(), v);
-    }
+    { return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(a.identifying_members(), v); }
 
     template<SameAsIgnoringCvref<IdentifyingMembers<T>> U>
     constexpr bool operator()(const U& v, const T& b) const
         requires OrderedByLess<IdentifyingMembers<T>>
-    {
-        return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(v, b.identifying_members());
-    }
+    { return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(v, b.identifying_members()); }
 
     template<SameAsIgnoringCvref<IdentifyingMembers<T>> U, SameAsIgnoringCvref<IdentifyingMembers<T>> V>
     constexpr bool operator()(const U& u, const V& v) const
         requires OrderedByLess<IdentifyingMembers<T>>
-    {
-        return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(u, v);
-    }
+    { return Less<std::remove_cvref_t<IdentifyingMembers<T>>> {}(u, v); }
 };
 
 /// @brief Strong three-way comparison using urd's semantic ordering.
@@ -352,9 +325,7 @@ struct LessEqual
     template<typename U = T, typename V = T>
         requires LessFor<Less<T>, V, U>
     constexpr bool operator()(const U& lhs, const V& rhs) const noexcept(noexcept(Less<T> {}(rhs, lhs)))
-    {
-        return !Less<T> {}(rhs, lhs);
-    }
+    { return !Less<T> {}(rhs, lhs); }
 };
 
 /// @brief `Greater` is our custom greater-than comparator, like std::greater.
@@ -368,9 +339,7 @@ struct Greater
     template<typename U = T, typename V = T>
         requires LessFor<Less<T>, V, U>
     constexpr bool operator()(const U& lhs, const V& rhs) const noexcept(noexcept(Less<T> {}(rhs, lhs)))
-    {
-        return Less<T> {}(rhs, lhs);
-    }
+    { return Less<T> {}(rhs, lhs); }
 };
 
 /// @brief `GreaterEqual` is our custom greater-equal comparator, like
@@ -385,9 +354,7 @@ struct GreaterEqual
     template<typename U = T, typename V = T>
         requires LessFor<Less<T>, U, V>
     constexpr bool operator()(const U& lhs, const V& rhs) const noexcept(noexcept(Less<T> {}(lhs, rhs)))
-    {
-        return !Less<T> {}(lhs, rhs);
-    }
+    { return !Less<T> {}(lhs, rhs); }
 };
 
 template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>

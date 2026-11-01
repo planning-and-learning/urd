@@ -4,9 +4,35 @@ Extending urd
 .. cpp:namespace:: urd
 
 urd's vocabulary is open. A container, a category, a type trait, a role, an operation, a facet and a kind are each a
-declaration of its own; none is a number in a shared list, and adding one edits no file of urd. Each is identified by
-itself (the address of its words), so a library can add its own beside urd's.
-``tests/store/outside_kind.cpp`` adds a kind with all of them and resolves a Store to it; it is the example below.
+declaration of its own, identified by itself (the address of its words, or its type), so a library can add its own
+beside urd's. Adding one is its own file, plus its entry in the one list it belongs to:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Addition
+     - Its entry
+   * - A container
+     - ``declarations_of<Kind>`` (``include/urd/registry/declarations.hpp``: its place is its preference) and the
+       include of its ``*_fwd.hpp`` there
+   * - A kind
+     - ``urd::kinds`` (``include/urd/kinds.hpp``) and its ``declarations_of<Kind>``
+   * - A tag answer, or a category
+     - its ``tags_of`` list (``include/urd/tags.hpp``); a category also in the formats of the kinds that ask it
+   * - A type trait
+     - its role's ``traits_of_role`` list
+   * - A role
+     - ``urd::roles`` (``include/urd/registry/facts.hpp``), and the ``played`` of the kinds whose types play it
+   * - An operation
+     - the ``facet_operations`` of the facet that offers it
+   * - A facet
+     - the ``facets`` of the kinds that offer it; for now also its declaration in ``include/urd/kinds.hpp`` and its
+       include in ``include/urd/store.hpp``
+
+What a tag means for a Store is the tag's own data (``urd::tag_defaults``: what it implies, keeps, promises, puts
+later, stops or fixes), a trait's meaning is its ``holds``, a facet's is its condition (``facet_defaults``), and the
+tables, tests and docs derive their lists from these registries. ``tests/store/outside_kind.cpp`` adds a kind with a
+category, a facet, operations and a container, and resolves a Store to it; it is the example below.
 
 A container
 -----------
@@ -21,27 +47,25 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
        static constexpr auto headers = urd::detail::header_list<1> { "my/my_set.hpp" };  // where it is defined
        using kind = urd::set_kind;                                                       // the kind it serves
        static constexpr urd::detail::property_set provides = urd::detail::property_set::of({ urd::order::sorted, urd::uniqueness::unique });
-       static constexpr urd::detail::role_tags relies_on =                               // what a request must promise
+       static constexpr urd::detail::property_set relies_on =                            // what a request must promise
            urd::detail::relies(urd::detail::traits<urd::role::order, urd::trait::natural_ordered>());
        static constexpr std::array<urd::tag, 0> gives_elements {};                       // what Stores held in it get
-       struct operation_costs                                                            // by operation, see costs.hpp
-       {
-           static constexpr urd::cost insert = urd::costs::log_n;
-           static constexpr urd::cost lookup = urd::costs::log_n;
-           static constexpr double words = 3;
-       };
+       using operation_costs = urd::cost_table<urd::cost_entry<urd::operation::insert, urd::costs::log_n>,  // see costs.hpp
+                                               urd::cost_entry<urd::operation::lookup, urd::costs::log_n>>;
+       static constexpr double words = 3;                                                // memory per element
        static constexpr std::string_view description = "my set", holds = "a node per element";
    };
 
 - ``representation_of<my_set_decl, S>::type`` names its type for a request's spec ``S``, in the container's own
   header, which also defines the marker ``urd::include<"my/my_set.hpp">``.
-- ``declaration_of<MySet<T>>`` names the declaration of a type, with the roles its template arguments give
-  (``element_roles<T>()``).
+- ``declaration_of<MySet<T>>`` names the declaration of a type, with the roles its template arguments give, as the
+  kind it serves has them (``roles_of<urd::set<T>, C>()``).
 - ``declarations_of<Kind>`` lists a kind's containers in order of preference; a container added to an existing kind
   is placed there.
 
-``container_traits``, costs and synopses are derived from the declaration. The registry chooses the first container
-of the request's kind that provides what the request requires and relies on nothing the request does not promise.
+``container_traits``, costs and synopses are derived from the declaration; a container is declared, or urd knows nothing
+of it. The registry chooses the first container of the request's kind that provides what the request requires and
+relies on nothing the request does not promise.
 
 A category
 ----------
@@ -61,46 +85,72 @@ none type or a tag change how the category is matched (``include/urd/property_se
 A type trait, a role
 --------------------
 
-A type trait is what a type *is*, derived, never stated: a struct with a ``name`` and a ``description``
-(``urd::trait::can_hash``, ``include/urd/registry/facts.hpp``). A role is what of a Store's data a request promises
-about and a container relies on (``urd::role::element``, ``order``, ``mapped``, ``row``, ``rows``, ``row_element``),
-a struct of the same shape. A container relies on traits and tags by role; a kind lists its roles.
+A fact is a tag about a role: a category, its answer, and whose it is. Without a role it is about the Store itself (what
+a request states, what a container provides); with one, about part of its data: ``urd::role::element``, ``order``,
+``mapped``, ``row``, ``rows``, ``row_element``, each a struct with a ``name`` and a ``description``
+(``include/urd/registry/facts.hpp``). A type trait is a category answered by the type rather than stated
+(``urd::trait::can_hash``): a struct with its words and what it means, whose category urd makes from it:
+
+.. code-block:: cpp
+
+   struct can_hash
+   {
+       static constexpr std::string_view name = "can_hash", description = "urd::Hash and urd::EqualTo hash and compare it";
+       template<typename T> static consteval bool holds() { return urd::hashable<T>; }
+   };
+   template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash /*, … */>; };
+
+A role lists its traits once, where they are defined (``traits_of_role``); urd evaluates each for the role's type
+(``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. The element and order traits are in
+``include/urd/type_traits_of.hpp``, the traits of rows beside the row containers that rely on them
+(``include/urd/repr/sequences/rows_fwd.hpp``). A request's facts and a
+container's reliance are one set of them (``property_set``); a container relies on
+``relies(stated({ change::monotone }), traits<role::element, trait::can_hash>())``, and a request holding those facts
+promises it.
 
 An operation and a facet
 ------------------------
 
-An operation is a struct with its words, the member of a container's ``operation_costs`` named for it (``in``), and
-whether a wrapper's costs pass it on from its part's (``passed_on``): ``urd::operation::insert`` in
-``include/urd/costs.hpp``. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
+An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/costs.hpp``); a container
+states its cost by an entry for it in its ``operation_costs``, a ``cost_table`` (a wrapper's, ``costs_over`` its part's
+declaration, passes on every operation it has no entry for). ``tests/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
 ``facet_condition<F>`` (when a Store has it) and ``facet_operations<F>`` (the operations it offers), as in
 ``include/urd/store/*.hpp``.
 
 A kind
 ------
 
-A kind is a node of the tree in ``include/urd/kinds.hpp``:
+A kind is a struct deriving from ``urd::detail::any_kind``, which says what every Store is, and stating what differs;
+a request names it as a template over its element types:
 
 .. code-block:: cpp
 
-   struct tally_kind
+   struct tally_kind : urd::detail::any_kind
    {
        static constexpr std::string_view name = "tally";
-       using format = urd::detail::request_format<tallying, urd::threading>;  // the questions its requests answer
-       using roles = urd::detail::role_list<>;                                // what its containers rely on
-       template<typename K, typename V> using element_type = V;
-       template<typename K, typename V> using mapped_type = void;
-       static constexpr bool iterable = false;
-       using facets = urd::detail::facet_list<counting>;                     // its Store's interface
-       static constexpr bool keeps_by_value = false;
-       static constexpr bool positional = false;
-       static constexpr bool claims(const urd::detail::property_set& stated, bool keyed, bool valued) { return stated.has(tallying::tallied); }
-       static constexpr urd::detail::property_set meaning(urd::detail::property_set stated) { return stated; }
+       using format = urd::detail::request_format<tallying>;  // its questions, before every kind's
+       using facets = urd::detail::facet_list<counting>;      // its Store's interface, after every kind's
+       static constexpr urd::detail::property_set meaning(urd::detail::property_set stated)
+       { return any_kind::meaning(stated.put(tallying::tallied)); }  // what a request of it means
    };
-   template<> struct urd::extra_kinds<void> { using type = urd::detail::type_list<tally_kind>; };
+   template<typename T>
+   struct tally : urd::detail::values_of<tally_kind, T> {};  // what a request names: its kind with its element types
 
-Kinds added by ``extra_kinds`` are tried before urd's own; specialize it before the first Store is named. A kind with
-``children`` (a list of kinds) instead of a format and facets splits further, as the queue does into arrival and
-priority: a request's kind is the leaf it reaches.
+``any_kind`` gives the questions and facets every kind has (joined with a kind's own by ``format_of`` and
+``facets_of``), and what a kind is unless it says otherwise: ``meaning`` (what a request means beyond what it states:
+frozen implies stable references), ``asks`` and ``promises`` (what it asks of its container and promises it),
+``prefers`` (which containers come after the others), ``well_formed`` (when a request contradicts itself),
+``accepts_order_by``, ``changes_in_place`` (whether rows of it change in place) and ``builds_from`` (what it is built
+from besides elements). A kind has no flags: what holds of its Store is a tag its meaning adds (a sequence's elements
+are ``positional``) or a facet it lists (iteration).
+
+The template gives the kind's element types: ``element_types`` (for spelling and headers), what it holds and finds
+(``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), and which of its types
+plays which role (``played<Order>``: ``plays<role::element, K>``, ``plays<role::order, K, Order>``, its rows, …). urd
+folds a kind's roles into facts the same way for a request and for a container's declaration (``roles_of``); a role
+whose facts are not its traits says how they are computed (``role_facts``). ``urd::detail::values_of<Kind, V>``
+and ``keys_of<Kind, K>`` give them for a kind of values or of keys; ``urd::map<K, V>`` writes its own.
+``urd::Store<tally<std::string>>`` is a tally of strings. Nothing registers the kind: naming it is enough.
 
 urd-search reads the same declarations: a kind, container, trait or operation added this way appears in its
 registry tree and evidence once it is built with them.

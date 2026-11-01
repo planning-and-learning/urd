@@ -6,11 +6,11 @@ Sets
 .. code-block:: cpp
 
    template<typename K, typename... Properties>
-   using Set = Store<key<K>, Properties...>;        // written out as Store<key<K>, ...> in code
+   using Set = Store<set<K>, Properties...>;        // written out as Store<set<K>, ...> in code
 
 .. cpp:class:: Set
 
-   A set: ``Store<key<K>, Properties...>``. The name ``Set`` stands for the resolved Store type on this page.
+   A set: ``Store<set<K>, Properties...>``. The name ``Set`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Set
 
@@ -23,31 +23,31 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
 
    * - Request
      - Representation
-   * - ``Store<key<K>>``
+   * - ``Store<set<K>>``
      - ``boost::unordered_flat_set`` (open addressing)
-   * - ``Store<key<K>, sorted>``
+   * - ``Store<set<K>, sorted>``
      - ``std::set``
-   * - ``Store<key<K>, sorted, frozen>``
+   * - ``Store<set<K>, sorted, frozen>``
      - ``boost::container::flat_set`` (a sorted vector)
-   * - ``Store<key<K>, stable_refs>``
+   * - ``Store<set<K>, stable_refs>``
      - ``std::unordered_set``
-   * - ``Store<key<K>, stable_refs, retains>``
+   * - ``Store<set<K>, stable_refs, retains>``
      - ``RecyclingSet`` over ``std::unordered_set`` (over ``std::set`` with ``sorted``): erased nodes are kept for the
        next elements
-   * - ``Store<key<I>, dense>``
+   * - ``Store<set<I>, dense>``
      - ``DenseSet`` (a bitset), with ``proportional_clear`` one that clears only the words it set
-   * - ``Store<key<I>, dense, constant_clear>``
+   * - ``Store<set<I>, dense, constant_clear>``
      - ``SparseSet`` (Briggs–Torczon)
-   * - ``Store<key<K>, insertion_ordered>``, ``positional``
+   * - ``Store<set<K>, insertion_ordered>``, ``positional``
      - ``IndexedSet`` (a vector plus a hash table of positions); with ``monotone``, an interner
-   * - ``Store<key<K>, positional, monotone, stable_refs>``
+   * - ``Store<set<K>, positional, monotone, stable_refs>``
      - ``StableIndexedSet``: the elements in segments that never move, no lock
-   * - ``Store<key<K>, concurrent>``
+   * - ``Store<set<K>, concurrent>``
      - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); with ``stable_refs``, ``parallel_node_hash_set``
        (a node per element); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
-   * - ``Store<key<K>, layered>``
+   * - ``Store<set<K>, layered>``
      - ``Layered`` over a flat hash set; over a node set with ``stable_refs``
-   * - ``Store<key<K>, change_log>``
+   * - ``Store<set<K>, change_log>``
      - ``ChangeLogged`` over a flat hash set; over a tracked bitset with ``dense``, a tree with ``sorted``, a node
        set with ``stable_refs``
 
@@ -92,6 +92,13 @@ Construction and assignment
 .. cpp:function:: Set(std::initializer_list<value_type> elements)
 
    From any elements, each kept once. With ``nonempty``, asserts one.
+
+.. cpp:function:: explicit Set(layer number)
+.. cpp:function:: template<std::input_iterator InputIt> Set(layer number, InputIt first, InputIt last)
+.. cpp:function:: Set(layer number, std::initializer_list<value_type> elements)
+
+   The same, numbered (:cpp:struct:`urd::layer`): a set that hands out positions (``positional``,
+   ``insertion_ordered``) is built only so, and its views are identified by index and number.
 
 .. cpp:function:: template<std::input_iterator InputIt> void assign(InputIt first, InputIt last)
 
@@ -204,9 +211,13 @@ Every insertion-ordered set is kept in one array, so it has positions whether th
    The same, through :cpp:struct:`index\<K\> <urd::index>`: what an interner mints. ``at`` throws ``std::out_of_range`` for
    ``none`` or a position past the end.
 
-.. cpp:function:: auto view(index_type at) const
+.. cpp:function:: view<K, Store> view(index_type at) const
 
-   A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/view.hpp`` included).
+   A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/elements/view.hpp`` included).
+
+.. cpp:function:: std::size_t layer() const
+
+   The number it was built with (:cpp:struct:`urd::layer`): a positional set has no constructor without one.
 
 Least and greatest (``sorted``, not ``dense``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -264,12 +275,12 @@ Example
 
 .. code-block:: cpp
 
-   using Seen = Store<key<User>, dense>;                 // a bitset: User 17 is bit 17
+   using Seen = Store<set<User>, dense>;                 // a bitset: User 17 is bit 17
    auto seen = Seen { start };
    if (seen.insert(next).second) frontier.push(next);
 
-   using Names = Store<key<std::string>, positional, monotone>;   // an interner
-   auto names = Names();
+   using Names = Store<set<std::string>, positional, monotone>;   // an interner
+   auto names = Names(urd::layer { 0 });                         // numbered: its views are (index, 0)
    const auto [it, fresh] = names.insert("block");
    const urd::index<std::string> block = names.index(it);         // 0
    names[block];                                                  // "block"

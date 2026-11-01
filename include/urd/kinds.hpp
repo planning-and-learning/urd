@@ -1,10 +1,14 @@
 #pragma once
 
-// The kinds of Store, the top level of the registry tree: each a node that says when a request is of its kind
-// (claims), what a request of its kind means beyond what it states (meaning), and how it keeps its elements. A kind
-// added outside urd is a node like these, listed by specializing urd::extra_kinds; its containers are listed by
-// specializing urd::detail::declarations_of (urd/registry/declarations.hpp). Nothing else names the kinds.
+// The kinds of Store. A kind is a struct: its name, the questions its requests answer (format), its Store's interface
+// (facets), what a request of it means, and its rules. It derives from detail::any_kind, which says what every Store
+// is, and states only what differs; generic code reads the members and makes no choice. A request names its kind as a
+// template over its element types (set<K>, map<K, V>, sequence<V>, …): the kind with its data. A kind added outside urd
+// is a struct and a template like these; its containers are added by specializing urd::detail::declarations_of
+// (urd/registry/declarations.hpp).
 
+#include "urd/detail/type_list.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/property_set.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/tags.hpp"
@@ -12,7 +16,6 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -29,15 +32,18 @@ template<template<typename, typename, typename> class... Facets>
 struct facet_list
 {
 };
-
-/// The roles a kind's containers rely on (urd/registry/facts.hpp, urd::role).
-template<typename... Roles>
-struct role_list
+/// Whether F is among the facets of a list.
+template<template<typename, typename, typename> class F, typename List>
+inline constexpr bool listed_facet = false;
+template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
+inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
+template<template<typename, typename, typename> class... As, template<typename, typename, typename> class... Bs, typename... Rest>
+struct concat<facet_list<As...>, facet_list<Bs...>, Rest...> : concat<facet_list<As..., Bs...>, Rest...>
 {
 };
 
 /// The categories a kind's requests answer (urd/tags.hpp): its request format.
-template<category_enum... Categories>
+template<typename... Categories>
 struct request_format
 {
 };
@@ -49,6 +55,8 @@ template<typename Derived, typename R, typename S>
 class sizing;
 template<typename Derived, typename R, typename S>
 class iteration;
+template<typename Derived, typename R, typename S>
+class visiting;
 template<typename Derived, typename R, typename S>
 class equality;
 template<typename Derived, typename R, typename S>
@@ -68,7 +76,9 @@ class contiguous_data;
 template<typename Derived, typename R, typename S>
 class capacity;
 template<typename Derived, typename R, typename S>
-class growth;
+class insertion;
+template<typename Derived, typename R, typename S>
+class appending;
 template<typename Derived, typename R, typename S>
 class removal;
 template<typename Derived, typename R, typename S>
@@ -103,581 +113,362 @@ template<typename Derived, typename R, typename S>
 class sorted_ends;
 }  // namespace facet
 
-/// The facets of every kind: each where its condition holds.
-template<template<typename, typename, typename> class... Own>
-using with_common_facets = facet_list<facet::sizing,
-                                      facet::equality,
-                                      facet::ordering,
-                                      facet::ordered_lookup,
-                                      facet::contiguous_data,
-                                      facet::capacity,
-                                      facet::scopes,
-                                      facet::layers,
-                                      facet::changes,
-                                      facet::shape,
-                                      Own...>;
+/// Which types play role Role in a Store's data: its element type, or for the order the ordered type and its
+/// comparator.
+template<typename Role, typename... Args>
+struct plays
+{
+    using role = Role;
+};
+template<typename... Plays>
+struct role_types
+{
+};
+
+/// What every Store is, and what a kind is unless it says otherwise. A kind derives from it and restates what
+/// differs: its own questions (asked before the common ones), its own facets (after the common ones), what a request
+/// means, its rules.
+struct any_kind
+{
+    /// The questions every kind's requests answer: how it stores, what it costs, how it is used.
+    using common_format = request_format<referencing,
+                                         layout,
+                                         representation,
+                                         threading,
+                                         memory,
+                                         clearing,
+                                         scoping,
+                                         layering,
+                                         sharing,
+                                         tracking,
+                                         change,
+                                         emptiness,
+                                         position,
+                                         comparison,
+                                         workload>;
+    /// The facets every kind's Store has, each where its condition holds.
+    using common_facets = facet_list<facet::sizing,
+                                     facet::equality,
+                                     facet::ordering,
+                                     facet::ordered_lookup,
+                                     facet::contiguous_data,
+                                     facet::capacity,
+                                     facet::scopes,
+                                     facet::layers,
+                                     facet::changes,
+                                     facet::shape>;
+
+    using format = request_format<>;
+    using facets = facet_list<>;
+
+    /// What a request means beyond what it states: what its tags imply (urd::tag_defaults, implies: frozen means
+    /// stable_refs).
+    static constexpr property_set meaning(property_set stated)
+    {
+        auto result = stated;
+        stated.for_each_listed<&category_table::implies>([&result](tag implied) { result.put(implied); });
+        return result;
+    }
+    /// What it asks of its container: what it means, but for what the Store keeps itself (kept_by_store: a frozen
+    /// Store's references stay put whatever holds it).
+    static constexpr property_set asks(property_set meant)
+    {
+        auto result = meant;
+        meant.for_each_listed<&category_table::kept_by_store>([&result](tag kept) { result.put(tag(kept.in, 0, kept.role)); });
+        return result;
+    }
+    /// What it promises its container: what it means, and what its tags promise where it holds less (promises: a
+    /// Store that stays nonempty never erases, so it only grows).
+    static constexpr property_set promises(property_set meant)
+    {
+        auto result = meant;
+        meant.for_each_listed<&category_table::promises>(
+            [&result](tag promised)
+            {
+                if (!result.has(promised))
+                    result.put(promised);
+            });
+        return result;
+    }
+    /// The page of the docs (docs/kinds/<page>.rst) and tables that describes a Store of it, by what it states.
+    static constexpr std::string_view page(const property_set& /*stated*/) { return {}; }
+    static constexpr bool well_formed(const property_set& /*stated*/) { return true; }
+    static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(order::sorted); }
+    static constexpr bool changes_in_place(const property_set& /*row*/) { return true; }
+    /// What a Store of it is built from besides its elements (spec S): nothing.
+    template<typename S, typename From>
+    static constexpr bool builds_from = false;
+};
 
 }  // namespace detail
-
-// What every kind shares: rules over the tags a request states or a container declares.
-
-/// The tag of a container's threading and of its references, by a flag of its own: concurrent or not, stable or not.
-constexpr tag threads(bool concurrent_) { return concurrent_ ? threading::concurrent : threading::none; }
-constexpr tag references(bool stable) { return stable ? referencing::stable_refs : referencing::none; }
-
-/// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
-/// Contiguous storage is more compact and faster to search and iterate where elements are few or never change, so
-/// stable storage (a node per element, segments that never move) comes last for them (docs/BENCHMARKS.md).
-struct preference
-{
-    tag when = tag {};
-    tag later = tag {};
-};
-inline constexpr std::array preferences { preference { .when = change::frozen, .later = referencing::stable_refs },
-                                          preference { .when = workload::small, .later = referencing::stable_refs } };
-
-/// What a Store held as an element of another gets beyond its own request: its storage given back when it is
-/// destroyed, as erase and clear do.
-inline constexpr std::array<tag, 1> nested_gives { memory::reclaims };
-
-/// What a request asks of its container: what it means, but for what the Store keeps itself: once nothing changes
-/// (frozen), nothing moves, so stable references need nothing of the container.
-template<typename Set>
-constexpr Set asked_of_container(Set stated)
-{
-    if (stated.has(change::frozen))
-        stated.put(referencing::none);
-    return stated;
-}
-
-/// Whether a request means something, whatever container would hold it: a partition groups keys, without values; a
-/// pool (handles) is reached by handle, not by key; monotone_priority is a promise of a priority queue; order_by<P>
-/// orders a sorted Store or a priority queue, and on unique keys breaks ties by the keys' own order, so they must be
-/// orderable. Anything else no container serves fails in the registry.
-template<typename Set>
-constexpr bool well_formed(const Set& stated, bool keyed, bool valued, bool ordered_by, bool orderable)
-{
-    return (!stated.has(grouping::partition) || !valued) && (!stated.has(handling::handles) || !keyed)
-           && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority))
-           && (!ordered_by || stated.has(order::sorted) || stated.has(access::by_priority))
-           && (!ordered_by || !keyed || stated.has(multiplicity::multi) || orderable);
-}
-
-/// What a request promises its container: what it means, and that a Store which must stay nonempty never erases, so
-/// a container that only grows serves it.
-template<typename Set>
-constexpr Set promised_to_container(Set meant)
-{
-    if (meant.has(emptiness::nonempty) && !meant.has(change::monotone))
-        meant.put(change::monotone);
-    return meant;
-}
 
 /// Keys in disjoint classes, reached by merge and find.
-struct partition_kind
+struct partition_kind : detail::any_kind
 {
     static constexpr std::string_view name = "partition";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          sharing,
-                                          grouping,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = K;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = false;
-    using facets = detail::with_common_facets<detail::facet::positions, detail::facet::grouping>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = false;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(grouping::partition); }
-    static constexpr property_set meaning(property_set stated) { return stated; }
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "partitions"; }
+    using format = detail::request_format<order, uniqueness, keys, grouping>;
+    using facets = detail::facet_list<detail::facet::positions, detail::facet::grouping>;
+    /// Its keys fall into classes.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(grouping::partition)); }
 };
 
-namespace detail
-{
-
-/// What both kinds of queue keep alike: values reached by their front or top, never iterated in an order.
-struct queue_leaf
-{
-    /// The roles its containers rely on, beside what a request states.
-    using roles = role_list<role::element, role::order>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = false;
-    using facets = with_common_facets<facet::iteration, facet::positions, facet::queue_access>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = false;
-    static constexpr property_set meaning(property_set stated) { return stated; }
-};
-
-}  // namespace detail
-
-/// Values reached by the order they arrived in: first in first out (fifo), or last in first out (lifo).
-struct arrival_queue_kind : detail::queue_leaf
-{
-    static constexpr std::string_view name = "queue/arrival";
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<uniqueness,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          access,
-                                          scoping,
-                                          layering,
-                                          handling,
-                                          sharing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(access::fifo) || stated.has(access::lifo); }
-};
-
-/// Values reached by their priority: the top is the greatest by the order (order_by<P>, else the values' own).
-struct priority_queue_kind : detail::queue_leaf
-{
-    static constexpr std::string_view name = "queue/priority";
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          access,
-                                          scoping,
-                                          layering,
-                                          handling,
-                                          sharing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload,
-                                          priority>;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
-    { return stated.has(access::by_priority) || stated.has(priority::monotone_priority); }
-};
-
-/// Values reached by their front or top: by arrival or by priority.
-struct queue_kind
+/// Values reached by their front or top: by arrival, first in first out (fifo) or last in first out (lifo), or by
+/// priority (by_priority: the top is the greatest by the order, order_by<C>, else urd::Less). Visited in no order
+/// urd reads.
+struct queue_kind : detail::any_kind
 {
     static constexpr std::string_view name = "queue";
-    static constexpr bool claims(const property_set& stated, bool keyed, bool valued)
-    { return arrival_queue_kind::claims(stated, keyed, valued) || priority_queue_kind::claims(stated, keyed, valued); }
-    using children = detail::type_list<priority_queue_kind, arrival_queue_kind>;
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "queues"; }
+    using format = detail::request_format<order, uniqueness, access, handling, priority>;
+    using facets = detail::facet_list<detail::facet::visiting, detail::facet::positions, detail::facet::queue_access>;
+    /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
+    static constexpr bool well_formed(const property_set& stated)
+    { return stated.get<access>() != access::none && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority)); }
+    /// Its order, by priority.
+    static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(access::by_priority); }
 };
 
 /// Values interned by handle, each distinct one once: rows (a range each, by row) or records and values (one each,
 /// by index; records copied as bytes can be stored flat).
-struct pool_kind
+struct pool_kind : detail::any_kind
 {
     static constexpr std::string_view name = "pool";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::row, role::row_element>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          handling,
-                                          sharing,
-                                          packing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = false;
-    using facets = detail::with_common_facets<detail::facet::positions, detail::facet::records, detail::facet::pool>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = false;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
-    { return stated.has(handling::handles) && stated.has(uniqueness::unique); }
-    static constexpr property_set meaning(property_set stated) { return stated; }
+    /// Records stored flat have a page of their own.
+    static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
+    using format = detail::request_format<order, uniqueness, keys, handling, packing>;
+    using facets = detail::facet_list<detail::facet::positions, detail::facet::records, detail::facet::pool>;
+    /// Each distinct value once, by handle.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles).put(uniqueness::unique)); }
 };
 
 /// Values in slots, by handle.
-struct slots_kind
+struct slots_kind : detail::any_kind
 {
     static constexpr std::string_view name = "slots";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          handling,
-                                          sharing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = false;
-    using facets = detail::with_common_facets<detail::facet::positions, detail::facet::slots>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = false;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(handling::handles); }
-    static constexpr property_set meaning(property_set stated) { return stated; }
+    /// Records stored flat have a page of their own.
+    static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
+    using format = detail::request_format<order, uniqueness, keys, handling>;
+    using facets = detail::facet_list<detail::facet::positions, detail::facet::slots>;
+    /// Its values are reached by handle.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles)); }
 };
 
 /// A value per key, or several (multi): without multi, each key once.
-struct map_kind
+struct map_kind : detail::any_kind
 {
     static constexpr std::string_view name = "map";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order, role::mapped>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          sharing,
-                                          direction,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          multiplicity,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = std::pair<const K, V>;
-    template<typename K, typename V>
-    using mapped_type = V;
-    static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration,
-                                              detail::facet::lookup,
-                                              detail::facet::reverse_iteration,
-                                              detail::facet::positions,
-                                              detail::facet::growth,
-                                              detail::facet::removal,
-                                              detail::facet::values_by_key,
-                                              detail::facet::multi_values,
-                                              detail::facet::entries,
-                                              detail::facet::inverse,
-                                              detail::facet::sorted_ends>;
-    static constexpr bool keeps_by_value = true;
-    static constexpr bool positional = false;
-    static constexpr bool claims(const property_set& /*stated*/, bool keyed, bool valued) { return keyed && valued; }
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "maps"; }
+    using format = detail::request_format<order, uniqueness, keys, direction, multiplicity>;
+    using facets = detail::facet_list<detail::facet::iteration,
+                                      detail::facet::lookup,
+                                      detail::facet::reverse_iteration,
+                                      detail::facet::positions,
+                                      detail::facet::insertion,
+                                      detail::facet::removal,
+                                      detail::facet::values_by_key,
+                                      detail::facet::multi_values,
+                                      detail::facet::entries,
+                                      detail::facet::inverse,
+                                      detail::facet::sorted_ends>;
+    /// Without multi, each key once.
     static constexpr property_set meaning(property_set stated)
     {
         if (!stated.has(multiplicity::multi))
             stated.put(uniqueness::unique);
-        return stated;
+        return any_kind::meaning(stated);
     }
+    static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 
 /// Keys, each once; with positions it numbers its keys as they come (an interner), unless it asks for another order.
-struct set_kind
+struct set_kind : detail::any_kind
 {
     static constexpr std::string_view name = "set";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          sharing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = K;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration,
-                                              detail::facet::lookup,
-                                              detail::facet::reverse_iteration,
-                                              detail::facet::insertion_positions,
-                                              detail::facet::growth,
-                                              detail::facet::removal,
-                                              detail::facet::set_algebra,
-                                              detail::facet::sorted_ends>;
-    static constexpr bool keeps_by_value = true;
-    static constexpr bool positional = false;
-    static constexpr bool claims(const property_set& /*stated*/, bool keyed, bool /*valued*/) { return keyed; }
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sets"; }
+    using format = detail::request_format<order, uniqueness, keys>;
+    using facets = detail::facet_list<detail::facet::iteration,
+                                      detail::facet::lookup,
+                                      detail::facet::reverse_iteration,
+                                      detail::facet::insertion_positions,
+                                      detail::facet::insertion,
+                                      detail::facet::removal,
+                                      detail::facet::set_algebra,
+                                      detail::facet::sorted_ends>;
+    /// Each key once; with positions and no order, numbered as they come.
     static constexpr property_set meaning(property_set stated)
     {
         stated.put(uniqueness::unique);
         if (stated.has(position::positional) && stated.get<order>() == order::none)
             stated.put(order::insertion_ordered);
-        return stated;
+        return any_kind::meaning(stated);
     }
+    /// A set of dense keys is bits, set and cleared in place.
+    static constexpr bool changes_in_place(const property_set& row) { return row.has(uniqueness::unique) && row.has(keys::dense); }
 };
 
 /// Values kept by value, in order, duplicates kept unless unique.
-struct multiset_kind
+struct multiset_kind : detail::any_kind
 {
     static constexpr std::string_view name = "multiset";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          uniqueness,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          sharing,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          multiplicity,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration,
-                                              detail::facet::lookup,
-                                              detail::facet::reverse_iteration,
-                                              detail::facet::positions,
-                                              detail::facet::growth,
-                                              detail::facet::removal>;
-    static constexpr bool keeps_by_value = true;
-    static constexpr bool positional = true;
-    static constexpr bool claims(const property_set& stated, bool /*keyed*/, bool /*valued*/)
-    { return stated.has(order::sorted) || stated.has(uniqueness::unique) || stated.has(multiplicity::multi); }
-    static constexpr property_set meaning(property_set stated) { return stated; }
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
+    using format = detail::request_format<order, uniqueness, keys, multiplicity>;
+    using facets = detail::facet_list<detail::facet::iteration,
+                                      detail::facet::lookup,
+                                      detail::facet::reverse_iteration,
+                                      detail::facet::positions,
+                                      detail::facet::insertion,
+                                      detail::facet::removal>;
+    /// Its elements have positions.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
+    static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 
 /// Values by position.
-struct sequence_kind
+struct sequence_kind : detail::any_kind
 {
     static constexpr std::string_view name = "sequence";
-    /// The roles its containers rely on, beside what a request states.
-    using roles = detail::role_list<role::element, role::order, role::rows>;
-    /// The questions its requests answer (its request format), in the order a spec lists its answers.
-    using format = detail::request_format<order,
-                                          keys,
-                                          referencing,
-                                          layout,
-                                          representation,
-                                          threading,
-                                          memory,
-                                          clearing,
-                                          scoping,
-                                          layering,
-                                          sharing,
-                                          shape,
-                                          tracking,
-                                          change,
-                                          emptiness,
-                                          position,
-                                          workload>;
-    /// What its elements are, and what a key maps to (void: no mapped values), from key<K> and value<V>.
-    template<typename K, typename V>
-    using element_type = V;
-    template<typename K, typename V>
-    using mapped_type = void;
-    static constexpr bool iterable = true;
-    using facets = detail::with_common_facets<detail::facet::iteration,
-                                              detail::facet::lookup,
-                                              detail::facet::reverse_iteration,
-                                              detail::facet::positions,
-                                              detail::facet::growth,
-                                              detail::facet::removal>;
-    static constexpr bool keeps_by_value = false;
-    static constexpr bool positional = true;
-    static constexpr bool claims(const property_set& /*stated*/, bool /*keyed*/, bool /*valued*/) { return true; }
-    static constexpr property_set meaning(property_set stated) { return stated; }
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
+    using format = detail::request_format<order, keys, shape>;
+    using facets = detail::
+        facet_list<detail::facet::iteration, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
+    /// Its elements have positions.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
+    /// Rows of a fixed shape are built from their lengths (urd::row_lengths), or for rows of rows, each row's shape.
+    template<typename S, typename From>
+    static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
 };
 
-/// Kinds added outside urd, tried before urd's own: specialize extra_kinds<void> with `using type =
-/// detail::type_list<my_kind, …>;` before the first Store is named.
-template<typename = void>
-struct extra_kinds
-{
-    using type = detail::type_list<>;
-};
-
-/// The kinds at the top of the tree, in the order they claim a request: the first that claims it is its kind (a
-/// priority queue with handles is a queue). The last claims every request.
-/// A template, so that kinds added outside urd are read where a request is resolved, not here.
-template<typename Unused = void>
-using kinds =
-    typename detail::join<typename extra_kinds<Unused>::type,
-                          detail::type_list<partition_kind, queue_kind, pool_kind, slots_kind, map_kind, set_kind, multiset_kind, sequence_kind>>::type;
+/// urd's kinds: what its tables list.
+using kinds = detail::type_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind>;
 
 namespace detail
 {
 
-template<typename... Kinds>
-constexpr std::size_t claiming(type_list<Kinds...> /*kinds*/, property_set stated, bool keyed, bool valued)
+/// A kind Kind with values of type V as its data (a sequence, multiset, queue, pool, slots): what a request names.
+template<typename Kind, typename V>
+struct values_of : Kind
 {
-    std::size_t at = 0;
-    const bool found = ((Kinds::claims(stated, keyed, valued) || (++at, false)) || ...);
-    return found ? at : sizeof...(Kinds);
-}
-template<std::size_t I, typename List>
-struct kind_at;
-template<std::size_t I, typename... Kinds>
-struct kind_at<I, type_list<Kinds...>>
-{
-    using type = std::tuple_element_t<I, std::tuple<Kinds...>>;
+    using kind = Kind;
+    using element_types = type_list<V>;
+    using value_type = V;
+    using element_type = V;
+    /// What may be a Store (a row).
+    using held_type = V;
+    /// What find takes, where the kind has lookup.
+    using lookup_type = V;
+    /// What its order compares.
+    using ordered_type = V;
+    /// Which of its types plays which role, ordered by Order: its values are its elements and its rows.
+    template<typename Order>
+    using played = role_types<plays<role::element, V>, plays<role::order, V, Order>, plays<role::row, V>, plays<role::rows, V>, plays<role::row_element, V>>;
 };
 
-/// The node claiming a request among List, and below it, the child claiming it, down to a leaf. Structs and
-/// std::conditional_t, not aliases over the call or partial specializations over the request: GCC 13 fails on those
-/// internally.
-template<typename List, property_set Stated, bool Keyed, bool Valued>
-struct claimed;
-template<typename Node, property_set Stated, bool Keyed, bool Valued>
-struct claimed_below
+/// A kind Kind with keys of type K as its data (a set, a partition).
+template<typename Kind, typename K>
+struct keys_of : Kind
 {
-    using type = typename claimed<typename Node::children, Stated, Keyed, Valued>::type;
+    using kind = Kind;
+    using element_types = type_list<K>;
+    using key_type = K;
+    using element_type = K;
+    using held_type = K;
+    using lookup_type = K;
+    using ordered_type = K;
+    /// Which of its types plays which role, ordered by Order: its keys are its elements and its rows.
+    template<typename Order>
+    using played = role_types<plays<role::element, K>, plays<role::order, K, Order>, plays<role::row, K>, plays<role::rows, K>, plays<role::row_element, K>>;
 };
-template<typename List, property_set Stated, bool Keyed, bool Valued>
-struct claimed
-{
-    static constexpr std::size_t at = claiming(List {}, Stated, Keyed, Valued);
-    using node = typename kind_at<at, List>::type;
-    using type = typename std::conditional_t<requires { typename node::children; }, claimed_below<node, Stated, Keyed, Valued>, std::type_identity<node>>::type;
-};
-
-/// The leaves below a list of nodes, in order.
-template<typename List>
-struct leaves_of;
-template<typename Node>
-struct leaves_below
-{
-    using type = type_list<Node>;
-};
-template<typename Node>
-    requires requires { typename Node::children; }
-struct leaves_below<Node>
-{
-    using type = typename leaves_of<typename Node::children>::type;
-};
-template<typename... Nodes>
-struct leaves_of<type_list<Nodes...>>
-{
-    using type = typename join<typename leaves_below<Nodes>::type...>::type;
-};
-
-/// The kinds at the top, named where a request is resolved (dependent on it, so not before).
-template<bool Any>
-struct root_kinds
-{
-    using type = kinds<std::conditional_t<Any, void, void>>;  // void, but dependent: read when a request is resolved
-};
-
-/// Whether Node is Parent or below it.
-template<typename Node, typename Parent>
-inline constexpr bool below = std::is_same_v<Node, Parent>;
-template<typename Node, typename Parent>
-    requires requires { typename Parent::children; }
-inline constexpr bool below<Node, Parent> = std::is_same_v<Node, Parent> || []<typename... Children>(type_list<Children...> /*children*/)
-{ return (below<Node, Children> || ...); }(typename Parent::children {});
 
 }  // namespace detail
 
-/// The kind of a request: the first kind that claims it, from the tags it states and its shape (key<K>, value<V>),
-/// and below it the first child that claims it, down to a leaf: a kind with containers, a format and facets.
-template<property_set Stated, bool Keyed, bool Valued>
-using kind_of = typename detail::claimed<typename detail::root_kinds<Keyed>::type, Stated, Keyed, Valued>::type;
+// What a request names first: its kind, with its element types.
 
-/// The leaves of the tree of kinds: what a Store's kind can be.
-template<typename Unused = void>
-using leaf_kinds = typename detail::leaves_of<kinds<Unused>>::type;
-
-/// Whether Kind is Node or a kind below it (a priority queue is a queue).
-template<typename Kind, typename Node>
-concept kind_below = detail::below<Kind, Node>;
-
-/// What the tags a request states imply, whatever its kind: once nothing changes (frozen), nothing moves.
-constexpr property_set implied(property_set stated)
+/// Keys of type K, each once.
+template<typename K>
+struct set : detail::keys_of<set_kind, K>
 {
-    if (stated.has(change::frozen))
-        stated.put(referencing::stable_refs);
-    return stated;
-}
+};
+/// A value of type V per key of type K.
+template<typename K, typename V>
+struct map : map_kind
+{
+    using kind = map_kind;
+    using element_types = detail::type_list<K, V>;
+    using key_type = K;
+    using mapped_type = V;
+    using element_type = std::pair<const K, V>;
+    using held_type = V;
+    using lookup_type = K;
+    using ordered_type = K;
+    /// Which of its types plays which role, ordered by Order: its keys are its elements and are ordered, its values
+    /// are mapped and are its rows.
+    template<typename Order>
+    using played = detail::role_types<detail::plays<role::element, K>,
+                                      detail::plays<role::mapped, V>,
+                                      detail::plays<role::order, K, Order>,
+                                      detail::plays<role::row, V>,
+                                      detail::plays<role::rows, V>,
+                                      detail::plays<role::row_element, V>>;
+};
+/// Values of type V kept by value, in order.
+template<typename V>
+struct multiset : detail::values_of<multiset_kind, V>
+{
+};
+/// Values of type V by position.
+template<typename V>
+struct sequence : detail::values_of<sequence_kind, V>
+{
+};
+/// Values of type V reached by their front or top.
+template<typename V>
+struct queue : detail::values_of<queue_kind, V>
+{
+};
+/// Values of type V interned by handle, each distinct one once.
+template<typename V>
+struct pool : detail::values_of<pool_kind, V>
+{
+};
+/// Values of type V in slots, by handle.
+template<typename V>
+struct slots : detail::values_of<slots_kind, V>
+{
+};
+/// Keys of type K in disjoint classes.
+template<typename K>
+struct partition : detail::keys_of<partition_kind, K>
+{
+};
+
+namespace detail
+{
+
+/// The questions a request of Kind answers (its own, then every kind's), and its Store's facets (every kind's, then
+/// its own).
+template<typename Kind>
+using format_of = typename concat<typename Kind::format, typename any_kind::common_format>::type;
+template<typename Kind>
+using facets_of = typename concat<typename any_kind::common_facets, typename Kind::facets>::type;
+
+/// Whether a Store of Kind keeps its elements where they are put (it lists appending, as a sequence does), rather than
+/// placing them by their value or key.
+template<typename Kind>
+inline constexpr bool appends = listed_facet<facet::appending, facets_of<Kind>>;
+
+}  // namespace detail
+
+/// Whether a request of kind Kind contradicts itself, whatever container would hold it: by its kind's rule, and
+/// order_by<C> where its kind orders by nothing it asks for. Anything else no container serves fails in the registry.
+template<typename Kind>
+constexpr bool well_formed(const property_set& stated)
+{ return Kind::well_formed(stated) && (!stated.has(comparison::given) || Kind::accepts_order_by(stated)); }
 
 /// What a request of kind Kind means beyond what it states: what its kind keeps (a set keeps each key once; a map
-/// without multi too), and what its tags imply.
+/// without multi too; a sequence's elements have positions), and what its tags imply.
 template<typename Kind>
 constexpr property_set meaning(property_set stated)
-{ return implied(Kind::meaning(stated)); }
+{ return Kind::meaning(stated); }
 
 }  // namespace urd

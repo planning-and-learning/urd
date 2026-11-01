@@ -10,7 +10,7 @@
 // and calls register_experiments() from the function the generated main calls. So each translation unit instantiates
 // the Stores of one container only, for at most a few of its experiments (a container measured on many element types
 // is several objects), and adding a container adds its own. Compiled alone (by a linter, without those
-// definitions), the hash set of `Store<key<int>>` stands in.
+// definitions), the hash set of `Store<set<int>>` stands in.
 
 #if !defined(URD_CONTAINER)
 #include "urd/repr/maps/ordered_map.hpp"

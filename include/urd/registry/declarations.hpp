@@ -13,7 +13,6 @@
 
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
-#include "urd/repr/maps/entry_ordered_fwd.hpp"
 #include "urd/repr/maps/flat_map_fwd.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/repr/maps/ordered_map_fwd.hpp"
@@ -126,20 +125,14 @@ struct declarations_of<map_kind>
                            layered_decl<unordered_flat_map_decl, false>,
                            layered_decl<unordered_map_decl, false>,
                            layered_decl<dense_map_decl, false>,
-                           layered_decl<generation_map_decl, false>,
-                           flat_entry_map_decl>;
+                           layered_decl<generation_map_decl, false>>;
 };
 
-/// Queues, by arrival and by priority: the declarations, in order of preference.
+/// Queues, by arrival and by priority: the declarations, in order of preference (each serves one access).
 template<>
-struct declarations_of<arrival_queue_kind>
+struct declarations_of<queue_kind>
 {
-    using type = type_list<fifo_decl, ring_fifo_decl, lifo_decl>;
-};
-template<>
-struct declarations_of<priority_queue_kind>
-{
-    using type = type_list<bucket_queue_decl, heap_decl, addressable_heap_decl>;
+    using type = type_list<bucket_queue_decl, heap_decl, addressable_heap_decl, fifo_decl, ring_fifo_decl, lifo_decl>;
 };
 
 /// Pools interning values by handle: rows first (a Store or a registered container is interned as a row), then values

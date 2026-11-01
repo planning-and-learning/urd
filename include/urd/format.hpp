@@ -1,8 +1,8 @@
 #pragma once
 
 // How urd's types are written, with fmt (urd links it with URD_ENABLE_FMT_FORMATTERS, on by default): a type as a
-// request names it (`int`, `std::string`, `index<Id>`, `Store<value<int>, frozen>`), a spec as the request that states
-// its tags (`Store<key<int>, sorted, unique>`), a request as written (urd/request.hpp), a cost as the docs
+// request names it (`int`, `std::string`, `index<Id>`, `Store<sequence<int>, frozen>`), a spec as the request that states
+// its tags (`Store<set<int>, sorted, unique>`), a cost as the docs
 // write it (`O(log n)*~`), and a tag by its name. Another type is written as its urd::type_spelling says: specialize it
 // for an element type of your own; otherwise its demangled name.
 //
@@ -10,9 +10,9 @@
 // object whose type names a Store would complete that Store, and writing a request completes nothing.
 
 #include "urd/costs.hpp"
-#include "urd/index.hpp"
-#include "urd/properties.hpp"
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
+#include "urd/elements/index.hpp"
+#include "urd/spec.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -89,52 +89,17 @@ std::string spelling()
         return type_spelling<T>::spelled();
 }
 
-/// Spec S as the request that states its tags: its key and value types, then the tags that say more than their
-/// category's none, in the order of the categories.
+/// Spec S as the request that states its tags: its kind with its element types (set<int>), then the tags that say
+/// more than their category's none, in the order of the categories.
 template<typename S>
 std::string spelling_of_spec()
 {
-    auto parts = std::vector<std::string>();
-    if constexpr (!std::is_void_v<typename S::key_type>)
-        parts.push_back(fmt::format("key<{}>", spelling<typename S::key_type>()));
-    if constexpr (!std::is_void_v<typename S::value_type>)
-        parts.push_back(fmt::format("value<{}>", spelling<typename S::value_type>()));
+    auto types = std::vector<std::string>();
+    [&types]<typename... Types>(detail::type_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename S::element_types {});
+    auto parts = std::vector<std::string> { fmt::format("{}<{}>", S::kind::name, fmt::join(types, ", ")) };
     S::urd_properties.for_each([&parts](tag each) { parts.emplace_back(tag_name(each)); });
-    if constexpr (!std::is_void_v<typename S::order_type>)
-        parts.emplace_back("order_by<P>");
     return fmt::format("Store<{}>", fmt::join(parts, ", "));
 }
-
-namespace detail
-{
-
-template<typename P>
-std::string spelling_of_stated()
-{
-    if constexpr (a_tag<P>)
-        return std::string(tag_name(P::value));
-    else if constexpr (is_a<key, P>)
-        return fmt::format("key<{}>", spelling<typename P::type>());
-    else if constexpr (is_a<value, P>)
-        return fmt::format("value<{}>", spelling<typename P::type>());
-    else
-        return "order_by<P>";
-}
-
-template<typename List>
-struct stated_spelling;
-template<typename... Ps>
-struct stated_spelling<type_list<Ps...>>
-{
-    static std::string spelled() { return fmt::format("Store<{}>", fmt::join(std::array<std::string, sizeof...(Ps)> { spelling_of_stated<Ps>()... }, ", ")); }
-};
-
-}  // namespace detail
-
-/// Request Q (urd::request) as it is written: Store<key<int>, sorted>, its parameters in the order stated.
-template<typename Q>
-std::string spelling_of_request()
-{ return detail::stated_spelling<typename Q::stated>::spelled(); }
 
 }  // namespace urd
 

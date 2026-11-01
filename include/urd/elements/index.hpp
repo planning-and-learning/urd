@@ -1,7 +1,7 @@
 #pragma once
 
-#include "urd/elements.hpp"
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
+#include "urd/elements/requirements.hpp"
 
 #include <cassert>
 #include <compare>
@@ -11,6 +11,15 @@
 
 namespace urd
 {
+
+/// The number of a Store that hands out indices for views (a pool of records, a positional set): with an index, what
+/// a view<T, C> is identified by, so that equal views are the same element whichever Store they were made in. Given
+/// to the Store's constructor, by whoever builds it: Store(urd::layer { 3 }), or for a layered Store, its place along
+/// the chain.
+struct layer
+{
+    std::size_t number;
+};
 
 /// The index of a T in the Store that numbers Ts: a positional set or a pool mints one on first insert, so it is
 /// dense over the elements (over the slots, for a pool that erases; over the nodes, for a tree pool's rows). It is a
@@ -70,7 +79,7 @@ struct Write
 template<typename T>
 struct context_of;
 
-/// A reference to an element held by index: the index, and the context that resolves it (urd/view.hpp).
+/// A reference to an element held by index: the index, and the context that resolves it (urd/elements/view.hpp).
 template<typename T, typename C = typename context_of<T>::type>
 class view;
 

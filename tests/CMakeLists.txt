@@ -29,8 +29,11 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
 target_sources(test_rows PRIVATE allocations.cpp)
 target_sources(test_queues PRIVATE allocations.cpp)
-# A Store's behavior, by topic: each file includes the headers of the containers its Stores resolve to.
-foreach(topic rules sets maps multimaps scopes queues pools rows outside_kind)
+# A Store's behavior, by topic (every tests/store/*.cpp): each file includes the headers of the containers its Stores
+# resolve to.
+file(GLOB store_topics CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/store/*.cpp)
+list(TRANSFORM store_topics REPLACE ".*/([^/]+)\\.cpp$" "\\1")
+foreach(topic ${store_topics})
     add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp allocations.cpp)
     target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME store_${topic} COMMAND test_store_${topic})
@@ -45,7 +48,10 @@ add_test(NAME resolution COMMAND resolution_table --check ${PROJECT_SOURCE_DIR}/
 # What serves each request and what each container is measured for (benchmarks/requests.json): one object per
 # group of the grid (requests_group.cpp), so no translation unit walks the whole grid; requests_table.cpp
 # merges them.
-set(URD_REQUEST_GROUPS 21)  # the groups of tests/grid.hpp: requests_table checks the number
+# The groups of tests/grid.hpp, counted from it (one `group<"` each): requests_table checks the number.
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/grid.hpp grid_groups REGEX "group<\"")
+list(LENGTH grid_groups URD_REQUEST_GROUPS)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/grid.hpp)
 math(EXPR last_group "${URD_REQUEST_GROUPS} - 1")
 set(request_group_objects "")
 foreach(group RANGE ${last_group})
@@ -133,7 +139,7 @@ target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 
 # A file holding a Store pays for its own container and for no other registered one: tests/scaling.py
-# compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<key<int>>
+# compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<set<int>>
 # resolves to Boost's flat hash set.
 find_program(URD_CLANG_FOR_TRACE NAMES clang++ clang++-18)
 if(URD_CLANG_FOR_TRACE)
@@ -166,20 +172,20 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 60)
-# A rejected request names its rule (to_spec in properties.hpp); docs/language/index.rst lists them.
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 61)
+# A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 6 "no container serves this request")
-urd_compile_fail_expects(compile_fail_store 8 "at most one key<K>")
-urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd property")
+urd_compile_fail_expects(compile_fail_store 8 "the first argument is the kind")
+urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd tag")
 urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same question")
-urd_compile_fail_expects(compile_fail_store 24 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 24 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
-urd_compile_fail_expects(compile_fail_store 27 "P is neither")
+urd_compile_fail_expects(compile_fail_store 27 "C compares two elements")
 urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")
-urd_compile_fail_expects(compile_fail_store 39 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 39 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 40 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 12 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 60 "means nothing for this kind of Store")

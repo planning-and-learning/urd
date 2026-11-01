@@ -1,12 +1,11 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <boost/container/container_fwd.hpp>
 #include <functional>
@@ -45,18 +44,15 @@ struct flat_map_decl
                                                                 representation::canonical,
                                                                 memory::retains,
                                                                 clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::lin_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "boost::container::flat_map (sorted vector)";
     static constexpr std::string_view holds = "n entries in one array; retains";
 };
@@ -64,7 +60,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_map<K, V, C, A>>
 {
     using declaration = flat_map_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail
@@ -80,18 +76,15 @@ struct flat_multimap_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, multiplicity::multi, position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::lin_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "boost::container::flat_multimap (sorted vector)";
     static constexpr std::string_view holds = "n entries in one array; retains";
 };
@@ -99,7 +92,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_multimap<K, V, C, A>>
 {
     using declaration = flat_multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail

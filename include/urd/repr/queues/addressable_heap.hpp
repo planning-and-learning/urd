@@ -2,11 +2,11 @@
 
 // The least first, each element reachable by the handle push gave: an indexed binary heap.
 
-#include "urd/elements.hpp"
+#include "urd/elements/less.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -158,7 +158,7 @@ namespace urd::detail
 template<typename S>
 struct representation_of<addressable_heap_decl, S>
 {
-    using type = repr::AddressableHeap<typename S::element_type, element_order_t<S>>;
+    using type = repr::AddressableHeap<typename S::element_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

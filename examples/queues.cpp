@@ -12,8 +12,8 @@
 #include <iostream>
 #include <utility>
 
+using urd::queue;
 using urd::Store;
-using urd::value;
 
 namespace
 {
@@ -21,12 +21,12 @@ namespace
 void run()
 {
     std::cout << "Queues:\n";
-    example::show<Store<value<int>, urd::fifo>>("Store<value<int>, fifo>          first in, first out (breadth-first search)");
-    example::show<Store<value<int>, urd::lifo>>("Store<value<int>, lifo>          last in, first out (depth-first search)");
-    example::show<Store<value<int>, urd::by_priority>>("Store<value<int>, by_priority>   least first (an open list)");
+    example::show<Store<queue<int>, urd::fifo>>("Store<queue<int>, fifo>          first in, first out (breadth-first search)");
+    example::show<Store<queue<int>, urd::lifo>>("Store<queue<int>, lifo>          last in, first out (depth-first search)");
+    example::show<Store<queue<int>, urd::by_priority>>("Store<queue<int>, by_priority>   least first (an open list)");
 
     // An open list of (cost, state), cheapest first, cleared per search without giving back its storage.
-    auto open = Store<value<std::pair<double, int>>, urd::by_priority>();
+    auto open = Store<queue<std::pair<double, int>>, urd::by_priority>();
     for (int search = 0; search < 2; ++search)
     {
         open.clear();
@@ -43,7 +43,7 @@ void run()
     // for (const auto& entry : open)  // does not compile: a queue is not iterated
     // open.front();                    // does not compile: a priority queue has top()
 
-    auto frontier = Store<value<int>, urd::fifo>();
+    auto frontier = Store<queue<int>, urd::fifo>();
     for (const int state : { 7, 8, 9 })
         frontier.push(state);
     std::cout << "\nbreadth-first, next: " << frontier.front() << '\n';

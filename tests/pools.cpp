@@ -4,7 +4,8 @@
 #include "urd/repr/pools/pools.hpp"
 
 #include "names.hpp"
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -28,7 +29,6 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
-#include "urd/view.hpp"
 #include "verify.hpp"
 
 #include <algorithm>
@@ -43,9 +43,11 @@
 #include <utility>
 #include <vector>
 
-using urd::key;
+using urd::pool;
+using urd::sequence;
+using urd::set;
+using urd::slots;
 using urd::Store;
-using urd::value;
 
 namespace
 {
@@ -55,22 +57,22 @@ class Pools : public testing::Test
 {
 };
 using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
-                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique>,
-                                  Store<value<Store<key<int>, urd::sorted>>, urd::handles, urd::unique, urd::monotone>,
+                                  Store<pool<Store<sequence<int>, urd::frozen>>>,
+                                  Store<pool<Store<set<int>, urd::dense, urd::frozen>>>,
+                                  Store<pool<Store<set<int>, urd::sorted>>, urd::monotone>,
                                   urd::repr::TreeVectorSet<std::vector<int>>,
                                   urd::repr::TreeVectorSet<std::vector<double>, 2>,
-                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
-                                  Store<value<Store<value<double>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
+                                  Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>,
+                                  Store<pool<Store<sequence<double>, urd::frozen>>, urd::structural_sharing>,
                                   urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>>,
                                   urd::repr::TreeBitsetSet<urd::repr::DenseSet<int>, 2>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>,
-                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>,
-                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
+                                  Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing>,
+                                  Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>,
+                                  Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::concurrent>,
+                                  Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>,
                                   urd::repr::LayeredPool<urd::repr::RowInterner<std::vector<int>>>,
-                                  Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone, urd::layered>,
-                                  Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::layered, urd::concurrent>>;
+                                  Store<pool<Store<sequence<int>, urd::frozen>>, urd::monotone, urd::layered>,
+                                  Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(Pools, Containers, urd::test::Names);
 
 /// A trivially copyable record: its own block of bytes, interned in memory.
@@ -116,93 +118,90 @@ using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    urd::repr::ValueInterner<Point>,
                                    urd::repr::ValueInterner<Named, false, true>,
                                    urd::repr::ValueInterner<Named, true>,
-                                   Store<value<Point>, urd::handles, urd::unique>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::concurrent>,
+                                   Store<pool<Point>>,
+                                   Store<pool<Named>, urd::concurrent>,
                                    urd::repr::ArenaInterner<Named>,
                                    urd::repr::ArenaInterner<Named, true>,
                                    urd::repr::ArenaInterner<Point>,
-                                   Store<value<Point>, urd::handles, urd::unique, urd::flat>,
-                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone>,
-                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
-                                   Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::concurrent>,
+                                   Store<pool<Point>, urd::flat>,
+                                   Store<pool<Point>, urd::flat, urd::monotone>,
+                                   Store<pool<Point>, urd::flat, urd::concurrent>,
+                                   Store<pool<Plain>, urd::flat, urd::stable_refs>,
+                                   Store<pool<Named>, urd::flat>,
+                                   Store<pool<Named>, urd::flat, urd::monotone, urd::concurrent>,
                                    urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>,
                                    urd::repr::LayeredPool<urd::repr::RecordInterner<Point, false, true>>,
                                    urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>,
-                                   Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs, urd::layered>,
-                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::layered, urd::concurrent>>;
+                                   Store<pool<Plain>, urd::flat, urd::stable_refs, urd::layered>,
+                                   Store<pool<Point>, urd::flat, urd::monotone, urd::layered>,
+                                   Store<pool<Named>, urd::flat, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
 
 }  // namespace
 
 // Values interned whole, where the request does not ask for flat: the value interner, whatever the value.
-static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<Point>>);
-static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::stable_refs>::representation, urd::repr::ValueInterner<Named, false, true>>);
-static_assert(std::same_as<Store<value<std::string>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<std::string>>);
+static_assert(std::same_as<Store<pool<Point>>::representation, urd::repr::Numbered<urd::repr::ValueInterner<Point>>>);
+static_assert(std::same_as<Store<pool<Named>, urd::stable_refs>::representation, urd::repr::Numbered<urd::repr::ValueInterner<Named, false, true>>>);
+static_assert(std::same_as<Store<pool<std::string>>::representation, urd::repr::Numbered<urd::repr::ValueInterner<std::string>>>);
 // Records stored flat: trivially copyable ones in memory, the others serialized into an arena; thread-safe on request.
-static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::RecordInterner<Point>>);
-static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);
+static_assert(std::same_as<Store<pool<Point>, urd::flat>::representation, urd::repr::Numbered<urd::repr::RecordInterner<Point>>>);
+static_assert(std::same_as<Store<pool<Point>, urd::flat, urd::concurrent>::representation, urd::repr::Numbered<urd::repr::RecordInterner<Point, true>>>);
 // Records that never move, without the lock: the interner over segments; a record cista can serialize takes the
 // arena, which never moves a block either.
 static_assert(
-    std::same_as<Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs>::representation, urd::repr::RecordInterner<Plain, false, true>>);
-static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::stable_refs>::representation, urd::repr::ArenaInterner<Point>>);
-static_assert(std::same_as<Store<value<Plain>, urd::handles, urd::unique, urd::flat, urd::stable_refs, urd::layered>::representation,
-                           urd::repr::LayeredPool<urd::repr::RecordInterner<Plain, false, true>>>);
-static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::ArenaInterner<Named>>);
-static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::ArenaInterner<Named, true>>);
+    std::same_as<Store<pool<Plain>, urd::flat, urd::stable_refs>::representation, urd::repr::Numbered<urd::repr::RecordInterner<Plain, false, true>>>);
+static_assert(std::same_as<Store<pool<Point>, urd::flat, urd::stable_refs>::representation, urd::repr::Numbered<urd::repr::ArenaInterner<Point>>>);
+static_assert(std::same_as<Store<pool<Plain>, urd::flat, urd::stable_refs, urd::layered>::representation,
+                           urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::RecordInterner<Plain, false, true>>>>);
+static_assert(std::same_as<Store<pool<Named>, urd::flat>::representation, urd::repr::Numbered<urd::repr::ArenaInterner<Named>>>);
+static_assert(std::same_as<Store<pool<Named>, urd::flat, urd::concurrent>::representation, urd::repr::Numbered<urd::repr::ArenaInterner<Named, true>>>);
 // Layered pools: the same interners over a parent, indices continuing after the parent's.
-static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered>::representation,
-                           urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>>);
-static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::layered, urd::concurrent>::representation,
-                           urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>>);
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>::representation,
-                           urd::repr::LayeredPool<urd::repr::RowInterner<Store<value<int>, urd::frozen>>>>);
+static_assert(std::same_as<Store<pool<Point>, urd::flat, urd::monotone, urd::layered>::representation,
+                           urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>>>);
+static_assert(std::same_as<Store<pool<Named>, urd::flat, urd::layered, urd::concurrent>::representation,
+                           urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>, urd::layered>::representation,
+                           urd::repr::LayeredPool<urd::repr::RowInterner<Store<sequence<int>, urd::frozen>>>>);
 // A flat pool is counted and read by index, as its records are whole; its handle is the index.
-static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::handle_type, urd::index<Named>>);
+static_assert(std::same_as<Store<pool<Named>, urd::flat>::handle_type, urd::index<Named>>);
 
 TYPED_TEST(Records, KeepsEachDistinctRecordOnceThroughRandomOperations)
 {
     for (unsigned seed = 0; seed < 32; ++seed)
     {
-        auto pool = TypeParam();
+        auto pool = urd::test::make_empty<TypeParam>();
         const auto found = urd::verify(std::move(pool), seed, 300);
         EXPECT_FALSE(found) << found.value_or("");
     }
 }
 
 // Without structural_sharing, each row is stored once, in full.
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>::representation,
-                           urd::repr::RowInterner<Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>>::representation, urd::repr::RowInterner<Store<sequence<int>, urd::frozen>>>);
 // With it, sequence rows are trees whose equal subtrees are stored once.
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>::representation,
-                           urd::repr::TreeVectorSet<Store<value<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>::representation,
+                           urd::repr::TreeVectorSet<Store<sequence<int>, urd::frozen>>>);
 // Rows that are sets of indices are bitset trees, with zero subtrees left out.
-static_assert(std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>::representation,
-                           urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>>>);
+static_assert(std::same_as<Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing>::representation,
+                           urd::repr::TreeBitsetSet<Store<set<int>, urd::dense, urd::frozen>>>);
 // Thread-safe where asked: the same pools over concurrent tables.
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>::representation,
-                           urd::repr::RowInterner<Store<value<int>, urd::frozen>, true>>);
-static_assert(
-    std::same_as<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>::representation,
-                 urd::repr::TreeBitsetSet<Store<key<int>, urd::dense, urd::frozen>, 4, true>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>::representation,
+                           urd::repr::RowInterner<Store<sequence<int>, urd::frozen>, true>>);
+static_assert(std::same_as<Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>::representation,
+                           urd::repr::TreeBitsetSet<Store<set<int>, urd::dense, urd::frozen>, 4, true>>);
 // A pool is not iterated: it is reached by handle. It is counted, its handles 0..size()-1, unless it shares nodes
 // between rows (structural_sharing), where handles name nodes and no list of rows is kept.
 template<typename P>
 concept iterable = requires(P pool) { pool.begin(); };
 template<typename P>
 concept sized = requires(P pool) { pool.size(); };
-static_assert(!iterable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
-              && sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
-              && !sized<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>);
+static_assert(!iterable<Store<pool<Store<sequence<int>, urd::frozen>>>> && sized<Store<pool<Store<sequence<int>, urd::frozen>>>>
+              && !sized<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>>);
 
 // insert says whether it stored the row, as a set's does; find gives the handle insert would, or none, without
 // storing; size counts distinct rows.
 TEST(Pools, InsertFindAndSizeWithoutSharing)
 {
-    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+    auto rows = Store<pool<Store<sequence<int>, urd::frozen>>>();
     EXPECT_TRUE(rows.find({ 1, 2 }).is_none());
     EXPECT_TRUE(rows.empty());
     const auto [first, stored] = rows.insert({ 1, 2 });
@@ -217,7 +216,7 @@ TEST(Pools, InsertFindAndSizeWithoutSharing)
 // (postings over the rows, yggdrasil's swap-erase) follows it.
 TEST(Pools, EraseMovesTheLastRowIn)
 {
-    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+    auto rows = Store<pool<Store<sequence<int>, urd::frozen>>>();
     const auto a = rows.insert({ 1 }).first;
     const auto b = rows.insert({ 2 }).first;
     const auto c = rows.insert({ 3 }).first;
@@ -232,16 +231,15 @@ TEST(Pools, EraseMovesTheLastRowIn)
 }
 template<typename P>
 concept erasable = requires(P pool, typename P::handle_type handle) { pool.erase(handle); };
-static_assert(erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>>
-              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::monotone>>
-              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>>
-              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>>
-              && !erasable<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::layered>>);
+static_assert(erasable<Store<pool<Store<sequence<int>, urd::frozen>>>> && !erasable<Store<pool<Store<sequence<int>, urd::frozen>>, urd::monotone>>
+              && !erasable<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>>
+              && !erasable<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>>
+              && !erasable<Store<pool<Store<sequence<int>, urd::frozen>>, urd::layered>>);
 
 // A pool that shares nodes finds what it can build from them: the rows inserted, and their parts.
 TEST(Pools, FindWithSharing)
 {
-    auto rows = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing>();
+    auto rows = Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>();
     const auto [whole, stored] = rows.insert({ 1, 2, 3, 4, 5, 6, 7, 8 });
     EXPECT_TRUE(stored);
     const auto memory = rows.memory_usage();
@@ -265,7 +263,7 @@ TYPED_TEST(Pools, GivesEqualRowsEqualHandlesThroughRandomOperations)
 // A set row is equal whatever order its elements came in.
 TEST(Pools, SetRowsAreEqualInAnyOrder)
 {
-    auto facts = Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique>();
+    auto facts = Store<pool<Store<set<int>, urd::dense, urd::frozen>>>();
     const auto first = facts.insert({ 3, 1, 4 }).first;
     const auto second = facts.insert(std::vector<int> { 4, 3, 1, 1 }).first;
     EXPECT_EQ(first, second);
@@ -309,16 +307,15 @@ template<typename P>
 class Slots : public testing::Test
 {
 };
-using SlotContainers = testing::
-    Types<urd::repr::SlotVector<int>, urd::repr::SlotVector<int, true>, Store<value<int>, urd::handles>, Store<value<int>, urd::handles, urd::concurrent>>;
+using SlotContainers = testing::Types<urd::repr::SlotVector<int>, urd::repr::SlotVector<int, true>, Store<slots<int>>, Store<slots<int>, urd::concurrent>>;
 TYPED_TEST_SUITE(Slots, SlotContainers, urd::test::Names);
 
 }  // namespace
 
 // Without unique, a pool hands out a new slot per insert: a SlotVector, thread-safe where asked.
-static_assert(std::same_as<Store<value<int>, urd::handles>::representation, urd::repr::SlotVector<int>>);
-static_assert(std::same_as<Store<value<int>, urd::handles, urd::concurrent>::representation, urd::repr::SlotVector<int, true>>);
-static_assert(urd::has<Store<value<int>, urd::handles, urd::stable_refs>, urd::stable_refs>);
+static_assert(std::same_as<Store<slots<int>>::representation, urd::repr::SlotVector<int>>);
+static_assert(std::same_as<Store<slots<int>, urd::concurrent>::representation, urd::repr::SlotVector<int, true>>);
+static_assert(urd::has<Store<slots<int>, urd::stable_refs>, urd::stable_refs>);
 
 TYPED_TEST(Slots, KeepsElementsInPlaceAndReusesFreedSlots)
 {
@@ -332,7 +329,7 @@ TYPED_TEST(Slots, KeepsElementsInPlaceAndReusesFreedSlots)
 // A scratch buffer per task: erased and acquired again, it keeps its storage, so reuse allocates nothing.
 TEST(Slots, AcquireReusesAnErasedElementAsItIs)
 {
-    auto buffers = Store<value<std::vector<int>>, urd::handles>();
+    auto buffers = Store<slots<std::vector<int>>>();
     const auto first = buffers.acquire();
     buffers[first].assign(1000, 7);
     buffers.erase(first);
@@ -346,7 +343,7 @@ TEST(Slots, AcquireReusesAnErasedElementAsItIs)
 // Threads insert, write, read and erase their own elements at once; each finds its own values throughout.
 TEST(Slots, ThreadSafeSlotsServeThreadsAtOnce)
 {
-    auto pool = Store<value<int>, urd::handles, urd::concurrent>();
+    auto pool = Store<slots<int>, urd::concurrent>();
     constexpr int threads = 4;
     constexpr int rounds = 2000;
     auto failures = std::vector<int>(threads);
@@ -414,9 +411,9 @@ void expect_threads_agree(int rounds)
 
 TEST(Pools, ThreadsAgreeOnHandles)
 {
-    expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>>(300);
-    expect_threads_agree<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
-    expect_threads_agree<Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>(300);
+    expect_threads_agree<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>>(300);
+    expect_threads_agree<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::concurrent>>(300);
+    expect_threads_agree<Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>>(300);
 }
 
 // A pool that keeps rows in full lends them out: view(h) is the stored row, a span of its elements or, for rows of
@@ -432,7 +429,7 @@ TEST(Pools, ViewsLendTheStoredRows)
         return elements;
     };
     {
-        auto pool = Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>();
+        auto pool = Store<urd::pool<Store<sequence<int>, urd::frozen>>>();
         auto handles = std::vector<decltype(pool)::handle_type>();
         auto views = std::vector<std::span<const int>>();
         for (int each = 0; each < 2000; ++each)
@@ -447,8 +444,8 @@ TEST(Pools, ViewsLendTheStoredRows)
         }
     }
     {
-        using Set = Store<key<int>, urd::dense, urd::frozen>;
-        auto pool = Store<value<Set>, urd::handles, urd::unique>();
+        using Set = Store<set<int>, urd::dense, urd::frozen>;
+        auto pool = Store<urd::pool<Set>>();
         static_assert(std::same_as<decltype(pool)::representation, urd::repr::RowInterner<Set>>);
         auto handles = std::vector<decltype(pool)::handle_type>();
         auto views = std::vector<decltype(pool.view(handles.front()))>();
@@ -477,7 +474,7 @@ namespace
 template<typename P>
 void expect_threads_agree_on_records(int rounds)
 {
-    auto pool = P();
+    auto pool = urd::test::make_empty<P>();
     constexpr int threads = 4;
     auto indices = std::vector<std::vector<typename P::handle_type>>(threads);
     {
@@ -519,23 +516,26 @@ struct Item
     static constexpr auto identifying_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
     static constexpr auto cista_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
 };
-using Owners = Store<value<Owner>, urd::handles, urd::unique, urd::flat, urd::monotone>;
-using Items = Store<value<Item>, urd::handles, urd::unique, urd::flat, urd::monotone>;
+using Owners = Store<pool<Owner>, urd::flat, urd::monotone>;
+using Items = Store<pool<Item>, urd::flat, urd::monotone>;
 struct Shop
 {
-    Owners owners;
-    Items items;
+    Owners owners { urd::layer { 0 } };
+    Items items { urd::layer { 0 } };
 
     [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
     [[nodiscard]] const Item& operator[](urd::index<Item> at) const { return items[at]; }
+    [[nodiscard]] std::size_t layer() const { return owners.layer(); }
+    [[nodiscard]] urd::view<Owner, Shop> view(urd::index<Owner> at) const { return { at, *this }; }
+    [[nodiscard]] urd::view<Item, Shop> view(urd::index<Item> at) const { return { at, *this }; }
 };
 
 }  // namespace
 
 TEST(Records, ThreadsAgreeOnIndices)
 {
-    expect_threads_agree_on_records<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>>(300);
-    expect_threads_agree_on_records<Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>>(300);
+    expect_threads_agree_on_records<Store<pool<Point>, urd::flat, urd::concurrent>>(300);
+    expect_threads_agree_on_records<Store<pool<Named>, urd::flat, urd::concurrent>>(300);
 }
 
 TEST(Records, ViewsResolveFlatMembers)
@@ -553,28 +553,23 @@ TEST(Records, ViewsResolveFlatMembers)
     EXPECT_EQ(shop.items.find(item), lamp);
     EXPECT_TRUE(shop.items.contains(lamp));
 
-    const auto alone = shop.items.view(lamp);  // the Store resolves items only
-    EXPECT_EQ(alone.get<&Item::name>(), "lamp");
-    EXPECT_EQ(alone.get<&Item::owners>()[0], ann);
-    EXPECT_EQ(std::get<urd::index<Owner>>(alone.get<&Item::alternative>()), ann);
-
-    const auto whole = urd::view<Item, Shop>(lamp, shop);  // the shop resolves owners too
+    EXPECT_EQ(shop.items.view(lamp).get<&Item::name>(), "lamp");  // the Store alone reads members that are no index
+    const auto whole = urd::view<Item, Shop>(lamp, shop);         // the shop resolves owners too
     EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
     EXPECT_EQ((std::get<urd::view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
 }
 
 TEST(Layered, RowPoolsContinueTheirParent)
 {
-    using Row = Store<value<int>, urd::frozen>;
+    using Row = Store<sequence<int>, urd::frozen>;
     using RowIndex = urd::index<Row>;
-    using Rows = Store<value<Row>, urd::handles, urd::unique, urd::monotone, urd::layered>;
+    using Rows = Store<pool<Row>, urd::monotone, urd::layered>;
     auto parent = Rows();
     const auto first = parent.insert({ 1, 2, 3 }).first;
     const auto second = parent.insert({ 4 }).first;
     auto child = Rows();
     child.layer_over(&parent);
     EXPECT_EQ(child.base(), 2U);
-    EXPECT_EQ(child.layer(), 1U);
     EXPECT_EQ(child.insert({ 1, 2, 3 }), std::pair(first, false));  // the parent's row, found through the chain
     const auto third = child.insert({ 5, 6 }).first;
     EXPECT_EQ(third, RowIndex(2));
@@ -596,19 +591,20 @@ TEST(Layered, RowPoolsContinueTheirParent)
 
 TEST(Layered, ViewsPointAtTheOwningLayer)
 {
-    using Points = Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::layered>;
+    using Points = Store<pool<Point>, urd::flat, urd::layered>;
     using PointView = urd::view<Point, Points>;
-    auto root = Points();
+    auto root = Points(urd::layer { 0 });
     const auto one = root.insert(Point(1)).first;
-    auto child = Points();
+    auto child = Points(urd::layer { 1 });
     child.layer_over(&root);
     const auto two = child.insert(Point(2)).first;
     EXPECT_EQ(child.insert(Point(1)).first, one);
     EXPECT_EQ(&child.owner(one), &root);
     EXPECT_EQ(&child.owner(two), &child);
-    EXPECT_EQ(child.view(one), root.view(one));  // the same element, whichever layer it was asked of
+    const auto equal = urd::EqualTo<PointView> {};
+    EXPECT_TRUE(equal(child.view(one), root.view(one)));  // the same element, whichever layer it was asked of
     EXPECT_EQ(urd::Hash<PointView> {}(child.view(one)), urd::Hash<PointView> {}(root.view(one)));
-    EXPECT_NE(child.view(two), root.view(one));
+    EXPECT_FALSE(equal(child.view(two), root.view(one)));
     EXPECT_EQ(child.view(one).get<&Point::x>(), 1);
     EXPECT_EQ(child.view(two).context().layer(), 1U);
     EXPECT_EQ(child.view(one).context().layer(), 0U);

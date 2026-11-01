@@ -37,15 +37,10 @@
 namespace
 {
 
-using urd::key;
 using urd::Store;
-using urd::value;
 using urd::test::allocations;
 using urd::test::Counted;
 using urd::test::deallocations;
-
-/// Orders a map by its values, ties by key: what order_by<P> with P(key, value) asks for.
-constexpr auto by_value = [](int /*key*/, int value) { return value; };
 
 template<typename R>
 class Properties : public testing::Test
@@ -113,7 +108,7 @@ R built(const std::vector<int>& keys)
 template<typename R>
 void add(R& range, int key)
 {
-    if constexpr (urd::by_value<urd::container_traits<R>> || map<R>)
+    if constexpr (urd::detail::keyed_range<R> || map<R>)
         range.insert(element<R>(key));
     else
         range.push_back(key);
@@ -163,10 +158,6 @@ TYPED_TEST_P(Properties, Sorted)
         if constexpr (growable<TypeParam>)
             for (const int element : descending(300))
                 add(range, element);
-        if constexpr (urd::orders_by_value<TypeParam>)
-            // In the order the request gave, which reads the values; there are no bounds by key.
-            EXPECT_TRUE(std::ranges::is_sorted(range, urd::detail::value_order_t<TypeParam> {}));
-        else
         {
             EXPECT_TRUE(std::ranges::is_sorted(range, {}, key_of));
             for (const int element : { -1, 0, 50, 299, 300 })
@@ -296,7 +287,7 @@ TYPED_TEST_P(Properties, Retains)
         // Erased one by one, then refilled: nothing is allocated either.
         for (int element = 0; element < COUNT; ++element)
         {
-            if constexpr (urd::by_value<urd::container_traits<TypeParam>>)
+            if constexpr (urd::detail::keyed_range<TypeParam>)
                 range.erase(element);
             else
                 range.pop_back();
@@ -374,7 +365,7 @@ TYPED_TEST_P(Properties, ClearCost)
                     if (far)
                     {
                         add(range, far_key);
-                        if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                        if constexpr (urd::detail::keyed_range<TypeParam> || map<TypeParam>)
                             range.erase(far_key);
                         else
                             range.pop_back();
@@ -409,7 +400,7 @@ TYPED_TEST_P(Properties, ClearCostInLiveElements)
                     auto range = TypeParam();
                     // The same history for both: a far key touched and erased, then the live elements.
                     add(range, far_key);
-                    if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                    if constexpr (urd::detail::keyed_range<TypeParam> || map<TypeParam>)
                         range.erase(far_key);
                     else
                         range.pop_back();

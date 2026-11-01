@@ -44,14 +44,15 @@
 namespace
 {
 
-using urd::key;
+using urd::partition;
+using urd::pool;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 // An interner: each new element gets the next index, which stays its index; a known one keeps its index.
 TEST(Interner, GivesEachElementItsIndex)
 {
-    auto symbols = Store<key<std::string>, urd::positional, urd::monotone>();
+    auto symbols = Store<set<std::string>, urd::positional, urd::monotone>(urd::layer { 0 });
     const auto index = [&symbols](const std::string& symbol) { return symbols.position(symbols.insert(symbol).first); };
     EXPECT_EQ(index("on"), 0U);
     EXPECT_EQ(index("clear"), 1U);
@@ -65,7 +66,7 @@ TEST(Interner, GivesEachElementItsIndex)
 // A partition says whether a key is an element.
 TEST(Partition, Contains)
 {
-    auto classes = Store<key<int>, urd::partition>();
+    auto classes = Store<partition<int>>();
     classes.insert(3);
     EXPECT_TRUE(classes.contains(0) && classes.contains(3) && !classes.contains(4));
 }
@@ -78,7 +79,7 @@ TEST(Records, Iterate)
         int id = 0;
         static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
     };
-    auto names = Store<value<Name>, urd::handles, urd::unique, urd::flat>();
+    auto names = Store<pool<Name>, urd::flat>(urd::layer { 0 });
     names.insert(Name { 7 });
     names.insert(Name { 2 });
     names.insert(Name { 7 });
@@ -96,14 +97,14 @@ TEST(Records, Count)
         int x = 0;
         static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
     };
-    auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>();
+    auto points = Store<pool<Point>, urd::flat>(urd::layer { 0 });
     points.insert(Point { 1 });
     EXPECT_EQ(points.count(Point { 1 }), 1U);
     EXPECT_EQ(points.count(Point { 2 }), 0U);
 }
 
 // A partition: union-find over indices, by request.
-static_assert(std::same_as<Store<key<int>, urd::partition>::representation, urd::repr::DisjointSets<int>>);
+static_assert(std::same_as<Store<partition<int>>::representation, urd::repr::DisjointSets<int>>);
 
 // A partition answers what a labeling recomputed after each merge answers.
 TEST(Partition, AgreesWithRelabeling)
@@ -112,7 +113,7 @@ TEST(Partition, AgreesWithRelabeling)
     for (int round = 0; round < 50; ++round)
     {
         constexpr std::size_t size = 24;
-        auto partition = Store<key<int>, urd::partition>();
+        auto partition = Store<urd::partition<int>>();
         partition.insert(static_cast<int>(size) - 1);
         auto label = std::vector<std::size_t>(size);
         std::iota(label.begin(), label.end(), std::size_t { 0 });
@@ -141,8 +142,8 @@ TEST(Partition, AgreesWithRelabeling)
 // starts empty and works.
 TEST(Interner, CopiesAndMovesKeepTheirOwnIndex)
 {
-    using Symbols = Store<key<std::string>, urd::positional>;
-    auto symbols = Symbols { "on", "clear" };
+    using Symbols = Store<set<std::string>, urd::positional>;
+    auto symbols = Symbols(urd::layer { 0 }, { "on", "clear" });
     auto copy = symbols;
     copy.insert("holding");
     EXPECT_FALSE(symbols.contains("holding"));
@@ -161,7 +162,7 @@ TEST(Interner, CopiesAndMovesKeepTheirOwnIndex)
 // Integer elements of the same width as the positions the table holds are never taken for positions.
 TEST(Interner, IntegerElementsAreNotPositions)
 {
-    auto ids = Store<key<std::uint32_t>, urd::positional>();
+    auto ids = Store<set<std::uint32_t>, urd::positional>(urd::layer { 0 });
     for (const std::uint32_t id : { 2U, 0U, 1U, 0U, 7U })
         ids.insert(id);
     EXPECT_EQ(ids.size(), 4U);
@@ -174,7 +175,7 @@ TEST(Interner, IntegerElementsAreNotPositions)
 // positions run 0..n-1 without gaps.
 TEST(Interner, ThreadsAgreeOnPositions)
 {
-    auto symbols = Store<key<int>, urd::positional, urd::monotone, urd::concurrent>();
+    auto symbols = Store<set<int>, urd::positional, urd::monotone, urd::concurrent>(urd::layer { 0 });
     constexpr int threads = 4;
     constexpr int each = 5000;
     auto seen = std::vector<std::vector<std::size_t>>(threads, std::vector<std::size_t>(each));

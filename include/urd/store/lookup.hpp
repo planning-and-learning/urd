@@ -15,8 +15,6 @@ public:
     /// What lookups take: a map's key, else an element, as key_type is for the standard's sets.
     using key_type = typename types::lookup_type;
     using lookup_type = typename types::lookup_type;
-    /// What a map's keys map to; void for a set or a sorted sequence.
-    using mapped_type = typename types::mapped_type;
 
     [[nodiscard]] typename iterator_types<R, S>::const_iterator find(const typename types::lookup_type& element) const
     { return representation().find(element); }
@@ -32,13 +30,13 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
+/// When a Store has this facet: always, where its kind lists it (the kinds that place elements by value).
 template<>
-struct facet_condition<facet::lookup>
+struct facet_condition<facet::lookup> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return store_types<R, S>::keyed; }
+    { return true; }
 };
 template<>
 struct facet_operations<facet::lookup>

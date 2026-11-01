@@ -21,8 +21,13 @@ What you promise about your data
 
 .. urd-category:: any_priority
 
-   A priority queue never pushed below the last popped: integral priorities go to buckets. Stating it makes the Store
-   a priority queue, so ``by_priority`` need not be stated with it.
+   A priority queue (``queue<V>, by_priority``) never pushed below the last popped: integral priorities go to buckets.
+
+.. urd-category:: any_comparison
+
+   ``order_by<C>``: a ``sorted`` Store, or a ``by_priority`` queue, compared by comparator ``C`` instead of
+   :cpp:class:`urd::Less` (in a map, over its keys). The order is ``C`` and nothing else: elements it does not separate
+   are equivalent, so a unique Store keeps one of them. ``urd::by<P>`` compares by ``P(element)``.
 
 What holds
 ----------
@@ -33,7 +38,7 @@ What holds
 
    Iteration ascending by :cpp:class:`urd::Less`, or in the order elements first came. ``sorted`` adds
    ``lower_bound``, ``upper_bound``, ``equal_range`` and ``operator<=>``; either adds ``rbegin``, ``rend``. To order
-   by something else, see ``order_by<P>`` in :doc:`index`.
+   by something else, see ``order_by<C>`` in :doc:`index`.
 
 .. urd-category:: by_key
 

@@ -11,10 +11,11 @@ import re
 import sys
 from pathlib import Path
 
-GLUE = ["include/urd/property_set.hpp", "include/urd/properties.hpp", "include/urd/registry/select.hpp",
+GLUE = ["include/urd/property_set.hpp", "include/urd/spec.hpp", "include/urd/registry/select.hpp",
         "include/urd/registry/scan.hpp", "include/urd/registry/table.hpp", "include/urd/registry/declarations.hpp",
-        "include/urd/registry/declaration.hpp", "include/urd/registry/derived.hpp", "include/urd/registry/features.hpp",
-        "include/urd/registry/facts.hpp", "include/urd/store.hpp"]
+        "include/urd/registry/declaration.hpp", "include/urd/registry/derived.hpp",
+        "include/urd/registry/facts.hpp", "include/urd/store.hpp", "include/urd/store/types.hpp",
+        "include/urd/store/construction.hpp"]
 
 
 def tags(root: Path) -> tuple[set[str], set[str]]:

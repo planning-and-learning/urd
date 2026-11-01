@@ -11,7 +11,7 @@ What a container needs of its elements comes from three function objects, with n
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
    :cpp:concept:`MemberIdentified` or :cpp:concept:`FunctionIdentified` type, :cpp:struct:`urd::index`,
-   :cpp:class:`urd::view`, the flat containers of ``urd/flat.hpp``, and Stores whose contents fix their order
+   :cpp:class:`urd::view`, the flat containers of ``urd/elements/flat.hpp``, and Stores whose contents fix their order
    (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.
 
 .. cpp:struct:: template<typename T> EqualTo
@@ -42,7 +42,7 @@ A type names its identity once and is then hashable, comparable and ordered, in 
        Vertex from, to;
        static constexpr auto identifying_members() noexcept { return Members<&Edge::from, &Edge::to> {}; }
    };
-   using Edges = Store<key<Edge>>;                    // hashed by (from, to)
+   using Edges = Store<set<Edge>>;                    // hashed by (from, to)
 
 .. cpp:concept:: template<typename T> MemberIdentified
 
@@ -77,7 +77,7 @@ Indices and views
 
 .. cpp:struct:: template<typename T> index
 
-   The index of a ``T`` in the Store that numbers ``T``'s (``urd/index.hpp``): a positional set mints one on first
+   The index of a ``T`` in the Store that numbers ``T``'s (``urd/elements/index.hpp``): a positional set mints one on first
    insert, and a pool's handles are indices. One 32-bit integer (``value``) with a ``none`` value
    (``is_none()``), a different type per ``T`` that converts to no other, hashable, orderable, and a dense key.
    Write it ``urd::index``: the C library declares a function ``index`` in the global namespace.
@@ -89,12 +89,19 @@ Indices and views
    .. cpp:function:: static index none() noexcept
    .. cpp:function:: bool is_none() const noexcept
 
+.. cpp:struct:: layer
+
+   The number of a Store that hands out indices for views (a pool of records, a positional set): such a Store is
+   built from it first, ``Atoms(urd::layer { 3 })``, and answers it as ``layer()``. Who builds the Store gives it, and
+   Stores whose views must differ get different numbers; a layer gets its own, as its parent does.
+
+   .. cpp:member:: std::size_t number
+
 .. cpp:class:: template<typename T, typename C = typename context_of<T>::type> view
 
-   A reference to an element held by index (``urd/view.hpp``): the index and a pointer to a context ``C`` that
-   resolves it, where :cpp:concept:`resolves` means ``context[index<T>]`` gives the record. A positional set and a
-   pool resolve their own type; any type with such an
-   ``operator[]`` serves. The context must outlive the view.
+   A reference to an element held by index (``urd/elements/view.hpp``): the index and a pointer to a context ``C`` that
+   resolves it (:cpp:concept:`resolves`). A positional set and a pool of records resolve their own type; any type
+   that gives the record, its number and the view of an index serves. The context must outlive the view.
 
    .. cpp:function:: view(index<T> at, const C& context) noexcept
    .. cpp:function:: index<T> id() const noexcept
@@ -105,23 +112,32 @@ Indices and views
 
    .. cpp:function:: template<auto Member> decltype(auto) get() const
 
-      A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes a
-      ``view<U, C>`` where the context resolves ``U``, pointing at the layer that owns the element, else stays an
-      index; a range of indices a range of views; characters a ``std::string_view``; another contiguous range a
-      ``std::span``; a variant the variant of its alternatives resolved.
+      A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes the
+      ``view<U, C>`` the context makes, pointing at the layer that owns the element; a range of indices a range of
+      views; a variant the variant of its alternatives resolved; an optional the optional of its value resolved;
+      anything else stays as it is.
 
    .. cpp:function:: auto identifying_members() const noexcept
 
-      The identity: the index, and the context's ``layer()`` number where it has one. Two views of one element from
-      one layer are equal and hash equally, wherever they were made; views from different layers are not.
+      The identity: the index, and the context's number (:cpp:struct:`layer`). Two views of one element from one
+      context are equal under ``EqualTo`` and hash equally, wherever they were made; views from differently numbered
+      contexts are not. A view has no ``==`` of its own: ``EqualTo``, ``Hash`` and ``Less`` follow from this.
 
 .. cpp:concept:: template<typename C, typename T> resolves
 
-   ``context[index<T>]`` is convertible to ``const T&``.
+   ``context[index<T>]`` is convertible to ``const T&``; ``context.layer()`` is its number; ``context.view(index<T>)``
+   gives the ``view<T, C>`` of the index, through the context that owns it (a layer points it at the layer that owns
+   the element; a context made of several Stores writes one per type).
 
 .. cpp:function:: template<typename M, typename C> decltype(auto) resolve(const M& member, const C& context)
 
-   A record's member as a view sees it; see :cpp:func:`view::get`.
+   A record's member as a view sees it: ``resolution<M>::of(member, context)``; see :cpp:func:`view::get`.
+
+.. cpp:struct:: template<typename M> resolution
+
+   How a member of type ``M`` resolves: as it is, unless specialized. Given for ``index<U>`` (the context's view),
+   ranges of indices (a range of views), ``std::variant`` and ``std::optional`` (their contents resolved), and in
+   ``urd/elements/flat.hpp`` for cista's variant and optional. A new member type resolves by specializing it.
 
 .. cpp:struct:: template<typename T> context_of
 

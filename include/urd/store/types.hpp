@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
@@ -23,30 +23,27 @@ namespace urd::detail
 // member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
 // recur (insert in growth, pool, slots and grouping).
 
-/// What a Store's interface lets change, from the tags it states: nothing where frozen or of a fixed shape (grows
-/// false); inserts only where it only grows or must stay nonempty (shrinks false); else inserts, erase and clear.
+/// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
+/// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
 template<typename S>
-inline constexpr bool grows = !has<S, frozen> && !has<S, fixed_shape>;
+inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&category_table::stops_growth>();
 template<typename S>
-inline constexpr bool shrinks = grows<S> && !has<S, monotone> && !has<S, nonempty>;
+inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&category_table::stops_shrinking>();
 
 /// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
 /// which is still incomplete while its facets are built.
 template<typename R, typename S>
 struct store_types
 {
-    /// Kept by value or key, as an associative container (set, map, sorted sequence).
-    static constexpr bool keyed = by_value<S>;
-    /// Elements change in place: nothing depends on their values, and the Store may change.
-    static constexpr bool writable = !keyed && !has<S, monotone>;
+    /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
+    /// and it is not frozen.
+    static constexpr bool writable = appends<typename S::kind> && !S::urd_properties.template any_says<&category_table::stops_changes>();
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::kind::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::kind::positional);
+    static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&category_table::fixes_iteration_order>();
 
     using value_type = typename S::element_type;
-    using key_type = typename S::key_type;
-    using mapped_type = typename S::mapped_type;
-    /// What lookups take: a map's key, else an element.
-    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, value_type, key_type>;
+    /// What lookups take, as the kind's data says: a map's key, else an element.
+    using lookup_type = typename S::lookup_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 };
@@ -79,6 +76,12 @@ consteval bool compares_in_order()
 /// container is chosen.
 template<template<typename, typename, typename> class F>
 struct facet_condition;
+/// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet
+/// hands out indices for views (records, insertion_positions), so that the Store's container is numbered (urd::layer).
+struct facet_defaults
+{
+    static constexpr bool hands_out_indices = false;
+};
 
 /// Whether a pool's values are rows: Stores or registered containers holding elements (held_as, as the pools'
 /// containers read them). A Store is not completed to ask (its container's header may be absent here).
@@ -94,17 +97,11 @@ struct facet_operations
     using offered = operation_list<>;
 };
 
-/// Whether F is among the facets of a list.
-template<template<typename, typename, typename> class F, typename List>
-inline constexpr bool listed_facet = false;
-template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
-inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
-
 /// Whether a Store for spec S over representation R has facet F: its kind lists F, and F's condition holds.
 template<typename R, typename S, template<typename, typename, typename> class F>
 consteval bool facet_on()
 {
-    if constexpr (listed_facet<F, typename S::kind::facets>)
+    if constexpr (listed_facet<F, facets_of<typename S::kind>>)
         return facet_condition<F>::template on<R, S>();
     else
         return false;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 
 #include <cassert>
@@ -104,12 +104,14 @@ public:
     /// The index of the element at `it`.
     [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
     { return index_type(static_cast<std::uint32_t>(this->position(it))); }
-    /// A view of the element at `at`, through this Store (urd/view.hpp must be included where views are made).
-    [[nodiscard]] auto view(index_type at) const
+    /// A view of the element at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
+    [[nodiscard]] urd::view<typename types::value_type, Derived> view(index_type at) const
     {
-        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
+        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         return urd::view<typename types::value_type, Derived>(at, static_cast<const Derived&>(*this));
     }
+    /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
+    [[nodiscard]] std::size_t layer() const { return store_access::representation(static_cast<const Derived&>(*this)).layer(); }
 };
 
 }  // namespace urd::detail::facet
@@ -120,11 +122,11 @@ namespace urd::detail
 /// When a Store has this facet: its kind keeps its elements by position (a sequence, a multiset), or it asks for
 /// positions.
 template<>
-struct facet_condition<facet::positions>
+struct facet_condition<facet::positions> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::kind::positional || has<S, positional>; }
+    { return has<S, positional>; }
 };
 template<>
 struct facet_operations<facet::positions>
@@ -134,8 +136,10 @@ struct facet_operations<facet::positions>
 /// When a set has positions: it asks for them, or it is insertion-ordered and never frees a key (kept in one
 /// array: an interner, a sparse set), so its keys have positions whether the request names them or not.
 template<>
-struct facet_condition<facet::insertion_positions>
+struct facet_condition<facet::insertion_positions> : facet_defaults
 {
+    /// It hands out indices for views, so the Store's container is numbered (urd::layer).
+    static constexpr bool hands_out_indices = true;
     template<typename R, typename S>
     static constexpr bool on()
     { return has<S, positional> || (has<S, insertion_ordered> && !has<S, reclaims>); }

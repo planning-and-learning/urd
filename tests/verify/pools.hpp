@@ -3,7 +3,7 @@
 // urd::verify for pools: interning pools of rows (handles, unique) and pools of slots (handles).
 
 #include "common.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -50,7 +50,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         rows.push_back(std::move(row));
     };
 
-    constexpr bool sequence_rows = !by_value<traits_t<Row>>;
+    constexpr bool sequence_rows = appends<typename held_as<Row>::kind>;
     auto random = std::mt19937(seed);
     // Sequence rows over few values, so that equal rows recur; set rows over a range of several blocks.
     auto pick = std::uniform_int_distribution<int>(0, sequence_rows ? 3 : 99);
@@ -297,5 +297,14 @@ std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
     }
     return std::nullopt;
 }
+
+/// Slots are checked by handle.
+template<>
+struct verifier<slots_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return run_slots(range, seed, steps); }
+};
 
 }  // namespace urd::detail

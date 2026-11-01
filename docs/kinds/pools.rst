@@ -6,13 +6,13 @@ Pools
 .. code-block:: cpp
 
    template<typename Row, typename... Properties>
-   using Interned = Store<value<Row>, handles, unique, Properties...>;   // rows, each stored once, by handle
+   using Interned = Store<pool<Row>, Properties...>;   // rows, each stored once, by handle
    template<typename T, typename... Properties>
-   using Slots = Store<value<T>, handles, Properties...>;                // elements in slots that never move
+   using Slots = Store<slots<T>, Properties...>;                // elements in slots that never move
 
 .. cpp:class:: Pool
 
-   A pool: ``Store<value<Row>, handles, Properties...>``, interning with ``unique``. The name ``Pool`` stands for the resolved Store type on this page.
+   A pool: ``Store<slots<Row>, Properties...>``, interning with ``unique``. The name ``Pool`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Pool
 
@@ -32,22 +32,22 @@ no row to name, as a pool of records does.
 
    * - Request
      - Representation
-   * - ``Store<value<Row>, handles, unique>``
+   * - ``Store<pool<Row>>``
      - ``RowInterner``: each distinct row once, in full; rows of dense indices as bitset words
-   * - ``Store<value<Row>, handles, unique, structural_sharing>``
+   * - ``Store<pool<Row>, structural_sharing>``
      - ``TreeVectorSet`` (sequence rows), ``TreeBitsetSet`` (rows of dense indices): equal subtrees stored once
-   * - ``Store<value<T>, handles>``
+   * - ``Store<slots<T>>``
      - ``SlotVector``: stable slots, freed ones reused
    * - any of them with ``concurrent``
      - the same, thread-safe
-   * - ``Store<value<Row>, handles, unique, layered>``
+   * - ``Store<pool<Row>, layered>``
      - ``LayeredPool`` over the row interner (:doc:`records`)
 
 Template parameters
 -------------------
 
 ``Row``
-   A Store (``Store<value<T>, frozen>``, ``Store<key<I>, dense, frozen>``), or any range constructible from its
+   A Store (``Store<sequence<T>, frozen>``, ``Store<set<I>, dense, frozen>``), or any range constructible from its
    elements. The Row's own rules decide which rows are equal: a set's in any order, once.
 
 Member types
@@ -126,7 +126,7 @@ Member functions: slots (``handles`` without ``unique``)
 
 .. cpp:class:: Slots
 
-   A pool of slots: ``Store<value<T>, handles, Properties...>``. The name ``Slots`` stands for the resolved Store
+   A pool of slots: ``Store<slots<T>, Properties...>``. The name ``Slots`` stands for the resolved Store
    type below.
 
 .. cpp:namespace:: urd::Slots
@@ -164,7 +164,7 @@ Example
 
 .. code-block:: cpp
 
-   using States = Store<value<Store<key<Atom>, dense, frozen>>, handles, unique, structural_sharing>;
+   using States = Store<pool<Store<set<Atom>, dense, frozen>>, structural_sharing>;
    auto states = States();
    const auto initial = states.insert(facts);                                 // index<...>
    const auto next = states.insert(initial, added, removed);                  // a delta: only the changed path is new

@@ -19,22 +19,21 @@
 #include <string>
 #include <utility>
 
-using urd::key;
+using urd::map;
 using urd::Store;
-using urd::value;
 
 namespace
 {
 
-using Symbols = Store<key<std::string>, value<int>, urd::scoped>;
-using Translations = Store<key<std::string>, value<std::string>, urd::layered>;
-using Memo = Store<key<int>, value<std::int64_t>>;
+using Symbols = Store<map<std::string, int>, urd::scoped>;
+using Translations = Store<map<std::string, std::string>, urd::layered>;
+using Memo = Store<map<int, std::int64_t>>;
 
 void run()
 {
     std::cout << "Scopes and layers:\n";
-    example::show<Symbols>("Store<key<string>, value<int>, scoped>      bindings that end with their scope");
-    example::show<Translations>("Store<key<string>, value<string>, layered>  a layer over a parent's entries");
+    example::show<Symbols>("Store<map<string, int>, scoped>      bindings that end with their scope");
+    example::show<Translations>("Store<map<string, string>, layered>  a layer over a parent's entries");
 
     // A parser's symbol table: x is bound outside, rebound inside an action, and back once the action ends.
     auto symbols = Symbols();

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "urd/elements.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

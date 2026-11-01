@@ -21,11 +21,11 @@ A ``Store`` is described by what it holds and how it is used, not by which conta
        static constexpr auto identifying_members() noexcept { return Members<&User::id> {}; }
    };
 
-   using Names    = Store<key<std::string>, positional, monotone>;         // an interner: each name gets an index
-   using Follows  = Store<key<User>, value<User>, multi, dense, frozen, bidirectional>;  // a frozen graph
-   using Seen     = Store<key<User>, dense>;                               // a bitset
-   using Frontier = Store<value<User>, fifo>;                              // a queue
-   using Distance = Store<key<User>, value<int>, dense, constant_clear>;   // cleared per search in O(1)
+   using Names    = Store<set<std::string>, positional, monotone>;         // an interner: each name gets an index
+   using Follows  = Store<map<User, User>, multi, dense, frozen, bidirectional>;  // a frozen graph
+   using Seen     = Store<set<User>, dense>;                               // a bitset
+   using Frontier = Store<queue<User>, fifo>;                              // a queue
+   using Distance = Store<map<User, int>, dense, constant_clear>;   // cleared per search in O(1)
 
 urd resolves each request at compile time to a container from the standard library, Boost, or its own
 ``urd::repr``, and gives the Store exactly the interface those properties allow: a ``frozen`` Store has no

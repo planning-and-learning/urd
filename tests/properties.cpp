@@ -14,11 +14,13 @@
 #include "urd/repr/values/sparse_set.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <deque>
 #include <gtest/gtest.h>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -41,6 +43,28 @@ private:
 };
 
 }  // namespace lib
+}  // namespace
+
+namespace
+{
+
+/// A container outside the registry, declared as urd's are, so that its claims are checked like theirs: the kind it
+/// serves, what it provides, what it relies on, and the roles its element types give.
+template<typename Kind, urd::detail::property_set Provides, urd::detail::property_set Relies = urd::detail::property_set {}>
+struct test_declaration
+{
+    static constexpr std::string_view id = "test container";
+    static constexpr auto headers = urd::detail::header_list<1> { "tests/properties.cpp" };
+    using kind = Kind;
+    static constexpr urd::detail::property_set provides = Provides;
+    static constexpr urd::detail::property_set relies_on = Relies;
+    static constexpr std::array<urd::tag, 0> gives_elements {};
+    using operation_costs = urd::cost_table<>;
+    static constexpr double words = 1;
+    static constexpr std::string_view description = "a container a test declares";
+    static constexpr std::string_view holds = "its elements";
+};
+
 }  // namespace
 
 namespace
@@ -72,11 +96,13 @@ private:
 
 // What it guarantees: entries keep their address; and what it relies on: it only grows.
 template<>
-struct urd::container_traits<Journal> : urd::properties_of<urd::positional, urd::stable_refs>
+struct urd::detail::declaration_of<Journal>
 {
+    using declaration = test_declaration<urd::sequence_kind,
+                                         urd::detail::property_set::of({ urd::position::positional, urd::referencing::stable_refs }),
+                                         urd::detail::property_set::of({ urd::change::monotone })>;
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::sequence<int>>();
 };
-template<>
-inline constexpr urd::detail::property_set urd::relies_on<Journal> = urd::detail::property_set::of({ urd::change::monotone });
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Adapters, Properties, testing::Types<Journal>, urd::test::Names);
 
@@ -103,11 +129,13 @@ struct ClaimsStableRefs
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableRefs> : urd::properties_of<urd::stable_refs>
+struct urd::detail::declaration_of<ClaimsStableRefs>
 {
+    using declaration = test_declaration<urd::sequence_kind,
+                                         urd::detail::property_set::of({ urd::referencing::stable_refs }),
+                                         urd::detail::property_set::of({ urd::change::monotone })>;
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::sequence<int>>();
 };
-template<>
-inline constexpr urd::detail::property_set urd::relies_on<ClaimsStableRefs> = urd::detail::property_set::of({ urd::change::monotone });
 
 TEST(Properties, AFalseClaimIsCaught)
 {
@@ -128,8 +156,13 @@ struct ClaimsStableValues : urd::repr::IndexMap<int, int, false>
 }  // namespace
 
 template<>
-struct urd::container_traits<ClaimsStableValues> : urd::properties_of<urd::sorted, urd::unique, urd::dense, urd::stable_refs, urd::retains>
+struct urd::detail::declaration_of<ClaimsStableValues>
 {
+    using declaration =
+        test_declaration<urd::map_kind,
+                         urd::detail::property_set::of(
+                             { urd::order::sorted, urd::uniqueness::unique, urd::keys::dense, urd::referencing::stable_refs, urd::memory::retains })>;
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::map<int, int>>();
 };
 
 TEST(Properties, AFalseClaimAboutValuesIsCaught)

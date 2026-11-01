@@ -2,8 +2,10 @@
 
 // urd::verify for pools of records stored flat, and for layered ones.
 
+#include "../names.hpp"
 #include "common.hpp"
-#include "urd/semantics/less.hpp"
+#include "pools.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -120,8 +122,9 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
 {
     using T = typename P::value_type;
     using Index = typename P::handle_type;
-    auto root = P();
-    auto middle = P();
+    // Numbered (urd::layer) apart from the leaf, which its caller built with 0.
+    auto root = urd::test::make_empty<P>(1);
+    auto middle = urd::test::make_empty<P>(2);
     // The leaf is a local, declared after its parents, so that it never outlives them.
     auto leaf = std::move(fresh);
     auto chain = std::vector<T>();
@@ -139,8 +142,6 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
     for (std::size_t each = 0; each < base; ++each)
         placed.push_back(std::addressof(leaf[Index(static_cast<std::uint32_t>(each))]));
     const auto failed = [&](int step, const std::string& what) { return std::optional<std::string>("step " + std::to_string(step) + ": " + what); };
-    if (root.layer() != 0 || middle.layer() != 1 || leaf.layer() != 2)
-        return failed(-1, "the layers are not numbered 0, 1, 2 along the chain");
     if (leaf.base() != base || middle.base() != root.size() || root.base() != 0)
         return failed(-1, "a layer's indices do not start at its parent's size");
     if (leaf.size() != base || leaf.parent_grew())
@@ -210,5 +211,21 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
     }
     return std::nullopt;
 }
+
+/// A pool is checked as rows interned by handle, or as records (layered over a parent where it is layered).
+template<>
+struct verifier<pool_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    {
+        if constexpr (holds_rows<typename R::value_type>())
+            return run_pool(range, seed, steps);
+        else if constexpr (has<container_traits<R>, layered>)
+            return run_layered_records(range, seed, steps);
+        else
+            return run_records(range, seed, steps);
+    }
+};
 
 }  // namespace urd::detail

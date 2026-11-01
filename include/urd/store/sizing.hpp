@@ -27,7 +27,7 @@ namespace urd::detail
 /// When a Store has this facet: where its container counts its elements (a pool that shares parts of its rows keeps
 /// no count); asked from the spec alone (R void), never.
 template<>
-struct facet_condition<facet::sizing>
+struct facet_condition<facet::sizing> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

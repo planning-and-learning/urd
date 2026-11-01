@@ -13,6 +13,9 @@ template<typename Derived, typename R, typename S>
 class multi_values
 {
 public:
+    /// What a key maps to (values_by_key says it for unique keys; the two are never both on).
+    using mapped_type = typename S::mapped_type;
+
     [[nodiscard]] auto values(const typename S::key_type& key) const
     {
         const auto& representation = store_access::representation(static_cast<const Derived&>(*this));
@@ -33,7 +36,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet::multi_values>
+struct facet_condition<facet::multi_values> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>
@@ -21,7 +21,7 @@ class pool
 {
     using row_element = std::ranges::range_value_t<typename S::element_type>;
     /// Rows that are sequences take writes by position.
-    static constexpr bool sequence_rows = !by_value<traits_t<typename S::element_type>>;
+    static constexpr bool sequence_rows = appends<typename held_as<typename S::element_type>::kind>;
 
     /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
     /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).
@@ -103,7 +103,7 @@ namespace urd::detail
 
 /// When a Store has this facet: its values are rows (ranges of elements).
 template<>
-struct facet_condition<facet::pool>
+struct facet_condition<facet::pool> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

@@ -2,7 +2,7 @@
 
 // The grouping of a frozen multimap by dense key: compressed sparse rows.
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/traits.hpp"
 

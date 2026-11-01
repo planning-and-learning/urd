@@ -13,7 +13,6 @@
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
@@ -72,37 +71,38 @@ namespace
 
 using urd::test::cost;
 using urd::test::op;
+using urd::test::op_count;
 
 using urd::test::json_text;
 
-/// Tags as a JSON list of names, in the vocabulary's order; the roots left out.
-std::string tag_list(const urd::detail::property_set& held, std::string_view role = "", std::string result = "[")
+/// The tags about the Store itself, or about role `role`, as a JSON list of names prefixed by the role ("row:unique"),
+/// in the vocabulary's order; the roots left out.
+std::string tag_list(const urd::detail::property_set& held, const urd::role_info* role = nullptr, std::string result = "[")
 {
+    const auto prefix = role != nullptr ? std::string(role->name) + ":" : std::string();
     for (const auto* category : urd::test::category_tables)  // in the vocabulary's order
-        if (const auto each = held.in(category); each.answer != 0)
-            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(urd::tag_name(each)));
+        if (const auto each = held.in(category, role); each.answer != 0)
+            result += (result.size() > 1 ? ", " : "") + json_text(prefix + std::string(urd::tag_name(each)));
     return result;
 }
-/// Traits as names prefixed by their role ("element:can_hash"), in the vocabulary's order, appended to a JSON list.
-std::string trait_list(std::string result, std::string_view role, const urd::detail::trait_set& held)
+/// The traits about role `role`, as names prefixed by it ("element:can_hash"), in the vocabulary's order.
+std::string trait_list(std::string result, const urd::role_info* role, const urd::detail::property_set& held)
 {
     for (const auto* each : urd::test::vocabulary_traits)
-        if (held.has(each))
-            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(each->name));
+        if (held.in(each, role).answer != 0)
+            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role->name) + ":" + std::string(each->name));
     return result;
 }
-/// What a declaration relies on, by role, as a JSON list: what a request states, then each role's tags and traits
-/// prefixed by its name ("element:can_hash"), in the vocabulary's order.
-std::string roles_list(const urd::detail::role_tags& roles)
+/// What a declaration relies on, as a JSON list: what a request states, then each role's tags and traits prefixed by
+/// its name ("element:can_hash"), in the vocabulary's order.
+std::string roles_list(const urd::detail::property_set& relied)
 {
-    auto result = tag_list(roles.stated);
+    auto result = tag_list(relied);
     for (const auto* role : urd::test::vocabulary_roles)
-        if (const auto* entry = roles.find(role))
-        {
-            const auto prefix = std::string(role->name) + ":";
-            result = tag_list(entry->tags, prefix, result);
-            result = trait_list(result, prefix, entry->traits);
-        }
+    {
+        result = tag_list(relied, role, result);
+        result = trait_list(result, role, relied);
+    }
     return result + "]";
 }
 
@@ -118,28 +118,15 @@ struct representation
     std::string provides;
     std::string relies_on;
     /// Each operation's cost, where R has one, and whether R passes it on to its part.
-    std::array<std::optional<cost>, static_cast<std::size_t>(op::count)> costs {};
-    std::array<bool, static_cast<std::size_t>(op::count)> passed_on {};
+    std::array<std::optional<cost>, op_count> costs {};
+    std::array<bool, op_count> passed_on {};
     /// The operations some request's Store over it offers: a cost passed on to the part is listed only for these.
     urd::test::offers offered {};
 };
 
 template<typename S>
 std::string kind_of()
-{
-    if constexpr (std::same_as<typename S::kind, urd::partition_kind>)
-        return "partitions";
-    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
-        return urd::has<S, urd::flat> ? "records" : "pools";
-    else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
-        return "queues";
-    else if constexpr (std::same_as<typename S::kind, urd::map_kind>)
-        return "maps";
-    else if constexpr (std::same_as<typename S::kind, urd::set_kind>)
-        return "sets";
-    else
-        return "sequences";
-}
+{ return std::string(S::kind::page(S::urd_properties)); }
 
 template<typename S, typename List>
 struct collect;

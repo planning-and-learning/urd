@@ -59,9 +59,9 @@ std::string kinds_answering(urd::tag of)
             {
                 if (((urd::category<Es> == of.in) || ...))
                     result += (result.size() > 1 ? ", " : "") + json_text(Kinds::name);
-            }(typename Kinds::format {}),
+            }(urd::detail::format_of<Kinds> {}),
             ...);
-    }(urd::leaf_kinds<> {});
+    }(urd::kinds {});
     return result + "]";
 }
 

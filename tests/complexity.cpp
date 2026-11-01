@@ -7,7 +7,6 @@
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
-#include "urd/repr/maps/entry_ordered.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
@@ -57,6 +56,7 @@ namespace
 {
 
 using urd::test::op;
+using urd::test::op_count;
 
 /// For each serving candidate of S: the operations offered without a cost, as "name op"; the costs used (a wrapper's
 /// and its part's); and the costs declared, by a representation itself rather than passed on to its part.
@@ -69,7 +69,7 @@ struct audit<S, urd::detail::type_list<Rs...>>
     static void one(std::set<std::string>& missing, std::set<std::pair<std::string, op>>& used, std::set<std::pair<std::string, op>>& declared)
     {
         {
-            for (std::size_t each = 0; each < static_cast<std::size_t>(op::count); ++each)
+            for (std::size_t each = 0; each < op_count; ++each)
                 if (urd::test::cost_of<R>(static_cast<op>(each)) && !urd::test::passed_on<R>(static_cast<op>(each)))
                     declared.emplace(std::string(urd::test::name<R>::id), static_cast<op>(each));
             const auto offers = urd::test::offered<R, S>();

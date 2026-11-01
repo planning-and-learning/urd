@@ -4,12 +4,14 @@
 // declaration names for the request (representation_of); and where none serves, an error. No container type is named but the one chosen, so what resolving a
 // request costs the compiler in instantiations does not grow with the number of containers.
 
-#include "urd/elements.hpp"
-#include "urd/properties.hpp"
-#include "urd/registry/features.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/scan.hpp"
 #include "urd/repr/core/dependent_false.hpp"
+#include "urd/repr/core/numbered.hpp"
+#include "urd/spec.hpp"
+#include "urd/store/types.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <array>
 #include <cstddef>
@@ -27,30 +29,20 @@ namespace urd::detail
 template<typename S>
 inline constexpr request_shape shape_of = []
 {
-    using held = held_as<std::conditional_t<std::is_void_v<typename S::mapped_type>, typename S::element_type, typename S::mapped_type>>;
+    using held = held_as<typename S::held_type>;
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
 
-/// The entry for spec S: its node (by its kind), its position in the node's table, or no_entry. `found` is false
-/// where none serves.
+/// The entry for spec S: its position in its kind's table, or no_entry. `found` is false where none serves.
 template<typename S>
 struct choose
 {
-    using node = typename S::kind;
-    static constexpr std::size_t position = first_serving<node>(shape_of<S>);
+    using kind = typename S::kind;
+    static constexpr std::size_t position = first_serving<kind>(shape_of<S>);
     static constexpr bool found = position != no_entry;
-    static constexpr std::string_view id = found ? table_of<node>[position].id : std::string_view();
+    static constexpr std::string_view id = found ? table_of<kind>[position].id : std::string_view();
     /// The headers of the chosen container, a wrapper's part's first.
-    static constexpr std::span<const std::string_view> headers = found ? table_of<node>[position].headers : std::span<const std::string_view>();
-};
-
-/// The I-th type of a list.
-template<std::size_t I, typename List>
-struct nth;
-template<std::size_t I, typename... Ts>
-struct nth<I, type_list<Ts...>>
-{
-    using type = std::tuple_element_t<I, std::tuple<Ts...>>;
+    static constexpr std::span<const std::string_view> headers = found ? table_of<kind>[position].headers : std::span<const std::string_view>();
 };
 
 /// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
@@ -78,6 +70,27 @@ consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 template<typename S, fixed_string Container, typename Missing>
 struct missing_container;
 
+/// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
+/// the facets its kind lists, each by its own condition.
+template<typename S>
+consteval bool hands_out_indices()
+{
+    return []<template<typename, typename, typename> class... Fs>(facet_list<Fs...> /*facets*/)
+    {
+        const auto one = []<template<typename, typename, typename> class F>()
+        {
+            if constexpr (facet_condition<F>::hands_out_indices)
+                return facet_condition<F>::template on<void, S>();
+            else
+                return false;
+        };
+        return (one.template operator()<Fs>() || ...);
+    }(facets_of<typename S::kind> {});
+}
+/// The container of a Store that hands out indices for views is numbered (urd::layer).
+template<typename S, typename R>
+using numbered_t = std::conditional_t<hands_out_indices<S>(), repr::Numbered<R>, R>;
+
 template<typename S, typename Decl, typename Missing>
 struct missing_headers_for
 {
@@ -86,7 +99,7 @@ struct missing_headers_for
 template<typename S, typename Decl>
 struct missing_headers_for<S, Decl, type_list<>>
 {
-    using type = typename representation_of<Decl, S>::type;
+    using type = numbered_t<S, typename representation_of<Decl, S>::type>;
 };
 
 /// The container for spec S, reached only where an entry serves it: the type its declaration names, where this file

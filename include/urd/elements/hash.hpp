@@ -20,7 +20,7 @@
 #ifndef URD_SEMANTICS_HASH_HPP_
 #define URD_SEMANTICS_HASH_HPP_
 
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
 
 #include <array>
 #include <boost/container_hash/hash.hpp>

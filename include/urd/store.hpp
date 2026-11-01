@@ -1,11 +1,12 @@
 #pragma once
 
-#include "urd/index.hpp"
-#include "urd/properties.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/index.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/registry/select.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/spec.hpp"
+#include "urd/store/appending.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
 #include "urd/store/construction.hpp"
@@ -13,7 +14,7 @@
 #include "urd/store/entries.hpp"
 #include "urd/store/equality.hpp"
 #include "urd/store/grouping.hpp"
-#include "urd/store/growth.hpp"
+#include "urd/store/insertion.hpp"
 #include "urd/store/inverse.hpp"
 #include "urd/store/iteration.hpp"
 #include "urd/store/layers.hpp"
@@ -77,7 +78,7 @@ struct complete_representation<missing_container<S, Container, Missing>>
 /// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
 /// which its kind lists (urd/kinds.hpp) and its properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
-class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, typename S::kind::facets>
+class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, facets_of<typename S::kind>>
 {
     using types = store_types<R, S>;
 
@@ -102,7 +103,27 @@ public:
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
-    Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
+    Store(std::initializer_list<value_type> elements)
+        requires std::constructible_from<R, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+        : Store(elements.begin(), elements.end())
+    {
+    }
+
+    /// A Store that hands out indices for views is numbered (urd::layer): built from its number first, then from
+    /// whatever else builds its container (nothing, or its elements). Who builds it gives the number.
+    template<typename... Args>
+        requires std::constructible_from<R, urd::layer, Args...>
+    explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
+    {
+        if constexpr (construction<S>::needs_an_element)
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+    }
+    Store(urd::layer number, std::initializer_list<value_type> elements)
+        requires std::
+            constructible_from<R, urd::layer, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+        : Store(number, elements.begin(), elements.end())
+    {
+    }
 
     /// Replaces the contents by what a Store built from these elements would hold: the one way a frozen Store
     /// changes. A representation that rebuilds in place (assign) keeps its storage; any other is built anew.
@@ -117,23 +138,15 @@ public:
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
-    /// Rows of these lengths, empty: a fixed_shape Store's only shape. A nonempty one needs a row (a row of length 0
-    /// is a row).
-    explicit Store(const row_lengths& lengths)
-        requires construction<S>::by_shape
-        : m_representation(lengths.lengths)
+    /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from
+    /// its rows' lengths (urd::row_lengths), or for rows of rows, each row's shape. A nonempty one needs an element (a
+    /// row of length 0 is a row).
+    template<typename From>
+        requires(S::kind::template builds_from<S, From> && std::constructible_from<R, const From&>)
+    explicit Store(const From& source) : m_representation(source)
     {
         if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
-    }
-    /// Rows of rows, empty, at any depth: for each row, the shape of its rows (a std::vector of row lengths for rows
-    /// of rows, a std::vector of those one level up).
-    template<typename Shape>
-        requires(construction<S>::by_shape && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
-    explicit Store(const Shape& rows) : m_representation(rows)
-    {
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
     void swap(Store& other) noexcept
@@ -149,73 +162,28 @@ private:
     representation m_representation;
 };
 
-template<typename... Ps>
+template<typename Kind, typename... Tags>
 struct resolve
 {
-    using spec_type = typename to_spec<Ps...>::type;
-    using type = Store<typename resolution<to_spec<Ps...>>::type, spec_type>;
+    using spec_type = typename to_spec<Kind, Tags...>::type;
+    using type = Store<typename resolution<to_spec<Kind, Tags...>>::type, spec_type>;
 };
 
 }  // namespace detail
 
-/// A data structure described by its properties. List what the data is and how it is used, in any order:
+/// A data structure described by its kind, with its element types, then its properties, in any order:
 ///
-///     using Ids = urd::Store<urd::key<int>, urd::sorted>;            // a sorted set of ints
-///     using Log = urd::Store<urd::value<Event>, urd::monotone>;      // a sequence that only grows
+///     using Ids = urd::Store<urd::set<int>, urd::sorted>;            // a sorted set of ints
+///     using Log = urd::Store<urd::sequence<Event>, urd::monotone>;   // a sequence that only grows
 ///
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
-template<typename... Ps>
-using Store = typename detail::resolve<Ps...>::type;
-
-/// A Store is ordered by its values where its representation is.
-template<typename R, typename S>
-inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;
+template<typename Kind, typename... Tags>
+using Store = typename detail::resolve<Kind, Tags...>::type;
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>
 struct container_traits<detail::Store<R, S>> : S
 {
-};
-
-// A Store's semantics as an element of another Store, Hash, EqualTo and Less, are decided by its request S alone:
-// whether a Store hashes, compares or orders is asked while the outer Store is resolved, where the inner's
-// representation is named but not yet defined. Only the bodies touch R, and they are instantiated where the Store
-// is held. (semantics/concepts.hpp excludes Stores from the identity concepts for the same reason.)
-
-/// Hashed by its contents where they fix the order its elements come in: sorted, canonical, or a sequence (positions
-/// are contents). An unordered Store iterates in an order its contents do not determine, so it has no Hash and cannot
-/// be a hashed key: ask for sorted (or canonical) on the inner Store. Equality is the facet's (equality.hpp), which
-/// compares in that order, so equal Stores hash equally.
-template<typename R, typename S>
-    requires(detail::construction<S>::hashed_in_order && Hashable<typename S::element_type>)
-struct Hash<detail::Store<R, S>>
-{
-    hash_t operator()(const detail::Store<R, S>& store) const
-    {
-        // The representation's own hash where it has one (a bitset hashes its words).
-        if constexpr (Hashable<R>)
-            return Hash<R> {}(detail::store_access::representation(store));
-        else
-            return urd::hash_range(store);
-    }
-};
-
-/// Equal contents, as the Store's == compares them (equality.hpp): an iterable Store of comparable elements.
-template<typename R, typename S>
-    requires(S::iterable && EqualityComparableByEqualTo<typename S::element_type>)
-struct EqualTo<detail::Store<R, S>>
-{
-    bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const { return lhs == rhs; }
-};
-
-/// Ordered lexicographically by urd::Less over the elements, in the order the request fixes (sorted,
-/// insertion_ordered, a sequence): a strict weak order agreeing with EqualTo, as the standard's ordered containers'.
-template<typename R, typename S>
-    requires(detail::construction<S>::ordered_in_order && OrderedByLess<typename S::element_type>)
-struct Less<detail::Store<R, S>>
-{
-    bool operator()(const detail::Store<R, S>& lhs, const detail::Store<R, S>& rhs) const
-    { return std::ranges::lexicographical_compare(lhs, rhs, Less<typename S::element_type> {}); }
 };
 
 }  // namespace urd

@@ -1,7 +1,8 @@
 // urd::index<T> and urd::view<T, C>: a strong index minted by the Store that numbers Ts, and a reference made of
 // an index and the context that resolves it, which resolves the record's members through the same context.
 
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -28,7 +29,6 @@
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
-#include "urd/view.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -45,9 +45,12 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::pool;
+using urd::sequence;
+using urd::set;
+using urd::slots;
 using urd::Store;
-using urd::value;
 using urd::view;
 
 struct Owner
@@ -64,33 +67,43 @@ struct Rec
     static constexpr auto identifying_members() noexcept { return urd::Members<&Rec::name, &Rec::parts, &Rec::owner, &Rec::alternative> {}; }
 };
 
-using Owners = Store<key<Owner>, urd::positional, urd::monotone>;
-using Recs = Store<key<Rec>, urd::positional, urd::monotone>;
-
-/// Two interners as one context: it resolves both record types, and numbers itself as a layer would.
-struct Both
-{
-    Owners owners;
-    Recs recs;
-    std::size_t number = 0;
-
-    [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
-    [[nodiscard]] const Rec& operator[](urd::index<Rec> at) const { return recs[at]; }
-    [[nodiscard]] std::size_t layer() const noexcept { return number; }
-};
+using Owners = Store<set<Owner>, urd::positional, urd::monotone>;
+using Recs = Store<set<Rec>, urd::positional, urd::monotone>;
 
 }  // namespace
 
-// The default context of Rec, and a named accessor: what a library writes once per record type.
-template<>
-struct urd::context_of<Rec>
-{
-    using type = Both;
-};
+// A named accessor: what a library writes once per record type, before its views are made.
 template<typename V>
 struct urd::view_mixin<Rec, V>
 {
     [[nodiscard]] std::string_view name() const { return static_cast<const V&>(*this).template get<&Rec::name>(); }
+};
+
+namespace
+{
+
+/// Two interners as one context: it resolves both record types, numbered as its caller says.
+struct Both
+{
+    explicit Both(urd::layer number) : owners(number), recs(number) {}
+
+    Owners owners;
+    Recs recs;
+
+    [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
+    [[nodiscard]] const Rec& operator[](urd::index<Rec> at) const { return recs[at]; }
+    [[nodiscard]] std::size_t layer() const { return recs.layer(); }
+    [[nodiscard]] urd::view<Owner, Both> view(urd::index<Owner> at) const { return { at, *this }; }
+    [[nodiscard]] urd::view<Rec, Both> view(urd::index<Rec> at) const { return { at, *this }; }
+};
+
+}  // namespace
+
+// The default context of Rec.
+template<>
+struct urd::context_of<Rec>
+{
+    using type = Both;
 };
 static_assert(std::same_as<view<Rec>, view<Rec, Both>>);
 
@@ -102,27 +115,24 @@ static_assert(!std::same_as<urd::index<Owner>, urd::index<Rec>> && !std::convert
               && !std::convertible_to<urd::index<Owner>, std::uint32_t>);
 static_assert(urd::indexable<urd::index<Owner>> && urd::hashable<urd::index<Owner>> && urd::orderable<urd::index<Owner>>);
 static_assert(!urd::index_of<urd::index<Owner>>::is_index(urd::index<Owner>()) && urd::index_of<urd::index<Owner>>::to_index(urd::index<Owner>(3)) == 3);
-static_assert(std::same_as<Store<key<urd::index<Owner>>, value<int>, urd::dense>::representation, urd::repr::IndexMap<urd::index<Owner>, int, false>>);
-static_assert(std::same_as<Store<key<urd::index<Owner>>, urd::dense>::representation, urd::repr::DenseSet<urd::index<Owner>>>);
+static_assert(std::same_as<Store<map<urd::index<Owner>, int>, urd::dense>::representation, urd::repr::IndexMap<urd::index<Owner>, int, false>>);
+static_assert(std::same_as<Store<set<urd::index<Owner>>, urd::dense>::representation, urd::repr::DenseSet<urd::index<Owner>>>);
 
 // Handles are indices: a pool's and an interner's.
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>::handle_type, urd::index<Store<value<int>, urd::frozen>>>);
-static_assert(std::same_as<Store<value<int>, urd::handles>::handle_type, urd::index<int>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>>::handle_type, urd::index<Store<sequence<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<slots<int>>::handle_type, urd::index<int>>);
 static_assert(std::same_as<Owners::index_type, urd::index<Owner>>);
 
 // Contexts: a positional set resolves its own type; Both resolves two; a hash set resolves nothing.
 static_assert(urd::resolves<Owners, Owner> && !urd::resolves<Owners, Rec> && urd::resolves<Both, Owner> && urd::resolves<Both, Rec>);
-static_assert(!urd::resolves<Store<key<Owner>>, Owner>);
+static_assert(!urd::resolves<Store<set<Owner>>, Owner>);
 
 // What the members resolve to, in each context.
-static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Recs>, urd::index<Owner>>);
 static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Both>, view<Owner, Both>>);
-static_assert(std::same_as<urd::resolved_t<std::string, Both>, std::string_view>);
-static_assert(std::same_as<urd::resolved_t<std::vector<urd::index<Owner>>, Recs>, std::span<const urd::index<Owner>>>);
+static_assert(std::same_as<urd::resolved_t<std::string, Both>, std::string>);  // text as it is
 static_assert(std::ranges::random_access_range<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>
               && std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>, view<Owner, Both>>);
 static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Both>, std::variant<view<Owner, Both>, int>>);
-static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Recs>, std::variant<urd::index<Owner>, int>>);
 
 // Views are hashable and comparable, by index and layer number.
 static_assert(urd::hashable<view<Rec, Both>> && urd::hashable<view<Owner, Owners>> && urd::orderable<view<Rec, Both>>);
@@ -131,7 +141,7 @@ static_assert(urd::hashable<view<Rec, Both>> && urd::hashable<view<Owner, Owners
 
 TEST(Index, APositionalSetMintsIndices)
 {
-    auto owners = Owners();
+    auto owners = Owners(urd::layer { 0 });
     const auto [it, inserted] = owners.insert(Owner { "a" });
     EXPECT_TRUE(inserted);
     const auto a = owners.index(it);
@@ -146,7 +156,7 @@ TEST(Index, APositionalSetMintsIndices)
 
 TEST(Index, KeysDenseTables)
 {
-    auto counts = Store<key<urd::index<Owner>>, value<int>, urd::dense>();
+    auto counts = Store<map<urd::index<Owner>, int>, urd::dense>();
     counts.insert_or_assign(urd::index<Owner>(2), 5);
     EXPECT_TRUE(counts.contains(urd::index<Owner>(2)));
     EXPECT_FALSE(counts.contains(urd::index<Owner>(1)));
@@ -157,9 +167,9 @@ TEST(Index, KeysDenseTables)
 namespace
 {
 
-Both make_both()
+Both make_both(urd::layer number = urd::layer { 0 })
 {
-    auto both = Both();
+    auto both = Both(number);
     const auto a = both.owners.index(both.owners.insert(Owner { "a" }).first);
     const auto b = both.owners.index(both.owners.insert(Owner { "b" }).first);
     both.recs.insert(Rec { "first", { a, b }, b, a });
@@ -172,12 +182,6 @@ Both make_both()
 TEST(View, ResolvesMembersThroughItsContext)
 {
     const auto both = make_both();
-    const auto first = both.recs.view(urd::index<Rec>(0));  // the Store alone resolves only Rec
-    EXPECT_EQ(first.get<&Rec::name>(), "first");
-    EXPECT_EQ(first.get<&Rec::owner>(), urd::index<Owner>(1));
-    EXPECT_EQ(first.get<&Rec::parts>().size(), 2U);
-    EXPECT_EQ(std::get<urd::index<Owner>>(first.get<&Rec::alternative>()), urd::index<Owner>(0));
-
     const auto whole = view<Rec>(urd::index<Rec>(0), both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
     EXPECT_EQ(whole.get<&Rec::owner>().get<&Owner::name>(), "b");
@@ -195,15 +199,15 @@ TEST(View, ComparesAndHashesByIndexAndLayer)
 {
     const auto both = make_both();
     const auto again = view<Rec>(urd::index<Rec>(0), both);
-    EXPECT_EQ(view<Rec>(urd::index<Rec>(0), both), again);
-    EXPECT_NE(view<Rec>(urd::index<Rec>(1), both), again);
+    const auto equal = urd::EqualTo<view<Rec>> {};
+    EXPECT_TRUE(equal(view<Rec>(urd::index<Rec>(0), both), again));
+    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(1), both), again));
     EXPECT_EQ(urd::Hash<view<Rec>> {}(view<Rec>(urd::index<Rec>(0), both)), urd::Hash<view<Rec>> {}(again));
-    auto other = make_both();
-    other.number = 1;
-    EXPECT_NE(view<Rec>(urd::index<Rec>(0), other), again);  // another layer: another element
+    const auto other = make_both(urd::layer { 1 });
+    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(0), other), again));  // another layer: another element
     EXPECT_TRUE(urd::Less<view<Rec>> {}(again, view<Rec>(urd::index<Rec>(1), both)));
 
-    auto seen = Store<key<view<Rec>>>();
+    auto seen = Store<set<view<Rec>>>();
     seen.insert(again);
     EXPECT_TRUE(seen.contains(view<Rec>(urd::index<Rec>(0), both)));
     EXPECT_FALSE(seen.contains(view<Rec>(urd::index<Rec>(1), both)));

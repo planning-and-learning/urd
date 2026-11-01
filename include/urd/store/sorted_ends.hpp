@@ -39,7 +39,7 @@ namespace urd::detail
 /// When a Store has this facet: from its spec S.
 /// Sequences and positional sets have front and back by position (positions).
 template<>
-struct facet_condition<facet::sorted_ends>
+struct facet_condition<facet::sorted_ends> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

@@ -12,16 +12,31 @@ registry's containers, or a header that instantiated them, shows here as instant
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 # What a registered container's type begins with: urd's own, and the standard library's, Boost's and gtl's.
-URD = ("Jagged", "RowPool", "IndexedSet", "Queue", "AddressableHeap", "BucketQueue", "RingFifo", "DenseSet", "SparseSet",
-       "IndexMap", "GroupedMultiMap", "BidirectionalCsr", "DisjointSets", "Layered", "LayeredPool", "ChangeLogged",
-       "OrderedMap", "SegmentedVector", "RecordInterner", "ArenaInterner", "RowInterner", "TreeVectorSet", "TreeBitsetSet",
-       "SlotVector", "Scoped", "Recycling", "RecyclingSet", "FlatEntryMap")
+
+
+def registered_containers() -> tuple[str, ...]:
+    """urd's registered containers, as instantiations name them: every repr type a declaration resolves to
+    (representation_of, `using type = repr::X<`), each alias followed to the class template it names (ScopedMap is
+    Scoped<…>); an alias of another library's type is that library's (gtl::parallel_ below)."""
+    sources = [path.read_text() for path in (Path(__file__).resolve().parent.parent / "include" / "urd" / "repr").rglob("*.hpp")]
+    chosen = {name for text in sources for name in re.findall(r"using type\s*=\s*(?:urd::)?repr::(\w+)<", text)}
+    aliases = {alias: target for text in sources for alias, target in re.findall(r"using (\w+) = (\w+)<", text)}
+    names = set()
+    for name in chosen:
+        while name in aliases:
+            name = aliases[name]
+        names.add(name)
+    return tuple(sorted(names))
+
+
+URD = registered_containers()
 CONTAINERS = (*(f"urd::repr::{each}<" for each in URD), "std::set<", "std::multiset<", "std::map<", "std::multimap<",
               "std::unordered_set<", "std::unordered_map<", "std::unordered_multimap<",
               "boost::container::flat_set<", "boost::container::flat_multiset<", "boost::container::flat_map<",

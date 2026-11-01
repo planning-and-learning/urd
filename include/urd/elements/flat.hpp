@@ -4,14 +4,16 @@
 // and how a view resolves them. Include it where flat records are defined; the pools that store them are in
 // urd/repr/records/records.hpp and urd/repr/records/arena.hpp, included where such a Store is held.
 
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/view.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/view.hpp"
 
+#include <cista/containers/optional.h>
 #include <cista/containers/string.h>
 #include <cista/containers/variant.h>
 #include <cista/containers/vector.h>
 #include <cstddef>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -98,18 +100,29 @@ struct EqualTo<flat_variant<Ts...>>
 
 /// A view resolves a flat variant as it does a std::variant: the variant of its alternatives resolved.
 template<typename... Ts>
-struct variant_traits<flat_variant<Ts...>>
+struct resolution<::cista::variant<Ts...>>
 {
     template<typename C>
-    using resolved = std::variant<resolved_t<Ts, C>...>;
-    template<typename F>
-    static decltype(auto) visit(F&& function, const flat_variant<Ts...>& held)
+    static auto of(const ::cista::variant<Ts...>& member, const C& context)
     {
-        if (!held.valid())
+        using resolved = std::variant<resolved_t<Ts, C>...>;
+        if (!member.valid())
             throw std::bad_variant_access();
-        return flat_variant<Ts...>::apply([&function](const auto& alternative) -> decltype(auto) { return std::forward<F>(function)(alternative); },
-                                          detail::held_index(held),
-                                          held);
+        return ::cista::variant<Ts...>::apply([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); },
+                                              detail::held_index(member),
+                                              member);
+    }
+};
+
+/// And a flat optional as a std::optional of its value resolved.
+template<typename T>
+struct resolution<::cista::optional<T>>
+{
+    template<typename C>
+    static auto of(const ::cista::optional<T>& member, const C& context)
+    {
+        using resolved = std::optional<resolved_t<T, C>>;
+        return member.has_value() ? resolved(urd::resolve(*member, context)) : resolved();
     }
 };
 

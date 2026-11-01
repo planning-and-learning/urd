@@ -26,7 +26,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet::reverse_iteration>
+struct facet_condition<facet::reverse_iteration> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

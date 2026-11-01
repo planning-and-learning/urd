@@ -10,14 +10,15 @@
 //         static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
 //         using kind = set_kind;                                        // urd/kinds.hpp
 //         static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, … });
-//         static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+//         static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
-//         struct operation_costs { … };                                       // urd::container_costs, by operation
+//         using operation_costs = cost_table<cost_entry<operation::insert, costs::one>, …>;  // urd::container_costs
+//         static constexpr double words = …;                                  // memory per element
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
 //     };
 //
 // What it provides is matched against what a request requires, what it relies on against what the request's roles
-// promise by role (urd/registry/facts.hpp: role_tags): the type traits (urd::trait) of its elements, its order, its
+// promise by role (urd/registry/facts.hpp: property_set): the type traits (urd::trait) of its elements, its order, its
 // rows, and the rows' own tags. What depends on the elements
 // beyond the tags is in its description. A wrapper is a template over its part's declaration
 // (urd/repr/wrappers/layered_fwd.hpp, …), composing the part's tags, headers, costs and words; a container with
@@ -30,10 +31,71 @@
 #include "urd/kinds.hpp"
 #include "urd/registry/facts.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <span>
 #include <string_view>
+
+namespace urd
+{
+
+/// The strings Parts, one after the other, as one string with static storage: a wrapper's id is its prefix and its
+/// part's id (`layered_` and `record_interner`), so a wrapper over a new part has an id of its own.
+template<const std::string_view&... Parts>
+struct joined
+{
+    static constexpr auto storage = []
+    {
+        auto result = std::array<char, (Parts.size() + ... + 0)> {};
+        std::size_t at = 0;
+        (
+            (void) [&] {
+                for (const char each : Parts)
+                    result[at++] = each;
+            }(),
+            ...);
+        return result;
+    }();
+    static constexpr auto value = std::string_view(storage.data(), storage.size());
+};
+
+namespace detail
+{
+
+/// A string literal as a template argument: a header's path, or a container's id.
+template<std::size_t N>
+struct fixed_string
+{
+    std::array<char, N> text {};
+
+    consteval fixed_string(const char (&literal)[N]) { std::ranges::copy(literal, text.begin()); }
+    /// From a string computed at compile time (a row's id), N its size plus the terminating zero.
+    consteval explicit fixed_string(std::string_view computed) { std::ranges::copy(computed, text.begin()); }
+
+    [[nodiscard]] constexpr const char* c_str() const noexcept { return text.data(); }
+};
+
+}  // namespace detail
+
+// The registry declares representations and does not define them: a file pays for the definition of each container
+// its Stores resolve to, by including that container's own header (urd/repr/<kind>/<container>.hpp), and for nothing else.
+// That a header is included is told by a marker it defines, never by looking at a representation (completing a
+// wrapper of an undefined part is an error, not a false); a Store whose container's header is absent names it in its
+// error (store.hpp).
+
+/// Declared only; each container's header urd/repr/<kind>/X.hpp defines include<"urd/repr/<kind>/X.hpp">.
+template<detail::fixed_string Header>
+struct include;
+/// Whether the header's marker is defined here.
+template<detail::fixed_string Header>
+inline constexpr bool included = requires { sizeof(include<Header>); };
+/// The header that defines representation R, specialized beside R's declaration. A representation that names none
+/// has no header; resolution_table --check rejects that for anything the registry chooses.
+template<typename R>
+inline constexpr auto defined_in = detail::fixed_string("urd/repr/<unnamed>.hpp");
+
+}  // namespace urd
 
 namespace urd::detail
 {
@@ -42,7 +104,7 @@ namespace urd::detail
 template<std::size_t N>
 using header_list = std::array<std::string_view, N>;
 template<std::size_t N>
-constexpr header_list<N + 1> then(const header_list<N>& part, std::string_view own)
+constexpr header_list<N + 1> with_header(const header_list<N>& part, std::string_view own)
 {
     auto result = header_list<N + 1> {};
     for (std::size_t each = 0; each < N; ++each)
@@ -58,25 +120,14 @@ struct registry_entry
     std::span<const std::string_view> headers;
     std::string_view kind;  ///< its kind's name (urd/kinds.hpp)
     property_set provides = property_set::roots();
-    role_tags relies_on;
+    property_set relies_on;
     std::span<const tag> gives_elements;
     std::string_view description;
     std::string_view holds;
 };
-/// Whether every role `relies` holds is one of `roles` (a kind's).
-template<typename... Roles>
-consteval bool roles_within(role_list<Roles...> /*roles*/, const role_tags& relies)
-{
-    for (std::size_t each = 0; each < relies.count; ++each)
-        if (((relies.roles[each].of != role_v<Roles>) && ...))
-            return false;
-    return true;
-}
-
 template<typename Decl>
 constexpr registry_entry entry_of()
 {
-    static_assert(roles_within(typename Decl::kind::roles {}, Decl::relies_on), "urd: a container relies on a role its kind has not (urd/kinds.hpp, roles)");
     return { Decl::id,        std::span<const std::string_view>(Decl::headers), Decl::kind::name,  Decl::provides,
              Decl::relies_on, std::span<const tag>(Decl::gives_elements),       Decl::description, Decl::holds };
 }

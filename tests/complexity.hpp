@@ -17,43 +17,48 @@
 namespace urd::test
 {
 
-/// The operations compared: urd's (urd::operation), by their position here, the order the tables list them in.
+template<typename Lists>
+struct offered_by;
+template<template<typename, typename, typename> class... Fs>
+struct offered_by<urd::detail::facet_list<Fs...>>
+{
+    template<typename Acc, typename... Lists>
+    struct all
+    {
+        using type = Acc;
+    };
+    template<typename Acc, typename List, typename... Lists>
+    struct all<Acc, List, Lists...> : all<typename append_list<Acc, List>::type, Lists...>
+    {
+    };
+    using type = typename all<urd::operation_list<>, typename urd::detail::facet_operations<Fs>::offered...>::type;
+};
+template<typename Kind>
+struct operations_of_kind
+{
+    using type = typename offered_by<urd::detail::facets_of<Kind>>::type;
+};
+
+/// The operations compared: every operation the facets of urd's kinds offer (urd::operation), in first-seen order, the
+/// order the tables list them in.
+using operations = union_of<urd::operation_list<>, operations_of_kind, urd::kinds>::type;
+/// An operation by its position in `operations`; op_v<urd::operation::insert> names one.
 enum class op : std::uint8_t
 {
-    insert,
-    lookup,
-    ordered_lookup,
-    erase,
-    clear,
-    iterate,
-    access,
-    push,
-    pop,
-    top,
-    merge,
-    insert_row,
-    find_row,
-    scope,
-    count  ///< not an operation: how many there are
 };
-using operations = urd::operation_list<urd::operation::insert,
-                                       urd::operation::lookup,
-                                       urd::operation::ordered_lookup,
-                                       urd::operation::erase,
-                                       urd::operation::clear,
-                                       urd::operation::iterate,
-                                       urd::operation::access,
-                                       urd::operation::push,
-                                       urd::operation::pop,
-                                       urd::operation::top,
-                                       urd::operation::merge,
-                                       urd::operation::insert_row,
-                                       urd::operation::find_row,
-                                       urd::operation::scope>;
+inline constexpr std::size_t op_count = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/) { return sizeof...(Ops); }(operations {});
+template<typename Operation>
+inline constexpr op op_v = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
+{
+    std::size_t at = 0;
+    const bool found = ((std::is_same_v<Ops, Operation> || (++at, false)) || ...);
+    if (!found)
+        throw "urd: an operation no kind's facet offers (tests/complexity.hpp, operations)";
+    return static_cast<op>(at);
+}(operations {});
 /// Their names, in order.
 inline constexpr auto op_names = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
 { return std::array<std::string_view, sizeof...(Ops)> { Ops::name... }; }(operations {});
-static_assert(op_names.size() == static_cast<std::size_t>(op::count));
 /// The op of operation `of`.
 constexpr op op_of(const urd::operation_info* of)
 {
@@ -62,11 +67,11 @@ constexpr op op_of(const urd::operation_info* of)
     for (std::size_t each = 0; each < infos.size(); ++each)
         if (infos[each] == of)
             return static_cast<op>(each);
-    throw "urd: an operation the tables do not list (tests/complexity.hpp, operations)";
+    throw "urd: an operation no kind's facet offers (tests/complexity.hpp, operations)";
 }
 
 /// Which operations a Store offers, by op.
-using offers = std::array<bool, static_cast<std::size_t>(op::count)>;
+using offers = std::array<bool, op_count>;
 
 /// The cost types are the library's (urd/costs.hpp), where each representation declares its costs.
 using urd::cost;
@@ -90,23 +95,14 @@ struct costs_holder<X>
 /// The costs C states, and whether C passes each on from P, in the order of `operations`: one array per container.
 template<typename C, typename... Ops>
 constexpr std::array<std::optional<cost>, sizeof...(Ops)> costs_in(urd::operation_list<Ops...> /*operations*/)
-{ return { Ops::template in<C>()... }; }
-template<typename C, typename P, typename... Ops>
+{ return { C::template of<Ops>()... }; }
+template<typename C, typename... Ops>
 constexpr std::array<bool, sizeof...(Ops)> passed_in(urd::operation_list<Ops...> /*operations*/)
-{ return { Ops::template passed_on<C, P>()... }; }
+{ return { C::template passed_on<Ops>()... }; }
 template<typename R>
 inline constexpr auto costs_v = costs_in<typename costs_holder<R>::type>(operations {});
 template<typename R>
-consteval std::array<bool, static_cast<std::size_t>(op::count)> passed_of()
-{
-    using C = typename costs_holder<R>::type;
-    if constexpr (requires { typename C::part; })
-        return passed_in<C, typename costs_holder<typename C::part>::type>(operations {});
-    else
-        return {};
-}
-template<typename R>
-inline constexpr auto passed_v = passed_of<R>();
+inline constexpr auto passed_v = passed_in<typename costs_holder<R>::type>(operations {});
 
 /// The cost of `what` in R (a container or a declaration), a wrapper's resolved through its part; none where R lacks
 /// it.
@@ -133,20 +129,39 @@ std::string_view part_name()
 template<typename R>
 constexpr std::optional<double> words_of()
 {
-    if constexpr (requires { costs_holder<R>::type::words; })
-        return costs_holder<R>::type::words;
+    if constexpr (requires { R::words; })
+        return R::words;
+    else if constexpr (requires { urd::detail::declaration_t<R>::words; })
+        return urd::detail::declaration_t<R>::words;
     else
         return std::nullopt;
 }
 
-/// The guarantees that cost something to give: storage by index, nodes, locks, generations, a log, a parent, shared
-/// parts. A container that gives one nobody asked for is a surprise, unlike one that also happens to keep its memory,
-/// lie contiguous, or iterate in order (a dense container's order is its index order, at no cost).
-inline constexpr std::array<urd::tag, 12> costly {
-    urd::keys::dense,        urd::referencing::stable_refs, urd::threading::concurrent, urd::clearing::constant_clear,    urd::scoping::scoped,
-    urd::layering::layered,  urd::tracking::change_log,     urd::handling::handles,     urd::sharing::structural_sharing, urd::grouping::partition,
-    urd::shape::fixed_shape, urd::direction::bidirectional
-};
+/// The guarantees that cost something to give (a tag says so: urd::tag_defaults, costly), of every category of the
+/// vocabulary.
+inline constexpr auto costly = []
+{
+    constexpr auto count = []
+    {
+        std::size_t result = 0;
+        for_each_tag(
+            [&result](urd::tag each)
+            {
+                if (each.in->costly[each.answer])
+                    ++result;
+            });
+        return result;
+    }();
+    auto result = std::array<urd::tag, count> {};
+    std::size_t at = 0;
+    for_each_tag(
+        [&](urd::tag each)
+        {
+            if (each.in->costly[each.answer])
+                result[at++] = each;
+        });
+    return result;
+}();
 
 /// The ops of operations Ops, by position.
 template<typename... Ops>
@@ -169,19 +184,19 @@ constexpr void mark_offered(urd::detail::facet_list<Fs...> /*facets*/, offers& i
 /// The operations a Store of R for S offers: those its facets offer (urd::detail::facet_operations, beside each
 /// facet) where they are on.
 template<typename R, typename S>
-constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
+constexpr std::array<bool, op_count> offered()
 {
-    auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
-    mark_offered<R, S>(typename S::kind::facets {}, result);
+    auto result = std::array<bool, op_count> {};
+    mark_offered<R, S>(urd::detail::facets_of<typename S::kind> {}, result);
     // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
     if (urd::has<S, urd::fixed_shape>)
-        result[static_cast<std::size_t>(op::insert)] = false;
+        result[static_cast<std::size_t>(op_v<urd::operation::insert>)] = false;
     return result;
 }
 
 /// The operations a request's Store offers, from its spec alone: no container is named (R is void).
 template<typename S>
-constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
+constexpr std::array<bool, op_count> offered()
 { return offered<void, S>(); }
 
 }  // namespace urd::test

@@ -24,12 +24,12 @@ namespace urd::detail
 template<typename S>
 struct representation_of<flat_map_decl, S>
 {
-    using type = boost::container::flat_map<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+    using type = boost::container::flat_map<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
 template<typename S>
 struct representation_of<flat_multimap_decl, S>
 {
-    using type = boost::container::flat_multimap<typename S::key_type, typename S::mapped_type, key_order_t<S>>;
+    using type = boost::container::flat_multimap<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

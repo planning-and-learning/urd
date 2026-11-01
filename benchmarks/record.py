@@ -71,13 +71,20 @@ def container_of(cell: str) -> str:
     return cell.split("/", 1)[0]
 
 
+# Where a cell's sources stop: the registry of every container and the words of every tag. A container added to the
+# registry, or a tag's words, changes no other container's cells; what a cell runs comes from the Store, its facets,
+# the kinds and its own container's headers.
+NOT_MEASURED = {ROOT / "include" / "urd" / "registry" / "declarations.hpp", ROOT / "include" / "urd" / "tags.hpp"}
+
+
 def closure(start: list[Path]) -> list[Path]:
-    """The files, and every urd header they include, transitively."""
+    """The files, and every urd header they include, transitively, up to the registry and the vocabulary
+    (NOT_MEASURED)."""
     seen: set[Path] = set()
     todo = list(start)
     while todo:
         path = todo.pop()
-        if path in seen or not path.exists():
+        if path in seen or not path.exists() or path in NOT_MEASURED:
             continue
         seen.add(path)
         for included in re.findall(r'#include "(urd/[^"]+)"', path.read_text()):

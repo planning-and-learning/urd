@@ -3,15 +3,15 @@
 // The arena interner: records serialized by cista into a byte arena. Copied in shape from yggdrasil
 // (include/yggdrasil/buffer/indexed_hash_set.hpp), names moved to urd::repr, the handle an urd::index.
 
-#include "urd/elements.hpp"
-#include "urd/index.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/index.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/records/records_fwd.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/unordered/concurrent_flat_set.hpp>

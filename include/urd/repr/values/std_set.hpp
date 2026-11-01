@@ -1,12 +1,11 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <functional>
 #include <set>
@@ -36,18 +35,15 @@ struct set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::log_n;
-        static constexpr cost lookup = costs::log_n;
-        static constexpr cost ordered_lookup = costs::log_n;
-        static constexpr cost erase = costs::log_n;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::log_n>,
+                                       cost_entry<operation::lookup, costs::log_n>,
+                                       cost_entry<operation::ordered_lookup, costs::log_n>,
+                                       cost_entry<operation::erase, costs::log_n>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 5;
     static constexpr std::string_view description = "std::set (balanced tree)";
     static constexpr std::string_view holds = "a node per element; reclaims";
 };
@@ -55,7 +51,7 @@ template<typename T, typename C, typename A>
 struct declaration_of<std::set<T, C, A>>
 {
     using declaration = set_decl;
-    static constexpr role_tags roles = element_roles<T, C>();
+    static constexpr property_set roles = roles_of<urd::set<T>, C>();
 };
 
 }  // namespace detail
@@ -70,17 +66,14 @@ struct unordered_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::one_e;
-        static constexpr cost clear = costs::lin_n;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr double words = 4;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::one_e>,
+                                       cost_entry<operation::clear, costs::lin_n>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 4;
     static constexpr std::string_view description = "std::unordered_set (hash table)";
     static constexpr std::string_view holds = "a node per element + buckets; stable references";
 };
@@ -88,7 +81,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<std::unordered_set<T, H, E, A>>
 {
     using declaration = unordered_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -116,7 +109,7 @@ struct representation_of<unordered_set_decl, S>
 template<typename S>
 struct representation_of<set_decl, S>
 {
-    using type = std::set<typename S::element_type, element_order_t<S>>;
+    using type = std::set<typename S::element_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

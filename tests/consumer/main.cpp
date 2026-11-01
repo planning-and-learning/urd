@@ -7,9 +7,9 @@
 
 int main()
 {
-    auto ids = urd::Store<urd::key<int>>();
+    auto ids = urd::Store<urd::set<int>>();
     ids.insert(3);
-    auto shared = urd::Store<urd::key<int>, urd::concurrent>();
+    auto shared = urd::Store<urd::set<int>, urd::concurrent>();
     shared.insert(3);
     if (!shared.contains(3))
         return 1;

@@ -6,22 +6,22 @@ Records, repositories, views
 .. code-block:: cpp
 
    template<typename Record, typename... Properties>
-   using Records = Store<value<Record>, handles, unique, flat, Properties...>;
+   using Records = Store<pool<Record>, flat, Properties...>;
 
 .. cpp:class:: Records
 
-   A pool of records stored flat: ``Store<value<Record>, handles, unique, flat, Properties...>``. The name ``Records`` stands for the resolved Store type on this page.
+   A pool of records stored flat: ``Store<pool<Record>, flat, Properties...>``. The name ``Records`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Records
 
 Records are the pool kind (:doc:`pools`) holding values that are not rows: each distinct value once, interned whole.
 Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an indexed set of the values: a pool of
-strings is ``Store<value<std::string>, handles, unique>``). With ``flat``, records are stored as bytes:
+strings is ``Store<pool<std::string>>``). With ``flat``, records are stored as bytes:
 
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
 A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista
-(``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/flat.hpp``. The
+(``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/elements/flat.hpp``. The
 records are frozen once stored.
 
 .. list-table::
@@ -30,7 +30,7 @@ records are frozen once stored.
 
    * - Request
      - Representation
-   * - ``Store<value<Record>, handles, unique, flat>``, a trivially copyable record
+   * - ``Store<pool<Record>, flat>``, a trivially copyable record
      - ``RecordInterner``: an indexed set of the records
    * - the same, any other record
      - ``ArenaInterner``: serialized by cista into a byte arena that never moves a block
@@ -42,11 +42,11 @@ records are frozen once stored.
      - ``LayeredPool`` over it
 
 Each pool has its header: ``urd/repr/records/records.hpp`` (the record interner) or ``urd/repr/records/arena.hpp`` (the arena
-interner) is included where the Store is held, ``urd/flat.hpp`` where a flat record is written.
+interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a flat record is written.
 
 .. code-block:: cpp
 
-   #include <urd/flat.hpp>
+   #include <urd/elements/flat.hpp>
    #include <urd/repr/records/arena.hpp>
    struct Predicate
    {
@@ -74,6 +74,11 @@ Member types
 Member functions
 ----------------
 
+.. cpp:function:: explicit Records(layer number)
+
+   Empty, numbered (:cpp:struct:`urd::layer`): a pool of records is built only so, and its views are identified by
+   index and number. A layer gets its own number, as its parent does.
+
 .. cpp:function:: std::pair<index_type, bool> insert(const record_type& record)
 
    The record's index, and whether it was new: an equal record already held gives its index.
@@ -95,10 +100,14 @@ Member functions
 
    ``std::out_of_range`` where there is no record at ``at``.
 
-.. cpp:function:: auto view(index_type at) const
+.. cpp:function:: view<Record, Store> view(index_type at) const
 
    A :cpp:class:`view\<Record, Store\> <urd::view>` of the record through this Store; of a layered pool, through the layer that
    owns it.
+
+.. cpp:function:: std::size_t layer() const
+
+   The number it was built with (:cpp:struct:`urd::layer`): a pool of records has no constructor without one.
 
 .. cpp:function:: std::size_t count(const record_type& record) const
 .. cpp:function:: const_iterator begin() const
@@ -130,10 +139,6 @@ branch, which inserts assert. The tree pools do not layer, since they number nod
 
 .. cpp:function:: void layer_over(const Records* parent)
 .. cpp:function:: const Records* parent() const noexcept
-.. cpp:function:: std::size_t layer() const
-
-   This layer's number along the chain: 0 for a root.
-
 .. cpp:function:: std::size_t base() const
 
    Where this layer's own indices start: the parent's size at the branch.
@@ -152,9 +157,9 @@ predicate the phase did not touch, and continue that pool's indices for one it d
 
 .. code-block:: cpp
 
-   using Row = Store<value<index<Object>>, frozen>;
-   using Rows = Store<value<Row>, handles, unique, monotone, layered>;
-   using Relations = Store<key<index<Predicate>>, value<Rows>, dense, layered>;
+   using Row = Store<sequence<index<Object>>, frozen>;
+   using Rows = Store<pool<Row>, monotone, layered>;
+   using Relations = Store<map<index<Predicate>, Rows>, dense, layered>;
    auto task = Relations();
    task.layer_over(&domain);
    task[on].insert({ a, b });     // the domain's row, if it had one, else a new one after the domain's rows

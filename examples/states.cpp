@@ -27,26 +27,28 @@
 #include <span>
 #include <vector>
 
-using urd::key;
+using urd::pool;
+using urd::sequence;
+using urd::set;
+using urd::slots;
 using urd::Store;
-using urd::value;
 
 namespace
 {
 
-using Facts = Store<key<std::uint32_t>, urd::dense, urd::frozen>;
-using Values = Store<value<double>, urd::frozen>;
-using FactStates = Store<value<Facts>, urd::handles, urd::unique, urd::structural_sharing>;
-using ValueStates = Store<value<Values>, urd::handles, urd::unique, urd::structural_sharing>;
-using Scratch = Store<value<std::vector<std::uint32_t>>, urd::handles>;
+using Facts = Store<set<std::uint32_t>, urd::dense, urd::frozen>;
+using Values = Store<sequence<double>, urd::frozen>;
+using FactStates = Store<pool<Facts>, urd::structural_sharing>;
+using ValueStates = Store<pool<Values>, urd::structural_sharing>;
+using Scratch = Store<slots<std::vector<std::uint32_t>>>;
 
 void run()
 {
     std::cout << "States:\n";
-    example::show<FactStates>("Store<value<Facts>, handles, unique, structural_sharing>    fact sets, shared");
-    example::show<ValueStates>("Store<value<Values>, handles, unique, structural_sharing>   numeric values, shared");
-    example::show<Store<value<Facts>, urd::handles, urd::unique>>("Store<value<Facts>, handles, unique>                        each stored in full");
-    example::show<Scratch>("Store<value<vector<…>>, handles>                            slots, reused when freed");
+    example::show<FactStates>("Store<pool<Facts>, structural_sharing>    fact sets, shared");
+    example::show<ValueStates>("Store<pool<Values>, structural_sharing>   numeric values, shared");
+    example::show<Store<pool<Facts>>>("Store<pool<Facts>>                        each stored in full");
+    example::show<Scratch>("Store<slots<vector<…>>>                            slots, reused when freed");
 
     // A state and its successors: the parent with facts added and removed.
     auto states = FactStates();

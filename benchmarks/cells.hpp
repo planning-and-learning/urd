@@ -32,20 +32,54 @@ inline constexpr std::array<std::size_t, 3> row_lengths { 16, 256, 4096 };
 /// The shape of a request's elements: its key and value types as the request writes them, "<key>;<value>" ("-" for
 /// none). Only containers measured on the same types are compared.
 template<typename S>
+struct key_of
+{
+    using type = void;
+};
+template<typename S>
+    requires requires { typename S::key_type; }
+struct key_of<S>
+{
+    using type = typename S::key_type;
+};
+template<typename S>
+struct value_of
+{
+    using type = void;
+};
+template<typename S>
+    requires requires { typename S::value_type; }
+struct value_of<S>
+{
+    using type = typename S::value_type;
+};
+template<typename S>
+    requires requires { typename S::mapped_type; }
+struct value_of<S>
+{
+    using type = typename S::mapped_type;
+};
+
+template<typename S>
 std::string shape_of_spec()
-{ return fmt::format("{};{}", urd::spelling<typename S::key_type>(), urd::spelling<typename S::value_type>()); }
+{ return fmt::format("{};{}", urd::spelling<typename key_of<S>::type>(), urd::spelling<typename value_of<S>::type>()); }
 
 /// The experiment of container R for the request spec S.
 template<typename S>
 std::string experiment_of(std::string_view container)
 { return std::string(container) + "/" + shape_of_spec<S>() + (urd::has<S, urd::small> ? "/small" : ""); }
 
+/// Whether S's Store hands out handles to what it holds (a pool, slots): measured by its rows' lengths.
+template<typename S>
+inline constexpr bool by_handle = urd::detail::listed_facet<urd::detail::facet::pool, urd::detail::facets_of<typename S::kind>>
+                                  || urd::detail::listed_facet<urd::detail::facet::slots, urd::detail::facets_of<typename S::kind>>;
+
 template<typename S>
 std::vector<std::size_t> sizes_of()
 {
     if constexpr (urd::has<S, urd::small>)
         return { small_sizes.begin(), small_sizes.end() };
-    else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
+    else if constexpr (by_handle<S>)
         return { row_lengths.begin(), row_lengths.end() };
     else
         return { sizes.begin(), sizes.end() };

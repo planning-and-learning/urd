@@ -2,7 +2,7 @@
 
 // A Store over a parent: its own elements, and lookups that fall through to the parent's.
 
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/maps/std_map.hpp"

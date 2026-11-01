@@ -48,17 +48,17 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::set;
 using urd::Store;
-using urd::value;
 template<typename K, typename V>
 using TreeMapOf = std::map<K, V, urd::Less<K>>;
 
 // A two-level dense map is two dense Stores nested: cleared at the outer level in O(1), refilled fresh.
 TEST(Nested, TwoLevelDenseMap)
 {
-    using Rows = Store<key<int>, value<double>, urd::dense>;
-    auto relations = Store<key<int>, value<Rows>, urd::dense, urd::constant_clear>();
+    using Rows = Store<map<int, double>, urd::dense>;
+    auto relations = Store<map<int, Rows>, urd::dense, urd::constant_clear>();
     relations[2][5] = 1.5;
     relations[2][7] = 2.5;
     relations[0][1] = 0.5;
@@ -87,13 +87,13 @@ template<typename S>
 class Merge : public testing::Test
 {
 };
-using MergeMaps = testing::Types<Store<key<int>, value<int>>,
-                                 Store<key<int>, value<int>, urd::sorted>,
-                                 Store<key<int>, value<int>, urd::dense>,
-                                 Store<key<int>, value<int>, urd::dense, urd::constant_clear>,
-                                 Store<key<int>, value<int>, urd::insertion_ordered>,
-                                 Store<key<int>, value<int>, urd::dense, urd::insertion_ordered>,
-                                 Store<key<int>, value<int>, urd::scoped>>;
+using MergeMaps = testing::Types<Store<map<int, int>>,
+                                 Store<map<int, int>, urd::sorted>,
+                                 Store<map<int, int>, urd::dense>,
+                                 Store<map<int, int>, urd::dense, urd::constant_clear>,
+                                 Store<map<int, int>, urd::insertion_ordered>,
+                                 Store<map<int, int>, urd::dense, urd::insertion_ordered>,
+                                 Store<map<int, int>, urd::scoped>>;
 TYPED_TEST_SUITE(Merge, MergeMaps);
 
 }  // namespace
@@ -122,7 +122,7 @@ TYPED_TEST(Merge, CombinesAndReportsChange)
 // An interval widened by hull only where it grows.
 TEST(Merge, HullOfIntervals)
 {
-    auto values = Store<key<int>, value<Interval>, urd::dense, urd::insertion_ordered>();
+    auto values = Store<map<int, Interval>, urd::dense, urd::insertion_ordered>();
     EXPECT_TRUE(values.merge(3, Interval { 1, 2 }, hull));
     EXPECT_FALSE(values.merge(3, Interval { 1.5, 2 }, hull));
     EXPECT_TRUE(values.merge(3, Interval { 0, 1 }, hull));
@@ -158,7 +158,7 @@ TYPED_TEST(Merge, UpdateAndRead)
 // once.
 TEST(Merge, GenerationsReuseValues)
 {
-    auto buffers = Store<key<int>, value<std::vector<int>>, urd::dense, urd::constant_clear>();
+    auto buffers = Store<map<int, std::vector<int>>, urd::dense, urd::constant_clear>();
     buffers.update(3, [](std::vector<int>& buffer, bool) { buffer.assign(1000, 7); });
     buffers.clear();
     EXPECT_FALSE(buffers.contains(3));
@@ -176,7 +176,7 @@ TEST(Merge, GenerationsReuseValues)
 // Threads updating and reading the same keys of a thread-safe generation map at once: every update counts.
 TEST(Merge, ThreadsUpdateTogether)
 {
-    auto counts = Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>();
+    auto counts = Store<map<int, int>, urd::dense, urd::constant_clear, urd::concurrent>();
     static_assert(std::same_as<decltype(counts)::representation, urd::repr::IndexMap<int, int, true, true>>);
     constexpr int threads = 4;
     constexpr int rounds = 20000;
@@ -203,7 +203,7 @@ TEST(Merge, ThreadsUpdateTogether)
 // Threads updating and reading the same hashed keys of a shared map at once: every update counts.
 TEST(Merge, ThreadsUpdateHashedKeysTogether)
 {
-    auto counts = Store<key<std::string>, value<int>, urd::concurrent>();
+    auto counts = Store<map<std::string, int>, urd::concurrent>();
     constexpr int threads = 4;
     constexpr int rounds = 20000;
     constexpr int keys = 50;
@@ -230,11 +230,11 @@ TEST(Merge, ThreadsUpdateHashedKeysTogether)
 // keys, so buckets of a cost queue, emptied and refilled, allocate nothing once warm.
 TEST(Recycling, BucketsRefillWithoutAllocating)
 {
-    using Bucket = Store<key<int>, urd::retains>;
-    using Buckets = Store<key<double>, value<Bucket>, urd::sorted>;
+    using Bucket = Store<set<int>, urd::retains>;
+    using Buckets = Store<map<double, Bucket>, urd::sorted>;
     static_assert(std::same_as<Buckets::representation, urd::repr::RecyclingMap<double, Bucket>>);
     // Values that may free their memory stay in a plain tree.
-    static_assert(std::same_as<Store<key<double>, value<Store<key<int>>>, urd::sorted>::representation, TreeMapOf<double, Store<key<int>>>>);
+    static_assert(std::same_as<Store<map<double, Store<set<int>>>, urd::sorted>::representation, TreeMapOf<double, Store<set<int>>>>);
     auto buckets = Buckets();
     const auto fill = [&buckets](double cost)
     {
@@ -264,15 +264,15 @@ TEST(Recycling, BucketsRefillWithoutAllocating)
 
 // Without an order asked for, values that keep their memory get a hash map that recycles: no tree where none is needed.
 // Sets with stable references that keep their storage: the node sets, their erased nodes kept for the next elements.
-static_assert(std::same_as<Store<key<int>, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingHashSet<int>>);
-static_assert(std::same_as<Store<key<int>, urd::sorted, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingTreeSet<int>>);
+static_assert(std::same_as<Store<set<int>, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingHashSet<int>>);
+static_assert(std::same_as<Store<set<int>, urd::sorted, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingTreeSet<int>>);
 // Without stable_refs, retains is the flat containers' already.
-static_assert(std::same_as<Store<key<int>, urd::retains>::representation, boost::unordered_flat_set<int, urd::Hash<int>, urd::EqualTo<int>>>);
+static_assert(std::same_as<Store<set<int>, urd::retains>::representation, boost::unordered_flat_set<int, urd::Hash<int>, urd::EqualTo<int>>>);
 
 TEST(Recycling, UnorderedMapsRecycleToo)
 {
-    using Bucket = Store<key<int>, urd::retains>;
-    using Groups = Store<key<int>, value<Bucket>>;
+    using Bucket = Store<set<int>, urd::retains>;
+    using Groups = Store<map<int, Bucket>>;
     static_assert(std::same_as<Groups::representation, urd::repr::RecyclingHashMap<int, Bucket>>);
     auto groups = Groups();
     for (int round = 0; round < 3; ++round)

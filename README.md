@@ -17,11 +17,11 @@ struct User                                                             // an in
     static constexpr auto identifying_members() noexcept { return Members<&User::id> {}; }
 };
 
-using Names    = Store<key<std::string>, positional, monotone>;         // an interner: each name gets an index
-using Follows  = Store<key<User>, value<User>, multi, dense, frozen, bidirectional>;  // a frozen graph
-using Seen     = Store<key<User>, dense>;                               // a bitset
-using Frontier = Store<value<User>, fifo>;                              // a queue
-using Distance = Store<key<User>, value<int>, dense, constant_clear>;   // cleared per search in O(1)
+using Names    = Store<set<std::string>, positional, monotone>;         // an interner: each name gets an index
+using Follows  = Store<map<User, User>, multi, dense, frozen, bidirectional>;  // a frozen graph
+using Seen     = Store<set<User>, dense>;                               // a bitset
+using Frontier = Store<queue<User>, fifo>;                              // a queue
+using Distance = Store<map<User, int>, dense, constant_clear>;   // cleared per search in O(1)
 
 // Everyone a user reaches by following, breadth first.
 auto follows = Follows(edges.begin(), edges.end());  // built once from (follower, followed) pairs

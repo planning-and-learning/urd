@@ -2,13 +2,13 @@
 
 // A set of indices as a bitset, for dense keys: stored by position, not hashed.
 
-#include "urd/elements.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/sparse_set.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -323,3 +323,17 @@ struct representation_of<tracked_dense_set_decl, S>
 };
 
 }  // namespace urd::detail
+
+namespace urd
+{
+
+/// A dense set hashes as its keys, in order: as the sets it equals do, whatever words they keep.
+template<typename K, bool TrackWords>
+struct Hash<repr::DenseSet<K, TrackWords>>
+{
+    hash_t operator()(const repr::DenseSet<K, TrackWords>& set) const
+        requires Hashable<K>
+    { return urd::hash_range(set); }
+};
+
+}  // namespace urd

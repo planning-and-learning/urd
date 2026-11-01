@@ -3,13 +3,12 @@
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
 // and what the registry reads of it. Defined in urd/repr/values/indexed.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <cstdint>
 
@@ -49,18 +48,15 @@ struct indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, layout::contiguous, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost erase = costs::lin_n;
-        static constexpr cost clear = costs::lin_capacity;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::lin_n>,
+                                       cost_entry<operation::clear, costs::lin_capacity>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.5;
     static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
     static constexpr std::string_view holds = "n elements in order + a table of positions";
 };
@@ -68,7 +64,7 @@ template<typename T>
 struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 {
     using declaration = indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -84,16 +80,13 @@ struct stable_indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.5;
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
     static constexpr std::string_view holds = "segments that never move + a table of positions";
 };
@@ -101,7 +94,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::StableIndexedSet<T, Index>>
 {
     using declaration = stable_indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -117,16 +110,13 @@ struct concurrent_indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides = property_set::of(
         { order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert = costs::one_ae;
-        static constexpr cost lookup = costs::one_e;
-        static constexpr cost iterate = costs::lin_n;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 2.6;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 2.6;
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };
@@ -134,7 +124,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 {
     using declaration = concurrent_indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail

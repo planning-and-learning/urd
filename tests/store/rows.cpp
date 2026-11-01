@@ -41,11 +41,11 @@
 namespace
 {
 
-using urd::key;
+using urd::sequence;
+using urd::set;
 using urd::Store;
-using urd::value;
 /// Rows of bits whose number and lengths are fixed: one array of words, each row a bitset over its part.
-using BitRowSets = Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>;
+using BitRowSets = Store<sequence<Store<set<std::size_t>, urd::dense>>, urd::fixed_shape>;
 
 // Rows of bits changed at random, against a vector of bools per row: lengths at and around word boundaries, and
 // rows of equal length combined.
@@ -110,7 +110,7 @@ TEST(FixedShape, ChangeInPlaceLikeVectorsOfBools)
 // Built from sets of indices, each row is as long as its largest index needs.
 TEST(FixedShape, BuildFromSets)
 {
-    using Row = Store<key<std::size_t>, urd::dense>;
+    using Row = Store<set<std::size_t>, urd::dense>;
     const auto sets = std::vector<Row> { Row { 3, 70 }, Row {}, Row { 0 } };
     const auto rows = BitRowSets(sets.begin(), sets.end());
     ASSERT_EQ(rows.size(), 3U);
@@ -126,18 +126,18 @@ TEST(FixedShape, BuildFromSets)
 // nonempty through the shape constructors too: a fixed-shape Store is nonempty when it has a row, whatever its length.
 TEST(FixedShape, NonemptyNeedsARow)
 {
-    using Rows = Store<value<Store<value<int>>>, urd::fixed_shape, urd::nonempty>;
+    using Rows = Store<sequence<Store<sequence<int>>>, urd::fixed_shape, urd::nonempty>;
     static_assert(!std::default_initializable<Rows>);
     EXPECT_FALSE(Rows(urd::row_lengths { 0 }).empty());
     EXPECT_DEBUG_DEATH((void) Rows(urd::row_lengths {}), "nonempty");
-    using Nested = Store<value<Store<value<Store<value<int>>>, urd::fixed_shape>>, urd::fixed_shape, urd::nonempty>;
+    using Nested = Store<sequence<Store<sequence<Store<sequence<int>>>, urd::fixed_shape>>, urd::fixed_shape, urd::nonempty>;
     EXPECT_FALSE(Nested(std::vector<std::vector<std::size_t>> { { 2, 3 } }).empty());
     EXPECT_DEBUG_DEATH((void) Nested(std::vector<std::vector<std::size_t>> {}), "nonempty");
 }
 
 TEST(FixedShape, RowsOfElementsChangeInPlace)
 {
-    using Rows = Store<value<Store<value<double>>>, urd::fixed_shape>;
+    using Rows = Store<sequence<Store<sequence<double>>>, urd::fixed_shape>;
     static_assert(std::same_as<Rows::reference, std::span<double>>);
     auto rows = Rows(urd::row_lengths { 2, 0, 3 });
     rows[2][1] = 3.5;
@@ -158,8 +158,8 @@ TEST(FixedShape, RowsOfElementsChangeInPlace)
 // unsets every bit and keeps the shape.
 TEST(FixedShape, NestedRowsOfBits)
 {
-    using Graph = Store<value<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>, urd::fixed_shape>;
-    static_assert(std::same_as<Graph::representation, urd::repr::Jagged<Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>>>);
+    using Graph = Store<sequence<Store<sequence<Store<set<std::size_t>, urd::dense>>, urd::fixed_shape>>, urd::fixed_shape>;
+    static_assert(std::same_as<Graph::representation, urd::repr::Jagged<Store<sequence<Store<set<std::size_t>, urd::dense>>, urd::fixed_shape>>>);
     const auto shape = std::vector<std::vector<std::size_t>> { { 64, 65, 1 }, { 130 }, {}, { 3, 64 } };
     auto graph = Graph(shape);
     auto model = std::vector<std::vector<std::vector<bool>>>();
@@ -212,9 +212,9 @@ TEST(FixedShape, NestedRowsOfBits)
 // reset far faster than all of them, and the rest stay as they were.
 TEST(FixedShape, TrackedResetCostsTheRowsHandedOut)
 {
-    using Row = Store<key<std::size_t>, urd::dense>;
-    using Tracked = Store<value<Row>, urd::fixed_shape, urd::proportional_clear>;
-    using Untracked = Store<value<Row>, urd::fixed_shape>;
+    using Row = Store<set<std::size_t>, urd::dense>;
+    using Tracked = Store<sequence<Row>, urd::fixed_shape, urd::proportional_clear>;
+    using Untracked = Store<sequence<Row>, urd::fixed_shape>;
     static_assert(std::same_as<Tracked::representation, urd::repr::Jagged<Row, true>>);
     static_assert(std::same_as<Untracked::representation, urd::repr::Jagged<Row>>);
     constexpr std::size_t rows = 100000;
@@ -245,7 +245,7 @@ TEST(FixedShape, TrackedResetCostsTheRowsHandedOut)
 // Three levels deep: rows of rows of rows of values, each level a range over the one below, all in one array.
 TEST(FixedShape, ThreeLevels)
 {
-    using Cube = Store<value<Store<value<Store<value<Store<value<int>>>, urd::fixed_shape>>, urd::fixed_shape>>, urd::fixed_shape>;
+    using Cube = Store<sequence<Store<sequence<Store<sequence<Store<sequence<int>>>, urd::fixed_shape>>, urd::fixed_shape>>, urd::fixed_shape>;
     const auto shape = std::vector<std::vector<std::vector<std::size_t>>> { { { 2, 3 }, { 1 } }, {}, { { 4 } } };
     auto cube = Cube(shape);
     ASSERT_EQ(cube.size(), 3U);

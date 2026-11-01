@@ -41,6 +41,7 @@ namespace
 using urd::test::joined;
 using urd::test::json_text;
 using urd::test::op;
+using urd::test::op_v;
 
 std::string json_operations(const urd::test::offers& operations)
 {
@@ -156,7 +157,7 @@ std::string generate()
         const auto& offers = each.row->operations;
         const auto of = [&](op what) { return offers[static_cast<std::size_t>(what)]; };
         const bool ints = each.row->shape == "int;-" || each.row->shape == "-;int" || each.row->shape == "int;int";
-        if (ints && !of(op::push) && !of(op::insert_row) && !of(op::merge))
+        if (ints && !of(op_v<urd::operation::push>) && !of(op_v<urd::operation::insert_row>) && !of(op_v<urd::operation::merge>))
         {
             auto& listed = tested[each.container];
             listed += (listed.empty() ? "" : ", ") + std::to_string(each.group) + ", " + std::to_string(each.row->position);

@@ -25,6 +25,8 @@ namespace urd::bench
 {
 
 using urd::test::op;
+using urd::test::op_count;
+using urd::test::op_v;
 
 template<typename T>
 inline constexpr bool is_index = false;
@@ -45,7 +47,7 @@ template<typename T>
 T make_store(std::size_t at)
 {
     if constexpr (requires { typename T::handle_type; })
-        return T();  // a pool as a value starts empty: it is filled by handle, not from a range
+        return urd::test::make_empty<T>(at);  // a pool as a value starts empty: it is filled by handle, not from a range
     else
     {
         using E = std::remove_cv_t<typename T::value_type>;
@@ -57,7 +59,7 @@ T make_store(std::size_t at)
             return T(elements.begin(), elements.end());
         else
         {
-            auto result = T();
+            auto result = urd::test::make_empty<T>(at);
             for (auto& each : elements)
             {
                 if constexpr (requires { result.push_back(each); })
@@ -120,8 +122,8 @@ void use(const T& value)
 /// The time of each operation over a benchmark's lifecycles.
 struct timing
 {
-    std::array<double, static_cast<std::size_t>(op::count)> nanoseconds {};
-    std::array<double, static_cast<std::size_t>(op::count)> operations {};
+    std::array<double, op_count> nanoseconds {};
+    std::array<double, op_count> operations {};
     std::chrono::steady_clock::time_point began;
 
     void start() { began = std::chrono::steady_clock::now(); }
@@ -157,20 +159,19 @@ template<typename R, typename S>
 struct workload
 {
     using Store = urd::detail::Store<R, S>;
-    using K = typename S::key_type;
-    using V = typename S::value_type;
-    using E = std::conditional_t<std::same_as<typename S::kind, urd::set_kind> || std::same_as<typename S::kind, urd::partition_kind>
-                                     || std::same_as<typename S::kind, urd::map_kind>,
-                                 K,
-                                 V>;  // keyed: by key
+    using K = typename urd::test::key_of<S>::type;
+    using V = typename urd::test::value_of<S>::type;
+    using E = typename S::lookup_type;  // what the kind's data finds by: a key, else a value
     /// What a Store is built from: entries for a map, else its elements.
-    using Element = typename element_of<std::same_as<typename S::kind, urd::map_kind>, K, V, E>::type;
+    /// Whether its data maps keys to values: built from entries, added by key and value.
+    static constexpr bool maps = requires { typename S::mapped_type; };
+    using Element = typename element_of<maps, K, V, E>::type;
 
     static void add(Store& store, std::size_t at)
     {
-        if constexpr (std::same_as<typename S::kind, urd::map_kind>)
+        if constexpr (maps)
             store.emplace(make<K>(at), make<V>(at));
-        else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
+        else if constexpr (requires { store.push(make<V>(at)); })
             store.push(make<V>(at));
         else if constexpr (requires { store.push_back(make<E>(at)); })
             store.push_back(make<E>(at));
@@ -183,7 +184,12 @@ struct workload
     /// An empty Store, or (nonempty) one holding the first element of `order`; how many of `order` it holds.
     static std::size_t start(std::unique_ptr<Store>& into, const std::vector<std::size_t>& order)
     {
-        if constexpr (std::default_initializable<Store>)
+        if constexpr (std::constructible_from<Store, urd::layer>)
+        {
+            into = std::make_unique<Store>(urd::layer { 0 });
+            return 0;
+        }
+        else if constexpr (std::default_initializable<Store>)
         {
             into = std::make_unique<Store>();
             return 0;
@@ -208,7 +214,7 @@ struct workload
         {
             auto elements = std::vector<Element>();
             for (const auto at : order)
-                if constexpr (std::same_as<typename S::kind, urd::map_kind>)
+                if constexpr (maps)
                     elements.emplace_back(make<K>(at), make<V>(at));
                 else
                     elements.push_back(make<E>(at));
@@ -234,62 +240,62 @@ struct workload
         const auto order = shuffled(size);
         const auto has = [&](op what) { return at.operations[static_cast<std::size_t>(what)]; };
         auto store = std::unique_ptr<Store>();
-        if constexpr (offers[static_cast<std::size_t>(op::insert)] || offers[static_cast<std::size_t>(op::push)])
+        if constexpr (offers[static_cast<std::size_t>(op_v<urd::operation::insert>)] || offers[static_cast<std::size_t>(op_v<urd::operation::push>)])
         {
-            if (has(op::insert) || has(op::push))
+            if (has(op_v<urd::operation::insert>) || has(op_v<urd::operation::push>))
             {
                 into.start();
                 for (std::size_t each = start(store, order); each < order.size(); ++each)
                     add(*store, order[each]);
-                into.stop(has(op::push) ? op::push : op::insert, size);
+                into.stop(has(op_v<urd::operation::push>) ? op_v<urd::operation::push> : op_v<urd::operation::insert>, size);
             }
         }
         if (!store)
             build(store, order);
         auto& held = *store;
         if constexpr (requires(const Store& kept) { kept.contains(probe(size, 0)); })
-            if (has(op::lookup))
+            if (has(op_v<urd::operation::lookup>))
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
                     use(std::as_const(held).contains(probe(size, each)));
-                into.stop(op::lookup, probes);
+                into.stop(op_v<urd::operation::lookup>, probes);
             }
         if constexpr (requires(const Store& kept) { kept.lower_bound(probe(size, 0)); })
-            if (has(op::ordered_lookup))
+            if (has(op_v<urd::operation::ordered_lookup>))
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
                     use(std::as_const(held).lower_bound(probe(size, each)));
-                into.stop(op::ordered_lookup, probes);
+                into.stop(op_v<urd::operation::ordered_lookup>, probes);
             }
-        if (has(op::access))
+        if (has(op_v<urd::operation::access>))
         {
             if constexpr (requires(const Store& kept) { kept[std::size_t {}]; })
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
                     use(std::as_const(held)[(each * stride) % size]);
-                into.stop(op::access, probes);
+                into.stop(op_v<urd::operation::access>, probes);
             }
             else if constexpr (requires(const Store& kept) { kept[typename Store::index_type(0)]; })
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
                     use(std::as_const(held)[typename Store::index_type((each * stride) % size)]);
-                into.stop(op::access, probes);
+                into.stop(op_v<urd::operation::access>, probes);
             }
         }
         if constexpr (requires(const Store& kept) { kept.begin() != kept.end(); })
-            if (has(op::iterate))
+            if (has(op_v<urd::operation::iterate>))
             {
                 into.start();
                 for (auto each = std::as_const(held).begin(); each != std::as_const(held).end(); ++each)
                     use(*each);
-                into.stop(op::iterate, size);
+                into.stop(op_v<urd::operation::iterate>, size);
             }
         if constexpr (requires(const Store& kept) { kept.top(); } || requires(const Store& kept) { kept.front(); })
-            if (has(op::top))
+            if (has(op_v<urd::operation::top>))
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
@@ -299,10 +305,10 @@ struct workload
                     else
                         use(std::as_const(held).front());
                 }
-                into.stop(op::top, probes);
+                into.stop(op_v<urd::operation::top>, probes);
             }
-        if constexpr (!urd::kind_below<typename S::kind, urd::queue_kind>)
-            if (has(op::erase))
+        if constexpr (offers[static_cast<std::size_t>(op_v<urd::operation::erase>)])
+            if (has(op_v<urd::operation::erase>))
             {
                 const std::size_t erased = std::min<std::size_t>(size / 2, probes);
                 if constexpr (requires { held.erase(make<E>(0)); })
@@ -310,33 +316,33 @@ struct workload
                     into.start();
                     for (std::size_t each = 0; each < erased; ++each)
                         held.erase(make<E>(order[each]));
-                    into.stop(op::erase, erased);
+                    into.stop(op_v<urd::operation::erase>, erased);
                 }
                 else if constexpr (requires { held.erase(held.begin()); })
                 {
                     into.start();
                     for (std::size_t each = 0; each < erased; ++each)
                         held.erase(std::next(held.begin(), static_cast<std::ptrdiff_t>(held.size() / 2)));
-                    into.stop(op::erase, erased);
+                    into.stop(op_v<urd::operation::erase>, erased);
                 }
             }
         if constexpr (requires { held.pop(); })
-            if (has(op::pop))
+            if (has(op_v<urd::operation::pop>))
             {
                 const auto popped = held.size();
                 into.start();
                 while (!held.empty())
                     held.pop();
-                into.stop(op::pop, popped);
+                into.stop(op_v<urd::operation::pop>, popped);
             }
         if constexpr (requires { held.clear(); })
-            if (has(op::clear))
+            if (has(op_v<urd::operation::clear>))
             {
                 // Per element of the lifecycle's size, though erase or pop may have emptied it: a clear in O(U)
                 // or O(capacity) walks what the size made, not what is left.
                 into.start();
                 held.clear();
-                into.stop(op::clear, size);
+                into.stop(op_v<urd::operation::clear>, size);
             }
         store.reset();
     }
@@ -388,17 +394,17 @@ struct row_workload
         into.start();
         for (const auto& each : all)
             handles.push_back(insert(*store, each));
-        into.stop(op::insert_row, rows);
+        into.stop(op_v<urd::operation::insert_row>, rows);
         const auto& held = *store;
         if constexpr (requires { held.find(all.front()); })
-            if (has(op::find_row))
+            if (has(op_v<urd::operation::find_row>))
             {
                 into.start();
                 for (const auto& each : all)
                     use(held.find(each));
-                into.stop(op::find_row, rows);
+                into.stop(op_v<urd::operation::find_row>, rows);
             }
-        if (has(op::access))
+        if (has(op_v<urd::operation::access>))
         {
             into.start();
             for (const auto& each : handles)
@@ -408,7 +414,7 @@ struct row_workload
                 else
                     use(held[each]);
             }
-            into.stop(op::access, rows);
+            into.stop(op_v<urd::operation::access>, rows);
         }
     }
 };
@@ -422,24 +428,24 @@ void register_experiment(std::size_t ordinal)
     for (const auto size : urd::test::sizes_of<S>())
     {
         const auto at = urd::test::cell { id + "/" + std::to_string(size), urd::test::offered<R, S>(), size };
-        benchmark::RegisterBenchmark(
-            at.id,
-            [at](benchmark::State& state)
-            {
-                auto into = timing {};
-                const std::size_t rounds = std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
-                for (auto _ : state)
-                    for (std::size_t round = 0; round < rounds; ++round)
-                    {
-                        if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>) )
-                            row_workload<R, S>::lifecycle(at, into);
-                        else
-                            workload<R, S>::lifecycle(at, into);
-                    }
-                for (std::size_t what = 0; what < into.operations.size(); ++what)
-                    if (into.operations[what] > 0)
-                        state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
-            })
+        benchmark::RegisterBenchmark(at.id,
+                                     [at](benchmark::State& state)
+                                     {
+                                         auto into = timing {};
+                                         const std::size_t rounds =
+                                             std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
+                                         for (auto _ : state)
+                                             for (std::size_t round = 0; round < rounds; ++round)
+                                             {
+                                                 if constexpr (urd::test::by_handle<S>)
+                                                     row_workload<R, S>::lifecycle(at, into);
+                                                 else
+                                                     workload<R, S>::lifecycle(at, into);
+                                             }
+                                         for (std::size_t what = 0; what < into.operations.size(); ++what)
+                                             if (into.operations[what] > 0)
+                                                 state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
+                                     })
             ->Iterations(1)
             ->Unit(benchmark::kMillisecond);
     }

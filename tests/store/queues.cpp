@@ -41,17 +41,17 @@
 namespace
 {
 
-using urd::key;
+using urd::queue;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 // A layered Store has no ==: its contents include its parent's.
-static_assert(!std::equality_comparable<Store<key<int>, urd::layered>> && std::equality_comparable<Store<key<int>>>);
+static_assert(!std::equality_comparable<Store<set<int>, urd::layered>> && std::equality_comparable<Store<set<int>>>);
 
 // A priority queue with handles gives the handle from emplace as from push, to update the element later.
 TEST(Queues, EmplaceGivesTheHandle)
 {
-    auto queue = Store<value<int>, urd::by_priority, urd::handles>();
+    auto queue = Store<urd::queue<int>, urd::by_priority, urd::handles>();
     const auto handle = queue.emplace(5);
     queue.push(3);
     queue.update(handle, 1);
@@ -62,11 +62,11 @@ TEST(Queues, EmplaceGivesTheHandle)
 TEST(Queues, IterateTheirElements)
 {
     const auto pushed = std::vector { 4, 1, 3, 1 };
-    auto fifo = Store<value<int>, urd::fifo>();
-    auto ring = Store<value<int>, urd::fifo, urd::retains>();
-    auto lifo = Store<value<int>, urd::lifo>();
-    auto heap = Store<value<int>, urd::by_priority>();
-    auto handled = Store<value<int>, urd::by_priority, urd::handles>();
+    auto fifo = Store<queue<int>, urd::fifo>();
+    auto ring = Store<queue<int>, urd::fifo, urd::retains>();
+    auto lifo = Store<queue<int>, urd::lifo>();
+    auto heap = Store<queue<int>, urd::by_priority>();
+    auto handled = Store<queue<int>, urd::by_priority, urd::handles>();
     for (const auto each : pushed)
     {
         fifo.push(each);
@@ -93,12 +93,12 @@ TEST(Queues, IterateTheirElements)
 }
 template<typename S>
 concept iterates = requires(const S& store) { store.begin(); };
-static_assert(iterates<Store<value<int>, urd::fifo>> && !iterates<Store<value<int>, urd::by_priority, urd::monotone_priority>>);
+static_assert(iterates<Store<queue<int>, urd::fifo>> && !iterates<Store<queue<int>, urd::by_priority, urd::monotone_priority>>);
 
 // A priority queue with handles reads an element by its handle, wherever it is in the order.
 TEST(Queues, ReadByHandle)
 {
-    auto queue = Store<value<int>, urd::by_priority, urd::handles>();
+    auto queue = Store<urd::queue<int>, urd::by_priority, urd::handles>();
     const auto five = queue.push(5);
     queue.push(1);
     EXPECT_EQ(queue[five], 5);

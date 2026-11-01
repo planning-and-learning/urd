@@ -5,13 +5,12 @@
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools/pools.hpp,
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/registry/features.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <bit>
 #include <cstddef>
@@ -40,14 +39,10 @@ struct slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
     using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::one_a;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.5;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::one_a>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.5;
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
     static constexpr std::string_view holds = "stable slots; freed slots reused first";
 };
@@ -55,7 +50,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, false>>
 {
     using declaration = slot_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::slots<T>>();
 };
 
 }  // namespace detail
@@ -70,14 +65,10 @@ struct thread_safe_slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
     using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    struct operation_costs
-    {
-        static constexpr cost insert_row = costs::one_a;
-        static constexpr cost access = costs::one;
-        static constexpr double words = 1.6;
-    };
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::one_a>, cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 1.6;
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
     static constexpr std::string_view holds = "stable slots; freed slots reused first, under a lock";
 };
@@ -85,7 +76,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, true>>
 {
     using declaration = thread_safe_slot_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::slots<T>>();
 };
 
 }  // namespace detail

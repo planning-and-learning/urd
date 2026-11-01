@@ -6,11 +6,11 @@ Queues
 .. code-block:: cpp
 
    template<typename T, typename... Properties>
-   using Queue = Store<value<T>, fifo | lifo | by_priority, Properties...>;
+   using Queue = Store<sequence<T>, fifo | lifo | by_priority, Properties...>;
 
 .. cpp:class:: Queue
 
-   A queue: ``Store<value<T>, fifo | lifo | by_priority, Properties...>``. The name ``Queue`` stands for the resolved Store type on this page.
+   A queue: ``Store<sequence<T>, fifo | lifo | by_priority, Properties...>``. The name ``Queue`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Queue
 
@@ -22,19 +22,19 @@ A queue is reached by its front or top, and visited by iteration (not a bucket q
 
    * - Request
      - Representation
-   * - ``Store<value<T>, fifo>``
+   * - ``Store<queue<T>, fifo>``
      - ``Fifo`` (a deque); ``stable_refs`` too: the front stays put while elements queue behind it
-   * - ``Store<value<T>, fifo, retains>``
+   * - ``Store<queue<T>, fifo, retains>``
      - ``RingFifo``: one vector used as a ring, kept on pop and clear
-   * - ``Store<value<T>, lifo>``
+   * - ``Store<queue<T>, lifo>``
      - ``Lifo`` (a vector)
-   * - ``Store<value<T>, by_priority>``
+   * - ``Store<queue<T>, by_priority>``
      - ``Heap`` (a binary heap; the least element leaves first)
-   * - ``Store<value<T>, by_priority, order_by<&T::cost>>``
-     - ``Heap`` by the cost, ties by the element's own order
-   * - ``Store<value<T>, by_priority, handles>``
+   * - ``Store<queue<T>, by_priority, order_by<by<&T::cost>>>``
+     - ``Heap`` by the cost: the comparator given, nothing else
+   * - ``Store<queue<T>, by_priority, handles>``
      - ``AddressableHeap``: ``push`` gives a handle; ``update(h, e)``, ``erase(h)``
-   * - ``Store<value<I>, by_priority, monotone_priority>``
+   * - ``Store<queue<I>, by_priority, monotone_priority>``
      - ``BucketQueue`` (a bucket per integral priority)
 
 Template parameters
@@ -106,7 +106,7 @@ Example
 .. code-block:: cpp
 
    struct Node { double f; State state; static constexpr auto identifying_members() noexcept { return Members<&Node::f, &Node::state> {}; } };
-   using Open = Store<value<Node>, by_priority, order_by<&Node::f>>;
+   using Open = Store<queue<Node>, by_priority, order_by<by<&Node::f>>>;
    auto open = Open();
    open.push({ 3.5, start });
    while (!open.empty()) { const auto node = open.top(); open.pop(); /* expand */ }

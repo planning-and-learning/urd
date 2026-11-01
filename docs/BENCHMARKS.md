@@ -149,7 +149,7 @@ multimap allocates per value. `PostingMap` comes first for multimaps; `std::unor
 20,000 states, each a random earlier one with 3 positions (values) or 3 facts added and 3 removed; inserted, then
 read back (values) or asked one fact (facts). Bytes and time per state.
 
-| rows | flat interner (`handles, unique`) | tree pool (`handles, unique, structural_sharing`) |
+| rows | flat interner (`pool<V>`) | tree pool (`pool<V>, structural_sharing`) |
 |---|---|---|
 | 100 values | 447 B, 0.33 µs | 166 B, 0.63 µs |
 | 1,000 values | 4,046 B, 2.5 µs | 271 B, 2.1 µs |
@@ -206,15 +206,14 @@ None.
 
 ### Slower at a smaller size only
 
-- unordered_set > recycling_tree_set / insert,lookup,erase,clear,iterate / std::string;- / small: at 8, 164.9 against 145.1 ns per element (Store<key<std::string>, small, stable_refs>)
+- flat_set > set / ordered_lookup,iterate,lookup / int;-: at 1000, 52.2 against 46.0 ns per element (Store<set<int>, sorted, frozen>)
+- flat_set > recycling_tree_set / ordered_lookup,iterate,lookup / int;-: at 1000, 52.2 against 44.8 ns per element (Store<set<int>, sorted, frozen>)
+- unordered_set > set / iterate,lookup,insert,erase,clear / std::string;- / small: at 8, 167.1 against 140.7 ns per element (Store<set<std::string>, small, stable_refs>)
+- unordered_set > recycling_tree_set / iterate,lookup,insert,erase,clear / std::string;- / small: at 8, 167.1 against 138.0 ns per element (Store<set<std::string>, small, stable_refs>)
+- flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 49.7 against 44.3 ns per element (Store<map<int, int>, sorted, frozen>)
 
 ### Slower for less memory
 
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;-: at 100000, 1515.2 against 1161.2 ns per element (Store<key<std::string>, sorted>)
-- flat_set > recycling_tree_set / lookup,ordered_lookup,iterate / std::string;-: at 100000, 469.8 against 386.1 ns per element (Store<key<std::string>, sorted, frozen>)
-- unordered_flat_set > indexed_set / lookup,iterate / std::string;-: at 100000, 81.8 against 58.6 ns per element (Store<key<std::string>, frozen>)
-- unordered_flat_set > stable_indexed_set / lookup,iterate / std::string;-: at 100000, 81.8 against 65.3 ns per element (Store<key<std::string>, frozen>)
-- unordered_flat_map > ordered_map / lookup,iterate / std::string;double: at 100000, 79.8 against 69.4 ns per element (Store<key<std::string>, value<double>, frozen>)
-- flat_map > recycling_map / lookup,ordered_lookup,iterate / std::string;double: at 100000, 570.2 against 495.8 ns per element (Store<key<std::string>, value<double>, sorted, frozen>)
+None.
 
 <!-- end of the generated block -->

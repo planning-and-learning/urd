@@ -53,14 +53,16 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::pool;
+using urd::sequence;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 // Scopes undo, latest first, every change made in them: random changes and scopes against a stack of copies.
 TEST(Scoped, PopUndoesTheScopesChanges)
 {
-    using Symbols = Store<key<int>, value<int>, urd::scoped>;
+    using Symbols = Store<map<int, int>, urd::scoped>;
     auto random = std::mt19937(3);
     for (int round = 0; round < 50; ++round)
     {
@@ -110,7 +112,7 @@ TEST(Scoped, PopUndoesTheScopesChanges)
 // A binding is in the innermost scope where that scope made it (loki's redeclaration check).
 TEST(Scoped, BoundInScopeIsTheInnermostScopesOwn)
 {
-    auto symbols = Store<key<std::string>, value<int>, urd::scoped>();
+    auto symbols = Store<map<std::string, int>, urd::scoped>();
     symbols.insert_or_assign("x", 1);
     EXPECT_TRUE(symbols.bound_in_scope("x"));  // no scope open: bound at all
     symbols.push_scope();
@@ -133,7 +135,7 @@ TEST(Scoped, BoundInScopeIsTheInnermostScopesOwn)
 // other never grew, so their slots differ.
 TEST(Scoped, EqualBindingsCompareEqual)
 {
-    using Symbols = Store<key<int>, value<int>, urd::scoped>;
+    using Symbols = Store<map<int, int>, urd::scoped>;
     auto grown = Symbols();
     for (int key = 0; key < 4096; ++key)
         grown.insert_or_assign(key, key);
@@ -153,7 +155,7 @@ TEST(Scoped, EqualBindingsCompareEqual)
 // The change log answers whether an element is among its changes, without scanning them.
 TEST(ChangeLog, WasAddedAndWasRemoved)
 {
-    auto facts = Store<key<int>, urd::change_log> { 1, 2 };
+    auto facts = Store<set<int>, urd::change_log> { 1, 2 };
     facts.clear_changes();
     facts.insert(3);
     facts.erase(1);
@@ -163,7 +165,7 @@ TEST(ChangeLog, WasAddedAndWasRemoved)
 // A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.
 TEST(Layered, AnswersFromItselfThenItsParent)
 {
-    using Names = Store<key<std::string>, value<int>, urd::layered>;
+    using Names = Store<map<std::string, int>, urd::layered>;
     const auto parent = Names { { "on", 0 }, { "clear", 1 } };
     auto child = Names { { "holding", 2 } };
     child.layer_over(&parent);
@@ -182,7 +184,7 @@ TEST(Layered, AnswersFromItselfThenItsParent)
     EXPECT_EQ(child.size(), 3U);
     EXPECT_EQ(parent.at("clear"), 1);
 
-    using Seen = Store<key<int>, urd::layered>;
+    using Seen = Store<set<int>, urd::layered>;
     const auto before = Seen { 1, 2 };
     auto after = Seen { 3 };
     after.layer_over(&before);
@@ -197,7 +199,7 @@ namespace
 {
 
 template<typename T>
-using Interned = Store<key<T>, urd::positional, urd::monotone>;
+using Interned = Store<set<T>, urd::positional, urd::monotone>;
 
 }  // namespace
 
@@ -205,7 +207,7 @@ using Interned = Store<key<T>, urd::positional, urd::monotone>;
 TEST(ChangeLog, HoldsTheDifferenceSinceItWasCleared)
 {
     auto random = std::mt19937(29);
-    auto facts = Store<key<int>, urd::change_log>();
+    auto facts = Store<set<int>, urd::change_log>();
     auto reference = std::set<int>();
     for (int step = 0; step < 2000; ++step)
     {
@@ -251,9 +253,9 @@ namespace
 struct PredicateTag;
 struct ObjectTag;
 using Object = urd::index<ObjectTag>;
-using Row = Store<value<Object>, urd::frozen>;
-using Rows = Store<value<Row>, urd::handles, urd::unique, urd::monotone, urd::layered>;
-using Relations = Store<key<urd::index<PredicateTag>>, value<Rows>, urd::dense, urd::layered>;
+using Row = Store<sequence<Object>, urd::frozen>;
+using Rows = Store<pool<Row>, urd::monotone, urd::layered>;
+using Relations = Store<map<urd::index<PredicateTag>, Rows>, urd::dense, urd::layered>;
 static_assert(std::same_as<Relations::representation, urd::repr::Layered<urd::repr::IndexMap<urd::index<PredicateTag>, Rows, false>>>);
 
 }  // namespace
@@ -281,7 +283,6 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_EQ(task[on].insert({ a, b }), std::pair(on_ab, false));   // the domain's row, through the task's own pool over it
     EXPECT_EQ(task.size(), 1U);                                      // which now exists, layered
     EXPECT_EQ(task[on].base(), 2U);
-    EXPECT_EQ(task[on].layer(), 1U);
     const auto on_aa = task[on].insert({ a, a }).first;
     EXPECT_EQ(on_aa, urd::index<Row>(2));
     const auto expected = Row { a, b };
@@ -291,7 +292,6 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_FALSE(task[on].parent_grew());
     const auto holding_b = task[holding].insert({ b }).first;  // a predicate new in the task: a root pool of its own
     EXPECT_EQ(holding_b, urd::index<Row>(0));
-    EXPECT_EQ(task[holding].layer(), 0U);
     EXPECT_EQ(task.size(), 2U);
 }
 

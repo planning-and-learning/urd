@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
+using urd::queue;
 using urd::Store;
-using urd::value;
 
 namespace
 {
@@ -37,39 +37,40 @@ using Containers = testing::Types<urd::repr::Fifo<int>,
                                   urd::repr::Heap<int>,
                                   urd::repr::AddressableHeap<int>,
                                   urd::repr::BucketQueue<int>,
-                                  Store<value<int>, urd::by_priority, urd::handles>,
-                                  Store<value<int>, urd::by_priority, urd::monotone_priority>,
-                                  Store<value<int>, urd::fifo>,
-                                  Store<value<int>, urd::fifo, urd::stable_refs>,
-                                  Store<value<int>, urd::fifo, urd::retains>,
-                                  Store<value<int>, urd::lifo>,
-                                  Store<value<int>, urd::by_priority>,
-                                  Store<value<int>, urd::lifo, urd::retains>>;
+                                  Store<queue<int>, urd::by_priority, urd::handles>,
+                                  Store<queue<int>, urd::by_priority, urd::monotone_priority>,
+                                  Store<queue<int>, urd::fifo>,
+                                  Store<queue<int>, urd::fifo, urd::stable_refs>,
+                                  Store<queue<int>, urd::fifo, urd::retains>,
+                                  Store<queue<int>, urd::lifo>,
+                                  Store<queue<int>, urd::by_priority>,
+                                  Store<queue<int>, urd::lifo, urd::retains>>;
 TYPED_TEST_SUITE(Queues, Containers);
 
 }  // namespace
 
 // What each request resolves to: a queue for its order.
-static_assert(std::same_as<Store<value<int>, urd::fifo>::representation, urd::repr::Fifo<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::fifo>::representation, urd::repr::Fifo<int>>);
 // A deque keeps the front in place while elements queue behind it; a ring over one vector keeps its storage.
-static_assert(std::same_as<Store<value<int>, urd::fifo, urd::stable_refs>::representation, urd::repr::Fifo<int>>);
-static_assert(std::same_as<Store<value<int>, urd::fifo, urd::retains>::representation, urd::repr::RingFifo<int>>);
-static_assert(std::same_as<Store<value<int>, urd::lifo>::representation, urd::repr::Lifo<int>>);
-static_assert(std::same_as<Store<value<int>, urd::by_priority>::representation, urd::repr::Heap<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::fifo, urd::stable_refs>::representation, urd::repr::Fifo<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::fifo, urd::retains>::representation, urd::repr::RingFifo<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::lifo>::representation, urd::repr::Lifo<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::by_priority>::representation, urd::repr::Heap<int>>);
 // Handles to change or erase an element; integral priorities pushed in order fill buckets; others stay a heap.
-static_assert(std::same_as<Store<value<int>, urd::by_priority, urd::handles>::representation, urd::repr::AddressableHeap<int>>);
-static_assert(std::same_as<Store<value<int>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::BucketQueue<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::by_priority, urd::handles>::representation, urd::repr::AddressableHeap<int>>);
+static_assert(std::same_as<Store<queue<int>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::BucketQueue<int>>);
 // A monotone queue keeps pop: pop is how a queue is consumed, monotone only takes clear away.
-static_assert(requires(Store<value<int>, urd::by_priority, urd::monotone> queue) { queue.pop(); });
-static_assert(std::same_as<Store<value<double>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::Heap<double>>);
-static_assert(std::same_as<
-              Store<value<std::pair<unsigned, int>>, urd::by_priority, urd::monotone_priority, urd::order_by<&std::pair<unsigned, int>::first>>::representation,
-              urd::repr::BucketQueue<std::pair<unsigned, int>, urd::ProjectedLess<std::pair<unsigned, int>, &std::pair<unsigned, int>::first>>>);
+static_assert(requires(Store<queue<int>, urd::by_priority, urd::monotone> queue) { queue.pop(); });
+static_assert(std::same_as<Store<queue<double>, urd::by_priority, urd::monotone_priority>::representation, urd::repr::Heap<double>>);
+static_assert(
+    std::same_as<Store<queue<std::pair<unsigned, int>>, urd::by_priority, urd::monotone_priority, urd::order_by<urd::by<&std::pair<unsigned, int>::first>>>::
+                     representation,
+                 urd::repr::BucketQueue<std::pair<unsigned, int>, urd::by<&std::pair<unsigned, int>::first>>>);
 // Reused per search, it keeps its storage; a monotone one never clears.
 template<typename Q>
 concept clearable = requires(Q queue) { queue.clear(); };
-static_assert(clearable<Store<value<int>, urd::by_priority>> && !clearable<Store<value<int>, urd::by_priority, urd::monotone>>);
-static_assert(urd::has<Store<value<int>, urd::by_priority, urd::retains>, urd::retains>);
+static_assert(clearable<Store<queue<int>, urd::by_priority>> && !clearable<Store<queue<int>, urd::by_priority, urd::monotone>>);
+static_assert(urd::has<Store<queue<int>, urd::by_priority, urd::retains>, urd::retains>);
 // A queue offers the adaptors' names for its order.
 template<typename Q>
 concept iterable = requires(Q queue) { queue.begin(); };
@@ -78,9 +79,9 @@ concept has_front = requires(Q queue) { queue.front(); };
 template<typename Q>
 concept has_top = requires(Q queue) { queue.top(); };
 // Iterated in the order pushed; a bucket queue is not, as it would visit every priority's bucket.
-static_assert(iterable<Store<value<int>, urd::fifo>> && !iterable<Store<value<int>, urd::by_priority, urd::monotone_priority>>
-              && has_front<Store<value<int>, urd::fifo>> && !has_top<Store<value<int>, urd::fifo>>);
-static_assert(has_top<Store<value<int>, urd::by_priority>> && !has_front<Store<value<int>, urd::by_priority>>);
+static_assert(iterable<Store<queue<int>, urd::fifo>> && !iterable<Store<queue<int>, urd::by_priority, urd::monotone_priority>>
+              && has_front<Store<queue<int>, urd::fifo>> && !has_top<Store<queue<int>, urd::fifo>>);
+static_assert(has_top<Store<queue<int>, urd::by_priority>> && !has_front<Store<queue<int>, urd::by_priority>>);
 
 TYPED_TEST(Queues, LeavesInItsOrderThroughRandomOperations)
 {
@@ -148,7 +149,7 @@ TYPED_TEST(Queues, StableRefs)
 // A search's open list: the cheapest node first.
 TEST(Queues, PopsTheCheapestFirst)
 {
-    auto open = Store<value<std::pair<double, int>>, urd::by_priority>();
+    auto open = Store<queue<std::pair<double, int>>, urd::by_priority>();
     open.push({ 3.0, 1 });
     open.push({ 1.5, 2 });
     open.emplace(2.0, 3);
@@ -170,7 +171,7 @@ TEST(Queues, AddressableHeapFollowsUpdatesAndErases)
         auto random = std::mt19937(seed);
         const auto pick = [&random](int bound) { return std::uniform_int_distribution<int>(0, bound - 1)(random); };
         constexpr int steps = 1000;
-        auto heap = Store<value<int>, urd::by_priority, urd::handles>();
+        auto heap = Store<queue<int>, urd::by_priority, urd::handles>();
         auto model = std::map<std::size_t, int>();
         for (int step = 0; step < steps; ++step)
         {

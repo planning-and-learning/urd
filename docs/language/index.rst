@@ -13,7 +13,7 @@ told apart by one test: **what does leaving out a tag you need cause?**
      - For example
    * - :doc:`kind`
      - does not compile: the operation does not exist
-     - ``fifo``, ``handles``, ``partition``
+     - ``set<K>``, ``queue<V>``, ``fifo``
    * - :doc:`semantics`
      - is a bug: the program relies on something nobody keeps
      - ``sorted``, ``stable_refs``, ``dense``, ``frozen``
@@ -44,7 +44,7 @@ Take ``Distance`` from the example on the :doc:`front page </index>`:
 
 .. code-block:: cpp
 
-   using Distance = Store<key<User>, value<int>, dense, constant_clear>;
+   using Distance = Store<map<User, int>, dense, constant_clear>;
 
 .. list-table::
    :header-rows: 1
@@ -54,8 +54,8 @@ Take ``Distance`` from the example on the :doc:`front page </index>`:
      - Category
      - Answer, and what leaving it out would cause
    * - Kind
-     - (from the arguments)
-     - ``key<User>, value<int>``: a map. Without ``value<int>`` it is a set, and ``distance[u]`` does not compile
+     - (the first argument)
+     - ``map<User, int>``: a map. As ``set<User>`` it is a set, and ``distance[u]`` does not compile
    * - Semantics
      - *Which keys?*
      - ``dense``: the users are ids 0..n-1, which you promise. Left out, the Store is still correct, only no longer a
@@ -81,7 +81,8 @@ Who keeps an answer
 Tags also differ in who makes the promise, shown on each tag's card. The role follows from the group, and in
 semantics from who keeps the tag:
 
-- a **kind** makes the Store a queue, a pool or a partition (``fifo``, ``handles``, ``partition``);
+- a **kind** makes the Store a set, a queue, a pool or a partition, named first (``queue<V>``), and its tags say how
+  (``fifo``);
 - a **guarantee** is kept by the container (``sorted``, ``stable_refs``, and the costs); a container declares its
   guarantees in its declaration's ``provides`` (:doc:`/representations`), and the typed tests check them against a
   reference model;
@@ -91,7 +92,7 @@ semantics from who keeps the tag:
 
 A request is what it states, and what that means (each kind's ``meaning``, ``include/urd/kinds.hpp``): a set, and a
 map without ``multi``, keep each key once; a positional set numbers its keys as they come; a frozen Store's
-references are stable (``urd::implied``, whatever the kind).
+references are stable (``any_kind::meaning``, whatever the kind).
 
 Tags are what a request states. What its data *is* (whether a key can be hashed, is an index, copies as bytes, ...)
 is not stated but derived from the types: these are **type traits** (``urd::trait::can_hash``, ...,
@@ -117,21 +118,24 @@ see :doc:`needs`.
    hints
    needs
 
-Order by a projection
+Order by a comparator
 ---------------------
 
-``order_by<P>`` is no tag: it orders a ``sorted`` Store or a ``by_priority`` queue by ``P(element)`` (``P(key)`` in
-a map), or a map by ``P(key, value)``. ``P`` is a member pointer or a stateless lambda; ties are broken by the
-element's (the key's) own order. Ordered by values, a map's values change only through ``update``, ``merge`` and
-``insert_or_assign``, and the request says ``small`` or ``frozen`` too (a flat scan). See :cpp:class:`urd::order_by`.
+``order_by<C>`` is a tag that carries a comparator ``C``: it orders a ``sorted`` Store or a ``by_priority`` queue by
+``C`` instead of :cpp:class:`urd::Less`, as ``std::set``'s comparator does. ``C`` compares two elements, in a map two
+keys. :cpp:class:`urd::by` compares by a projection: ``order_by<by<&Job::deadline>>``. The order is ``C`` and nothing
+else: elements ``C`` does not separate are equivalent, so a unique Store keeps one of them. See
+:cpp:class:`urd::order_by`.
 
 Incompatible combinations
 -------------------------
 
 A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). ``to_spec`` rejects only what is
-ill-formed whatever container would hold it; the ``handles``, ``partition`` and ``order_by`` ties rows share one
-message (``well_formed`` in ``include/urd/kinds.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+ill-formed whatever container would hold it: a first argument that is no kind, an argument after it that is no tag,
+a tag its kind's format does not ask, and the rules its kind states (``well_formed`` in ``include/urd/kinds.hpp``: a
+queue is reached by ``fifo``, ``lifo`` or ``by_priority``, ``monotone_priority`` needs ``by_priority``, ``order_by``
+needs ``sorted`` or ``by_priority``), each with its message. A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::
@@ -142,34 +146,34 @@ each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
      - Why
      - Instead
      - Case
-   * - An argument that is no property
-     - Every argument is a ``key<K>``, a ``value<V>``, a tag or ``order_by<P>``.
-     - Wrap the type in ``key`` or ``value``.
-     - 9
-   * - Two ``key<K>`` (or two ``value<V>``)
-     - A Store has one key type and one value type.
-     - A nested Store, or a tuple key.
+   * - A first argument that is no kind: ``Store<int, sorted>``
+     - The kind comes first, with its element types.
+     - ``Store<set<int>, sorted>``.
      - 8
+   * - An argument after the kind that is no tag
+     - Every argument after the kind is a tag, ``order_by<C>`` among them.
+     - Move the type into the kind: ``map<K, V>``, or a tuple element.
+     - 9
    * - Two tags of one category: ``dense, sparse``; ``retains, reclaims``; ``frozen, monotone``;
        two workloads
      - One question, two answers.
      - Keep one.
      - 4, 5, 13
-   * - ``handles`` with ``key<K>``
-     - A pool holds ``value<V>`` rows reached by handle, not by key.
-     - ``key<K>, positional, monotone`` for an interner of keys.
+   * - ``set<K>, handles``
+     - Handles are a pool's (or a queue's); a set reaches its keys by themselves.
+     - ``pool<V>``, or ``set<K>, positional, monotone`` for an interner of keys.
      - 24
-   * - ``partition`` with ``value<V>``
-     - A partition groups keys.
-     - A map from element to group.
+   * - ``partition<K>, multi``
+     - A partition groups keys, each once.
+     - A ``map<K, V>, multi``.
      - 39
-   * - ``order_by<P>`` on unique keys that are not orderable
-     - Ties under ``P`` are broken by the keys' own order; without one, two keys with equal ``P(key)`` would be one.
-     - Give the key an order, or ask for ``multi``.
+   * - ``order_by<C>`` on a set without ``sorted``
+     - ``order_by`` orders a sorted Store (or a ``by_priority`` queue); an unsorted set has no order to give.
+     - Add ``sorted``.
      - 25
-   * - ``order_by<P>`` with a ``P`` that fits neither ``P(element)`` nor a map's ``P(key, value)``
-     - ``P`` takes the element (a map's key), or a map's key and value.
-     - Fix ``P``'s signature.
+   * - ``order_by<C>`` with a ``C`` that does not compare two elements
+     - ``C`` compares two elements, in a map two keys.
+     - Fix ``C``, or compare by a projection with ``by<P>``.
      - 27
 
 Every other request no container serves is rejected by the registry, with one message: "no container serves
@@ -191,19 +195,19 @@ this request: drop or change a tag". Some examples:
      - No concurrent sorted container is registered.
      - Drop ``sorted`` and synchronize outside, or ask for ``dense``.
      - 41
-   * - ``key<std::string>, dense``
+   * - ``set<std::string>, dense``
      - Dense keys are indices; a string is none.
      - A key with ``index_of``, or ``sparse``.
      - 7
-   * - ``key<Store<…>>`` where the inner Store is unordered, or ``dense`` without ``sorted``
+   * - ``set<Store<…>>`` where the inner Store is unordered, or ``dense`` without ``sorted``
      - An unordered Store iterates in an order its contents do not fix, so it has no hash.
      - ``sorted`` or ``canonical`` on the inner Store.
      - 28, 29
-   * - ``handles, layered`` on a pool of slots
+   * - ``slots<V>, layered``
      - Slots are recycled; nothing continues their handles over a parent.
-     - ``handles, unique, monotone, layered`` (an interning pool).
+     - ``pool<V>, monotone, layered`` (an interning pool).
      - 36
-   * - ``handles, unique, structural_sharing, layered``
+   * - ``pool<V>, structural_sharing, layered``
      - A tree pool numbers nodes, not rows; no layer continues its handles.
      - Drop ``structural_sharing``.
      - 37
@@ -211,7 +215,7 @@ this request: drop or change a tag". Some examples:
      - Missing, not incompatible: the concurrent slot directory is not written yet (see the note in :doc:`/RESOLUTION`).
      - ``dense, layered`` single-threaded, or ``dense, constant_clear, concurrent`` without layers.
      - 38
-   * - ``key<int>, value<int>, concurrent, retains``
+   * - ``map<int, int>, concurrent, retains``
      - The concurrent tables (gtl) return their storage on ``clear``; no concurrent table retains.
      - Drop ``retains``, or share a ``dense, constant_clear, concurrent`` map.
      - grid

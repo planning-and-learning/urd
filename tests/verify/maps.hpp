@@ -3,7 +3,7 @@
 // urd::verify for maps: random inserts, erases and clears checked against a model of the entries (MapModel).
 
 #include "common.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -22,21 +22,6 @@
 
 namespace urd::detail
 {
-
-/// The order of a map ordered by its values: the one a representation was built with, or a Store's request gave.
-template<typename R>
-struct value_order
-{
-    using type = typename container_traits<R>::order_type;
-};
-template<typename R>
-    requires requires { typename R::order_type; }
-struct value_order<R>
-{
-    using type = typename R::order_type;
-};
-template<typename R>
-using value_order_t = typename value_order<R>::type;
 
 /// What a map's contents must be after the same operations: pairs in key order where sorted, each key once
 /// where unique, a multimap's equal keys in insertion order.
@@ -83,11 +68,6 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
         contents.emplace_back(key, value);
     if (std::ranges::size(range) != contents.size())
         return "size() differs from the number of elements";
-    if constexpr (orders_by_value<R>)
-    {
-        if (!std::ranges::is_sorted(range, value_order_t<R> {}))
-            return "sorted: the entries are out of the order the request gave";
-    }
     // Where keys repeat, the standard leaves the order among them to the insert (a hint places an element near
     // it), so the pairs are compared as a multiset; key order is checked below.
     auto expected = model.pairs;
@@ -178,9 +158,7 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
     constexpr int inserts = container_grows<R> ? (unique_keys ? 6 : 4) : 0;
     constexpr int removals = container_shrinks<R> ? 3 : 0;
 
-    // A map ordered by its values keeps no key order; its own order is checked by map_violation.
-    using ModelTraits = std::conditional_t<orders_by_value<R>, with_t<Traits, any_order>, Traits>;
-    auto model = MapModel<ModelTraits, K, V>();
+    auto model = MapModel<Traits, K, V>();
     for (const auto& [key, value] : range)
         model.pairs.emplace_back(key, value);
     if (auto found = map_violation(range, model, {}, 0, K(0)))
@@ -317,5 +295,14 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
         return std::nullopt;
     }
 }
+
+/// A map is checked against its pairs.
+template<>
+struct verifier<map_kind>
+{
+    template<typename R>
+    static std::optional<std::string> run(R& range, unsigned seed, int steps)
+    { return run_map(range, seed, steps); }
+};
 
 }  // namespace urd::detail

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/pools/pools.hpp"

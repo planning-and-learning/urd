@@ -37,12 +37,12 @@ constexpr unsigned seed = 7;          // the same states in every run
 constexpr std::uint32_t values = 16;  // values a position takes, so that subtrees recur
 constexpr unsigned true_share = 10;   // one fact in this many is true
 
-using Values = urd::Store<urd::value<std::uint32_t>, urd::frozen>;
-using Facts = urd::Store<urd::key<std::uint32_t>, urd::dense, urd::frozen>;
-using FlatValues = urd::Store<urd::value<Values>, urd::handles, urd::unique>;
-using TreeValues = urd::Store<urd::value<Values>, urd::handles, urd::unique, urd::structural_sharing>;
-using FlatFacts = urd::Store<urd::value<Facts>, urd::handles, urd::unique>;
-using TreeFacts = urd::Store<urd::value<Facts>, urd::handles, urd::unique, urd::structural_sharing>;
+using Values = urd::Store<urd::sequence<std::uint32_t>, urd::frozen>;
+using Facts = urd::Store<urd::set<std::uint32_t>, urd::dense, urd::frozen>;
+using FlatValues = urd::Store<urd::pool<Values>>;
+using TreeValues = urd::Store<urd::pool<Values>, urd::structural_sharing>;
+using FlatFacts = urd::Store<urd::pool<Facts>>;
+using TreeFacts = urd::Store<urd::pool<Facts>, urd::structural_sharing>;
 
 /// States of `width` values: a random first one, then each a random earlier one with `changes` positions rewritten.
 template<typename Pool>
