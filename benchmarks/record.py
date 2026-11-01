@@ -23,6 +23,7 @@ are compared by their costs (share/urd/complexity.json):
   at the largest size measured, the chosen one's lifecycle (the sum of its operations' times per element) may exceed
   the other's by at most the tolerance or the floor, whichever is larger. Losing at a smaller size only is reported,
   not failed: the registry picks one container for every size, and the one ahead as n grows is the better pick.
+  Losing where the chosen one takes fewer words per element is reported too, not failed: it trades time for memory.
 Nothing is measured per comparison, and nothing is excused in writing: a comparison reads two containers' results.
 """
 
@@ -296,7 +297,7 @@ def comparisons() -> dict[str, dict]:
             if key not in result:
                 fair = set(other.get("uninvited", [])) <= set(chosen.get("uninvited", []))
                 result[key] = {"chosen": chosen["container"], "other": other["container"], "operations": row["operations"],
-                               "experiment": experiment,
+                               "experiment": experiment, "less_memory": chosen["words"] < other["words"],
                                "outcome": classify(table, chosen, other, row["operations"], row["small"]) if fair else "uninvited",
                                "requests": []}
             result[key]["requests"].append(row["request"])
@@ -327,11 +328,12 @@ def experiment_for(experiments: dict[str, dict], container: str, claim: dict) ->
     return None
 
 
-def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str]]:
-    """The measured claims that fail, and those that lose at a smaller size only: by the time of a lifecycle (the sum
-    of the compared operations' times per element), decided at the largest size both containers were measured at."""
+def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str], list[str]]:
+    """The measured claims that fail, those that lose at a smaller size only, and those that lose for less memory: by
+    the time of a lifecycle (the sum of the compared operations' times per element), decided at the largest size both
+    containers were measured at."""
     experiments = requests()["experiments"]
-    failed, smaller = [], []
+    failed, smaller, traded = [], [], []
     for key, claim in found.items():
         if claim["outcome"] != "measure":
             continue
@@ -351,8 +353,8 @@ def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str
         for size, (mine, other) in sorted(totals.items()):
             if mine > other + max(other * TOLERANCE, FLOOR):
                 line = f"{key}: at {size}, {mine:.1f} against {other:.1f} ns per element ({claim['requests'][0]})"
-                (failed if size == largest else smaller).append(line)
-    return failed, smaller
+                (smaller if size != largest else traded if claim["less_memory"] else failed).append(line)
+    return failed, smaller, traded
 
 
 def growth_failures(results: dict) -> list[str]:
@@ -415,7 +417,7 @@ def check(arguments: argparse.Namespace) -> int:
         return 1
     results = load_results(path)
     missing = stale_or_missing(results, fingerprints())
-    failed, smaller = verdicts(results, found)
+    failed, smaller, traded = verdicts(results, found)
     slow = growth_failures(results)
     known, slow_cells = quadratic_cells(results)
     slow += [f"{name}: ran past {result['timed_out']} s" for name, result in results["cells"].items() if "timed_out" in result and name not in known]
@@ -430,14 +432,15 @@ def check(arguments: argparse.Namespace) -> int:
         print(f"{len(missing)} cells to measure: benchmarks/record.py record --binary <build>/benchmark_comparisons")
     for name in slow_cells:
         print(f"known: {name} ran past the limit; a declared cost is quadratic over its run ({known[name]})")
-    print(f"{path.name}: {len(results['cells'])} cells, {len(found)} claims, {len(failed)} failing, {len(smaller)} slower at a smaller size only")
+    print(f"{path.name}: {len(results['cells'])} cells, {len(found)} claims, {len(failed)} failing, {len(smaller)} slower at a smaller size only, "
+          f"{len(traded)} slower for less memory")
     return 1 if failures or missing or failed or slow else 0
 
 
 def doc_block(results: dict, path: Path) -> str:
     """The generated part of BENCHMARKS.md: the summary, then the exceptions."""
     found = comparisons()
-    failed, smaller = verdicts(results, found)
+    failed, smaller, traded = verdicts(results, found)
     outcomes: dict[str, int] = {}
     for claim in found.values():
         outcomes[claim["outcome"]] = outcomes.get(claim["outcome"], 0) + 1
@@ -451,12 +454,14 @@ def doc_block(results: dict, path: Path) -> str:
              f"for; {outcomes.get('settled', 0)} settled by their costs; {outcomes.get('measure', 0)} measured. "
              "Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen "
              "container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most "
-             f"{TOLERANCE:.0%} or {FLOOR:.0f} ns, whichever is larger. The costs and measured times of every container are "
+             f"{TOLERANCE:.0%} or {FLOOR:.0f} ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are "
              "in the complexity tables of each kind of Store.", ""]
     lines += ["### Choices that fail", ""]
     lines += [f"- {line}" for line in failed] or ["None."]
     lines += ["", "### Slower at a smaller size only", ""]
     lines += [f"- {line}" for line in smaller] or ["None."]
+    lines += ["", "### Slower for less memory", ""]
+    lines += [f"- {line}" for line in traded] or ["None."]
     return "\n".join([*lines, "", END])
 
 
