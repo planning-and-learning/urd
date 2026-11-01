@@ -558,7 +558,6 @@ inline constexpr cost lin_capacity { .grows = growth::linear, .of = quantity::ca
 inline constexpr cost lin_row { .grows = growth::linear, .of = quantity::row };
 inline constexpr cost lin_row_e { .grows = growth::linear, .of = quantity::row, .expected = true };
 inline constexpr cost lin_changes { .grows = growth::linear, .of = quantity::changes };
-inline constexpr cost n_changes { .grows = growth::n_times, .of = quantity::changes };
 inline constexpr cost nlog_changes { .grows = growth::n_log_n, .of = quantity::changes };
 }  // namespace costs
 

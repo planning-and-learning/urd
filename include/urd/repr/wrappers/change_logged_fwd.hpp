@@ -57,7 +57,8 @@ struct change_logged_decl
     {
         using part = Part;
         static constexpr cost erase = costs::lin_changes;
-        static constexpr cost clear = costs::n_changes;
+        // A clear walks the elements, then clears the part: in every part logged, iterating costs at least clearing.
+        static constexpr cost clear = Part::operation_costs::iterate;
         static constexpr double words = Part::operation_costs::words + 1;
     };
     static constexpr std::string_view description = joined<change_logged_description, Part::description>::value;

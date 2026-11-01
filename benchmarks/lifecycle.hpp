@@ -39,7 +39,8 @@ inline constexpr bool is_pair<std::pair<A, B>> = true;
 template<typename T>
 T make(std::size_t at);
 
-/// A Store of three elements, distinct for each `at`.
+/// A Store of three elements, distinct for each `at`: the base-128 digits of `at`, one in each third of [0, 384), so
+/// a Store of dense keys stays small however many there are (at < 2^21).
 template<typename T>
 T make_store(std::size_t at)
 {
@@ -48,9 +49,10 @@ T make_store(std::size_t at)
     else
     {
         using E = std::remove_cv_t<typename T::value_type>;
+        constexpr std::size_t bits = 7, digits = std::size_t { 1 } << bits;
         auto elements = std::vector<E>();
         for (std::size_t each = 0; each < 3; ++each)
-            elements.push_back(make<E>(3 * at + each));
+            elements.push_back(make<E>((each * digits) + ((at >> (bits * each)) & (digits - 1))));
         if constexpr (std::constructible_from<T, decltype(elements.begin()), decltype(elements.end())>)
             return T(elements.begin(), elements.end());
         else
@@ -330,10 +332,11 @@ struct workload
         if constexpr (requires { held.clear(); })
             if (has(op::clear))
             {
-                const auto cleared = std::max<std::size_t>(held.size(), 1);
+                // Per element of the lifecycle's size, though erase or pop may have emptied it: a clear in O(U)
+                // or O(capacity) walks what the size made, not what is left.
                 into.start();
                 held.clear();
-                into.stop(op::clear, cleared);
+                into.stop(op::clear, size);
             }
         store.reset();
     }

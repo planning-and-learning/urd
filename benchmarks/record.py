@@ -112,9 +112,12 @@ def results_path(machine: str | None) -> Path:
 
 
 def load_results(path: Path) -> dict:
-    """A results file, or an empty one."""
+    """A results file, or an empty one; without the cells no experiment names any more (a renamed container's)."""
     if path.exists():
-        return json.loads(path.read_text())
+        results = json.loads(path.read_text())
+        live = set(cells())
+        results["cells"] = {name: cell for name, cell in results["cells"].items() if name in live}
+        return results
     return {"machine": path.stem, "cells": {}}
 
 
@@ -359,7 +362,8 @@ def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str
 
 def growth_failures(results: dict) -> list[str]:
     """Measured times that grow faster than their declared cost from the smallest size to the largest: a cost is an
-    upper bound, so only growing faster refutes it (with a factor of ten for caches). Read on cheap elements only:
+    upper bound, so only growing faster refutes it (with a factor of ten for caches, and from at least the floor per
+    element: a time below it says nothing of growth). Read on cheap elements only:
     the costs are for elements that are cheap to copy and destroy (a Store of Stores destroys each on clear), and on
     sizes that count elements (a pool's sizes are row lengths)."""
     table = costs()
@@ -374,14 +378,15 @@ def growth_failures(results: dict) -> list[str]:
         container, size = container_of(name), int(name.rsplit("/", 1)[1])
         for operation, ns in result["ns"].items():
             # The time of one call: per element times the elements it ran over (iterate, clear), else per call.
-            times.setdefault((name.rsplit("/", 1)[0], operation), {})[size] = ns * (size if operation in ("clear", "iterate") else 1)
+            times.setdefault((name.rsplit("/", 1)[0], operation), {})[size] = (ns, size if operation in ("clear", "iterate") else 1)
     failures = []
     for (experiment, operation), by_size in sorted(times.items()):
         how = cost(table, container_of(experiment), operation)
         if not how or how["in"] not in ("n", "keys", "capacity", "changes") or len(by_size) < 2:
             continue
         smallest, largest = min(by_size), max(by_size)
-        ratio, grown = by_size[largest] / max(by_size[smallest], 1e-3), largest / smallest
+        (high, over), (low, under) = by_size[largest], by_size[smallest]
+        ratio, grown = high * over / (max(low, FLOOR) * under), largest / smallest
         allowed = {"one": 1, "log": math.log(largest) / math.log(smallest), "linear": grown, "n_log_n": grown * math.log(largest) / math.log(smallest),
                    "n_times": grown * grown}[how["growth"]]
         if ratio > 10 * allowed:

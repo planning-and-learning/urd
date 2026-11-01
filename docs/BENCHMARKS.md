@@ -206,11 +206,15 @@ None.
 
 ### Slower at a smaller size only
 
-- unordered_set > recycling_tree_set / insert,lookup,erase,clear,iterate / std::string;- / small: at 8, 170.9 against 146.4 ns per element (Store<key<std::string>, small, stable_refs>)
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;- / small: at 8, 194.6 against 176.5 ns per element (Store<key<std::string>, small, sorted, stable_refs>)
+- unordered_set > recycling_tree_set / insert,lookup,erase,clear,iterate / std::string;- / small: at 8, 164.9 against 145.1 ns per element (Store<key<std::string>, small, stable_refs>)
 
 ### Slower for less memory
 
-- flat_map > map / lookup,ordered_lookup,iterate / std::string;double: at 100000, 450.4 against 382.4 ns per element (Store<key<std::string>, value<double>, sorted, frozen>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;-: at 100000, 1515.2 against 1161.2 ns per element (Store<key<std::string>, sorted>)
+- flat_set > recycling_tree_set / lookup,ordered_lookup,iterate / std::string;-: at 100000, 469.8 against 386.1 ns per element (Store<key<std::string>, sorted, frozen>)
+- unordered_flat_set > indexed_set / lookup,iterate / std::string;-: at 100000, 81.8 against 58.6 ns per element (Store<key<std::string>, frozen>)
+- unordered_flat_set > stable_indexed_set / lookup,iterate / std::string;-: at 100000, 81.8 against 65.3 ns per element (Store<key<std::string>, frozen>)
+- unordered_flat_map > ordered_map / lookup,iterate / std::string;double: at 100000, 79.8 against 69.4 ns per element (Store<key<std::string>, value<double>, frozen>)
+- flat_map > recycling_map / lookup,ordered_lookup,iterate / std::string;double: at 100000, 570.2 against 495.8 ns per element (Store<key<std::string>, value<double>, sorted, frozen>)
 
 <!-- end of the generated block -->

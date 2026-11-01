@@ -109,10 +109,16 @@ public:
             first = erase(first);
         return first;
     }
-    /// Removes every element, each logged as removed (or no longer added).
+    /// Removes every element: those added since the log was cleared are in neither log, the others removed.
     void clear()
     {
-        std::ranges::for_each(m_elements, [this](const value_type& element) { removing(element); });
+        std::ranges::for_each(m_elements,
+                              [this](const value_type& element)
+                              {
+                                  if (!m_added.contains(element))
+                                      m_removed.insert(element);
+                              });
+        m_added.clear();
         m_elements.clear();
     }
 
