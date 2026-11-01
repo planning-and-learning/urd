@@ -98,7 +98,7 @@ a request states, what a container provides); with one, about part of its data: 
        static constexpr std::string_view name = "can_hash", description = "urd::Hash and urd::EqualTo hash and compare it";
        template<typename T> static consteval bool holds() { return urd::hashable<T>; }
    };
-   template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash, …>; };
+   template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash /*, … */>; };
 
 A role lists its traits once, where they are defined (``traits_of_role``); urd evaluates each for the role's type
 (``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. The element and order traits are in
