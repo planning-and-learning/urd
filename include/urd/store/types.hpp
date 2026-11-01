@@ -35,10 +35,9 @@ inline constexpr bool shrinks = grows<S> && !has<S, monotone> && !has<S, nonempt
 template<typename R, typename S>
 struct store_types
 {
-    /// Kept by value or key, as an associative container (set, map, sorted sequence).
-    static constexpr bool keyed = by_value<S>;
-    /// Elements change in place: nothing depends on their values, and the Store may change.
-    static constexpr bool writable = !keyed && !has<S, monotone>;
+    /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
+    /// and it is not frozen.
+    static constexpr bool writable = appends<typename S::kind> && !has<S, frozen>;
     /// Iterated in an order the request asked for.
     static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || has<S, positional>);
 

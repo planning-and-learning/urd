@@ -46,7 +46,8 @@ Member types
 ------------
 
 ``value_type`` is ``T``; ``iterator`` and ``reference`` are the representation's and are mutable where the
-elements change in place (not ``sorted``, not ``monotone``, not rows handed out as views).
+elements change in place: a sequence that is not ``frozen`` (a ``monotone`` one included: it only never removes), not
+a multiset (which places elements by value), and not rows handed out as views.
 
 Member functions
 ----------------
@@ -77,17 +78,17 @@ Growable (not ``frozen``, not ``fixed_shape``):
 .. cpp:function:: void push_back(value_type&& element)
 .. cpp:function:: template<typename... Args> reference emplace_back(Args&&... args)
 
-   Unsorted sequences. The new element, changeable in place where the elements are.
+   Sequences (the ``appending`` facet). The new element, changeable in place where the elements are.
 
 .. cpp:function:: iterator insert(const value_type& element)
 .. cpp:function:: template<typename... Args> iterator emplace(Args&&... args)
 
-   Sorted sequences: into place.
+   Multisets (the ``insertion`` facet): into place, by value.
 
 .. cpp:function:: iterator insert(const_iterator pos, const value_type& element)
 .. cpp:function:: template<typename... Args> iterator emplace(const_iterator pos, Args&&... args)
 
-   At a position (not monotone, unsorted).
+   Sequences, at a position (not ``monotone``).
 
 Shrinkable (neither ``frozen`` nor ``monotone``):
 

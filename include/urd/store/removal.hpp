@@ -19,7 +19,6 @@ class removal
     using value_type = typename types::value_type;
     using iterator_type = typename iterator_types<R, S>::iterator;
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
-    static constexpr bool keyed = types::keyed;
 
 public:
     iterator_type erase(const_iterator_type pos)
@@ -30,13 +29,11 @@ public:
         return next;
     }
     iterator_type erase(const_iterator_type first, const_iterator_type last) { return representation().erase(first, last); }
-    /// Every element equal to `element` (in a map, with that key); how many there were.
+    /// Every element equal to `element` (in a map, with that key); how many there were. Where the kind places elements
+    /// by their value or key (it does not append): one erase with the other erases, as std::set has it.
     std::size_t erase(const typename types::lookup_type& element)
-        requires keyed
+        requires(!appends<typename S::kind>)
     { return representation().erase(element); }
-    void pop_back()
-        requires(!keyed)
-    { representation().pop_back(); }
     void clear() { representation().clear(); }
 
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
@@ -54,12 +51,6 @@ public:
             for (auto it = store.begin(); it != store.end();)
                 it = pred(*it) ? store.erase(it) : std::next(it);
         return before - store.size();
-    }
-    /// Every element equal to `element`, from a sequence; how many. As std::erase.
-    friend std::size_t erase(Derived& store, const value_type& element)
-        requires(!keyed)
-    {
-        return erase_if(store, [&](const value_type& candidate) { return candidate == element; });
     }
 
 private:

@@ -50,7 +50,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         rows.push_back(std::move(row));
     };
 
-    constexpr bool sequence_rows = !by_value<traits_t<Row>>;
+    constexpr bool sequence_rows = row_appends<Row>();
     auto random = std::mt19937(seed);
     // Sequence rows over few values, so that equal rows recur; set rows over a range of several blocks.
     auto pick = std::uniform_int_distribution<int>(0, sequence_rows ? 3 : 99);

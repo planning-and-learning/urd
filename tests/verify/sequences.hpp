@@ -59,7 +59,7 @@ std::optional<std::string> violation(const R& range,
         return "size() differs from the number of elements";
 
     auto expected = model.elements;
-    if (by_value<Traits> && !has<Traits, sorted> && !has<Traits, insertion_ordered>)
+    if (keyed_range<R> && !has<Traits, sorted> && !has<Traits, insertion_ordered>)
     {
         std::ranges::sort(contents);
         std::ranges::sort(expected);
@@ -100,7 +100,7 @@ std::optional<std::string> violation(const R& range,
             return "canonical: equal contents built in another order differ";
     }
 
-    if constexpr (by_value<Traits>)
+    if constexpr (keyed_range<R>)
     {
         const auto present = std::ranges::find(model.elements, probe) != model.elements.end();
         const auto found = range.find(probe);
@@ -129,7 +129,7 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
 {
     using E = detail::element_t<R>;
     using Traits = container_traits<R>;
-    constexpr bool keyed = by_value<Traits>;
+    constexpr bool keyed = keyed_range<R>;
     constexpr int universe = 32;  // small, so inserts meet duplicates and erases find elements
 
     // The operations R offers: inserts (by value, or at the end), removals and, for a sequence, inserts before

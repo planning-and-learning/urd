@@ -21,7 +21,7 @@ class pool
 {
     using row_element = std::ranges::range_value_t<typename S::element_type>;
     /// Rows that are sequences take writes by position.
-    static constexpr bool sequence_rows = !by_value<traits_t<typename S::element_type>>;
+    static constexpr bool sequence_rows = row_appends<typename S::element_type>();
 
     /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
     /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).

@@ -3,6 +3,7 @@
 // What every kind's check reads: the contents a range holds, element addresses, positions, and what an insert reports.
 
 #include "urd/elements/less.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
@@ -22,6 +23,22 @@
 
 namespace urd::detail
 {
+
+/// The kind of what verify checks: a Store's, from its request; a container's, from its declaration.
+template<typename R>
+struct kind_of_range
+{
+    using type = typename declaration_t<R>::kind;
+};
+template<typename R>
+    requires is_store<R>
+struct kind_of_range<R>
+{
+    using type = typename container_traits<R>::kind;
+};
+/// Whether R places its elements by their value or key (its kind does not append, as a sequence does).
+template<typename R>
+inline constexpr bool keyed_range = !appends<typename kind_of_range<R>::type>;
 
 /// Whether the contents of `range` are as Traits says: sorted, unique, nonempty. The other properties are
 /// about the type, not the contents; the checks below cover those. O(n log n) at most.

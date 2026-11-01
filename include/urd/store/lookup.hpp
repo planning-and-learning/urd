@@ -30,13 +30,13 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
+/// When a Store has this facet: always, where its kind lists it (the kinds that place elements by value).
 template<>
 struct facet_condition<facet::lookup>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return store_types<R, S>::keyed; }
+    { return true; }
 };
 template<>
 struct facet_operations<facet::lookup>

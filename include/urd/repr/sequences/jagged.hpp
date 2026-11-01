@@ -57,7 +57,7 @@ class Jagged
     using T = typename Si::element_type;
     static constexpr bool leaf = !is_store<T>;
     static constexpr bool writable = !has<Si, frozen> && (leaf || !has<container_traits<T>, frozen>);
-    static constexpr bool bits = writable && leaf && by_value<Si>;
+    static constexpr bool bits = writable && leaf && has<Si, unique> && has<Si, dense>;  // a dense set: its bits
     using word = std::uint64_t;
     using Data = std::conditional_t<!leaf, Jagged<T>, std::conditional_t<bits, std::vector<word>, std::vector<T>>>;
     template<bool Const>
@@ -193,7 +193,7 @@ public:
     {
         const auto index = static_cast<size_type>(pos - begin());
         const auto before = std::ranges::size(m_data);
-        if constexpr (leaf && by_value<Si> && !bits && !std::same_as<Row, Inner>)
+        if constexpr (leaf && !urd::detail::appends<typename Si::kind> && !bits && !std::same_as<Row, Inner>)
         {
             const auto normalized = Inner(std::ranges::begin(elements), std::ranges::end(elements));
             insert_elements(index, normalized);

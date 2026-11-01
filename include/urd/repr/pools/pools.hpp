@@ -37,7 +37,7 @@ class RowInterner
 {
     using element = std::ranges::range_value_t<Row>;
     using word = std::uint64_t;
-    static constexpr bool words = by_value<traits_t<Row>> && has<traits_t<Row>, dense>;
+    static constexpr bool words = has<traits_t<Row>, unique> && has<traits_t<Row>, dense>;  // a dense set: its bits
     using stored_row = std::vector<std::conditional_t<words, word, element>>;
     using Bits = BitsetSpan<const word>;
 

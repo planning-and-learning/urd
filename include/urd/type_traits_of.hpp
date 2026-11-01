@@ -79,6 +79,17 @@ struct held_as<T>
     using elements = std::conditional_t<store, std::ranges::range_value_t<T>, void>;
 };
 
+/// Whether T, held as an element, is a row that keeps its elements where they are put (its kind appends, as a
+/// sequence does), rather than placing them by their value or key.
+template<typename T>
+consteval bool row_appends()
+{
+    if constexpr (held_as<T>::store)
+        return appends<typename held_as<T>::kind>;
+    else
+        return false;
+}
+
 /// Whether rows T flatten (frozen, holding elements or rows kept in order), whether they change in place (sequences,
 /// dense sets' bits, or fixed-shape rows of such rows at any depth), and whether they may shrink, so emptied ones
 /// can be kept for reuse: what a jagged array and a pool of rows store.
@@ -89,7 +100,7 @@ consteval bool rows_flatten()
     if constexpr (!row::store)
         return false;
     else
-        return row::properties.has(change::frozen) && (!held_as<typename row::elements>::store || !by_value<T>);
+        return row::properties.has(change::frozen) && (!held_as<typename row::elements>::store || row_appends<T>());
 }
 template<typename T>
 consteval bool rows_in_place()

@@ -83,7 +83,9 @@ class contiguous_data;
 template<typename Derived, typename R, typename S>
 class capacity;
 template<typename Derived, typename R, typename S>
-class growth;
+class insertion;
+template<typename Derived, typename R, typename S>
+class appending;
 template<typename Derived, typename R, typename S>
 class removal;
 template<typename Derived, typename R, typename S>
@@ -259,7 +261,7 @@ struct map_kind : detail::any_kind
                                       detail::facet::lookup,
                                       detail::facet::reverse_iteration,
                                       detail::facet::positions,
-                                      detail::facet::growth,
+                                      detail::facet::insertion,
                                       detail::facet::removal,
                                       detail::facet::values_by_key,
                                       detail::facet::multi_values,
@@ -285,7 +287,7 @@ struct set_kind : detail::any_kind
                                       detail::facet::lookup,
                                       detail::facet::reverse_iteration,
                                       detail::facet::insertion_positions,
-                                      detail::facet::growth,
+                                      detail::facet::insertion,
                                       detail::facet::removal,
                                       detail::facet::set_algebra,
                                       detail::facet::sorted_ends>;
@@ -310,7 +312,7 @@ struct multiset_kind : detail::any_kind
                                       detail::facet::lookup,
                                       detail::facet::reverse_iteration,
                                       detail::facet::positions,
-                                      detail::facet::growth,
+                                      detail::facet::insertion,
                                       detail::facet::removal>;
     /// Its elements have positions.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
@@ -322,12 +324,8 @@ struct sequence_kind : detail::any_kind
 {
     static constexpr std::string_view name = "sequence";
     using format = detail::request_format<order, keys, shape>;
-    using facets = detail::facet_list<detail::facet::iteration,
-                                      detail::facet::lookup,
-                                      detail::facet::reverse_iteration,
-                                      detail::facet::positions,
-                                      detail::facet::growth,
-                                      detail::facet::removal>;
+    using facets = detail::
+        facet_list<detail::facet::iteration, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
     /// Its elements have positions.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
     /// Rows of a fixed shape are built from their lengths (urd::row_lengths), or for rows of rows, each row's shape.
@@ -435,6 +433,11 @@ template<typename Kind>
 using format_of = typename concat<typename Kind::format, typename any_kind::common_format>::type;
 template<typename Kind>
 using facets_of = typename concat<typename any_kind::common_facets, typename Kind::facets>::type;
+
+/// Whether a Store of Kind keeps its elements where they are put (it lists appending, as a sequence does), rather than
+/// placing them by their value or key.
+template<typename Kind>
+inline constexpr bool appends = listed_facet<facet::appending, facets_of<Kind>>;
 
 }  // namespace detail
 

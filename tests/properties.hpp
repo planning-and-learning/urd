@@ -108,7 +108,7 @@ R built(const std::vector<int>& keys)
 template<typename R>
 void add(R& range, int key)
 {
-    if constexpr (urd::by_value<urd::container_traits<R>> || map<R>)
+    if constexpr (urd::detail::keyed_range<R> || map<R>)
         range.insert(element<R>(key));
     else
         range.push_back(key);
@@ -287,7 +287,7 @@ TYPED_TEST_P(Properties, Retains)
         // Erased one by one, then refilled: nothing is allocated either.
         for (int element = 0; element < COUNT; ++element)
         {
-            if constexpr (urd::by_value<urd::container_traits<TypeParam>>)
+            if constexpr (urd::detail::keyed_range<TypeParam>)
                 range.erase(element);
             else
                 range.pop_back();
@@ -365,7 +365,7 @@ TYPED_TEST_P(Properties, ClearCost)
                     if (far)
                     {
                         add(range, far_key);
-                        if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                        if constexpr (urd::detail::keyed_range<TypeParam> || map<TypeParam>)
                             range.erase(far_key);
                         else
                             range.pop_back();
@@ -400,7 +400,7 @@ TYPED_TEST_P(Properties, ClearCostInLiveElements)
                     auto range = TypeParam();
                     // The same history for both: a far key touched and erased, then the live elements.
                     add(range, far_key);
-                    if constexpr (urd::by_value<urd::container_traits<TypeParam>> || map<TypeParam>)
+                    if constexpr (urd::detail::keyed_range<TypeParam> || map<TypeParam>)
                         range.erase(far_key);
                     else
                         range.pop_back();

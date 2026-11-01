@@ -16,24 +16,6 @@
 namespace urd
 {
 
-namespace detail
-{
-
-/// The kind of what verify checks: a Store's, from its request; a container's, from its declaration.
-template<typename R>
-struct kind_of_range
-{
-    using type = typename declaration_t<R>::kind;
-};
-template<typename R>
-    requires is_store<R>
-struct kind_of_range<R>
-{
-    using type = typename container_traits<R>::kind;
-};
-
-}  // namespace detail
-
 /// Checks that `range` keeps every declared property through random operations: `steps` of them on small integers,
 /// each operation R's properties allow, from inserts to erases of positions and ranges, and after each one compares
 /// the contents and the lookups with a reference model and checks each declared property, with the exceptions their

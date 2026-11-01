@@ -175,9 +175,10 @@ static_assert(!can_erase<Store<set<int>, urd::nonempty>>);
 // A sorted Store is searched by order; a sorted sequence keeps elements by value, as std::flat_multiset.
 static_assert(can_search<Store<set<int>, urd::sorted>> && !can_search<Store<set<int>>>);
 static_assert(can_insert<Store<multiset<int>, urd::sorted>> && !can_push_back<Store<multiset<int>, urd::sorted>>);
-// Elements change in place only where no property depends on their values and the Store may change.
-static_assert(can_assign<Store<sequence<int>>>);
-static_assert(!can_assign<Store<multiset<int>, urd::sorted>> && !can_assign<Store<sequence<int>, urd::monotone>>);
+// Elements change in place where the kind keeps them where they are put (a sequence) and the Store is not frozen: a
+// monotone one only never removes. A multiset or a set places them by value, so they stay as they are.
+static_assert(can_assign<Store<sequence<int>>> && can_assign<Store<sequence<int>, urd::monotone>>);
+static_assert(!can_assign<Store<multiset<int>, urd::sorted>> && !can_assign<Store<sequence<int>, urd::frozen>>);
 static_assert(!can_assign<Store<set<int>, urd::positional>>);
 // A unique set's insert says whether it inserted; a multiset's does not.
 static_assert(std::same_as<decltype(Store<set<int>>().insert(1).second), bool>);
