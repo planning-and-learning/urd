@@ -120,12 +120,12 @@ template<typename Derived, typename R, typename S>
 class sorted_ends;
 }  // namespace facet
 
-/// Which type plays which role in a request's data.
-template<typename Role, typename T>
+/// Which types play role Role in a Store's data: its element type, or for the order the ordered type and its
+/// comparator.
+template<typename Role, typename... Args>
 struct plays
 {
     using role = Role;
-    using type = T;
 };
 template<typename... Plays>
 struct role_types
@@ -353,7 +353,9 @@ struct values_of : Kind
     using lookup_type = V;
     /// What its order compares.
     using ordered_type = V;
-    using played = role_types<plays<role::element, V>>;
+    /// Which of its types plays which role, ordered by Order: its values are its elements and its rows.
+    template<typename Order>
+    using played = role_types<plays<role::element, V>, plays<role::order, V, Order>, plays<role::row, V>, plays<role::rows, V>, plays<role::row_element, V>>;
 };
 
 /// A kind Kind with keys of type K as its data (a set, a partition).
@@ -367,7 +369,9 @@ struct keys_of : Kind
     using held_type = K;
     using lookup_type = K;
     using ordered_type = K;
-    using played = role_types<plays<role::element, K>>;
+    /// Which of its types plays which role, ordered by Order: its keys are its elements and its rows.
+    template<typename Order>
+    using played = role_types<plays<role::element, K>, plays<role::order, K, Order>, plays<role::row, K>, plays<role::rows, K>, plays<role::row_element, K>>;
 };
 
 }  // namespace detail
@@ -391,7 +395,15 @@ struct map : map_kind
     using held_type = V;
     using lookup_type = K;
     using ordered_type = K;
-    using played = detail::role_types<detail::plays<role::element, K>, detail::plays<role::mapped, V>>;
+    /// Which of its types plays which role, ordered by Order: its keys are its elements and are ordered, its values
+    /// are mapped and are its rows.
+    template<typename Order>
+    using played = detail::role_types<detail::plays<role::element, K>,
+                                      detail::plays<role::mapped, V>,
+                                      detail::plays<role::order, K, Order>,
+                                      detail::plays<role::row, V>,
+                                      detail::plays<role::rows, V>,
+                                      detail::plays<role::row_element, V>>;
 };
 /// Values of type V kept by value, in order.
 template<typename V>

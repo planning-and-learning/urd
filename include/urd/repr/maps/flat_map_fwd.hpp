@@ -60,7 +60,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_map<K, V, C, A>>
 {
     using declaration = flat_map_decl;
-    static constexpr property_set roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail
@@ -92,7 +92,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_multimap<K, V, C, A>>
 {
     using declaration = flat_multimap_decl;
-    static constexpr property_set roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail

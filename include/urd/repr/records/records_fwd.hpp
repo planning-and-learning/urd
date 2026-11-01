@@ -72,13 +72,13 @@ template<typename T>
 struct declaration_of<repr::ValueInterner<T, false>>
 {
     using declaration = value_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 template<typename T>
 struct declaration_of<repr::RecordInterner<T, false>>
 {
     using declaration = record_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 
 }  // namespace detail
@@ -122,13 +122,13 @@ template<typename T>
 struct declaration_of<repr::ValueInterner<T, false, true>>
 {
     using declaration = stable_value_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 template<typename T>
 struct declaration_of<repr::RecordInterner<T, false, true>>
 {
     using declaration = stable_record_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 
 }  // namespace detail
@@ -172,13 +172,13 @@ template<typename T>
 struct declaration_of<repr::ValueInterner<T, true>>
 {
     using declaration = thread_safe_value_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 template<typename T>
 struct declaration_of<repr::RecordInterner<T, true>>
 {
     using declaration = thread_safe_record_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 
 }  // namespace detail
@@ -207,7 +207,7 @@ template<typename T>
 struct declaration_of<repr::ArenaInterner<T, false>>
 {
     using declaration = arena_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 
 }  // namespace detail
@@ -236,7 +236,7 @@ template<typename T>
 struct declaration_of<repr::ArenaInterner<T, true>>
 {
     using declaration = thread_safe_arena_interner_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::pool<T>>();
 };
 
 }  // namespace detail

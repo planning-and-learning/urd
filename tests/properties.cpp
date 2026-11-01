@@ -101,7 +101,7 @@ struct urd::detail::declaration_of<Journal>
     using declaration = test_declaration<urd::sequence_kind,
                                          urd::detail::property_set::of({ urd::position::positional, urd::referencing::stable_refs }),
                                          urd::detail::property_set::of({ urd::change::monotone })>;
-    static constexpr urd::detail::property_set roles = urd::detail::element_roles<int>();
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::sequence<int>>();
 };
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Adapters, Properties, testing::Types<Journal>, urd::test::Names);
@@ -134,7 +134,7 @@ struct urd::detail::declaration_of<ClaimsStableRefs>
     using declaration = test_declaration<urd::sequence_kind,
                                          urd::detail::property_set::of({ urd::referencing::stable_refs }),
                                          urd::detail::property_set::of({ urd::change::monotone })>;
-    static constexpr urd::detail::property_set roles = urd::detail::element_roles<int>();
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::sequence<int>>();
 };
 
 TEST(Properties, AFalseClaimIsCaught)
@@ -162,7 +162,7 @@ struct urd::detail::declaration_of<ClaimsStableValues>
         test_declaration<urd::map_kind,
                          urd::detail::property_set::of(
                              { urd::order::sorted, urd::uniqueness::unique, urd::keys::dense, urd::referencing::stable_refs, urd::memory::retains })>;
-    static constexpr urd::detail::property_set roles = urd::detail::map_roles<int, int>();
+    static constexpr urd::detail::property_set roles = urd::detail::roles_of<urd::map<int, int>>();
 };
 
 TEST(Properties, AFalseClaimAboutValuesIsCaught)

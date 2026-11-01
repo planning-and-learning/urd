@@ -59,7 +59,7 @@ template<typename K>
 struct declaration_of<repr::DenseSet<K, false>>
 {
     using declaration = dense_set_decl;
-    static constexpr property_set roles = element_roles<K>();
+    static constexpr property_set roles = roles_of<urd::set<K>>();
 };
 
 }  // namespace detail
@@ -91,7 +91,7 @@ template<typename K>
 struct declaration_of<repr::DenseSet<K, true>>
 {
     using declaration = tracked_dense_set_decl;
-    static constexpr property_set roles = element_roles<K>();
+    static constexpr property_set roles = roles_of<urd::set<K>>();
 };
 
 }  // namespace detail
@@ -122,7 +122,7 @@ template<typename K>
 struct declaration_of<repr::SparseSet<K, false>>
 {
     using declaration = sparse_set_decl;
-    static constexpr property_set roles = element_roles<K>();
+    static constexpr property_set roles = roles_of<urd::set<K>>();
 };
 
 }  // namespace detail
@@ -154,7 +154,7 @@ template<typename K>
 struct declaration_of<repr::SparseSet<K, true>>
 {
     using declaration = ordered_sparse_set_decl;
-    static constexpr property_set roles = element_roles<K>();
+    static constexpr property_set roles = roles_of<urd::set<K>>();
 };
 
 }  // namespace detail

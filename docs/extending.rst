@@ -32,8 +32,8 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
 
 - ``representation_of<my_set_decl, S>::type`` names its type for a request's spec ``S``, in the container's own
   header, which also defines the marker ``urd::include<"my/my_set.hpp">``.
-- ``declaration_of<MySet<T>>`` names the declaration of a type, with the roles its template arguments give
-  (``element_roles<T>()``).
+- ``declaration_of<MySet<T>>`` names the declaration of a type, with the roles its template arguments give, as the
+  kind it serves has them (``roles_of<urd::set<T>, C>()``).
 - ``declarations_of<Kind>`` lists a kind's containers in order of preference; a container added to an existing kind
   is placed there.
 
@@ -63,7 +63,21 @@ A fact is a tag about a role: a category, its answer, and whose it is. Without a
 a request states, what a container provides); with one, about part of its data: ``urd::role::element``, ``order``,
 ``mapped``, ``row``, ``rows``, ``row_element``, each a struct with a ``name`` and a ``description``
 (``include/urd/registry/facts.hpp``). A type trait is a category answered by the type rather than stated
-(``urd::trait::can_hash``): a struct with its words, whose category urd makes from it. A request's facts and a
+(``urd::trait::can_hash``): a struct with its words and what it means, whose category urd makes from it:
+
+.. code-block:: cpp
+
+   struct can_hash
+   {
+       static constexpr std::string_view name = "can_hash", description = "urd::Hash and urd::EqualTo hash and compare it";
+       template<typename T> static consteval bool holds() { return urd::hashable<T>; }
+   };
+   template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash, …>; };
+
+A role lists its traits once, where they are defined (``traits_of_role``); urd evaluates each for the role's type
+(``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. The element and order traits are in
+``include/urd/type_traits_of.hpp``, the traits of rows beside the row containers that rely on them
+(``include/urd/repr/sequences/rows_fwd.hpp``). A request's facts and a
 container's reliance are one set of them (``property_set``); a container relies on
 ``relies(stated({ change::monotone }), traits<role::element, trait::can_hash>())``, and a request holding those facts
 promises it.
@@ -105,8 +119,10 @@ from besides elements). A kind has no flags: what holds of its Store is a tag it
 are ``positional``) or a facet it lists (iteration).
 
 The template gives the kind's element types: ``element_types`` (for spelling and headers), what it holds and finds
-(``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), which type plays which
-role (``played``). ``urd::detail::values_of<Kind, V>``
+(``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), and which of its types
+plays which role (``played<Order>``: ``plays<role::element, K>``, ``plays<role::order, K, Order>``, its rows, …). urd
+folds a kind's roles into facts the same way for a request and for a container's declaration (``roles_of``); a role
+whose facts are not its traits says how they are computed (``role_facts``). ``urd::detail::values_of<Kind, V>``
 and ``keys_of<Kind, K>`` give them for a kind of values or of keys; ``urd::map<K, V>`` writes its own.
 ``urd::Store<tally<std::string>>`` is a tally of strings. Nothing registers the kind: naming it is enough.
 

@@ -64,7 +64,7 @@ template<typename T>
 struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 {
     using declaration = indexed_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -94,7 +94,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::StableIndexedSet<T, Index>>
 {
     using declaration = stable_indexed_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -124,7 +124,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 {
     using declaration = concurrent_indexed_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail

@@ -48,7 +48,7 @@ template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::IndexedSet<K>, V>>
 {
     using declaration = ordered_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -76,7 +76,7 @@ template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::SparseSet<K, true>, V>>
 {
     using declaration = dense_ordered_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

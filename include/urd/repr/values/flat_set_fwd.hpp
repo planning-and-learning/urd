@@ -61,7 +61,7 @@ template<typename T, typename C, typename A>
 struct declaration_of<boost::container::flat_set<T, C, A>>
 {
     using declaration = flat_set_decl;
-    static constexpr property_set roles = element_roles<T, C>();
+    static constexpr property_set roles = roles_of<urd::set<T>, C>();
 };
 
 }  // namespace detail
@@ -94,7 +94,7 @@ template<typename T, typename C, typename A>
 struct declaration_of<boost::container::flat_multiset<T, C, A>>
 {
     using declaration = flat_multiset_decl;
-    static constexpr property_set roles = element_roles<T, C>();
+    static constexpr property_set roles = roles_of<urd::multiset<T>, C>();
 };
 
 }  // namespace detail

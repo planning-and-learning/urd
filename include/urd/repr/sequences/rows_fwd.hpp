@@ -26,6 +26,66 @@ class RowPool;
 
 }  // namespace urd::repr
 
+namespace urd::trait
+{
+
+// What rows T (Stores held as elements, or registered containers of elements) allow: the conditions of the row
+// containers declared below, each its words and what it means (holds).
+
+struct rows_flatten
+{
+    static constexpr std::string_view name = "rows_flatten";
+    static constexpr std::string_view description = "rows frozen, holding elements or rows kept in order: stored flattened";
+    /// Frozen rows, whose elements are no rows or which keep their rows where they are put (a sequence of rows).
+    template<typename T>
+    static consteval bool holds()
+    {
+        using row = detail::held_as<T>;
+        if constexpr (!row::store)
+            return false;
+        else if constexpr (!detail::held_as<typename row::elements>::store)
+            return row::properties.has(change::frozen);
+        else
+            return row::properties.has(change::frozen) && detail::appends<typename row::kind>;
+    }
+};
+struct rows_in_place
+{
+    static constexpr std::string_view name = "rows_in_place";
+    static constexpr std::string_view description = "rows changed in place: sequences, dense sets' bits, or fixed-shape rows of such rows";
+    /// Rows not frozen that change in place by their kind, or of a fixed shape over such rows, at any depth.
+    template<typename T>
+    static consteval bool holds()
+    {
+        using row = detail::held_as<T>;
+        if constexpr (!row::store)
+            return false;
+        else if constexpr (!detail::held_as<typename row::elements>::store)
+            return !row::properties.has(change::frozen) && row::kind::changes_in_place(row::properties);
+        else
+            return !row::properties.has(change::frozen) && row::properties.has(shape::fixed_shape) && holds<typename row::elements>();
+    }
+};
+struct rows_reused
+{
+    static constexpr std::string_view name = "rows_reused";
+    static constexpr std::string_view description = "rows that may shrink, so emptied ones can be kept for reuse";
+    template<typename T>
+    static consteval bool holds()
+    {
+        using row = detail::held_as<T>;
+        return row::store && !row::properties.has(change::monotone) && !row::properties.has(emptiness::nonempty) && !row::properties.has(shape::fixed_shape);
+    }
+};
+
+}  // namespace urd::trait
+
+template<>
+struct urd::traits_of_role<urd::role::rows>
+{
+    using type = detail::type_list<trait::rows_flatten, trait::rows_in_place, trait::rows_reused>;
+};
+
 namespace urd
 {
 
@@ -70,8 +130,8 @@ struct fixed_jagged_decl
 template<typename Inner>
 struct declaration_of<repr::Jagged<Inner>>
 {
-    using declaration = std::conditional_t<rows_flatten<Inner>(), jagged_decl, fixed_jagged_decl>;
-    static constexpr property_set roles = element_roles<Inner>();
+    using declaration = std::conditional_t<trait::rows_flatten::holds<Inner>(), jagged_decl, fixed_jagged_decl>;
+    static constexpr property_set roles = roles_of<urd::sequence<Inner>>();
 };
 
 }  // namespace detail
@@ -101,7 +161,7 @@ template<typename Inner>
 struct declaration_of<repr::RowPool<Inner>>
 {
     using declaration = row_pool_decl;
-    static constexpr property_set roles = element_roles<Inner>();
+    static constexpr property_set roles = roles_of<urd::sequence<Inner>>();
 };
 
 }  // namespace detail
@@ -128,7 +188,7 @@ template<typename Inner>
 struct declaration_of<repr::Jagged<Inner, true>>
 {
     using declaration = tracked_jagged_decl;
-    static constexpr property_set roles = element_roles<Inner>();
+    static constexpr property_set roles = roles_of<urd::sequence<Inner>>();
 };
 
 }  // namespace detail

@@ -44,7 +44,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<boost::unordered_flat_map<K, V, H, E, A>>
 {
     using declaration = unordered_flat_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace urd::detail

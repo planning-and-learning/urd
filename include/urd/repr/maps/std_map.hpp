@@ -50,7 +50,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::map<K, V, C, A>>
 {
     using declaration = map_decl;
-    static constexpr property_set roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail
@@ -82,7 +82,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::multimap<K, V, C, A>>
 {
     using declaration = multimap_decl;
-    static constexpr property_set roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail
@@ -112,7 +112,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_map<K, V, H, E, A>>
 {
     using declaration = unordered_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -142,7 +142,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_multimap<K, V, H, E, A>>
 {
     using declaration = unordered_multimap_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

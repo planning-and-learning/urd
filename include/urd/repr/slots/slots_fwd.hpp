@@ -50,7 +50,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, false>>
 {
     using declaration = slot_vector_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::slots<T>>();
 };
 
 }  // namespace detail
@@ -76,7 +76,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, true>>
 {
     using declaration = thread_safe_slot_vector_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::slots<T>>();
 };
 
 }  // namespace detail

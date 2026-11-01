@@ -67,7 +67,7 @@ template<typename K, typename V, typename C>
 struct declaration_of<repr::Recycling<std::map<K, V, C>>>
 {
     using declaration = recycling_map_decl;
-    static constexpr property_set roles = map_roles<K, V, C>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>, C>();
 };
 
 }  // namespace detail
@@ -93,7 +93,7 @@ template<typename T>
 struct declaration_of<repr::RecyclingHashSet<T>>
 {
     using declaration = recycling_hash_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -120,7 +120,7 @@ template<typename T>
 struct declaration_of<repr::RecyclingTreeSet<T>>
 {
     using declaration = recycling_tree_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -146,7 +146,7 @@ template<typename K, typename V>
 struct declaration_of<repr::RecyclingHashMap<K, V>>
 {
     using declaration = recycling_hash_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

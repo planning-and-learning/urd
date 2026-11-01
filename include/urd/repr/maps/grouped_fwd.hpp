@@ -70,7 +70,7 @@ template<typename K, typename V>
 struct declaration_of<repr::CsrMultiMap<K, V>>
 {
     using declaration = csr_multimap_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -101,7 +101,7 @@ template<typename K, typename V>
 struct declaration_of<repr::DenseMultiMap<K, V>>
 {
     using declaration = dense_multimap_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -131,7 +131,7 @@ template<typename K, typename V>
 struct declaration_of<repr::PostingMap<K, V>>
 {
     using declaration = posting_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -163,7 +163,7 @@ template<typename K, typename V>
 struct declaration_of<repr::BidirectionalCsr<K, V>>
 {
     using declaration = bidirectional_csr_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

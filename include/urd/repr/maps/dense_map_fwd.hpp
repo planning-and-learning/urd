@@ -53,7 +53,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false>>
 {
     using declaration = dense_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -84,7 +84,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false, false, true>>
 {
     using declaration = stable_dense_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -116,7 +116,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true>>
 {
     using declaration = generation_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -148,7 +148,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, false, true>>
 {
     using declaration = stable_generation_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -180,7 +180,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, true>>
 {
     using declaration = thread_safe_generation_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

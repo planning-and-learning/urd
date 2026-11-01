@@ -51,7 +51,7 @@ template<typename T, typename C, typename A>
 struct declaration_of<std::set<T, C, A>>
 {
     using declaration = set_decl;
-    static constexpr property_set roles = element_roles<T, C>();
+    static constexpr property_set roles = roles_of<urd::set<T>, C>();
 };
 
 }  // namespace detail
@@ -81,7 +81,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<std::unordered_set<T, H, E, A>>
 {
     using declaration = unordered_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail

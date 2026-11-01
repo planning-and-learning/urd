@@ -44,7 +44,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<boost::unordered_flat_set<T, H, E, A>>
 {
     using declaration = unordered_flat_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace urd::detail

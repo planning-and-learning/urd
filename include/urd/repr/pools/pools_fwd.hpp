@@ -62,7 +62,7 @@ template<typename Row>
 struct declaration_of<repr::RowInterner<Row, false>>
 {
     using declaration = row_interner_decl;
-    static constexpr property_set roles = element_roles<Row>();
+    static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
 
 }  // namespace detail
@@ -102,13 +102,13 @@ template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 {
     using declaration = tree_pool_decl<true, ThreadSafe>;
-    static constexpr property_set roles = element_roles<Row>();
+    static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 {
     using declaration = tree_pool_decl<false, ThreadSafe>;
-    static constexpr property_set roles = element_roles<Row>();
+    static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
 
 }  // namespace detail
@@ -136,7 +136,7 @@ template<typename Row>
 struct declaration_of<repr::RowInterner<Row, true>>
 {
     using declaration = thread_safe_row_interner_decl;
-    static constexpr property_set roles = element_roles<Row>();
+    static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
 
 }  // namespace detail

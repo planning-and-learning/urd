@@ -50,7 +50,7 @@ template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, false, I>>
 {
     using declaration = segmented_vector_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::sequence<T>>();
 };
 
 }  // namespace detail
@@ -78,7 +78,7 @@ template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, true, I>>
 {
     using declaration = concurrent_segmented_vector_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::sequence<T>>();
 };
 
 }  // namespace detail

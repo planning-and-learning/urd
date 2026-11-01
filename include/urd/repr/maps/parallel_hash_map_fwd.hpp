@@ -61,7 +61,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ParallelHashMap<K, V>>
 {
     using declaration = parallel_hash_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -91,7 +91,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ParallelNodeHashMap<K, V>>
 {
     using declaration = parallel_node_hash_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

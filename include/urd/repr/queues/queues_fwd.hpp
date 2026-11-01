@@ -79,7 +79,7 @@ template<typename T>
 struct declaration_of<repr::Fifo<T>>
 {
     using declaration = fifo_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::queue<T>>();
 };
 
 }  // namespace detail
@@ -109,7 +109,7 @@ template<typename T>
 struct declaration_of<repr::RingFifo<T>>
 {
     using declaration = ring_fifo_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::queue<T>>();
 };
 
 }  // namespace detail
@@ -139,7 +139,7 @@ template<typename T>
 struct declaration_of<repr::Lifo<T>>
 {
     using declaration = lifo_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::queue<T>>();
 };
 
 }  // namespace detail
@@ -169,7 +169,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 {
     using declaration = heap_decl;
-    static constexpr property_set roles = element_roles<T, Compare>();
+    static constexpr property_set roles = roles_of<urd::queue<T>, Compare>();
 };
 
 }  // namespace detail
@@ -199,7 +199,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::AddressableHeap<T, Compare>>
 {
     using declaration = addressable_heap_decl;
-    static constexpr property_set roles = element_roles<T, Compare>();
+    static constexpr property_set roles = roles_of<urd::queue<T>, Compare>();
 };
 
 }  // namespace detail
@@ -229,7 +229,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::BucketQueue<T, Compare>>
 {
     using declaration = bucket_queue_decl;
-    static constexpr property_set roles = element_roles<T, Compare>();
+    static constexpr property_set roles = roles_of<urd::queue<T>, Compare>();
 };
 
 }  // namespace detail

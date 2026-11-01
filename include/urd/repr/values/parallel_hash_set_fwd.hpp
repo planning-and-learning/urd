@@ -63,7 +63,7 @@ template<typename T>
 struct declaration_of<repr::ParallelHashSet<T>>
 {
     using declaration = parallel_hash_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail
@@ -93,7 +93,7 @@ template<typename T>
 struct declaration_of<repr::ParallelNodeHashSet<T>>
 {
     using declaration = parallel_node_hash_set_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::set<T>>();
 };
 
 }  // namespace detail

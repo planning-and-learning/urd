@@ -33,7 +33,7 @@ template<typename T, typename A>
 struct declaration_of<std::vector<T, A>>
 {
     using declaration = vector_decl;
-    static constexpr property_set roles = element_roles<T>();
+    static constexpr property_set roles = roles_of<urd::sequence<T>>();
 };
 
 }  // namespace urd::detail

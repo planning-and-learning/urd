@@ -69,7 +69,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedMap<K, V>>
 {
     using declaration = scoped_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -103,7 +103,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedTreeMap<K, V>>
 {
     using declaration = scoped_tree_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail
@@ -137,7 +137,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedDenseMap<K, V>>
 {
     using declaration = scoped_dense_map_decl;
-    static constexpr property_set roles = map_roles<K, V>();
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
 }  // namespace detail

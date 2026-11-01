@@ -4,6 +4,7 @@
 // states, and what its data is (urd/type_traits_of.hpp), its elements, order, values and rows. Type traits and roles
 // are open, as categories are: each is a struct with its words.
 
+#include "urd/detail/type_list.hpp"
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
@@ -34,74 +35,11 @@ inline constexpr const trait_info* trait_v = &trait_table_v<Trait>;
 template<typename Trait>
 inline constexpr tag trait_tag { trait_v<Trait>, 1 };
 
-/// What a type is, for the containers that hold it: derived from the types (urd/type_traits_of.hpp), never stated. What a
-/// key, value or row element type is; what an order is (order_by<C>, else urd::Less); what rows (Stores held as
-/// elements) allow.
-namespace trait
-{
-
-struct can_hash
-{
-    static constexpr std::string_view name = "can_hash";
-    static constexpr std::string_view description = "urd::Hash and urd::EqualTo hash and compare it";
-};
-struct an_index
-{
-    static constexpr std::string_view name = "an_index";
-    static constexpr std::string_view description = "an index 0..n-1 (index_of)";
-};
-struct copies_as_bytes
-{
-    static constexpr std::string_view name = "copies_as_bytes";
-    static constexpr std::string_view description = "trivially copyable: copied as bytes";
-};
-struct destroys_trivially
-{
-    static constexpr std::string_view name = "destroys_trivially";
-    static constexpr std::string_view description = "trivially destructible: destroyed without code";
-};
-struct names_members
-{
-    static constexpr std::string_view name = "names_members";
-    static constexpr std::string_view description = "names its members for cista (cista_members)";
-};
-struct whole_value
-{
-    static constexpr std::string_view name = "whole_value";
-    static constexpr std::string_view description = "a value interned whole: no Store and no container of elements, which a pool holds as rows";
-};
-struct own_order
-{
-    static constexpr std::string_view name = "own_order";
-    static constexpr std::string_view description = "ordered by urd::Less: no order_by";
-};
-struct natural_ordered
-{
-    static constexpr std::string_view name = "natural_ordered";
-    static constexpr std::string_view description = "ordered as sorted means";
-};
-struct integral_priority
-{
-    static constexpr std::string_view name = "integral_priority";
-    static constexpr std::string_view description = "what the order compares is an integral number";
-};
-struct rows_flatten
-{
-    static constexpr std::string_view name = "rows_flatten";
-    static constexpr std::string_view description = "rows frozen, holding elements or rows kept in order: stored flattened";
-};
-struct rows_in_place
-{
-    static constexpr std::string_view name = "rows_in_place";
-    static constexpr std::string_view description = "rows changed in place: sequences, dense sets' bits, or fixed-shape rows of such rows";
-};
-struct rows_reused
-{
-    static constexpr std::string_view name = "rows_reused";
-    static constexpr std::string_view description = "rows that may shrink, so emptied ones can be kept for reuse";
-};
-
-}  // namespace trait
+/// The traits of a role (a struct of the role's), as `using type = detail::type_list<Trait…>`: what its facts can be.
+/// Specialized once per role, where its traits are defined, each a struct with its words and what it means
+/// (`holds<…>()`); never defined otherwise, so a role whose list is not visible does not compile.
+template<typename Role>
+struct traits_of_role;
 
 }  // namespace urd
 
@@ -115,6 +53,40 @@ constexpr void put_trait(property_set& into, bool holds)
     if (holds)
         into.put(trait_tag<Trait>);
 }
+/// What a Store is for role Role, where it answers for itself (as an element, as what an order compares): `value`,
+/// its facts, from its request alone, so that it is never completed to answer. Specialized beside a Store's semantics
+/// (urd/store/construction.hpp); where it is not, the role's traits are asked as of any type (a row's).
+template<typename Role, typename... Args>
+struct store_facts;
+
+/// The traits of role Role that hold of Args (Trait::holds<Args…>()), about no role; a Store's own facts where it
+/// answers for itself; none where an argument is void (a kind without values has no value type).
+template<typename Role, typename... Args>
+consteval property_set traits_holding()
+{
+    if constexpr ((std::is_void_v<Args> || ...))
+        return property_set::roots();
+    else if constexpr (requires { store_facts<Role, Args...>::value; })
+        return store_facts<Role, Args...>::value;
+    else
+    {
+        auto result = property_set::roots();
+        []<typename... Traits>(type_list<Traits...> /*traits*/, property_set& into)
+        { (put_trait<Traits>(into, Traits::template holds<Args...>()), ...); }(typename traits_of_role<Role>::type {}, result);
+        return result;
+    }
+}
+
+/// How the facts of role Role are computed for the types that play it (Args): by default the role's traits that hold
+/// (or a Store's own facts). A role whose facts are something else (a row's own tags) specializes it.
+template<typename Role>
+struct role_facts
+{
+    template<typename... Args>
+    static consteval property_set of()
+    { return traits_holding<Role, Args...>(); }
+};
+
 /// The traits Traits, about no role.
 template<typename... Traits>
 constexpr property_set trait_set_of()
