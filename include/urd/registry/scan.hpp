@@ -47,27 +47,17 @@ inline constexpr std::size_t no_entry = static_cast<std::size_t>(-1);
 
 /// The entries of Kind serving a request, by position in its table, in the order they are preferred.
 template<typename Kind>
-struct serving_entries
-{
-    std::array<std::size_t, table_of<Kind>.size()> at {};
-    std::size_t count = 0;
-};
+using serving_entries = fixed_list<std::size_t, table_of<Kind>.size()>;
 template<typename Kind>
 constexpr serving_entries<Kind> all_serving(const request_shape& s)
 {
     auto result = serving_entries<Kind> {};
     auto later = serving_entries<Kind> {};
     for (std::size_t each = 0; each < table_of<Kind>.size(); ++each)
-    {
-        if (!serves(table_of<Kind>[each], s))
-            continue;
-        if (comes_later(table_of<Kind>[each], s))
-            later.at[later.count++] = each;
-        else
-            result.at[result.count++] = each;
-    }
-    for (std::size_t each = 0; each < later.count; ++each)
-        result.at[result.count++] = later.at[each];
+        if (serves(table_of<Kind>[each], s))
+            (comes_later(table_of<Kind>[each], s) ? later : result).push(each);
+    for (const auto each : later)
+        result.push(each);
     return result;
 }
 

@@ -26,18 +26,13 @@
 namespace urd
 {
 
+struct tag;
+
 namespace detail
 {
 
 /// The most answers a category has, its none included.
 inline constexpr std::size_t most_answers = 4;
-
-}  // namespace detail
-
-struct tag;
-
-namespace detail
-{
 
 /// The tags a tag type lists (implies, kept_by_store, promises, later), as tags: a view of a static array of them.
 struct tag_list
@@ -188,8 +183,8 @@ constexpr bool at_least(tag have, tag want) { return have.in == want.in && have.
 /// The most categories one set answers.
 inline constexpr std::size_t most_categories = 64;
 
-/// At most N values, in the order they were put: the storage of the small sets urd computes with (property_set,
-/// trait_set, property_set), each with its own lookup and equality on top.
+/// At most N values, in the order they were put: the storage of the small lists urd computes with (property_set, with
+/// its own lookup and equality on top; the entries serving a request, urd/registry/scan.hpp).
 template<typename T, std::size_t N>
 struct fixed_list
 {
@@ -200,11 +195,11 @@ struct fixed_list
     [[nodiscard]] constexpr auto end() const { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
     [[nodiscard]] constexpr auto begin() { return held.begin(); }
     [[nodiscard]] constexpr auto end() { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
-    /// Appends `value`; past N, constant evaluation fails (raise most_categories, most_traits or most_roles).
+    /// Appends `value`; past N, constant evaluation fails (raise its N: most_categories for a property_set).
     constexpr T& push(const T& value)
     {
         if (count == N)
-            throw "urd: a set holds more than its most (most_categories, most_traits, most_roles)";
+            throw "urd: a fixed_list holds more than its most (most_categories for a property_set)";
         held[count] = value;
         return held[count++];
     }
@@ -340,6 +335,5 @@ template<typename... Tags>
 struct properties
 {
     static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags::value... });
-    static constexpr bool declared = true;
 };
 }  // namespace urd

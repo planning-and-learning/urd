@@ -268,6 +268,9 @@ int main()
 #elif URD_CASE == 61  // a Store that hands out indices for views is numbered by its builder: none without urd::layer
     using S = Store<set<int>, urd::positional>;
     (void) S();
+#elif URD_CASE == 62  // a map with each key once is reached by key: positions would name at and [] again
+    using S = Store<map<int, int>, urd::sorted, urd::positional>;
+    (void) S();
 #elif URD_CASE == 25  // order_by<C> orders a set only where it is sorted: unsorted, it orders nothing asked for
     using S = Store<set<int>, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();

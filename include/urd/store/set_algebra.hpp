@@ -76,8 +76,3 @@ private:
 };
 
 }  // namespace urd::detail::facet
-
-namespace urd::detail
-{
-
-}  // namespace urd::detail

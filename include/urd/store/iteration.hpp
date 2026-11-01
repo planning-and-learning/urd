@@ -8,7 +8,7 @@ namespace urd::detail::facet
 {
 
 /// The elements in turn, changeable in place where the Store's elements are: a range urd reads (equality, hashing, a
-/// row's elements). Sets, maps and sequences list it; a queue lists visiting instead.
+/// row's elements). Sets, maps, multisets and sequences list it; a queue lists visiting instead.
 template<typename Derived, typename R, typename S>
 class iteration
 {

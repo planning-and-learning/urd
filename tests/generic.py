@@ -15,7 +15,7 @@ GLUE = ["include/urd/property_set.hpp", "include/urd/spec.hpp", "include/urd/reg
         "include/urd/registry/scan.hpp", "include/urd/registry/table.hpp", "include/urd/registry/declarations.hpp",
         "include/urd/registry/declaration.hpp", "include/urd/registry/derived.hpp",
         "include/urd/registry/facts.hpp", "include/urd/store.hpp", "include/urd/store/types.hpp",
-        "include/urd/store/construction.hpp"]
+        "include/urd/store/store_facts.hpp"]
 
 
 def tags(root: Path) -> tuple[set[str], set[str]]:

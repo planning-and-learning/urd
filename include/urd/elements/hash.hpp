@@ -17,14 +17,12 @@
 
 // Copied from yggdrasil (include/yggdrasil/semantics/hash.hpp); names moved from ygg to urd.
 
-#ifndef URD_SEMANTICS_HASH_HPP_
-#define URD_SEMANTICS_HASH_HPP_
+#pragma once
 
 #include "urd/elements/concepts.hpp"
 
 #include <boost/container_hash/hash.hpp>
 #include <boost/hash2/xxhash.hpp>
-#include <cmath>
 #include <cstddef>
 #include <functional>
 #include <optional>
@@ -99,7 +97,7 @@ inline hash_t hash_range(Range&& range)
         const auto view = std::span<const Value>(std::forward<Range>(range));
         return hashing::hash_bytes(view.data(), view.size_bytes());
     }
-    else if constexpr (hashing::ByteHashable<Value> && std::ranges::sized_range<Range>)
+    else if constexpr (hashing::ByteHashable<Value>)
     {
         auto hash = boost::hash2::xxhash_64 {};
         for (Value value : std::forward<Range>(range))
@@ -129,7 +127,7 @@ struct Hash<T>
 template<Enumeration T>
 struct Hash<T>
 {
-    static constexpr bool is_identity = requires { requires Hash<std::underlying_type_t<T>>::is_identity; };
+    static constexpr bool is_identity = true;
 
     hash_t operator()(const T& el) const
         requires Hashable<std::underlying_type_t<T>>
@@ -146,7 +144,7 @@ struct Hash<T>
     hash_t operator()(const T& el) const noexcept
     {
         // EqualTo treats all NaNs as equal; Boost already normalizes signed zero.
-        return std::isnan(el) ? nan_hash : boost::hash<T> {}(el);
+        return urd::is_nan(el) ? nan_hash : boost::hash<T> {}(el);
     }
 };
 
@@ -161,7 +159,7 @@ struct Hash<std::string_view>
 template<>
 struct Hash<std::string>
 {
-    hash_t operator()(const std::string& el) const noexcept { return hashing::hash_bytes(el.data(), el.size()); }
+    hash_t operator()(const std::string& el) const noexcept { return Hash<std::string_view> {}(el); }
 };
 
 /// A value range hashes as its elements, in order.
@@ -238,5 +236,3 @@ struct Hash<T>
 };
 
 }  // namespace urd
-
-#endif

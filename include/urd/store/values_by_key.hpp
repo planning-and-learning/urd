@@ -27,7 +27,7 @@ public:
 
     [[nodiscard]] const mapped_type& at(const map_key& key) const { return representation().at(key); }
     [[nodiscard]] mapped_type& at(const map_key& key)
-        requires(!has<S, frozen>)
+        requires store_types<S>::changeable
     { return representation().at(key); }
     /// The value for `key`, inserted as a default first where there is none.
     mapped_type& operator[](const map_key& key)

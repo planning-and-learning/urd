@@ -10,15 +10,15 @@ What a container needs of its elements comes from three function objects, with n
    ``hash_t operator()(const T&) const``: a deterministic 64-bit hash (xxHash64 over bytes, Boost.ContainerHash
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
-   :cpp:concept:`MemberIdentified` or :cpp:concept:`FunctionIdentified` type, :cpp:struct:`urd::index`,
-   :cpp:class:`urd::view`, the flat containers of ``urd/elements/flat.hpp``, and Stores whose contents fix their order
-   (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.
+   :cpp:concept:`Identifiable` type, :cpp:struct:`urd::index`,
+   :cpp:class:`urd::view`, the flat containers of ``urd/elements/flat.hpp``, any range whose elements in order are its
+   value (``urd::value_range<R> = true``: hashed, compared and ordered as its elements), and Stores whose contents fix
+   their order (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.
 
 .. cpp:struct:: template<typename T> EqualTo
 
    ``bool operator()(const T&, const T&) const``: equality agreeing with :cpp:struct:`Hash`; for floating point,
-   NaN equals NaN. Transparent (``is_transparent``) where the hash is. Given for any iterable Store (equal contents,
-   as its ``==`` compares them).
+   NaN equals NaN. Given for any iterable Store (equal contents, as its ``==`` compares them).
 
 .. cpp:struct:: template<typename T> Less
 
@@ -48,9 +48,10 @@ A type names its identity once and is then hashable, comparable and ordered, in 
 
    ``T::identifying_members()`` gives a :cpp:struct:`Members`.
 
-.. cpp:concept:: template<typename T> FunctionIdentified
+.. cpp:concept:: template<typename T> Identifiable
 
-   A non-static ``identifying_members()`` gives the identity as a tuple (a :cpp:class:`urd::view` does).
+   ``T`` is :cpp:concept:`MemberIdentified`, or its ``identifying_members()`` gives its identity as a value (a
+   :cpp:class:`urd::view` gives a tuple). Hash, EqualTo and Less of ``T`` are those of that identity.
 
 .. cpp:concept:: template<typename T> hashable
 

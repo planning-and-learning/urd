@@ -44,8 +44,7 @@ inline constexpr bool takes_v = [] { return promises(declaration_of<R>::roles, f
 template<detail::declared_container R>
 struct container_traits<R>
 {
-    static constexpr bool declared = detail::takes_v<R>;
-    static constexpr detail::property_set urd_properties = declared ? detail::declaration_t<R>::provides : detail::property_set::roots();
+    static constexpr detail::property_set urd_properties = detail::takes_v<R> ? detail::declaration_t<R>::provides : detail::property_set::roots();
 };
 
 template<detail::declared_container R>

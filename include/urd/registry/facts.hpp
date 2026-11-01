@@ -55,7 +55,7 @@ constexpr void put_trait(property_set& into, bool holds)
 }
 /// What a Store is for role Role, where it answers for itself (as an element, as what an order compares): `value`,
 /// its facts, from its request alone, so that it is never completed to answer. Specialized beside a Store's semantics
-/// (urd/store/construction.hpp); where it is not, the role's traits are asked as of any type (a row's).
+/// (urd/store/store_facts.hpp); where it is not, the role's traits are asked as of any type (a row's).
 template<typename Role, typename... Args>
 struct store_facts;
 

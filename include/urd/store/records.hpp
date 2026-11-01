@@ -119,7 +119,7 @@ struct facet_condition<facet::records> : facet_defaults
     static constexpr bool hands_out_indices = true;
     template<typename R, typename S>
     static constexpr bool on()
-    { return !held_as<typename S::element_type>::store; }
+    { return !held_as<typename S::element_type>::row; }
 };
 template<>
 struct facet_operations<facet::records>

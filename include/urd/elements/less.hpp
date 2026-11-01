@@ -17,8 +17,7 @@
 
 // Copied from yggdrasil (include/yggdrasil/semantics/comparators.hpp); names moved from ygg to urd.
 
-#ifndef URD_SEMANTICS_LESS_HPP_
-#define URD_SEMANTICS_LESS_HPP_
+#pragma once
 
 #include "urd/elements/concepts.hpp"
 
@@ -33,12 +32,6 @@
 
 namespace urd
 {
-
-/// Whether `lhs` comes before `rhs`, element by element by Less: two ranges of the same element type.
-template<std::ranges::input_range Range>
-    requires OrderedByLess<std::ranges::range_value_t<Range>>
-constexpr bool ranges_less(const Range& lhs, const Range& rhs)
-{ return std::ranges::lexicographical_compare(lhs, rhs, Less<std::ranges::range_value_t<Range>> {}); }
 
 /// @brief `Less` is our custom less-than comparator, like std::less.
 ///
@@ -112,7 +105,7 @@ struct Less<R>
 {
     constexpr bool operator()(const R& lhs, const R& rhs) const
         requires OrderedByLess<std::ranges::range_value_t<R>>
-    { return ranges_less(lhs, rhs); }
+    { return std::ranges::lexicographical_compare(lhs, rhs, Less<std::ranges::range_value_t<R>> {}); }
 };
 
 template<typename T>
@@ -133,7 +126,7 @@ struct Less<std::optional<T>>
         if (lhs.has_value() != rhs.has_value())
             return !lhs.has_value();
 
-        return lhs.has_value() ? Less<std::remove_cvref_t<T>> {}(lhs.value(), rhs.value()) : false;
+        return lhs.has_value() && Less<std::remove_cvref_t<T>> {}(*lhs, *rhs);
     }
 };
 
@@ -168,5 +161,3 @@ struct Less<T>
 };
 
 }  // namespace urd
-
-#endif

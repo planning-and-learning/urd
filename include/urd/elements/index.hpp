@@ -37,9 +37,7 @@ struct index
     constexpr index() = default;
     constexpr explicit index(value_type at) noexcept : value(at) {}
 
-    [[nodiscard]] static constexpr index none() noexcept { return index(); }
     [[nodiscard]] constexpr bool is_none() const noexcept { return value == none_value; }
-    constexpr explicit operator value_type() const noexcept { return value; }
 
     friend constexpr auto operator<=>(const index&, const index&) = default;
     static constexpr auto identifying_members() noexcept { return Members<&index::value> {}; }

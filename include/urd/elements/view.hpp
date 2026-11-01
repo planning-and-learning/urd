@@ -34,7 +34,7 @@ struct view_mixin
 
 /// How a view resolves a member of type M through its context (urd::resolve): `resolution<M>::of(member, context)`.
 /// As it is, unless a specialization for M says otherwise: given below for indices, ranges of indices, std::variant
-/// and std::optional, and in urd/elements/flat.hpp for cista's variant and optional.
+/// and optionals (std's and cista's), and in urd/elements/flat.hpp for cista's variant.
 template<typename M>
 struct resolution
 {
@@ -75,15 +75,22 @@ struct resolution<std::variant<Ts...>>
     }
 };
 
-/// An optional as the optional of its value resolved.
-template<typename T>
-struct resolution<std::optional<T>>
+/// Whether M is an optional value: std::optional, or cista's (urd/elements/flat.hpp).
+template<typename M>
+concept optional_value = requires(const M& member) {
+    { member.has_value() } -> std::convertible_to<bool>;
+    *member;
+};
+
+/// An optional as the std::optional of its value resolved.
+template<optional_value M>
+struct resolution<M>
 {
     template<typename C>
-    static auto of(const std::optional<T>& member, const C& context)
+    static auto of(const M& member, const C& context)
     {
-        using resolved = std::optional<resolved_t<T, C>>;
-        return member ? resolved(urd::resolve(*member, context)) : resolved();
+        using resolved = std::optional<resolved_t<std::remove_cvref_t<decltype(*member)>, C>>;
+        return member.has_value() ? resolved(urd::resolve(*member, context)) : resolved();
     }
 };
 
@@ -108,7 +115,6 @@ class view : public view_mixin<T, view<T, C>>
 {
 public:
     using value_type = T;
-    using context_type = C;
 
     view(index<T> at, const C& context) noexcept : m_index(at), m_context(&context) {}
 

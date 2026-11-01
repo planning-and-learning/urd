@@ -173,7 +173,7 @@ inline constexpr auto ops_v = ops_of(List {});
 template<typename R, typename S, template<typename, typename, typename> class F>
 constexpr void mark_facet(offers& into)
 {
-    if constexpr (urd::detail::facet_on<R, S, F>())
+    if constexpr (urd::detail::facet_condition<F>::template on<R, S>())
         for (const auto each : ops_v<typename urd::detail::facet_operations<F>::offered>)
             into[static_cast<std::size_t>(each)] = true;
 }
@@ -188,9 +188,6 @@ constexpr std::array<bool, op_count> offered()
 {
     auto result = std::array<bool, op_count> {};
     mark_offered<R, S>(urd::detail::facets_of<typename S::kind> {}, result);
-    // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
-    if (urd::has<S, urd::fixed_shape>)
-        result[static_cast<std::size_t>(op_v<urd::operation::insert>)] = false;
     return result;
 }
 
