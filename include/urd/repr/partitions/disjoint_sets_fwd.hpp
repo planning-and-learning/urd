@@ -3,9 +3,8 @@
 // A partition of indices into disjoint classes (union-find), declared with what the registry reads of it. Defined in
 // urd/repr/partitions/disjoint_sets.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -32,7 +31,7 @@ struct disjoint_sets_decl
     static constexpr auto headers = header_list<1> { "urd/repr/partitions/disjoint_sets.hpp" };
     using kind = partition_kind;
     static constexpr property_set provides = property_set::of({ grouping::partition, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -48,7 +47,7 @@ template<typename K>
 struct declaration_of<repr::DisjointSets<K>>
 {
     using declaration = disjoint_sets_decl;
-    static constexpr role_tags roles = element_roles<K>();
+    static constexpr property_set roles = element_roles<K>();
 };
 
 }  // namespace urd::detail

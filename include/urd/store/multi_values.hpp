@@ -13,6 +13,9 @@ template<typename Derived, typename R, typename S>
 class multi_values
 {
 public:
+    /// What a key maps to (values_by_key says it for unique keys; the two are never both on).
+    using mapped_type = typename S::mapped_type;
+
     [[nodiscard]] auto values(const typename S::key_type& key) const
     {
         const auto& representation = store_access::representation(static_cast<const Derived&>(*this));

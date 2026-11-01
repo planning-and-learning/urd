@@ -3,9 +3,8 @@
 // Node containers that keep their erased nodes for reuse, declared with what the registry reads of them. Defined in
 // urd/repr/wrappers/recycling.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/repr/maps/std_map.hpp"
@@ -57,7 +56,7 @@ struct recycling_map_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs : map_decl::operation_costs
     {
@@ -72,7 +71,7 @@ template<typename K, typename V, typename C>
 struct declaration_of<repr::Recycling<std::map<K, V, C>>>
 {
     using declaration = recycling_map_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = map_roles<K, V, C>();
 };
 
 }  // namespace detail
@@ -87,7 +86,7 @@ struct recycling_hash_set_decl
     static constexpr auto headers = header_list<2> { "urd/repr/values/std_set.hpp", "urd/repr/wrappers/recycling.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : unordered_set_decl::operation_costs
     {
@@ -102,7 +101,7 @@ template<typename T>
 struct declaration_of<repr::RecyclingHashSet<T>>
 {
     using declaration = recycling_hash_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -118,7 +117,7 @@ struct recycling_tree_set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs : set_decl::operation_costs
     {
@@ -133,7 +132,7 @@ template<typename T>
 struct declaration_of<repr::RecyclingTreeSet<T>>
 {
     using declaration = recycling_tree_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -148,7 +147,7 @@ struct recycling_hash_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/recycling.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs : unordered_map_decl::operation_costs
     {
@@ -163,7 +162,7 @@ template<typename K, typename V>
 struct declaration_of<repr::RecyclingHashMap<K, V>>
 {
     using declaration = recycling_hash_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail

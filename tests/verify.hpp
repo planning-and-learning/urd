@@ -26,10 +26,10 @@ template<typename R>
 [[nodiscard]] std::optional<std::string> verify(R range, unsigned seed, int steps = 200)
 {
     constexpr detail::property_set properties = container_traits<R>::urd_properties;  // a copy: GCC 13 fails on the member
-    using of = urd::kind_of<properties, false, false>;
-    if constexpr (kind_below<of, queue_kind>)
+    using of = urd::kind_of<detail::request_facts { .stated = properties }>;
+    if constexpr (detail::listed_facet<detail::facet::queue_access, detail::facets_of<of>>)
         return detail::run_queue(range, seed, steps);
-    else if constexpr (std::same_as<of, pool_kind>)
+    else if constexpr (detail::listed_facet<detail::facet::pool, detail::facets_of<of>>)
     {
         if constexpr (detail::holds_rows<typename R::value_type>())
             return detail::run_pool(range, seed, steps);
@@ -38,7 +38,7 @@ template<typename R>
         else
             return detail::run_records(range, seed, steps);
     }
-    else if constexpr (std::same_as<of, slots_kind>)
+    else if constexpr (detail::listed_facet<detail::facet::slots, detail::facets_of<of>>)
         return detail::run_slots(range, seed, steps);
     else if constexpr (detail::map_container<R>)
         return detail::run_map(range, seed, steps);

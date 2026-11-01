@@ -2,6 +2,27 @@
 
 #include "urd/store/types.hpp"
 
+#include <cstddef>
+#include <initializer_list>
+#include <utility>
+#include <vector>
+
+namespace urd
+{
+
+/// How long each row of a fixed_shape Store is, in order: what such a Store is built from (its kind says so,
+/// urd/kinds.hpp: builds_from). A row container takes the lengths as they are.
+struct row_lengths
+{
+    std::vector<std::size_t> lengths;
+
+    row_lengths(std::initializer_list<std::size_t> each) : lengths(each) {}
+    explicit row_lengths(std::vector<std::size_t> each) : lengths(std::move(each)) {}
+    operator const std::vector<std::size_t>&() const { return lengths; }  // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
+};
+
+}  // namespace urd
+
 namespace urd::detail::facet
 {
 

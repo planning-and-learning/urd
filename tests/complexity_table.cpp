@@ -75,34 +75,34 @@ using urd::test::op;
 
 using urd::test::json_text;
 
-/// Tags as a JSON list of names, in the vocabulary's order; the roots left out.
-std::string tag_list(const urd::detail::property_set& held, std::string_view role = "", std::string result = "[")
+/// The tags about the Store itself, or about role `role`, as a JSON list of names prefixed by the role ("row:unique"),
+/// in the vocabulary's order; the roots left out.
+std::string tag_list(const urd::detail::property_set& held, const urd::role_info* role = nullptr, std::string result = "[")
 {
+    const auto prefix = role != nullptr ? std::string(role->name) + ":" : std::string();
     for (const auto* category : urd::test::category_tables)  // in the vocabulary's order
-        if (const auto each = held.in(category); each.answer != 0)
-            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(urd::tag_name(each)));
+        if (const auto each = held.in(category, role); each.answer != 0)
+            result += (result.size() > 1 ? ", " : "") + json_text(prefix + std::string(urd::tag_name(each)));
     return result;
 }
-/// Traits as names prefixed by their role ("element:can_hash"), in the vocabulary's order, appended to a JSON list.
-std::string trait_list(std::string result, std::string_view role, const urd::detail::trait_set& held)
+/// The traits about role `role`, as names prefixed by it ("element:can_hash"), in the vocabulary's order.
+std::string trait_list(std::string result, const urd::role_info* role, const urd::detail::property_set& held)
 {
     for (const auto* each : urd::test::vocabulary_traits)
-        if (held.has(each))
-            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role) + std::string(each->name));
+        if (held.in(each, role).answer != 0)
+            result += (result.size() > 1 ? ", " : "") + json_text(std::string(role->name) + ":" + std::string(each->name));
     return result;
 }
-/// What a declaration relies on, by role, as a JSON list: what a request states, then each role's tags and traits
-/// prefixed by its name ("element:can_hash"), in the vocabulary's order.
-std::string roles_list(const urd::detail::role_tags& roles)
+/// What a declaration relies on, as a JSON list: what a request states, then each role's tags and traits prefixed by
+/// its name ("element:can_hash"), in the vocabulary's order.
+std::string roles_list(const urd::detail::property_set& relied)
 {
-    auto result = tag_list(roles.stated);
+    auto result = tag_list(relied);
     for (const auto* role : urd::test::vocabulary_roles)
-        if (const auto* entry = roles.find(role))
-        {
-            const auto prefix = std::string(role->name) + ":";
-            result = tag_list(entry->tags, prefix, result);
-            result = trait_list(result, prefix, entry->traits);
-        }
+    {
+        result = tag_list(relied, role, result);
+        result = trait_list(result, role, relied);
+    }
     return result + "]";
 }
 

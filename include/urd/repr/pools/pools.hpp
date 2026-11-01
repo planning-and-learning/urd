@@ -1,7 +1,7 @@
 #pragma once
 
-#include "urd/elements.hpp"
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"

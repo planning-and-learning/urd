@@ -3,7 +3,7 @@
 // Names of the containers a Store can resolve to, read from their synopses (urd::container_synopsis), and the
 // vocabulary as the tests and generated files spell it.
 
-#include "urd/container_synopsis.hpp"
+#include "urd/registry/derived.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -110,7 +110,7 @@ template<typename... Es>
 constexpr bool within_vocabulary(urd::detail::request_format<Es...> /*format*/)
 { return ((category_index(urd::category<Es>) < category_count) && ...); }
 static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
-              { return (within_vocabulary(typename Kinds::format {}) && ...); }(urd::leaf_kinds<> {}));
+              { return (within_vocabulary(urd::detail::format_of<Kinds> {}) && ...); }(urd::leaf_kinds<> {}));
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
 /// tags answer (the words of its none).

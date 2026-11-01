@@ -10,14 +10,14 @@
 //         static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
 //         using kind = set_kind;                                        // urd/kinds.hpp
 //         static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, … });
-//         static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+//         static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
 //         struct operation_costs { … };                                       // urd::container_costs, by operation
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
 //     };
 //
 // What it provides is matched against what a request requires, what it relies on against what the request's roles
-// promise by role (urd/registry/facts.hpp: role_tags): the type traits (urd::trait) of its elements, its order, its
+// promise by role (urd/registry/facts.hpp: property_set): the type traits (urd::trait) of its elements, its order, its
 // rows, and the rows' own tags. What depends on the elements
 // beyond the tags is in its description. A wrapper is a template over its part's declaration
 // (urd/repr/wrappers/layered_fwd.hpp, …), composing the part's tags, headers, costs and words; a container with
@@ -38,6 +38,26 @@
 
 namespace urd
 {
+
+/// The strings Parts, one after the other, as one string with static storage: a wrapper's id is its prefix and its
+/// part's id (`layered_` and `record_interner`), so a wrapper over a new part has an id of its own.
+template<const std::string_view&... Parts>
+struct joined
+{
+    static constexpr auto storage = []
+    {
+        auto result = std::array<char, (Parts.size() + ... + 0)> {};
+        std::size_t at = 0;
+        (
+            (void) [&] {
+                for (const char each : Parts)
+                    result[at++] = each;
+            }(),
+            ...);
+        return result;
+    }();
+    static constexpr auto value = std::string_view(storage.data(), storage.size());
+};
 
 namespace detail
 {
@@ -99,22 +119,14 @@ struct registry_entry
     std::span<const std::string_view> headers;
     std::string_view kind;  ///< its kind's name (urd/kinds.hpp)
     property_set provides = property_set::roots();
-    role_tags relies_on;
+    property_set relies_on;
     std::span<const tag> gives_elements;
     std::string_view description;
     std::string_view holds;
 };
-/// Whether every role `relies` holds is one of `roles` (a kind's).
-template<typename... Roles>
-consteval bool roles_within(role_list<Roles...> /*roles*/, const role_tags& relies)
-{
-    return std::ranges::all_of(relies, [](const role_entry& each) { return ((each.of == role_v<Roles>) || ...); });
-}
-
 template<typename Decl>
 constexpr registry_entry entry_of()
 {
-    static_assert(roles_within(typename Decl::kind::roles {}, Decl::relies_on), "urd: a container relies on a role its kind has not (urd/kinds.hpp, roles)");
     return { Decl::id,        std::span<const std::string_view>(Decl::headers), Decl::kind::name,  Decl::provides,
              Decl::relies_on, std::span<const tag>(Decl::gives_elements),       Decl::description, Decl::holds };
 }

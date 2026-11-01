@@ -4,7 +4,7 @@
 // declaration names for the request (representation_of); and where none serves, an error. No container type is named but the one chosen, so what resolving a
 // request costs the compiler in instantiations does not grow with the number of containers.
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/scan.hpp"
 #include "urd/repr/core/dependent_false.hpp"
 #include "urd/spec.hpp"

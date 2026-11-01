@@ -88,14 +88,42 @@ struct count
 template<typename Derived, typename R, typename S>
 class counting;
 
-/// The kind: values added and counted, never iterated.
-struct tally_kind : urd::detail::kind_defaults
+/// A slot urd does not know: what a tally counts. Its type argument is counted<T>.
+struct counted_slot
+{
+    static constexpr std::string_view name = "counted";
+    static constexpr std::string_view description = "what a tally counts";
+};
+template<typename T>
+struct counted
+{
+    using type = T;
+    using slot = counted_slot;
+};
+
+/// A tally's data: what it counts, from counted<T> among Args.
+template<typename Args>
+struct tally_data
+{
+    using element_type = typename urd::detail::type_in<counted, Args>::type;
+    using held_type = element_type;
+    using lookup_type = element_type;
+    using ordered_type = element_type;
+    using played = urd::detail::role_types<urd::detail::plays<urd::role::element, element_type>>;
+    using order_type = void;  // a tally is not ordered
+};
+
+/// The kind: values added and counted, never iterated. It states what differs from any kind: the slot it takes, its
+/// data, its question, its facet.
+struct tally_kind : urd::detail::any_kind
 {
     static constexpr std::string_view name = "tally";
-    using format = urd::detail::request_format<tallying, urd::threading>;
-    using roles = urd::detail::role_list<>;
+    static constexpr bool claims(const urd::detail::request_facts& request) { return request.stated.has(tallying::tallied); }
+    using takes = urd::detail::slot_list<counted_slot>;
+    using format = urd::detail::request_format<tallying>;
     using facets = urd::detail::facet_list<counting>;
-    static constexpr bool claims(const urd::detail::property_set& stated, bool /*keyed*/, bool /*valued*/) { return stated.has(tallying::tallied); }
+    template<typename Args>
+    using data = tally_data<Args>;
 };
 
 }  // namespace tally
@@ -148,7 +176,7 @@ struct tally_decl
     static constexpr auto headers = urd::detail::header_list<1> { "tests/store/outside_kind.cpp" };
     using kind = tally_kind;
     static constexpr urd::detail::property_set provides = urd::detail::property_set::of({ tallying::tallied });
-    static constexpr urd::detail::role_tags relies_on {};
+    static constexpr urd::detail::property_set relies_on {};
     static constexpr std::array<urd::tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -193,7 +221,7 @@ struct urd::include<"tests/store/outside_kind.cpp">
 namespace
 {
 
-using Words = urd::Store<urd::value<std::string>, tally::tallied>;
+using Words = urd::Store<tally::counted<std::string>, tally::tallied>;
 
 static_assert(std::same_as<Words::representation, tally::Tally<std::string>>);
 static_assert(std::same_as<urd::container_traits<Words>::kind, tally::tally_kind>);
@@ -202,7 +230,10 @@ static_assert(tally::add::in<tally::tally_decl::operation_costs>().has_value() &
 static_assert(!tally::add::in<urd::detail::vector_decl::operation_costs>().has_value());  // urd's containers state no cost for it
 // What tools read of the kind (urd-search): its operations' words, how it keeps its elements, its memory.
 static_assert(urd::operation_v<tally::add>->name == "add" && !urd::operation_v<tally::count>->description.empty());
-static_assert(!tally::tally_kind::iterable && !tally::tally_kind::positional && tally::tally_kind::changes_in_place({}));
+static_assert(!urd::container_traits<Words>::iterable && !urd::has<Words, urd::positional>);
+// Every kind's questions are its own too (threading).
+static_assert(urd::detail::in_format(urd::detail::format_of<tally::tally_kind> {},
+                                     urd::detail::property_set::of({ tally::tallying::tallied, urd::threading::concurrent })));
 static_assert(tally::tally_decl::operation_costs::words == 3);
 // urd's own kinds are untouched by the new one.
 static_assert(std::same_as<urd::Store<urd::value<int>>::representation, std::vector<int>>);

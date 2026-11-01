@@ -1,8 +1,7 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -30,7 +29,7 @@ struct unordered_flat_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/unordered_flat_set.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -48,7 +47,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<boost::unordered_flat_set<T, H, E, A>>
 {
     using declaration = unordered_flat_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace urd::detail

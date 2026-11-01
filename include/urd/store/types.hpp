@@ -1,7 +1,7 @@
 #pragma once
 
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
@@ -40,12 +40,10 @@ struct store_types
     /// Elements change in place: nothing depends on their values, and the Store may change.
     static constexpr bool writable = !keyed && !has<S, monotone>;
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::kind::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::kind::positional);
+    static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || has<S, positional>);
 
     using value_type = typename S::element_type;
-    using key_type = typename S::key_type;
-    using mapped_type = typename S::mapped_type;
-    /// What lookups take: a map's key, else an element.
+    /// What lookups take, as the kind's data says: a map's key, else an element.
     using lookup_type = typename S::lookup_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -94,17 +92,11 @@ struct facet_operations
     using offered = operation_list<>;
 };
 
-/// Whether F is among the facets of a list.
-template<template<typename, typename, typename> class F, typename List>
-inline constexpr bool listed_facet = false;
-template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
-inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
-
 /// Whether a Store for spec S over representation R has facet F: its kind lists F, and F's condition holds.
 template<typename R, typename S, template<typename, typename, typename> class F>
 consteval bool facet_on()
 {
-    if constexpr (listed_facet<F, typename S::kind::facets>)
+    if constexpr (listed_facet<F, facets_of<typename S::kind>>)
         return facet_condition<F>::template on<R, S>();
     else
         return false;

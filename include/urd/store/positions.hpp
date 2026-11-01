@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 
 #include <cassert>
@@ -104,10 +104,10 @@ public:
     /// The index of the element at `it`.
     [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
     { return index_type(static_cast<std::uint32_t>(this->position(it))); }
-    /// A view of the element at `at`, through this Store (urd/view.hpp must be included where views are made).
+    /// A view of the element at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
     [[nodiscard]] auto view(index_type at) const
     {
-        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
+        static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         return urd::view<typename types::value_type, Derived>(at, static_cast<const Derived&>(*this));
     }
 };
@@ -124,7 +124,7 @@ struct facet_condition<facet::positions>
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return S::kind::positional || has<S, positional>; }
+    { return has<S, positional>; }
 };
 template<>
 struct facet_operations<facet::positions>

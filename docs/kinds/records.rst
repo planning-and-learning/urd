@@ -21,7 +21,7 @@ strings is ``Store<value<std::string>, handles, unique>``). With ``flat``, recor
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
 A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista
-(``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/flat.hpp``. The
+(``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/elements/flat.hpp``. The
 records are frozen once stored.
 
 .. list-table::
@@ -42,11 +42,11 @@ records are frozen once stored.
      - ``LayeredPool`` over it
 
 Each pool has its header: ``urd/repr/records/records.hpp`` (the record interner) or ``urd/repr/records/arena.hpp`` (the arena
-interner) is included where the Store is held, ``urd/flat.hpp`` where a flat record is written.
+interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a flat record is written.
 
 .. code-block:: cpp
 
-   #include <urd/flat.hpp>
+   #include <urd/elements/flat.hpp>
    #include <urd/repr/records/arena.hpp>
    struct Predicate
    {

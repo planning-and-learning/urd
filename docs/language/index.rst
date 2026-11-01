@@ -91,7 +91,7 @@ semantics from who keeps the tag:
 
 A request is what it states, and what that means (each kind's ``meaning``, ``include/urd/kinds.hpp``): a set, and a
 map without ``multi``, keep each key once; a positional set numbers its keys as they come; a frozen Store's
-references are stable (``urd::implied``, whatever the kind).
+references are stable (``any_kind::meaning``, whatever the kind).
 
 Tags are what a request states. What its data *is* (whether a key can be hashed, is an index, copies as bytes, ...)
 is not stated but derived from the types: these are **type traits** (``urd::trait::can_hash``, ...,
@@ -130,8 +130,10 @@ Incompatible combinations
 
 A request is one of three things: served, missing, or incompatible. :doc:`/RESOLUTION` shows the first two for a
 grid of requests (a ``none`` row carries a note saying what is missing). ``to_spec`` rejects only what is
-ill-formed whatever container would hold it: each kind's ``well_formed`` (a partition takes no ``value<V>``, a pool or
-slots no ``key<K>``) and the ``order_by`` rules share one message (``well_formed`` in ``include/urd/kinds.hpp``). A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+ill-formed whatever container would hold it: a type argument its kind does not take (a partition takes no
+``value<V>``, a pool or slots no ``key<K>``), and the rules its kind's path states (``rule<…>`` in
+``include/urd/kinds.hpp``: ``monotone_priority`` needs ``by_priority``, ``order_by`` needs an orderable key), each
+with its message. A compile-fail case in ``tests/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::

@@ -3,6 +3,9 @@
 // when EqualTo calls them equal. One typed test per law, over random values from a small domain, so that
 // equal values occur.
 
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -14,9 +17,6 @@
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/store.hpp"
 
 #include <array>

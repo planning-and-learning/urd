@@ -6,10 +6,10 @@
 
 #include "elements.hpp"
 #include "names.hpp"
-#include "urd/flat.hpp"
+#include "request.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/format.hpp"
 #include "urd/registry/select.hpp"
-#include "urd/request.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -34,7 +34,7 @@ namespace urd::test
 inline constexpr auto negated = [](int element) { return -element; };
 inline constexpr auto by_value = [](const int& /*key*/, const int& value) { return value; };
 
-// Requests as types, and the headers a Store needs, come from the library (urd/request.hpp); a request is written as
+// Requests as types, and the headers a Store needs, come from tests/request.hpp; a request is written as
 // urd::spelling_of_request says (urd/format.hpp).
 using urd::cat_t;
 using urd::element_headers_of;

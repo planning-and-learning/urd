@@ -1,12 +1,11 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -49,7 +48,7 @@ struct parallel_hash_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/parallel_hash_set.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -67,7 +66,7 @@ template<typename T>
 struct declaration_of<repr::ParallelHashSet<T>>
 {
     using declaration = parallel_hash_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -82,7 +81,7 @@ struct parallel_node_hash_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/parallel_hash_set.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -100,7 +99,7 @@ template<typename T>
 struct declaration_of<repr::ParallelNodeHashSet<T>>
 {
     using declaration = parallel_node_hash_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail

@@ -4,9 +4,8 @@
 // reads of it, over a flat hash table, a tree or a dense map. Defined in urd/repr/wrappers/scoped.hpp; the map it
 // scopes in its own header.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
@@ -53,7 +52,7 @@ struct scoped_map_decl
     static constexpr auto headers = header_list<2> { "urd/repr/maps/unordered_flat_map.hpp", "urd/repr/wrappers/scoped.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, memory::retains, scoping::scoped });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -73,7 +72,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedMap<K, V>>
 {
     using declaration = scoped_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -89,7 +88,7 @@ struct scoped_tree_map_decl
     using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear, scoping::scoped });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -110,7 +109,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedTreeMap<K, V>>
 {
     using declaration = scoped_tree_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -126,7 +125,7 @@ struct scoped_dense_map_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none, scoping::scoped });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -147,7 +146,7 @@ template<typename K, typename V>
 struct declaration_of<repr::ScopedDenseMap<K, V>>
 {
     using declaration = scoped_dense_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail

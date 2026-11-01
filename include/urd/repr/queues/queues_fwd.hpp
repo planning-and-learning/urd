@@ -4,12 +4,11 @@
 // comparator (a binary heap, an addressable heap, a bucket queue), and a ring for first-in queues that retain their
 // storage. Defined in urd/repr/queues/queue.hpp, addressable_heap.hpp, bucket_queue.hpp and ring_fifo.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/less.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -65,7 +64,7 @@ struct fifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
     using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, referencing::stable_refs });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -83,7 +82,7 @@ template<typename T>
 struct declaration_of<repr::Fifo<T>>
 {
     using declaration = fifo_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -98,7 +97,7 @@ struct ring_fifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/ring_fifo.hpp" };
     using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, memory::retains });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -116,7 +115,7 @@ template<typename T>
 struct declaration_of<repr::RingFifo<T>>
 {
     using declaration = ring_fifo_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -131,7 +130,7 @@ struct lifo_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
     using kind = arrival_queue_kind;
     static constexpr property_set provides = property_set::of({ access::lifo, memory::retains });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -149,7 +148,7 @@ template<typename T>
 struct declaration_of<repr::Lifo<T>>
 {
     using declaration = lifo_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -164,7 +163,7 @@ struct heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -182,7 +181,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 {
     using declaration = heap_decl;
-    static constexpr role_tags roles = element_roles<T, Compare>();
+    static constexpr property_set roles = element_roles<T, Compare>();
 };
 
 }  // namespace detail
@@ -197,7 +196,7 @@ struct addressable_heap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -215,7 +214,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::AddressableHeap<T, Compare>>
 {
     using declaration = addressable_heap_decl;
-    static constexpr role_tags roles = element_roles<T, Compare>();
+    static constexpr property_set roles = element_roles<T, Compare>();
 };
 
 }  // namespace detail
@@ -230,7 +229,7 @@ struct bucket_queue_decl
     static constexpr auto headers = header_list<1> { "urd/repr/queues/bucket_queue.hpp" };
     using kind = priority_queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
-    static constexpr role_tags relies_on =
+    static constexpr property_set relies_on =
         relies(stated({ priority::monotone_priority }), traits<role::order, trait::natural_ordered, trait::integral_priority>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -248,7 +247,7 @@ template<typename T, typename Compare>
 struct declaration_of<repr::BucketQueue<T, Compare>>
 {
     using declaration = bucket_queue_decl;
-    static constexpr role_tags roles = element_roles<T, Compare>();
+    static constexpr property_set roles = element_roles<T, Compare>();
 };
 
 }  // namespace detail

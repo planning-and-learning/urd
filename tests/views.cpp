@@ -1,7 +1,8 @@
 // urd::index<T> and urd::view<T, C>: a strong index minted by the Store that numbers Ts, and a reference made of
 // an index and the context that resolves it, which resolves the record's members through the same context.
 
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -28,7 +29,6 @@
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
-#include "urd/view.hpp"
 
 #include <concepts>
 #include <cstddef>

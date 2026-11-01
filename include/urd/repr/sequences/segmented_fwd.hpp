@@ -3,7 +3,6 @@
 // A vector in segments that never move, declared with its defaults and what the registry reads of it. Defined in
 // urd/repr/containers/segmented_vector.hpp, which urd/repr/sequences/segmented.hpp includes.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -39,7 +38,7 @@ struct segmented_vector_decl
     using kind = sequence_kind;
     static constexpr property_set provides =
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::none });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }));
+    static constexpr property_set relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -55,7 +54,7 @@ template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, false, I>>
 {
     using declaration = segmented_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -71,7 +70,7 @@ struct concurrent_segmented_vector_decl
     using kind = sequence_kind;
     static constexpr property_set provides =
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::concurrent });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }));
+    static constexpr property_set relies_on = relies(stated({ change::monotone }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -87,7 +86,7 @@ template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, true, I>>
 {
     using declaration = concurrent_segmented_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail

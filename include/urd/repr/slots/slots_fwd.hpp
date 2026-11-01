@@ -5,9 +5,8 @@
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools/pools.hpp,
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -40,7 +39,7 @@ struct slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
     using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -55,7 +54,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, false>>
 {
     using declaration = slot_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -70,7 +69,7 @@ struct thread_safe_slot_vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
     using kind = slots_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -85,7 +84,7 @@ template<typename T>
 struct declaration_of<repr::SlotVector<T, true>>
 {
     using declaration = thread_safe_slot_vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail

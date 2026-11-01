@@ -3,7 +3,7 @@
 // urd::verify for maps: random inserts, erases and clears checked against a model of the entries (MapModel).
 
 #include "common.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -23,20 +23,37 @@
 namespace urd::detail
 {
 
-/// The order of a map ordered by its values: the one a representation was built with, or a Store's request gave.
+/// The order of a map: the one a representation was built with, or a Store's request gave; void for its keys' own.
 template<typename R>
 struct value_order
+{
+    using type = void;
+};
+template<typename R>
+    requires is_store<R>
+struct value_order<R>
 {
     using type = typename container_traits<R>::order_type;
 };
 template<typename R>
-    requires requires { typename R::order_type; }
+    requires(!is_store<R>) && requires { typename R::order_type; }
 struct value_order<R>
 {
     using type = typename R::order_type;
 };
 template<typename R>
 using value_order_t = typename value_order<R>::type;
+/// Whether a map is ordered by its entries (order_by<P> with P(key, value)): its values are part of its order.
+template<typename R>
+inline constexpr bool entry_ordered = is_entry_less<value_order_t<R>>;
+
+/// Traits without an order: a map ordered by its entries keeps no key order, which its model must not assume.
+template<typename Traits>
+struct without_order
+{
+    static constexpr property_set urd_properties = with(Traits::urd_properties, { tag(order::none) });
+    static constexpr bool declared = true;
+};
 
 /// What a map's contents must be after the same operations: pairs in key order where sorted, each key once
 /// where unique, a multimap's equal keys in insertion order.
@@ -83,7 +100,7 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
         contents.emplace_back(key, value);
     if (std::ranges::size(range) != contents.size())
         return "size() differs from the number of elements";
-    if constexpr (orders_by_value<R>)
+    if constexpr (entry_ordered<R>)
     {
         if (!std::ranges::is_sorted(range, value_order_t<R> {}))
             return "sorted: the entries are out of the order the request gave";
@@ -179,7 +196,7 @@ std::optional<std::string> run_map(R& range, unsigned seed, int steps)
     constexpr int removals = container_shrinks<R> ? 3 : 0;
 
     // A map ordered by its values keeps no key order; its own order is checked by map_violation.
-    using ModelTraits = std::conditional_t<orders_by_value<R>, with_t<Traits, any_order>, Traits>;
+    using ModelTraits = std::conditional_t<entry_ordered<R>, without_order<Traits>, Traits>;
     auto model = MapModel<ModelTraits, K, V>();
     for (const auto& [key, value] : range)
         model.pairs.emplace_back(key, value);

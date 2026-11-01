@@ -172,7 +172,7 @@ template<typename R, typename S>
 constexpr std::array<bool, static_cast<std::size_t>(op::count)> offered()
 {
     auto result = std::array<bool, static_cast<std::size_t>(op::count)> {};
-    mark_offered<R, S>(typename S::kind::facets {}, result);
+    mark_offered<R, S>(urd::detail::facets_of<typename S::kind> {}, result);
     // A fixed shape is set at construction: the growth facet stays on for its rows, but insert is denied.
     if (urd::has<S, urd::fixed_shape>)
         result[static_cast<std::size_t>(op::insert)] = false;

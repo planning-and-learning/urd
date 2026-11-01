@@ -1,11 +1,11 @@
 #pragma once
 
-// What urd knows about a container: its properties (container_traits), what it relies on (relies_on), and the
+// What urd knows about a container: its properties (container_traits), and the
 // questions asked of a container, a Store or a request's spec alike (has, satisfies). For a registered container they
 // are derived from its declaration (urd/registry/derived.hpp); the tags are in urd/tags.hpp.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/property_set.hpp"
-#include "urd/semantics/concepts.hpp"
 
 #include <algorithm>
 #include <array>
@@ -22,30 +22,15 @@
 namespace urd
 {
 
-/// What a container guarantees, by itself, through every operation it offers. A registered container's is derived
-/// from its declaration's `provides` (urd/registry/derived.hpp), and its property tests check it
-/// (tests/properties.hpp). A container outside the registry may specialize it:
-///
-///     template<> struct urd::container_traits<MyList> : urd::properties<urd::sorted, urd::unique> {};
-///
-/// A container nobody declared guarantees nothing, and no Store resolves to it.
+/// What a container guarantees, by itself, through every operation it offers: derived from its declaration's
+/// `provides` (urd/registry/derived.hpp), and checked by its property tests (tests/properties.hpp). A container is
+/// declared (urd/registry/declaration.hpp) or urd knows nothing of it: one nobody declared guarantees nothing, and no
+/// Store resolves to it.
 template<typename R>
 struct container_traits : properties<>
 {
     static constexpr bool declared = false;
 };
-
-/// The promises representation R relies on, among those only a request makes (monotone_priority, small, …): it
-/// serves only requests that make them. A bucket queue pops in order whatever is pushed, but is fast only where pushes
-/// never go below the last popped. None by default.
-template<typename R>
-inline constexpr detail::property_set relies_on = detail::property_set::roots();
-
-/// Whether map representation R orders its entries by their values too (order_by<P> with P(key, value)): its values
-/// then change only through operations that put the entry back in order (update, insert_or_assign), never through a
-/// reference. False by default.
-template<typename R>
-inline constexpr bool orders_by_value = false;
 
 namespace detail
 {

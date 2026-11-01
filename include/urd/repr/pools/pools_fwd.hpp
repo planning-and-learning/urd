@@ -5,9 +5,8 @@
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools/pools.hpp,
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -50,7 +49,7 @@ struct row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
     using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none });
-    static constexpr role_tags relies_on = relies(traits<role::row_element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -66,7 +65,7 @@ template<typename Row>
 struct declaration_of<repr::RowInterner<Row, false>>
 {
     using declaration = row_interner_decl;
-    static constexpr role_tags roles = element_roles<Row>();
+    static constexpr property_set roles = element_roles<Row>();
 };
 
 }  // namespace detail
@@ -83,10 +82,14 @@ struct tree_pool_decl
         Bits ? (ThreadSafe ? "thread_safe_tree_bitset_set" : "tree_bitset_set") : (ThreadSafe ? "thread_safe_tree_vector_set" : "tree_vector_set");
     static constexpr auto headers = header_list<1> { Bits ? "urd/repr/pools/tree_bitset.hpp" : "urd/repr/pools/tree_vector.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides =
-        property_set::of({ handling::handles, uniqueness::unique, sharing::structural_sharing, memory::retains, threads(ThreadSafe) });
+    static constexpr property_set provides = property_set::of({ handling::handles,
+                                                                uniqueness::unique,
+                                                                sharing::structural_sharing,
+                                                                memory::retains,
+                                                                ThreadSafe ? tag(threading::concurrent) : tag(threading::none) });
     /// Of bits: rows that are dense sets of indices. Of values: sequence rows of hashable elements.
-    static constexpr role_tags relies_on = Bits ? relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>()) :
+    static constexpr property_set relies_on = Bits ?
+                                                  relies(tags<role::row>({ uniqueness::unique, keys::dense }), traits<role::row_element, trait::an_index>()) :
                                                   relies(tags<role::row>({ position::positional }), traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
@@ -105,13 +108,13 @@ template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 {
     using declaration = tree_pool_decl<true, ThreadSafe>;
-    static constexpr role_tags roles = element_roles<Row>();
+    static constexpr property_set roles = element_roles<Row>();
 };
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 {
     using declaration = tree_pool_decl<false, ThreadSafe>;
-    static constexpr role_tags roles = element_roles<Row>();
+    static constexpr property_set roles = element_roles<Row>();
 };
 
 }  // namespace detail
@@ -126,7 +129,7 @@ struct thread_safe_row_interner_decl
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
     using kind = pool_kind;
     static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on = relies(traits<role::row_element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -142,7 +145,7 @@ template<typename Row>
 struct declaration_of<repr::RowInterner<Row, true>>
 {
     using declaration = thread_safe_row_interner_decl;
-    static constexpr role_tags roles = element_roles<Row>();
+    static constexpr property_set roles = element_roles<Row>();
 };
 
 }  // namespace detail

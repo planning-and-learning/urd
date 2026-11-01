@@ -3,6 +3,7 @@
 
 #include "urd/store.hpp"
 // Every family: the cases below hold a Store of every kind.
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -41,7 +42,6 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/repr/wrappers/scoped.hpp"
-#include "urd/view.hpp"
 
 #include <string>
 

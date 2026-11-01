@@ -2,11 +2,11 @@
 
 // A set of indices as a sparse set (Briggs and Torczon), for dense keys: stored by position, not hashed.
 
-#include "urd/elements.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

@@ -5,9 +5,8 @@
 namespace urd::detail::facet
 {
 
-/// The elements in turn (sets, sequences and maps; a queue too, in the order it keeps them), changeable in place where
-/// the Store's elements are. Not what a kind's `iterable` says: that its elements form a range urd reads (equality,
-/// hashing, a row's elements), which a queue's do not.
+/// The elements in turn, changeable in place where the Store's elements are: a range urd reads (equality, hashing, a
+/// row's elements). Sets, maps and sequences list it; a queue lists visiting instead.
 template<typename Derived, typename R, typename S>
 class iteration
 {
@@ -35,24 +34,42 @@ private:
     [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
 };
 
+/// A queue's elements, visited in the order it keeps them (pushed, or none for a priority queue): iteration's members,
+/// but no range urd reads (no element-wise ==, Hash or Less, no row elements).
+template<typename Derived, typename R, typename S>
+class visiting : public iteration<Derived, R, S>
+{
+};
+
 }  // namespace urd::detail::facet
 
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
-/// A queue visits its elements in the order pushed, or a priority queue in none; not a bucket queue
-/// (monotone_priority), which would visit every priority's bucket. Iterated so, a queue is still no
-/// range for the facets that read S::iterable (equality, growth, removal).
+/// When a Store has this facet: wherever its kind lists it (sets, maps, sequences: ranges urd reads).
 template<>
 struct facet_condition<facet::iteration>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return true; }
+};
+template<>
+struct facet_operations<facet::iteration>
+{
+    using offered = operation_list<operation::iterate>;
+};
+
+/// When a queue has this facet: not a bucket queue (monotone_priority), which would visit every priority's bucket.
+template<>
+struct facet_condition<facet::visiting>
 {
     template<typename R, typename S>
     static constexpr bool on()
     { return !has<S, monotone_priority>; }
 };
 template<>
-struct facet_operations<facet::iteration>
+struct facet_operations<facet::visiting>
 {
     using offered = operation_list<operation::iterate>;
 };

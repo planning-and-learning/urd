@@ -5,7 +5,7 @@
 // is the failure; here the results are checked.
 
 #include "names.hpp"
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"

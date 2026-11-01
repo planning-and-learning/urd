@@ -1,7 +1,7 @@
 #pragma once
 
-#include "urd/elements.hpp"
-#include "urd/semantics/equal_to.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/store/types.hpp"
 
 #include <concepts>
@@ -19,14 +19,17 @@ template<typename Derived, typename R, typename S>
 class values_by_key
 {
     using types = store_types<R, S>;
-    using map_key = typename types::key_type;
+    using map_key = typename S::key_type;
     using iterator_type = typename iterator_types<R, S>::iterator;
 
-    using mapped = typename types::mapped_type;
+    using mapped = typename S::mapped_type;
     /// Ordered by its values (order_by<P> with P(key, value)): a value changes only through what puts it back in order.
     static constexpr bool ordered_by_value = is_entry_less<typename S::order_type>;
 
 public:
+    /// What a key maps to.
+    using mapped_type = mapped;
+
     [[nodiscard]] const mapped& at(const map_key& key) const { return representation().at(key); }
     [[nodiscard]] mapped& at(const map_key& key)
         requires(!has<S, frozen> && !ordered_by_value)

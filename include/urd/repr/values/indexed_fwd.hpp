@@ -3,9 +3,8 @@
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
 // and what the registry reads of it. Defined in urd/repr/values/indexed.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -49,7 +48,7 @@ struct indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, layout::contiguous, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -68,7 +67,7 @@ template<typename T>
 struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 {
     using declaration = indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -84,7 +83,7 @@ struct stable_indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::none });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -101,7 +100,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::StableIndexedSet<T, Index>>
 {
     using declaration = stable_indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail
@@ -117,7 +116,7 @@ struct concurrent_indexed_set_decl
     using kind = set_kind;
     static constexpr property_set provides = property_set::of(
         { order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::concurrent });
-    static constexpr role_tags relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -134,7 +133,7 @@ template<typename T, typename Index>
 struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 {
     using declaration = concurrent_indexed_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail

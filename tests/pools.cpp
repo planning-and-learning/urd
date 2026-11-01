@@ -4,7 +4,8 @@
 #include "urd/repr/pools/pools.hpp"
 
 #include "names.hpp"
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -28,7 +29,6 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
-#include "urd/view.hpp"
 #include "verify.hpp"
 
 #include <algorithm>

@@ -2,7 +2,7 @@
 
 // What every kind's check reads: the contents a range holds, element addresses, positions, and what an insert reports.
 
-#include "urd/semantics/less.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
@@ -49,9 +49,28 @@ using element_t = std::ranges::range_value_t<R>;
 /// What a container lets change: it inserts unless it relies on being frozen or of a fixed shape, and erases unless
 /// it relies on only growing too (its declaration's relies_on).
 template<typename R>
-inline constexpr bool container_grows = is_store<R> ? grows<container_traits<R>> : !relies_on<R>.has(change::frozen) && !relies_on<R>.has(shape::fixed_shape);
+consteval bool grows_of()
+{
+    if constexpr (is_store<R>)
+        return grows<container_traits<R>>;
+    else
+    {
+        constexpr auto relied = about_itself(declaration_t<R>::relies_on);
+        return !relied.has(change::frozen) && !relied.has(shape::fixed_shape);
+    }
+}
 template<typename R>
-inline constexpr bool container_shrinks = is_store<R> ? shrinks<container_traits<R>> : container_grows<R> && !relies_on<R>.has(change::monotone);
+consteval bool shrinks_of()
+{
+    if constexpr (is_store<R>)
+        return shrinks<container_traits<R>>;
+    else
+        return grows_of<R>() && !about_itself(declaration_t<R>::relies_on).has(change::monotone);
+}
+template<typename R>
+inline constexpr bool container_grows = grows_of<R>();
+template<typename R>
+inline constexpr bool container_shrinks = shrinks_of<R>();
 
 /// A map: it names what its keys map to.
 template<typename R>

@@ -11,7 +11,7 @@ What a container needs of its elements comes from three function objects, with n
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
    :cpp:concept:`MemberIdentified` or :cpp:concept:`FunctionIdentified` type, :cpp:struct:`urd::index`,
-   :cpp:class:`urd::view`, the flat containers of ``urd/flat.hpp``, and Stores whose contents fix their order
+   :cpp:class:`urd::view`, the flat containers of ``urd/elements/flat.hpp``, and Stores whose contents fix their order
    (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.
 
 .. cpp:struct:: template<typename T> EqualTo
@@ -77,7 +77,7 @@ Indices and views
 
 .. cpp:struct:: template<typename T> index
 
-   The index of a ``T`` in the Store that numbers ``T``'s (``urd/index.hpp``): a positional set mints one on first
+   The index of a ``T`` in the Store that numbers ``T``'s (``urd/elements/index.hpp``): a positional set mints one on first
    insert, and a pool's handles are indices. One 32-bit integer (``value``) with a ``none`` value
    (``is_none()``), a different type per ``T`` that converts to no other, hashable, orderable, and a dense key.
    Write it ``urd::index``: the C library declares a function ``index`` in the global namespace.
@@ -91,7 +91,7 @@ Indices and views
 
 .. cpp:class:: template<typename T, typename C = typename context_of<T>::type> view
 
-   A reference to an element held by index (``urd/view.hpp``): the index and a pointer to a context ``C`` that
+   A reference to an element held by index (``urd/elements/view.hpp``): the index and a pointer to a context ``C`` that
    resolves it, where :cpp:concept:`resolves` means ``context[index<T>]`` gives the record. A positional set and a
    pool resolve their own type; any type with such an
    ``operator[]`` serves. The context must outlive the view.

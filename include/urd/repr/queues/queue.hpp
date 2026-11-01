@@ -2,11 +2,12 @@
 
 // A queue whose elements leave in the order it says: first in, last in, or the least by a comparator.
 
-#include "urd/elements.hpp"
+#include "urd/elements/less.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

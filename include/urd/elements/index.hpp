@@ -1,7 +1,7 @@
 #pragma once
 
-#include "urd/elements.hpp"
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
+#include "urd/elements/requirements.hpp"
 
 #include <cassert>
 #include <compare>
@@ -70,7 +70,7 @@ struct Write
 template<typename T>
 struct context_of;
 
-/// A reference to an element held by index: the index, and the context that resolves it (urd/view.hpp).
+/// A reference to an element held by index: the index, and the context that resolves it (urd/elements/view.hpp).
 template<typename T, typename C = typename context_of<T>::type>
 class view;
 

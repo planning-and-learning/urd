@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/index.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
@@ -84,10 +84,10 @@ public:
             throw std::out_of_range("urd::Store::at: no record at this index");
         return (*this)[at];
     }
-    /// A view of the record at `at`, through this Store (urd/view.hpp must be included where views are made).
+    /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
     [[nodiscard]] auto view(index_type at) const
     {
-        static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/view.hpp>");
+        static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         if constexpr (has<S, layered>)
             return urd::view<T, Derived>(at, static_cast<const Derived&>(*this).owner(at));
         else

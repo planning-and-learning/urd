@@ -1,10 +1,10 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -36,7 +36,7 @@ struct set_decl
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -55,7 +55,7 @@ template<typename T, typename C, typename A>
 struct declaration_of<std::set<T, C, A>>
 {
     using declaration = set_decl;
-    static constexpr role_tags roles = element_roles<T, C>();
+    static constexpr property_set roles = element_roles<T, C>();
 };
 
 }  // namespace detail
@@ -70,7 +70,7 @@ struct unordered_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/std_set.hpp" };
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -88,7 +88,7 @@ template<typename T, typename H, typename E, typename A>
 struct declaration_of<std::unordered_set<T, H, E, A>>
 {
     using declaration = unordered_set_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace detail

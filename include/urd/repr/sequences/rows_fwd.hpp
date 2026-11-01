@@ -3,9 +3,8 @@
 // Representations of nested Stores, whose elements (rows) are Stores themselves, declared with what the registry
 // reads of them. Defined in urd/repr/sequences/jagged.hpp and urd/repr/sequences/row_pool.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -40,7 +39,7 @@ struct jagged_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::rows, trait::rows_flatten>());
+    static constexpr property_set relies_on = relies(traits<role::rows, trait::rows_flatten>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they hold plain elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs
@@ -63,7 +62,7 @@ struct fixed_jagged_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::none });
-    static constexpr role_tags relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
+    static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs
@@ -79,7 +78,7 @@ template<typename Inner>
 struct declaration_of<repr::Jagged<Inner>>
 {
     using declaration = std::conditional_t<rows_flatten<Inner>(), jagged_decl, fixed_jagged_decl>;
-    static constexpr role_tags roles = element_roles<Inner>();
+    static constexpr property_set roles = element_roles<Inner>();
 };
 
 }  // namespace detail
@@ -94,7 +93,7 @@ struct row_pool_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/row_pool.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::rows, trait::rows_reused>());
+    static constexpr property_set relies_on = relies(traits<role::rows, trait::rows_reused>());
     static constexpr std::array<tag, 0> gives_elements {};
     struct operation_costs
     {
@@ -112,7 +111,7 @@ template<typename Inner>
 struct declaration_of<repr::RowPool<Inner>>
 {
     using declaration = row_pool_decl;
-    static constexpr role_tags roles = element_roles<Inner>();
+    static constexpr property_set roles = element_roles<Inner>();
 };
 
 }  // namespace detail
@@ -127,7 +126,7 @@ struct tracked_jagged_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
+    static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
     /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
     static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     struct operation_costs
@@ -143,7 +142,7 @@ template<typename Inner>
 struct declaration_of<repr::Jagged<Inner, true>>
 {
     using declaration = tracked_jagged_decl;
-    static constexpr role_tags roles = element_roles<Inner>();
+    static constexpr property_set roles = element_roles<Inner>();
 };
 
 }  // namespace detail

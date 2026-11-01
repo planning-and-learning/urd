@@ -2,7 +2,7 @@
 
 // A frozen multimap by dense key that answers by value too: compressed sparse rows both ways.
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/repr/maps/grouped_multimap.hpp"

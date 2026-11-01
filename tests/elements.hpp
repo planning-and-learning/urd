@@ -3,7 +3,7 @@
 // Element types of the request grid (tests/grid.hpp) beside the standard ones: a key identified by one integral member,
 // and a record with text; each spelled as a request names it (urd::type_spelling).
 
-#include "urd/flat.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/store.hpp"
 
 #include <cstdint>

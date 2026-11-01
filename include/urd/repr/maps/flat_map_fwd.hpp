@@ -1,8 +1,7 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -45,7 +44,7 @@ struct flat_map_decl
                                                                 representation::canonical,
                                                                 memory::retains,
                                                                 clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -64,7 +63,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_map<K, V, C, A>>
 {
     using declaration = flat_map_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = map_roles<K, V, C>();
 };
 
 }  // namespace detail
@@ -80,7 +79,7 @@ struct flat_multimap_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, multiplicity::multi, position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -99,7 +98,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_multimap<K, V, C, A>>
 {
     using declaration = flat_multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = map_roles<K, V, C>();
 };
 
 }  // namespace detail

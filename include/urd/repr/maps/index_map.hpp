@@ -2,13 +2,13 @@
 
 // A map from indices to values, a slot per index, for dense keys: stored by position, not hashed.
 
-#include "urd/elements.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/config.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
-#include "urd/semantics/hash.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

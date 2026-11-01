@@ -1,10 +1,10 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -35,7 +35,7 @@ struct map_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -54,7 +54,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::map<K, V, C, A>>
 {
     using declaration = map_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = map_roles<K, V, C>();
 };
 
 }  // namespace detail
@@ -70,7 +70,7 @@ struct multimap_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, multiplicity::multi, referencing::stable_refs, memory::reclaims, clearing::proportional_clear });
-    static constexpr role_tags relies_on = relies(traits<role::order, trait::natural_ordered>());
+    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -89,7 +89,7 @@ template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::multimap<K, V, C, A>>
 {
     using declaration = multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V, C>();
+    static constexpr property_set roles = map_roles<K, V, C>();
 };
 
 }  // namespace detail
@@ -104,7 +104,7 @@ struct unordered_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -122,7 +122,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_map<K, V, H, E, A>>
 {
     using declaration = unordered_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -137,7 +137,7 @@ struct unordered_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ multiplicity::multi, referencing::stable_refs });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -155,7 +155,7 @@ template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_multimap<K, V, H, E, A>>
 {
     using declaration = unordered_multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail

@@ -30,6 +30,24 @@ struct join<type_list<As...>, type_list<Bs...>, Lists...> : join<type_list<As...
 {
 };
 
+/// Lists of one list template (type_list, or any L<Ts...>), joined in order into the first.
+template<typename First, typename... Lists>
+struct concat
+{
+    using type = First;
+};
+template<template<typename...> class L, typename... As, typename... Bs, typename... Rest>
+struct concat<L<As...>, L<Bs...>, Rest...> : concat<L<As..., Bs...>, Rest...>
+{
+};
+
+/// The last type of First, Ts....
+template<typename First, typename... Ts>
+struct last
+{
+    using type = std::tuple_element_t<sizeof...(Ts), std::tuple<First, Ts...>>;
+};
+
 /// The I-th type of a list.
 template<std::size_t I, typename List>
 struct nth;
@@ -58,6 +76,14 @@ struct first_of<Template, Template<T>, Ps...>
 };
 template<template<typename> class Template, typename P, typename... Ps>
 struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
+{
+};
+
+/// The type inside the first Template<…> of a list, else void.
+template<template<typename> class Template, typename List>
+struct type_in;
+template<template<typename> class Template, typename... Ps>
+struct type_in<Template, type_list<Ps...>> : first_of<Template, Ps...>
 {
 };
 

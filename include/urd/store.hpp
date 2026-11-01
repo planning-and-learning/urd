@@ -1,10 +1,10 @@
 #pragma once
 
-#include "urd/index.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/index.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/registry/select.hpp"
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/spec.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/changes.hpp"
@@ -77,7 +77,7 @@ struct complete_representation<missing_container<S, Container, Missing>>
 /// representation: construction from elements and swap. Everything else is in its facets (include/urd/store/),
 /// which its kind lists (urd/kinds.hpp) and its properties switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename R, typename S>
-class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, typename S::kind::facets>
+class Store : public complete_representation<R>, public facet_bases<Store<R, S>, R, S, facets_of<typename S::kind>>
 {
     using types = store_types<R, S>;
 
@@ -117,23 +117,15 @@ public:
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
-    /// Rows of these lengths, empty: a fixed_shape Store's only shape. A nonempty one needs a row (a row of length 0
-    /// is a row).
-    explicit Store(const row_lengths& lengths)
-        requires construction<S>::by_shape
-        : m_representation(lengths.lengths)
+    /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from
+    /// its rows' lengths (urd::row_lengths), or for rows of rows, each row's shape. A nonempty one needs an element (a
+    /// row of length 0 is a row).
+    template<typename From>
+        requires(S::kind::template builds_from<S, From> && std::constructible_from<R, const From&>)
+    explicit Store(const From& source) : m_representation(source)
     {
         if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
-    }
-    /// Rows of rows, empty, at any depth: for each row, the shape of its rows (a std::vector of row lengths for rows
-    /// of rows, a std::vector of those one level up).
-    template<typename Shape>
-        requires(construction<S>::by_shape && !std::same_as<Shape, row_lengths> && std::constructible_from<R, const Shape&>)
-    explicit Store(const Shape& rows) : m_representation(rows)
-    {
-        if constexpr (construction<S>::needs_an_element)
-            assert(!this->empty() && "urd::Store: a nonempty fixed_shape Store needs a row");
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
     void swap(Store& other) noexcept
@@ -167,10 +159,6 @@ struct resolve
 template<typename... Ps>
 using Store = typename detail::resolve<Ps...>::type;
 
-/// A Store is ordered by its values where its representation is.
-template<typename R, typename S>
-inline constexpr bool orders_by_value<detail::Store<R, S>> = orders_by_value<R>;
-
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>
 struct container_traits<detail::Store<R, S>> : S
@@ -180,7 +168,7 @@ struct container_traits<detail::Store<R, S>> : S
 // A Store's semantics as an element of another Store, Hash, EqualTo and Less, are decided by its request S alone:
 // whether a Store hashes, compares or orders is asked while the outer Store is resolved, where the inner's
 // representation is named but not yet defined. Only the bodies touch R, and they are instantiated where the Store
-// is held. (semantics/concepts.hpp excludes Stores from the identity concepts for the same reason.)
+// is held. (elements/concepts.hpp excludes Stores from the identity concepts for the same reason.)
 
 /// Hashed by its contents where they fix the order its elements come in: sorted, canonical, or a sequence (positions
 /// are contents). An unordered Store iterates in an order its contents do not determine, so it has no Hash and cannot

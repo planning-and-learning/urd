@@ -116,7 +116,7 @@ The request's kind is found first (:doc:`language/kind`); then only that kind's 
 (``declarations_of<Kind>`` in ``include/urd/registry/declarations.hpp``), in an order backed by :doc:`BENCHMARKS`. The
 first whose declaration provides every property of the request, whose reliances the request promises (what it
 states, and the type traits of its elements, order, values and rows), and whose demands the request meets, is chosen;
-where the request is ``frozen`` or ``small``, containers with stable storage come after the others (``preferences``
+where the request is ``frozen`` or ``small``, containers with stable storage come after the others (``prefers`` of ``any_kind``
 in ``include/urd/kinds.hpp``). A declared guarantee the request left open is free, with one exception: ``dense``
 is also a demand, since a container that stores by index needs keys that are indices, so a dense container serves
 only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
@@ -154,7 +154,7 @@ them; the kinds' directories are sequences, values, maps, queues, pools, slots, 
 holds the wrappers),
 and a Store whose container's header is missing fails to compile naming the headers to include. No header includes
 every container: the record pools alone bring cista's serialization, which only a file holding such a pool should
-pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, and ``urd/view.hpp`` where views are made.
+pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/elements/flat.hpp`` where a record stored flat is written, and ``urd/elements/view.hpp`` where views are made.
 
 This documentation is built with Sphinx:
 

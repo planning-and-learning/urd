@@ -1,8 +1,8 @@
 #pragma once
 
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/less.hpp"
 
 #include <cassert>
 #include <concepts>
@@ -16,7 +16,7 @@ namespace urd
 
 // What a container needs of its elements to keep its properties. A container declares a property only for
 // elements that allow it: a tree is sorted only for orderable keys. urd::Hash, urd::EqualTo and urd::Less
-// (include/urd/semantics/) cover numbers, strings and the standard's composites, and any type that names its
+// (include/urd/elements/) cover numbers, strings and the standard's composites, and any type that names its
 // identity with identifying_members(); nothing has to go into namespace std.
 
 /// Ordered by urd::Less and compared by urd::EqualTo: what sorted means.

@@ -4,9 +4,8 @@
 // (frozen, by key index, with or without the inverse), growing rows per index, and postings in a hash table. Defined
 // in urd/repr/maps/csr_multimap.hpp, bidirectional_csr.hpp, dense_multimap.hpp and postings.hpp.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -57,7 +56,7 @@ struct csr_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/csr_multimap.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, representation::canonical });
-    static constexpr role_tags relies_on =
+    static constexpr property_set relies_on =
         relies(stated({ change::frozen }), traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
@@ -74,7 +73,7 @@ template<typename K, typename V>
 struct declaration_of<repr::CsrMultiMap<K, V>>
 {
     using declaration = csr_multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -89,7 +88,7 @@ struct dense_multimap_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/dense_multimap.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, multiplicity::multi, keys::dense, memory::retains });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -108,7 +107,7 @@ template<typename K, typename V>
 struct declaration_of<repr::DenseMultiMap<K, V>>
 {
     using declaration = dense_multimap_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -123,7 +122,7 @@ struct posting_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/postings.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ multiplicity::multi, keys::sparse });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -141,7 +140,7 @@ template<typename K, typename V>
 struct declaration_of<repr::PostingMap<K, V>>
 {
     using declaration = posting_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -157,10 +156,10 @@ struct bidirectional_csr_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, multiplicity::multi, keys::dense, representation::canonical, direction::bidirectional });
-    static constexpr role_tags relies_on = relies(stated({ change::frozen }),
-                                                  traits<role::element, trait::an_index>(),
-                                                  traits<role::order, trait::own_order>(),
-                                                  traits<role::mapped, trait::an_index>());
+    static constexpr property_set relies_on = relies(stated({ change::frozen }),
+                                                     traits<role::element, trait::an_index>(),
+                                                     traits<role::order, trait::own_order>(),
+                                                     traits<role::mapped, trait::an_index>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -176,7 +175,7 @@ template<typename K, typename V>
 struct declaration_of<repr::BidirectionalCsr<K, V>>
 {
     using declaration = bidirectional_csr_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail

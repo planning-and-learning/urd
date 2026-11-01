@@ -2,10 +2,11 @@
 
 // The least first, for integral priorities: a vector of elements per priority.
 
-#include "urd/elements.hpp"
+#include "urd/elements/less.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
-#include "urd/semantics/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

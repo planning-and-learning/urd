@@ -4,7 +4,6 @@
 // changes. Declared with what the registry reads of them; defined in urd/repr/wrappers/layer.hpp and
 // urd/repr/wrappers/layered_pool.hpp. What is layered is defined in its own header.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -48,7 +47,7 @@ struct layered_decl
                   "layered_decl: a layer is over a set, map or pool");
     using kind = typename Part::kind;
     static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered }) : with(Part::provides, { layering::layered, order::none });
-    static constexpr role_tags relies_on = Part::relies_on;
+    static constexpr property_set relies_on = Part::relies_on;
     static constexpr auto gives_elements = Part::gives_elements;
     struct operation_costs : Part::operation_costs
     {

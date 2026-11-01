@@ -206,7 +206,7 @@ Every insertion-ordered set is kept in one array, so it has positions whether th
 
 .. cpp:function:: auto view(index_type at) const
 
-   A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/view.hpp`` included).
+   A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/elements/view.hpp`` included).
 
 Least and greatest (``sorted``, not ``dense``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

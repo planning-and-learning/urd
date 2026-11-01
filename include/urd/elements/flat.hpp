@@ -4,9 +4,9 @@
 // and how a view resolves them. Include it where flat records are defined; the pools that store them are in
 // urd/repr/records/records.hpp and urd/repr/records/arena.hpp, included where such a Store is held.
 
-#include "urd/semantics/equal_to.hpp"
-#include "urd/semantics/hash.hpp"
-#include "urd/view.hpp"
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/view.hpp"
 
 #include <cista/containers/string.h>
 #include <cista/containers/variant.h>

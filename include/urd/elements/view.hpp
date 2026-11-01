@@ -1,7 +1,7 @@
 #pragma once
 
-#include "urd/index.hpp"
-#include "urd/semantics/concepts.hpp"
+#include "urd/elements/concepts.hpp"
+#include "urd/elements/index.hpp"
 
 #include <cstddef>
 #include <ranges>
@@ -41,7 +41,7 @@ concept numbered = requires(const C& context) {
 }  // namespace detail
 
 /// How a view resolves a variant: `resolved<C>` is the variant of the alternatives resolved through C, and `visit`
-/// applies a function to the alternative held. Given for std::variant here, for a flat variant in urd/flat.hpp.
+/// applies a function to the alternative held. Given for std::variant here, for a flat variant in urd/elements/flat.hpp.
 template<typename V>
 struct variant_traits;
 

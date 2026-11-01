@@ -1,7 +1,8 @@
 #pragma once
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/wrappers/recycling_fwd.hpp"

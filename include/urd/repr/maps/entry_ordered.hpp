@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/entry_ordered_fwd.hpp"
 #include "urd/traits.hpp"

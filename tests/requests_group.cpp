@@ -48,10 +48,8 @@ std::vector<urd::test::server> servers()
         [&]<typename Decl>(std::type_identity<Decl>)
         {
             auto headers = std::vector<std::string>(Decl::headers.begin(), Decl::headers.end());
-            if constexpr (!std::is_void_v<typename S::key_type>)
-                urd::test::element_headers_of<typename S::key_type>(headers);
-            if constexpr (!std::is_void_v<typename S::value_type>)
-                urd::test::element_headers_of<typename S::value_type>(headers);
+            [&headers]<typename... Types>(urd::detail::type_list<Types...> /*types*/)
+            { (urd::test::element_headers_of<Types>(headers), ...); }(typename urd::detail::argument_types<typename S::arguments>::type {});
             auto uninvited = std::vector<std::string>();
             for (const auto each : urd::test::costly)
                 if (!S::urd_properties.has(each) && Decl::provides.has(each))
@@ -84,7 +82,8 @@ urd::test::request_group urd::test::requests_of<this_group>()
                                     servers<S>(),
                                     position,
                                     sizes_of<S>(),
-                                    trivially<typename S::key_type> && trivially<typename S::value_type> });
+                                    []<typename... Types>(urd::detail::type_list<Types...> /*types*/)
+                                    { return (trivially<Types> && ...); }(typename urd::detail::argument_types<typename S::arguments>::type {}) });
             ++position;
         });
     return result;

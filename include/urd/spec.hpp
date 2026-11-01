@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
@@ -21,85 +21,16 @@ namespace urd
 // What a Store can be asked for: element types and the property tags of tags.hpp (workloads such as small
 // among them). Each is a type, so they can be listed together, in any order.
 
-/// The elements are identified by keys of type K. Without value<V>, the keys are the contents: a set.
-template<typename K>
-struct key
-{
-    using type = K;
-};
-
-/// Each element carries a value of type V. Without key<K>, values are identified by position: a sequence.
-template<typename V>
-struct value
-{
-    using type = V;
-};
-
-/// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
-/// pointer (&Job::deadline) or a stateless lambda ([](const Job& job) { return std::tuple(job.deadline, -job.weight); }). Ties fall back
-/// to the element's own order where it has one.
-template<auto P>
-struct order_by
-{
-    static constexpr auto projection = P;
-};
-
-/// How long each row of a fixed_shape Store is, in order: what such a Store is built from.
-struct row_lengths
-{
-    std::vector<std::size_t> lengths;
-
-    row_lengths(std::initializer_list<std::size_t> each) : lengths(each) {}
-    explicit row_lengths(std::vector<std::size_t> each) : lengths(std::move(each)) {}
-};
-
 namespace detail
 {
 
+/// Whether P is a type argument: a template instance naming the slot it fills (key<K>, value<V>, order_by<P>;
+/// urd/kinds.hpp).
 template<typename P>
-inline constexpr bool is_order_by = false;
-template<auto P>
-inline constexpr bool is_order_by<order_by<P>> = true;
-
-/// The comparator order_by<P> stands for: with one argument, P orders elements T (a map's keys); with two, a map's
-/// entries by key K and value V.
-template<typename T, auto P>
-consteval auto projected_order()
-{
-    static_assert(std::invocable<decltype(P), const T&>, "urd::Store: order_by<P> takes P(element) (a map's P(key)), or for a map P(key, value); P is neither");
-    return std::type_identity<ProjectedLess<T, P>> {};
-}
-template<typename T, typename K, typename V, auto P>
-consteval auto order_from()
-{
-    if constexpr (!std::is_void_v<K> && !std::is_void_v<V>)
-    {
-        if constexpr (std::invocable<decltype(P), const K&, const V&>)
-            return std::type_identity<EntryLess<K, V, P>> {};
-        else
-            return projected_order<T, P>();
-    }
-    else
-        return projected_order<T, P>();
-}
-/// The comparator of the first order_by<P> among Ps, else void.
-template<typename T, typename K, typename V, typename... Ps>
-struct order_of
-{
-    using type = void;
-};
-template<typename T, typename K, typename V, auto P, typename... Ps>
-struct order_of<T, K, V, order_by<P>, Ps...>
-{
-    using type = typename decltype(order_from<T, K, V, P>())::type;
-};
-template<typename T, typename K, typename V, typename P, typename... Ps>
-struct order_of<T, K, V, P, Ps...> : order_of<T, K, V, Ps...>
-{
-};
+concept a_type_argument = requires { typename P::slot; };
 
 template<typename P>
-inline constexpr bool is_property = a_tag<P> || is_a<key, P> || is_a<value, P> || is_order_by<P>;
+inline constexpr bool is_property = a_tag<P> || a_type_argument<P>;
 
 /// P's number, where P is a tag; tag {} for key<K> and value<V>.
 template<typename P>
@@ -113,39 +44,28 @@ consteval tag tag_of()
 
 }  // namespace detail
 
-/// A Store's request in canonical form: its key and value types (void where absent), and its answers, one per category
-/// that says more than none, each in its category's enum, in the order of its kind's request format. Whatever
-/// order the properties were listed in, equal requests give equal specs, and so equal Store types; compilers print the
-/// answers by name (urd::order::sorted).
-template<typename K, typename V, typename Order, auto... Answers>
-struct spec
+/// A Store's request in canonical form: its kind (urd/kinds.hpp), its type arguments (key<K>, value<V>, as given), and
+/// its answers, one per category that says more than none, each in its category's enum, in the order of its kind's
+/// request format. Whatever order the properties were listed in, equal requests give equal specs, and so equal Store
+/// types; compilers print the kind and the answers by name (urd::order::sorted). Its types are its kind's data, built
+/// from its type arguments: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
+template<typename Kind, typename Arguments, auto... Answers>
+struct spec : Kind::template data<Arguments>
 {
-    using key_type = K;
-    using value_type = V;
-    /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
-    using order_type = Order;
-
+    /// What the Store is: the kind its tags and type arguments reach (urd/kinds.hpp).
+    using kind = Kind;
+    /// Its type arguments, as the request gives them (key<K>, value<V>).
+    using arguments = Arguments;
     /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
 
-    /// What the Store is (urd/kinds.hpp): the kind that claims its key and value types and the tags it states.
-    using kind = urd::kind_of<urd_properties, !std::is_void_v<K>, !std::is_void_v<V>>;
-    /// What its container must guarantee: the promise, but for what the Store keeps itself (asked_of_container).
-    static constexpr detail::property_set required = urd::asked_of_container(urd_properties);
-    /// What it promises its container (promised_to_container): what a container may rely on.
-    static constexpr detail::property_set promised = urd::promised_to_container(urd_properties);
-    /// Whether its elements can be visited in turn: as its kind says (a queue is reached by its front or top).
-    static constexpr bool iterable = kind::iterable;
-
-    /// What a key maps to, where its kind maps keys to values; else void.
-    using mapped_type = typename kind::template mapped_type<K, V>;
-    /// What a Store's elements are, by its kind: keys in a set, values in a sequence, key-value pairs in a map.
-    using element_type = typename kind::template element_type<K, V>;
-    /// What it holds per element, which may be a Store (a row): a key's mapped value where it maps keys, else the element.
-    using held_type = std::conditional_t<std::is_void_v<mapped_type>, element_type, mapped_type>;
-    /// What lookups take: a key where it maps keys, else an element.
-    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, element_type, K>;
+    /// What its container must guarantee: the promise, but for what the Store keeps itself (its kind's asks).
+    static constexpr detail::property_set required = Kind::asks(urd_properties);
+    /// What it promises its container (its kind's promises): what a container may rely on.
+    static constexpr detail::property_set promised = Kind::promises(urd_properties);
+    /// Whether its elements form a range urd reads: its kind lists the iteration facet (a queue only visits them).
+    static constexpr bool iterable = detail::listed_facet<detail::facet::iteration, detail::facets_of<Kind>>;
 };
 
 namespace detail
@@ -189,12 +109,63 @@ struct spec_answers
 {
     using type = S;
 };
-template<typename K, typename V, typename Order, auto... As, category_enum E, category_enum... Es, property_set Meant>
-struct spec_answers<spec<K, V, Order, As...>, request_format<E, Es...>, Meant> :
-    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<K, V, Order, As...>, spec<K, V, Order, As..., Meant.template get<E>()>>,
+template<typename Kind, typename Arguments, auto... As, category_enum E, category_enum... Es, property_set Meant>
+struct spec_answers<spec<Kind, Arguments, As...>, request_format<E, Es...>, Meant> :
+    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Arguments, As...>, spec<Kind, Arguments, As..., Meant.template get<E>()>>,
                  request_format<Es...>,
                  Meant>
 {
+};
+
+/// The slot a type argument fills, else void.
+template<typename P>
+struct slot_of
+{
+    using type = void;
+};
+template<a_type_argument P>
+struct slot_of<P>
+{
+    using type = typename P::slot;
+};
+
+/// The slots Ps fill, as listed; and whether each is filled once.
+template<typename... Ps>
+consteval slot_set slots_filled()
+{
+    auto result = slot_set {};
+    const auto fill = [&result]<typename P>(std::type_identity<P> /*argument*/)
+    {
+        if constexpr (a_type_argument<P>)
+            result.push(slot_v<typename P::slot>);
+    };
+    (fill(std::type_identity<Ps> {}), ...);
+    return result;
+}
+consteval bool each_once(const slot_set& filled)
+{
+    auto seen = slot_set {};
+    for (const auto* each : filled)
+    {
+        if (seen.has(each))
+            return false;
+        seen.push(each);
+    }
+    return true;
+}
+
+/// The type arguments among Ps, in the order of the slots a kind takes: equal requests give equal specs.
+template<typename Slot, typename... Ps>
+struct filling
+{
+    using type = typename join<std::conditional_t<std::is_same_v<typename slot_of<Ps>::type, Slot>, type_list<Ps>, type_list<>>...>::type;
+};
+template<typename Taken, typename... Ps>
+struct arguments_in;
+template<typename... Slots, typename... Ps>
+struct arguments_in<slot_list<Slots...>, Ps...>
+{
+    using type = typename join<typename filling<Slots, Ps...>::type...>::type;
 };
 
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
@@ -204,38 +175,34 @@ struct to_spec
     static_assert((is_property<Ps> && ...),
                   "urd::Store: every argument must be an urd property (key<K>, value<V>, sorted, unique, …, or a "
                   "workload such as small)");
-    static_assert((0 + ... + static_cast<int>(is_a<key, Ps>)) <= 1, "urd::Store: at most one key<K>");
-    static_assert((0 + ... + static_cast<int>(is_a<value, Ps>)) <= 1, "urd::Store: at most one value<V>");
+    static constexpr slot_set filled = slots_filled<Ps...>();
+    static_assert(each_once(filled), "urd::Store: two type arguments fill the same slot (at most one key<K>, one value<V>, one order_by<P>)");
     static_assert(one_per_category({ tag_of<Ps>()... }),
                   "urd::Store: two properties answer the same question (dense and sparse, frozen and monotone, two "
                   "workloads, …)");
 
-    using key_type = typename first_of<key, Ps...>::type;
-    using value_type = typename first_of<value, Ps...>::type;
-    static_assert(!std::is_void_v<key_type> || !std::is_void_v<value_type>, "urd::Store: needs key<K> (a set or map) or value<V> (a sequence)");
+    static_assert(filled.count > 0, "urd::Store: needs a type argument: key<K> (a set or map) or value<V> (a sequence)");
 
     static constexpr property_set stated = stated_of({ tag_of<Ps>()... });
-    static constexpr bool keyed = !std::is_void_v<key_type>;
-    static constexpr bool valued = !std::is_void_v<value_type>;
-    using kind = urd::kind_of<stated, keyed, valued>;
+    using kind = urd::kind_of<request_facts { .stated = stated, .slots = filled }>;
+    static_assert(takes_all(typename kind::takes {}, filled),
+                  "urd::Store: a type argument means nothing for this kind of Store: each kind takes the type arguments "
+                  "of its slots (urd/kinds.hpp, takes): a partition no value<V>, a pool or slots no key<K>");
+    /// Its type arguments, in the order of the slots its kind takes.
+    using arguments = typename arguments_in<typename kind::takes, Ps...>::type;
+    using data = typename kind::template data<arguments>;
 
-    /// What order_by orders: keys, or a sequence's or queue's values.
-    using ordered_type = std::conditional_t<keyed, key_type, value_type>;
-    static constexpr bool ordered_by = (is_order_by<Ps> || ...);
-    static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
-    using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
-
-    static_assert(in_format(typename kind::format {}, stated),
+    using format = format_of<kind>;
+    static_assert(in_format(format {}, stated),
                   "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
                   "request format (urd/kinds.hpp, format)");
-    static_assert(well_formed<kind>(stated, keyed, valued, ordered_by, orderable<ordered_type>),
-                  "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): a "
-                  "partition with value<V>, handles with key<K>, monotone_priority without by_priority, order_by<P> "
-                  "where its kind takes none (a set without sorted), or order_by<P> on unique keys that are not "
-                  "orderable");
+    static_assert(well_formed<kind>(request_facts { .stated = stated, .slots = filled, .orderable = orderable<typename data::ordered_type> }),
+                  "urd::Store: the request contradicts itself, by its kind's rules (urd/kinds.hpp, well_formed): "
+                  "monotone_priority without by_priority, order_by<P> where its kind takes none (a set without sorted), "
+                  "or order_by<P> on unique keys that are not orderable");
 
     static constexpr property_set meant = meaning<kind>(stated);
-    using type = typename spec_answers<spec<key_type, value_type, order_type>, typename kind::format, meant>::type;
+    using type = typename spec_answers<spec<kind, arguments>, format, meant>::type;
 };
 
 }  // namespace detail

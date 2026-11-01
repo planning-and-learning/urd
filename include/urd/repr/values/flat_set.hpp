@@ -3,6 +3,7 @@
 // Boost's flat set and multiset (a sorted vector), defined. Include it where a Store resolves to one.
 
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/order.hpp"
 #include "urd/repr/values/flat_set_fwd.hpp"
 #include "urd/traits.hpp"
 

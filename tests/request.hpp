@@ -1,11 +1,12 @@
 #pragma once
 
-// Requests as types, for tools that walk many of them (a table of what each resolves to, a benchmark per container,
-// a search over the vocabulary): a request is the parameter pack a Store is written with, its spec what it resolves
+// Requests as types, for the tests and benchmarks that walk many of them (a table of what each resolves to, a benchmark
+// per container): a request is the parameter pack a Store is written with, its spec what it resolves
 // from, and lists of requests join and are walked without instantiating a Store. Which headers a Store needs is read
 // from declarations alone (urd::defined_in, urd::parts), so walking requests completes nothing.
 
-#include "urd/container_synopsis.hpp"
+#include "urd/format.hpp"
+#include "urd/registry/declaration.hpp"
 #include "urd/store.hpp"
 #include "urd/traits.hpp"
 
@@ -51,10 +52,8 @@ void element_headers_of_store(std::type_identity<detail::Store<R, S>> /*store*/,
     for (const auto header : detail::choose<S>::headers)
         if (!header.empty() && std::ranges::find(into, header) == into.end())
             into.emplace_back(header);
-    if constexpr (!std::is_void_v<typename S::key_type>)
-        element_headers_of<typename S::key_type>(into);
-    if constexpr (!std::is_void_v<typename S::value_type>)
-        element_headers_of<typename S::value_type>(into);
+    [&into]<typename... Types>(type_list<Types...> /*types*/)
+    { (element_headers_of<Types>(into), ...); }(typename argument_types<typename S::arguments>::type {});
 }
 
 }  // namespace detail
@@ -67,5 +66,32 @@ void element_headers_of(std::vector<std::string>& into)
     if constexpr (is_store<T>)
         detail::element_headers_of_store(std::type_identity<T> {}, into);  // qualified: lookup by argument would complete the Store
 }
+
+namespace detail
+{
+
+template<typename P>
+std::string spelling_of_stated()
+{
+    if constexpr (a_tag<P>)
+        return std::string(tag_name(P::value));
+    else
+        return spelling_of_argument<P>();
+}
+
+template<typename List>
+struct stated_spelling;
+template<typename... Ps>
+struct stated_spelling<type_list<Ps...>>
+{
+    static std::string spelled() { return fmt::format("Store<{}>", fmt::join(std::array<std::string, sizeof...(Ps)> { spelling_of_stated<Ps>()... }, ", ")); }
+};
+
+}  // namespace detail
+
+/// Request Q (urd::request) as it is written: Store<key<int>, sorted>, its parameters in the order stated.
+template<typename Q>
+std::string spelling_of_request()
+{ return detail::stated_spelling<typename Q::stated>::spelled(); }
 
 }  // namespace urd

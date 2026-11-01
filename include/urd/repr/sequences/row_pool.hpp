@@ -2,7 +2,7 @@
 
 // Rows that keep their storage for reuse: a vector of row Stores whose erased rows wait to be refilled.
 
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/sequences/rows_fwd.hpp"

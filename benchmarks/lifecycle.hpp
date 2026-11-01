@@ -157,20 +157,19 @@ template<typename R, typename S>
 struct workload
 {
     using Store = urd::detail::Store<R, S>;
-    using K = typename S::key_type;
-    using V = typename S::value_type;
-    using E = std::conditional_t<std::same_as<typename S::kind, urd::set_kind> || std::same_as<typename S::kind, urd::partition_kind>
-                                     || std::same_as<typename S::kind, urd::map_kind>,
-                                 K,
-                                 V>;  // keyed: by key
+    using K = typename urd::detail::type_in<urd::key, typename S::arguments>::type;
+    using V = typename urd::detail::type_in<urd::value, typename S::arguments>::type;
+    using E = typename S::lookup_type;  // what the kind's data finds by: a key, else a value
     /// What a Store is built from: entries for a map, else its elements.
-    using Element = typename element_of<std::same_as<typename S::kind, urd::map_kind>, K, V, E>::type;
+    /// Whether its data maps keys to values: built from entries, added by key and value.
+    static constexpr bool maps = requires { typename S::mapped_type; };
+    using Element = typename element_of<maps, K, V, E>::type;
 
     static void add(Store& store, std::size_t at)
     {
-        if constexpr (std::same_as<typename S::kind, urd::map_kind>)
+        if constexpr (maps)
             store.emplace(make<K>(at), make<V>(at));
-        else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
+        else if constexpr (urd::detail::listed_facet<urd::detail::facet::queue_access, urd::detail::facets_of<typename S::kind>>)
             store.push(make<V>(at));
         else if constexpr (requires { store.push_back(make<E>(at)); })
             store.push_back(make<E>(at));
@@ -208,7 +207,7 @@ struct workload
         {
             auto elements = std::vector<Element>();
             for (const auto at : order)
-                if constexpr (std::same_as<typename S::kind, urd::map_kind>)
+                if constexpr (maps)
                     elements.emplace_back(make<K>(at), make<V>(at));
                 else
                     elements.push_back(make<E>(at));
@@ -301,7 +300,7 @@ struct workload
                 }
                 into.stop(op::top, probes);
             }
-        if constexpr (!urd::kind_below<typename S::kind, urd::queue_kind>)
+        if constexpr (!urd::detail::listed_facet<urd::detail::facet::queue_access, urd::detail::facets_of<typename S::kind>>)
             if (has(op::erase))
             {
                 const std::size_t erased = std::min<std::size_t>(size / 2, probes);
@@ -422,24 +421,24 @@ void register_experiment(std::size_t ordinal)
     for (const auto size : urd::test::sizes_of<S>())
     {
         const auto at = urd::test::cell { id + "/" + std::to_string(size), urd::test::offered<R, S>(), size };
-        benchmark::RegisterBenchmark(
-            at.id,
-            [at](benchmark::State& state)
-            {
-                auto into = timing {};
-                const std::size_t rounds = std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
-                for (auto _ : state)
-                    for (std::size_t round = 0; round < rounds; ++round)
-                    {
-                        if constexpr ((std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>) )
-                            row_workload<R, S>::lifecycle(at, into);
-                        else
-                            workload<R, S>::lifecycle(at, into);
-                    }
-                for (std::size_t what = 0; what < into.operations.size(); ++what)
-                    if (into.operations[what] > 0)
-                        state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
-            })
+        benchmark::RegisterBenchmark(at.id,
+                                     [at](benchmark::State& state)
+                                     {
+                                         auto into = timing {};
+                                         const std::size_t rounds =
+                                             std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);
+                                         for (auto _ : state)
+                                             for (std::size_t round = 0; round < rounds; ++round)
+                                             {
+                                                 if constexpr (urd::test::by_handle<S>)
+                                                     row_workload<R, S>::lifecycle(at, into);
+                                                 else
+                                                     workload<R, S>::lifecycle(at, into);
+                                             }
+                                         for (std::size_t what = 0; what < into.operations.size(); ++what)
+                                             if (into.operations[what] > 0)
+                                                 state.counters[std::string(urd::test::op_names[what])] = into.nanoseconds[what] / into.operations[what];
+                                     })
             ->Iterations(1)
             ->Unit(benchmark::kMillisecond);
     }

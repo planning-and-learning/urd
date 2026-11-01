@@ -1,6 +1,5 @@
 #pragma once
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -19,7 +18,7 @@ struct vector_decl
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/sequence.hpp" };
     using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear });
-    static constexpr role_tags relies_on {};
+    static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -37,7 +36,7 @@ template<typename T, typename A>
 struct declaration_of<std::vector<T, A>>
 {
     using declaration = vector_decl;
-    static constexpr role_tags roles = element_roles<T>();
+    static constexpr property_set roles = element_roles<T>();
 };
 
 }  // namespace urd::detail

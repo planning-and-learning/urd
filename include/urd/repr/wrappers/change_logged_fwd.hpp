@@ -3,7 +3,6 @@
 // A set that records what changed since its log was cleared, declared with what the registry reads of it. Defined in
 // urd/repr/wrappers/change_logged.hpp (its log is two indexed sets); the set it logs in its own header.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -46,12 +45,7 @@ struct change_logged_decl
     static constexpr property_set provides =
         Part::provides.has(keys::dense) ? with(Part::provides, { tracking::change_log, clearing::none }) : with(Part::provides, { tracking::change_log });
     /// The part's, and its own order: the wrapper's type is written for urd::Less.
-    static constexpr role_tags relies_on = []
-    {
-        auto result = Part::relies_on;
-        result.at(role_v<role::order>).traits.put(trait_v<trait::own_order>);
-        return result;
-    }();
+    static constexpr property_set relies_on = with(Part::relies_on, { trait_tag<trait::own_order>.about(role_v<role::order>) });
     static constexpr auto gives_elements = Part::gives_elements;
     struct operation_costs : Part::operation_costs
     {

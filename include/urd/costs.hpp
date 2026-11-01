@@ -226,7 +226,7 @@ constexpr std::optional<cost> cost_of()
 /// The costs of the operations of representation R, each a `static constexpr cost` member named for the operation
 /// (insert, lookup, ordered_lookup, erase, clear, iterate, access, push, pop, top, merge, insert_row, find_row,
 /// scope; an operation R lacks has none), and its memory: `words`, machine words per element (the element counting 1;
-/// per key or slot for dense keys). What that memory holds is in words in its synopsis (urd/container_synopsis.hpp). Declared
+/// per key or slot for dense keys). What that memory holds is in words in its synopsis (urd/registry/derived.hpp, container_synopsis). Declared
 /// for every registered representation, derived from its declaration (urd/registry/derived.hpp); none here. A wrapper's derive
 /// from its part's and declare what they change, naming the part's declaration as `part`.
 template<typename R>

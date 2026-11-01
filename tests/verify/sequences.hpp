@@ -3,7 +3,7 @@
 // urd::verify for sets and sequences: random operations checked against a model of the contents (Model).
 
 #include "common.hpp"
-#include "urd/semantics/less.hpp"
+#include "urd/elements/less.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>

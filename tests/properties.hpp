@@ -163,7 +163,7 @@ TYPED_TEST_P(Properties, Sorted)
         if constexpr (growable<TypeParam>)
             for (const int element : descending(300))
                 add(range, element);
-        if constexpr (urd::orders_by_value<TypeParam>)
+        if constexpr (urd::detail::entry_ordered<TypeParam>)
             // In the order the request gave, which reads the values; there are no bounds by key.
             EXPECT_TRUE(std::ranges::is_sorted(range, urd::detail::value_order_t<TypeParam> {}));
         else

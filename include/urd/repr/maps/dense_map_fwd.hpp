@@ -5,9 +5,8 @@
 // names them for any element type, so they are unconstrained templates; their container_traits declare properties
 // only for indexable keys.
 
-#include "urd/container_synopsis.hpp"
 #include "urd/costs.hpp"
-#include "urd/elements.hpp"
+#include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -38,7 +37,7 @@ struct dense_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::none });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -57,7 +56,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false>>
 {
     using declaration = dense_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -72,7 +71,7 @@ struct stable_dense_map_decl
     static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::stable_refs });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -91,7 +90,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false, false, true>>
 {
     using declaration = stable_dense_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -107,7 +106,7 @@ struct generation_map_decl
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -126,7 +125,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true>>
 {
     using declaration = generation_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -142,7 +141,7 @@ struct stable_generation_map_decl
     using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -161,7 +160,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, false, true>>
 {
     using declaration = stable_generation_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail
@@ -177,7 +176,7 @@ struct thread_safe_generation_map_decl
     using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
-    static constexpr role_tags relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
+    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     struct operation_costs
     {
@@ -196,7 +195,7 @@ template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, true>>
 {
     using declaration = thread_safe_generation_map_decl;
-    static constexpr role_tags roles = map_roles<K, V>();
+    static constexpr property_set roles = map_roles<K, V>();
 };
 
 }  // namespace detail

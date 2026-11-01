@@ -3,7 +3,7 @@
 // Choosing a container as constant evaluation: the entries of the request's kind's table (urd/registry/table.hpp)
 // whose tags match the request's, the first of them chosen. Matching reads only tags: the container provides what the
 // request requires (satisfies), the request's roles promise what the container relies on and demands (promises), and
-// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/kinds.hpp, preferences), they come
+// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/kinds.hpp, prefers), they come
 // after the others.
 
 #include "urd/registry/table.hpp"
@@ -19,7 +19,7 @@ namespace urd::detail
 struct request_shape
 {
     property_set required;
-    role_tags roles;
+    property_set roles;  ///< its facts: what it states, and what its data is, by role
     property_set held = property_set::roots();
     property_set held_required = property_set::roots();
 };
@@ -28,16 +28,16 @@ struct request_shape
 /// demands, and Stores held as elements get what they require.
 constexpr bool serves(const registry_entry& e, const request_shape& s)
 {
-    if (!satisfies(e.provides, s.required) || !promises(s.roles, e.relies_on) || !promises(s.roles.stated, demands_of(e.provides)))
+    if (!satisfies(e.provides, s.required) || !promises(s.roles, e.relies_on) || !promises(s.roles, demands_of(e.provides)))
         return false;
     return satisfies(with(s.held, e.gives_elements), s.held_required);
 }
 
-/// Whether entry `e` comes after the others serving request `s`, by the preferences (urd/kinds.hpp).
-constexpr bool comes_later(const registry_entry& e, const request_shape& s)
+/// Whether entry `e` comes after the others serving request `s`, by its kind's preferences (urd/kinds.hpp, prefers).
+constexpr bool comes_later(const registry_entry& e, const request_shape& s, std::span<const preference> prefers)
 {
-    for (const auto& each : preferences)
-        if (s.roles.stated.has(each.when) && e.provides.has(each.later))
+    for (const auto& each : prefers)
+        if (s.roles.has(each.when) && e.provides.has(each.later))
             return true;
     return false;
 }
@@ -61,7 +61,7 @@ constexpr serving_entries<Kind> all_serving(const request_shape& s)
     {
         if (!serves(table_of<Kind>[each], s))
             continue;
-        if (comes_later(table_of<Kind>[each], s))
+        if (comes_later(table_of<Kind>[each], s, Kind::prefers))
             later.at[later.count++] = each;
         else
             result.at[result.count++] = each;
@@ -81,7 +81,7 @@ constexpr std::size_t first_serving(const request_shape& s)
     {
         if (!serves(table_of<Kind>[each], s))
             continue;
-        if (!comes_later(table_of<Kind>[each], s))
+        if (!comes_later(table_of<Kind>[each], s, Kind::prefers))
             return each;
         if (later == no_entry)
             later = each;
