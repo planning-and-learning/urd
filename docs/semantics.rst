@@ -112,10 +112,10 @@ Indices and views
 
    .. cpp:function:: template<auto Member> decltype(auto) get() const
 
-      A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes a
-      ``view<U, C>`` where the context resolves ``U``, pointing at the layer that owns the element, else stays an
-      index; a range of indices a range of views; characters a ``std::string_view``; another contiguous range a
-      ``std::span``; a variant the variant of its alternatives resolved.
+      A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes the
+      ``view<U, C>`` the context makes, pointing at the layer that owns the element; a range of indices a range of
+      views; a variant the variant of its alternatives resolved; an optional the optional of its value resolved;
+      anything else stays as it is.
 
    .. cpp:function:: auto identifying_members() const noexcept
 
@@ -131,7 +131,13 @@ Indices and views
 
 .. cpp:function:: template<typename M, typename C> decltype(auto) resolve(const M& member, const C& context)
 
-   A record's member as a view sees it; see :cpp:func:`view::get`.
+   A record's member as a view sees it: ``resolution<M>::of(member, context)``; see :cpp:func:`view::get`.
+
+.. cpp:struct:: template<typename M> resolution
+
+   How a member of type ``M`` resolves: as it is, unless specialized. Given for ``index<U>`` (the context's view),
+   ranges of indices (a range of views), ``std::variant`` and ``std::optional`` (their contents resolved), and in
+   ``urd/elements/flat.hpp`` for cista's variant and optional. A new member type resolves by specializing it.
 
 .. cpp:struct:: template<typename T> context_of
 

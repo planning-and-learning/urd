@@ -4,9 +4,8 @@
 #include "urd/elements/index.hpp"
 
 #include <cstddef>
+#include <optional>
 #include <ranges>
-#include <span>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -33,70 +32,69 @@ struct view_mixin
 {
 };
 
-/// How a view resolves a variant: `resolved<C>` is the variant of the alternatives resolved through C, and `visit`
-/// applies a function to the alternative held. Given for std::variant here, for a flat variant in urd/elements/flat.hpp.
-template<typename V>
-struct variant_traits;
-
-namespace detail
+/// How a view resolves a member of type M through its context (urd::resolve): `resolution<M>::of(member, context)`.
+/// As it is, unless a specialization for M says otherwise: given below for indices, ranges of indices, std::variant
+/// and std::optional, and in urd/elements/flat.hpp for cista's variant and optional.
+template<typename M>
+struct resolution
 {
+    template<typename C>
+    static const M& of(const M& member, const C& /*context*/) noexcept
+    { return member; }
+};
 
-template<typename T>
-concept a_variant = requires { typename variant_traits<T>::template resolved<int>; };
-
-}  // namespace detail
-
+/// A record's member, as a view sees it: what its resolution makes of it.
 template<typename M, typename C>
-[[nodiscard]] decltype(auto) resolve(const M& member, const C& context);
+[[nodiscard]] decltype(auto) resolve(const M& member, const C& context)
+{ return resolution<M>::of(member, context); }
 
 /// The type resolve(member, context) gives for a member of type M.
 template<typename M, typename C>
 using resolved_t = std::remove_cvref_t<decltype(urd::resolve(std::declval<const M&>(), std::declval<const C&>()))>;
 
-template<typename... Ts>
-struct variant_traits<std::variant<Ts...>>
+/// An index as the view its context makes (pointing at the layer that owns the element, where the context is a
+/// layer): a record's context must resolve every index type the record holds.
+template<typename U>
+struct resolution<index<U>>
 {
     template<typename C>
-    using resolved = std::variant<resolved_t<Ts, C>...>;
-    template<typename F>
-    static decltype(auto) visit(F&& function, const std::variant<Ts...>& held)
-    { return std::visit(std::forward<F>(function), held); }
+    static auto of(index<U> at, const C& context)
+    { return context.view(at); }
 };
 
-/// A record's member, as a view sees it: an index<U> as a view<U, C> where the context resolves U (pointing at the
-/// layer that owns the element, where the context is a layer), else the index;
-/// a range of such indices as a range of views; characters as a string_view; another contiguous range as a span; a
-/// variant as the variant of its alternatives resolved; anything else as it is.
-template<typename M, typename C>
-[[nodiscard]] decltype(auto) resolve(const M& member, const C& context)
+/// A variant as the variant of its alternatives resolved.
+template<typename... Ts>
+struct resolution<std::variant<Ts...>>
 {
-    if constexpr (is_index<M>)
+    template<typename C>
+    static auto of(const std::variant<Ts...>& member, const C& context)
     {
-        if constexpr (resolves<C, typename M::element_type>)
-            return context.view(member);
-        else
-            return member;
+        using resolved = std::variant<resolved_t<Ts, C>...>;
+        return std::visit([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); }, member);
     }
-    else if constexpr (detail::a_variant<M>)
+};
+
+/// An optional as the optional of its value resolved.
+template<typename T>
+struct resolution<std::optional<T>>
+{
+    template<typename C>
+    static auto of(const std::optional<T>& member, const C& context)
     {
-        using resolved = typename variant_traits<M>::template resolved<C>;
-        return variant_traits<M>::visit([&context](const auto& alternative) -> resolved { return resolved(urd::resolve(alternative, context)); }, member);
+        using resolved = std::optional<resolved_t<T, C>>;
+        return member ? resolved(urd::resolve(*member, context)) : resolved();
     }
-    else if constexpr (std::ranges::input_range<M>)
-    {
-        using element = std::ranges::range_value_t<M>;
-        if constexpr (std::ranges::contiguous_range<M> && std::same_as<element, char>)
-            return std::string_view(std::ranges::data(member), std::ranges::size(member));
-        else if constexpr (is_index<element> && resolves<C, typename element::element_type>)
-            return std::views::transform(member, [&context](element at) { return context.view(at); });
-        else if constexpr (std::ranges::contiguous_range<M>)
-            return std::span<const element>(std::ranges::data(member), std::ranges::size(member));
-        else
-            return (member);
-    }
-    else
-        return (member);
-}
+};
+
+/// A range of indices as a range of views.
+template<std::ranges::input_range M>
+    requires is_index<std::ranges::range_value_t<M>>
+struct resolution<M>
+{
+    template<typename C>
+    static auto of(const M& member, const C& context)
+    { return std::views::transform(member, [&context](auto at) { return context.view(at); }); }
+};
 
 /// A reference to an element held by index: the index and the context that resolves it, nothing else. It reads the
 /// record through the context, resolves the record's members through the same context (get<&T::m>()), and compares

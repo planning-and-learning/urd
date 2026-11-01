@@ -125,14 +125,11 @@ static_assert(urd::resolves<Owners, Owner> && !urd::resolves<Owners, Rec> && urd
 static_assert(!urd::resolves<Store<key<Owner>>, Owner>);
 
 // What the members resolve to, in each context.
-static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Recs>, urd::index<Owner>>);
 static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Both>, view<Owner, Both>>);
-static_assert(std::same_as<urd::resolved_t<std::string, Both>, std::string_view>);
-static_assert(std::same_as<urd::resolved_t<std::vector<urd::index<Owner>>, Recs>, std::span<const urd::index<Owner>>>);
+static_assert(std::same_as<urd::resolved_t<std::string, Both>, std::string>);  // text as it is
 static_assert(std::ranges::random_access_range<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>
               && std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>, view<Owner, Both>>);
 static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Both>, std::variant<view<Owner, Both>, int>>);
-static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Recs>, std::variant<urd::index<Owner>, int>>);
 
 // Views are hashable and comparable, by index and layer number.
 static_assert(urd::hashable<view<Rec, Both>> && urd::hashable<view<Owner, Owners>> && urd::orderable<view<Rec, Both>>);
@@ -182,12 +179,6 @@ Both make_both(urd::layer number = urd::layer { 0 })
 TEST(View, ResolvesMembersThroughItsContext)
 {
     const auto both = make_both();
-    const auto first = both.recs.view(urd::index<Rec>(0));  // the Store alone resolves only Rec
-    EXPECT_EQ(first.get<&Rec::name>(), "first");
-    EXPECT_EQ(first.get<&Rec::owner>(), urd::index<Owner>(1));
-    EXPECT_EQ(first.get<&Rec::parts>().size(), 2U);
-    EXPECT_EQ(std::get<urd::index<Owner>>(first.get<&Rec::alternative>()), urd::index<Owner>(0));
-
     const auto whole = view<Rec>(urd::index<Rec>(0), both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
     EXPECT_EQ(whole.get<&Rec::owner>().get<&Owner::name>(), "b");
