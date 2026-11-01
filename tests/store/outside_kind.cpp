@@ -23,7 +23,7 @@ enum class tallying : std::uint8_t
     none,
     tallied,
 };
-struct any_tallying
+struct any_tallying : urd::tag_defaults
 {
     using root = any_tallying;
     static constexpr auto value = tallying::none;

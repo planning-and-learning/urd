@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <ranges>
 #include <span>
 #include <string_view>
@@ -31,6 +32,22 @@ namespace detail
 /// The most answers a category has, its none included.
 inline constexpr std::size_t most_answers = 4;
 
+}  // namespace detail
+
+struct tag;
+
+namespace detail
+{
+
+/// The tags a tag type lists (implies, kept_by_store, promises, later), as tags: a view of a static array of them.
+struct tag_list
+{
+    const tag* first = nullptr;
+    const tag* last = nullptr;
+    [[nodiscard]] constexpr const tag* begin() const { return first; }
+    [[nodiscard]] constexpr const tag* end() const { return last; }
+};
+
 /// What the machinery knows of a category, from its tag types (urd/tags.hpp, tags_of): its name (its none's), its
 /// answers' names, which answer is at least which (an answer derived from another), whether it is exact, which answers
 /// are demanded, and whether only a request states it.
@@ -44,26 +61,24 @@ struct category_table
     bool exact = false;
     std::array<bool, most_answers> demanded {};
     bool request_only = false;
+    /// What each answer says of the Store (urd::tag_defaults): what it implies, what the Store keeps itself rather
+    /// than asks of its container, what it promises its container, which containers it puts later, whether it stops
+    /// growing or shrinking, whether it fixes the order the Store is iterated or hashed in.
+    std::array<tag_list, most_answers> implies {};
+    std::array<tag_list, most_answers> kept_by_store {};
+    std::array<tag_list, most_answers> promises {};
+    std::array<tag_list, most_answers> later {};
+    std::array<bool, most_answers> stops_growth {};
+    std::array<bool, most_answers> stops_shrinking {};
+    std::array<bool, most_answers> stops_changes {};
+    std::array<bool, most_answers> needs_an_element {};
+    std::array<bool, most_answers> fixes_iteration_order {};
+    std::array<bool, most_answers> fixes_hash_order {};
 };
-/// What a tag type says of how its category is matched (urd/tags.hpp): each false unless it says so.
-struct tag_flags
-{
-    bool exact = false;
-    bool demanded = false;
-    bool request_only = false;
-};
-template<typename Tag>
-consteval tag_flags flags_of()
-{
-    auto result = tag_flags {};
-    if constexpr (requires { Tag::exact; })
-        result.exact = Tag::exact;
-    if constexpr (requires { Tag::demanded; })
-        result.demanded = Tag::demanded;
-    if constexpr (requires { Tag::request_only; })
-        result.request_only = Tag::request_only;
-    return result;
-}
+/// The tags of a type list of tag types (defined once `tag` is, below).
+template<typename List>
+consteval tag_list tag_list_of();
+
 template<typename Root, typename... Ts>
 consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
 {
@@ -78,13 +93,23 @@ consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
     const auto row = [&]<typename Have>(std::type_identity<Have> /*have*/)
     {
         result.at_least[have] = { std::is_base_of_v<Root, Have>, std::is_base_of_v<Ts, Have>... };
-        result.demanded[have] = flags_of<Have>().demanded;
+        result.demanded[have] = Have::demanded;
+        result.implies[have] = tag_list_of<typename Have::implies>();
+        result.kept_by_store[have] = tag_list_of<typename Have::kept_by_store>();
+        result.promises[have] = tag_list_of<typename Have::promises>();
+        result.later[have] = tag_list_of<typename Have::later>();
+        result.stops_growth[have] = Have::stops_growth;
+        result.stops_shrinking[have] = Have::stops_shrinking;
+        result.stops_changes[have] = Have::stops_changes;
+        result.needs_an_element[have] = Have::needs_an_element;
+        result.fixes_iteration_order[have] = Have::fixes_iteration_order;
+        result.fixes_hash_order[have] = Have::fixes_hash_order;
         ++have;
     };
     row(std::type_identity<Root> {});
     (row(std::type_identity<Ts> {}), ...);
-    result.exact = flags_of<Root>().exact;
-    result.request_only = flags_of<Root>().request_only;
+    result.exact = Root::exact;
+    result.request_only = Root::request_only;
     return result;
 }
 
@@ -133,6 +158,19 @@ struct tag
     [[nodiscard]] constexpr tag about(const role_info* of) const { return { in, answer, of }; }
     friend constexpr bool operator==(tag, tag) = default;
 };
+
+namespace detail
+{
+
+template<typename List>
+inline constexpr std::array<tag, 0> tags_array {};
+template<typename... Tags>
+inline constexpr std::array<tag, sizeof...(Tags)> tags_array<type_list<Tags...>> { tag(Tags::value)... };
+template<typename List>
+consteval tag_list tag_list_of()
+{ return { tags_array<List>.data(), std::to_address(tags_array<List>.end()) }; }
+
+}  // namespace detail
 
 /// The table of category E.
 template<category_enum E>
@@ -206,6 +244,23 @@ struct property_set : fixed_list<tag, most_categories>
     { return static_cast<E>(in(urd::category<E>) .answer); }
     /// Whether the tag held in `of`'s category is at least `of`.
     [[nodiscard]] constexpr bool has(tag of) const { return at_least(of.in, in(of.in, of.role).answer, of.answer); }
+    /// Whether any of its tags about the Store itself says Field (a per-answer flag of detail::category_table:
+    /// stops_growth, fixes_hash_order, …).
+    template<auto Field>
+    [[nodiscard]] constexpr bool any_says() const
+    {
+        return std::ranges::any_of(*this, [](tag each) { return each.role == nullptr && (each.in->*Field)[each.answer]; });
+    }
+    /// Calls f on every tag its tags about the Store itself list in Field (a per-answer list of detail::category_table:
+    /// implies, promises, …).
+    template<auto Field, typename F>
+    constexpr void for_each_listed(F f) const
+    {
+        for (const tag each : *this)
+            if (each.role == nullptr)
+                for (const tag listed : (each.in->*Field)[each.answer])
+                    f(listed);
+    }
     /// Holds `of` in its category (about its role), replacing what was there (none: nothing).
     constexpr property_set& put(tag of)
     {

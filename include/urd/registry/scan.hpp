@@ -33,13 +33,13 @@ constexpr bool serves(const registry_entry& e, const request_shape& s)
     return satisfies(with(s.held, e.gives_elements), s.held_required);
 }
 
-/// Whether entry `e` comes after the others serving request `s`, by its kind's preferences (urd/kinds.hpp, prefers).
-constexpr bool comes_later(const registry_entry& e, const request_shape& s, std::span<const preference> prefers)
+/// Whether entry `e` comes after the others serving request `s`: it holds a tag one of the request's tags puts later
+/// (urd::tag_defaults, later: frozen and small put stable_refs later).
+constexpr bool comes_later(const registry_entry& e, const request_shape& s)
 {
-    for (const auto& each : prefers)
-        if (s.roles.has(each.when) && e.provides.has(each.later))
-            return true;
-    return false;
+    auto result = false;
+    s.roles.for_each_listed<&category_table::later>([&](tag later) { result = result || e.provides.has(later); });
+    return result;
 }
 
 /// No entry: the request is served by none.
@@ -61,7 +61,7 @@ constexpr serving_entries<Kind> all_serving(const request_shape& s)
     {
         if (!serves(table_of<Kind>[each], s))
             continue;
-        if (comes_later(table_of<Kind>[each], s, Kind::prefers))
+        if (comes_later(table_of<Kind>[each], s))
             later.at[later.count++] = each;
         else
             result.at[result.count++] = each;
@@ -81,7 +81,7 @@ constexpr std::size_t first_serving(const request_shape& s)
     {
         if (!serves(table_of<Kind>[each], s))
             continue;
-        if (!comes_later(table_of<Kind>[each], s, Kind::prefers))
+        if (!comes_later(table_of<Kind>[each], s))
             return each;
         if (later == no_entry)
             later = each;

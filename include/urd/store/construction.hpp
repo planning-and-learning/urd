@@ -14,12 +14,12 @@ namespace urd::detail
 template<typename S>
 struct construction
 {
-    /// Whether it may start empty.
-    static constexpr bool default_constructible = !has<S, nonempty>;
-    /// Whether what it holds after construction must be an element at least.
-    static constexpr bool needs_an_element = has<S, nonempty>;
+    /// Whether what it holds after construction must be an element at least (a tag says so: nonempty), and so whether
+    /// it may start empty.
+    static constexpr bool needs_an_element = S::urd_properties.template any_says<&category_table::needs_an_element>();
+    static constexpr bool default_constructible = !needs_an_element;
     /// Whether its contents fix the order its elements come in: hashed by it (sorted, canonical, a sequence).
-    static constexpr bool hashed_in_order = S::iterable && (has<S, sorted> || has<S, canonical> || has<S, positional>);
+    static constexpr bool hashed_in_order = S::iterable && S::urd_properties.template any_says<&category_table::fixes_hash_order>();
     /// Whether it is iterated in an order the request fixes: ordered by it (sorted, insertion_ordered, a sequence).
     static constexpr bool ordered_in_order = store_types<void, S>::ordered;
 };

@@ -23,12 +23,12 @@ namespace urd::detail
 // member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
 // recur (insert in growth, pool, slots and grouping).
 
-/// What a Store's interface lets change, from the tags it states: nothing where frozen or of a fixed shape (grows
-/// false); inserts only where it only grows or must stay nonempty (shrinks false); else inserts, erase and clear.
+/// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
+/// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
 template<typename S>
-inline constexpr bool grows = !has<S, frozen> && !has<S, fixed_shape>;
+inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&category_table::stops_growth>();
 template<typename S>
-inline constexpr bool shrinks = grows<S> && !has<S, monotone> && !has<S, nonempty>;
+inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&category_table::stops_shrinking>();
 
 /// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
 /// which is still incomplete while its facets are built.
@@ -37,9 +37,9 @@ struct store_types
 {
     /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
     /// and it is not frozen.
-    static constexpr bool writable = appends<typename S::kind> && !has<S, frozen>;
+    static constexpr bool writable = appends<typename S::kind> && !S::urd_properties.template any_says<&category_table::stops_changes>();
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || has<S, positional>);
+    static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&category_table::fixes_iteration_order>();
 
     using value_type = typename S::element_type;
     /// What lookups take, as the kind's data says: a map's key, else an element.

@@ -24,13 +24,6 @@ namespace urd
 
 using detail::property_set;
 
-/// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
-struct preference
-{
-    tag when = tag {};
-    tag later = tag {};
-};
-
 namespace detail
 {
 
@@ -168,34 +161,35 @@ struct any_kind
     using format = request_format<>;
     using facets = facet_list<>;
 
-    /// What a request means beyond what it states: once nothing changes (frozen), nothing moves.
+    /// What a request means beyond what it states: what its tags imply (urd::tag_defaults, implies: frozen means
+    /// stable_refs).
     static constexpr property_set meaning(property_set stated)
     {
-        if (stated.has(change::frozen))
-            stated.put(referencing::stable_refs);
-        return stated;
+        auto result = stated;
+        stated.for_each_listed<&category_table::implies>([&result](tag implied) { result.put(implied); });
+        return result;
     }
-    /// What it asks of its container: what it means, but for what the Store keeps itself: once nothing changes
-    /// (frozen), nothing moves, so stable references need nothing of the container.
+    /// What it asks of its container: what it means, but for what the Store keeps itself (kept_by_store: a frozen
+    /// Store's references stay put whatever holds it).
     static constexpr property_set asks(property_set meant)
     {
-        if (meant.has(change::frozen))
-            meant.put(referencing::none);
-        return meant;
+        auto result = meant;
+        meant.for_each_listed<&category_table::kept_by_store>([&result](tag kept) { result.put(tag(kept.in, 0, kept.role)); });
+        return result;
     }
-    /// What it promises its container: what it means, and that a Store which must stay nonempty never erases, so a
-    /// container that only grows serves it.
+    /// What it promises its container: what it means, and what its tags promise where it holds less (promises: a
+    /// Store that stays nonempty never erases, so it only grows).
     static constexpr property_set promises(property_set meant)
     {
-        if (meant.has(emptiness::nonempty) && !meant.has(change::monotone))
-            meant.put(change::monotone);
-        return meant;
+        auto result = meant;
+        meant.for_each_listed<&category_table::promises>(
+            [&result](tag promised)
+            {
+                if (!result.has(promised))
+                    result.put(promised);
+            });
+        return result;
     }
-    /// Which containers come after the others that serve it. Contiguous storage is more compact and faster to search
-    /// and iterate where elements are few or never change, so stable storage (a node per element, segments that never
-    /// move) comes last for them (docs/BENCHMARKS.md).
-    static constexpr std::array prefers { preference { .when = change::frozen, .later = referencing::stable_refs },
-                                          preference { .when = workload::small, .later = referencing::stable_refs } };
     static constexpr bool well_formed(const property_set& /*stated*/) { return true; }
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(order::sorted); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return true; }
