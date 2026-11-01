@@ -20,3 +20,17 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::reverse_iteration>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return store_types<R, S>::ordered; }
+};
+
+}  // namespace urd::detail

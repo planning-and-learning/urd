@@ -1,173 +1,55 @@
 #pragma once
 
 // A grid of requests, each well-formed, over a few element types: what the resolution table (docs/RESOLUTION.md,
-// written and checked by tests/resolution_table.cpp) and the registry audit (tests/registry.cpp) run over. Every
-// representation pin in tests/store.cpp and tests/survey.cpp has its shape here. Nothing instantiates a Store: a request's spec and its resolution read only
-// traits.
+// written and checked by tests/resolution_table.cpp) runs over. Every request the libraries use has its shape here.
+// Nothing instantiates a Store: a request's spec and its resolution read only traits.
 
+#include "elements.hpp"
 #include "names.hpp"
 #include "urd/flat.hpp"
+#include "urd/format.hpp"
+#include "urd/registry/select.hpp"
+#include "urd/request.hpp"
 #include "urd/store.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
-#include <cxxabi.h>
-#include <memory>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <typeinfo>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace urd::test
 {
 
-/// A key identified by one integral member: hashable, orderable and indexable.
-struct Id
-{
-    std::uint32_t id = 0;
-    static constexpr auto identifying_members() noexcept { return urd::Members<&Id::id> {}; }
-};
-
-/// A record with text: serialized into the arena where stored flat.
-struct Text
-{
-    urd::flat_string text;
-    static constexpr auto identifying_members() noexcept { return urd::Members<&Text::text> {}; }
-    static constexpr auto cista_members() noexcept { return urd::Members<&Text::text> {}; }
-};
-
 /// Projections for order_by: by the negated element, and a map's entries by their values.
 inline constexpr auto negated = [](int element) { return -element; };
 inline constexpr auto by_value = [](const int& /*key*/, const int& value) { return value; };
 
-namespace detail
-{
+// Requests as types, and the headers a Store needs, come from the library (urd/request.hpp); a request is written as
+// urd::spelling_of_request says (urd/format.hpp).
+using urd::cat_t;
+using urd::element_headers_of;
+using urd::for_each_request;
+using urd::requests;
 
-inline std::string demangled(const char* mangled)
-{
-    int status = 0;
-    const auto freed = std::unique_ptr<char, void (*)(void*)>(abi::__cxa_demangle(mangled, nullptr, nullptr, &status), std::free);
-    return status == 0 ? std::string(freed.get()) : std::string(mangled);
-}
-
-}  // namespace detail
-
-template<typename T>
-std::string type_name();
-
-/// A spec as a request: its key and value types, then its tags, in the order of urd::tag.
-template<typename S>
-std::string describe_spec()
-{
-    auto result = std::string("Store<");
-    auto separator = std::string_view();
-    const auto add = [&](const std::string& part)
-    {
-        result += separator;
-        result += part;
-        separator = ", ";
-    };
-    if constexpr (!std::is_void_v<typename S::key_type>)
-        add("key<" + type_name<typename S::key_type>() + ">");
-    if constexpr (!std::is_void_v<typename S::value_type>)
-        add("value<" + type_name<typename S::value_type>() + ">");
-    for (std::size_t each = 0; each < urd::detail::tag_count; ++each)
-    {
-        const auto root = static_cast<urd::tag>(each);
-        if (urd::detail::root_of(root) == root && S::urd_properties.in(root) != root)
-            add(std::string(tag_name(S::urd_properties.in(root))));
-    }
-    if constexpr (!std::is_void_v<typename S::order_type>)
-        add("order_by<P>");
-    return result + ">";
-}
-
-template<typename T>
-std::string type_name()
-{
-    if constexpr (std::is_same_v<T, int>)
-        return "int";
-    else if constexpr (std::is_same_v<T, unsigned>)
-        return "unsigned";
-    else if constexpr (std::is_same_v<T, std::size_t>)
-        return "std::size_t";
-    else if constexpr (std::is_same_v<T, double>)
-        return "double";
-    else if constexpr (std::is_same_v<T, std::string>)
-        return "std::string";
-    else if constexpr (std::is_same_v<T, Id>)
-        return "Id";
-    else if constexpr (urd::is_index<T>)
-        return "index<" + type_name<typename T::element_type>() + ">";
-    else if constexpr (std::is_same_v<T, Text>)
-        return "Text";
-    else if constexpr (urd::is_store<T>)
-        return describe_spec<urd::traits_t<T>>();
-    else
-        return detail::demangled(typeid(T).name());
-}
-template<typename T>
-std::string type_name(std::type_identity<std::vector<T>>)
-{ return "std::vector<" + type_name<T>() + ">"; }
-
-/// One request: its spec, and how to print it as written.
+/// One request of the grid: urd::request, with how it is written.
 template<typename... Ps>
-struct request
+struct request : urd::request<Ps...>
 {
-    using spec = typename urd::detail::to_spec<Ps...>::type;
-
-    template<typename P>
-    static std::string one()
-    {
-        if constexpr (urd::detail::a_tag<P>)
-            return std::string(tag_name(P::value));
-        else if constexpr (urd::detail::is_a<urd::key, P>)
-            return "key<" + type_name<typename P::type>() + ">";
-        else if constexpr (urd::detail::is_a<urd::value, P>)
-            return "value<" + type_name<typename P::type>() + ">";
-        else
-            return "order_by<P>";
-    }
-    static std::string describe()
-    {
-        auto result = std::string("Store<");
-        auto separator = std::string_view();
-        ((result += separator, result += one<Ps>(), separator = ", "), ...);
-        return result + ">";
-    }
+    static std::string describe() { return urd::spelling_of_request<urd::request<Ps...>>(); }
 };
 
-template<typename... Rs>
-struct requests
-{
-};
-template<typename... Lists>
-struct cat;
-template<>
-struct cat<>
-{
-    using type = requests<>;
-};
-template<typename... Rs>
-struct cat<requests<Rs...>>
-{
-    using type = requests<Rs...>;
-};
-template<typename... As, typename... Bs, typename... Lists>
-struct cat<requests<As...>, requests<Bs...>, Lists...> : cat<requests<As..., Bs...>, Lists...>
-{
-};
-template<typename... Lists>
-using cat_t = typename cat<Lists...>::type;
-
-/// Calls f on each request type of a list (as std::type_identity<request<…>>).
-template<typename F, typename... Rs>
-void for_each_request(requests<Rs...> /*list*/, F f)
-{ (f(std::type_identity<Rs> {}), ...); }
-
-// The groups. Unservable requests are in: the table shows "none" for them, which is what they are today (concurrent
-// sets and maps by hashed keys among them in a build without gtl, which is why the table is checked only with it).
+// The groups. Unservable requests are in: the table shows "none" for them, which is what they are today: requests no
+// container serves yet.
 
 template<typename K>
 using sets_of = requests<request<key<K>>,
@@ -370,33 +252,93 @@ using flat_pools = requests<request<value<Id>, handles, unique, flat>,
                             request<value<Text>, handles, unique, flat>,
                             request<value<Text>, handles, unique, flat, monotone, concurrent>,
                             request<value<Id>, handles, unique, flat, monotone, layered>,
-                            request<value<Text>, handles, unique, flat, layered, concurrent>>;
+                            request<value<Text>, handles, unique, flat, layered, concurrent>,
+                            request<value<Id>, handles, unique>,
+                            request<value<Text>, handles, unique>,
+                            request<value<Text>, handles, unique, stable_refs>,
+                            request<value<std::string>, handles, unique>>;
+
+/// A group of the table: its title beside its requests.
+template<urd::detail::fixed_string Title, typename List>
+struct group
+{
+    static constexpr const char* title = Title.c_str();
+    using list = List;
+};
+
+/// The groups, in the order of the table.
+using groups = std::tuple<group<"Sets of int", sets_of<int>>,
+                          group<"Sets of std::string", sets_of<std::string>>,
+                          group<"Sets of Id", sets_of<Id>>,
+                          group<"Sets ordered by a projection", ordered_sets>,
+                          group<"Dense sets of int", dense_sets_of<int>>,
+                          group<"Dense sets of Id", dense_sets_of<Id>>,
+                          group<"Keyed by an index", indices>,
+                          group<"Maps int to int", maps_of<int, int>>,
+                          group<"Maps std::string to double", maps_of<std::string, double>>,
+                          group<"Maps Id to Id", maps_of<Id, Id>>,
+                          group<"Maps ordered by a projection", ordered_maps>,
+                          group<"Dense maps int to int", dense_maps_of<int, int>>,
+                          group<"Dense maps Id to double", dense_maps_of<Id, double>>,
+                          group<"Sequences", sequences>,
+                          group<"Queues of int", queues_of<int>>,
+                          group<"Queues of Id", queues_of<Id>>,
+                          group<"Queues ordered by a projection", ordered_queues>,
+                          group<"Pools", pools>,
+                          group<"Stores as keys", stores_as_keys>,
+                          group<"Partitions of sparse keys", sparse_partitions>,
+                          group<"Records and values interned", flat_pools>>;
 
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>
 void for_each_group(F f)
 {
-    f("Sets of int", sets_of<int> {});
-    f("Sets of std::string", sets_of<std::string> {});
-    f("Sets of Id", sets_of<Id> {});
-    f("Sets ordered by a projection", ordered_sets {});
-    f("Dense sets of int", dense_sets_of<int> {});
-    f("Dense sets of Id", dense_sets_of<Id> {});
-    f("Keyed by an index", indices {});
-    f("Maps int to int", maps_of<int, int> {});
-    f("Maps std::string to double", maps_of<std::string, double> {});
-    f("Maps Id to Id", maps_of<Id, Id> {});
-    f("Maps ordered by a projection", ordered_maps {});
-    f("Dense maps int to int", dense_maps_of<int, int> {});
-    f("Dense maps Id to double", dense_maps_of<Id, double> {});
-    f("Sequences", sequences {});
-    f("Queues of int", queues_of<int> {});
-    f("Queues of Id", queues_of<Id> {});
-    f("Queues ordered by a projection", ordered_queues {});
-    f("Pools", pools {});
-    f("Stores as keys", stores_as_keys {});
-    f("Partitions of sparse keys", sparse_partitions {});
-    f("Records stored flat", flat_pools {});
+    [&]<std::size_t... G>(std::index_sequence<G...>) { (f(std::tuple_element_t<G, groups>::title, typename std::tuple_element_t<G, groups>::list {}), ...); }(
+        std::make_index_sequence<std::tuple_size_v<groups>>());
 }
+
+template<std::size_t P, typename List>
+struct nth_request;
+template<std::size_t P, typename... Rs>
+struct nth_request<P, requests<Rs...>>
+{
+    using type = std::tuple_element_t<P, std::tuple<Rs...>>;
+};
+
+/// The container named Name that serves spec S: how a per-container object finds its container among those serving a
+/// request. Its declaration is read without its header; its type is named where the header is included.
+template<urd::detail::fixed_string Name, typename S>
+struct serving_named
+{
+    static constexpr std::size_t at()
+    {
+        constexpr auto serving = urd::detail::serving_v<S>;
+        for (std::size_t each = 0; each < serving.count; ++each)
+            if (urd::detail::table_of<typename S::kind>[serving.at[each]].id == std::string_view(Name.c_str()))
+                return serving.at[each];
+        return urd::detail::no_entry;
+    }
+    static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");
+    using declaration = typename urd::detail::nth<at(), urd::detail::declarations_t<typename S::kind>>::type;
+    using type = typename urd::detail::representation_of<declaration, S>::type;
+};
+
+/// The containers serving spec S, in the order they are preferred, as types: for files that include every container's
+/// header.
+template<typename S, typename... Decls>
+auto containers_of(urd::detail::type_list<Decls...> /*declarations*/) -> urd::detail::type_list<typename urd::detail::representation_of<Decls, S>::type...>;
+template<typename S>
+using serving_containers = decltype(urd::test::containers_of<S>(urd::detail::serving_declarations<S> {}));
+
+/// Calls f(std::type_identity<Decl>) for each declaration serving spec S, in the order they are preferred.
+template<typename S, typename F>
+void for_each_serving(F f)
+{
+    [&]<typename... Decls>(urd::detail::type_list<Decls...>) { (f(std::type_identity<Decls> {}), ...); }(urd::detail::serving_declarations<S> {});
+}
+
+/// The request at position P of group G: how a benchmark names the request it measures a container for.
+template<std::size_t G, std::size_t P>
+using request_at = typename nth_request<P, typename std::tuple_element_t<G, groups>::list>::type;
 
 }  // namespace urd::test

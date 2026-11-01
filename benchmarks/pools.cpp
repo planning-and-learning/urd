@@ -2,11 +2,24 @@
 // (structural_sharing) against the flat row interner: time per state inserted and read, and bytes per state. The
 // numbers back docs/BENCHMARKS.md.
 
-#include "urd/use/pools.hpp"
+#include "urd/repr/pools/pools.hpp"
 
+#include "urd/repr/maps/bidirectional_csr.hpp"
+#include "urd/repr/maps/csr_multimap.hpp"
+#include "urd/repr/maps/dense_multimap.hpp"
+#include "urd/repr/maps/index_map.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/pools/tree_bitset.hpp"
+#include "urd/repr/pools/tree_vector.hpp"
+#include "urd/repr/sequences/jagged.hpp"
+#include "urd/repr/sequences/row_pool.hpp"
+#include "urd/repr/sequences/segmented.hpp"
+#include "urd/repr/sequences/sequence.hpp"
+#include "urd/repr/slots/slots.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/values/sparse_set.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/sequences.hpp"
 
 #include <benchmark/benchmark.h>
 #include <cstddef>
@@ -59,7 +72,7 @@ void value_states(benchmark::State& state)
         benchmark::DoNotOptimize(row);
         state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations() * states));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }
 
 /// States of `width` facts, about a tenth of them true: each a random earlier one with `changes` facts added and as
@@ -84,19 +97,19 @@ void fact_states(benchmark::State& state)
             auto removed = std::vector<std::uint32_t>();
             for (int change = 0; change < changes; ++change)
             {
-                added.push_back(random() % width);
-                removed.push_back(random() % width);
+                added.push_back(static_cast<std::uint32_t>(random() % width));
+                removed.push_back(static_cast<std::uint32_t>(random() % width));
             }
             handles.push_back(
                 pool.insert(handles[random() % handles.size()], std::span<const std::uint32_t>(added), std::span<const std::uint32_t>(removed)).first);
         }
         std::size_t total = 0;
         for (const auto handle : handles)
-            total += pool.contains(handle, width / 2) ? 1 : 0;
+            total += pool.contains(handle, width / 2) ? 1U : 0U;
         benchmark::DoNotOptimize(total);
         state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
     }
-    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations() * states));
+    state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }
 
 }  // namespace

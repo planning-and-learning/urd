@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/index.hpp"
-#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>
@@ -26,7 +25,7 @@ class pool
 
     /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
     /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).
-    static constexpr bool erasable = has<S, shrinkable> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
+    static constexpr bool erasable = shrinks<S> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
 
 public:
     using handle_type = typename R::handle_type;
@@ -87,23 +86,9 @@ public:
     handle_type erase(handle_type handle)
         requires(erasable)
     { return representation().erase(handle); }
-    // Where erase is ruled out, the reason: the denial for erase stays off, since this facet declares the name.
-    template<typename... Args>
-        requires has<S, monotone> && denied<"erase: the pool is monotone, it only grows; drop monotone">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, structural_sharing>
-                 && denied<"erase: a pool with structural_sharing shares nodes between rows; its handles name no positions a row could move into">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, concurrent> && denied<"erase: a concurrent pool is read without a lock beside inserts, which would see a row move">
-    void erase(Args&&...);
-    template<typename... Args>
-        requires has<S, layered> && denied<"erase: a layered pool's handles are continued by the layers over it, which a moved row would break">
-    void erase(Args&&...);
     /// Forgets every row; the handles given so far mean nothing after.
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:
@@ -112,3 +97,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: its values are rows (ranges of elements).
+template<>
+struct facet_condition<facet::pool>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return holds_rows<typename S::element_type>(); }
+};
+template<>
+struct facet_operations<facet::pool>
+{
+    using offered = operation_list<operation::insert_row, operation::find_row, operation::access>;
+};
+
+}  // namespace urd::detail

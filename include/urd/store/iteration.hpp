@@ -35,3 +35,25 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+/// A queue visits its elements in the order pushed, or a priority queue in none; not a bucket queue
+/// (monotone_priority), which would visit every priority's bucket. Iterated so, a queue is still no
+/// range for the facets that read S::iterable (equality, growth, removal).
+template<>
+struct facet_condition<facet::iteration>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return !has<S, monotone_priority>; }
+};
+template<>
+struct facet_operations<facet::iteration>
+{
+    using offered = operation_list<operation::iterate>;
+};
+
+}  // namespace urd::detail

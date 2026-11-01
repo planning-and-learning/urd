@@ -28,3 +28,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::lookup>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return store_types<R, S>::keyed; }
+};
+template<>
+struct facet_operations<facet::lookup>
+{
+    using offered = operation_list<operation::lookup>;
+};
+
+}  // namespace urd::detail

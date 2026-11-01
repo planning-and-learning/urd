@@ -1,10 +1,19 @@
 // Sets: say what the data is and how it is used; urd picks the container.
 
 #include "show.hpp"
+#include "urd/repr/maps/entry_ordered.hpp"
+#include "urd/repr/maps/flat_map.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/maps/postings.hpp"
+#include "urd/repr/maps/std_map.hpp"
+#include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/flat_set.hpp"
+#include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/std_set.hpp"
+#include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/nodes.hpp"
 
 #include <iostream>
 

@@ -32,3 +32,18 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+/// Sequences and positional sets have front and back by position (positions).
+template<>
+struct facet_condition<facet::sorted_ends>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, sorted> && !has<S, dense> && !has<S, positional>; }
+};
+
+}  // namespace urd::detail

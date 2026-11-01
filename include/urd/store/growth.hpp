@@ -58,11 +58,11 @@ public:
         requires(!keyed)
     { return representation().emplace_back(std::forward<Args>(args)...); }
     iterator_type insert(const_iterator_type pos, const value_type& element)
-        requires(!keyed && has<S, shrinkable>)
+        requires(!keyed && shrinks<S>)
     { return representation().insert(pos, element); }
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
-        requires(!keyed && has<S, shrinkable>)
+        requires(!keyed && shrinks<S>)
     { return representation().emplace(pos, std::forward<Args>(args)...); }
 
 private:
@@ -70,3 +70,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::growth>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return grows<S>; }
+};
+template<>
+struct facet_operations<facet::growth>
+{
+    using offered = operation_list<operation::insert>;
+};
+
+}  // namespace urd::detail

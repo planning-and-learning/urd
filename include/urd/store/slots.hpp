@@ -34,10 +34,10 @@ public:
 
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
     void erase(handle_type handle)
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().erase(handle); }
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:
@@ -46,3 +46,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::slots>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return true; }
+};
+template<>
+struct facet_operations<facet::slots>
+{
+    using offered = operation_list<operation::insert_row, operation::access>;
+};
+
+}  // namespace urd::detail

@@ -14,7 +14,7 @@ Maps
 
 .. cpp:namespace:: urd::Map
 
-A map holds one value per key (``functional``, implied) or many (``multi``: a multimap). Its elements are
+A map holds one value per key, or many (``multi``: a multimap). Its elements are
 ``std::pair<const K, V>``; a dense map iterates each key with a view of its value.
 
 .. list-table::
@@ -110,7 +110,7 @@ Values by key (one value per key)
 
 .. cpp:function:: mapped_type& operator[](const key_type& key)
 
-   The value for ``key``, inserted as a default first where there is none (growable, default-constructible value).
+   The value for ``key``, inserted as a default first where there is none (not frozen, default-constructible value).
 
 .. cpp:function:: template<typename... Args> std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
 .. cpp:function:: template<typename M> std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)
@@ -185,117 +185,7 @@ through a const Store to avoid that.
 Complexity
 ----------
 
-n elements; U the key range; r a row's length.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 10 14 12 12 12 10
-
-   * - Representation
-     - insert
-     - lookup
-     - erase
-     - clear
-     - iterate
-     - memory
-   * - ``boost::unordered_flat_map``
-     - O(1)\*~
-     - O(1)~
-     - O(1)~
-     - O(capacity)
-     - O(capacity)
-     - ~n/0.875 slots + 1 byte each
-   * - ``std::unordered_map``
-     - O(1)\*~
-     - O(1)~
-     - O(1)~
-     - O(n + buckets)
-     - O(n)
-     - a node per element
-   * - ``std::map``, ``std::multimap``
-     - O(log n)
-     - O(log n)
-     - O(log n)
-     - O(n)
-     - O(n), in order
-     - a node per element
-   * - ``Recycling<Map>``
-     - as Map, a kept node first
-     - as Map
-     - as Map; keeps the node
-     - O(n)
-     - as Map
-     - erased nodes and values kept
-   * - ``boost::container::flat_map``
-     - O(n)
-     - O(log n)
-     - O(n)
-     - O(n)
-     - O(n), contiguous
-     - n entries
-   * - ``IndexMap``
-     - O(1)\*
-     - O(1)
-     - O(1)
-     - O(U); O(1) with generations
-     - O(U), in key order
-     - a slot per index; in segments with ``stable_refs`` (+ a lock byte, thread-safe)
-   * - ``OrderedMap``
-     - as its key set
-     - as its key set
-     - O(n)
-     - as its key set
-     - O(n); keys and values as spans
-     - key set + n values
-   * - ``FlatEntryMap``
-     - O(n)
-     - O(n)
-     - O(n)
-     - O(n)
-     - O(n), in the given order
-     - n entries; for few
-   * - ``PostingMap``
-     - O(1)\*~
-     - O(1)~; ``values(k)`` a span
-     - O(r) per value
-     - O(capacity + n)
-     - O(n)
-     - a vector per key
-   * - ``CsrMultiMap``
-     - build O(n + U)
-     - O(1); ``values(k)`` a span
-     - —
-     - —
-     - O(n + U), in key order
-     - n values + U + 1 offsets
-   * - ``DenseMultiMap``
-     - O(1)\*
-     - O(1); ``values(k)`` a span
-     - O(r) per value; a key O(1)
-     - O(U)
-     - O(n + U), in key order
-     - a vector per index; retains
-   * - ``ScopedMap``
-     - O(1)\*~
-     - O(1)~
-     - O(1)~
-     - O(capacity)
-     - O(capacity)
-     - + a log entry per change; ``pop_scope`` O(changes)
-   * - ``gtl::parallel_flat_hash_map``
-     - O(1)\*~ under a shard's lock
-     - O(1)~ under it
-     - O(1)~
-     - O(capacity)
-     - O(capacity)
-     - 16 shards
-   * - ``gtl::parallel_node_hash_map``
-     - O(1)\*~ under a shard's lock
-     - O(1)~ under it
-     - O(1)~
-     - O(capacity)
-     - O(capacity)
-     - 16 shards; a node per entry, stable references
+.. urd-complexity:: maps
 
 .. _rows:
 

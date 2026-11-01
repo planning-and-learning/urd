@@ -1,6 +1,8 @@
 #pragma once
 
 #include "urd/elements.hpp"
+#include "urd/kinds.hpp"
+#include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
 #include <array>
@@ -15,7 +17,7 @@
 namespace urd
 {
 
-// What a Store can be asked for: element types and the property tags of traits.hpp (workloads such as small
+// What a Store can be asked for: element types and the property tags of tags.hpp (workloads such as small
 // among them). Each is a type, so they can be listed together, in any order.
 
 /// The elements are identified by keys of type K. Without value<V>, the keys are the contents: a set.
@@ -74,22 +76,10 @@ struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
 {
 };
 
-/// Whether a request may state tags of `of`'s category. Mutability is not one: it follows from frozen and monotone.
-constexpr bool statable(tag of)
-{
-    const auto root = root_of(of);
-    return (in(root, guaranteed_roots) && root != tag::immutable) || in(root, requested_roots);
-}
-
-/// Whether P is a tag a Store may be asked for (statable).
+/// Whether P is a tag a Store may be asked for.
 template<typename P>
 consteval bool is_tag()
-{
-    if constexpr (a_tag<P>)
-        return statable(P::value);
-    else
-        return false;
-}
+{ return a_tag<P>; }
 
 template<typename P>
 inline constexpr bool is_order_by = false;
@@ -136,22 +126,23 @@ struct order_of<T, K, V, P, Ps...> : order_of<T, K, V, Ps...>
 template<typename P>
 inline constexpr bool is_property = is_tag<P>() || is_a<key, P> || is_a<value, P> || is_order_by<P>;
 
-/// P's number, where P is a tag; tag::count for key<K> and value<V>.
+/// P's number, where P is a tag; tag {} for key<K> and value<V>.
 template<typename P>
 consteval tag tag_of()
 {
     if constexpr (a_tag<P>)
         return P::value;
     else
-        return tag::count;
+        return tag {};
 }
 
 }  // namespace detail
 
-/// A Store's request in canonical form: its key and value types (void where absent), and the tags that say more than
-/// their category's root, in the order of urd::tag. Whatever order the properties were listed in, equal requests give
-/// equal specs, and so equal Store types; compilers print the tags by name.
-template<typename K, typename V, typename Order, tag... Tags>
+/// A Store's request in canonical form: its key and value types (void where absent), and its answers, one per category
+/// that says more than none, each in its category's enum, in the order of its kind's request format. Whatever
+/// order the properties were listed in, equal requests give equal specs, and so equal Store types; compilers print the
+/// answers by name (urd::order::sorted).
+template<typename K, typename V, typename Order, auto... Answers>
 struct spec
 {
     using key_type = K;
@@ -159,30 +150,23 @@ struct spec
     /// The comparator order_by asked for (urd::ProjectedLess), else void: the elements' own order.
     using order_type = Order;
 
-    static constexpr detail::property_set urd_properties = detail::property_set::of({ Tags... });
+    /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
+    static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
 
-    /// Keys grouped into disjoint classes (partition), reached by merge and find.
-    static constexpr bool is_partition = !std::is_void_v<K> && std::is_void_v<V> && urd_properties.in(tag::any_grouping) == tag::partition;
-    static constexpr bool is_set = !std::is_void_v<K> && std::is_void_v<V> && !is_partition;
-    static constexpr bool is_map = !std::is_void_v<K> && !std::is_void_v<V>;
-    /// Values reached by the order they leave in (fifo, lifo, by_priority), not by position.
-    static constexpr bool is_queue = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_access) != tag::any_access;
-    /// Values identified by the handles insert gives (handles): a pool.
-    static constexpr bool is_pool = std::is_void_v<K> && !std::is_void_v<V> && urd_properties.in(tag::any_handle) == tag::handles && !is_queue;
-    static constexpr bool is_sequence = std::is_void_v<K> && !std::is_void_v<V> && !is_queue && !is_pool;
-    /// Whether its elements can be visited in turn: all but a queue, which is reached by its front or top. A filter,
-    /// which only answers membership, would not be either.
-    static constexpr bool iterable = is_set || is_map || is_sequence;
-    /// Whether it knows how many elements it holds: all but a pool with structural_sharing, which shares parts of its
-    /// rows and keeps no list of them. A filter would not either. Every other pool counts its rows in O(1), and its
-    /// handles are 0..size()-1: a row inserted new gets handle size().
-    static constexpr bool sized = is_set || is_map || is_sequence || is_queue || is_partition || (is_pool && !urd_properties.has(tag::structural_sharing));
+    /// What the Store is (urd/kinds.hpp): the kind that claims its key and value types and the tags it states.
+    using kind = urd::kind_of<urd_properties, !std::is_void_v<K>, !std::is_void_v<V>>;
+    /// What its container must guarantee: the promise, but for what the Store keeps itself (asked_of_container).
+    static constexpr detail::property_set required = urd::asked_of_container(urd_properties);
+    /// What it promises its container (promised_to_container): what a container may rely on.
+    static constexpr detail::property_set promised = urd::promised_to_container(urd_properties);
+    /// Whether its elements can be visited in turn: as its kind says (a queue is reached by its front or top).
+    static constexpr bool iterable = kind::iterable;
 
-    /// What a key maps to, in a map.
-    using mapped_type = std::conditional_t<is_map, V, void>;
-    /// What a Store's elements are: keys in a set, values in a sequence, key-value pairs in a map.
-    using element_type = std::conditional_t<is_set || is_partition, K, std::conditional_t<is_map, std::pair<const K, V>, V>>;
+    /// What a key maps to, where its kind maps keys to values; else void.
+    using mapped_type = typename kind::template mapped_type<K, V>;
+    /// What a Store's elements are, by its kind: keys in a set, values in a sequence, key-value pairs in a map.
+    using element_type = typename kind::template element_type<K, V>;
 };
 
 namespace detail
@@ -193,7 +177,7 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 {
     auto result = property_set::roots();
     for (const auto each : listed)
-        if (each != tag::count)
+        if (each != tag {})
             result.put(each);
     return result;
 }
@@ -201,82 +185,45 @@ consteval property_set stated_of(std::initializer_list<tag> listed)
 /// Whether at most one listed tag answers each category.
 consteval bool one_per_category(std::initializer_list<tag> listed)
 {
-    auto answers = std::array<int, tag_count> {};
+    std::size_t at = 0;
     for (const auto each : listed)
-        if (each != tag::count && ++answers[index(root_of(each))] > 1)
+    {
+        std::size_t before = 0;
+        for (const auto other : listed)
+        {
+            if (before++ == at)
+                break;
+            if (each != tag {} && other.in == each.in)
+                return false;
+        }
+        ++at;
+    }
+    return true;
+}
+
+/// Whether every tag of `stated` answers a category of Format.
+template<category_enum... Es>
+consteval bool in_format(request_format<Es...> /*format*/, const property_set& stated)
+{
+    for (std::size_t each = 0; each < stated.count; ++each)
+        if (((stated.held[each].in != urd::category<Es>) && ...))
             return false;
     return true;
 }
 
-/// What a request's kind is, from its key and value types and the categories that make a kind.
-struct kind
+/// The spec whose answers are those of Meant beyond none, in the order of Format: S with them appended.
+template<typename S, typename Format, property_set Meant>
+struct spec_answers
 {
-    bool set = false;
-    bool map = false;
-    bool sequence = false;
-    bool queue = false;
+    using type = S;
 };
-
-/// The kind a request is, from whether it has a key, a value, and the tags that make a queue or a pool.
-consteval kind kind_of(const property_set& stated, bool keyed, bool valued)
+template<typename K, typename V, typename Order, auto... As, category_enum E, category_enum... Es, property_set Meant>
+struct spec_answers<spec<K, V, Order, As...>, request_format<E, Es...>, Meant> :
+    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<K, V, Order, As...>, spec<K, V, Order, As..., Meant.template get<E>()>>,
+                 request_format<Es...>,
+                 Meant>
 {
-    const bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
-    const bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
-    return { .set = keyed && !valued && !stated.has(tag::partition), .map = keyed && valued, .sequence = !keyed && valued && !queue && !pool, .queue = queue };
-}
-
-/// The request rules: what the list implies, in place of what it states.
-consteval property_set implied(property_set stated, kind of)
-{
-    auto result = stated;
-    // A sequence is positional; a set may be too, with its elements in insertion order unless it asks for another
-    // (an interner: each element's position is its index).
-    if (of.sequence)
-        result.put(tag::positional);
-    if (of.set && stated.has(tag::positional) && !stated.has(tag::sorted))
-        result.put(tag::insertion_ordered);
-    // A set's keys are its contents, each once; a map's keys are each once unless it is a multimap.
-    if (of.set || (of.map && !stated.has(tag::multi)))
-        result.put(tag::unique);
-    // A map has one value per key unless it says multi; a sequence one value per position.
-    if ((of.map && !stated.has(tag::multi)) || of.sequence)
-        result.put(tag::functional);
-    // Positions are 0..n-1; a partition's classes are over indices.
-    if (of.sequence || stated.has(tag::partition))
-        result.put(tag::dense);
-    // Nothing moves once nothing changes.
-    if (stated.has(tag::frozen))
-        result.put(tag::stable_refs);
-    // What the representation must offer: nothing if frozen, inserts if it only grows or must stay nonempty; a queue
-    // offers push and pop whenever it may change, clear too unless it is monotone.
-    if (stated.has(tag::frozen) || stated.has(tag::fixed_shape))
-        result.put(tag::immutable);
-    else if (stated.has(tag::monotone) || stated.has(tag::nonempty))
-        result.put(tag::growable);
-    else
-        result.put(tag::shrinkable);
-    return result;
-}
-
-/// The tags of a set that say more than their category's root, in the order of urd::tag: a spec's arguments.
-struct listed_tags
-{
-    std::array<tag, tag_count> tags {};
-    std::size_t count = 0;
 };
-consteval listed_tags non_roots(const property_set& properties)
-{
-    auto result = listed_tags {};
-    for (std::size_t each = 0; each < tag_count; ++each)
-    {
-        const auto root = static_cast<tag>(each);
-        if (root_of(root) == root && properties.in(root) != root)
-            result.tags[result.count++] = properties.in(root);
-    }
-    return result;
-}
-template<typename K, typename V, typename Order, listed_tags Listed, std::size_t... I>
-spec<K, V, Order, Listed.tags[I]...> spec_of(std::index_sequence<I...> /*positions*/);
 
 /// Checks a property list and turns it into its spec. Each static_assert names what is wrong.
 template<typename... Ps>
@@ -288,8 +235,8 @@ struct to_spec
     static_assert((0 + ... + static_cast<int>(is_a<key, Ps>)) <= 1, "urd::Store: at most one key<K>");
     static_assert((0 + ... + static_cast<int>(is_a<value, Ps>)) <= 1, "urd::Store: at most one value<V>");
     static_assert(one_per_category({ tag_of<Ps>()... }),
-                  "urd::Store: two properties answer the same question (dense and sparse, functional and multi, "
-                  "frozen and monotone, two workloads, …)");
+                  "urd::Store: two properties answer the same question (dense and sparse, frozen and monotone, two "
+                  "workloads, …)");
 
     using key_type = typename first_of<key, Ps...>::type;
     using value_type = typename first_of<value, Ps...>::type;
@@ -298,88 +245,24 @@ struct to_spec
     static constexpr property_set stated = stated_of({ tag_of<Ps>()... });
     static constexpr bool keyed = !std::is_void_v<key_type>;
     static constexpr bool valued = !std::is_void_v<value_type>;
-    static constexpr bool queue = !keyed && valued && stated.in(tag::any_access) != tag::any_access;
-    static constexpr bool pool = !keyed && valued && stated.has(tag::handles) && !queue;
-    static constexpr kind of = kind_of(stated, keyed, valued);
-
-    static_assert(!stated.has(tag::partition) || (!valued && !stated.has(tag::frozen)),
-                  "urd::Store: a partition groups key<K>s, without values, and changes by insert and merge");
-    static_assert(!stated.has(tag::handles) || (!keyed && (!queue || stated.has(tag::by_priority)) && !stated.has(tag::positional) && !stated.has(tag::frozen)),
-                  "urd::Store: a pool (handles) holds value<V> rows, gains them by insert, and is reached by handle, not by key, "
-                  "position or order; a priority queue with handles changes or erases an element by its handle");
-    static_assert(!stated.has(tag::flat) || (pool && stated.has(tag::unique)),
-                  "urd::Store: flat stores each record of an interning pool as one block of bytes; ask for handles and unique too");
-    static_assert(!(pool && stated.has(tag::unique)) || stated.has(tag::flat) || iterates<value_type>,
-                  "urd::Store: a pool of records (value<V>, V no range of elements) stores them flat: ask for flat");
-    static_assert(!stated.has(tag::monotone_priority) || stated.has(tag::by_priority),
-                  "urd::Store: monotone_priority says how a priority queue is pushed to; ask for by_priority too");
-    static_assert(!queue || (!stated.has(tag::frozen) && !stated.has(tag::positional)),
-                  "urd::Store: a queue changes by push and pop, and is reached by its front or top, not by position");
-    static_assert(!stated.has(tag::nonempty) || of.set || of.map || of.sequence,
-                  "urd::Store: nonempty is a promise about the elements a set, map or sequence iterates; a queue empties by pop and a "
-                  "pool by erase(handle), so it cannot hold there: drop nonempty, or check empty() before pop");
-    static_assert(!stated.has(tag::fixed_shape) || (of.sequence && !stated.has(tag::monotone) && is_store<value_type>),
-                  "urd::Store: fixed_shape is a sequence of rows (value<Store<…>>) whose number and lengths never change; its rows' "
-                  "contents do");
-    static_assert(!of.map || !stated.has(tag::positional), "urd::Store: positional identifies a map's elements by position, so it cannot have key<K>");
-    static_assert(!(stated.has(tag::contiguous) && stated.has(tag::stable_refs)) || stated.has(tag::frozen),
-                  "urd::Store: contiguous storage moves its elements when it grows, so stable_refs needs frozen too");
-    static_assert(!((of.sequence || stated.has(tag::positional)) && stated.has(tag::stable_refs)) || stated.has(tag::monotone),
-                  "urd::Store: erasing or inserting at a position moves the elements after it: stable_refs on a sequence or a "
-                  "positional set needs monotone, append only, or frozen");
-    static_assert(!(stated.has(tag::sorted) && stated.has(tag::concurrent)) || stated.has(tag::dense),
-                  "urd::Store: no concurrent sorted container: threads share a hashed (concurrent) or dense Store; keep sorted and "
-                  "synchronize outside, or drop sorted");
-    static_assert(!queue || !stated.has(tag::concurrent),
-                  "urd::Store: a queue is reached by its front or top, which pop moves: no queue is concurrent; guard it with a mutex, "
-                  "or share a positional, monotone set");
-    static_assert(!(stated.has(tag::frozen) && stated.has(tag::concurrent)),
-                  "urd::Store: a frozen Store never changes, so any number of threads may read it; concurrent asks for inserts "
-                  "from threads at once, which it has none of: drop concurrent");
+    using kind = urd::kind_of<stated, keyed, valued>;
 
     /// What order_by orders: keys, or a sequence's or queue's values.
     using ordered_type = std::conditional_t<keyed, key_type, value_type>;
     static constexpr bool ordered_by = (is_order_by<Ps> || ...);
     static_assert((0 + ... + static_cast<int>(is_order_by<Ps>)) <= 1, "urd::Store: at most one order_by<P>");
-    static_assert(!ordered_by || stated.has(tag::sorted) || stated.has(tag::by_priority),
-                  "urd::Store: order_by<P> orders a sorted Store or a by_priority queue; ask for one of them too");
-    static_assert(!ordered_by || !keyed || stated.has(tag::multi) || orderable<ordered_type>,
-                  "urd::Store: order_by<P> on unique keys breaks ties by the keys' own order, so they must be orderable "
-                  "(else two keys with equal P(key) would be one)");
     using order_type = typename order_of<ordered_type, key_type, value_type, Ps...>::type;
-    static_assert(!ordered_by || !stated.has(tag::dense),
-                  "urd::Store: dense keys are stored and iterated by index, so no order_by<P> applies: drop dense, or order the index "
-                  "type itself");
-    static_assert(!ordered_by || !is_entry_less<order_type> || stated.has(tag::small) || stated.has(tag::frozen),
-                  "urd::Store: a map ordered by its values is a flat scan (O(n) insert, lookup by key): ask for small or frozen too, or "
-                  "order by key");
-    static_assert(!(stated.has(tag::dense) && stated.has(tag::reclaims)),
-                  "urd::Store: dense keys are stored by position (a slot per index), so erase returns no storage: reclaims needs sparse "
-                  "keys (a tree or node table)");
-    static_assert(!keyed || !stated.has(tag::constant_clear) || stated.has(tag::dense),
-                  "urd::Store: constant_clear is a generation counter over a slot per index: ask for dense too (a hash table or tree "
-                  "clears in time proportional to its slots: proportional_clear)");
-    static_assert(!(stated.has(tag::layered) && stated.has(tag::sorted)),
-                  "urd::Store: a layer iterates its own elements, not its parent's, so no order holds over both: drop sorted, or iterate "
-                  "the parent separately");
-    static_assert(!(stated.has(tag::partition) && stated.has(tag::concurrent)),
-                  "urd::Store: a partition's merge rewrites parents along two paths: single-threaded");
 
-    static constexpr listed_tags listed = non_roots(implied(stated, of));
-    using type = decltype(detail::spec_of<key_type, value_type, order_type, listed>(std::make_index_sequence<listed.count> {}));
+    static_assert(in_format(typename kind::format {}, stated),
+                  "urd::Store: a property means nothing for this kind of Store: each kind answers the questions of its "
+                  "request format (urd/kinds.hpp, format)");
+    static_assert(well_formed(stated, keyed, valued, ordered_by, orderable<ordered_type>),
+                  "urd::Store: the request contradicts itself: a partition with value<V>, handles with key<K>, "
+                  "monotone_priority without by_priority, order_by<P> without sorted or by_priority, or order_by<P> on "
+                  "unique keys that are not orderable (urd/tags.hpp, well_formed)");
 
-    /// The tags the request states (the roots left out), to probe one at a time where no representation serves it.
-    static constexpr listed_tags stated_tags = non_roots(stated);
-    /// What the request implies without `Reset` (its category back at its root, the rules applied again, so that
-    /// without frozen the implied stable_refs goes too).
-    template<tag Reset>
-    static constexpr listed_tags listed_without =
-        non_roots(implied(property_set(stated).put(root_of(Reset)), kind_of(property_set(stated).put(root_of(Reset)), keyed, valued)));
-    /// The spec of the request without `Reset`: what it would resolve to then. It runs none of the checks above; it is
-    /// for finding which tag an unservable request fails by.
-    template<tag Reset>
-    using without =
-        decltype(detail::spec_of<key_type, value_type, order_type, listed_without<Reset>>(std::make_index_sequence<listed_without<Reset>.count> {}));
+    static constexpr property_set meant = meaning<kind>(stated);
+    using type = typename spec_answers<spec<key_type, value_type, order_type>, typename kind::format, meant>::type;
 };
 
 }  // namespace detail

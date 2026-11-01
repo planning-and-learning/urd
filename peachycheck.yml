@@ -1,4 +1,5 @@
 # peachycheck's configuration: https://github.com/drexlerd/peachycheck#configuration
 ENABLE_LINTERS: [CPP_CLANG_TIDY, CPP_CLANG_FORMAT]
-# Each case of the compile-fail test is meant not to compile.
-CPP_CLANG_TIDY_FILTER_REGEX_EXCLUDE: '^tests/compile_fail_store\.cpp$'
+# Each case of the compile-fail test is meant not to compile; the per-container test and benchmark sources compile
+# only inside each container's generated file (<build>/.../per_container/*.cpp), which is linted instead.
+CPP_CLANG_TIDY_FILTER_REGEX_EXCLUDE: '^(tests/compile_fail_store|tests/container|benchmarks/experiment)\.cpp$'

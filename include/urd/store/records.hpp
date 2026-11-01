@@ -1,7 +1,6 @@
 #pragma once
 
 #include "urd/index.hpp"
-#include "urd/store/denials.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
@@ -63,12 +62,6 @@ public:
     [[nodiscard]] const_iterator end() const
         requires(!has<S, layered>)
     { return { &constant(), static_cast<std::uint32_t>(constant().size()) }; }
-    template<typename... Args>
-        requires has<S, layered> && denied<"begin/end: a layered pool reaches each record through the layer that owns it; walk the indices">
-    void begin(Args&&...) const;
-    template<typename... Args>
-        requires has<S, layered> && denied<"begin/end: a layered pool reaches each record through the layer that owns it; walk the indices">
-    void end(Args&&...) const;
 
     /// The record's index, and whether it was new: an equal record already held gives its index.
     std::pair<index_type, bool> insert(const T& record) { return representation().insert(record); }
@@ -102,7 +95,7 @@ public:
     }
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()
-        requires has<S, shrinkable>
+        requires shrinks<S>
     { representation().clear(); }
 
 private:
@@ -111,3 +104,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: its values are records or values interned whole, not rows.
+template<>
+struct facet_condition<facet::records>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return !holds_rows<typename S::element_type>(); }
+};
+template<>
+struct facet_operations<facet::records>
+{
+    using offered = operation_list<operation::insert_row, operation::find_row, operation::access>;
+};
+
+}  // namespace urd::detail

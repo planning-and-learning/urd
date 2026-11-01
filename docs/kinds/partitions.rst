@@ -53,3 +53,5 @@ Complexity
 
 ``insert`` O(1)\*; ``find``, ``same``, ``merge`` O(α(n))\* with path compression and union by size; ``clear`` O(1);
 memory n parents + n sizes.
+
+.. urd-complexity:: partitions

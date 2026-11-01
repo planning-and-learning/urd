@@ -1,8 +1,10 @@
 #pragma once
 
+#include "urd/costs.hpp"
 #include "urd/elements.hpp"
-#include "urd/interface.hpp"
+#include "urd/kinds.hpp"
 #include "urd/traits.hpp"
+#include "urd/type_traits_of.hpp"
 
 #include <array>
 #include <compare>
@@ -11,6 +13,7 @@
 #include <cstdint>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 
 namespace urd::detail
 {
@@ -18,7 +21,14 @@ namespace urd::detail
 // A Store is its core (store.hpp) and facets (namespace facet): one class per group of properties, holding
 // the members those properties allow, inherited where the Store's properties switch them on. Within one Store each
 // member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
-// recur (insert in growth, pool, slots and grouping), which store/denials.hpp records per name.
+// recur (insert in growth, pool, slots and grouping).
+
+/// What a Store's interface lets change, from the tags it states: nothing where frozen or of a fixed shape (grows
+/// false); inserts only where it only grows or must stay nonempty (shrinks false); else inserts, erase and clear.
+template<typename S>
+inline constexpr bool grows = !has<S, frozen> && !has<S, fixed_shape>;
+template<typename S>
+inline constexpr bool shrinks = grows<S> && !has<S, monotone> && !has<S, nonempty>;
 
 /// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
 /// which is still incomplete while its facets are built.
@@ -30,13 +40,13 @@ struct store_types
     /// Elements change in place: nothing depends on their values, and the Store may change.
     static constexpr bool writable = !keyed && !has<S, monotone>;
     /// Iterated in an order the request asked for.
-    static constexpr bool ordered = S::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::is_sequence);
+    static constexpr bool ordered = S::kind::iterable && (has<S, sorted> || has<S, insertion_ordered> || S::kind::positional);
 
     using value_type = typename S::element_type;
     using key_type = typename S::key_type;
     using mapped_type = typename S::mapped_type;
     /// What lookups take: a map's key, else an element.
-    using lookup_type = std::conditional_t<S::is_map, key_type, value_type>;
+    using lookup_type = std::conditional_t<std::is_void_v<mapped_type>, value_type, key_type>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 };
@@ -64,124 +74,41 @@ consteval bool compares_in_order()
         return false;
 }
 
-/// The facets by name: which ones a Store inherits is read from facet_switches, by the Store's base list and by the
-/// denials that stand in for the facets it lacks.
-enum class facet_id : std::uint8_t
+/// When a Store has facet F, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`, asked only of the facets
+/// its kind lists (urd/kinds.hpp). Most read only the spec S; with R void, it is asked from the spec alone, before a
+/// container is chosen.
+template<template<typename, typename, typename> class F>
+struct facet_condition;
+
+/// Whether a pool's values are rows: Stores or registered containers holding elements (held_as, as the pools'
+/// containers read them). A Store is not completed to ask (its container's header may be absent here).
+template<typename V>
+consteval bool holds_rows()
+{ return held_as<V>::store; }
+
+/// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet as an operation_list: what a Store's container is
+/// asked to state a cost for, and what a search knows a kind offers. None by default.
+template<template<typename, typename, typename> class F>
+struct facet_operations
 {
-    sizing,
-    iteration,
-    equality,
-    ordering,
-    lookup,
-    ordered_lookup,
-    reverse_iteration,
-    positions,
-    contiguous_data,
-    capacity,
-    growth,
-    removal,
-    values_by_key,
-    multi_values,
-    set_algebra,
-    queue_access,
-    scopes,
-    layers,
-    changes,
-    pool,
-    records,
-    slots,
-    grouping,
-    entries,
-    inverse,
-    shape,
-    sorted_ends,
-    count
+    using offered = operation_list<>;
 };
 
-/// Which facets a Store for spec S over representation R has: its kind and properties switch them on.
-template<typename R, typename S>
-struct facet_switches
+/// Whether F is among the facets of a list.
+template<template<typename, typename, typename> class F, typename List>
+inline constexpr bool listed_facet = false;
+template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
+inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
+
+/// Whether a Store for spec S over representation R has facet F: its kind lists F, and F's condition holds.
+template<typename R, typename S, template<typename, typename, typename> class F>
+consteval bool facet_on()
 {
-    static constexpr bool on(facet_id id)
-    {
-        switch (id)
-        {
-            case facet_id::sizing:
-                return S::sized;
-            case facet_id::iteration:
-                // A queue visits its elements in the order pushed, or a priority queue in none; not a bucket queue
-                // (monotone_priority), which would visit every priority's bucket. Iterated so, a queue is still no
-                // range for the facets that read S::iterable (equality, growth, removal).
-                return S::iterable || (S::is_queue && !has<S, monotone_priority>);
-            case facet_id::equality:
-                // A layered Store's contents include its parent's, which neither its == nor its iteration covers.
-                return std::equality_comparable<typename S::element_type> && (std::equality_comparable<R> || S::iterable) && !has<S, layered>;
-            case facet_id::ordering:
-                return compares_in_order<R, S>();
-            case facet_id::lookup:
-                return store_types<R, S>::keyed && S::iterable;
-            case facet_id::ordered_lookup:
-                return has<S, sorted> && !is_entry_less<typename S::order_type>;
-            case facet_id::reverse_iteration:
-                return store_types<R, S>::ordered;
-            case facet_id::positions:
-                // Every insertion-ordered set is kept in one array (an interner, a sparse set): its elements have
-                // positions whether the request names them or not.
-                return has<S, positional> || (S::is_set && has<S, insertion_ordered> && !has<S, reclaims>);
-            case facet_id::contiguous_data:
-                return has<S, contiguous>;
-            case facet_id::capacity:
-                return has<S, growable>;
-            case facet_id::growth:
-                return has<S, growable> && S::iterable;
-            case facet_id::removal:
-                return has<S, shrinkable> && S::iterable;
-            case facet_id::values_by_key:
-                return S::is_map && has<S, unique>;
-            case facet_id::multi_values:
-                return S::is_map && !has<S, unique>;
-            case facet_id::set_algebra:
-                return S::is_set;
-            case facet_id::queue_access:
-                return S::is_queue;
-            case facet_id::scopes:
-                return has<S, scoped>;
-            case facet_id::layers:
-                return has<S, layered>;
-            case facet_id::changes:
-                return has<S, change_log>;
-            case facet_id::pool:
-                return S::is_pool && has<S, unique> && !has<S, flat>;
-            case facet_id::records:
-                return S::is_pool && has<S, unique> && has<S, flat>;
-            case facet_id::slots:
-                return S::is_pool && !has<S, unique>;
-            case facet_id::grouping:
-                return S::is_partition;
-            case facet_id::entries:
-                return S::is_map && has<S, insertion_ordered>;
-            case facet_id::inverse:
-                return S::is_map && has<S, bidirectional>;
-            case facet_id::shape:
-                return has<S, fixed_shape>;
-            case facet_id::sorted_ends:
-                // Sequences and positional sets have front and back by position (positions).
-                return (S::is_set || S::is_map) && has<S, sorted> && !has<S, dense> && !has<S, positional>;
-            case facet_id::count:
-                return false;
-        }
+    if constexpr (listed_facet<F, typename S::kind::facets>)
+        return facet_condition<F>::template on<R, S>();
+    else
         return false;
-    }
-    /// Whether any of the facets is on: whether some facet declares a member name.
-    template<std::size_t N>
-    static constexpr bool any_on(const std::array<facet_id, N>& ids)
-    {
-        for (const auto id : ids)
-            if (on(id))
-                return true;
-        return false;
-    }
-};
+}
 
 /// How facets reach the Store's representation, which is private to the Store.
 struct store_access
@@ -203,6 +130,14 @@ struct facet_if : Facet
 };
 template<typename Facet>
 struct facet_if<false, Facet>
+{
+};
+
+/// The facets a Store inherits: those its kind lists (urd/kinds.hpp) whose conditions hold.
+template<typename Derived, typename R, typename S, typename List>
+struct facet_bases;
+template<typename Derived, typename R, typename S, template<typename, typename, typename> class... Fs>
+struct facet_bases<Derived, R, S, facet_list<Fs...>> : facet_if<facet_condition<Fs>::template on<R, S>(), Fs<Derived, R, S>>...
 {
 };
 

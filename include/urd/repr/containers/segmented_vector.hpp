@@ -23,7 +23,7 @@
 #include "urd/repr/containers/detail/segmented_rows.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
-#include "urd/repr/segmented_fwd.hpp"
+#include "urd/repr/sequences/segmented_fwd.hpp"
 
 #include <algorithm>
 #include <array>
@@ -101,9 +101,7 @@ private:
 
     template<typename... Args>
     T& emplace_back_unlocked(Args&&... args)
-    {
-        return emplace_back_at_unlocked(detail::load_size<ThreadSafe>(m_size), std::forward<Args>(args)...);
-    }
+    { return emplace_back_at_unlocked(detail::load_size<ThreadSafe>(m_size), std::forward<Args>(args)...); }
 
     size_t push_back_bounded_unlocked(const T& element, size_t max_index)
     {
@@ -295,9 +293,7 @@ public:
         }
 
         friend difference_type operator-(const BasicIterator& lhs, const BasicIterator& rhs) noexcept
-        {
-            return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos);
-        }
+        { return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos); }
 
         reference operator[](difference_type n) const { return *(*this + n); }
 

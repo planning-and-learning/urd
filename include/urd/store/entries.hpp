@@ -22,3 +22,17 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::entries>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, insertion_ordered>; }
+};
+
+}  // namespace urd::detail

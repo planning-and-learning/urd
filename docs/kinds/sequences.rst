@@ -14,7 +14,7 @@ Sequences
 
 .. cpp:namespace:: urd::Sequence
 
-A sequence identifies its elements by position (``positional`` and ``dense`` are implied: positions are 0..n-1).
+A sequence identifies its elements by position: positions are 0..n-1.
 With ``sorted`` it keeps its elements in order and takes ``insert`` instead of ``push_back``.
 
 .. list-table::
@@ -87,7 +87,7 @@ Growable (not ``frozen``, not ``fixed_shape``):
 .. cpp:function:: iterator insert(const_iterator pos, const value_type& element)
 .. cpp:function:: template<typename... Args> iterator emplace(const_iterator pos, Args&&... args)
 
-   At a position (shrinkable, unsorted).
+   At a position (not monotone, unsorted).
 
 Shrinkable (neither ``frozen`` nor ``monotone``):
 
@@ -116,54 +116,7 @@ Shape (``fixed_shape``)
 Complexity
 ----------
 
-n elements, r a row's length.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 28 18 14 14 12 14
-
-   * - Representation
-     - push / insert
-     - access
-     - erase
-     - clear
-     - memory
-   * - ``std::vector``
-     - O(1)\* at the end, O(n) inside
-     - O(1)
-     - O(n)
-     - O(n)
-     - contiguous; retains
-   * - ``boost::container::flat_multiset``
-     - O(n), into place
-     - O(1)
-     - O(n)
-     - O(n)
-     - contiguous; retains
-   * - ``SegmentedVector``
-     - O(1)\* (no element moves)
-     - O(1)
-     - —
-     - O(n)
-     - doubling segments; stable references
-   * - ``Jagged`` (frozen rows)
-     - O(r)\* per row
-     - a row: O(1), a span
-     - —
-     - O(n)
-     - one offsets array per level
-   * - ``Jagged`` (``fixed_shape``)
-     - built once, O(total length)
-     - a row: O(1), a span or ``BitsetSpan``; bit ops O(r/64)
-     - —
-     - —
-     - one array; bit rows ⌈r/64⌉ words each
-   * - ``RowPool``
-     - O(1)\*, a kept row first
-     - O(1)
-     - O(1), keeps the row
-     - O(n)
-     - rows kept with their storage
+.. urd-complexity:: sequences
 
 Example
 -------

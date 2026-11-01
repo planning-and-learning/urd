@@ -1,12 +1,21 @@
-What it is
-==========
+Kind
+====
 
-The kind of a Store follows from its arguments: ``key<K>`` is a set, ``key<K>, value<V>`` a map, ``value<V>`` a
-sequence. The questions below turn a value Store into a queue or a pool and a key Store into a partition, and say
-how a map's keys meet its values. Answer them first: they decide which operations the Store has at all (see the
-:doc:`kinds </kinds/sets>`).
+*Leaving out a tag you need does not compile: the operation does not exist.*
 
-.. urd-theme:: kind
+The kind of a Store is the top of a tree of kinds (``include/urd/kinds.hpp``). Each kind *claims* the requests it
+serves, tried in order: a ``partition`` claims keys grouped into classes, a queue anything with ``fifo``, ``lifo`` or
+``by_priority``, a pool ``handles`` with ``unique``, slots ``handles`` alone; then ``key<K>, value<V>`` is a map,
+``key<K>`` a set, ``value<V>`` with ``sorted``, ``unique`` or ``multi`` a multiset, and any other ``value<V>`` a
+sequence. A kind may split further: a queue is either by arrival (``fifo``, ``lifo``) or by priority. The leaf a
+request reaches is its kind.
+
+A kind decides what the Store is: which operations it has (its facets, see the :doc:`kinds </kinds/sets>`), what its
+elements are, and which questions its requests answer (its request format). A tag outside that format does not
+compile. Answer the questions below first: every other answer is read against them. A kind added outside urd plugs
+into the same tree (:doc:`/extending`).
+
+.. urd-group:: kind
 
 .. urd-category:: any_access
 
@@ -20,17 +29,3 @@ how a map's keys meet its values. Answer them first: they decide which operation
 .. urd-category:: any_grouping
 
    Union-find classes: ``merge``, ``find``, ``same``.
-
-.. urd-category:: any_multiplicity
-
-   One value per key, or many (a multimap). Maps also declare ``functional``, which selection reads.
-
-.. urd-category:: any_shape
-
-   Rows whose number and lengths are set at construction (:cpp:struct:`urd::row_lengths`, or one per row for rows
-   of rows); their contents change in place, and ``reset()`` sets them back to defaults (with ``proportional_clear``,
-   only rows handed out to change since).
-
-.. urd-category:: any_direction
-
-   A map answering ``keys(value)`` too.

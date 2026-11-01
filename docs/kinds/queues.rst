@@ -98,46 +98,7 @@ queue is not compared: a heap's order is no part of its contents.
 Complexity
 ----------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 26 16 16 20 12 10
-
-   * - Representation
-     - push
-     - access
-     - pop / erase
-     - clear
-     - memory
-   * - ``Fifo`` / ``Lifo``
-     - O(1)\*
-     - O(1)
-     - O(1)
-     - O(n)
-     - deque (stable_refs) / vector (retains)
-   * - ``RingFifo``
-     - O(1)\*
-     - O(1)
-     - O(1)
-     - O(n)
-     - one vector as a ring; retains
-   * - ``Heap``
-     - O(log n)
-     - ``top`` O(1)
-     - O(log n)
-     - O(n)
-     - vector; retains
-   * - ``AddressableHeap``
-     - O(log n)
-     - ``top`` O(1)
-     - ``pop``, ``erase(h)``, ``update(h, e)`` O(log n)
-     - O(n)
-     - heap of handles + a slot per handle
-   * - ``BucketQueue``
-     - O(1)\*
-     - ``top`` O(1)
-     - O(1)\* under monotone pushes
-     - O(range)
-     - a vector per priority
+.. urd-complexity:: queues
 
 Example
 -------

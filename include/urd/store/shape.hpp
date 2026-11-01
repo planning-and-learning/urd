@@ -16,3 +16,22 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::shape>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, fixed_shape>; }
+};
+template<>
+struct facet_operations<facet::shape>
+{
+    using offered = operation_list<operation::access>;
+};
+
+}  // namespace urd::detail

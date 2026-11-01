@@ -16,6 +16,10 @@ Pools
 
 .. cpp:namespace:: urd::Pool
 
+A pool is one kind (``pool``, ``handles`` with ``unique``) whatever it holds: rows (a Store or a registered
+container of elements) are interned as rows, on this page; values that are not rows are interned whole, on
+:doc:`records`. Slots (``handles`` without ``unique``) are a kind of their own.
+
 A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in
 full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
 with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its
@@ -150,42 +154,7 @@ Member functions: slots (``handles`` without ``unique``)
 Complexity
 ----------
 
-r a row's length; k the changes in a delta; A the tree arity (4).
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 14 18 18 12 18
-
-   * - Representation
-     - insert a row
-     - insert a delta
-     - read a row
-     - ``contains``
-     - memory
-   * - ``RowInterner``
-     - O(r)~; ``find`` O(r)~, ``erase`` O(r)~ (hashes the moved row), ``size`` O(1)
-     - O(r)~ (copies the row)
-     - O(r); ``view(h)`` O(1)
-     - O(r); O(1) for dense rows
-     - each distinct row once, in full
-   * - ``TreeVectorSet``
-     - O(r)~; ``find`` O(r)~
-     - O(k log\ :sub:`A` r)~
-     - O(r)
-     - —
-     - nodes shared across rows: a delta adds about k·log\ :sub:`A` r nodes
-   * - ``TreeBitsetSet``
-     - O(r/32)~; ``find`` O(r/32)~
-     - O(k log\ :sub:`A` (r/32))~
-     - O(r/32 + set bits)
-     - O(log\ :sub:`A` (r/32))
-     - as above; all-zero subtrees take nothing
-   * - ``SlotVector``
-     - O(1)\* (a freed slot first)
-     - —
-     - O(1) by handle
-     - —
-     - stable slots; erased elements keep their storage
+.. urd-complexity:: pools
 
 Measured, not only bounded: for 20,000 versions of a row that each differ from an earlier one in 3 positions, a
 tree pool takes 136–271 bytes per version against 447–4,409 for rows stored in full (:doc:`../BENCHMARKS`).

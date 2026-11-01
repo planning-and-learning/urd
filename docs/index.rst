@@ -8,9 +8,11 @@ A ``Store`` is described by what it holds and how it is used, not by which conta
 .. code-block:: cpp
 
    #include <urd/store.hpp>
-   #include <urd/use/dense.hpp>   // the families these Stores resolve to: dense keys,
-   #include <urd/use/hash.hpp>    // an interner,
-   #include <urd/use/queues.hpp>  // a queue
+   #include <urd/repr/values/indexed.hpp>            // the containers these Stores resolve to: an interner,
+   #include <urd/repr/maps/bidirectional_csr.hpp>  // a graph by index both ways,
+   #include <urd/repr/values/dense_set.hpp>          // a bitset,
+   #include <urd/repr/queues/queue.hpp>              // a queue,
+   #include <urd/repr/maps/index_map.hpp>          // a slot per index
    using namespace urd;
 
    struct User                                                             // an index: one integral member
@@ -59,15 +61,13 @@ complexity of each operation per representation.
    :caption: Representations
 
    representations
+   extending
    RESOLUTION
 
 .. toctree::
    :maxdepth: 1
    :caption: Development
 
-   INTEGRATION
    BENCHMARKS
-   SURVEY
-   ROADMAP
 
 Header-only C++20, GPL-3.0. Build: see :ref:`building`.

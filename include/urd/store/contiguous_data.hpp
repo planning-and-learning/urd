@@ -24,3 +24,17 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::contiguous_data>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, contiguous>; }
+};
+
+}  // namespace urd::detail

@@ -2,7 +2,7 @@
 // hold rows of a vector type, with yggdrasil's default arity 2 spelled out. The concurrent test comes with the concurrent
 // node tables.
 
-#include "urd/repr/tree_vector.hpp"
+#include "urd/repr/pools/tree_vector.hpp"
 
 #include <array>
 #include <bit>

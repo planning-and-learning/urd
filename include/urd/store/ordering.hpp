@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <compare>
+#include <type_traits>
 
 namespace urd::detail::facet
 {
@@ -18,3 +19,22 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S and its representation R.
+template<>
+struct facet_condition<facet::ordering>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    {
+        if constexpr (std::is_void_v<R>)  // asked from the spec alone, before a container is chosen
+            return false;
+        else
+            return compares_in_order<R, S>();
+    }
+};
+
+}  // namespace urd::detail

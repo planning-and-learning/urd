@@ -14,6 +14,10 @@ Records, repositories, views
 
 .. cpp:namespace:: urd::Records
 
+Records are the pool kind (:doc:`pools`) holding values that are not rows: each distinct value once, interned whole.
+Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an indexed set of the values: a pool of
+strings is ``Store<value<std::string>, handles, unique>``). With ``flat``, records are stored as bytes:
+
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
 A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista
@@ -37,13 +41,13 @@ records are frozen once stored.
    * - either with ``layered``
      - ``LayeredPool`` over it
 
-Either pool is the records family: ``urd/use/records.hpp`` is included where the Store is held, ``urd/flat.hpp``
-where a flat record is written.
+Each pool has its header: ``urd/repr/records/records.hpp`` (the record interner) or ``urd/repr/records/arena.hpp`` (the arena
+interner) is included where the Store is held, ``urd/flat.hpp`` where a flat record is written.
 
 .. code-block:: cpp
 
    #include <urd/flat.hpp>
-   #include <urd/use/records.hpp>
+   #include <urd/repr/records/arena.hpp>
    struct Predicate
    {
        urd::flat_string name;
@@ -110,6 +114,11 @@ Member functions
 
    Shrinkable pools; the arena keeps its segments.
 
+Complexity
+----------
+
+.. urd-complexity:: records
+
 Layered pools (``layered``)
 ---------------------------
 
@@ -133,69 +142,6 @@ branch, which inserts assert. The tree pools do not layer, since they number nod
 .. cpp:function:: const Records& owner(index_type at) const
 
    The Store along the chain that holds the element at ``at``.
-
-Families
---------
-
-.. cpp:namespace:: urd
-
-.. cpp:namespace-push:: compose
-
-.. cpp:class:: Family
-
-   One ``F<T>`` for each type in ``Ts``, reached by its type (``urd/compose/family.hpp``): a repository per kind of
-   record, where ``F`` is usually an alias of a Store. Where the members number their elements (positional sets,
-   pools), the family resolves an index of any member type, so a :cpp:class:`view\<T, Family\> <urd::view>` reads a record and
-   the indices held in it through one context. Where the members layer, the family layers.
-
-   .. cpp:function:: Family()
-   .. cpp:function:: explicit Family(const Family* parent)
-
-      A layer over ``parent`` (``nullptr``: a root): each member layered over the parent's member of its type.
-
-   .. cpp:function:: template<typename T> F<T>& get()
-   .. cpp:function:: template<typename T> const F<T>& get() const
-   .. cpp:function:: template<typename Function> void for_each(Function function)
-   .. cpp:function:: const Family* parent() const noexcept
-   .. cpp:function:: std::size_t layer() const noexcept
-   .. cpp:function:: template<typename T> decltype(auto) operator[](index<T> at) const
-
-      The record of ``at``, from the member for ``T``, whichever layer holds it.
-
-   .. cpp:function:: template<typename T> auto view(index<T> at) const
-
-      Through the family that owns the record, so the views' identities are (index, layer).
-
-   .. cpp:function:: template<typename T> std::pair<index<T>, bool> insert(const T& record)
-   .. cpp:function:: template<typename T, typename Factory> std::pair<index<T>, bool> insert(const T& key, Factory make)
-   .. cpp:function:: template<typename T> index<T> find(const T& record) const
-   .. cpp:function:: template<typename T> bool contains(index<T> at) const
-   .. cpp:function:: void clear()
-
-.. cpp:namespace-pop::
-
-Example: a repository of symbols
---------------------------------
-
-.. code-block:: cpp
-
-   struct Atom
-   {
-       urd::index<Predicate> predicate;
-       urd::flat_vector<urd::index<Term>> terms;
-       static constexpr auto identifying_members() noexcept { return urd::Members<&Atom::predicate, &Atom::terms> {}; }
-       static constexpr auto cista_members() noexcept { return urd::Members<&Atom::predicate, &Atom::terms> {}; }
-   };
-   template<typename T>
-   using Symbols = Store<value<T>, handles, unique, flat, monotone, layered, concurrent>;
-   using Repository = compose::Family<Symbols, Object, Predicate, Term, Atom>;
-
-   auto domain = Repository();
-   auto task = Repository(&domain);                                // the task's symbols after the domain's
-   const auto [atom, fresh] = task.insert(Atom { on, { block, x } });
-   const auto seen = task.view(atom);                              // view<Atom, Repository>
-   seen.get<&Atom::predicate>().get<&Predicate::name>();           // through the layer that owns the predicate
-   for (const auto term : seen.get<&Atom::terms>()) /* view<Term, Repository> */;
 
 Relations: a map of layered pools
 ---------------------------------

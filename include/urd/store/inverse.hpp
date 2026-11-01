@@ -14,3 +14,17 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::inverse>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, bidirectional>; }
+};
+
+}  // namespace urd::detail

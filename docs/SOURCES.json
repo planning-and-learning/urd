@@ -20,6 +20,12 @@
       "repository": "https://github.com/drexlerd/cista.git",
       "revision": "a9a69d02bea7a9e190368c4d5224fa17faefbf96"
     },
+    "fmt": {
+      "kind": "git",
+      "version": "12.2.0",
+      "repository": "https://github.com/fmtlib/fmt",
+      "revision": "1be298e1bd68957e4cd352e1f676f00e07dcfb57"
+    },
     "googletest": {
       "kind": "git",
       "version": "1.18.0",

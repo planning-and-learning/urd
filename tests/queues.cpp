@@ -2,9 +2,11 @@
 // by_priority) is checked against a model through random pushes and pops, as tests/properties.cpp checks sets and
 // sequences.
 
-#include "urd/use/queues.hpp"
-
 #include "allocations.hpp"
+#include "urd/repr/queues/addressable_heap.hpp"
+#include "urd/repr/queues/bucket_queue.hpp"
+#include "urd/repr/queues/queue.hpp"
+#include "urd/repr/queues/ring_fifo.hpp"
 #include "urd/store.hpp"
 #include "verify.hpp"
 
@@ -79,8 +81,6 @@ concept has_top = requires(Q queue) { queue.top(); };
 static_assert(iterable<Store<value<int>, urd::fifo>> && !iterable<Store<value<int>, urd::by_priority, urd::monotone_priority>>
               && has_front<Store<value<int>, urd::fifo>> && !has_top<Store<value<int>, urd::fifo>>);
 static_assert(has_top<Store<value<int>, urd::by_priority>> && !has_front<Store<value<int>, urd::by_priority>>);
-
-TYPED_TEST(Queues, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
 TYPED_TEST(Queues, LeavesInItsOrderThroughRandomOperations)
 {

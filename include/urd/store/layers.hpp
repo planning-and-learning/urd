@@ -27,21 +27,15 @@ public:
     /// This layer's number along the chain: 0 for a root.
     [[nodiscard]] std::size_t layer() const
         requires chained
-    {
-        return constant().layer();
-    }
+    { return constant().layer(); }
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] std::size_t base() const
         requires chained
-    {
-        return constant().base();
-    }
+    { return constant().base(); }
     /// Whether the parent grew after the branch, which it must not.
     [[nodiscard]] bool parent_grew() const
         requires chained
-    {
-        return constant().parent_grew();
-    }
+    { return constant().parent_grew(); }
     /// The Store along the chain that holds the element at `at`: this one, or an ancestor.
     template<typename Index>
     [[nodiscard]] const Derived& owner(Index at) const
@@ -61,3 +55,17 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::layers>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return has<S, layered>; }
+};
+
+}  // namespace urd::detail

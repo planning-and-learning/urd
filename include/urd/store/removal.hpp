@@ -67,3 +67,22 @@ private:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::removal>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return shrinks<S>; }
+};
+template<>
+struct facet_operations<facet::removal>
+{
+    using offered = operation_list<operation::erase, operation::clear>;
+};
+
+}  // namespace urd::detail

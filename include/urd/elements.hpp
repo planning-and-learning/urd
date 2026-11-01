@@ -84,6 +84,21 @@ inline constexpr bool is_projected_less = false;
 template<typename T, auto P>
 inline constexpr bool is_projected_less<ProjectedLess<T, P>, T> = true;
 
+/// What order Compare compares elements T by: its projection's result where it projects (order_by<P>), else T.
+template<typename T, typename Compare>
+struct order_key_of
+{
+    using type = T;
+};
+template<typename T, typename Compare>
+    requires requires { Compare::projection; }
+struct order_key_of<T, Compare>
+{
+    using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
+};
+template<typename T, typename Compare>
+using order_key_t = typename order_key_of<T, Compare>::type;
+
 }  // namespace detail
 
 /// Comparator C orders T as sorted means: urd::Less, or std::less where T's operator< is what urd::Less uses; or the
@@ -91,12 +106,6 @@ inline constexpr bool is_projected_less<ProjectedLess<T, P>, T> = true;
 template<typename C, typename T>
 concept natural_order =
     (orderable<T> && (std::same_as<C, Less<T>> || (std::same_as<C, std::less<T>> && std::totally_ordered<T>) )) || detail::is_projected_less<C, T>;
-
-/// H and E hash and compare T as a hash table needs: urd's, or the standard's where T has them.
-template<typename H, typename E, typename T>
-concept natural_hash = hashable<T>
-                       && ((std::same_as<H, Hash<T>> && std::same_as<E, EqualTo<T>>)
-                           || (std::same_as<H, std::hash<T>> && std::same_as<E, std::equal_to<T>> && std::invocable<const std::hash<T>&, const T&>) );
 
 namespace detail
 {

@@ -54,7 +54,7 @@ Most rows are held as Stores, each owning its storage. Where the outer request s
 Kinds
 -----
 
-The kind of a Store follows from its arguments:
+The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims its request (:doc:`language/kind`):
 
 .. list-table::
    :header-rows: 1
@@ -72,15 +72,21 @@ The kind of a Store follows from its arguments:
    * - ``Store<value<V>, ...>``
      - a sequence
      - :doc:`kinds/sequences`
-   * - ``Store<value<V>, fifo | lifo | by_priority, ...>``
-     - a queue
+   * - ``Store<value<V>, sorted | unique | multi, ...>``
+     - a multiset: values kept by value
+     - :doc:`kinds/sequences`
+   * - ``Store<value<V>, fifo | lifo, ...>``
+     - a queue by arrival
      - :doc:`kinds/queues`
-   * - ``Store<value<Row>, handles, ...>``
-     - a pool of rows (``unique``: interned) or of slots
+   * - ``Store<value<V>, by_priority, ...>``
+     - a priority queue
+     - :doc:`kinds/queues`
+   * - ``Store<value<V>, handles, unique, ...>``
+     - a pool: rows interned as rows, records and values interned whole (``flat``: records stored as bytes)
+     - :doc:`kinds/pools`, :doc:`kinds/records`
+   * - ``Store<value<V>, handles, ...>``
+     - slots
      - :doc:`kinds/pools`
-   * - ``Store<value<Record>, handles, unique, flat, ...>``
-     - a pool of records stored flat
-     - :doc:`kinds/records`
    * - ``Store<key<I>, partition>``
      - a partition of indices
      - :doc:`kinds/partitions`
@@ -92,55 +98,38 @@ A request is checked when the Store type is formed (``include/urd/properties.hpp
 assertion that names what is wrong.
 
 * Every argument is a property; at most one ``key``, one ``value``, one ``order_by``.
-* At most one tag per category: ``dense`` and ``sparse`` contradict, as do ``functional`` and ``multi``, ``frozen``
-  and ``monotone``, two workloads.
-* The rules add what the request implies: a sequence is ``positional`` and ``dense`` (positions are 0..n-1); a
-  set, and a map without ``multi``, is ``unique``; a ``frozen`` Store has ``stable_refs``; ``frozen`` or
-  ``fixed_shape`` makes a Store immutable, ``monotone`` or ``nonempty`` makes it growable, else it is shrinkable.
-* A pool (``handles``) holds ``value<V>`` rows, is reached by handle, and cannot be ``positional`` or ``frozen``; a
-  pool of records that are no range must say ``flat``; ``flat`` goes with ``handles, unique`` only.
-* A queue changes by ``push`` and ``pop`` and cannot be ``frozen`` or ``positional``; ``monotone_priority`` needs
-  ``by_priority``.
-* ``fixed_shape`` is a sequence of rows (``value<Store<...>>``) that is not ``monotone``.
-* ``contiguous`` with ``stable_refs`` needs ``frozen``: contiguous storage moves its elements when it grows; a
-  sequence or a ``positional`` set with ``stable_refs`` needs ``monotone`` or ``frozen``: erasing or inserting at a
-  position moves the elements after it.
-* ``nonempty`` is a promise about iterated elements: sets, maps and sequences, not queues or pools.
-* ``concurrent`` goes with hashed or ``dense`` Stores: no concurrent sorted container, no concurrent queue (its
-  front moves with ``pop``), and a ``frozen`` Store is read by any number of threads without it.
-* ``order_by`` needs ``sorted`` or ``by_priority``; on unique keys the keys must be orderable, to break ties; a
-  ``dense`` Store is iterated by index and takes no ``order_by``; a map ordered by its values is a flat scan, so it
-  asks for ``small`` or ``frozen`` too.
-* ``dense`` with ``reclaims`` has no storage to return (a slot per index); ``constant_clear`` on a set or map needs
-  ``dense`` (a generation counter over slots); ``layered`` with ``sorted`` has no order over both layers; a
-  ``partition`` is single-threaded.
+* At most one tag per category: ``dense`` and ``sparse`` contradict, as do ``frozen`` and ``monotone``, two
+  workloads.
+* What you state is what you get, with what it means: a set, and a map without ``multi``, keep each key once; a
+  positional set numbers its keys as they come; a ``frozen`` Store has ``stable_refs``. ``frozen`` or ``fixed_shape``
+  Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
+* A pool (``handles``) holds ``value<V>`` rows reached by handle, not by key; a ``partition`` groups keys, without
+  values; ``order_by`` on unique keys needs orderable keys, to break ties.
+* Every tag answers a question of the request's kind (its request format): ``bidirectional`` means nothing for a
+  queue, ``flat`` nothing for a set.
+* Any other request no container serves fails in the registry.
 
 Resolution
 ----------
 
-The registry (``include/urd/registry.hpp``) lists the containers in an order backed by :doc:`BENCHMARKS`; the first
-whose declared traits satisfy every property of the request, whose demands the request meets, and whose interface
-matches the request's kind (kept by value where the request is, unique, by handle, flat, a map, a queue exactly
-where the request is), is chosen. A declared guarantee the request left open is free, with one exception: ``dense``
+The request's kind is found first (:doc:`language/kind`); then only that kind's containers are tried
+(``declarations_of<Kind>`` in ``include/urd/registry/declarations.hpp``), in an order backed by :doc:`BENCHMARKS`. The
+first whose declaration provides every property of the request, whose reliances the request promises (what it
+states, and the type traits of its elements, order, values and rows), and whose demands the request meets, is chosen;
+where the request is ``frozen`` or ``small``, containers with stable storage come after the others (``preferences``
+in ``include/urd/kinds.hpp``). A declared guarantee the request left open is free, with one exception: ``dense``
 is also a demand, since a container that stores by index needs keys that are indices, so a dense container serves
 only a request that promises ``dense`` (a partition promises it). :doc:`RESOLUTION` is generated from the registry
 and checked by a test, and a second test checks that no serving candidate demands what a request did not promise.
 
-A request no container serves fails with a static assertion whose instantiation names the culprits: the stated
-tags whose removal, one at a time, would make it servable, and whether the key type is hashable, orderable and
-indexable.
+A request no container serves fails with a static assertion; its instantiation names the request:
 
 .. code-block:: text
 
-   In instantiation of 'no_representation_for<spec<std::string, void, ..., urd::tag::dense, ...>, culprits<urd::tag::dense>, true, true, false>'
-   error: static assertion failed: urd::Store: no representation provides this combination of properties. ...
+   In instantiation of 'no_representation_for<spec<std::string, void, void, urd::uniqueness::unique, urd::keys::dense>>'
+   error: static assertion failed: urd::Store: no container serves this request: drop or change a tag
 
-A call to an operation the properties rule out names the property:
-
-.. code-block:: text
-
-   error: no matching function for call to 'insert'
-   note: constraints not satisfied: 'denied<"insert: the Store is frozen; it changes only by assign(first, last)">'
+A call to an operation the properties rule out is a plain compile error: the Store has no such member.
 
 .. _building:
 
@@ -156,16 +145,16 @@ Building and using
    cmake --install build --prefix <where>                                    # then find_package(urd) from there
 
 Link ``urd::urd`` and include ``urd/store.hpp``. The target carries Boost 1.89 or later (Container, Unordered,
-Hash2), cista, and with ``URD_WITH_GTL`` (on by default) gtl, whose sharded tables serve ``concurrent`` sets and maps
-by hashed keys.
+Hash2), cista, and gtl, whose sharded tables serve ``concurrent`` sets and maps by hashed keys.
 
 ``urd/store.hpp`` declares every representation and defines none: it costs the vocabulary and the resolution, and
-stays as cheap as containers are added. A file includes the families it holds Stores of, ``urd/use/<family>.hpp``
-(:doc:`representations` lists them), and a Store whose family is missing fails to compile with the header's path in
-the error. No header includes every family: the records family alone brings cista's serialization, which only a
-file holding such a pool should pay for. The resolution table (``docs/RESOLUTION.md``) names each request's
-family. Beside these: ``urd/flat.hpp`` where a record stored flat is written, ``urd/view.hpp`` where views are made,
-``urd/compose/family.hpp`` for families of Stores.
+stays as cheap as containers are added: a request names only the container it resolves to. A file includes the
+header of each container its Stores resolve to, ``urd/repr/<kind>/<container>.hpp`` (:doc:`representations` lists
+them; the kinds' directories are sequences, values, maps, queues, pools, slots, records and partitions, and wrappers
+holds the wrappers),
+and a Store whose container's header is missing fails to compile naming the headers to include. No header includes
+every container: the record pools alone bring cista's serialization, which only a file holding such a pool should
+pay for. The resolution table (``docs/RESOLUTION.md``) names each request's headers. Beside these: ``urd/flat.hpp`` where a record stored flat is written, and ``urd/view.hpp`` where views are made.
 
 This documentation is built with Sphinx:
 

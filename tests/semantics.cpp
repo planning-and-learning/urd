@@ -3,12 +3,21 @@
 // when EqualTo calls them equal. One typed test per law, over random values from a small domain, so that
 // equal values occur.
 
+#include "urd/repr/maps/bidirectional_csr.hpp"
+#include "urd/repr/maps/csr_multimap.hpp"
+#include "urd/repr/maps/dense_multimap.hpp"
+#include "urd/repr/maps/entry_ordered.hpp"
+#include "urd/repr/maps/flat_map.hpp"
+#include "urd/repr/maps/index_map.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/values/flat_set.hpp"
+#include "urd/repr/values/sparse_set.hpp"
 #include "urd/semantics/equal_to.hpp"
 #include "urd/semantics/hash.hpp"
 #include "urd/semantics/less.hpp"
 #include "urd/store.hpp"
-#include "urd/use/contiguous.hpp"
-#include "urd/use/dense.hpp"
 
 #include <array>
 #include <cstdint>

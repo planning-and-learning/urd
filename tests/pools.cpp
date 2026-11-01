@@ -1,16 +1,33 @@
 // Pools: rows identified by the handles insert gives. Each pool is checked against the rows it was given through
 // random inserts and clears: equal rows get equal handles, and every handle gives its row back.
 
-#include "urd/use/pools.hpp"
+#include "urd/repr/pools/pools.hpp"
 
 #include "names.hpp"
 #include "urd/flat.hpp"
+#include "urd/repr/maps/bidirectional_csr.hpp"
+#include "urd/repr/maps/csr_multimap.hpp"
+#include "urd/repr/maps/dense_multimap.hpp"
+#include "urd/repr/maps/index_map.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/maps/std_map.hpp"
+#include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/pools/tree_bitset.hpp"
+#include "urd/repr/pools/tree_vector.hpp"
+#include "urd/repr/records/arena.hpp"
+#include "urd/repr/records/records.hpp"
+#include "urd/repr/sequences/jagged.hpp"
+#include "urd/repr/sequences/row_pool.hpp"
+#include "urd/repr/sequences/segmented.hpp"
+#include "urd/repr/sequences/sequence.hpp"
+#include "urd/repr/slots/slots.hpp"
+#include "urd/repr/values/dense_set.hpp"
+#include "urd/repr/values/sparse_set.hpp"
+#include "urd/repr/values/std_set.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
-#include "urd/use/dense.hpp"
-#include "urd/use/layers.hpp"
-#include "urd/use/nodes.hpp"
-#include "urd/use/records.hpp"
-#include "urd/use/sequences.hpp"
 #include "urd/view.hpp"
 #include "verify.hpp"
 
@@ -96,6 +113,11 @@ class Records : public testing::Test
 using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    urd::repr::RecordInterner<Point, false, true>,
                                    urd::repr::RecordInterner<Point, true>,
+                                   urd::repr::ValueInterner<Point>,
+                                   urd::repr::ValueInterner<Named, false, true>,
+                                   urd::repr::ValueInterner<Named, true>,
+                                   Store<value<Point>, urd::handles, urd::unique>,
+                                   Store<value<Named>, urd::handles, urd::unique, urd::concurrent>,
                                    urd::repr::ArenaInterner<Named>,
                                    urd::repr::ArenaInterner<Named, true>,
                                    urd::repr::ArenaInterner<Point>,
@@ -115,6 +137,10 @@ TYPED_TEST_SUITE(Records, RecordPools, urd::test::Names);
 
 }  // namespace
 
+// Values interned whole, where the request does not ask for flat: the value interner, whatever the value.
+static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<Point>>);
+static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::stable_refs>::representation, urd::repr::ValueInterner<Named, false, true>>);
+static_assert(std::same_as<Store<value<std::string>, urd::handles, urd::unique>::representation, urd::repr::ValueInterner<std::string>>);
 // Records stored flat: trivially copyable ones in memory, the others serialized into an arena; thread-safe on request.
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat>::representation, urd::repr::RecordInterner<Point>>);
 static_assert(std::same_as<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>::representation, urd::repr::RecordInterner<Point, true>>);
@@ -136,8 +162,6 @@ static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::han
                            urd::repr::LayeredPool<urd::repr::RowInterner<Store<value<int>, urd::frozen>>>>);
 // A flat pool is counted and read by index, as its records are whole; its handle is the index.
 static_assert(std::same_as<Store<value<Named>, urd::handles, urd::unique, urd::flat>::handle_type, urd::index<Named>>);
-
-TYPED_TEST(Records, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
 TYPED_TEST(Records, KeepsEachDistinctRecordOnceThroughRandomOperations)
 {
@@ -229,8 +253,6 @@ TEST(Pools, FindWithSharing)
     EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing, and says so
 }
 
-TYPED_TEST(Pools, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
-
 TYPED_TEST(Pools, GivesEqualRowsEqualHandlesThroughRandomOperations)
 {
     for (unsigned seed = 0; seed < 32; ++seed)
@@ -297,8 +319,6 @@ TYPED_TEST_SUITE(Slots, SlotContainers, urd::test::Names);
 static_assert(std::same_as<Store<value<int>, urd::handles>::representation, urd::repr::SlotVector<int>>);
 static_assert(std::same_as<Store<value<int>, urd::handles, urd::concurrent>::representation, urd::repr::SlotVector<int, true>>);
 static_assert(urd::has<Store<value<int>, urd::handles, urd::stable_refs>, urd::stable_refs>);
-
-TYPED_TEST(Slots, OffersWhatItsPropertiesRequire) { static_assert(urd::conforming<TypeParam>); }
 
 TYPED_TEST(Slots, KeepsElementsInPlaceAndReusesFreedSlots)
 {

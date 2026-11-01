@@ -27,3 +27,22 @@ public:
 };
 
 }  // namespace urd::detail::facet
+
+namespace urd::detail
+{
+
+/// When a Store has this facet: from its spec S.
+template<>
+struct facet_condition<facet::multi_values>
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return !has<S, unique>; }
+};
+template<>
+struct facet_operations<facet::multi_values>
+{
+    using offered = operation_list<operation::lookup>;
+};
+
+}  // namespace urd::detail

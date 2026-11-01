@@ -65,7 +65,7 @@ struct Write
     T value {};
 };
 
-/// The Store, Family or layer that resolves a T's indices by default: `template<> struct urd::context_of<Atom> { using
+/// The Store or layer that resolves a T's indices by default: `template<> struct urd::context_of<Atom> { using
 /// type = Repository; };` once per record type, so that view<Atom> needs no second argument.
 template<typename T>
 struct context_of;

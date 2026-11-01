@@ -1,12 +1,17 @@
 // Scopes, layers and memo tables: a symbol table whose inner bindings end with their scope, a map that reuses a
 // parent's entries, and a memo kept for two generations.
 
-#include "urd/use/scopes.hpp"
-
 #include "show.hpp"
+#include "urd/repr/maps/ordered_map.hpp"
+#include "urd/repr/maps/postings.hpp"
+#include "urd/repr/maps/unordered_flat_map.hpp"
+#include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/wrappers/scoped.hpp"
 #include "urd/store.hpp"
-#include "urd/use/hash.hpp"
-#include "urd/use/layers.hpp"
 
 #include <cstdint>
 #include <exception>

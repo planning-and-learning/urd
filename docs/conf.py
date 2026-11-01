@@ -21,7 +21,7 @@ myst_heading_anchors = 3
 
 primary_domain = "cpp"
 highlight_language = "cpp"
-cpp_index_common_prefix = ["urd::", "urd::repr::", "urd::compose::"]
+cpp_index_common_prefix = ["urd::", "urd::repr::"]
 
 html_theme = "furo"
 html_title = "urd"
