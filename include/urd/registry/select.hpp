@@ -33,21 +33,22 @@ inline constexpr request_shape shape_of = []
     return request_shape { S::required, request_roles<S>(), held::properties, held::required };
 }();
 
-/// The entry for spec S: its position in its kind's table, or no_entry. `found` is false where none serves.
+/// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
+template<typename S>
+inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
+/// The entry for spec S: the first serving it (its position in its kind's table), or no_entry. `found` is false where
+/// none serves.
 template<typename S>
 struct choose
 {
     using kind = typename S::kind;
-    static constexpr std::size_t position = first_serving<kind>(shape_of<S>);
+    static constexpr std::size_t position = serving_v<S>.count != 0 ? serving_v<S>.at[0] : no_entry;
     static constexpr bool found = position != no_entry;
     static constexpr std::string_view id = found ? table_of<kind>[position].id : std::string_view();
     /// The headers of the chosen container, a wrapper's part's first.
     static constexpr std::span<const std::string_view> headers = found ? table_of<kind>[position].headers : std::span<const std::string_view>();
 };
 
-/// Every declaration serving spec S, in the order they are preferred: what the tables and tests read of a request.
-template<typename S>
-inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
 template<typename S, std::size_t... I>
 auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.at[I], declarations_t<typename S::kind>>::type...>;
 template<typename S>
@@ -58,9 +59,10 @@ template<typename S, std::size_t... I>
 consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 {
     constexpr auto entry = table_of<typename S::kind>[choose<S>::position];
-    return typename join<std::conditional_t<included<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>,
-                                            type_list<>,
-                                            type_list<include<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>>>...>::type {};
+    return typename concat<type_list<>,
+                           std::conditional_t<included<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>,
+                                              type_list<>,
+                                              type_list<include<fixed_string<entry.headers[I].size() + 1>(entry.headers[I])>>>...>::type {};
 }
 
 /// What a request resolves to where this file lacks headers of its container: a type declared only, whose arguments
@@ -72,24 +74,20 @@ struct missing_container;
 
 /// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
 /// the facets its kind lists, each by its own condition.
-template<typename S>
-consteval bool hands_out_indices()
+template<typename S, template<typename, typename, typename> class F>
+consteval bool hands_out_indices_by()
 {
-    return []<template<typename, typename, typename> class... Fs>(facet_list<Fs...> /*facets*/)
-    {
-        const auto one = []<template<typename, typename, typename> class F>()
-        {
-            if constexpr (facet_condition<F>::hands_out_indices)
-                return facet_condition<F>::template on<void, S>();
-            else
-                return false;
-        };
-        return (one.template operator()<Fs>() || ...);
-    }(facets_of<typename S::kind> {});
+    if constexpr (facet_condition<F>::hands_out_indices)
+        return facet_condition<F>::template on<void, S>();
+    else
+        return false;
 }
+template<typename S, template<typename, typename, typename> class... Fs>
+consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
+{ return (hands_out_indices_by<S, Fs>() || ...); }
 /// The container of a Store that hands out indices for views is numbered (urd::layer).
 template<typename S, typename R>
-using numbered_t = std::conditional_t<hands_out_indices<S>(), repr::Numbered<R>, R>;
+using numbered_t = std::conditional_t<hands_out_indices<S>(facets_of<typename S::kind> {}), repr::Numbered<R>, R>;
 
 template<typename S, typename Decl, typename Missing>
 struct missing_headers_for
@@ -122,12 +120,8 @@ struct no_representation_for
     using type = std::vector<typename S::element_type>;
 };
 
-/// The representation for a request (a to_spec), or where none serves it, the error.
-template<typename Request>
-struct resolution
-{
-    using spec = typename Request::type;
-    using type = typename std::conditional_t<choose<spec>::found, chosen_type<spec>, no_representation_for<spec>>::type;
-};
+/// The container for spec S, or where none serves it, the error.
+template<typename S>
+using container_for = typename std::conditional_t<choose<S>::found, chosen_type<S>, no_representation_for<S>>::type;
 
 }  // namespace urd::detail

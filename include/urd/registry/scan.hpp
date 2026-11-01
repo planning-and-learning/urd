@@ -3,8 +3,8 @@
 // Choosing a container as constant evaluation: the entries of the request's kind's table (urd/registry/table.hpp)
 // whose tags match the request's, the first of them chosen. Matching reads only tags: the container provides what the
 // request requires (satisfies), the request's roles promise what the container relies on and demands (promises), and
-// nested Stores get what they ask for. Where the request holds a tag that prefers some entries later (urd/kinds.hpp, prefers), they come
-// after the others.
+// nested Stores get what they ask for. Where the request holds a tag that puts some entries later (urd::tag_defaults,
+// later), they come after the others.
 
 #include "urd/registry/table.hpp"
 
@@ -69,24 +69,6 @@ constexpr serving_entries<Kind> all_serving(const request_shape& s)
     for (std::size_t each = 0; each < later.count; ++each)
         result.at[result.count++] = later.at[each];
     return result;
-}
-
-/// The position in Kind's table of the entry chosen for the request, or no_entry: the first of all_serving, found
-/// without listing the rest.
-template<typename Kind>
-constexpr std::size_t first_serving(const request_shape& s)
-{
-    auto later = no_entry;
-    for (std::size_t each = 0; each < table_of<Kind>.size(); ++each)
-    {
-        if (!serves(table_of<Kind>[each], s))
-            continue;
-        if (!comes_later(table_of<Kind>[each], s))
-            return each;
-        if (later == no_entry)
-            later = each;
-    }
-    return later;
 }
 
 }  // namespace urd::detail

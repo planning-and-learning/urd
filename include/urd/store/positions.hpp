@@ -16,7 +16,7 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class positions
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
     using reference_type = typename iterator_types<R, S>::reference;
     using const_reference_type = typename iterator_types<R, S>::const_reference;
     static constexpr bool writable = types::writable;
@@ -46,30 +46,6 @@ public:
             throw std::out_of_range("urd::Store::at: position out of range");
         return (*this)[pos];
     }
-    /// The first element; a nonempty Store always has one, any other needs one.
-    [[nodiscard]] const_reference_type front() const
-    {
-        assert(!self().empty());
-        return *self().begin();
-    }
-    [[nodiscard]] reference_type front()
-        requires writable
-    {
-        assert(!self().empty());
-        return *self().begin();
-    }
-    [[nodiscard]] const_reference_type back() const
-    {
-        assert(!self().empty());
-        return *std::prev(self().end());
-    }
-    [[nodiscard]] reference_type back()
-        requires writable
-    {
-        assert(!self().empty());
-        return *std::prev(self().end());
-    }
-
     /// The position of the element at `it`: in a set, its index; size() for end(), as find gives for an absent one.
     [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - self().begin()); }
 
@@ -84,7 +60,7 @@ template<typename Derived, typename R, typename S>
 class insertion_positions : public positions<Derived, R, S>
 {
     using base = positions<Derived, R, S>;
-    using types = store_types<R, S>;
+    using types = store_types<S>;
     using const_reference_type = typename iterator_types<R, S>::const_reference;
 
 public:
@@ -111,7 +87,7 @@ public:
         return urd::view<typename types::value_type, Derived>(at, static_cast<const Derived&>(*this));
     }
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
-    [[nodiscard]] std::size_t layer() const { return store_access::representation(static_cast<const Derived&>(*this)).layer(); }
+    [[nodiscard]] std::size_t layer() const { return store_access::of<Derived>(*this).layer(); }
 };
 
 }  // namespace urd::detail::facet

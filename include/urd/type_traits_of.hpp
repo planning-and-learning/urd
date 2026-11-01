@@ -187,12 +187,12 @@ struct role_facts<role::row_element>
     { return traits_holding<role::row_element, typename held_as<T>::elements>(); }
 };
 
-/// The facts by role of a kind's played types (role_types<plays<Role, Args…>…>): each role's facts, about that role.
+/// The facts by role of a kind's played types (type_list<plays<Role, Args…>…>): each role's facts, about that role.
 template<typename Played>
 consteval property_set facts_of()
 {
     auto result = property_set::roots();
-    []<typename... Plays>(role_types<Plays...> /*played*/, property_set& into)
+    []<typename... Plays>(type_list<Plays...> /*played*/, property_set& into)
     {
         const auto put = [&into]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
         { about(role_v<Role>, role_facts<Role>::template of<Args...>()).for_each([&into](tag fact) { into.put(fact); }); };

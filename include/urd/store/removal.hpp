@@ -15,7 +15,7 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class removal
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
     using value_type = typename types::value_type;
     using iterator_type = typename iterator_types<R, S>::iterator;
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
@@ -54,7 +54,7 @@ public:
     }
 
 private:
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

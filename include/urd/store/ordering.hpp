@@ -30,10 +30,12 @@ struct facet_condition<facet::ordering> : facet_defaults
     template<typename R, typename S>
     static constexpr bool on()
     {
-        if constexpr (std::is_void_v<R>)  // asked from the spec alone, before a container is chosen
-            return false;
+        // Ordered, and the elements its representation yields compare (a flattened Store's rows are slices, which do not).
+        // Never asked from the spec alone (R void), before a container is chosen.
+        if constexpr (!std::is_void_v<R> && store_types<S>::ordered)
+            return std::three_way_comparable<std::ranges::range_value_t<R>>;
         else
-            return compares_in_order<R, S>();
+            return false;
     }
 };
 

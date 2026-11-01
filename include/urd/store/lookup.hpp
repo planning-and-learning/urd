@@ -9,7 +9,7 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class lookup
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
 
 public:
     /// What lookups take: a map's key, else an element, as key_type is for the standard's sets.
@@ -22,7 +22,7 @@ public:
     [[nodiscard]] bool contains(const typename types::lookup_type& element) const { return representation().contains(element); }
 
 private:
-    [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet
@@ -30,14 +30,6 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: always, where its kind lists it (the kinds that place elements by value).
-template<>
-struct facet_condition<facet::lookup> : facet_defaults
-{
-    template<typename R, typename S>
-    static constexpr bool on()
-    { return true; }
-};
 template<>
 struct facet_operations<facet::lookup>
 {

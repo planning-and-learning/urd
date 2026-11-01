@@ -29,11 +29,6 @@ using urd::test::op_count;
 using urd::test::op_v;
 
 template<typename T>
-inline constexpr bool is_index = false;
-template<typename T>
-inline constexpr bool is_index<urd::index<T>> = true;
-
-template<typename T>
 inline constexpr bool is_pair = false;
 template<typename A, typename B>
 inline constexpr bool is_pair<std::pair<A, B>> = true;
@@ -82,7 +77,7 @@ T make(std::size_t at)
         return "an element of some length " + std::to_string(at);
     else if constexpr (std::is_same_v<T, urd::test::Id>)
         return T { static_cast<std::uint32_t>(at) };
-    else if constexpr (is_index<T>)
+    else if constexpr (urd::is_index_type<T>)
         return T(static_cast<typename T::value_type>(at));
     else if constexpr (std::is_same_v<T, urd::test::Text>)
         return T { urd::flat_string("text " + std::to_string(at)) };

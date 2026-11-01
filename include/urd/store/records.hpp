@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements/index.hpp"
+#include "urd/store/layers.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 
@@ -88,7 +89,7 @@ public:
     [[nodiscard]] urd::view<T, Derived> view(index_type at) const
     {
         static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
-        if constexpr (has<S, layered>)
+        if constexpr (chains_layers<R>)
             return urd::view<T, Derived>(at, static_cast<const Derived&>(*this).owner(at));
         else
             return urd::view<T, Derived>(at, static_cast<const Derived&>(*this));
@@ -101,8 +102,8 @@ public:
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet
@@ -118,7 +119,7 @@ struct facet_condition<facet::records> : facet_defaults
     static constexpr bool hands_out_indices = true;
     template<typename R, typename S>
     static constexpr bool on()
-    { return !holds_rows<typename S::element_type>(); }
+    { return !held_as<typename S::element_type>::store; }
 };
 template<>
 struct facet_operations<facet::records>

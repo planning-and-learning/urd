@@ -18,7 +18,7 @@ public:
 
     [[nodiscard]] auto values(const typename S::key_type& key) const
     {
-        const auto& representation = store_access::representation(static_cast<const Derived&>(*this));
+        const auto& representation = store_access::of<Derived>(*this);
         if constexpr (requires { representation.values(key); })
             return representation.values(key);
         else

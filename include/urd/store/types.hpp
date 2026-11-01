@@ -19,9 +19,9 @@ namespace urd::detail
 {
 
 // A Store is its core (store.hpp) and facets (namespace facet): one class per group of properties, holding
-// the members those properties allow, inherited where the Store's properties switch them on. Within one Store each
-// member name lives in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
-// recur (insert in growth, pool, slots and grouping).
+// the members those properties allow, inherited where the Store's properties switch them on. Within one Store a member
+// name must live in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
+// recur (insert in insertion, appending, pool, slots and grouping).
 
 /// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
 /// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
@@ -30,16 +30,20 @@ inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&ca
 template<typename S>
 inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&category_table::stops_shrinking>();
 
-/// The types a Store and its facets share, whatever its kind. They come from the spec S, not from the Store,
-/// which is still incomplete while its facets are built.
-template<typename R, typename S>
+/// What a Store and its facets share, whatever its kind: the facts its request decides, and its member types. They come
+/// from the spec S alone, not from the Store, which is still incomplete while its facets are built.
+template<typename S>
 struct store_types
 {
     /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
     /// and it is not frozen.
     static constexpr bool writable = appends<typename S::kind> && !S::urd_properties.template any_says<&category_table::stops_changes>();
-    /// Iterated in an order the request asked for.
+    /// Iterated in an order the request fixes (sorted, insertion_ordered, a sequence): ordered by it.
     static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&category_table::fixes_iteration_order>();
+    /// Its contents fix the order its elements come in (sorted, canonical, a sequence): hashed by it.
+    static constexpr bool hashed_in_order = S::iterable && S::urd_properties.template any_says<&category_table::fixes_hash_order>();
+    /// It must hold an element at least (nonempty): it has no default constructor, and what builds it must hold one.
+    static constexpr bool needs_an_element = S::urd_properties.template any_says<&category_table::needs_an_element>();
 
     using value_type = typename S::element_type;
     /// What lookups take, as the kind's data says: a map's key, else an element.
@@ -55,39 +59,27 @@ struct iterator_types
 {
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
     using const_reference = std::ranges::range_reference_t<const R>;
-    using reference = std::conditional_t<store_types<R, S>::writable, std::ranges::range_reference_t<R>, const_reference>;
+    using reference = std::conditional_t<store_types<S>::writable, std::ranges::range_reference_t<R>, const_reference>;
     using const_iterator = std::ranges::iterator_t<const R>;
-    using iterator = std::conditional_t<store_types<R, S>::writable, std::ranges::iterator_t<R>, const_iterator>;
+    using iterator = std::conditional_t<store_types<S>::writable, std::ranges::iterator_t<R>, const_iterator>;
 };
 
-/// Whether a Store compares in order: it has an order, and the elements its representation yields compare
-/// (a flattened Store's rows are slices, which do not).
-template<typename R, typename S>
-consteval bool compares_in_order()
-{
-    if constexpr (store_types<R, S>::ordered)
-        return std::three_way_comparable<std::ranges::range_value_t<R>>;
-    else
-        return false;
-}
-
-/// When a Store has facet F, declared beside the facet (urd/store/<facet>.hpp): `on<R, S>()`, asked only of the facets
-/// its kind lists (urd/kinds.hpp). Most read only the spec S; with R void, it is asked from the spec alone, before a
-/// container is chosen.
-template<template<typename, typename, typename> class F>
-struct facet_condition;
 /// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet
 /// hands out indices for views (records, insertion_positions), so that the Store's container is numbered (urd::layer).
 struct facet_defaults
 {
     static constexpr bool hands_out_indices = false;
 };
-
-/// Whether a pool's values are rows: Stores or registered containers holding elements (held_as, as the pools'
-/// containers read them). A Store is not completed to ask (its container's header may be absent here).
-template<typename V>
-consteval bool holds_rows()
-{ return held_as<V>::store; }
+/// When a Store has facet F: `on<R, S>()`, asked only of the facets its kind lists (urd/kinds.hpp). Always, unless
+/// the facet's header (urd/store/<facet>.hpp) specializes it. With R void it is asked from the spec alone, before a
+/// container is chosen (what a kind offers; whether its container is numbered).
+template<template<typename, typename, typename> class F>
+struct facet_condition : facet_defaults
+{
+    template<typename R, typename S>
+    static constexpr bool on()
+    { return true; }
+};
 
 /// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet as an operation_list: what a Store's container is
 /// asked to state a cost for, and what a search knows a kind offers. None by default.
@@ -107,7 +99,8 @@ consteval bool facet_on()
         return false;
 }
 
-/// How facets reach the Store's representation, which is private to the Store.
+/// How facets reach the Store's representation, which is private to the Store: a Store's, or from within one of its
+/// facets, `of<Derived>(*this)`.
 struct store_access
 {
     template<typename Store>
@@ -116,6 +109,12 @@ struct store_access
     template<typename Store>
     static const auto& representation(const Store& store)
     { return store.m_representation; }
+    template<typename Derived, typename Facet>
+    static auto& of(Facet& facet)
+    { return representation(static_cast<Derived&>(facet)); }
+    template<typename Derived, typename Facet>
+    static const auto& of(const Facet& facet)
+    { return representation(static_cast<const Derived&>(facet)); }
 };
 
 /// A facet where On, else nothing: one empty type per facet, so that several left-off facets are distinct bases. A

@@ -11,16 +11,16 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class contiguous_data
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
 
 public:
     [[nodiscard]] auto data() const { return std::ranges::cdata(representation()); }
     [[nodiscard]] auto data()
         requires types::writable
-    { return std::ranges::data(store_access::representation(static_cast<Derived&>(*this))); }
+    { return std::ranges::data(store_access::of<Derived>(*this)); }
 
 private:
-    [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

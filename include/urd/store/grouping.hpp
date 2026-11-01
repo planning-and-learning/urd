@@ -32,8 +32,8 @@ public:
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
-    [[nodiscard]] R& representation() { return store_access::representation(static_cast<Derived&>(*this)); }
+    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet
@@ -41,14 +41,6 @@ private:
 namespace urd::detail
 {
 
-/// When a Store has this facet: from its spec S.
-template<>
-struct facet_condition<facet::grouping> : facet_defaults
-{
-    template<typename R, typename S>
-    static constexpr bool on()
-    { return true; }
-};
 template<>
 struct facet_operations<facet::grouping>
 {

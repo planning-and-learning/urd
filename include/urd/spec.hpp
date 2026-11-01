@@ -47,7 +47,7 @@ struct tag_in<Root, Tag, Tags...> : std::conditional_t<std::is_same_v<typename T
 namespace detail
 {
 
-/// The comparator an order_by<C> gives (Order), else urd::Less over Ordered (Order is void).
+/// The comparator a request orders by: its order_by<C>'s C (Order), else urd::Less over Ordered (Order is void).
 template<typename Order, typename Ordered>
 struct comparator_of
 {
@@ -59,7 +59,8 @@ struct comparator_of<void, Ordered>
     using type = Less<Ordered>;
 };
 
-/// Whether order_by's comparator (Order, or void for none) compares two of Ordered.
+/// Whether an order_by's comparator (Order, or void for none) compares two of Ordered. Without one nothing is asked, so
+/// that a Store as an element is not completed to answer.
 template<typename Order, typename Ordered>
 consteval bool compares()
 {
@@ -71,18 +72,18 @@ consteval bool compares()
 
 }  // namespace detail
 
-/// A Store's request in canonical form: its kind with its element types (set<K>, map<K, V>, …), what orders it (an
-/// order_by<C>, or void), and its answers, one per category that says more than none, each in its category's enum, in
+/// A Store's request in canonical form: its kind with its element types (set<K>, map<K, V>, …), the comparator that
+/// orders it (its order_by<C>'s, else urd::Less), and its answers, one per category that says more than none, each in its category's enum, in
 /// the order of its kind's request format. Whatever order the tags were listed in, equal requests give equal specs, and
 /// so equal Store types; compilers print the kind and the answers by name (urd::order::sorted). Its types are its
 /// kind's: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
-template<typename Kind, typename Order, auto... Answers>
+template<typename Kind, typename Compare, auto... Answers>
 struct spec : Kind
 {
     /// What the Store is (urd/kinds.hpp).
     using kind = typename Kind::kind;
-    /// What orders it: the comparator its order_by<C> gives, else urd::Less over what it orders.
-    using order_type = typename detail::comparator_of<Order, typename Kind::ordered_type>::type;
+    /// What orders it.
+    using order_type = Compare;
     /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
     static constexpr bool declared = true;
@@ -97,15 +98,6 @@ struct spec : Kind
 
 namespace detail
 {
-
-/// The tags of a list, as stated.
-consteval property_set stated_of(std::initializer_list<tag> listed)
-{
-    auto result = property_set::roots();
-    for (const auto each : listed)
-        result.put(each);
-    return result;
-}
 
 /// Whether at most one listed tag answers each category.
 consteval bool one_per_category(std::initializer_list<tag> listed)
@@ -133,9 +125,9 @@ struct spec_answers
 {
     using type = S;
 };
-template<typename Kind, typename Order, auto... As, category_enum E, category_enum... Es, property_set Meant>
-struct spec_answers<spec<Kind, Order, As...>, request_format<E, Es...>, Meant> :
-    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Order, As...>, spec<Kind, Order, As..., Meant.template get<E>()>>,
+template<typename Kind, typename Compare, auto... As, category_enum E, category_enum... Es, property_set Meant>
+struct spec_answers<spec<Kind, Compare, As...>, request_format<E, Es...>, Meant> :
+    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Compare, As...>, spec<Kind, Compare, As..., Meant.template get<E>()>>,
                  request_format<Es...>,
                  Meant>
 {
@@ -155,12 +147,13 @@ struct to_spec
                   "urd::Store: two properties answer the same question (dense and sparse, frozen and monotone, two "
                   "workloads, …)");
 
-    static constexpr property_set stated = stated_of({ Tags::value... });
+    static constexpr property_set stated = property_set::of({ Tags::value... });
     using kind = typename Kind::kind;
-    /// What the request orders by: its order_by<C>, or void.
-    using order = typename tag_in<any_comparison, Tags...>::type;
+    /// Its order_by<C>, or void; and what it orders by: C, else urd::Less.
+    using given = typename tag_in<any_comparison, Tags...>::type;
+    using compare = typename comparator_of<given, typename Kind::ordered_type>::type;
 
-    static_assert(compares<order, typename Kind::ordered_type>(),
+    static_assert(compares<given, typename Kind::ordered_type>(),
                   "urd::Store: order_by<C>: C compares two elements (in a map, two keys), as std::set's comparator does; "
                   "urd::by<P> compares by P(element)");
 
@@ -173,8 +166,8 @@ struct to_spec
                   "queue reached neither by fifo, lifo nor by_priority, monotone_priority without by_priority, or "
                   "order_by<C> where its kind orders by nothing asked for (a set without sorted)");
 
-    static constexpr property_set meant = meaning<kind>(stated);
-    using type = typename spec_answers<spec<Kind, order>, format, meant>::type;
+    static constexpr property_set meant = kind::meaning(stated);
+    using type = typename spec_answers<spec<Kind, compare>, format, meant>::type;
 };
 
 }  // namespace detail

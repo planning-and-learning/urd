@@ -11,7 +11,7 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class ordered_lookup
 {
-    using types = store_types<R, S>;
+    using types = store_types<S>;
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
 
 public:
@@ -21,7 +21,7 @@ public:
     { return representation().equal_range(element); }
 
 private:
-    [[nodiscard]] const R& representation() const { return store_access::representation(static_cast<const Derived&>(*this)); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

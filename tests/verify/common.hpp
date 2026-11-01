@@ -77,7 +77,7 @@ consteval bool grows_of()
         return grows<container_traits<R>>;
     else
     {
-        constexpr auto relied = about_itself(declaration_t<R>::relies_on);
+        constexpr auto relied = facts_where(declaration_t<R>::relies_on, false);
         return !relied.has(change::frozen) && !relied.has(shape::fixed_shape);
     }
 }
@@ -87,7 +87,7 @@ consteval bool shrinks_of()
     if constexpr (is_store<R>)
         return shrinks<container_traits<R>>;
     else
-        return grows_of<R>() && !about_itself(declaration_t<R>::relies_on).has(change::monotone);
+        return grows_of<R>() && !facts_where(declaration_t<R>::relies_on, false).has(change::monotone);
 }
 template<typename R>
 inline constexpr bool container_grows = grows_of<R>();

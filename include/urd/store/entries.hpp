@@ -18,7 +18,7 @@ public:
     [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - constant().begin()); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::representation(static_cast<const Derived&>(*this)); }
+    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

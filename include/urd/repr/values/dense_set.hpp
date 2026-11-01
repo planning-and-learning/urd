@@ -327,7 +327,8 @@ struct representation_of<tracked_dense_set_decl, S>
 namespace urd
 {
 
-/// A dense set hashes as its keys, in order: as the sets it equals do, whatever words they keep.
+/// A dense set hashes as its keys, in order: as the sets it equals do, whatever words they keep. It is no value_range:
+/// it compares by its words (operator==), not key by key.
 template<typename K, bool TrackWords>
 struct Hash<repr::DenseSet<K, TrackWords>>
 {

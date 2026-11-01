@@ -10,7 +10,7 @@ template<typename Derived, typename R, typename S>
 class inverse
 {
 public:
-    [[nodiscard]] auto keys(const typename S::mapped_type& value) const { return store_access::representation(static_cast<const Derived&>(*this)).keys(value); }
+    [[nodiscard]] auto keys(const typename S::mapped_type& value) const { return store_access::of<Derived>(*this).keys(value); }
 };
 
 }  // namespace urd::detail::facet

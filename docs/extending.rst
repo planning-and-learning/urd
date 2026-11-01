@@ -114,8 +114,8 @@ An operation and a facet
 An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/costs.hpp``); a container
 states its cost by an entry for it in its ``operation_costs``, a ``cost_table`` (a wrapper's, ``costs_over`` its part's
 declaration, passes on every operation it has no entry for). ``tests/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
-``facet_condition<F>`` (when a Store has it) and ``facet_operations<F>`` (the operations it offers), as in
-``include/urd/store/*.hpp``.
+``facet_condition<F>`` (when a Store has it; always, unless specialized) and ``facet_operations<F>`` (the operations
+it offers), as in ``include/urd/store/*.hpp``.
 
 A kind
 ------
@@ -134,12 +134,12 @@ a request names it as a template over its element types:
        { return any_kind::meaning(stated.put(tallying::tallied)); }  // what a request of it means
    };
    template<typename T>
-   struct tally : urd::detail::values_of<tally_kind, T> {};  // what a request names: its kind with its element types
+   struct tally : urd::detail::data_of<tally_kind, T> { using value_type = T; };  // its kind with its element types
 
 ``any_kind`` gives the questions and facets every kind has (joined with a kind's own by ``format_of`` and
 ``facets_of``), and what a kind is unless it says otherwise: ``meaning`` (what a request means beyond what it states:
 frozen implies stable references), ``asks`` and ``promises`` (what it asks of its container and promises it),
-``prefers`` (which containers come after the others), ``well_formed`` (when a request contradicts itself),
+``well_formed`` (when a request contradicts itself),
 ``accepts_order_by``, ``changes_in_place`` (whether rows of it change in place) and ``builds_from`` (what it is built
 from besides elements). A kind has no flags: what holds of its Store is a tag its meaning adds (a sequence's elements
 are ``positional``) or a facet it lists (iteration).
@@ -148,8 +148,9 @@ The template gives the kind's element types: ``element_types`` (for spelling and
 (``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), and which of its types
 plays which role (``played<Order>``: ``plays<role::element, K>``, ``plays<role::order, K, Order>``, its rows, …). urd
 folds a kind's roles into facts the same way for a request and for a container's declaration (``roles_of``); a role
-whose facts are not its traits says how they are computed (``role_facts``). ``urd::detail::values_of<Kind, V>``
-and ``keys_of<Kind, K>`` give them for a kind of values or of keys; ``urd::map<K, V>`` writes its own.
+whose facts are not its traits says how they are computed (``role_facts``). ``urd::detail::data_of<Kind, Element,
+Mapped = void>`` gives them for every kind (a map passes its values as Mapped); each kind's template adds its own names
+(``key_type``, ``value_type``, ``mapped_type``).
 ``urd::Store<tally<std::string>>`` is a tally of strings. Nothing registers the kind: naming it is enough.
 
 urd-search reads the same declarations: a kind, container, trait or operation added this way appears in its

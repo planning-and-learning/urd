@@ -66,8 +66,6 @@ class lookup;
 template<typename Derived, typename R, typename S>
 class ordered_lookup;
 template<typename Derived, typename R, typename S>
-class reverse_iteration;
-template<typename Derived, typename R, typename S>
 class positions;
 template<typename Derived, typename R, typename S>
 class insertion_positions;
@@ -110,7 +108,7 @@ class inverse;
 template<typename Derived, typename R, typename S>
 class shape;
 template<typename Derived, typename R, typename S>
-class sorted_ends;
+class ends;
 }  // namespace facet
 
 /// Which types play role Role in a Store's data: its element type, or for the order the ordered type and its
@@ -119,10 +117,6 @@ template<typename Role, typename... Args>
 struct plays
 {
     using role = Role;
-};
-template<typename... Plays>
-struct role_types
-{
 };
 
 /// What every Store is, and what a kind is unless it says otherwise. A kind derives from it and restates what
@@ -156,7 +150,8 @@ struct any_kind
                                      facet::scopes,
                                      facet::layers,
                                      facet::changes,
-                                     facet::shape>;
+                                     facet::shape,
+                                     facet::ends>;
 
     using format = request_format<>;
     using facets = facet_list<>;
@@ -208,7 +203,7 @@ struct partition_kind : detail::any_kind
     static constexpr std::string_view name = "partition";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "partitions"; }
     using format = detail::request_format<order, uniqueness, keys, grouping>;
-    using facets = detail::facet_list<detail::facet::positions, detail::facet::grouping>;
+    using facets = detail::facet_list<detail::facet::grouping>;
     /// Its keys fall into classes.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(grouping::partition)); }
 };
@@ -221,7 +216,7 @@ struct queue_kind : detail::any_kind
     static constexpr std::string_view name = "queue";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "queues"; }
     using format = detail::request_format<order, uniqueness, access, handling, priority>;
-    using facets = detail::facet_list<detail::facet::visiting, detail::facet::positions, detail::facet::queue_access>;
+    using facets = detail::facet_list<detail::facet::visiting, detail::facet::queue_access>;
     /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
     static constexpr bool well_formed(const property_set& stated)
     { return stated.get<access>() != access::none && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority)); }
@@ -237,7 +232,7 @@ struct pool_kind : detail::any_kind
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
     using format = detail::request_format<order, uniqueness, keys, handling, packing>;
-    using facets = detail::facet_list<detail::facet::positions, detail::facet::records, detail::facet::pool>;
+    using facets = detail::facet_list<detail::facet::records, detail::facet::pool>;
     /// Each distinct value once, by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles).put(uniqueness::unique)); }
 };
@@ -249,7 +244,7 @@ struct slots_kind : detail::any_kind
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
     using format = detail::request_format<order, uniqueness, keys, handling>;
-    using facets = detail::facet_list<detail::facet::positions, detail::facet::slots>;
+    using facets = detail::facet_list<detail::facet::slots>;
     /// Its values are reached by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles)); }
 };
@@ -262,15 +257,13 @@ struct map_kind : detail::any_kind
     using format = detail::request_format<order, uniqueness, keys, direction, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
-                                      detail::facet::reverse_iteration,
                                       detail::facet::positions,
                                       detail::facet::insertion,
                                       detail::facet::removal,
                                       detail::facet::values_by_key,
                                       detail::facet::multi_values,
                                       detail::facet::entries,
-                                      detail::facet::inverse,
-                                      detail::facet::sorted_ends>;
+                                      detail::facet::inverse>;
     /// Without multi, each key once.
     static constexpr property_set meaning(property_set stated)
     {
@@ -289,12 +282,10 @@ struct set_kind : detail::any_kind
     using format = detail::request_format<order, uniqueness, keys>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
-                                      detail::facet::reverse_iteration,
                                       detail::facet::insertion_positions,
                                       detail::facet::insertion,
                                       detail::facet::removal,
-                                      detail::facet::set_algebra,
-                                      detail::facet::sorted_ends>;
+                                      detail::facet::set_algebra>;
     /// Each key once; with positions and no order, numbered as they come.
     static constexpr property_set meaning(property_set stated)
     {
@@ -313,12 +304,8 @@ struct multiset_kind : detail::any_kind
     static constexpr std::string_view name = "multiset";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, uniqueness, keys, multiplicity>;
-    using facets = detail::facet_list<detail::facet::iteration,
-                                      detail::facet::lookup,
-                                      detail::facet::reverse_iteration,
-                                      detail::facet::positions,
-                                      detail::facet::insertion,
-                                      detail::facet::removal>;
+    using facets =
+        detail::facet_list<detail::facet::iteration, detail::facet::lookup, detail::facet::positions, detail::facet::insertion, detail::facet::removal>;
     /// Its elements have positions.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
     static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
@@ -330,8 +317,7 @@ struct sequence_kind : detail::any_kind
     static constexpr std::string_view name = "sequence";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, keys, shape>;
-    using facets = detail::
-        facet_list<detail::facet::iteration, detail::facet::reverse_iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
+    using facets = detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
     /// Its elements have positions.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
     /// Rows of a fixed shape are built from their lengths (urd::row_lengths), or for rows of rows, each row's shape.
@@ -345,39 +331,29 @@ using kinds = detail::type_list<set_kind, map_kind, multiset_kind, sequence_kind
 namespace detail
 {
 
-/// A kind Kind with values of type V as its data (a sequence, multiset, queue, pool, slots): what a request names.
-template<typename Kind, typename V>
-struct values_of : Kind
+/// A kind Kind with its data: its elements, of type Element, and for a map its values, of type Mapped (else void).
+/// What a request names derives from it (urd::set<K>, …) and adds its own names (key_type, value_type, mapped_type).
+template<typename Kind, typename Element, typename Mapped = void>
+struct data_of : Kind
 {
     using kind = Kind;
-    using element_types = type_list<V>;
-    using value_type = V;
-    using element_type = V;
-    /// What may be a Store (a row).
-    using held_type = V;
+    using element_types = type_list<Element>;
+    using element_type = Element;
+    /// What may be a Store (a row): a map's values, else its elements.
+    using held_type = std::conditional_t<std::is_void_v<Mapped>, Element, Mapped>;
     /// What find takes, where the kind has lookup.
-    using lookup_type = V;
+    using lookup_type = Element;
     /// What its order compares.
-    using ordered_type = V;
-    /// Which of its types plays which role, ordered by Order: its values are its elements and its rows.
+    using ordered_type = Element;
+    /// Which of its types plays which role, ordered by Order: its elements are its elements and are ordered, a map's
+    /// values are mapped (void elsewhere: no facts), and what it holds are its rows.
     template<typename Order>
-    using played = role_types<plays<role::element, V>, plays<role::order, V, Order>, plays<role::row, V>, plays<role::rows, V>, plays<role::row_element, V>>;
-};
-
-/// A kind Kind with keys of type K as its data (a set, a partition).
-template<typename Kind, typename K>
-struct keys_of : Kind
-{
-    using kind = Kind;
-    using element_types = type_list<K>;
-    using key_type = K;
-    using element_type = K;
-    using held_type = K;
-    using lookup_type = K;
-    using ordered_type = K;
-    /// Which of its types plays which role, ordered by Order: its keys are its elements and its rows.
-    template<typename Order>
-    using played = role_types<plays<role::element, K>, plays<role::order, K, Order>, plays<role::row, K>, plays<role::rows, K>, plays<role::row_element, K>>;
+    using played = type_list<plays<role::element, Element>,
+                             plays<role::mapped, Mapped>,
+                             plays<role::order, Element, Order>,
+                             plays<role::row, held_type>,
+                             plays<role::rows, held_type>,
+                             plays<role::row_element, held_type>>;
 };
 
 }  // namespace detail
@@ -386,60 +362,54 @@ struct keys_of : Kind
 
 /// Keys of type K, each once.
 template<typename K>
-struct set : detail::keys_of<set_kind, K>
+struct set : detail::data_of<set_kind, K>
 {
+    using key_type = K;
 };
-/// A value of type V per key of type K.
+/// A value of type V per key of type K: its elements are its keys, and it holds key and value pairs.
 template<typename K, typename V>
-struct map : map_kind
+struct map : detail::data_of<map_kind, K, V>
 {
-    using kind = map_kind;
     using element_types = detail::type_list<K, V>;
     using key_type = K;
     using mapped_type = V;
     using element_type = std::pair<const K, V>;
-    using held_type = V;
-    using lookup_type = K;
-    using ordered_type = K;
-    /// Which of its types plays which role, ordered by Order: its keys are its elements and are ordered, its values
-    /// are mapped and are its rows.
-    template<typename Order>
-    using played = detail::role_types<detail::plays<role::element, K>,
-                                      detail::plays<role::mapped, V>,
-                                      detail::plays<role::order, K, Order>,
-                                      detail::plays<role::row, V>,
-                                      detail::plays<role::rows, V>,
-                                      detail::plays<role::row_element, V>>;
 };
 /// Values of type V kept by value, in order.
 template<typename V>
-struct multiset : detail::values_of<multiset_kind, V>
+struct multiset : detail::data_of<multiset_kind, V>
 {
+    using value_type = V;
 };
 /// Values of type V by position.
 template<typename V>
-struct sequence : detail::values_of<sequence_kind, V>
+struct sequence : detail::data_of<sequence_kind, V>
 {
+    using value_type = V;
 };
 /// Values of type V reached by their front or top.
 template<typename V>
-struct queue : detail::values_of<queue_kind, V>
+struct queue : detail::data_of<queue_kind, V>
 {
+    using value_type = V;
 };
 /// Values of type V interned by handle, each distinct one once.
 template<typename V>
-struct pool : detail::values_of<pool_kind, V>
+struct pool : detail::data_of<pool_kind, V>
 {
+    using value_type = V;
 };
 /// Values of type V in slots, by handle.
 template<typename V>
-struct slots : detail::values_of<slots_kind, V>
+struct slots : detail::data_of<slots_kind, V>
 {
+    using value_type = V;
 };
 /// Keys of type K in disjoint classes.
 template<typename K>
-struct partition : detail::keys_of<partition_kind, K>
+struct partition : detail::data_of<partition_kind, K>
 {
+    using key_type = K;
 };
 
 namespace detail
@@ -464,11 +434,5 @@ inline constexpr bool appends = listed_facet<facet::appending, facets_of<Kind>>;
 template<typename Kind>
 constexpr bool well_formed(const property_set& stated)
 { return Kind::well_formed(stated) && (!stated.has(comparison::given) || Kind::accepts_order_by(stated)); }
-
-/// What a request of kind Kind means beyond what it states: what its kind keeps (a set keeps each key once; a map
-/// without multi too; a sequence's elements have positions), and what its tags imply.
-template<typename Kind>
-constexpr property_set meaning(property_set stated)
-{ return Kind::meaning(stated); }
 
 }  // namespace urd

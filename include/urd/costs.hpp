@@ -1,8 +1,8 @@
 #pragma once
 
-// What each operation costs a representation, and the memory it takes, declared beside its traits: a specialization of
-// container_costs<R> in the header that declares R's container_traits (urd/repr/*_fwd.hpp and the like), which names R
-// without defining it. Reading a representation's costs therefore completes nothing and includes no implementation:
+// What each operation costs a representation, and the memory it takes: stated in its declaration (operation_costs,
+// words; urd/registry/declaration.hpp), from which urd/registry/derived.hpp gives container_costs<R>, without defining
+// R. Reading a representation's costs therefore completes nothing and includes no implementation:
 // the registry's own headers suffice. The docs' complexity tables and the benchmarks' judgment of the registry
 // (benchmarks/record.py) read these.
 
@@ -280,12 +280,6 @@ struct costs_over
     static constexpr bool passed_on()
     { return !cost_table<Entries...>::template of<Op>() && Part::operation_costs::template of<Op>(); }
 };
-
-/// The cost of operation Op in costs C (a declaration's operation_costs, or urd::container_costs<R>); none where C has
-/// none.
-template<typename Op, typename C>
-constexpr std::optional<cost> cost_of()
-{ return C::template of<Op>(); }
 
 /// The costs of the operations of representation R: its declaration's operation_costs, a cost_table with an entry per
 /// operation R offers (a wrapper's, costs_over its part's declaration). Its memory is the declaration's `words`: machine
