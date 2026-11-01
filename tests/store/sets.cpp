@@ -2,6 +2,7 @@
 // header a Store here needs is included, and no other.
 
 #include "../allocations.hpp"
+#include "../names.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -223,8 +224,8 @@ TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
     auto pick = std::uniform_int_distribution<int>(0, 40);
     for (int round = 0; round < 200; ++round)
     {
-        auto lhs = TypeParam();
-        auto rhs = TypeParam();
+        auto lhs = urd::test::make_empty<TypeParam>();
+        auto rhs = urd::test::make_empty<TypeParam>();
         for (int count = pick(random) % 12; count > 0; --count)
             lhs.insert(pick(random));
         for (int count = pick(random) % 12; count > 0; --count)
@@ -258,7 +259,7 @@ TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
 // An insertion-ordered set keeps its elements in one array, so it has positions without asking for positional.
 TEST(Positions, InsertionOrderedSetsHaveThem)
 {
-    auto names = Store<key<std::string>, urd::insertion_ordered>();
+    auto names = Store<key<std::string>, urd::insertion_ordered>(urd::layer { 0 });
     names.insert("b");
     names.insert("a");
     EXPECT_EQ(names[0], "b");
@@ -305,8 +306,8 @@ TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
     auto random = std::mt19937(43);
     for (int round = 0; round < 200; ++round)
     {
-        auto lhs = TypeParam();
-        auto rhs = TypeParam();
+        auto lhs = urd::test::make_empty<TypeParam>();
+        auto rhs = urd::test::make_empty<TypeParam>();
         for (int count = static_cast<int>(random() % 8); count > 0; --count)
             lhs.insert(static_cast<int>(random() % 20));
         for (int count = static_cast<int>(random() % 8); count > 0; --count)

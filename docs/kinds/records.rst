@@ -74,6 +74,11 @@ Member types
 Member functions
 ----------------
 
+.. cpp:function:: explicit Records(layer number)
+
+   Empty, numbered (:cpp:struct:`urd::layer`): a pool of records is built only so, and its views are identified by
+   index and number. A layer gets its own number, as its parent does.
+
 .. cpp:function:: std::pair<index_type, bool> insert(const record_type& record)
 
    The record's index, and whether it was new: an equal record already held gives its index.
@@ -95,10 +100,14 @@ Member functions
 
    ``std::out_of_range`` where there is no record at ``at``.
 
-.. cpp:function:: auto view(index_type at) const
+.. cpp:function:: view<Record, Store> view(index_type at) const
 
    A :cpp:class:`view\<Record, Store\> <urd::view>` of the record through this Store; of a layered pool, through the layer that
    owns it.
+
+.. cpp:function:: std::size_t layer() const
+
+   The number it was built with (:cpp:struct:`urd::layer`): a pool of records has no constructor without one.
 
 .. cpp:function:: std::size_t count(const record_type& record) const
 .. cpp:function:: const_iterator begin() const
@@ -130,10 +139,6 @@ branch, which inserts assert. The tree pools do not layer, since they number nod
 
 .. cpp:function:: void layer_over(const Records* parent)
 .. cpp:function:: const Records* parent() const noexcept
-.. cpp:function:: std::size_t layer() const
-
-   This layer's number along the chain: 0 for a root.
-
 .. cpp:function:: std::size_t base() const
 
    Where this layer's own indices start: the parent's size at the branch.

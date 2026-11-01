@@ -45,7 +45,7 @@ template<typename T>
 T make_store(std::size_t at)
 {
     if constexpr (requires { typename T::handle_type; })
-        return T();  // a pool as a value starts empty: it is filled by handle, not from a range
+        return urd::test::make_empty<T>(at);  // a pool as a value starts empty: it is filled by handle, not from a range
     else
     {
         using E = std::remove_cv_t<typename T::value_type>;
@@ -57,7 +57,7 @@ T make_store(std::size_t at)
             return T(elements.begin(), elements.end());
         else
         {
-            auto result = T();
+            auto result = urd::test::make_empty<T>(at);
             for (auto& each : elements)
             {
                 if constexpr (requires { result.push_back(each); })
@@ -182,7 +182,12 @@ struct workload
     /// An empty Store, or (nonempty) one holding the first element of `order`; how many of `order` it holds.
     static std::size_t start(std::unique_ptr<Store>& into, const std::vector<std::size_t>& order)
     {
-        if constexpr (std::default_initializable<Store>)
+        if constexpr (std::constructible_from<Store, urd::layer>)
+        {
+            into = std::make_unique<Store>(urd::layer { 0 });
+            return 0;
+        }
+        else if constexpr (std::default_initializable<Store>)
         {
             into = std::make_unique<Store>();
             return 0;

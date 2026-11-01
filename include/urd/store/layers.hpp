@@ -24,10 +24,6 @@ public:
         m_parent = parent;
     }
     [[nodiscard]] const Derived* parent() const noexcept { return m_parent; }
-    /// This layer's number along the chain: 0 for a root.
-    [[nodiscard]] std::size_t layer() const
-        requires chained
-    { return constant().layer(); }
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] std::size_t base() const
         requires chained

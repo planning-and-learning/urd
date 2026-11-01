@@ -89,12 +89,19 @@ Indices and views
    .. cpp:function:: static index none() noexcept
    .. cpp:function:: bool is_none() const noexcept
 
+.. cpp:struct:: layer
+
+   The number of a Store that hands out indices for views (a pool of records, a positional set): such a Store is
+   built from it first, ``Atoms(urd::layer { 3 })``, and answers it as ``layer()``. Who builds the Store gives it, and
+   Stores whose views must differ get different numbers; a layer gets its own, as its parent does.
+
+   .. cpp:member:: std::size_t number
+
 .. cpp:class:: template<typename T, typename C = typename context_of<T>::type> view
 
    A reference to an element held by index (``urd/elements/view.hpp``): the index and a pointer to a context ``C`` that
-   resolves it, where :cpp:concept:`resolves` means ``context[index<T>]`` gives the record. A positional set and a
-   pool resolve their own type; any type with such an
-   ``operator[]`` serves. The context must outlive the view.
+   resolves it (:cpp:concept:`resolves`). A positional set and a pool of records resolve their own type; any type
+   that gives the record, its number and the view of an index serves. The context must outlive the view.
 
    .. cpp:function:: view(index<T> at, const C& context) noexcept
    .. cpp:function:: index<T> id() const noexcept
@@ -112,12 +119,15 @@ Indices and views
 
    .. cpp:function:: auto identifying_members() const noexcept
 
-      The identity: the index, and the context's ``layer()`` number where it has one. Two views of one element from
-      one layer are equal and hash equally, wherever they were made; views from different layers are not.
+      The identity: the index, and the context's number (:cpp:struct:`layer`). Two views of one element from one
+      context are equal under ``EqualTo`` and hash equally, wherever they were made; views from differently numbered
+      contexts are not. A view has no ``==`` of its own: ``EqualTo``, ``Hash`` and ``Less`` follow from this.
 
 .. cpp:concept:: template<typename C, typename T> resolves
 
-   ``context[index<T>]`` is convertible to ``const T&``.
+   ``context[index<T>]`` is convertible to ``const T&``; ``context.layer()`` is its number; ``context.view(index<T>)``
+   gives the ``view<T, C>`` of the index, through the context that owns it (a layer points it at the layer that owns
+   the element; a context made of several Stores writes one per type).
 
 .. cpp:function:: template<typename M, typename C> decltype(auto) resolve(const M& member, const C& context)
 

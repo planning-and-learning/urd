@@ -63,7 +63,7 @@ inline auto early = urd::Store<urd::key<int>>();
 int main()
 {
 #if URD_HOLDS(1)  // the arena interner, without urd/repr/records/arena.hpp
-    auto notes = urd::Store<urd::value<Note>, urd::handles, urd::unique, urd::flat>();
+    auto notes = urd::Store<urd::value<Note>, urd::handles, urd::unique, urd::flat>(urd::layer { 0 });
     (void) notes.size();
 #endif
 #if URD_HOLDS(2)  // the bitset, without urd/repr/values/dense_set.hpp

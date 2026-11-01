@@ -102,7 +102,27 @@ public:
             assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
     }
 
-    Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end()) {}
+    Store(std::initializer_list<value_type> elements)
+        requires std::constructible_from<R, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+        : Store(elements.begin(), elements.end())
+    {
+    }
+
+    /// A Store that hands out indices for views is numbered (urd::layer): built from its number first, then from
+    /// whatever else builds its container (nothing, or its elements). Who builds it gives the number.
+    template<typename... Args>
+        requires std::constructible_from<R, urd::layer, Args...>
+    explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
+    {
+        if constexpr (construction<S>::needs_an_element)
+            assert(!this->empty() && "urd::Store: a nonempty Store needs an element");
+    }
+    Store(urd::layer number, std::initializer_list<value_type> elements)
+        requires std::
+            constructible_from<R, urd::layer, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+        : Store(number, elements.begin(), elements.end())
+    {
+    }
 
     /// Replaces the contents by what a Store built from these elements would hold: the one way a frozen Store
     /// changes. A representation that rebuilds in place (assign) keeps its storage; any other is built anew.

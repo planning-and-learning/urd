@@ -12,6 +12,15 @@
 namespace urd
 {
 
+/// The number of a Store that hands out indices for views (a pool of records, a positional set): with an index, what
+/// a view<T, C> is identified by, so that equal views are the same element whichever Store they were made in. Given
+/// to the Store's constructor, by whoever builds it: Store(urd::layer { 3 }), or for a layered Store, its place along
+/// the chain.
+struct layer
+{
+    std::size_t number;
+};
+
 /// The index of a T in the Store that numbers Ts: a positional set or a pool mints one on first insert, so it is
 /// dense over the elements (over the slots, for a pool that erases; over the nodes, for a tree pool's rows). It is a
 /// dense key for tables keyed by Ts, and the first half of a view<T, C>. The default is none: no index at all, which a

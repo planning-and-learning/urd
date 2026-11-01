@@ -166,7 +166,7 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 60)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 61)
 # A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")

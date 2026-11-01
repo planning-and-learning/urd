@@ -93,6 +93,13 @@ Construction and assignment
 
    From any elements, each kept once. With ``nonempty``, asserts one.
 
+.. cpp:function:: explicit Set(layer number)
+.. cpp:function:: template<std::input_iterator InputIt> Set(layer number, InputIt first, InputIt last)
+.. cpp:function:: Set(layer number, std::initializer_list<value_type> elements)
+
+   The same, numbered (:cpp:struct:`urd::layer`): a set that hands out positions (``positional``,
+   ``insertion_ordered``) is built only so, and its views are identified by index and number.
+
 .. cpp:function:: template<std::input_iterator InputIt> void assign(InputIt first, InputIt last)
 
    Replaces the contents by what a Store built from these elements would hold: the one way a ``frozen`` Store
@@ -204,9 +211,13 @@ Every insertion-ordered set is kept in one array, so it has positions whether th
    The same, through :cpp:struct:`index\<K\> <urd::index>`: what an interner mints. ``at`` throws ``std::out_of_range`` for
    ``none`` or a position past the end.
 
-.. cpp:function:: auto view(index_type at) const
+.. cpp:function:: view<K, Store> view(index_type at) const
 
    A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/elements/view.hpp`` included).
+
+.. cpp:function:: std::size_t layer() const
+
+   The number it was built with (:cpp:struct:`urd::layer`): a positional set has no constructor without one.
 
 Least and greatest (``sorted``, not ``dense``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -269,7 +280,7 @@ Example
    if (seen.insert(next).second) frontier.push(next);
 
    using Names = Store<key<std::string>, positional, monotone>;   // an interner
-   auto names = Names();
+   auto names = Names(urd::layer { 0 });                         // numbered: its views are (index, 0)
    const auto [it, fresh] = names.insert("block");
    const urd::index<std::string> block = names.index(it);         // 0
    names[block];                                                  // "block"

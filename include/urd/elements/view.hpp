@@ -15,11 +15,15 @@
 namespace urd
 {
 
-/// Whether C resolves indices of T: `context[index<T>]` is the record. A positional set or a pool of Ts does, and so
-/// does a layer of them, for the records of every layer below.
+/// Whether C resolves indices of T: `context[index<T>]` is the record, and C has its number (urd::layer). A positional
+/// set or a pool of Ts does, and so does a layer of them, for the records of every layer below. And it makes the views
+/// of its indices, `context.view(index<T>)`: the one place that says which context a view is through (a layer points
+/// it at the layer that owns the element); a context made of several Stores writes one per type.
 template<typename C, typename T>
 concept resolves = requires(const C& context, index<T> at) {
     { context[at] } -> std::convertible_to<const T&>;
+    { context.layer() } -> std::same_as<std::size_t>;
+    { context.view(at) } -> std::same_as<view<T, C>>;
 };
 
 /// Hook for the named accessors of a record's views, one line each over get<>: `template<typename V> struct
@@ -28,17 +32,6 @@ template<typename T, typename V>
 struct view_mixin
 {
 };
-
-namespace detail
-{
-
-/// A context along a chain of layers numbers itself; a view's identity then includes the number.
-template<typename C>
-concept numbered = requires(const C& context) {
-    { context.layer() } -> std::convertible_to<std::size_t>;
-};
-
-}  // namespace detail
 
 /// How a view resolves a variant: `resolved<C>` is the variant of the alternatives resolved through C, and `visit`
 /// applies a function to the alternative held. Given for std::variant here, for a flat variant in urd/elements/flat.hpp.
@@ -55,24 +48,6 @@ concept a_variant = requires { typename variant_traits<T>::template resolved<int
 
 template<typename M, typename C>
 [[nodiscard]] decltype(auto) resolve(const M& member, const C& context);
-
-namespace detail
-{
-
-/// A view of `at` through `context`: the context's own view where it makes one (a layered pool or a family points
-/// it at the layer that owns the element), else the pair as it is.
-template<typename U, typename C>
-[[nodiscard]] view<U, C> make_view(urd::index<U> at, const C& context)
-{
-    if constexpr (requires {
-                      { context.view(at) } -> std::same_as<view<U, C>>;
-                  })
-        return context.view(at);
-    else
-        return view<U, C>(at, context);
-}
-
-}  // namespace detail
 
 /// The type resolve(member, context) gives for a member of type M.
 template<typename M, typename C>
@@ -98,7 +73,7 @@ template<typename M, typename C>
     if constexpr (is_index<M>)
     {
         if constexpr (resolves<C, typename M::element_type>)
-            return detail::make_view(member, context);
+            return context.view(member);
         else
             return member;
     }
@@ -113,7 +88,7 @@ template<typename M, typename C>
         if constexpr (std::ranges::contiguous_range<M> && std::same_as<element, char>)
             return std::string_view(std::ranges::data(member), std::ranges::size(member));
         else if constexpr (is_index<element> && resolves<C, typename element::element_type>)
-            return std::views::transform(member, [&context](element at) { return detail::make_view(at, context); });
+            return std::views::transform(member, [&context](element at) { return context.view(at); });
         else if constexpr (std::ranges::contiguous_range<M>)
             return std::span<const element>(std::ranges::data(member), std::ranges::size(member));
         else
@@ -125,13 +100,11 @@ template<typename M, typename C>
 
 /// A reference to an element held by index: the index and the context that resolves it, nothing else. It reads the
 /// record through the context, resolves the record's members through the same context (get<&T::m>()), and compares
-/// and hashes by index, and by the layer's number where the context is a layer, so that equal views are the same
+/// and hashes by index and by the number of its context (urd::layer), so that equal views are the same
 /// element wherever they were made. It borrows the context, which must outlive it.
 template<typename T, typename C>
 class view : public view_mixin<T, view<T, C>>
 {
-    static_assert(resolves<C, T>, "urd::view<T, C>: C must resolve indices of T: context[index<T>] gives the record");
-
 public:
     using value_type = T;
     using context_type = C;
@@ -147,15 +120,8 @@ public:
     [[nodiscard]] decltype(auto) get() const
     { return urd::resolve(record().*Member, *m_context); }
 
-    /// The identity: the index, and the layer's number where the context has one.
-    [[nodiscard]] auto identifying_members() const noexcept
-    {
-        if constexpr (detail::numbered<C>)
-            return std::tuple(m_index, static_cast<std::size_t>(m_context->layer()));
-        else
-            return std::tuple(m_index);
-    }
-    friend bool operator==(const view& lhs, const view& rhs) noexcept { return lhs.identifying_members() == rhs.identifying_members(); }
+    /// The identity: the index, and the number of the Store it was made in (urd::layer).
+    [[nodiscard]] auto identifying_members() const noexcept { return std::tuple(m_index, m_context->layer()); }
 
 private:
     index<T> m_index;

@@ -73,13 +73,10 @@ public:
         assert(m_own.size() == 0 && "urd::repr::LayeredPool: a layer branches before it holds anything");
         m_parent = parent;
         m_base = parent == nullptr ? 0 : static_cast<std::uint32_t>(parent->size());
-        m_layer = parent == nullptr ? 0 : parent->m_layer + 1;
     }
     [[nodiscard]] const LayeredPool* parent() const noexcept { return m_parent; }
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] size_type base() const noexcept { return m_base; }
-    /// This layer's number along the chain: 0 for a root.
-    [[nodiscard]] std::size_t layer() const noexcept { return m_layer; }
     /// Whether the parent grew after the branch, which it must not.
     [[nodiscard]] bool parent_grew() const noexcept { return m_parent != nullptr && m_parent->size() > m_base; }
 
@@ -224,7 +221,6 @@ private:
     R m_own;
     const LayeredPool* m_parent = nullptr;
     std::uint32_t m_base = 0;
-    std::uint32_t m_layer = 0;
 };
 
 }  // namespace urd::repr

@@ -67,30 +67,40 @@ struct Rec
 using Owners = Store<key<Owner>, urd::positional, urd::monotone>;
 using Recs = Store<key<Rec>, urd::positional, urd::monotone>;
 
-/// Two interners as one context: it resolves both record types, and numbers itself as a layer would.
-struct Both
-{
-    Owners owners;
-    Recs recs;
-    std::size_t number = 0;
-
-    [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
-    [[nodiscard]] const Rec& operator[](urd::index<Rec> at) const { return recs[at]; }
-    [[nodiscard]] std::size_t layer() const noexcept { return number; }
-};
-
 }  // namespace
 
-// The default context of Rec, and a named accessor: what a library writes once per record type.
-template<>
-struct urd::context_of<Rec>
-{
-    using type = Both;
-};
+// A named accessor: what a library writes once per record type, before its views are made.
 template<typename V>
 struct urd::view_mixin<Rec, V>
 {
     [[nodiscard]] std::string_view name() const { return static_cast<const V&>(*this).template get<&Rec::name>(); }
+};
+
+namespace
+{
+
+/// Two interners as one context: it resolves both record types, numbered as its caller says.
+struct Both
+{
+    explicit Both(urd::layer number) : owners(number), recs(number) {}
+
+    Owners owners;
+    Recs recs;
+
+    [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
+    [[nodiscard]] const Rec& operator[](urd::index<Rec> at) const { return recs[at]; }
+    [[nodiscard]] std::size_t layer() const { return recs.layer(); }
+    [[nodiscard]] urd::view<Owner, Both> view(urd::index<Owner> at) const { return { at, *this }; }
+    [[nodiscard]] urd::view<Rec, Both> view(urd::index<Rec> at) const { return { at, *this }; }
+};
+
+}  // namespace
+
+// The default context of Rec.
+template<>
+struct urd::context_of<Rec>
+{
+    using type = Both;
 };
 static_assert(std::same_as<view<Rec>, view<Rec, Both>>);
 
@@ -131,7 +141,7 @@ static_assert(urd::hashable<view<Rec, Both>> && urd::hashable<view<Owner, Owners
 
 TEST(Index, APositionalSetMintsIndices)
 {
-    auto owners = Owners();
+    auto owners = Owners(urd::layer { 0 });
     const auto [it, inserted] = owners.insert(Owner { "a" });
     EXPECT_TRUE(inserted);
     const auto a = owners.index(it);
@@ -157,9 +167,9 @@ TEST(Index, KeysDenseTables)
 namespace
 {
 
-Both make_both()
+Both make_both(urd::layer number = urd::layer { 0 })
 {
-    auto both = Both();
+    auto both = Both(number);
     const auto a = both.owners.index(both.owners.insert(Owner { "a" }).first);
     const auto b = both.owners.index(both.owners.insert(Owner { "b" }).first);
     both.recs.insert(Rec { "first", { a, b }, b, a });
@@ -195,12 +205,12 @@ TEST(View, ComparesAndHashesByIndexAndLayer)
 {
     const auto both = make_both();
     const auto again = view<Rec>(urd::index<Rec>(0), both);
-    EXPECT_EQ(view<Rec>(urd::index<Rec>(0), both), again);
-    EXPECT_NE(view<Rec>(urd::index<Rec>(1), both), again);
+    const auto equal = urd::EqualTo<view<Rec>> {};
+    EXPECT_TRUE(equal(view<Rec>(urd::index<Rec>(0), both), again));
+    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(1), both), again));
     EXPECT_EQ(urd::Hash<view<Rec>> {}(view<Rec>(urd::index<Rec>(0), both)), urd::Hash<view<Rec>> {}(again));
-    auto other = make_both();
-    other.number = 1;
-    EXPECT_NE(view<Rec>(urd::index<Rec>(0), other), again);  // another layer: another element
+    const auto other = make_both(urd::layer { 1 });
+    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(0), other), again));  // another layer: another element
     EXPECT_TRUE(urd::Less<view<Rec>> {}(again, view<Rec>(urd::index<Rec>(1), both)));
 
     auto seen = Store<key<view<Rec>>>();

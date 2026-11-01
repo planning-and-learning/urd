@@ -105,11 +105,13 @@ public:
     [[nodiscard]] index_type index(typename iterator_types<R, S>::const_iterator it) const
     { return index_type(static_cast<std::uint32_t>(this->position(it))); }
     /// A view of the element at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
-    [[nodiscard]] auto view(index_type at) const
+    [[nodiscard]] urd::view<typename types::value_type, Derived> view(index_type at) const
     {
         static_assert(requires { sizeof(urd::view<typename types::value_type, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         return urd::view<typename types::value_type, Derived>(at, static_cast<const Derived&>(*this));
     }
+    /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
+    [[nodiscard]] std::size_t layer() const { return store_access::representation(static_cast<const Derived&>(*this)).layer(); }
 };
 
 }  // namespace urd::detail::facet

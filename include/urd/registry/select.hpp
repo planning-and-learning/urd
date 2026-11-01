@@ -7,7 +7,9 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/scan.hpp"
 #include "urd/repr/core/dependent_false.hpp"
+#include "urd/repr/core/numbered.hpp"
 #include "urd/spec.hpp"
+#include "urd/store/types.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -68,6 +70,11 @@ consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 template<typename S, fixed_string Container, typename Missing>
 struct missing_container;
 
+/// The container of a Store whose facets hand out views (records, insertion_positions) is numbered (urd::layer): as
+/// those facets' own conditions say, so that the rule has one source.
+template<typename S, typename R>
+using numbered_t = std::conditional_t<facet_on<void, S, facet::records>() || facet_on<void, S, facet::insertion_positions>(), repr::Numbered<R>, R>;
+
 template<typename S, typename Decl, typename Missing>
 struct missing_headers_for
 {
@@ -76,7 +83,7 @@ struct missing_headers_for
 template<typename S, typename Decl>
 struct missing_headers_for<S, Decl, type_list<>>
 {
-    using type = typename representation_of<Decl, S>::type;
+    using type = numbered_t<S, typename representation_of<Decl, S>::type>;
 };
 
 /// The container for spec S, reached only where an entry serves it: the type its declaration names, where this file

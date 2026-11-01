@@ -281,7 +281,6 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_EQ(task[on].insert({ a, b }), std::pair(on_ab, false));   // the domain's row, through the task's own pool over it
     EXPECT_EQ(task.size(), 1U);                                      // which now exists, layered
     EXPECT_EQ(task[on].base(), 2U);
-    EXPECT_EQ(task[on].layer(), 1U);
     const auto on_aa = task[on].insert({ a, a }).first;
     EXPECT_EQ(on_aa, urd::index<Row>(2));
     const auto expected = Row { a, b };
@@ -291,7 +290,6 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_FALSE(task[on].parent_grew());
     const auto holding_b = task[holding].insert({ b }).first;  // a predicate new in the task: a root pool of its own
     EXPECT_EQ(holding_b, urd::index<Row>(0));
-    EXPECT_EQ(task[holding].layer(), 0U);
     EXPECT_EQ(task.size(), 2U);
 }
 

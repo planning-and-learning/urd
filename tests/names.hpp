@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <map>
 #include <set>
 #include <string>
@@ -21,6 +22,16 @@
 
 namespace urd::test
 {
+
+/// An empty S as its builder gives it: numbered (urd::layer) where S hands out indices for views, else default-built.
+template<typename S>
+S make_empty(std::size_t number = 0)
+{
+    if constexpr (std::constructible_from<S, urd::layer>)
+        return S(urd::layer { number });
+    else
+        return S();
+}
 
 /// A representation's name and description, from its synopsis (urd::container_synopsis, beside its traits); a type
 /// that declares none is "other".

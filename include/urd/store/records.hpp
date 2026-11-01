@@ -85,7 +85,7 @@ public:
         return (*this)[at];
     }
     /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
-    [[nodiscard]] auto view(index_type at) const
+    [[nodiscard]] urd::view<T, Derived> view(index_type at) const
     {
         static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         if constexpr (has<S, layered>)
@@ -93,6 +93,8 @@ public:
         else
             return urd::view<T, Derived>(at, static_cast<const Derived&>(*this));
     }
+    /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
+    [[nodiscard]] std::size_t layer() const { return constant().layer(); }
     [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()
         requires shrinks<S>

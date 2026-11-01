@@ -83,7 +83,7 @@ TYPED_TEST_SUITE(ConcurrentSets, Sets, urd::test::Names);
 TYPED_TEST(ConcurrentSets, InsertsFromThreadsAgree)
 {
     constexpr int count = 5000;
-    auto set = TypeParam();
+    auto set = urd::test::make_empty<TypeParam>();
     in_threads(
         [&set](int thread)
         {
@@ -99,7 +99,7 @@ TYPED_TEST(ConcurrentSets, LookupsOfPublishedElementsBesideInserts)
 {
     constexpr int published = 2000;
     constexpr int count = 5000;
-    auto set = TypeParam();
+    auto set = urd::test::make_empty<TypeParam>();
     for (int element = 0; element < published; ++element)
         set.insert(element);
     auto misses = std::vector<int>(threads);
@@ -174,7 +174,7 @@ TYPED_TEST_SUITE(ConcurrentMaps, Maps, urd::test::Names);
 TYPED_TEST(ConcurrentMaps, InsertsFromThreadsAgree)
 {
     constexpr int count = 5000;
-    auto map = TypeParam();
+    auto map = urd::test::make_empty<TypeParam>();
     in_threads(
         [&map](int thread)
         {
@@ -193,7 +193,7 @@ TYPED_TEST(ConcurrentMaps, LookupsOfPublishedKeysBesideInserts)
 {
     constexpr int published = 2000;
     constexpr int count = 5000;
-    auto map = TypeParam();
+    auto map = urd::test::make_empty<TypeParam>();
     for (int k = 0; k < published; ++k)
         map.insert(std::pair<const int, int>(k, -k));
     auto misses = std::vector<int>(threads);
@@ -222,7 +222,7 @@ TYPED_TEST(ConcurrentMaps, UpdatesOfTheSameKeysSum)
 {
     constexpr int keys = 64;
     constexpr int rounds = 5120;  // a multiple of keys: every key is updated rounds / keys times per thread
-    auto map = TypeParam();
+    auto map = urd::test::make_empty<TypeParam>();
     in_threads(
         [&map](int thread)
         {
@@ -238,7 +238,7 @@ TYPED_TEST(ConcurrentMaps, ReadsOfTheSameKeysBesideUpdatesNeverGoBack)
 {
     constexpr int keys = 64;
     constexpr int rounds = 5000;
-    auto map = TypeParam();
+    auto map = urd::test::make_empty<TypeParam>();
     for (int k = 0; k < keys; ++k)
         map.insert(std::pair<const int, int>(k, 0));
     auto regressions = std::vector<int>(threads);
@@ -288,7 +288,7 @@ std::vector<int> row_of(int step)
 TYPED_TEST(ConcurrentRowPools, EqualRowsGetEqualHandlesAcrossThreads)
 {
     constexpr int count = 2000;
-    auto pool = TypeParam();
+    auto pool = urd::test::make_empty<TypeParam>();
     auto handles = std::vector<std::vector<typename TypeParam::handle_type>>(threads, std::vector<typename TypeParam::handle_type>(count));
     in_threads(
         [&pool, &handles](int thread)
@@ -305,7 +305,7 @@ TYPED_TEST(ConcurrentRowPools, ReadsByHandleOfPublishedRowsBesideInserts)
     constexpr int published = 500;
     constexpr int count = 2000;
     using Row = typename TypeParam::value_type;
-    auto pool = TypeParam();
+    auto pool = urd::test::make_empty<TypeParam>();
     auto early = std::vector<typename TypeParam::handle_type>();
     auto rows = std::vector<Row>();
     for (int step = 0; step < published; ++step)
@@ -377,8 +377,8 @@ TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
     constexpr int count = 2000;
     constexpr int rooted = 8;
     // A layered pool works over a root of eight records that no thread changes; its indices continue the root's.
-    auto root = TypeParam();
-    auto pool = TypeParam();
+    auto root = urd::test::make_empty<TypeParam>(0);
+    auto pool = urd::test::make_empty<TypeParam>(1);
     if constexpr (layered<TypeParam>)
     {
         for (int drawn = 0; drawn < rooted; ++drawn)

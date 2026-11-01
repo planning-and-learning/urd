@@ -51,7 +51,7 @@ using urd::value;
 // An interner: each new element gets the next index, which stays its index; a known one keeps its index.
 TEST(Interner, GivesEachElementItsIndex)
 {
-    auto symbols = Store<key<std::string>, urd::positional, urd::monotone>();
+    auto symbols = Store<key<std::string>, urd::positional, urd::monotone>(urd::layer { 0 });
     const auto index = [&symbols](const std::string& symbol) { return symbols.position(symbols.insert(symbol).first); };
     EXPECT_EQ(index("on"), 0U);
     EXPECT_EQ(index("clear"), 1U);
@@ -78,7 +78,7 @@ TEST(Records, Iterate)
         int id = 0;
         static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
     };
-    auto names = Store<value<Name>, urd::handles, urd::unique, urd::flat>();
+    auto names = Store<value<Name>, urd::handles, urd::unique, urd::flat>(urd::layer { 0 });
     names.insert(Name { 7 });
     names.insert(Name { 2 });
     names.insert(Name { 7 });
@@ -96,7 +96,7 @@ TEST(Records, Count)
         int x = 0;
         static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
     };
-    auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>();
+    auto points = Store<value<Point>, urd::handles, urd::unique, urd::flat>(urd::layer { 0 });
     points.insert(Point { 1 });
     EXPECT_EQ(points.count(Point { 1 }), 1U);
     EXPECT_EQ(points.count(Point { 2 }), 0U);
@@ -142,7 +142,7 @@ TEST(Partition, AgreesWithRelabeling)
 TEST(Interner, CopiesAndMovesKeepTheirOwnIndex)
 {
     using Symbols = Store<key<std::string>, urd::positional>;
-    auto symbols = Symbols { "on", "clear" };
+    auto symbols = Symbols(urd::layer { 0 }, { "on", "clear" });
     auto copy = symbols;
     copy.insert("holding");
     EXPECT_FALSE(symbols.contains("holding"));
@@ -161,7 +161,7 @@ TEST(Interner, CopiesAndMovesKeepTheirOwnIndex)
 // Integer elements of the same width as the positions the table holds are never taken for positions.
 TEST(Interner, IntegerElementsAreNotPositions)
 {
-    auto ids = Store<key<std::uint32_t>, urd::positional>();
+    auto ids = Store<key<std::uint32_t>, urd::positional>(urd::layer { 0 });
     for (const std::uint32_t id : { 2U, 0U, 1U, 0U, 7U })
         ids.insert(id);
     EXPECT_EQ(ids.size(), 4U);
@@ -174,7 +174,7 @@ TEST(Interner, IntegerElementsAreNotPositions)
 // positions run 0..n-1 without gaps.
 TEST(Interner, ThreadsAgreeOnPositions)
 {
-    auto symbols = Store<key<int>, urd::positional, urd::monotone, urd::concurrent>();
+    auto symbols = Store<key<int>, urd::positional, urd::monotone, urd::concurrent>(urd::layer { 0 });
     constexpr int threads = 4;
     constexpr int each = 5000;
     auto seen = std::vector<std::vector<std::size_t>>(threads, std::vector<std::size_t>(each));
