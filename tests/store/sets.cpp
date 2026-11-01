@@ -58,11 +58,14 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::multiset;
+using urd::queue;
+using urd::sequence;
+using urd::set;
 using urd::Store;
-using urd::value;
-using SortedKey = Store<key<int>, urd::sorted, urd::frozen>;
-using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;
+using SortedKey = Store<set<int>, urd::sorted, urd::frozen>;
+using BitKey = Store<set<int>, urd::dense, urd::frozen, urd::sorted>;
 
 constexpr int RANGE = 25;
 constexpr int STEPS = 2000;
@@ -142,18 +145,18 @@ struct Fact
 TEST(Store, KeysThatNameTheirIdentity)
 {
     const auto facts = std::vector<Fact> { { 3, {} }, { 1, { 2 } }, { 1, { 2 } }, { 1, { 1 } } };
-    const auto hashed = Store<key<Fact>>(facts.begin(), facts.end());
+    const auto hashed = Store<set<Fact>>(facts.begin(), facts.end());
     EXPECT_EQ(hashed.size(), 3U);
     EXPECT_TRUE(hashed.contains(Fact { 1, { 2 } }));
 
     // Ordered member by member: predicate, then objects.
-    const auto tree = Store<key<Fact>, urd::sorted>(facts.begin(), facts.end());
-    const auto flat = Store<key<Fact>, urd::sorted, urd::frozen>(facts.begin(), facts.end());
+    const auto tree = Store<set<Fact>, urd::sorted>(facts.begin(), facts.end());
+    const auto flat = Store<set<Fact>, urd::sorted, urd::frozen>(facts.begin(), facts.end());
     EXPECT_EQ(tree.begin()->objects, std::vector<int>({ 1 }));
     EXPECT_EQ(flat.begin()->objects, std::vector<int>({ 1 }));
     EXPECT_EQ(std::prev(flat.end())->predicate, 3);
 
-    auto counts = Store<key<Fact>, value<int>>();
+    auto counts = Store<map<Fact, int>>();
     counts[Fact { 1, {} }] += 2;
     EXPECT_EQ(counts.at(Fact { 1, {} }), 2);
 }
@@ -162,32 +165,32 @@ TEST(Store, BehavesLikeTheStandardContainers)
 {
     for (unsigned seed = 0; seed < 5; ++seed)
     {
-        behaves_like_std_set<Store<key<int>>>(seed);
-        behaves_like_std_set<Store<key<int>, urd::sorted>>(seed);
-        behaves_like_std_set<Store<key<int>, urd::small>>(seed);
-        behaves_like_std_set<Store<key<int>, urd::sorted, urd::small>>(seed);
-        behaves_like_std_multiset<Store<value<int>, urd::sorted>>(seed);
+        behaves_like_std_set<Store<set<int>>>(seed);
+        behaves_like_std_set<Store<set<int>, urd::sorted>>(seed);
+        behaves_like_std_set<Store<set<int>, urd::small>>(seed);
+        behaves_like_std_set<Store<set<int>, urd::sorted, urd::small>>(seed);
+        behaves_like_std_multiset<Store<multiset<int>, urd::sorted>>(seed);
     }
 }
 
 TEST(Store, BuildsAndChangesAsAsked)
 {
     // Built from elements, which the representation puts in the order asked for.
-    const auto ids = Store<key<int>, urd::sorted> { 3, 1, 3, 2 };
+    const auto ids = Store<set<int>, urd::sorted> { 3, 1, 3, 2 };
     EXPECT_TRUE(std::vector<int>(ids.begin(), ids.end()) == std::vector<int>({ 1, 2, 3 }));
     EXPECT_TRUE(*ids.lower_bound(2) == 2 && ids.upper_bound(3) == ids.end() && *ids.rbegin() == 3);
-    const auto first = Store<value<int>, urd::sorted, urd::nonempty> { 5, 4 };
+    const auto first = Store<multiset<int>, urd::sorted, urd::nonempty> { 5, 4 };
     EXPECT_TRUE(first.front() == 4 && first[1] == 5 && first.back() == 5);
 
-    const auto frozen = Store<key<int>, urd::sorted, urd::frozen> { 2, 3, 5 };
+    const auto frozen = Store<set<int>, urd::sorted, urd::frozen> { 2, 3, 5 };
     EXPECT_TRUE(frozen.contains(5) && !frozen.contains(4));
 
     // A plain sequence reads and changes like std::vector.
-    auto numbers = Store<value<int>> { 1, 2, 3, 2 };
+    auto numbers = Store<sequence<int>> { 1, 2, 3, 2 };
     numbers[0] = 7;
     numbers.insert(numbers.begin() + 1, 9);
     EXPECT_TRUE(erase(numbers, 2) == 2);
-    EXPECT_TRUE(numbers == (Store<value<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<value<int>> { 8 });
+    EXPECT_TRUE(numbers == (Store<sequence<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<sequence<int>> { 8 });
     EXPECT_TRUE(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
 }
 
@@ -198,14 +201,14 @@ template<typename S>
 class SetAlgebra : public testing::Test
 {
 };
-using Sets = testing::Types<Store<key<int>>,
-                            Store<key<int>, urd::sorted>,
-                            Store<key<int>, urd::small>,
-                            Store<key<int>, urd::stable_refs>,
-                            Store<key<int>, urd::dense>,
-                            Store<key<int>, urd::dense, urd::constant_clear>,
-                            Store<key<int>, urd::insertion_ordered>,
-                            Store<key<int>, urd::dense, urd::proportional_clear>>;
+using Sets = testing::Types<Store<set<int>>,
+                            Store<set<int>, urd::sorted>,
+                            Store<set<int>, urd::small>,
+                            Store<set<int>, urd::stable_refs>,
+                            Store<set<int>, urd::dense>,
+                            Store<set<int>, urd::dense, urd::constant_clear>,
+                            Store<set<int>, urd::insertion_ordered>,
+                            Store<set<int>, urd::dense, urd::proportional_clear>>;
 TYPED_TEST_SUITE(SetAlgebra, Sets);
 
 std::vector<int> sorted_copy(const auto& set)
@@ -259,7 +262,7 @@ TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
 // An insertion-ordered set keeps its elements in one array, so it has positions without asking for positional.
 TEST(Positions, InsertionOrderedSetsHaveThem)
 {
-    auto names = Store<key<std::string>, urd::insertion_ordered>(urd::layer { 0 });
+    auto names = Store<set<std::string>, urd::insertion_ordered>(urd::layer { 0 });
     names.insert("b");
     names.insert("a");
     EXPECT_EQ(names[0], "b");
@@ -270,23 +273,23 @@ TEST(Positions, InsertionOrderedSetsHaveThem)
 // A sorted Store's least and greatest elements are its first and last, O(1) in a tree or a sorted array.
 TEST(Ends, SortedStoresHaveTheirLeastAndGreatest)
 {
-    const auto tree = Store<key<int>, urd::sorted> { 5, 1, 3 };
+    const auto tree = Store<set<int>, urd::sorted> { 5, 1, 3 };
     EXPECT_EQ(tree.front(), 1);
     EXPECT_EQ(tree.back(), 5);
-    const auto flat = Store<key<int>, urd::sorted, urd::frozen> { 5, 1, 3 };
+    const auto flat = Store<set<int>, urd::sorted, urd::frozen> { 5, 1, 3 };
     EXPECT_EQ(flat.front(), 1);
-    const auto map = Store<key<int>, value<int>, urd::sorted> { { 2, 20 }, { 1, 10 } };
+    const auto map = Store<urd::map<int, int>, urd::sorted> { { 2, 20 }, { 1, 10 } };
     EXPECT_EQ(map.front().second, 10);
     EXPECT_EQ(map.back().first, 2);
 }
 template<typename S>
 concept has_front = requires(const S& store) { store.front(); };
-static_assert(!has_front<Store<key<int>, urd::dense, urd::sorted>> && !has_front<Store<key<int>>>);
+static_assert(!has_front<Store<set<int>, urd::dense, urd::sorted>> && !has_front<Store<set<int>>>);
 
 // An insertion-ordered map gives its keys and values as spans in insertion order, and an entry's position.
 TEST(Entries, KeysAndValuesInInsertionOrder)
 {
-    auto costs = Store<key<int>, value<double>, urd::dense, urd::insertion_ordered>();
+    auto costs = Store<map<int, double>, urd::dense, urd::insertion_ordered>();
     costs.try_emplace(7, 1.5);
     costs.try_emplace(2, 0.5);
     costs.insert_or_assign(7, 2.5);
@@ -322,14 +325,14 @@ TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
 // Stores as sorted keys: ordered lexicographically by their elements, equal by contents.
 TEST(Less, StoresAsKeys)
 {
-    using Inner = Store<key<int>, urd::sorted>;
+    using Inner = Store<set<int>, urd::sorted>;
     const auto less = urd::Less<Inner> {};
     EXPECT_TRUE(less(Inner { 1, 2 }, Inner { 1, 3 }));
     EXPECT_TRUE(less(Inner { 1, 2 }, Inner { 1, 2, 3 }));
     EXPECT_FALSE(less(Inner { 2, 1 }, Inner { 1, 2 }));
     EXPECT_TRUE(urd::EqualTo<Inner> {}(Inner { 2, 1 }, Inner { 1, 2 }));
 
-    auto by_contents = Store<key<Inner>, urd::sorted>();
+    auto by_contents = Store<set<Inner>, urd::sorted>();
     by_contents.insert(Inner { 3 });
     by_contents.insert(Inner { 1, 2 });
     by_contents.insert(Inner { 2, 1 });
@@ -340,19 +343,19 @@ TEST(Less, StoresAsKeys)
 // Stores as hashed keys: found whatever order the key was built in, and whatever storage a bitset grew to.
 TEST(Hash, StoresAsKeys)
 {
-    auto plans = Store<key<SortedKey>, value<int>>();
+    auto plans = Store<map<SortedKey, int>>();
     plans.insert({ SortedKey { 3, 1, 2 }, 7 });
     EXPECT_EQ(plans.at(SortedKey { 1, 2, 3 }), 7);
     EXPECT_FALSE(plans.contains(SortedKey { 1, 2 }));
 
-    auto grown = Store<key<int>, urd::dense, urd::sorted> { 1, 2 };
+    auto grown = Store<set<int>, urd::dense, urd::sorted> { 1, 2 };
     grown.insert(200);
     grown.erase(200);
-    const auto small = Store<key<int>, urd::dense, urd::sorted> { 1, 2 };
+    const auto small = Store<set<int>, urd::dense, urd::sorted> { 1, 2 };
     EXPECT_EQ(grown, small);
-    using Key = Store<key<int>, urd::dense, urd::sorted>;
+    using Key = Store<set<int>, urd::dense, urd::sorted>;
     EXPECT_EQ(urd::Hash<Key> {}(grown), urd::Hash<Key> {}(small));
-    auto seen = Store<key<Key>>();
+    auto seen = Store<set<Key>>();
     seen.insert(grown);
     EXPECT_TRUE(seen.contains(small));
 }
@@ -371,7 +374,7 @@ struct Node
 
 TEST(OrderBy, SortsByTheProjectionAndBreaksTiesByTheElement)
 {
-    using ByF = Store<key<Node>, urd::sorted, urd::order_by<&Node::f>>;
+    using ByF = Store<set<Node>, urd::sorted, urd::order_by<&Node::f>>;
     static_assert(std::same_as<ByF::representation, std::set<Node, urd::ProjectedLess<Node, &Node::f>>>);
     auto nodes = ByF { Node { 1, 5, 0 }, Node { 2, 3, 0 }, Node { 3, 5, 0 }, Node { 4, 1, 0 } };
     auto ids = std::vector<int>();
@@ -384,7 +387,7 @@ TEST(OrderBy, SortsByTheProjectionAndBreaksTiesByTheElement)
 
 TEST(OrderBy, MapsOrderTheirKeysByTheProjection)
 {
-    auto costs = Store<key<Node>, value<std::string>, urd::sorted, urd::order_by<&Node::f>>();
+    auto costs = Store<map<Node, std::string>, urd::sorted, urd::order_by<&Node::f>>();
     costs.insert_or_assign(Node { 1, 9, 0 }, "late");
     costs.insert_or_assign(Node { 2, 2, 0 }, "early");
     EXPECT_EQ(costs.begin()->second, "early");
@@ -392,7 +395,7 @@ TEST(OrderBy, MapsOrderTheirKeysByTheProjection)
 
 TEST(OrderBy, PriorityQueuePopsByTheProjection)
 {
-    using Open = Store<value<Node>, urd::by_priority, urd::order_by<[](const Node& node) { return std::tuple(node.f, -node.g); }>>;
+    using Open = Store<queue<Node>, urd::by_priority, urd::order_by<[](const Node& node) { return std::tuple(node.f, -node.g); }>>;
     auto open = Open();
     open.push(Node { 1, 4, 1 });
     open.push(Node { 2, 4, 3 });
@@ -414,7 +417,7 @@ TEST(OrderBy, QueueOfUnorderedElements)
         int cost;
         std::string name;
     };
-    auto tasks = Store<value<Task>, urd::by_priority, urd::order_by<&Task::cost>>();
+    auto tasks = Store<queue<Task>, urd::by_priority, urd::order_by<&Task::cost>>();
     tasks.push(Task { 7, "b" });
     tasks.push(Task { 2, "a" });
     EXPECT_EQ(tasks.top().name, "a");
@@ -437,7 +440,7 @@ struct Offer
     friend bool operator==(const Offer&, const Offer&) = default;
 };
 constexpr auto cheapest_first = [](const Span& span, const Offer& offer) { return std::tuple(offer.cost, span.lower, span.upper); };
-using Offers = Store<key<Span>, value<Offer>, urd::sorted, urd::small, urd::order_by<cheapest_first>>;
+using Offers = Store<map<Span, Offer>, urd::sorted, urd::small, urd::order_by<cheapest_first>>;
 template<typename S>
 concept changes_values_by_reference = requires(S offers, Span span) { offers.at(span).cost = 0; } || requires(S offers, Span span) { offers[span]; };
 }  // namespace
@@ -445,7 +448,7 @@ concept changes_values_by_reference = requires(S offers, Span span) { offers.at(
 TEST(OrderByValue, KeepsEntriesInTheOrderTheirValuesGive)
 {
     static_assert(std::same_as<Offers::representation, urd::repr::FlatEntryMap<Span, Offer, urd::EntryLess<Span, Offer, cheapest_first>>>);
-    static_assert(!changes_values_by_reference<Offers> && changes_values_by_reference<Store<key<Span>, value<Offer>, urd::sorted>>);
+    static_assert(!changes_values_by_reference<Offers> && changes_values_by_reference<Store<map<Span, Offer>, urd::sorted>>);
     const auto cheaper = [](const Offer& held, const Offer& next) { return next.cost < held.cost ? next : held; };
     auto offers = Offers();
     EXPECT_TRUE(offers.merge(Span { 0, 4 }, Offer { 5.0, 1 }, cheaper));
@@ -474,7 +477,7 @@ TEST(OrderByValue, KeepsEntriesInTheOrderTheirValuesGive)
 // Entries whose projections tie come in key order, whatever order they were inserted in.
 TEST(OrderByValue, TiesGoByKey)
 {
-    auto ranked = Store<key<int>, value<int>, urd::sorted, urd::small, urd::order_by<[](int, int score) { return score; }>>();
+    auto ranked = Store<map<int, int>, urd::sorted, urd::small, urd::order_by<[](int, int score) { return score; }>>();
     for (const int key : { 5, 1, 3, 4, 2 })
         ranked.insert_or_assign(key, key % 2);
     auto keys = std::vector<int>();

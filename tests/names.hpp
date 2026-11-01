@@ -80,7 +80,8 @@ using vocabulary_categories = urd::detail::request_format<urd::order,
                                                           urd::multiplicity,
                                                           urd::position,
                                                           urd::workload,
-                                                          urd::priority>;
+                                                          urd::priority,
+                                                          urd::projection>;
 template<typename... Es>
 constexpr auto tables_of(urd::detail::request_format<Es...> /*categories*/)
 { return std::array<const urd::detail::category_table*, sizeof...(Es)> { urd::category<Es>... }; }
@@ -121,7 +122,7 @@ template<typename... Es>
 constexpr bool within_vocabulary(urd::detail::request_format<Es...> /*format*/)
 { return ((category_index(urd::category<Es>) < category_count) && ...); }
 static_assert([]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
-              { return (within_vocabulary(urd::detail::format_of<Kinds> {}) && ...); }(urd::leaf_kinds<> {}));
+              { return (within_vocabulary(urd::detail::format_of<Kinds> {}) && ...); }(urd::kinds {}));
 
 /// A category to the one who writes a request: its group, its reading heading (semantics only) and the question its
 /// tags answer (the words of its none).

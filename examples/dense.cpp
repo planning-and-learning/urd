@@ -16,9 +16,9 @@
 #include <exception>
 #include <iostream>
 
-using urd::key;
+using urd::map;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 namespace
 {
@@ -34,23 +34,22 @@ struct Fact
 void run()
 {
     std::cout << "Dense keys:\n";
-    example::show<Store<key<Fact>, urd::dense>>("Store<key<Fact>, dense>                          a set of indices");
-    example::show<Store<key<Fact>, urd::dense, urd::constant_clear>>("Store<key<Fact>, dense, constant_clear>          cleared every round, in O(1)");
-    example::show<Store<key<Fact>, value<double>, urd::dense>>("Store<key<Fact>, value<double>, dense>           a value per index");
-    example::show<Store<key<Fact>, value<double>, urd::dense, urd::constant_clear>>(
-        "Store<key<Fact>, value<double>, dense, constant_clear>  reset every round, in O(1)");
+    example::show<Store<set<Fact>, urd::dense>>("Store<set<Fact>, dense>                          a set of indices");
+    example::show<Store<set<Fact>, urd::dense, urd::constant_clear>>("Store<set<Fact>, dense, constant_clear>          cleared every round, in O(1)");
+    example::show<Store<map<Fact, double>, urd::dense>>("Store<map<Fact, double>, dense>           a value per index");
+    example::show<Store<map<Fact, double>, urd::dense, urd::constant_clear>>("Store<map<Fact, double>, dense, constant_clear>  reset every round, in O(1)");
 
     // The facts of a state, and of a goal: set algebra, word by word on a bitset.
-    auto state = Store<key<Fact>, urd::dense> { Fact { 1 }, Fact { 4 }, Fact { 9 } };
-    const auto goal = Store<key<Fact>, urd::dense> { Fact { 4 }, Fact { 9 } };
+    auto state = Store<set<Fact>, urd::dense> { Fact { 1 }, Fact { 4 }, Fact { 9 } };
+    const auto goal = Store<set<Fact>, urd::dense> { Fact { 4 }, Fact { 9 } };
     std::cout << "\nstate reaches the goal: " << std::boolalpha << state.includes(goal) << '\n';
-    state |= Store<key<Fact>, urd::dense> { Fact { 12 } };
+    state |= Store<set<Fact>, urd::dense> { Fact { 12 } };
     std::cout << "facts after an action:";
     for (const auto fact : state)
         std::cout << ' ' << fact.value;
 
     // A marking per round: clearing does not depend on how many facts were ever marked.
-    auto marked = Store<key<Fact>, urd::dense, urd::constant_clear>();
+    auto marked = Store<set<Fact>, urd::dense, urd::constant_clear>();
     for (std::uint32_t round = 0; round < 3; ++round)
     {
         marked.clear();
@@ -60,7 +59,7 @@ void run()
     std::cout << "\nmarked in the last round: " << marked.size();
 
     // Costs per fact, reset every round by a new generation.
-    auto costs = Store<key<Fact>, value<double>, urd::dense, urd::constant_clear>();
+    auto costs = Store<map<Fact, double>, urd::dense, urd::constant_clear>();
     costs[Fact { 3 }] = 2.5;
     costs.clear();
     costs[Fact { 5 }] = 1.0;

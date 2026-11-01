@@ -61,7 +61,7 @@ std::string kinds_answering(urd::tag of)
                     result += (result.size() > 1 ? ", " : "") + json_text(Kinds::name);
             }(urd::detail::format_of<Kinds> {}),
             ...);
-    }(urd::leaf_kinds<> {});
+    }(urd::kinds {});
     return result + "]";
 }
 

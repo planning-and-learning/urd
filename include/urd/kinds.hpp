@@ -1,18 +1,17 @@
 #pragma once
 
-// The kinds of Store: the data urd's tree walks (urd/tree.hpp). A kind is a struct: its name, which requests it claims,
-// the type arguments it takes, the questions its requests answer (format), its Store's interface (facets), its data
-// (its element types, built from its type arguments), what a request of it means, and its rules. It derives from
-// detail::any_kind, which says what every Store is, and states only what differs; generic code reads the members and
-// makes no choice. A kind added outside urd is a struct like these, listed by specializing urd::extra_kinds; its
-// containers by specializing urd::detail::declarations_of (urd/registry/declarations.hpp).
+// The kinds of Store. A kind is a struct: its name, the questions its requests answer (format), its Store's interface
+// (facets), what a request of it means, and its rules. It derives from detail::any_kind, which says what every Store
+// is, and states only what differs; generic code reads the members and makes no choice. A request names its kind as a
+// template over its element types (set<K>, map<K, V>, sequence<V>, …): the kind with its data. A kind added outside urd
+// is a struct and a template like these; its containers are added by specializing urd::detail::declarations_of
+// (urd/registry/declarations.hpp).
 
 #include "urd/detail/type_list.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/property_set.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/tags.hpp"
-#include "urd/tree.hpp"
 
 #include <array>
 #include <cstddef>
@@ -25,61 +24,6 @@ namespace urd
 
 using detail::property_set;
 
-// The type arguments a Store is written with, beside its tags: each fills a slot (what the type is to the Store), and
-// a kind takes some slots (takes) and reads its data from them. Slots are open, as categories, traits and roles are:
-// a slot is a struct with its words, identified by them; a type argument is a template naming its slot.
-
-/// A slot's words, and the slot Slot (a struct with its name and description).
-using slot_info = words<struct slot_words>;
-template<typename Slot>
-inline constexpr const slot_info* slot_v = &words_of<struct slot_words, Slot>;
-
-/// The keys that identify elements.
-struct key_slot
-{
-    static constexpr std::string_view name = "key";
-    static constexpr std::string_view description = "the keys that identify elements";
-};
-/// The values elements carry.
-struct value_slot
-{
-    static constexpr std::string_view name = "value";
-    static constexpr std::string_view description = "the values elements carry";
-};
-
-/// The elements are identified by keys of type K. Without value<V>, the keys are the contents: a set.
-template<typename K>
-struct key
-{
-    using type = K;
-    using slot = key_slot;
-};
-
-/// Each element carries a value of type V. Without key<K>, values are identified by position: a sequence.
-template<typename V>
-struct value
-{
-    using type = V;
-    using slot = value_slot;
-};
-
-/// What orders a sorted Store or a priority queue, instead of its elements' own order.
-struct order_slot
-{
-    static constexpr std::string_view name = "order_by";
-    static constexpr std::string_view description = "what orders the elements: P(element), or in a map P(key) or P(key, value)";
-};
-
-/// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
-/// pointer (&Job::deadline) or a stateless lambda ([](const Job& job) { return std::tuple(job.deadline, -job.weight); }).
-/// Ties fall back to the element's own order where it has one.
-template<auto P>
-struct order_by
-{
-    static constexpr auto projection = P;
-    using slot = order_slot;
-};
-
 /// A preference: where a request holds `when`, containers holding `later` come after the others that serve it.
 struct preference
 {
@@ -90,52 +34,11 @@ struct preference
 namespace detail
 {
 
-/// The most slots one request fills.
-inline constexpr std::size_t most_slots = 8;
-
-/// The slots a request's type arguments fill.
-struct slot_set : fixed_list<const slot_info*, most_slots>
-{
-    [[nodiscard]] constexpr bool has(const slot_info* of) const { return std::ranges::find(*this, of) != end(); }
-    template<typename Slot>
-    [[nodiscard]] constexpr bool has() const
-    { return has(slot_v<Slot>); }
-};
-
-/// What a kind's claims and rules read of a request: the tags it states, the slots its type arguments fill, and for
-/// the rules, whether what it orders is orderable by itself.
+/// What a kind's rules read of a request: the tags it states, and whether what it orders is orderable by itself.
 struct request_facts
 {
     property_set stated = property_set::roots();
-    slot_set slots {};
     bool orderable = false;
-};
-
-/// The types the type arguments among Args carry (key<K>: K), in order: what a Store's elements are made of. An
-/// argument that carries a value (order_by<P>) carries no type.
-template<typename Argument>
-struct carried
-{
-    using type = type_list<>;
-};
-template<typename Argument>
-    requires requires { typename Argument::type; }
-struct carried<Argument>
-{
-    using type = type_list<typename Argument::type>;
-};
-template<typename Args>
-struct argument_types;
-template<typename... Arguments>
-struct argument_types<type_list<Arguments...>>
-{
-    using type = typename join<typename carried<Arguments>::type...>::type;
-};
-
-/// A list of slots: what a kind takes.
-template<typename... Slots>
-struct slot_list
-{
 };
 
 /// A list of facets (urd/store/): what a kind's Store offers, each where its condition holds.
@@ -237,22 +140,7 @@ struct role_types
 /// order_by<P> on keys that are each once breaks ties by the keys' own order, so they must be orderable (a rule of
 /// the kinds with keys).
 constexpr bool orderable_keys(const request_facts& request)
-{ return !request.slots.has<order_slot>() || request.stated.has(multiplicity::multi) || request.orderable; }
-
-/// The order_by<P> among Args, else void.
-template<typename T>
-inline constexpr bool is_order_by = false;
-template<auto P>
-inline constexpr bool is_order_by<order_by<P>> = true;
-template<typename Args>
-struct order_argument
-{
-    using type = void;
-};
-template<typename P, typename... Ps>
-struct order_argument<type_list<P, Ps...>> : std::conditional_t<is_order_by<P>, std::type_identity<P>, order_argument<type_list<Ps...>>>
-{
-};
+{ return !request.stated.has(projection::projected) || request.stated.has(multiplicity::multi) || request.orderable; }
 
 /// The comparator Order (an order_by<P>, or void) makes over Ordered: urd::ProjectedLess, or void for its own order.
 template<typename Ordered, typename Order>
@@ -267,70 +155,26 @@ consteval auto projection_over()
         return std::type_identity<ProjectedLess<Ordered, Order::projection>> {};
     }
 }
-/// What orders a Store of one ordered type: order_by<P> among Args over it, else its own order (void).
-template<typename Ordered, typename Args>
-using projected_order_t = typename decltype(projection_over<Ordered, typename order_argument<Args>::type>())::type;
+/// What orders a Store of one ordered type: Order (an order_by<P>, or void) over it, else its own order (void).
+template<typename Ordered, typename Order>
+using projected_order_t = typename decltype(projection_over<Ordered, Order>())::type;
 
-/// What orders a map: order_by<P> among Args over its entries where P takes a key and a value, else over its keys.
-template<typename K, typename V, typename Args>
+/// What orders a map: Order (an order_by<P>, or void) over its entries where P takes a key and a value, else over its
+/// keys.
+template<typename K, typename V, typename Order>
 consteval auto map_order()
 {
-    using order = typename order_argument<Args>::type;
-    if constexpr (std::is_void_v<order>)
+    if constexpr (std::is_void_v<Order>)
         return std::type_identity<void> {};
-    else if constexpr (std::invocable<decltype(order::projection), const K&, const V&>)
-        return std::type_identity<EntryLess<K, V, order::projection>> {};
+    else if constexpr (std::invocable<decltype(Order::projection), const K&, const V&>)
+        return std::type_identity<EntryLess<K, V, Order::projection>> {};
     else
-        return projection_over<K, order>();
+        return projection_over<K, Order>();
 }
 
-/// A Store of values (sequence, multiset, queues, pool, slots), from value<V> among Args: V, found by value.
-template<typename Args>
-struct value_data
-{
-    using value_type = typename type_in<urd::value, Args>::type;
-    using element_type = value_type;
-    /// What may be a Store (a row).
-    using held_type = value_type;
-    /// What find takes, where the kind has lookup.
-    using lookup_type = value_type;
-    /// What its order compares.
-    using ordered_type = value_type;
-    using played = role_types<plays<role::element, value_type>>;
-    /// What orders it: order_by<P> over its values, else their own order (void).
-    using order_type = projected_order_t<value_type, Args>;
-};
-
-/// Keys, by value: a set's and a partition's data, from key<K> among Args.
-template<typename Args>
-struct key_data
-{
-    using key_type = typename type_in<urd::key, Args>::type;
-    using element_type = key_type;
-    using held_type = key_type;
-    using lookup_type = key_type;
-    using ordered_type = key_type;
-    using played = role_types<plays<role::element, key_type>>;
-    using order_type = projected_order_t<key_type, Args>;
-};
-
-/// A value per key: a map's data, from key<K> and value<V> among Args.
-template<typename Args>
-struct map_data
-{
-    using key_type = typename type_in<urd::key, Args>::type;
-    using mapped_type = typename type_in<urd::value, Args>::type;
-    using element_type = std::pair<const key_type, mapped_type>;
-    using held_type = mapped_type;
-    using lookup_type = key_type;
-    using ordered_type = key_type;
-    using played = role_types<plays<role::element, key_type>, plays<role::mapped, mapped_type>>;
-    using order_type = typename decltype(map_order<key_type, mapped_type, Args>())::type;
-};
-
 /// What every Store is, and what a kind is unless it says otherwise. A kind derives from it and restates what
-/// differs: the type arguments it takes, its own questions (asked before the common ones), its own facets (after the
-/// common ones), its data, what a request means, its rules.
+/// differs: its own questions (asked before the common ones), its own facets (after the common ones), what a request
+/// means, its rules.
 struct any_kind
 {
     /// The questions every kind's requests answer: how it stores, what it costs, how it is used.
@@ -347,6 +191,7 @@ struct any_kind
                                          change,
                                          emptiness,
                                          position,
+                                         projection,
                                          workload>;
     /// The facets every kind's Store has, each where its condition holds.
     using common_facets = facet_list<facet::sizing,
@@ -360,11 +205,8 @@ struct any_kind
                                      facet::changes,
                                      facet::shape>;
 
-    using takes = slot_list<>;
     using format = request_format<>;
     using facets = facet_list<>;
-    template<typename Args>
-    using data = value_data<Args>;
 
     /// What a request means beyond what it states: once nothing changes (frozen), nothing moves.
     static constexpr property_set meaning(property_set stated)
@@ -402,55 +244,32 @@ struct any_kind
     static constexpr bool builds_from = false;
 };
 
-/// What both kinds of queue share: values, reached by their front or top, visited in no order urd reads.
-struct queue_base : any_kind
-{
-    using takes = slot_list<value_slot>;
-    using facets = facet_list<facet::visiting, facet::positions, facet::queue_access>;
-};
-
 }  // namespace detail
 
 /// Keys in disjoint classes, reached by merge and find.
 struct partition_kind : detail::any_kind
 {
     static constexpr std::string_view name = "partition";
-    static constexpr bool claims(const detail::request_facts& request) { return request.stated.has(grouping::partition); }
-    using takes = detail::slot_list<key_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys, grouping>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::grouping>;
-    template<typename Args>
-    using data = detail::key_data<Args>;
+    /// Its keys fall into classes.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(grouping::partition)); }
     static constexpr bool well_formed(const detail::request_facts& request) { return detail::orderable_keys(request); }
 };
 
-/// Values reached by the order they arrived in: first in first out (fifo), or last in first out (lifo).
-struct arrival_queue_kind : detail::queue_base
-{
-    static constexpr std::string_view name = "queue/arrival";
-    static constexpr bool claims(const detail::request_facts& request) { return request.stated.has(access::fifo) || request.stated.has(access::lifo); }
-    using format = detail::request_format<uniqueness, access, handling>;
-};
-
-/// Values reached by their priority: the top is the greatest by the order (order_by<P>, else the values' own).
-struct priority_queue_kind : detail::queue_base
-{
-    static constexpr std::string_view name = "queue/priority";
-    static constexpr bool claims(const detail::request_facts& request)
-    { return request.stated.has(access::by_priority) || request.stated.has(priority::monotone_priority); }
-    using takes = detail::slot_list<value_slot, order_slot>;
-    using format = detail::request_format<order, uniqueness, access, handling, priority>;
-    /// monotone_priority is a promise of a queue reached by priority.
-    static constexpr bool well_formed(const detail::request_facts& request)
-    { return !request.stated.has(priority::monotone_priority) || request.stated.has(access::by_priority); }
-    static constexpr bool accepts_order_by(const property_set& /*stated*/) { return true; }
-};
-
-/// Values reached by their front or top: by arrival or by priority.
-struct queue_kind
+/// Values reached by their front or top: by arrival, first in first out (fifo) or last in first out (lifo), or by
+/// priority (by_priority: the top is the greatest by the order, order_by<P>, else the values' own). Visited in no order
+/// urd reads.
+struct queue_kind : detail::any_kind
 {
     static constexpr std::string_view name = "queue";
-    using children = detail::type_list<priority_queue_kind, arrival_queue_kind>;
+    using format = detail::request_format<order, uniqueness, access, handling, priority>;
+    using facets = detail::facet_list<detail::facet::visiting, detail::facet::positions, detail::facet::queue_access>;
+    /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
+    static constexpr bool well_formed(const detail::request_facts& request)
+    { return request.stated.get<access>() != access::none && (!request.stated.has(priority::monotone_priority) || request.stated.has(access::by_priority)); }
+    /// Its order, by priority.
+    static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(access::by_priority); }
 };
 
 /// Values interned by handle, each distinct one once: rows (a range each, by row) or records and values (one each,
@@ -458,29 +277,26 @@ struct queue_kind
 struct pool_kind : detail::any_kind
 {
     static constexpr std::string_view name = "pool";
-    static constexpr bool claims(const detail::request_facts& request)
-    { return request.stated.has(handling::handles) && request.stated.has(uniqueness::unique); }
-    using takes = detail::slot_list<value_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys, handling, packing>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::records, detail::facet::pool>;
+    /// Each distinct value once, by handle.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles).put(uniqueness::unique)); }
 };
 
 /// Values in slots, by handle.
 struct slots_kind : detail::any_kind
 {
     static constexpr std::string_view name = "slots";
-    static constexpr bool claims(const detail::request_facts& request) { return request.stated.has(handling::handles); }
-    using takes = detail::slot_list<value_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys, handling>;
     using facets = detail::facet_list<detail::facet::positions, detail::facet::slots>;
+    /// Its values are reached by handle.
+    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles)); }
 };
 
 /// A value per key, or several (multi): without multi, each key once.
 struct map_kind : detail::any_kind
 {
     static constexpr std::string_view name = "map";
-    static constexpr bool claims(const detail::request_facts& request) { return request.slots.has<key_slot>() && request.slots.has<value_slot>(); }
-    using takes = detail::slot_list<key_slot, value_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys, direction, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -493,8 +309,6 @@ struct map_kind : detail::any_kind
                                       detail::facet::entries,
                                       detail::facet::inverse,
                                       detail::facet::sorted_ends>;
-    template<typename Args>
-    using data = detail::map_data<Args>;
     /// Without multi, each key once.
     static constexpr property_set meaning(property_set stated)
     {
@@ -510,8 +324,6 @@ struct map_kind : detail::any_kind
 struct set_kind : detail::any_kind
 {
     static constexpr std::string_view name = "set";
-    static constexpr bool claims(const detail::request_facts& request) { return request.slots.has<key_slot>(); }
-    using takes = detail::slot_list<key_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -521,8 +333,6 @@ struct set_kind : detail::any_kind
                                       detail::facet::removal,
                                       detail::facet::set_algebra,
                                       detail::facet::sorted_ends>;
-    template<typename Args>
-    using data = detail::key_data<Args>;
     /// Each key once; with positions and no order, numbered as they come.
     static constexpr property_set meaning(property_set stated)
     {
@@ -540,9 +350,6 @@ struct set_kind : detail::any_kind
 struct multiset_kind : detail::any_kind
 {
     static constexpr std::string_view name = "multiset";
-    static constexpr bool claims(const detail::request_facts& request)
-    { return request.stated.has(order::sorted) || request.stated.has(uniqueness::unique) || request.stated.has(multiplicity::multi); }
-    using takes = detail::slot_list<value_slot, order_slot>;
     using format = detail::request_format<order, uniqueness, keys, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -559,8 +366,6 @@ struct multiset_kind : detail::any_kind
 struct sequence_kind : detail::any_kind
 {
     static constexpr std::string_view name = "sequence";
-    static constexpr bool claims(const detail::request_facts& /*request*/) { return true; }
-    using takes = detail::slot_list<value_slot, order_slot>;
     using format = detail::request_format<order, keys, shape>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -575,29 +380,105 @@ struct sequence_kind : detail::any_kind
     static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
 };
 
-/// Kinds added outside urd, tried before urd's own: specialize extra_kinds<void> with `using type =
-/// detail::type_list<my_kind, …>;` before the first Store is named.
-template<typename = void>
-struct extra_kinds
+/// urd's kinds: what its tables list.
+using kinds = detail::type_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind>;
+
+namespace detail
 {
-    using type = detail::type_list<>;
+
+/// A kind Kind with values of type V as its data (a sequence, multiset, queue, pool, slots): what a request names.
+/// Order (an order_by<P>, or void) is what the request orders it by.
+template<typename Kind, typename V>
+struct values_of : Kind
+{
+    using kind = Kind;
+    using element_types = type_list<V>;
+    using value_type = V;
+    using element_type = V;
+    /// What may be a Store (a row).
+    using held_type = V;
+    /// What find takes, where the kind has lookup.
+    using lookup_type = V;
+    /// What its order compares.
+    using ordered_type = V;
+    using played = role_types<plays<role::element, V>>;
+    /// What orders it: order_by<P> over its values, else their own order (void).
+    template<typename Order>
+    using order_over = projected_order_t<V, Order>;
 };
 
-/// The root of the tree: the kinds, in the order they claim a request (the first that claims it is its kind: a
-/// priority queue with handles is a queue; the last claims every request). A template, so that kinds added outside
-/// urd are read where a request is resolved, not here.
-template<typename Unused = void>
-struct store_root
+/// A kind Kind with keys of type K as its data (a set, a partition).
+template<typename Kind, typename K>
+struct keys_of : Kind
 {
-    static constexpr std::string_view name = "store";
-    using children =
-        typename detail::join<typename extra_kinds<Unused>::type,
-                              detail::type_list<partition_kind, queue_kind, pool_kind, slots_kind, map_kind, set_kind, multiset_kind, sequence_kind>>::type;
+    using kind = Kind;
+    using element_types = type_list<K>;
+    using key_type = K;
+    using element_type = K;
+    using held_type = K;
+    using lookup_type = K;
+    using ordered_type = K;
+    using played = role_types<plays<role::element, K>>;
+    template<typename Order>
+    using order_over = projected_order_t<K, Order>;
 };
 
-/// The kinds at the top of the tree.
-template<typename Unused = void>
-using kinds = typename store_root<Unused>::children;
+}  // namespace detail
+
+// What a request names first: its kind, with its element types.
+
+/// Keys of type K, each once.
+template<typename K>
+struct set : detail::keys_of<set_kind, K>
+{
+};
+/// A value of type V per key of type K.
+template<typename K, typename V>
+struct map : map_kind
+{
+    using kind = map_kind;
+    using element_types = detail::type_list<K, V>;
+    using key_type = K;
+    using mapped_type = V;
+    using element_type = std::pair<const K, V>;
+    using held_type = V;
+    using lookup_type = K;
+    using ordered_type = K;
+    using played = detail::role_types<detail::plays<role::element, K>, detail::plays<role::mapped, V>>;
+    /// order_by<P> over its entries where P takes a key and a value, else over its keys.
+    template<typename Order>
+    using order_over = typename decltype(detail::map_order<K, V, Order>())::type;
+};
+/// Values of type V kept by value, in order.
+template<typename V>
+struct multiset : detail::values_of<multiset_kind, V>
+{
+};
+/// Values of type V by position.
+template<typename V>
+struct sequence : detail::values_of<sequence_kind, V>
+{
+};
+/// Values of type V reached by their front or top.
+template<typename V>
+struct queue : detail::values_of<queue_kind, V>
+{
+};
+/// Values of type V interned by handle, each distinct one once.
+template<typename V>
+struct pool : detail::values_of<pool_kind, V>
+{
+};
+/// Values of type V in slots, by handle.
+template<typename V>
+struct slots : detail::values_of<slots_kind, V>
+{
+};
+/// Keys of type K in disjoint classes.
+template<typename K>
+struct partition : detail::keys_of<partition_kind, K>
+{
+};
 
 namespace detail
 {
@@ -609,51 +490,13 @@ using format_of = typename concat<typename Kind::format, typename any_kind::comm
 template<typename Kind>
 using facets_of = typename concat<typename any_kind::common_facets, typename Kind::facets>::type;
 
-/// The root, named where it is used (dependent on T, so read when a request is resolved, not before).
-template<typename T>
-using root_for = store_root<std::conditional_t<std::is_void_v<T>, void, void>>;
-
-template<typename Path>
-struct leaf_of;
-template<typename... Nodes>
-struct leaf_of<type_list<Nodes...>> : last<Nodes...>
-{
-};
-
-/// The leaf a request reaches from the root. A struct, not an alias over the walk: GCC 13 fails on those internally.
-template<request_facts Facts>
-struct claimed
-{
-    using type = typename leaf_of<typename path_from<root_for<decltype(Facts)>, Facts>::type>::type;
-};
-
 }  // namespace detail
 
-/// The kind of a request: from the root, the first kind that claims it, and below it the first child that claims it,
-/// down to a leaf.
-template<detail::request_facts Facts>
-using kind_of = typename detail::claimed<Facts>::type;
-
-/// The leaves of the tree of kinds: what a Store's kind can be.
-template<typename Unused = void>
-using leaf_kinds = typename detail::leaves_below<store_root<Unused>>::type;
-
-/// Whether Kind is Node or a kind below it (a priority queue is a queue).
-template<typename Kind, typename Node>
-concept kind_below = detail::below<Kind, Node>;
-
 /// Whether a request of kind Kind contradicts itself, whatever container would hold it: by its kind's rule, and
-/// order_by<P> where its kind takes none. Anything else no container serves fails in the registry.
+/// order_by<P> where its kind orders by nothing it asks for. Anything else no container serves fails in the registry.
 template<typename Kind>
 constexpr bool well_formed(const detail::request_facts& request)
-{ return Kind::well_formed(request) && (!request.slots.has<order_slot>() || Kind::accepts_order_by(request.stated)); }
-
-/// Whether the slots a request fills are all among those its kind takes.
-template<typename... Slots>
-constexpr bool takes_all(detail::slot_list<Slots...> /*taken*/, const detail::slot_set& filled)
-{
-    return std::ranges::all_of(filled, []([[maybe_unused]] const slot_info* each) { return ((each == slot_v<Slots>) || ...); });
-}
+{ return Kind::well_formed(request) && (!request.stated.has(projection::projected) || Kind::accepts_order_by(request.stated)); }
 
 /// What a request of kind Kind means beyond what it states: what its kind keeps (a set keeps each key once; a map
 /// without multi too; a sequence's elements have positions), and what its tags imply.

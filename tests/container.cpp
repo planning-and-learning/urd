@@ -8,7 +8,7 @@
 //     URD_CHUNK           the object's index among the container's; the first also tests the container itself
 //
 // and instantiates the suite for container_types under the object's name. Compiled alone (by a linter, without those
-// definitions), the hash set of `Store<key<int>>` stands in.
+// definitions), the hash set of `Store<set<int>>` stands in.
 
 #if !defined(URD_CONTAINER)
 #include "urd/repr/maps/ordered_map.hpp"

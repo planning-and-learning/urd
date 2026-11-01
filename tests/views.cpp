@@ -45,9 +45,12 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::pool;
+using urd::sequence;
+using urd::set;
+using urd::slots;
 using urd::Store;
-using urd::value;
 using urd::view;
 
 struct Owner
@@ -64,8 +67,8 @@ struct Rec
     static constexpr auto identifying_members() noexcept { return urd::Members<&Rec::name, &Rec::parts, &Rec::owner, &Rec::alternative> {}; }
 };
 
-using Owners = Store<key<Owner>, urd::positional, urd::monotone>;
-using Recs = Store<key<Rec>, urd::positional, urd::monotone>;
+using Owners = Store<set<Owner>, urd::positional, urd::monotone>;
+using Recs = Store<set<Rec>, urd::positional, urd::monotone>;
 
 }  // namespace
 
@@ -112,17 +115,17 @@ static_assert(!std::same_as<urd::index<Owner>, urd::index<Rec>> && !std::convert
               && !std::convertible_to<urd::index<Owner>, std::uint32_t>);
 static_assert(urd::indexable<urd::index<Owner>> && urd::hashable<urd::index<Owner>> && urd::orderable<urd::index<Owner>>);
 static_assert(!urd::index_of<urd::index<Owner>>::is_index(urd::index<Owner>()) && urd::index_of<urd::index<Owner>>::to_index(urd::index<Owner>(3)) == 3);
-static_assert(std::same_as<Store<key<urd::index<Owner>>, value<int>, urd::dense>::representation, urd::repr::IndexMap<urd::index<Owner>, int, false>>);
-static_assert(std::same_as<Store<key<urd::index<Owner>>, urd::dense>::representation, urd::repr::DenseSet<urd::index<Owner>>>);
+static_assert(std::same_as<Store<map<urd::index<Owner>, int>, urd::dense>::representation, urd::repr::IndexMap<urd::index<Owner>, int, false>>);
+static_assert(std::same_as<Store<set<urd::index<Owner>>, urd::dense>::representation, urd::repr::DenseSet<urd::index<Owner>>>);
 
 // Handles are indices: a pool's and an interner's.
-static_assert(std::same_as<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique>::handle_type, urd::index<Store<value<int>, urd::frozen>>>);
-static_assert(std::same_as<Store<value<int>, urd::handles>::handle_type, urd::index<int>>);
+static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>>::handle_type, urd::index<Store<sequence<int>, urd::frozen>>>);
+static_assert(std::same_as<Store<slots<int>>::handle_type, urd::index<int>>);
 static_assert(std::same_as<Owners::index_type, urd::index<Owner>>);
 
 // Contexts: a positional set resolves its own type; Both resolves two; a hash set resolves nothing.
 static_assert(urd::resolves<Owners, Owner> && !urd::resolves<Owners, Rec> && urd::resolves<Both, Owner> && urd::resolves<Both, Rec>);
-static_assert(!urd::resolves<Store<key<Owner>>, Owner>);
+static_assert(!urd::resolves<Store<set<Owner>>, Owner>);
 
 // What the members resolve to, in each context.
 static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Both>, view<Owner, Both>>);
@@ -153,7 +156,7 @@ TEST(Index, APositionalSetMintsIndices)
 
 TEST(Index, KeysDenseTables)
 {
-    auto counts = Store<key<urd::index<Owner>>, value<int>, urd::dense>();
+    auto counts = Store<map<urd::index<Owner>, int>, urd::dense>();
     counts.insert_or_assign(urd::index<Owner>(2), 5);
     EXPECT_TRUE(counts.contains(urd::index<Owner>(2)));
     EXPECT_FALSE(counts.contains(urd::index<Owner>(1)));
@@ -204,7 +207,7 @@ TEST(View, ComparesAndHashesByIndexAndLayer)
     EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(0), other), again));  // another layer: another element
     EXPECT_TRUE(urd::Less<view<Rec>> {}(again, view<Rec>(urd::index<Rec>(1), both)));
 
-    auto seen = Store<key<view<Rec>>>();
+    auto seen = Store<set<view<Rec>>>();
     seen.insert(again);
     EXPECT_TRUE(seen.contains(view<Rec>(urd::index<Rec>(0), both)));
     EXPECT_FALSE(seen.contains(view<Rec>(urd::index<Rec>(1), both)));

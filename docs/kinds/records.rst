@@ -6,17 +6,17 @@ Records, repositories, views
 .. code-block:: cpp
 
    template<typename Record, typename... Properties>
-   using Records = Store<value<Record>, handles, unique, flat, Properties...>;
+   using Records = Store<pool<Record>, flat, Properties...>;
 
 .. cpp:class:: Records
 
-   A pool of records stored flat: ``Store<value<Record>, handles, unique, flat, Properties...>``. The name ``Records`` stands for the resolved Store type on this page.
+   A pool of records stored flat: ``Store<pool<Record>, flat, Properties...>``. The name ``Records`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Records
 
 Records are the pool kind (:doc:`pools`) holding values that are not rows: each distinct value once, interned whole.
 Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an indexed set of the values: a pool of
-strings is ``Store<value<std::string>, handles, unique>``). With ``flat``, records are stored as bytes:
+strings is ``Store<pool<std::string>>``). With ``flat``, records are stored as bytes:
 
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
@@ -30,7 +30,7 @@ records are frozen once stored.
 
    * - Request
      - Representation
-   * - ``Store<value<Record>, handles, unique, flat>``, a trivially copyable record
+   * - ``Store<pool<Record>, flat>``, a trivially copyable record
      - ``RecordInterner``: an indexed set of the records
    * - the same, any other record
      - ``ArenaInterner``: serialized by cista into a byte arena that never moves a block
@@ -157,9 +157,9 @@ predicate the phase did not touch, and continue that pool's indices for one it d
 
 .. code-block:: cpp
 
-   using Row = Store<value<index<Object>>, frozen>;
-   using Rows = Store<value<Row>, handles, unique, monotone, layered>;
-   using Relations = Store<key<index<Predicate>>, value<Rows>, dense, layered>;
+   using Row = Store<sequence<index<Object>>, frozen>;
+   using Rows = Store<pool<Row>, monotone, layered>;
+   using Relations = Store<map<index<Predicate>, Rows>, dense, layered>;
    auto task = Relations();
    task.layer_over(&domain);
    task[on].insert({ a, b });     // the domain's row, if it had one, else a new one after the domain's rows

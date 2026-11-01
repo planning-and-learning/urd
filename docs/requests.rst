@@ -41,11 +41,11 @@ A Store of Stores is written as one: an element, key or value can be another Sto
 
 .. code-block:: cpp
 
-   using Tags     = Store<key<std::string>, sorted>;
-   using Tagged   = Store<key<Item>, value<Tags>>;                          // a map of sorted sets
-   using Families = Store<key<Tags>>;                                       // a set of sets (hashed by contents: Tags is sorted)
-   using Trips    = Store<key<std::string>, value<Store<value<Point>>>>;    // a map of sequences
-   using Layers   = Store<value<Store<key<Cell>, value<Store<value<Item>>>>>>;  // sequences of maps of sequences
+   using Tags     = Store<set<std::string>, sorted>;
+   using Tagged   = Store<map<Item, Tags>>;                          // a map of sorted sets
+   using Families = Store<set<Tags>>;                                       // a set of sets (hashed by contents: Tags is sorted)
+   using Trips    = Store<map<std::string, Store<sequence<Point>>>>;    // a map of sequences
+   using Layers   = Store<sequence<Store<map<Cell, Store<sequence<Item>>>>>>;  // sequences of maps of sequences
 
 Most rows are held as Stores, each owning its storage. Where the outer request says how rows live (``frozen``,
 ``fixed_shape``, ``retains``, ``handles``), urd stores them together and hands out a row as a view: see
@@ -63,31 +63,31 @@ The kind of a Store is the first kind of ``include/urd/kinds.hpp`` that claims i
    * - Request
      - Kind
      - Page
-   * - ``Store<key<K>, ...>``
+   * - ``Store<set<K>, ...>``
      - a set
      - :doc:`kinds/sets`
-   * - ``Store<key<K>, value<V>, ...>``
+   * - ``Store<map<K, V>, ...>``
      - a map (a multimap with ``multi``)
      - :doc:`kinds/maps`
-   * - ``Store<value<V>, ...>``
+   * - ``Store<sequence<V>, ...>``
      - a sequence
      - :doc:`kinds/sequences`
-   * - ``Store<value<V>, sorted | unique | multi, ...>``
+   * - ``Store<sequence<V>, sorted | unique | multi, ...>``
      - a multiset: values kept by value
      - :doc:`kinds/sequences`
-   * - ``Store<value<V>, fifo | lifo, ...>``
+   * - ``Store<sequence<V>, fifo | lifo, ...>``
      - a queue by arrival
      - :doc:`kinds/queues`
-   * - ``Store<value<V>, by_priority, ...>``
+   * - ``Store<queue<V>, by_priority, ...>``
      - a priority queue
      - :doc:`kinds/queues`
-   * - ``Store<value<V>, handles, unique, ...>``
+   * - ``Store<pool<V>, ...>``
      - a pool: rows interned as rows, records and values interned whole (``flat``: records stored as bytes)
      - :doc:`kinds/pools`, :doc:`kinds/records`
-   * - ``Store<value<V>, handles, ...>``
+   * - ``Store<slots<V>, ...>``
      - slots
      - :doc:`kinds/pools`
-   * - ``Store<key<I>, partition>``
+   * - ``Store<partition<I>>``
      - a partition of indices
      - :doc:`kinds/partitions`
 
@@ -97,14 +97,14 @@ Rules
 A request is checked when the Store type is formed (``include/urd/spec.hpp``); each failure is a static
 assertion that names what is wrong.
 
-* Every argument is a property; at most one ``key``, one ``value``, one ``order_by``.
+* The first argument is the kind with its element types (``set<K>``, ``map<K, V>``, …); every other is a tag.
 * At most one tag per category: ``dense`` and ``sparse`` contradict, as do ``frozen`` and ``monotone``, two
   workloads.
 * What you state is what you get, with what it means: a set, and a map without ``multi``, keep each key once; a
   positional set numbers its keys as they come; a ``frozen`` Store has ``stable_refs``. ``frozen`` or ``fixed_shape``
   Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
-* A pool (``handles``) holds ``value<V>`` rows reached by handle, not by key; a ``partition`` groups keys, without
-  values; ``order_by`` on unique keys needs orderable keys, to break ties.
+* A queue is reached by ``fifo``, ``lifo`` or ``by_priority``; ``order_by`` on unique keys needs orderable keys, to
+  break ties.
 * Every tag answers a question of the request's kind (its request format): ``bidirectional`` means nothing for a
   queue, ``flat`` nothing for a set.
 * Any other request no container serves fails in the registry.

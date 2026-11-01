@@ -42,7 +42,7 @@ A type names its identity once and is then hashable, comparable and ordered, in 
        Vertex from, to;
        static constexpr auto identifying_members() noexcept { return Members<&Edge::from, &Edge::to> {}; }
    };
-   using Edges = Store<key<Edge>>;                    // hashed by (from, to)
+   using Edges = Store<set<Edge>>;                    // hashed by (from, to)
 
 .. cpp:concept:: template<typename T> MemberIdentified
 

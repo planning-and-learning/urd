@@ -63,28 +63,4 @@ inline constexpr bool is_a = false;
 template<template<typename> class Template, typename T>
 inline constexpr bool is_a<Template, Template<T>> = true;
 
-/// The type inside the first Template<…> among Ps, else void.
-template<template<typename> class Template, typename... Ps>
-struct first_of
-{
-    using type = void;
-};
-template<template<typename> class Template, typename T, typename... Ps>
-struct first_of<Template, Template<T>, Ps...>
-{
-    using type = T;
-};
-template<template<typename> class Template, typename P, typename... Ps>
-struct first_of<Template, P, Ps...> : first_of<Template, Ps...>
-{
-};
-
-/// The type inside the first Template<…> of a list, else void.
-template<template<typename> class Template, typename List>
-struct type_in;
-template<template<typename> class Template, typename... Ps>
-struct type_in<Template, type_list<Ps...>> : first_of<Template, Ps...>
-{
-};
-
 }  // namespace urd::detail

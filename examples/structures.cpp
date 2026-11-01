@@ -19,7 +19,8 @@
 #include <exception>
 #include <iostream>
 
-using urd::key;
+using urd::partition;
+using urd::set;
 using urd::Store;
 
 namespace
@@ -28,14 +29,14 @@ namespace
 void run()
 {
     // Classes of equal terms: merge what is equal, ask which class each term is in.
-    auto terms = Store<key<int>, urd::partition>();
+    auto terms = Store<partition<int>>();
     terms.insert(4);  // terms 0..4, each in a class of its own
     terms.merge(0, 3);
     terms.merge(3, 4);
     std::cout << "classes: " << terms.classes() << ", 0 and 4 equal: " << std::boolalpha << terms.same(0, 4) << '\n';
 
     // Semi-naive evaluation: each round works on the facts new since the last.
-    auto facts = Store<key<int>, urd::change_log>();
+    auto facts = Store<set<int>, urd::change_log>();
     facts.insert(1);
     facts.clear_changes();
     for (const int derived : { 1, 2, 3 })

@@ -161,23 +161,23 @@ private:
     representation m_representation;
 };
 
-template<typename... Ps>
+template<typename Kind, typename... Tags>
 struct resolve
 {
-    using spec_type = typename to_spec<Ps...>::type;
-    using type = Store<typename resolution<to_spec<Ps...>>::type, spec_type>;
+    using spec_type = typename to_spec<Kind, Tags...>::type;
+    using type = Store<typename resolution<to_spec<Kind, Tags...>>::type, spec_type>;
 };
 
 }  // namespace detail
 
-/// A data structure described by its properties. List what the data is and how it is used, in any order:
+/// A data structure described by its kind, with its element types, then its properties, in any order:
 ///
-///     using Ids = urd::Store<urd::key<int>, urd::sorted>;            // a sorted set of ints
-///     using Log = urd::Store<urd::value<Event>, urd::monotone>;      // a sequence that only grows
+///     using Ids = urd::Store<urd::set<int>, urd::sorted>;            // a sorted set of ints
+///     using Log = urd::Store<urd::sequence<Event>, urd::monotone>;   // a sequence that only grows
 ///
 /// urd picks the representation; Store<…>::representation names it, for tests that pin it.
-template<typename... Ps>
-using Store = typename detail::resolve<Ps...>::type;
+template<typename Kind, typename... Tags>
+using Store = typename detail::resolve<Kind, Tags...>::type;
 
 /// A Store has the properties it was asked for, not those of its representation.
 template<typename R, typename S>

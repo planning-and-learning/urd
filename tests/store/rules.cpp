@@ -56,19 +56,22 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::multiset;
+using urd::queue;
+using urd::sequence;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 // The order of the properties does not matter.
-static_assert(std::same_as<Store<key<int>, urd::sorted>, Store<urd::sorted, key<int>>>);
-static_assert(std::same_as<Store<value<int>, urd::unique, urd::sorted>, Store<urd::sorted, value<int>, urd::unique>>);
+static_assert(std::same_as<Store<set<int>, urd::sorted>, Store<set<int>, urd::sorted>>);
+static_assert(std::same_as<Store<multiset<int>, urd::unique, urd::sorted>, Store<multiset<int>, urd::sorted, urd::unique>>);
 
 // What a request is: what it states, and what that means (urd::meaning): a set's keys are unique, a frozen Store's
 // references are stable. Values without keys are a sequence by kind, not by a tag.
-static_assert(urd::has<Store<key<int>>, urd::unique>);
-static_assert(std::same_as<urd::container_traits<Store<value<int>>>::kind, urd::sequence_kind> && !urd::has<Store<value<int>>, urd::dense>);
-static_assert(urd::has<Store<key<int>, urd::frozen>, urd::stable_refs>);
+static_assert(urd::has<Store<set<int>>, urd::unique>);
+static_assert(std::same_as<urd::container_traits<Store<sequence<int>>>::kind, urd::sequence_kind> && !urd::has<Store<sequence<int>>, urd::dense>);
+static_assert(urd::has<Store<set<int>, urd::frozen>, urd::stable_refs>);
 
 // What each request resolves to (pinned, so a change in the selection shows up here). Where no order is asked
 // for, an open-addressing hash table, which docs/BENCHMARKS.md finds fastest at every size.
@@ -83,9 +86,9 @@ template<typename S>
 concept can_assign_by_key = requires(S store) { store[1] = 2; };
 template<typename S>
 concept can_try_emplace = requires(S store) { store.try_emplace(1, 2); };
-static_assert(can_assign_by_key<Store<key<int>, value<int>>> && !can_assign_by_key<Store<key<int>, value<int>, urd::frozen>>);
-static_assert(can_try_emplace<Store<key<int>, value<int>>> && !can_try_emplace<Store<key<int>, value<int>, urd::multi>>);
-static_assert(std::same_as<decltype(*Store<key<int>, value<int>>().begin()), const std::pair<const int, int>&>);
+static_assert(can_assign_by_key<Store<map<int, int>>> && !can_assign_by_key<Store<map<int, int>, urd::frozen>>);
+static_assert(can_try_emplace<Store<map<int, int>>> && !can_try_emplace<Store<map<int, int>, urd::multi>>);
+static_assert(std::same_as<decltype(*Store<map<int, int>>().begin()), const std::pair<const int, int>&>);
 
 // Dense keys (indices): stored by position, a bitset where nothing else is asked, a sparse set where clear must be
 // O(1).
@@ -94,8 +97,8 @@ static_assert(std::same_as<decltype(*Store<key<int>, value<int>>().begin()), con
 
 // Insertion order and positions: an indexed set. A set that is positional keeps insertion order unless it asks to be
 // sorted, so that an element's position is its index (an interner).
-static_assert(urd::has<Store<key<int>, urd::positional>, urd::insertion_ordered, urd::unique>);
-static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional>);
+static_assert(urd::has<Store<set<int>, urd::positional>, urd::insertion_ordered, urd::unique>);
+static_assert(!urd::has<Store<set<int>, urd::insertion_ordered>, urd::positional>);
 
 // A frozen multimap by dense key: compressed sparse rows, each key's values a span.
 // A dense multimap that grows: a vector of values per index (runir's graph builders).
@@ -112,48 +115,48 @@ static_assert(!urd::has<Store<key<int>, urd::insertion_ordered>, urd::positional
 // By an indexable key too: without dense, a hash table, not a slot per index.
 // Stability with concurrency on hashed keys: the node tables, whose elements a rehash leaves in place.
 // gtl's table keeps no storage for reuse, and a dense map may not stand in for it (its keys were not promised).
-static_assert(!urd::detail::choose<urd::detail::to_spec<key<int>, value<int>, urd::concurrent, urd::retains>::type>::found);
+static_assert(!urd::detail::choose<urd::detail::to_spec<map<int, int>, urd::concurrent, urd::retains>::type>::found);
 
 // An interner shared by threads: insertion order, elements that never move, inserts from threads at once.
 // Elements that never move, without the lock: stability alone buys no synchronization.
 
 // Maps in insertion order: hashed keys, or dense ones placed by index with O(1) clear; a dense set in insertion order.
-static_assert(urd::has<Store<key<int>, value<double>, urd::dense, urd::insertion_ordered>::representation, urd::constant_clear>);
+static_assert(urd::has<Store<map<int, double>, urd::dense, urd::insertion_ordered>::representation, urd::constant_clear>);
 
 // Rows: a Store of Stores.
 
 // Rows of bits whose number and lengths are fixed: one array of words, each row a bitset over its part.
-using BitRowSets = Store<value<Store<key<std::size_t>, urd::dense>>, urd::fixed_shape>;
+using BitRowSets = Store<sequence<Store<set<std::size_t>, urd::dense>>, urd::fixed_shape>;
 static_assert(std::same_as<BitRowSets::reference, urd::repr::BitsetSpan<std::uint64_t>>);
 template<typename S>
 concept can_change_rows = requires(S rows, typename S::value_type row) { rows.push_back(row); } || requires(S rows) { rows.clear(); };
-static_assert(can_change_rows<Store<value<Store<key<std::size_t>, urd::dense>>>> && !can_change_rows<BitRowSets>);
+static_assert(can_change_rows<Store<sequence<Store<set<std::size_t>, urd::dense>>>> && !can_change_rows<BitRowSets>);
 
 // Storage kept for reuse, or returned: the containers that do so.
 
 // Stores as hashed keys: those whose contents fix their order (sorted, canonical, sequences) hash by them; an
 // unordered one does not, since its iteration order is not its contents' (compile-fail cases 28 and 29).
-static_assert(urd::hashable<Store<key<int>, urd::sorted, urd::frozen>> && urd::hashable<Store<key<int>, urd::dense, urd::sorted>>
-              && urd::hashable<Store<value<int>>> && urd::hashable<Store<value<int>, urd::frozen>>);
-static_assert(!urd::hashable<Store<key<int>>> && !urd::hashable<Store<key<int>, urd::dense, urd::constant_clear>>);
+static_assert(urd::hashable<Store<set<int>, urd::sorted, urd::frozen>> && urd::hashable<Store<set<int>, urd::dense, urd::sorted>>
+              && urd::hashable<Store<sequence<int>>> && urd::hashable<Store<sequence<int>, urd::frozen>>);
+static_assert(!urd::hashable<Store<set<int>>> && !urd::hashable<Store<set<int>, urd::dense, urd::constant_clear>>);
 // Compared and ordered by their request alone: any iterable Store compares equal by contents; one iterated in an
 // order its request fixes (sorted, insertion_ordered, a sequence) is ordered, so it can be a sorted key.
-static_assert(urd::EqualityComparableByEqualTo<Store<key<int>>> && urd::EqualityComparableByEqualTo<Store<value<int>>>);
-static_assert(urd::orderable<Store<key<int>, urd::sorted>> && urd::orderable<Store<value<int>>>
-              && urd::orderable<Store<key<int>, urd::positional, urd::monotone>> && !urd::orderable<Store<key<int>>>
-              && !urd::orderable<Store<value<int>, urd::fifo>>);
-using SortedKey = Store<key<int>, urd::sorted, urd::frozen>;
-using BitKey = Store<key<int>, urd::dense, urd::frozen, urd::sorted>;
+static_assert(urd::EqualityComparableByEqualTo<Store<set<int>>> && urd::EqualityComparableByEqualTo<Store<sequence<int>>>);
+static_assert(urd::orderable<Store<set<int>, urd::sorted>> && urd::orderable<Store<sequence<int>>>
+              && urd::orderable<Store<set<int>, urd::positional, urd::monotone>> && !urd::orderable<Store<set<int>>>
+              && !urd::orderable<Store<queue<int>, urd::fifo>>);
+using SortedKey = Store<set<int>, urd::sorted, urd::frozen>;
+using BitKey = Store<set<int>, urd::dense, urd::frozen, urd::sorted>;
 
 // Only what was asked for: a set that reclaims is a tree, which is sorted, but it was not asked to be sorted, so it
 // is not.
-static_assert(!urd::has<Store<key<int>, urd::reclaims>, urd::sorted>);
-static_assert(urd::has<Store<key<int>, urd::sorted, urd::small>, urd::sorted>);
-static_assert(urd::has<Store<key<int>, urd::small>, urd::unique>);
+static_assert(!urd::has<Store<set<int>, urd::reclaims>, urd::sorted>);
+static_assert(urd::has<Store<set<int>, urd::sorted, urd::small>, urd::sorted>);
+static_assert(urd::has<Store<set<int>, urd::small>, urd::unique>);
 
 // A Store adds no space to its representation: the facets it does not have are empty bases.
-static_assert(sizeof(Store<value<int>>) == sizeof(Store<value<int>>::representation));
-static_assert(sizeof(Store<key<int>, value<int>, urd::sorted>) == sizeof(Store<key<int>, value<int>, urd::sorted>::representation));
+static_assert(sizeof(Store<sequence<int>>) == sizeof(Store<sequence<int>>::representation));
+static_assert(sizeof(Store<map<int, int>, urd::sorted>) == sizeof(Store<map<int, int>, urd::sorted>::representation));
 
 // The interface follows from the properties, in the standard's names.
 template<typename S>
@@ -166,19 +169,19 @@ template<typename S>
 concept can_search = requires(const S store, int element) { store.lower_bound(element); };
 template<typename S>
 concept can_assign = requires(S store, int element) { store[0] = element; };
-static_assert(can_insert<Store<key<int>>> && can_erase<Store<key<int>>> && !can_push_back<Store<key<int>>>);
-static_assert(!can_insert<Store<key<int>, urd::frozen>> && !can_erase<Store<key<int>, urd::frozen>>);
-static_assert(can_push_back<Store<value<int>, urd::monotone>> && !can_erase<Store<value<int>, urd::monotone>>);
-static_assert(!can_erase<Store<key<int>, urd::nonempty>>);
+static_assert(can_insert<Store<set<int>>> && can_erase<Store<set<int>>> && !can_push_back<Store<set<int>>>);
+static_assert(!can_insert<Store<set<int>, urd::frozen>> && !can_erase<Store<set<int>, urd::frozen>>);
+static_assert(can_push_back<Store<sequence<int>, urd::monotone>> && !can_erase<Store<sequence<int>, urd::monotone>>);
+static_assert(!can_erase<Store<set<int>, urd::nonempty>>);
 // A sorted Store is searched by order; a sorted sequence keeps elements by value, as std::flat_multiset.
-static_assert(can_search<Store<key<int>, urd::sorted>> && !can_search<Store<key<int>>>);
-static_assert(can_insert<Store<value<int>, urd::sorted>> && !can_push_back<Store<value<int>, urd::sorted>>);
+static_assert(can_search<Store<set<int>, urd::sorted>> && !can_search<Store<set<int>>>);
+static_assert(can_insert<Store<multiset<int>, urd::sorted>> && !can_push_back<Store<multiset<int>, urd::sorted>>);
 // Elements change in place only where no property depends on their values and the Store may change.
-static_assert(can_assign<Store<value<int>>>);
-static_assert(!can_assign<Store<value<int>, urd::sorted>> && !can_assign<Store<value<int>, urd::monotone>>);
-static_assert(!can_assign<Store<key<int>, urd::positional>>);
+static_assert(can_assign<Store<sequence<int>>>);
+static_assert(!can_assign<Store<multiset<int>, urd::sorted>> && !can_assign<Store<sequence<int>, urd::monotone>>);
+static_assert(!can_assign<Store<set<int>, urd::positional>>);
 // A unique set's insert says whether it inserted; a multiset's does not.
-static_assert(std::same_as<decltype(Store<key<int>>().insert(1).second), bool>);
-static_assert(std::same_as<decltype(Store<value<int>, urd::sorted>().insert(1)), Store<value<int>, urd::sorted>::iterator>);
+static_assert(std::same_as<decltype(Store<set<int>>().insert(1).second), bool>);
+static_assert(std::same_as<decltype(Store<multiset<int>, urd::sorted>().insert(1)), Store<multiset<int>, urd::sorted>::iterator>);
 
 }  // namespace

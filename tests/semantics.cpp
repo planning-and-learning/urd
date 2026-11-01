@@ -101,8 +101,8 @@ using Types = testing::Types<int,
                              std::array<int, 2>,
                              Atom,
                              // Stores whose contents fix their order: a sorted set, a bitset.
-                             urd::Store<urd::key<int>, urd::sorted, urd::frozen>,
-                             urd::Store<urd::key<int>, urd::dense, urd::sorted>>;
+                             urd::Store<urd::set<int>, urd::sorted, urd::frozen>,
+                             urd::Store<urd::set<int>, urd::dense, urd::sorted>>;
 
 template<typename T>
 class Semantics : public testing::Test

@@ -80,22 +80,21 @@ declaration, passes on every operation it has no entry for). ``tests/store/outsi
 A kind
 ------
 
-The kinds are the data of one tree (``include/urd/tree.hpp``: the walk from a node to the first child that claims a
-request, written once). A kind is a struct deriving from ``urd::detail::any_kind``, which says what every Store is,
-and stating what differs:
+A kind is a struct deriving from ``urd::detail::any_kind``, which says what every Store is, and stating what differs;
+a request names it as a template over its element types:
 
 .. code-block:: cpp
 
    struct tally_kind : urd::detail::any_kind
    {
        static constexpr std::string_view name = "tally";
-       static constexpr bool claims(const urd::detail::request_facts& request) { return request.stated.has(tallying::tallied); }
-       using takes = urd::detail::slot_list<counted_slot>;  // the type arguments it takes
        using format = urd::detail::request_format<tallying>;  // its questions, before every kind's
        using facets = urd::detail::facet_list<counting>;      // its Store's interface, after every kind's
-       template<typename Args> using data = tally_data<Args>; // its types, from its type arguments
+       static constexpr urd::detail::property_set meaning(urd::detail::property_set stated)
+       { return any_kind::meaning(stated.put(tallying::tallied)); }  // what a request of it means
    };
-   template<> struct urd::extra_kinds<void> { using type = urd::detail::type_list<tally_kind>; };
+   template<typename T>
+   struct tally : urd::detail::values_of<tally_kind, T> {};  // what a request names: its kind with its element types
 
 ``any_kind`` gives the questions and facets every kind has (joined with a kind's own by ``format_of`` and
 ``facets_of``), and what a kind is unless it says otherwise: ``meaning`` (what a request means beyond what it states:
@@ -103,25 +102,13 @@ frozen implies stable references), ``asks`` and ``promises`` (what it asks of it
 ``prefers`` (which containers come after the others), ``well_formed`` (when a request contradicts itself),
 ``accepts_order_by``, ``changes_in_place`` (whether rows of it change in place) and ``builds_from`` (what it is built
 from besides elements). A kind has no flags: what holds of its Store is a tag its meaning adds (a sequence's elements
-are ``positional``) or a facet it lists (iteration). Kinds added by ``extra_kinds`` are tried before urd's own;
-specialize it before the first Store is named. A node with ``children`` claims a request where one of them does, and
-a request's kind is the leaf it reaches.
+are ``positional``) or a facet it lists (iteration).
 
-A type slot
------------
-
-A Store's type arguments fill slots: ``key<K>`` the key slot, ``value<V>`` the value slot. A slot is a struct with
-its words; a type argument is a template naming its slot and its type:
-
-.. code-block:: cpp
-
-   struct counted_slot { static constexpr std::string_view name = "counted", description = "what a tally counts"; };
-   template<typename T> struct counted { using type = T; using slot = counted_slot; };
-
-A kind takes slots (``takes``), claims by the slots a request fills (``request.slots.has<key_slot>()``) and builds its
-data (``data``: its element types, what it holds and finds, what orders it) from the type arguments; a type argument
-for a slot its kind does not take does not compile. ``order_by<P>`` fills the order slot, which the ordered kinds take.
-``urd::Store<counted<std::string>, tallied>`` is a tally of strings.
+The template gives the kind's element types: ``element_types`` (for spelling and headers), what it holds and finds
+(``element_type``, ``held_type``, ``lookup_type``), what its order compares (``ordered_type``), which type plays which
+role (``played``), and what orders it given an ``order_by<P>`` (``order_over``). ``urd::detail::values_of<Kind, V>``
+and ``keys_of<Kind, K>`` give them for a kind of values or of keys; ``urd::map<K, V>`` writes its own.
+``urd::Store<tally<std::string>>`` is a tally of strings. Nothing registers the kind: naming it is enough.
 
 urd-search reads the same declarations: a kind, container, trait or operation added this way appears in its
 registry tree and evidence once it is built with them.

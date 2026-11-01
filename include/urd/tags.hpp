@@ -757,8 +757,9 @@ struct any_grouping
     static constexpr std::string_view question = "Groups of keys?";
     using heading = no_heading;
 };
-/// A partition: its elements fall into disjoint classes; merge joins two classes, find names an element's class.
-struct partition : any_grouping
+/// A partition: its elements fall into disjoint classes; merge joins two classes, find names an element's class. What
+/// a partition<K> means (urd/kinds.hpp), not stated.
+struct partitioned : any_grouping
 {
     static constexpr auto value = grouping::partition;
     static constexpr std::string_view name = "partition";
@@ -771,7 +772,7 @@ struct partition : any_grouping
 template<>
 struct tags_of<grouping>
 {
-    using type = detail::type_list<any_grouping, partition>;
+    using type = detail::type_list<any_grouping, partitioned>;
 };
 
 enum class tracking : std::uint8_t
@@ -1015,6 +1016,49 @@ template<>
 struct tags_of<priority>
 {
     using type = detail::type_list<any_priority, monotone_priority>;
+};
+
+enum class projection : std::uint8_t
+{
+    none,
+    projected,
+};
+
+struct any_projection
+{
+    using root = any_projection;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
+    static constexpr auto value = projection::none;
+    static constexpr std::string_view name = "any_projection";
+    using group = semantics_group;
+    using heading = promise_heading;
+    static constexpr std::string_view question = "What orders the elements?";
+};
+/// Ordered by a projection of the elements (order_by<P>), not by the elements themselves: the words of the answer.
+struct projected : any_projection
+{
+    static constexpr auto value = projection::projected;
+    static constexpr std::string_view name = "order_by";
+    static constexpr std::string_view promise = "caller";
+    static constexpr std::string_view description = "Ordered by P(element) (in a map P(key) or P(key, value)), not the element.";
+    static constexpr std::array<std::string_view, 3> phrases { "order by", "sort key", "priority function" };
+};
+
+/// The tag types of projection: its none, then its answers, in the order of its enum.
+template<>
+struct tags_of<projection>
+{
+    using type = detail::type_list<any_projection, projected>;
+};
+
+/// Orders a sorted Store, or a by_priority queue, by P(element) (P(key) in a map) instead of the element: P is a member
+/// pointer (&Job::deadline) or a stateless lambda ([](const Job& job) { return std::tuple(job.deadline, -job.weight); }).
+/// Ties fall back to the element's own order where it has one. A tag like any other, answering `projected`, that also
+/// carries P.
+template<auto P>
+struct order_by : projected
+{
+    static constexpr auto projection = P;
 };
 
 }  // namespace urd

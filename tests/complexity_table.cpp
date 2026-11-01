@@ -131,7 +131,7 @@ std::string kind_of()
         return "partitions";
     else if constexpr (std::same_as<typename S::kind, urd::pool_kind> || std::same_as<typename S::kind, urd::slots_kind>)
         return urd::has<S, urd::flat> ? "records" : "pools";
-    else if constexpr (urd::kind_below<typename S::kind, urd::queue_kind>)
+    else if constexpr (std::same_as<typename S::kind, urd::queue_kind>)
         return "queues";
     else if constexpr (std::same_as<typename S::kind, urd::map_kind>)
         return "maps";

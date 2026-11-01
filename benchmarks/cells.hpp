@@ -32,12 +32,37 @@ inline constexpr std::array<std::size_t, 3> row_lengths { 16, 256, 4096 };
 /// The shape of a request's elements: its key and value types as the request writes them, "<key>;<value>" ("-" for
 /// none). Only containers measured on the same types are compared.
 template<typename S>
-std::string shape_of_spec()
+struct key_of
 {
-    return fmt::format("{};{}",
-                       urd::spelling<typename urd::detail::type_in<urd::key, typename S::arguments>::type>(),
-                       urd::spelling<typename urd::detail::type_in<urd::value, typename S::arguments>::type>());
-}
+    using type = void;
+};
+template<typename S>
+    requires requires { typename S::key_type; }
+struct key_of<S>
+{
+    using type = typename S::key_type;
+};
+template<typename S>
+struct value_of
+{
+    using type = void;
+};
+template<typename S>
+    requires requires { typename S::value_type; }
+struct value_of<S>
+{
+    using type = typename S::value_type;
+};
+template<typename S>
+    requires requires { typename S::mapped_type; }
+struct value_of<S>
+{
+    using type = typename S::mapped_type;
+};
+
+template<typename S>
+std::string shape_of_spec()
+{ return fmt::format("{};{}", urd::spelling<typename key_of<S>::type>(), urd::spelling<typename value_of<S>::type>()); }
 
 /// The experiment of container R for the request spec S.
 template<typename S>

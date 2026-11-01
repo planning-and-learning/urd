@@ -53,18 +53,19 @@
 namespace
 {
 
-using urd::key;
+using urd::map;
+using urd::sequence;
+using urd::set;
 using urd::Store;
-using urd::value;
 
 // The values of a key, in the order given: a span of a CSR multimap, a view of any other multimap's equal_range.
 TEST(MultiValues, GivesEachKeysValuesInOrder)
 {
     const auto pairs = std::vector<std::pair<int, int>> { { 2, 20 }, { 0, 1 }, { 2, 21 }, { 0, 2 }, { 2, 22 } };
-    const auto csr = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>(pairs.begin(), pairs.end());
-    const auto tree = Store<key<int>, value<int>, urd::multi, urd::sorted>(pairs.begin(), pairs.end());
-    const auto postings = Store<key<int>, value<int>, urd::multi>(pairs.begin(), pairs.end());
-    const auto nodes = Store<key<int>, value<int>, urd::multi, urd::stable_refs>(pairs.begin(), pairs.end());
+    const auto csr = Store<map<int, int>, urd::multi, urd::dense, urd::frozen>(pairs.begin(), pairs.end());
+    const auto tree = Store<map<int, int>, urd::multi, urd::sorted>(pairs.begin(), pairs.end());
+    const auto postings = Store<map<int, int>, urd::multi>(pairs.begin(), pairs.end());
+    const auto nodes = Store<map<int, int>, urd::multi, urd::stable_refs>(pairs.begin(), pairs.end());
     EXPECT_TRUE(std::ranges::equal(postings.values(2), std::vector<int> { 20, 21, 22 }));
     // std::unordered_multimap keeps equal keys together, in no promised order.
     auto node_values = std::vector<int>(nodes.values(2).begin(), nodes.values(2).end());
@@ -88,7 +89,7 @@ TEST(MultiValues, CsrBuildsWhatAMultimapHolds)
         auto pairs = std::vector<std::pair<int, int>>();
         for (int count = static_cast<int>(random() % 40); count > 0; --count)
             pairs.emplace_back(static_cast<int>(random() % 12), static_cast<int>(random() % 100));
-        const auto csr = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::sorted>(pairs.begin(), pairs.end());
+        const auto csr = Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::sorted>(pairs.begin(), pairs.end());
         const auto expected = std::multimap<int, int>(pairs.begin(), pairs.end());
         ASSERT_TRUE(std::ranges::equal(csr, expected, [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first && lhs.second == rhs.second; }));
         for (int each = -1; each < 14; ++each)
@@ -106,7 +107,7 @@ TEST(MultiValues, CsrBuildsWhatAMultimapHolds)
 // A frozen graph: a multimap from sources to targets that answers by value too, so successors are a vertex's values
 // and predecessors its keys, each in the order the edges were given.
 static_assert(
-    std::same_as<Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>::representation, urd::repr::BidirectionalCsr<int, int>>);
+    std::same_as<Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>::representation, urd::repr::BidirectionalCsr<int, int>>);
 
 // Built from pairs in any order, the keys of each value are those paired with it, in the order given.
 TEST(Graph, KeysOfAValueAreItsPairsInOrder)
@@ -117,7 +118,7 @@ TEST(Graph, KeysOfAValueAreItsPairsInOrder)
         auto pairs = std::vector<std::pair<int, int>>();
         for (int count = static_cast<int>(random() % 40); count > 0; --count)
             pairs.emplace_back(static_cast<int>(random() % 12), static_cast<int>(random() % 12));
-        const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
+        const auto graph = Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
         for (int target = 0; target < 14; ++target)
         {
             auto expected = std::vector<int>();
@@ -132,7 +133,7 @@ TEST(Graph, KeysOfAValueAreItsPairsInOrder)
 TEST(Graph, GivesSuccessorsAndPredecessors)
 {
     const auto edges = std::vector<std::pair<int, int>> { { 2, 0 }, { 0, 1 }, { 2, 1 }, { 1, 2 }, { 0, 2 } };
-    const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(edges.begin(), edges.end());
+    const auto graph = Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(edges.begin(), edges.end());
     EXPECT_EQ(graph.size(), 5U);
     EXPECT_TRUE(std::ranges::equal(graph.values(0), std::vector<int> { 1, 2 }));
     EXPECT_TRUE(std::ranges::equal(graph.values(2), std::vector<int> { 0, 1 }));
@@ -145,7 +146,7 @@ TEST(Graph, GivesSuccessorsAndPredecessors)
 // sparse rows rebuilt from pairs of the same size allocate nothing, and hold what a fresh build would.
 TEST(Assign, RebuildsCsrInPlace)
 {
-    using Successors = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>;
+    using Successors = Store<map<int, int>, urd::multi, urd::dense, urd::frozen>;
     auto random = std::mt19937(43);
     const auto pairs = [&random]
     {
@@ -181,13 +182,13 @@ TEST(Assign, RebuildsCsrInPlace)
 // Frozen rows rebuild in their arrays; a representation without assign is built anew, with the same result.
 TEST(Assign, RebuildsRowsAndOthers)
 {
-    using Rows = Store<value<Store<value<int>, urd::frozen>>, urd::frozen>;
-    using Row = Store<value<int>, urd::frozen>;
+    using Rows = Store<sequence<Store<sequence<int>, urd::frozen>>, urd::frozen>;
+    using Row = Store<sequence<int>, urd::frozen>;
     auto rows = Rows { Row { 1, 2, 3 }, Row { 4 } };
     const auto next = std::vector<Row> { Row { 5 }, Row {}, Row { 6, 7 } };
     rows.assign(next.begin(), next.end());
     EXPECT_EQ(rows, Rows(next.begin(), next.end()));
-    using Sorted = Store<key<int>, urd::sorted, urd::frozen>;
+    using Sorted = Store<set<int>, urd::sorted, urd::frozen>;
     auto sorted = Sorted { 3, 1 };
     const auto values = std::vector<int> { 9, 4, 4 };
     sorted.assign(values.begin(), values.end());

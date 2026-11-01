@@ -62,7 +62,7 @@ struct fifo_decl
 {
     static constexpr std::string_view id = "fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    using kind = arrival_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, referencing::stable_refs });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
@@ -92,7 +92,7 @@ struct ring_fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/ring_fifo.hpp" };
-    using kind = arrival_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, memory::retains });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
@@ -122,7 +122,7 @@ struct lifo_decl
 {
     static constexpr std::string_view id = "lifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    using kind = arrival_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::lifo, memory::retains });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
@@ -152,7 +152,7 @@ struct heap_decl
 {
     static constexpr std::string_view id = "heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    using kind = priority_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
@@ -182,7 +182,7 @@ struct addressable_heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
-    using kind = priority_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
@@ -212,7 +212,7 @@ struct bucket_queue_decl
 {
     static constexpr std::string_view id = "bucket_queue";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/bucket_queue.hpp" };
-    using kind = priority_queue_kind;
+    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
     static constexpr property_set relies_on =
         relies(stated({ priority::monotone_priority }), traits<role::order, trait::natural_ordered, trait::integral_priority>());

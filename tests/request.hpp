@@ -52,8 +52,7 @@ void element_headers_of_store(std::type_identity<detail::Store<R, S>> /*store*/,
     for (const auto header : detail::choose<S>::headers)
         if (!header.empty() && std::ranges::find(into, header) == into.end())
             into.emplace_back(header);
-    [&into]<typename... Types>(type_list<Types...> /*types*/)
-    { (element_headers_of<Types>(into), ...); }(typename argument_types<typename S::arguments>::type {});
+    [&into]<typename... Types>(type_list<Types...> /*types*/) { (element_headers_of<Types>(into), ...); }(typename S::element_types {});
 }
 
 }  // namespace detail
@@ -70,13 +69,18 @@ void element_headers_of(std::vector<std::string>& into)
 namespace detail
 {
 
+/// The kind with its element types (set<int>), or a tag by its name.
 template<typename P>
 std::string spelling_of_stated()
 {
     if constexpr (a_tag<P>)
         return std::string(tag_name(P::value));
     else
-        return spelling_of_argument<P>();
+    {
+        auto types = std::vector<std::string>();
+        [&types]<typename... Types>(type_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename P::element_types {});
+        return fmt::format("{}<{}>", P::kind::name, fmt::join(types, ", "));
+    }
 }
 
 template<typename List>
@@ -89,7 +93,7 @@ struct stated_spelling<type_list<Ps...>>
 
 }  // namespace detail
 
-/// Request Q (urd::request) as it is written: Store<key<int>, sorted>, its parameters in the order stated.
+/// Request Q (urd::request) as it is written: Store<set<int>, sorted>, its parameters in the order stated.
 template<typename Q>
 std::string spelling_of_request()
 { return detail::stated_spelling<typename Q::stated>::spelled(); }

@@ -25,21 +25,22 @@
 namespace
 {
 
+using urd::multiset;
+using urd::sequence;
 using urd::Store;
-using urd::value;
 using urd::test::allocations;
 using urd::test::Counted;
 
-using Leaf = Store<value<int>, urd::frozen>;
-using SortedLeaf = Store<value<int>, urd::sorted, urd::frozen>;
-using Middle = Store<value<Leaf>, urd::frozen>;
+using Leaf = Store<sequence<int>, urd::frozen>;
+using SortedLeaf = Store<multiset<int>, urd::sorted, urd::frozen>;
+using Middle = Store<sequence<Leaf>, urd::frozen>;
 
-using Nested = testing::Types<Store<value<Leaf>>,                                           // flattened rows
-                              Store<value<SortedLeaf>>,                                     // flattened, each row sorted
-                              Store<value<Middle>>,                                         // three levels, flattened
-                              Store<value<Leaf>, urd::retains>,                             // flattened, storage kept
-                              Store<value<Store<value<int>, urd::retains>>, urd::retains>,  // rows kept for reuse
-                              Store<value<Store<value<int>>>>>;                             // a vector of Stores
+using Nested = testing::Types<Store<sequence<Leaf>>,                                              // flattened rows
+                              Store<sequence<SortedLeaf>>,                                        // flattened, each row sorted
+                              Store<sequence<Middle>>,                                            // three levels, flattened
+                              Store<sequence<Leaf>, urd::retains>,                                // flattened, storage kept
+                              Store<sequence<Store<sequence<int>, urd::retains>>, urd::retains>,  // rows kept for reuse
+                              Store<sequence<Store<sequence<int>>>>>;                             // a vector of Stores
 
 template<typename S>
 class Rows : public testing::Test

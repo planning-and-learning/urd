@@ -130,16 +130,11 @@ struct declarations_of<map_kind>
                            flat_entry_map_decl>;
 };
 
-/// Queues, by arrival and by priority: the declarations, in order of preference.
+/// Queues, by arrival and by priority: the declarations, in order of preference (each serves one access).
 template<>
-struct declarations_of<arrival_queue_kind>
+struct declarations_of<queue_kind>
 {
-    using type = type_list<fifo_decl, ring_fifo_decl, lifo_decl>;
-};
-template<>
-struct declarations_of<priority_queue_kind>
-{
-    using type = type_list<bucket_queue_decl, heap_decl, addressable_heap_decl>;
+    using type = type_list<bucket_queue_decl, heap_decl, addressable_heap_decl, fifo_decl, ring_fifo_decl, lifo_decl>;
 };
 
 /// Pools interning values by handle: rows first (a Store or a registered container is interned as a row), then values

@@ -19,22 +19,22 @@
 #include <utility>
 #include <vector>
 
-using urd::key;
+using urd::map;
+using urd::sequence;
 using urd::Store;
-using urd::value;
 
-using Row = Store<value<int>, urd::frozen>;                   // written once
-using GrowingRow = Store<value<int>, urd::retains>;           // grows, keeps its storage when cleared
-using Rows = Store<value<Row>>;                               // rows written once
-using Scratch = Store<value<GrowingRow>, urd::retains>;       // a buffer of buffers, reset every round
-using Blocks = Store<value<Store<value<Row>, urd::frozen>>>;  // three levels
+using Row = Store<sequence<int>, urd::frozen>;                      // written once
+using GrowingRow = Store<sequence<int>, urd::retains>;              // grows, keeps its storage when cleared
+using Rows = Store<sequence<Row>>;                                  // rows written once
+using Scratch = Store<sequence<GrowingRow>, urd::retains>;          // a buffer of buffers, reset every round
+using Blocks = Store<sequence<Store<sequence<Row>, urd::frozen>>>;  // three levels
 
 int main()
 {
     std::cout << "Rows:\n";
-    example::show<Rows>("Store<value<Store<value<int>, frozen>>>               rows written once");
-    example::show<Scratch>("Store<value<Store<value<int>, retains>>, retains>    rows that grow, reset every round");
-    example::show<Store<value<Store<value<int>>>>>("Store<value<Store<value<int>>>>                       anything else");
+    example::show<Rows>("Store<sequence<Store<sequence<int>, frozen>>>               rows written once");
+    example::show<Scratch>("Store<sequence<Store<sequence<int>, retains>>, retains>    rows that grow, reset every round");
+    example::show<Store<sequence<Store<sequence<int>>>>>("Store<sequence<Store<sequence<int>>>>                       anything else");
     example::show<Blocks>("three levels, all frozen                              (one offsets array per level)");
 
     // Frozen rows lie in one array; a row is a read-only slice of it (a std::span).
@@ -66,8 +66,8 @@ int main()
     std::cout << "\nblock 0, row 1, element 1: " << blocks[0][1][1] << '\n';
 
     // By key instead of position: a frozen multimap with dense keys is CSR too, built from pairs in any order.
-    using Edges = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen>;
-    example::show<Edges>("Store<key<int>, value<int>, multi, dense, frozen>     each key's values together");
+    using Edges = Store<map<int, int>, urd::multi, urd::dense, urd::frozen>;
+    example::show<Edges>("Store<map<int, int>, multi, dense, frozen>     each key's values together");
     const auto pairs = std::vector<std::pair<int, int>> { { 2, 3 }, { 0, 1 }, { 2, 0 }, { 1, 2 } };
     const auto edges = Edges(pairs.begin(), pairs.end());
     std::cout << "values of 2:";
@@ -75,7 +75,7 @@ int main()
         std::cout << ' ' << target;
 
     // A graph: with bidirectional, the keys of a value too, so a vertex's predecessors as well as its successors.
-    const auto graph = Store<key<int>, value<int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
+    const auto graph = Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());
     std::cout << "\npredecessors of 0:";
     for (const int source : graph.keys(0))
         std::cout << ' ' << source;

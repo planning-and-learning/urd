@@ -6,11 +6,11 @@ Partitions
 .. code-block:: cpp
 
    template<typename I>
-   using Partition = Store<key<I>, partition>;      // DisjointSets (union-find)
+   using Partition = Store<partition<I>>;      // DisjointSets (union-find)
 
 .. cpp:class:: Partition
 
-   A partition: ``Store<key<I>, partition>``. The name ``Partition`` stands for the resolved Store type on this page.
+   A partition: ``Store<partition<I>>``. The name ``Partition`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Partition
 

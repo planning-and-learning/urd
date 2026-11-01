@@ -3,10 +3,10 @@
 urd lets you say what your data is and how it is used, and picks a container for it:
 
 ```cpp
-using Visited = urd::Store<urd::key<int>>;                       // a set           -> hash table
-using Goals   = urd::Store<urd::key<int>, urd::sorted>;          // in order        -> balanced tree
-using Log     = urd::Store<urd::value<Event>, urd::monotone>;    // only grows      -> vector
-using Rows    = urd::Store<urd::value<urd::Store<urd::value<int>, urd::frozen>>>;  // rows -> CSR
+using Visited = urd::Store<urd::set<int>>;                       // a set           -> hash table
+using Goals   = urd::Store<urd::set<int>, urd::sorted>;          // in order        -> balanced tree
+using Log     = urd::Store<urd::sequence<Event>, urd::monotone>;    // only grows      -> vector
+using Rows    = urd::Store<urd::sequence<urd::Store<urd::sequence<int>, urd::frozen>>>;  // rows -> CSR
 ```
 
 The Store offers the standard library's interface (`insert`, `push_back`, `lower_bound`, …), limited to what

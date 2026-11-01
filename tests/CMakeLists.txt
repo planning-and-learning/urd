@@ -133,7 +133,7 @@ target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 
 # A file holding a Store pays for its own container and for no other registered one: tests/scaling.py
-# compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<key<int>>
+# compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<set<int>>
 # resolves to Boost's flat hash set.
 find_program(URD_CLANG_FOR_TRACE NAMES clang++ clang++-18)
 if(URD_CLANG_FOR_TRACE)
@@ -171,15 +171,15 @@ urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 61)
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")
 urd_compile_fail_expects(compile_fail_store 6 "no container serves this request")
-urd_compile_fail_expects(compile_fail_store 8 "at most one key<K>")
-urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd property")
+urd_compile_fail_expects(compile_fail_store 8 "the first argument is the kind")
+urd_compile_fail_expects(compile_fail_store 9 "every argument must be an urd tag")
 urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same question")
-urd_compile_fail_expects(compile_fail_store 24 "a type argument means nothing for this kind of Store")
+urd_compile_fail_expects(compile_fail_store 24 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 27 "P is neither")
 urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")
-urd_compile_fail_expects(compile_fail_store 39 "a type argument means nothing for this kind of Store")
+urd_compile_fail_expects(compile_fail_store 39 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 40 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 12 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 60 "means nothing for this kind of Store")

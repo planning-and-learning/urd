@@ -47,9 +47,12 @@
 #include <utility>
 #include <vector>
 
-using urd::key;
+using urd::map;
+using urd::pool;
+using urd::sequence;
+using urd::set;
+using urd::slots;
 using urd::Store;
-using urd::value;
 
 namespace
 {
@@ -74,10 +77,10 @@ template<typename S>
 class ConcurrentSets : public testing::Test
 {
 };
-using Sets = testing::Types<Store<key<int>, urd::positional, urd::monotone, urd::concurrent>,
+using Sets = testing::Types<Store<set<int>, urd::positional, urd::monotone, urd::concurrent>,
                             urd::repr::ConcurrentIndexedSet<int>,
-                            Store<key<int>, urd::concurrent>,
-                            Store<key<int>, urd::stable_refs, urd::concurrent>>;
+                            Store<set<int>, urd::concurrent>,
+                            Store<set<int>, urd::stable_refs, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentSets, Sets, urd::test::Names);
 
 TYPED_TEST(ConcurrentSets, InsertsFromThreadsAgree)
@@ -123,7 +126,7 @@ TYPED_TEST(ConcurrentSets, LookupsOfPublishedElementsBesideInserts)
 TEST(ConcurrentSequences, PushesFromThreadsAllArrive)
 {
     constexpr int count = 5000;
-    auto sequence = Store<value<int>, urd::monotone, urd::concurrent>();
+    auto sequence = Store<urd::sequence<int>, urd::monotone, urd::concurrent>();
     in_threads(
         [&sequence](int thread)
         {
@@ -142,7 +145,7 @@ TEST(ConcurrentSequences, ReadsOfPublishedPositionsBesidePushes)
 {
     constexpr int published = 2000;
     constexpr int count = 5000;
-    auto sequence = Store<value<int>, urd::monotone, urd::concurrent>();
+    auto sequence = Store<urd::sequence<int>, urd::monotone, urd::concurrent>();
     for (int element = 0; element < published; ++element)
         sequence.push_back(element);
     auto wrong = std::vector<int>(threads);
@@ -166,9 +169,9 @@ template<typename M>
 class ConcurrentMaps : public testing::Test
 {
 };
-using Maps = testing::Types<Store<key<int>, value<int>, urd::dense, urd::constant_clear, urd::concurrent>,
-                            Store<key<int>, value<int>, urd::concurrent>,
-                            Store<key<int>, value<int>, urd::stable_refs, urd::concurrent>>;
+using Maps = testing::Types<Store<map<int, int>, urd::dense, urd::constant_clear, urd::concurrent>,
+                            Store<map<int, int>, urd::concurrent>,
+                            Store<map<int, int>, urd::stable_refs, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentMaps, Maps, urd::test::Names);
 
 TYPED_TEST(ConcurrentMaps, InsertsFromThreadsAgree)
@@ -270,9 +273,9 @@ template<typename P>
 class ConcurrentRowPools : public testing::Test
 {
 };
-using RowPools = testing::Types<Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::concurrent>,
-                                Store<value<Store<value<int>, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>,
-                                Store<value<Store<key<int>, urd::dense, urd::frozen>>, urd::handles, urd::unique, urd::structural_sharing, urd::concurrent>>;
+using RowPools = testing::Types<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>,
+                                Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::concurrent>,
+                                Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentRowPools, RowPools, urd::test::Names);
 
 /// The row of `step`: a few small elements, so that equal rows recur across threads.
@@ -361,10 +364,10 @@ template<typename P>
 class ConcurrentRecordPools : public testing::Test
 {
 };
-using RecordPools = testing::Types<Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::concurrent>,
-                                   Store<value<Point>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered, urd::concurrent>,
-                                   Store<value<Named>, urd::handles, urd::unique, urd::flat, urd::monotone, urd::layered, urd::concurrent>>;
+using RecordPools = testing::Types<Store<pool<Point>, urd::flat, urd::concurrent>,
+                                   Store<pool<Named>, urd::flat, urd::concurrent>,
+                                   Store<pool<Point>, urd::flat, urd::monotone, urd::layered, urd::concurrent>,
+                                   Store<pool<Named>, urd::flat, urd::monotone, urd::layered, urd::concurrent>>;
 TYPED_TEST_SUITE(ConcurrentRecordPools, RecordPools, urd::test::Names);
 
 template<typename P>
@@ -431,7 +434,7 @@ TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
 TEST(ConcurrentSlots, ThreadsWorkOnTheirOwnHandlesAtOnce)
 {
     constexpr int rounds = 5000;
-    auto pool = Store<value<int>, urd::handles, urd::concurrent>();
+    auto pool = Store<slots<int>, urd::concurrent>();
     auto wrong = std::vector<int>(threads);
     in_threads(
         [&pool, &wrong](int thread)

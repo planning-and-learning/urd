@@ -37,9 +37,7 @@
 namespace
 {
 
-using urd::key;
 using urd::Store;
-using urd::value;
 using urd::test::allocations;
 using urd::test::Counted;
 using urd::test::deallocations;

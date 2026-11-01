@@ -6,11 +6,11 @@ Maps
 .. code-block:: cpp
 
    template<typename K, typename V, typename... Properties>
-   using Map = Store<key<K>, value<V>, Properties...>;   // written out as Store<key<K>, value<V>, ...> in code
+   using Map = Store<map<K, V>, Properties...>;   // written out as Store<map<K, V>, ...> in code
 
 .. cpp:class:: Map
 
-   A map: ``Store<key<K>, value<V>, Properties...>``. The name ``Map`` stands for the resolved Store type on this page.
+   A map: ``Store<map<K, V>, Properties...>``. The name ``Map`` stands for the resolved Store type on this page.
 
 .. cpp:namespace:: urd::Map
 
@@ -23,37 +23,37 @@ A map holds one value per key, or many (``multi``: a multimap). Its elements are
 
    * - Request
      - Representation
-   * - ``Store<key<K>, value<V>>``
+   * - ``Store<map<K, V>>``
      - ``boost::unordered_flat_map``
-   * - ``Store<key<K>, value<V>, sorted>``
+   * - ``Store<map<K, V>, sorted>``
      - ``std::map``; with ``frozen``, ``boost::container::flat_map``
-   * - ``Store<key<K>, value<V>, stable_refs>``
+   * - ``Store<map<K, V>, stable_refs>``
      - ``std::unordered_map``
-   * - ``Store<key<K>, value<Row>>`` with a ``retains`` row
+   * - ``Store<map<K, Row>>`` with a ``retains`` row
      - ``Recycling`` hash map (a tree with ``sorted``): erased keys leave their nodes and values for the next keys
-   * - ``Store<key<I>, value<V>, dense>``
+   * - ``Store<map<I, V>, dense>``
      - ``IndexMap`` (a slot per index); with ``constant_clear``, with generations; with ``stable_refs``, slots in
        segments that never move (what is stable is the value ``at``, ``operator[]`` and ``update`` reach, and the
        ``.second`` of an iterated entry); with ``constant_clear, concurrent``, a spin lock per slot too. Only a
        request that says ``dense`` gets it: a slot per index demands keys that are indices
-   * - ``Store<key<K>, value<V>, concurrent>``
+   * - ``Store<map<K, V>, concurrent>``
      - ``gtl::parallel_flat_hash_map``; ``update`` and ``read`` under the key's shard lock; with ``stable_refs``,
        ``parallel_node_hash_map`` (a node per entry)
-   * - ``Store<key<K>, value<V>, insertion_ordered>``
+   * - ``Store<map<K, V>, insertion_ordered>``
      - ``OrderedMap`` (over a ``SparseSet`` with ``dense``)
-   * - ``Store<key<K>, value<V>, multi>``
+   * - ``Store<map<K, V>, multi>``
      - ``PostingMap`` (a flat hash table of value vectors); with ``sorted``, ``std::multimap``
-   * - ``Store<key<I>, value<V>, multi, dense, frozen>``
-     - ``CsrMultiMap`` (compressed sparse rows); with ``bidirectional`` and ``value<I>``, ``BidirectionalCsr``
-   * - ``Store<key<I>, value<V>, multi, dense>``
+   * - ``Store<map<I, V>, multi, dense, frozen>``
+     - ``CsrMultiMap`` (compressed sparse rows); with ``bidirectional`` and values of ``I`` (``map<I, I>``), ``BidirectionalCsr``
+   * - ``Store<map<I, V>, multi, dense>``
      - ``DenseMultiMap``: a vector of values per index, growing; erase and clear keep the rows
-   * - ``Store<key<K>, value<V>, scoped>``
+   * - ``Store<map<K, V>, scoped>``
      - ``Scoped`` over a flat hash map (scopes undone by a log); over a tree with ``sorted``, an ``IndexMap`` with
        ``dense``
-   * - ``Store<key<K>, value<V>, layered>``
+   * - ``Store<map<K, V>, layered>``
      - ``Layered`` over a flat hash map; over a node map with ``stable_refs``; with ``dense``, over an ``IndexMap``
        (with generations under ``constant_clear``)
-   * - ``Store<key<K>, value<V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
+   * - ``Store<map<K, V>, sorted, small, order_by<[](const K&, const V&) { … }>>``
      - ``FlatEntryMap``: found by key, in the order the values give
 
 Template parameters
@@ -205,26 +205,26 @@ hands out a row as a view (``Rows::reference`` names what a row is handed out as
      - Container
      - A row is
    * - never change
-     - ``Store<value<Store<value<T>, frozen>>>`` (any depth)
+     - ``Store<sequence<Store<sequence<T>, frozen>>>`` (any depth)
      - ``Jagged``: CSR, one array per level
      - ``std::span<const T>``, or a range of the rows below
    * - fixed lengths, changing contents
-     - ``Store<value<Store<value<T>>>, fixed_shape>``
+     - ``Store<sequence<Store<sequence<T>>>, fixed_shape>``
      - ``Jagged`` built from :cpp:struct:`row_lengths`
      - ``std::span<T>``
    * - … of dense indices
-     - ``Store<value<Store<key<I>, dense>>, fixed_shape>``
+     - ``Store<sequence<Store<set<I>, dense>>, fixed_shape>``
      - ``Jagged`` over one word array
      - a ``BitsetSpan`` (one bit per index)
    * - reused after removal
-     - ``Store<value<Row>, retains>`` with a ``retains`` row
+     - ``Store<sequence<Row>, retains>`` with a ``retains`` row
      - ``RowPool``
      - the row Store, cleared, not freed
    * - map values reused after erase
-     - ``Store<key<K>, value<Row>>`` with a ``retains`` row
+     - ``Store<map<K, Row>>`` with a ``retains`` row
      - ``Recycling`` over the map
      - the value Store, cleared, kept with its node
    * - interned, by handle
-     - ``Store<value<Row>, handles, unique>``
+     - ``Store<pool<Row>>``
      - ``RowInterner``, tree pools
      - the row, read by handle (:doc:`pools`)

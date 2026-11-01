@@ -149,7 +149,7 @@ multimap allocates per value. `PostingMap` comes first for multimaps; `std::unor
 20,000 states, each a random earlier one with 3 positions (values) or 3 facts added and 3 removed; inserted, then
 read back (values) or asked one fact (facts). Bytes and time per state.
 
-| rows | flat interner (`handles, unique`) | tree pool (`handles, unique, structural_sharing`) |
+| rows | flat interner (`pool<V>`) | tree pool (`pool<V>, structural_sharing`) |
 |---|---|---|
 | 100 values | 447 B, 0.33 µs | 166 B, 0.63 µs |
 | 1,000 values | 4,046 B, 2.5 µs | 271 B, 2.1 µs |
@@ -206,29 +206,29 @@ None.
 
 ### Slower at a smaller size only
 
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / int;-: at 10000, 408.4 against 294.1 ns per element (Store<key<int>, sorted>)
-- unordered_flat_set > flat_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 36.3 against 25.7 ns per element (Store<key<int>, small>)
-- unordered_set > set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 52.2 ns per element (Store<key<int>, small, stable_refs>)
-- unordered_set > recycling_hash_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 42.8 ns per element (Store<key<int>, small, stable_refs>)
-- unordered_set > recycling_tree_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 55.5 ns per element (Store<key<int>, small, stable_refs>)
-- set > recycling_tree_set / insert,lookup,ordered_lookup,iterate / int;-: at 10000, 244.7 against 197.0 ns per element (Store<key<int>, sorted, monotone>)
-- unordered_set > recycling_hash_set / insert,lookup,erase,clear,iterate / std::string;-: at 1000, 372.8 against 261.2 ns per element (Store<key<std::string>, stable_refs>)
-- unordered_set > set / insert,lookup,erase,clear,iterate / std::string;- / small: at 8, 163.9 against 144.9 ns per element (Store<key<std::string>, small, stable_refs>)
-- unordered_flat_map > flat_map / insert,lookup,erase,clear,iterate / std::string;double / small: at 8, 257.2 against 139.4 ns per element (Store<key<std::string>, value<double>, small>)
-- unordered_flat_map > ordered_map / lookup,iterate / std::string;double: at 1000, 59.3 against 49.9 ns per element (Store<key<std::string>, value<double>, frozen>)
-- flat_map > map / lookup,ordered_lookup,iterate / std::string;double: at 10000, 399.1 against 255.4 ns per element (Store<key<std::string>, value<double>, sorted, frozen>)
-- unordered_map > recycling_hash_map / insert,lookup,erase,clear,iterate / std::string;double: at 1000, 388.2 against 302.0 ns per element (Store<key<std::string>, value<double>, stable_refs>)
-- unordered_flat_map > ordered_map / insert,lookup,iterate / std::string;double: at 1000, 165.5 against 149.2 ns per element (Store<key<std::string>, value<double>, monotone>)
-- unordered_map > recycling_hash_map / insert,lookup,erase,clear,iterate / Id;Id: at 10000, 110.6 against 92.3 ns per element (Store<key<Id>, value<Id>, stable_refs>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / int;-: at 10000, 408.4 against 294.1 ns per element (Store<set<int>, sorted>)
+- unordered_flat_set > flat_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 36.3 against 25.7 ns per element (Store<set<int>, small>)
+- unordered_set > set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 52.2 ns per element (Store<set<int>, small, stable_refs>)
+- unordered_set > recycling_hash_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 42.8 ns per element (Store<set<int>, small, stable_refs>)
+- unordered_set > recycling_tree_set / insert,lookup,erase,clear,iterate / int;- / small: at 8, 61.8 against 55.5 ns per element (Store<set<int>, small, stable_refs>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,iterate / int;-: at 10000, 244.7 against 197.0 ns per element (Store<set<int>, sorted, monotone>)
+- unordered_set > recycling_hash_set / insert,lookup,erase,clear,iterate / std::string;-: at 1000, 372.8 against 261.2 ns per element (Store<set<std::string>, stable_refs>)
+- unordered_set > set / insert,lookup,erase,clear,iterate / std::string;- / small: at 8, 163.9 against 144.9 ns per element (Store<set<std::string>, small, stable_refs>)
+- unordered_flat_map > flat_map / insert,lookup,erase,clear,iterate / std::string;double / small: at 8, 257.2 against 139.4 ns per element (Store<map<std::string, double>, small>)
+- unordered_flat_map > ordered_map / lookup,iterate / std::string;double: at 1000, 59.3 against 49.9 ns per element (Store<map<std::string, double>, frozen>)
+- flat_map > map / lookup,ordered_lookup,iterate / std::string;double: at 10000, 399.1 against 255.4 ns per element (Store<map<std::string, double>, sorted, frozen>)
+- unordered_map > recycling_hash_map / insert,lookup,erase,clear,iterate / std::string;double: at 1000, 388.2 against 302.0 ns per element (Store<map<std::string, double>, stable_refs>)
+- unordered_flat_map > ordered_map / insert,lookup,iterate / std::string;double: at 1000, 165.5 against 149.2 ns per element (Store<map<std::string, double>, monotone>)
+- unordered_map > recycling_hash_map / insert,lookup,erase,clear,iterate / Id;Id: at 10000, 110.6 against 92.3 ns per element (Store<map<Id, Id>, stable_refs>)
 
 ### Slower for less memory
 
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / int;- / small: at 64, 73.9 against 42.6 ns per element (Store<key<int>, small, sorted, stable_refs>)
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;-: at 100000, 2248.4 against 1944.6 ns per element (Store<key<std::string>, sorted>)
-- flat_set > recycling_tree_set / lookup,ordered_lookup,iterate / std::string;-: at 100000, 611.7 against 548.8 ns per element (Store<key<std::string>, sorted, frozen>)
-- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;- / small: at 64, 454.4 against 249.5 ns per element (Store<key<std::string>, small, sorted, stable_refs>)
-- jagged > vector / iterate,access / -;Store<value<int>, stable_refs, frozen, positional>: at 100000, 14.9 against 2.2 ns per element (Store<value<Store<value<int>, stable_refs, frozen, positional>>, frozen>)
-- jagged > segmented_vector / iterate,access / -;Store<value<int>, stable_refs, frozen, positional>: at 100000, 14.9 against 3.5 ns per element (Store<value<Store<value<int>, stable_refs, frozen, positional>>, frozen>)
-- fixed_jagged > tracked_jagged / iterate,access / -;Store<value<int>, positional>: at 100000, 11.6 against 5.9 ns per element (Store<value<Store<value<int>, positional>>, fixed_shape>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / int;- / small: at 64, 73.9 against 42.6 ns per element (Store<set<int>, small, sorted, stable_refs>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;-: at 100000, 2248.4 against 1944.6 ns per element (Store<set<std::string>, sorted>)
+- flat_set > recycling_tree_set / lookup,ordered_lookup,iterate / std::string;-: at 100000, 611.7 against 548.8 ns per element (Store<set<std::string>, sorted, frozen>)
+- set > recycling_tree_set / insert,lookup,ordered_lookup,erase,clear,iterate / std::string;- / small: at 64, 454.4 against 249.5 ns per element (Store<set<std::string>, small, sorted, stable_refs>)
+- jagged > vector / iterate,access / -;Store<sequence<int>, stable_refs, frozen, positional>: at 100000, 14.9 against 2.2 ns per element (Store<sequence<Store<sequence<int>, stable_refs, frozen, positional>>, frozen>)
+- jagged > segmented_vector / iterate,access / -;Store<sequence<int>, stable_refs, frozen, positional>: at 100000, 14.9 against 3.5 ns per element (Store<sequence<Store<sequence<int>, stable_refs, frozen, positional>>, frozen>)
+- fixed_jagged > tracked_jagged / iterate,access / -;Store<sequence<int>, positional>: at 100000, 11.6 against 5.9 ns per element (Store<sequence<Store<sequence<int>, positional>>, fixed_shape>)
 
 <!-- end of the generated block -->

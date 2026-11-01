@@ -49,7 +49,7 @@ std::vector<urd::test::server> servers()
         {
             auto headers = std::vector<std::string>(Decl::headers.begin(), Decl::headers.end());
             [&headers]<typename... Types>(urd::detail::type_list<Types...> /*types*/)
-            { (urd::test::element_headers_of<Types>(headers), ...); }(typename urd::detail::argument_types<typename S::arguments>::type {});
+            { (urd::test::element_headers_of<Types>(headers), ...); }(typename S::element_types {});
             auto uninvited = std::vector<std::string>();
             for (const auto each : urd::test::costly)
                 if (!S::urd_properties.has(each) && Decl::provides.has(each))
@@ -83,7 +83,7 @@ urd::test::request_group urd::test::requests_of<this_group>()
                                     position,
                                     sizes_of<S>(),
                                     []<typename... Types>(urd::detail::type_list<Types...> /*types*/)
-                                    { return (trivially<Types> && ...); }(typename urd::detail::argument_types<typename S::arguments>::type {}) });
+                                    { return (trivially<Types> && ...); }(typename S::element_types {}) });
             ++position;
         });
     return result;

@@ -157,8 +157,8 @@ template<typename R, typename S>
 struct workload
 {
     using Store = urd::detail::Store<R, S>;
-    using K = typename urd::detail::type_in<urd::key, typename S::arguments>::type;
-    using V = typename urd::detail::type_in<urd::value, typename S::arguments>::type;
+    using K = typename urd::test::key_of<S>::type;
+    using V = typename urd::test::value_of<S>::type;
     using E = typename S::lookup_type;  // what the kind's data finds by: a key, else a value
     /// What a Store is built from: entries for a map, else its elements.
     /// Whether its data maps keys to values: built from entries, added by key and value.

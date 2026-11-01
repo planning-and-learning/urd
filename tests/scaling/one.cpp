@@ -11,7 +11,7 @@
 int main()
 {
 #if !defined(URD_SCALING_BASELINE)  // the same file without its Store: what the headers instantiate themselves
-    auto set = urd::Store<urd::key<int>>();
+    auto set = urd::Store<urd::set<int>>();
     set.insert(1);
     return set.contains(1) ? 0 : 1;
 #else
