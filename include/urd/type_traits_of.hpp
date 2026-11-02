@@ -5,6 +5,7 @@
 // (own_order, natural_ordered, …); what rows allow is the row containers' (urd/repr/sequences/rows_fwd.hpp). From them,
 // the roles of a request or a container's template arguments, as facts about roles (urd/property_set.hpp, tag::role).
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
@@ -101,9 +102,7 @@ struct names_members
     static constexpr std::string_view description = "names its members for cista (cista_members)";
     template<typename T>
     static consteval bool holds()
-    {
-        return requires { T::cista_members(); };
-    }
+    { return Serializable<T>; }
 };
 struct whole_value
 {

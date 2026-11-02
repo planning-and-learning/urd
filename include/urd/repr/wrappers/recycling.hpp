@@ -2,6 +2,7 @@
 
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/std_memory.hpp"
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/wrappers/recycling_fwd.hpp"
@@ -12,6 +13,7 @@
 #include <cstddef>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -121,6 +123,8 @@ public:
     }
 
 private:
+    friend struct urd::memory_of<Recycling>;
+
     std::vector<typename Base::node_type> m_free;
 };
 
@@ -199,6 +203,8 @@ private:
         return { Base::insert(std::move(node)).position, true };
     }
 
+    friend struct urd::memory_of<RecyclingSet>;
+
     std::vector<typename Base::node_type> m_free;
 };
 
@@ -206,6 +212,40 @@ private:
 
 namespace urd
 {
+
+namespace detail
+{
+
+/// The kept nodes: the table of them, each node, and what its value still owns.
+template<typename Free>
+std::size_t kept_bytes(const Free& free)
+{
+    using Handle = typename Free::value_type;
+    auto result = (free.capacity() * sizeof(Handle)) + (free.size() * kept_node<Handle>::bytes);
+    for (const auto& node : free)
+    {
+        if constexpr (requires { node.mapped(); })
+            result += memory_usage(node.key()) + memory_usage(node.mapped());
+        else
+            result += memory_usage(node.value());
+    }
+    return result;
+}
+
+}  // namespace detail
+
+/// Its map's, and the nodes it keeps.
+template<typename Map>
+struct memory_of<repr::Recycling<Map>>
+{
+    static std::size_t bytes(const repr::Recycling<Map>& held) { return memory_usage(static_cast<const Map&>(held)) + detail::kept_bytes(held.m_free); }
+};
+/// Its set's, and the nodes it keeps.
+template<typename Set>
+struct memory_of<repr::RecyclingSet<Set>>
+{
+    static std::size_t bytes(const repr::RecyclingSet<Set>& held) { return memory_usage(static_cast<const Set&>(held)) + detail::kept_bytes(held.m_free); }
+};
 
 template<>
 struct include<"urd/repr/wrappers/recycling.hpp">

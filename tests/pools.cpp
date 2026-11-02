@@ -242,13 +242,13 @@ TEST(Pools, FindWithSharing)
     auto rows = Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>();
     const auto [whole, stored] = rows.insert({ 1, 2, 3, 4, 5, 6, 7, 8 });
     EXPECT_TRUE(stored);
-    const auto memory = rows.memory_usage();
+    const auto memory = urd::memory_usage(rows);
     EXPECT_EQ(rows.find({ 1, 2, 3, 4, 5, 6, 7, 8 }), whole);
     EXPECT_FALSE(rows.find({ 1, 2, 3, 4 }).is_none());  // the first half is a node of the whole
     EXPECT_TRUE(rows.find({ 4, 3, 2, 1 }).is_none());
-    EXPECT_EQ(rows.memory_usage(), memory);
+    EXPECT_EQ(urd::memory_usage(rows), memory);
     EXPECT_EQ(rows.insert({ 1, 2, 3, 4 }), std::pair(rows.find({ 1, 2, 3, 4 }), false));
-    EXPECT_EQ(rows.memory_usage(), memory);  // inserting a found row stores nothing, and says so
+    EXPECT_EQ(urd::memory_usage(rows), memory);  // inserting a found row stores nothing, and says so
 }
 
 TYPED_TEST(Pools, GivesEqualRowsEqualHandlesThroughRandomOperations)

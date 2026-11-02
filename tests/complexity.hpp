@@ -5,7 +5,7 @@
 // file and the measured results, which also check each cost's growth (benchmarks/record.py).
 
 #include "names.hpp"
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/store/types.hpp"
 
 #include <array>
@@ -62,7 +62,7 @@ inline constexpr auto op_names = []<typename... Ops>(urd::operation_list<Ops...>
 /// Which operations a Store offers, by op.
 using offers = std::array<bool, op_count>;
 
-/// The cost types are the library's (urd/costs.hpp), where each representation declares its costs.
+/// The cost types are the library's (urd/cost.hpp), where each representation declares its costs.
 using urd::cost;
 using urd::growth;
 using in = urd::quantity;
@@ -114,7 +114,20 @@ std::string_view part_name()
         return {};
 }
 
-/// R's memory in words per element; none where it declares none.
+/// What a declaration's words count per: its own words_per (a key of its range, a slot of its capacity), else its
+/// part's where it passes its costs on (costs_over), else an element.
+template<typename Decl>
+constexpr urd::quantity words_per_of()
+{
+    if constexpr (requires { Decl::words_per; })
+        return Decl::words_per;
+    else if constexpr (requires { typename Decl::operation_costs::part; })
+        return words_per_of<typename Decl::operation_costs::part>();
+    else
+        return urd::quantity::n;
+}
+
+/// R's memory in words per element (or what its words_per says); none where it declares none.
 template<typename R>
 constexpr std::optional<double> words_of()
 {

@@ -183,7 +183,6 @@ public:
         std::erase_if(flips, [](const BlockFlip& flip) { return flip.mask == 0; });
     }
 
-    [[nodiscard]] size_type memory_usage() const { return m_nodes.memory_usage(); }
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
     [[nodiscard]] bool empty() const { return m_nodes.empty(); }
     void clear() { m_nodes.clear(); }
@@ -471,6 +470,8 @@ private:
             read_recursive(node[k], blocks.subspan(offset, child_size(size, k)));
     }
 
+    friend struct urd::memory_of<TreeBitsetSet>;
+
     Nodes m_nodes;
 };
 
@@ -478,6 +479,13 @@ private:
 
 namespace urd
 {
+
+/// Its node table.
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct memory_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
+{
+    static std::size_t bytes(const repr::TreeBitsetSet<Row, Arity, ThreadSafe>& held) { return memory_usage(held.m_nodes); }
+};
 
 template<>
 struct include<"urd/repr/pools/tree_bitset.hpp">

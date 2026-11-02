@@ -3,6 +3,7 @@
 // The arena interner: records serialized by cista into a byte arena. Copied in shape from yggdrasil
 // (include/yggdrasil/buffer/indexed_hash_set.hpp), names moved to urd::repr, the handle an urd::index.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/index.hpp"
@@ -11,6 +12,7 @@
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
+#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/records/records_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -49,10 +51,9 @@ template<typename T, bool ThreadSafe>
 class ArenaInterner
 {
     static_assert(alignof(T) <= alignof(std::max_align_t), "urd::repr::ArenaInterner: over-aligned records cannot be placed in the arena");
-    static_assert(
-        requires { T::cista_members(); },
-        "urd::Store: flat stores a record as bytes; one that is not trivially copyable is serialized by cista, which needs "
-        "its members named: give it static constexpr auto cista_members() (urd::Members<&T::a, ...>), or drop flat");
+    static_assert(Serializable<T>,
+                  "urd::Store: flat stores a record as bytes; one that is not trivially copyable is serialized by cista, which needs "
+                  "its members named: give it static constexpr auto cista_members() (urd::Members<&T::a, ...>), or drop flat");
     using Records = std::conditional_t<ThreadSafe, SegmentedVector<const T*, default_first_segment_size, true, std::uint32_t>, std::vector<const T*>>;
 
     struct Position
@@ -147,22 +148,6 @@ public:
     }
     [[nodiscard]] size_type size() const { return m_state->records.size(); }
     [[nodiscard]] bool empty() const { return size() == 0; }
-    /// The bytes held: the arena's segments, the scratch buffer, the pointers and the table's slots.
-    [[nodiscard]] size_type memory_usage() const
-    {
-        const auto& state = *m_state;
-        auto pointers = size_type { 0 };
-        if constexpr (ThreadSafe)
-            pointers = state.records.memory_usage();
-        else
-            pointers = state.records.capacity() * sizeof(const T*);
-        auto table = size_type { 0 };
-        if constexpr (ThreadSafe)
-            table = state.positions.size() * (sizeof(Position) + 1);
-        else
-            table = state.positions.bucket_count() * (sizeof(Position) + 1);
-        return state.arena.capacity() + state.scratch.buf_.capacity() + pointers + table;
-    }
     /// Forgets every record; the arena keeps its segments.
     void clear()
     {
@@ -173,6 +158,8 @@ public:
     }
 
 private:
+    friend struct urd::memory_of<ArenaInterner>;
+
     [[nodiscard]] std::optional<std::uint32_t> position_of(const T& record) const
     {
         if constexpr (ThreadSafe)
@@ -206,6 +193,17 @@ private:
 
 namespace urd
 {
+
+/// Its state: the pointers to the records, the table, the arena's segments and the scratch buffer.
+template<typename T, bool ThreadSafe>
+struct memory_of<repr::ArenaInterner<T, ThreadSafe>>
+{
+    static std::size_t bytes(const repr::ArenaInterner<T, ThreadSafe>& held)
+    {
+        const auto& state = *held.m_state;
+        return sizeof(state) + memory_usage(state.records) + memory_usage(state.positions) + memory_usage(state.arena) + state.scratch.buf_.capacity();
+    }
+};
 
 template<>
 struct include<"urd/repr/records/arena.hpp">

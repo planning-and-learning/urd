@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/cost.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/store/layers.hpp"
 #include "urd/store/types.hpp"
@@ -96,7 +97,6 @@ public:
     }
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
     [[nodiscard]] std::size_t layer() const { return constant().layer(); }
-    [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     void clear()
         requires shrinks<S>
     { representation().clear(); }

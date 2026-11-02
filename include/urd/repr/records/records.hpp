@@ -2,6 +2,7 @@
 
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/records/records_fwd.hpp"
 #include "urd/repr/values/indexed.hpp"
@@ -51,10 +52,11 @@ public:
     [[nodiscard]] const T& operator[](handle_type at) const { return m_records[at.value]; }
     [[nodiscard]] size_type size() const { return m_records.size(); }
     [[nodiscard]] bool empty() const { return m_records.empty(); }
-    [[nodiscard]] size_type memory_usage() const { return m_records.memory_usage(); }
     void clear() { m_records.clear(); }
 
 private:
+    friend struct urd::memory_of<RecordInterner>;
+
     [[nodiscard]] handle_type at(typename Records::iterator it) const { return handle_type(static_cast<std::uint32_t>(it - m_records.begin())); }
 
     Records m_records;
@@ -72,6 +74,17 @@ public:
 
 namespace urd
 {
+
+/// Its indexed set's.
+template<typename T, bool ThreadSafe, bool Stable>
+struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable>>
+{
+    static std::size_t bytes(const repr::RecordInterner<T, ThreadSafe, Stable>& held) { return memory_usage(held.m_records); }
+};
+template<typename T, bool ThreadSafe, bool Stable>
+struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable>> : memory_of<repr::RecordInterner<T, ThreadSafe, Stable>>
+{
+};
 
 template<>
 struct include<"urd/repr/records/records.hpp">

@@ -3,7 +3,7 @@
 // container plugs in through urd::detail::declarations_of, urd::detail::representation_of, urd::include, urd::detail::facet_condition and
 // urd::detail::facet_operations; its operations are its own (add, count), costed by its container.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/kinds.hpp"
 
 #include <cstddef>

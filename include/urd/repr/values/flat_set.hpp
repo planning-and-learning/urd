@@ -4,6 +4,7 @@
 
 #include "urd/elements/hash.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/values/flat_set_fwd.hpp"
 #include "urd/traits.hpp"
 

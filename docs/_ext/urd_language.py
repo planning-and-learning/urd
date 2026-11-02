@@ -204,15 +204,18 @@ class Complexity(Generated):
             raise self.error(f"urd-complexity: no representation serves {kind!r}")
         ops = [o for o in COMPLEXITY["operations"] if any(o in r["costs"] for r in rows)]
         out = [".. list-table::", "   :header-rows: 1", "", "   * - Representation"]
-        out += [f"     - {o.replace('_', ' ')}" for o in ops] + ["     - holds"]
+        out += [f"     - {o.replace('_', ' ')}" for o in ops] + ["     - memory", "     - holds"]
         for r in rows:
             out.append(f"   * - ``{r['representation']}``: {r['description']}")
             for o in ops:
                 cost = r["costs"].get(o)
                 text = "—" if cost is None else "as its part" if cost.get("as_part") else cost["cost"].replace("*", "\\*")
                 out.append(f"     - {text}")
+            out.append(f"     - {r['memory']}, {r['words']:g} words")
             out.append(f"     - {r['holds']}")
         return [*out, "", "\\* amortized, ~ expected; n elements, U the key range, r a row's length, k a delta's changes. "
+                       "Memory is the heap it holds (``urd::memory_usage``): what it grows in, and per element (or key, or "
+                       "slot) at most so many words, each the size of an element and at least a machine word. "
                        "The declared costs; what they measure to is in :doc:`/BENCHMARKS`.", ""]
 
 

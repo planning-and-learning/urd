@@ -5,7 +5,7 @@
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools/pools.hpp,
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -53,7 +53,7 @@ struct row_interner_decl
     using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
                                        cost_entry<operation::find_row, costs::lin_row_e>,
                                        cost_entry<operation::access, costs::one>>;
-    static constexpr double words = 2.5;
+    static constexpr double words = 4.5;
     static constexpr std::string_view description = "row interner (each row once, in full)";
     static constexpr std::string_view holds = "each distinct row once, in full";
 };

@@ -5,7 +5,7 @@
 // names them for any element type, so they are unconstrained templates; their container_traits declare properties
 // only for indexable keys.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -44,7 +44,8 @@ struct dense_map_decl
                                        cost_entry<operation::erase, costs::one>,
                                        cost_entry<operation::clear, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
-    static constexpr double words = 1.2;
+    static constexpr double words = 2;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense map (a slot per index)";
     static constexpr std::string_view holds = "a slot per index";
 };
@@ -75,6 +76,7 @@ struct stable_dense_map_decl
                                        cost_entry<operation::clear, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.3;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot per index, in segments that never move";
 };
@@ -106,6 +108,7 @@ struct generation_map_decl
                                        cost_entry<operation::clear, costs::one>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.6;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
     static constexpr std::string_view holds = "a slot and a generation per index";
 };
@@ -137,6 +140,7 @@ struct stable_generation_map_decl
                                        cost_entry<operation::clear, costs::one>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.7;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
 };
@@ -168,6 +172,7 @@ struct thread_safe_generation_map_decl
                                        cost_entry<operation::clear, costs::one>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.8;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
     static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
 };

@@ -150,7 +150,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         if (flag_wrong)
             return label + "insert says it stored something where find held the row, or the reverse";
         // Inserting stores more or nothing; only clear lowers it.
-        const auto memory = pool.memory_usage();
+        const auto memory = urd::memory_usage(pool);
         if (operation != "clear" && operation != "erase" && memory < memory_before)
             return label + "memory_usage fell without a clear or an erase";
         memory_before = memory;
@@ -181,7 +181,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
         for (int count = length(random); count > 0; --count)
             probe.push_back(E(pick(random)));
         const auto found = find(probe);
-        if (pool.memory_usage() != memory)
+        if (urd::memory_usage(pool) != memory)
             return label + "find stored something";
         if constexpr (!has<Traits, structural_sharing>)
         {

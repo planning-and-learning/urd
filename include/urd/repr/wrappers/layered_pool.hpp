@@ -3,6 +3,7 @@
 // A pool over a parent pool: its own rows, numbered after the parent's.
 
 #include "urd/elements/index.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
 #include "urd/repr/records/records_fwd.hpp"
@@ -187,8 +188,6 @@ public:
         layer.m_own.read(layer.local(at), out);
     }
 
-    /// The bytes this layer's own storage takes.
-    [[nodiscard]] size_type memory_usage() const { return m_own.memory_usage(); }
     /// Forgets this layer's own elements; the parent's stay, and the indices start again after them.
     void clear()
     {
@@ -218,6 +217,8 @@ private:
         return out;
     }
 
+    friend struct urd::memory_of<LayeredPool>;
+
     R m_own;
     const LayeredPool* m_parent = nullptr;
     std::uint32_t m_base = 0;
@@ -227,6 +228,13 @@ private:
 
 namespace urd
 {
+
+/// Its own layer's: the parent's is the parent's.
+template<typename R>
+struct memory_of<repr::LayeredPool<R>>
+{
+    static std::size_t bytes(const repr::LayeredPool<R>& held) { return memory_usage(held.m_own); }
+};
 
 template<>
 struct include<"urd/repr/wrappers/layered_pool.hpp">

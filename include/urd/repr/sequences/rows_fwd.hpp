@@ -3,7 +3,7 @@
 // Representations of nested Stores, whose elements (rows) are Stores themselves, declared with what the registry
 // reads of them. Defined in urd/repr/sequences/jagged.hpp and urd/repr/sequences/row_pool.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"

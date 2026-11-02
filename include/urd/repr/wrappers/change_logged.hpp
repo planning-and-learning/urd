@@ -125,6 +125,8 @@ private:
             m_removed.insert(element);
     }
 
+    friend struct urd::memory_of<ChangeLogged>;
+
     R m_elements;
     IndexedSet<value_type> m_added;
     IndexedSet<value_type> m_removed;
@@ -134,6 +136,14 @@ private:
 
 namespace urd
 {
+
+/// Its container's, and its log of added and removed elements.
+template<typename R>
+struct memory_of<repr::ChangeLogged<R>>
+{
+    static std::size_t bytes(const repr::ChangeLogged<R>& held)
+    { return memory_usage(held.m_elements) + memory_usage(held.m_added) + memory_usage(held.m_removed); }
+};
 
 template<>
 struct include<"urd/repr/wrappers/change_logged.hpp">

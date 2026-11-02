@@ -60,7 +60,8 @@ while (!frontier.empty())
   ... type_list<urd::include<"urd/repr/values/dense_set.hpp">> ...
   ```
 - **Promises are checked.** Every container urd can choose is compared with a reference model through thousands of
-  random operations, and deliberately broken containers are caught by the same tests.
+  random operations, and deliberately broken containers are caught by the same tests. Its time and its memory
+  (`urd::memory_usage(store)`) are measured against what it declares.
 - **Small vocabulary.** About 35 tags, few enough for people and code-writing agents to state instead of
   hand-rolling a structure.
 

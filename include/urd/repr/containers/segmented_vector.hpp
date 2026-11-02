@@ -19,6 +19,7 @@
 #ifndef URD_REPR_CONTAINERS_SEGMENTED_VECTOR_HPP_
 #define URD_REPR_CONTAINERS_SEGMENTED_VECTOR_HPP_
 
+#include "urd/memory.hpp"
 #include "urd/repr/containers/detail/geometric_segment_layout.hpp"
 #include "urd/repr/containers/detail/segmented_rows.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
@@ -417,8 +418,6 @@ public:
     [[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(*this, 0); }
     [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(*this, size()); }
 
-    [[nodiscard]] size_t memory_usage() const noexcept { return capacity() * sizeof(T); }
-
     /// Reads the elements in place; valid while this vector neither moves nor is destroyed.
     [[nodiscard]] detail::SegmentedRows<T, FirstSegmentSize, ThreadSafe, Index> rows() const noexcept { return { m_segments.data(), &m_size }; }
 
@@ -443,5 +442,13 @@ private:
 };
 
 }  // namespace urd::repr
+
+/// Its segments, which hold `capacity()` elements, and what its elements own.
+template<typename T, std::size_t FirstSegmentSize, bool ThreadSafe, std::unsigned_integral Index>
+struct urd::memory_of<urd::repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>>
+{
+    static std::size_t bytes(const repr::SegmentedVector<T, FirstSegmentSize, ThreadSafe, Index>& held)
+    { return (held.capacity() * sizeof(T)) + detail::held_bytes(held); }
+};
 
 #endif

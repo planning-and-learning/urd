@@ -1,10 +1,11 @@
 #pragma once
 
-// What each operation costs a representation, and the memory it takes: stated in its declaration (operation_costs,
-// words; urd/registry/declaration.hpp), from which urd/registry/derived.hpp gives container_costs<R>, without defining
-// R. Reading a representation's costs therefore completes nothing and includes no implementation:
-// the registry's own headers suffice. The docs' complexity tables and the benchmarks' judgment of the registry
-// (benchmarks/record.py) read these.
+// What each operation costs a representation, and the memory it takes: how a cost grows, in which quantity, urd's
+// operations, and a container's table of costs, one entry per operation; its memory in words (urd/memory.hpp tells
+// what it holds). Stated in its declaration (operation_costs, words; urd/registry/declaration.hpp), from which
+// urd/registry/derived.hpp gives container_costs<R>, without defining R. Reading a representation's costs therefore
+// completes nothing and includes no implementation: the registry's own headers suffice. The docs' complexity tables
+// and the benchmarks' judgment of the registry (benchmarks/record.py) read these.
 
 #include "urd/traits.hpp"
 
@@ -162,7 +163,6 @@ template<typename... Ops>
 struct operation_list
 {
 };
-
 /// urd's operations: each its words, and the key of its entry in a container's costs (cost_table).
 namespace operation
 {
@@ -282,10 +282,11 @@ struct costs_over
 };
 
 /// The costs of the operations of representation R: its declaration's operation_costs, a cost_table with an entry per
-/// operation R offers (a wrapper's, costs_over its part's declaration). Its memory is the declaration's `words`: machine
-/// words per element (the element counting 1; per key or slot for dense keys); what that memory holds is in words in its
-/// synopsis (urd/registry/derived.hpp, container_synopsis). Declared for every registered representation, derived from
-/// its declaration (urd/registry/derived.hpp); none here.
+/// operation R offers (a wrapper's, costs_over its part's declaration). Its memory is the declaration's `words`: at
+/// most so many words per element, or per unit of its `words_per` (a key of its range, a slot of its capacity), an
+/// upper bound the benchmarks judge (benchmarks/record.py); what that memory holds is in words in its synopsis
+/// (urd/registry/derived.hpp, container_synopsis). Declared for every registered representation, derived from its
+/// declaration (urd/registry/derived.hpp); none here.
 template<typename R>
 struct container_costs
 {

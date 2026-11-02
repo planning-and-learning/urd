@@ -3,6 +3,7 @@
 // The grouping of a frozen multimap by dense key: compressed sparse rows.
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -103,8 +104,17 @@ public:
     { return lhs.m_offsets == rhs.m_offsets && std::ranges::equal(lhs.m_values, rhs.m_values, EqualTo<V> {}); }
 
 private:
+    friend struct urd::memory_of<IndexGroups>;
+
     std::vector<std::size_t> m_offsets { 0 };
     std::vector<V> m_values;
 };
 
 }  // namespace urd::repr
+
+/// Compressed sparse rows: the offsets per key and the values.
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::IndexGroups<K, V>>
+{
+    static std::size_t bytes(const repr::IndexGroups<K, V>& held) { return memory_usage(held.m_offsets) + memory_usage(held.m_values); }
+};

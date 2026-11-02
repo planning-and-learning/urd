@@ -5,6 +5,7 @@
 // itself does not change; its declaration and costs are its own, and it compares and hashes as its container.
 
 #include "urd/elements/index.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 
 #include <concepts>
@@ -43,6 +44,13 @@ namespace urd
 template<typename R>
 struct detail::declaration_of<repr::Numbered<R>> : detail::declaration_of<R>
 {
+};
+
+/// A numbered container holds what its container holds.
+template<typename R>
+struct memory_of<repr::Numbered<R>>
+{
+    static std::size_t bytes(const repr::Numbered<R>& held) { return memory_usage(static_cast<const R&>(held)); }
 };
 
 }  // namespace urd

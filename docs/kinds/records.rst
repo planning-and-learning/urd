@@ -118,7 +118,6 @@ Member functions
 
 .. cpp:function:: std::size_t size() const
 .. cpp:function:: bool empty() const
-.. cpp:function:: std::size_t memory_usage() const
 .. cpp:function:: void clear()
 
    Shrinkable pools; the arena keeps its segments.

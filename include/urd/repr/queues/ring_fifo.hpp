@@ -4,6 +4,7 @@
 
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
@@ -31,6 +32,8 @@ namespace urd::repr
 template<typename T>
 class RingFifo
 {
+    friend struct urd::memory_of<RingFifo>;
+
 public:
     using value_type = T;
     using size_type = std::size_t;
@@ -133,3 +136,18 @@ struct representation_of<ring_fifo_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its ring of slots, and what the elements in them own.
+template<typename T>
+struct urd::memory_of<urd::repr::RingFifo<T>>
+{
+    static std::size_t bytes(const repr::RingFifo<T>& held)
+    {
+        auto result = held.m_ring.capacity() * sizeof(std::optional<T>);
+        if constexpr (!std::is_trivially_copyable_v<T>)
+            for (const auto& slot : held.m_ring)
+                if (slot)
+                    result += memory_usage(*slot);
+        return result;
+    }
+};

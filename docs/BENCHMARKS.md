@@ -216,4 +216,16 @@ None.
 
 None.
 
+## Memory, measured
+
+The heap each container's Store holds once its lifecycle filled it, counted apart from the timing (benchmark_memory) and as `urd::memory_usage` tells it. Words are per element, each the size of an element and at least a machine word, at most over the sizes measured (where the elements own nothing more).
+
+| Container | Declared | Measured words | memory_usage off by |
+|---|---|---|---|
+| — | | | |
+
+### Memory that fails
+
+None.
+
 <!-- end of the generated block -->

@@ -4,7 +4,7 @@
 // comparator (a binary heap, an addressable heap, a bucket queue), and a ring for first-in queues that retain their
 // storage. Defined in urd/repr/queues/queue.hpp, addressable_heap.hpp, bucket_queue.hpp and ring_fifo.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
@@ -216,6 +216,7 @@ struct bucket_queue_decl
                                        cost_entry<operation::top, costs::one>,
                                        cost_entry<operation::clear, costs::lin_keys>>;
     static constexpr double words = 2;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "bucket queue (a bucket per integral priority)";
     static constexpr std::string_view holds = "a vector per priority";
 };

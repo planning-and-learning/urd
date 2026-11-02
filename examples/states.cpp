@@ -66,7 +66,7 @@ void run()
     const auto start = values.insert(std::vector<double>(1000, 0.0)).first;
     const auto writes = std::vector<urd::Write<double>> { { 17, 2.5 } };
     const auto moved = values.insert(start, std::span<const urd::Write<double>>(writes)).first;
-    std::cout << "two states of 1000 values take " << values.memory_usage() << " bytes; value 17 of the second: " << values.get(moved)[17] << '\n';
+    std::cout << "two states of 1000 values take " << urd::memory_usage(values) << " bytes; value 17 of the second: " << values.get(moved)[17] << '\n';
 
     // Scratch buffers handed out per successor and returned: acquire gives a freed one back with its storage.
     auto scratch = Scratch();

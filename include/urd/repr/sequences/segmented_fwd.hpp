@@ -3,7 +3,7 @@
 // A vector in segments that never move, declared with its defaults and what the registry reads of it. Defined in
 // urd/repr/containers/segmented_vector.hpp, which urd/repr/sequences/segmented.hpp includes.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"

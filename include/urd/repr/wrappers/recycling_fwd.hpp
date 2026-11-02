@@ -3,7 +3,7 @@
 // Node containers that keep their erased nodes for reuse, declared with what the registry reads of them. Defined in
 // urd/repr/wrappers/recycling.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"

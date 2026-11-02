@@ -105,9 +105,9 @@ std::optional<std::string> run_records(P& pool, unsigned seed, int steps)
         }
         if (!pool.find(T(1000)).is_none() || pool.contains(T(1000)))
             return failed(step, "a record never inserted is found");
-        if (pool.memory_usage() < memory_before)
+        if (urd::memory_usage(pool) < memory_before)
             return failed(step, "memory_usage fell without a clear");
-        memory_before = pool.memory_usage();
+        memory_before = urd::memory_usage(pool);
     }
     return std::nullopt;
 }

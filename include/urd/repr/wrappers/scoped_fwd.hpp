@@ -4,7 +4,7 @@
 // reads of it, over a flat hash table, a tree or a dense map. Defined in urd/repr/wrappers/scoped.hpp; the map it
 // scopes in its own header.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -45,6 +45,8 @@ namespace urd
 namespace detail
 {
 
+// ponytail: a scoped map's log grows in the changes since its scopes began (holds says so); words count per its
+// table's unit only. Words per change besides are the upgrade where the log's memory must be judged.
 struct scoped_map_decl
 {
     static constexpr std::string_view id = "scoped_map";

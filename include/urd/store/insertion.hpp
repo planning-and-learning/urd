@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/cost.hpp"
 #include "urd/store/types.hpp"
 
 #include <initializer_list>

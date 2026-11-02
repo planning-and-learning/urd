@@ -3,6 +3,7 @@
 // A Store over a parent: its own elements, and lookups that fall through to the parent's.
 
 #include "urd/elements/index.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/wrappers/layered_fwd.hpp"
 #include "urd/traits.hpp"
@@ -159,6 +160,8 @@ private:
     }
     [[nodiscard]] bool in_parent_only(const key_type& key) const { return m_parent != nullptr && !m_own.contains(key) && m_parent->contains(key); }
 
+    friend struct urd::memory_of<Layered>;
+
     R m_own;
     const Layered* m_parent = nullptr;
 };
@@ -167,6 +170,13 @@ private:
 
 namespace urd
 {
+
+/// Its own layer's: the parent's is the parent's.
+template<typename R>
+struct memory_of<repr::Layered<R>>
+{
+    static std::size_t bytes(const repr::Layered<R>& held) { return memory_usage(held.m_own); }
+};
 
 template<>
 struct include<"urd/repr/wrappers/layer.hpp">

@@ -5,7 +5,7 @@
 // of bits), and the slot vector (elements by handle in slots that never move). Defined in urd/repr/pools/pools.hpp,
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"

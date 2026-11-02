@@ -4,9 +4,11 @@
 // and how a view resolves them. Include it where flat records are defined; the pools that store them are in
 // urd/repr/records/records.hpp and urd/repr/records/arena.hpp, included where such a Store is held.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/memory.hpp"
 
 #include <cista/containers/optional.h>
 #include <cista/containers/string.h>
@@ -45,6 +47,23 @@ template<>
 struct Hash<flat_string>
 {
     hash_t operator()(const flat_string& text) const noexcept { return Hash<std::string_view> {}(text.view()); }
+};
+
+/// Text owns its characters where they do not fit inside it (cista allocates exactly its length).
+template<>
+struct memory_of<flat_string>
+{
+    static std::size_t bytes(const flat_string& text) { return text.is_short() ? 0 : text.size(); }
+};
+
+/// A record that names its members (as flat storage needs) holds what they hold.
+template<Serializable T>
+struct memory_of<T>
+{
+    static std::size_t bytes(const T& record)
+    {
+        return []<auto... Ms>(Members<Ms...> /*members*/, const T& of) { return (std::size_t { 0 } + ... + memory_usage(of.*Ms)); }(T::cista_members(), record);
+    }
 };
 
 /// A flat vector is a value range: hashed, compared and ordered as its elements.

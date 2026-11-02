@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <type_traits>
@@ -113,6 +114,27 @@ void use(const T& value)
     const auto* address = &value;
     benchmark::DoNotOptimize(address);
 }
+
+/// The heap bytes asked for and still held, counted by benchmark_memory (benchmarks/experiments_main.cpp.in); none
+/// where it does not count them.
+std::optional<std::size_t> live_bytes();
+
+/// The memory a Store of a cell holds, once filled as its lifecycle fills it: counted (the heap it took, past its own
+/// object), as it tells (urd::memory_usage), over how many elements, of what size, and whether they own nothing more.
+struct held_memory
+{
+    std::size_t counted = 0;
+    std::size_t told = 0;
+    std::size_t elements = 0;
+    std::size_t element_size = 0;
+    bool plain = false;
+};
+
+/// Whether a T owns no memory beyond itself: what memory per element is judged on (benchmarks/record.py).
+template<typename T>
+inline constexpr bool owns_nothing = std::is_trivially_copyable_v<T>;
+template<typename A, typename B>
+inline constexpr bool owns_nothing<std::pair<A, B>> = owns_nothing<std::remove_cv_t<A>> && owns_nothing<B>;
 
 /// The time of each operation over a benchmark's lifecycles.
 struct timing
@@ -341,6 +363,23 @@ struct workload
             }
         store.reset();
     }
+
+    /// The memory of the Store a cell's lifecycle fills: inserted one by one where the cell times inserting, else
+    /// built.
+    static held_memory memory(const urd::test::cell& at)
+    {
+        const auto order = shuffled(at.size);
+        [[maybe_unused]] const auto has = [&](op what) { return at.operations[static_cast<std::size_t>(what)]; };
+        const auto before = live_bytes().value_or(0);
+        auto store = std::unique_ptr<Store>();
+        if constexpr (offers[static_cast<std::size_t>(op_v<urd::operation::insert>)] || offers[static_cast<std::size_t>(op_v<urd::operation::push>)])
+            if (has(op_v<urd::operation::insert>) || has(op_v<urd::operation::push>))
+                for (std::size_t each = start(store, order); each < order.size(); ++each)
+                    add(*store, order[each]);
+        if (!store)
+            build(store, order);
+        return { live_bytes().value_or(0) - before - sizeof(Store), urd::memory_usage(*store), at.size, sizeof(Element), owns_nothing<Element> };
+    }
 };
 
 /// A pool's row operations, with rows (or records) of `length` elements.
@@ -412,10 +451,33 @@ struct row_workload
             into.stop(op_v<urd::operation::access>, rows);
         }
     }
+
+    /// The memory of the Store a cell's lifecycle fills: its rows, inserted one by one.
+    static held_memory memory(const urd::test::cell& at)
+    {
+        using Row = typename S::element_type;
+        using Element = decltype([]
+        {
+            if constexpr (urd::is_store<Row>)
+                return std::remove_cv_t<typename Row::value_type> {};
+            else
+                return char {};
+        }());
+        auto all = std::vector<decltype(row(0, 0))>();
+        for (std::size_t each = 0; each < rows; ++each)
+            all.push_back(row(each, at.size));
+        const auto before = live_bytes().value_or(0);
+        auto store = std::make_unique<Store>();
+        for (const auto& each : all)
+            use(insert(*store, each));
+        return { live_bytes().value_or(0) - before - sizeof(Store), urd::memory_usage(*store), rows * at.size, sizeof(Element), owns_nothing<Element> };
+    }
 };
 
-/// Registers the cells of container R's experiment for the request spec S, one per size: each runs the lifecycle (enough
-/// times for small sizes to take measurable time) and reports the time per operation of each, as a counter named for it.
+/// Registers the cells of container R's experiment for the request spec S, one per size. Where the heap is counted
+/// (benchmark_memory), each reports, once, the memory of the Store it fills (held_memory), as counters named memory_*;
+/// else each runs the lifecycle (enough times for small sizes to take measurable time) and reports the time per
+/// operation of each, as a counter named for it.
 template<typename R, typename S>
 void register_experiment(std::size_t ordinal)
 {
@@ -426,6 +488,23 @@ void register_experiment(std::size_t ordinal)
         benchmark::RegisterBenchmark(at.id,
                                      [at](benchmark::State& state)
                                      {
+                                         if (live_bytes())
+                                         {
+                                             held_memory held {};
+                                             for (auto _ : state)
+                                             {
+                                                 if constexpr (urd::test::by_handle<S>)
+                                                     held = row_workload<R, S>::memory(at);
+                                                 else
+                                                     held = workload<R, S>::memory(at);
+                                             }
+                                             state.counters["memory_counted"] = static_cast<double>(held.counted);
+                                             state.counters["memory_told"] = static_cast<double>(held.told);
+                                             state.counters["memory_elements"] = static_cast<double>(held.elements);
+                                             state.counters["memory_element_size"] = static_cast<double>(held.element_size);
+                                             state.counters["memory_plain"] = held.plain ? 1 : 0;
+                                             return;
+                                         }
                                          auto into = timing {};
                                          const std::size_t rounds =
                                              std::clamp<std::size_t>(lifecycle_elements / std::max<std::size_t>(at.size, 1), 1, most_rounds);

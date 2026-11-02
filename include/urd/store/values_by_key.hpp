@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/cost.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/store/types.hpp"

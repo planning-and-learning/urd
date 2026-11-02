@@ -53,7 +53,7 @@ TEST(CommonSegmentedVectorTest, EmptySizeCapacityAndMemoryUsage)
     EXPECT_TRUE(vector.empty());
     EXPECT_EQ(vector.size(), 0);
     EXPECT_EQ(vector.capacity(), 0);
-    EXPECT_EQ(vector.memory_usage(), 0);
+    EXPECT_EQ(urd::memory_usage(vector), 0);
 }
 
 TEST(CommonSegmentedVectorTest, SupportsIndexedAccessAcrossSegments)
@@ -72,7 +72,7 @@ TEST(CommonSegmentedVectorTest, SupportsIndexedAccessAcrossSegments)
     EXPECT_FALSE(vector.empty());
     EXPECT_EQ(vector.size(), 7);
     EXPECT_EQ(vector.capacity(), 14);
-    EXPECT_EQ(vector.memory_usage(), 14 * sizeof(int));
+    EXPECT_EQ(urd::memory_usage(vector), 14 * sizeof(int));
 
     for (int i = 0; i < 7; ++i)
     {

@@ -2,6 +2,8 @@
 
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/boost_memory.hpp"
+#include "urd/repr/core/std_memory.hpp"
 #include "urd/repr/wrappers/scoped_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -11,6 +13,7 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -167,6 +170,8 @@ private:
         m_log.emplace_back(key, found == m_table.end() ? std::nullopt : std::optional<V>(found->second));
     }
 
+    friend struct urd::memory_of<Scoped>;
+
     Table m_table;
     std::vector<std::pair<K, std::optional<V>>> m_log;
     std::vector<std::size_t> m_scopes;
@@ -176,6 +181,13 @@ private:
 
 namespace urd
 {
+
+/// Its table, its log and its scopes.
+template<typename Map>
+struct memory_of<repr::Scoped<Map>>
+{
+    static std::size_t bytes(const repr::Scoped<Map>& held) { return memory_usage(held.m_table) + memory_usage(held.m_log) + memory_usage(held.m_scopes); }
+};
 
 template<>
 struct include<"urd/repr/wrappers/scoped.hpp">

@@ -4,6 +4,7 @@
 
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
@@ -410,12 +411,29 @@ private:
         return npos;
     }
 
+    friend struct urd::memory_of<IndexMap>;
+
     Slots m_slots;
     Count m_count { 0 };
     std::uint64_t m_generation = 1;  // slots start at 0, so a new slot is absent
 };
 
 }  // namespace urd::repr
+
+/// A slot per key index up to the greatest held (its capacity), and what the values held own.
+template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
+struct urd::memory_of<urd::repr::IndexMap<K, V, Generations, ThreadSafe, Stable>>
+{
+    using map = repr::IndexMap<K, V, Generations, ThreadSafe, Stable>;
+    static std::size_t bytes(const map& held)
+    {
+        auto result = held.m_slots.capacity() * sizeof(typename map::slot);
+        if constexpr (!std::is_trivially_copyable_v<V>)
+            for (const auto& [key, value] : held)
+                result += memory_usage(value);
+        return result;
+    }
+};
 
 namespace urd
 {
