@@ -25,12 +25,35 @@ struct request_shape
 };
 
 /// Whether entry `e` serves request `s`: it provides what is required, the request promises what it relies on and
-/// demands, and Stores held as elements get what they require.
+/// demands, and Stores held as elements get what they require. It stops at the first miss, as every resolution runs
+/// it; shortfall_of says, by the same rules, what is missing.
 constexpr bool serves(const registry_entry& e, const request_shape& s)
 {
     if (!satisfies(e.provides, s.required) || !promises(s.roles, e.relies_on) || !promises(s.roles, demands_of(e.provides)))
         return false;
     return satisfies(with(s.held, e.gives_elements), s.held_required);
+}
+
+/// Why an entry does not serve a request, by the rules of `serves`: what it lacks of what the request requires, what
+/// the request must still state or promise (what the entry relies on and demands, and the answers it gives where the
+/// request leaves an exact category open), and what Stores held as its elements ask for and do not get. None of them:
+/// it serves.
+struct shortfall
+{
+    property_set lacks = property_set::roots();
+    property_set needs = property_set::roots();
+    property_set held = property_set::roots();
+
+    [[nodiscard]] constexpr bool none() const { return lacks.count == 0 && needs.count == 0 && held.count == 0; }
+};
+
+/// The shortfall of entry `e` for request `s`: none exactly where it serves.
+constexpr shortfall shortfall_of(const registry_entry& e, const request_shape& s)
+{
+    const auto elements = with(s.held, e.gives_elements);
+    return { .lacks = lacking(e.provides, s.required),
+             .needs = with(with(unpromised(s.roles, e.relies_on), unpromised(s.roles, demands_of(e.provides))), unasked_of(e.provides, s.required)),
+             .held = with(lacking(elements, s.held_required), unasked_of(elements, s.held_required)) };
 }
 
 /// Whether entry `e` comes after the others serving request `s`: it holds a tag one of the request's tags puts later

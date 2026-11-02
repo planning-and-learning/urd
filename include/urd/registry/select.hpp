@@ -94,12 +94,13 @@ struct chosen_type
 };
 
 /// The static assertion a request no container serves fails with; S, in its instantiation, names the request.
+// ponytail: a fixed message, as C++20 allows; a C++26 computed one could spell each entry's shortfall_of here.
 template<typename S>
 struct no_representation_for
 {
     static_assert(repr::dependent_false<S>::value,
-                  "urd::Store: no container serves this request: drop or change a tag (urd-search lists each container of its "
-                  "kind with what it lacks or needs)");
+                  "urd::Store: no container serves this request: drop or change a tag (urd-search's why_not names, for a "
+                  "container, the tags it lacks and the promises the request must make)");
     /// A stand-in, so that the assertion is the only error.
     using type = std::vector<typename S::element_type>;
 };
