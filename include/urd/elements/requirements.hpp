@@ -57,14 +57,15 @@ struct by
 
     template<typename T>
     constexpr bool operator()(const T& lhs, const T& rhs) const
-    { return Less<detail::order_key_t<T, by>> {}(std::invoke(P, lhs), std::invoke(P, rhs)); }
+    {
+        return Less<detail::order_key_t<T, by>> {}(std::invoke(P, lhs), std::invoke(P, rhs));
+    }
 };
 
 /// Comparator C orders T as sorted means: urd::Less over an orderable T, or a comparator a request gives
 /// (order_by<C>) that is a strict weak order over T, which the request vouches for.
 template<typename C, typename T>
-concept natural_order = (std::same_as<C, Less<T>> && orderable<T>)
-                        || (!std::same_as<C, Less<T>> && std::strict_weak_order<C, const T&, const T&>);
+concept natural_order = (std::same_as<C, Less<T>> && orderable<T>) || (!std::same_as<C, Less<T>> && std::strict_weak_order<C, const T&, const T&>);
 
 namespace detail
 {
