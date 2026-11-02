@@ -27,7 +27,6 @@ namespace urd
 namespace detail
 {
 
-/// std::set (balanced tree)
 struct set_decl
 {
     static constexpr std::string_view id = "set";
@@ -59,7 +58,6 @@ struct declaration_of<std::set<T, C, A>>
 namespace detail
 {
 
-/// std::unordered_set (hash table)
 struct unordered_set_decl
 {
     static constexpr std::string_view id = "unordered_set";

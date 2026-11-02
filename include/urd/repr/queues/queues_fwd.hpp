@@ -57,7 +57,6 @@ namespace urd
 namespace detail
 {
 
-/// queue (a deque, first in first out)
 struct fifo_decl
 {
     static constexpr std::string_view id = "fifo";
@@ -87,7 +86,6 @@ struct declaration_of<repr::Fifo<T>>
 namespace detail
 {
 
-/// ring fifo (one vector used as a ring, kept on pop and clear)
 struct ring_fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
@@ -117,7 +115,6 @@ struct declaration_of<repr::RingFifo<T>>
 namespace detail
 {
 
-/// stack (a vector, last in first out)
 struct lifo_decl
 {
     static constexpr std::string_view id = "lifo";
@@ -147,7 +144,6 @@ struct declaration_of<repr::Lifo<T>>
 namespace detail
 {
 
-/// binary heap (a vector, least first, by urd::Less or an order_by)
 struct heap_decl
 {
     static constexpr std::string_view id = "heap";
@@ -177,7 +173,6 @@ struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 namespace detail
 {
 
-/// addressable heap (push gives a handle to update or erase by)
 struct addressable_heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
@@ -207,7 +202,6 @@ struct declaration_of<repr::AddressableHeap<T, Compare>>
 namespace detail
 {
 
-/// bucket queue (a bucket per integral priority)
 struct bucket_queue_decl
 {
     static constexpr std::string_view id = "bucket_queue";

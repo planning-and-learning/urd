@@ -25,8 +25,8 @@
 // variants is a template over its flags. Two links tie a declaration to
 // types, each specialized once, beside the container: representation_of<Decl, S> (the type for a request, in the
 // container's own header, so that a file lacking it lacks the type) and declaration_of<R> (a type's declaration,
-// with the facts its template arguments give). urd::container_traits, container_costs, container_synopsis,
-// relies_on, parts and defined_in are derived from them (urd/registry/derived.hpp).
+// with the facts its template arguments give). urd::container_traits, container_costs, container_synopsis and
+// defined_in are derived from them (urd/registry/derived.hpp).
 
 #include "urd/kinds.hpp"
 #include "urd/registry/facts.hpp"

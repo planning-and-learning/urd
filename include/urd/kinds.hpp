@@ -349,14 +349,15 @@ struct data_of : Kind
     /// What its order compares.
     using ordered_type = Element;
     /// Which of its types plays which role, ordered by Order: its elements are its elements and are ordered, a map's
-    /// values are mapped (void elsewhere: no facts), and what it holds are its rows.
+    /// values are mapped (void elsewhere: no facts), what it holds are its rows, and its rows' elements (void where it
+    /// holds no rows) are its row elements.
     template<typename Order>
     using played = type_list<plays<role::element, Element>,
                              plays<role::mapped, Mapped>,
                              plays<role::order, Element, Order>,
                              plays<role::row, held_type>,
                              plays<role::rows, held_type>,
-                             plays<role::row_element, held_type>>;
+                             plays<role::row_element, typename held_as<held_type>::elements>>;
 };
 
 }  // namespace detail

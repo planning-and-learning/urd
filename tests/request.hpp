@@ -3,7 +3,7 @@
 // Requests as types, for the tests and benchmarks that walk many of them (a table of what each resolves to, a benchmark
 // per container): a request is the parameter pack a Store is written with, its spec what it resolves
 // from, and lists of requests join and are walked without instantiating a Store. Which headers a Store needs is read
-// from declarations alone (urd::defined_in, urd::parts), so walking requests completes nothing.
+// from declarations alone (choose<S>::headers), so walking requests completes nothing.
 
 #include "urd/format.hpp"
 #include "urd/registry/declaration.hpp"

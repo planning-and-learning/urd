@@ -37,7 +37,7 @@ inline constexpr tag trait_tag { trait_v<Trait>, 1 };
 
 /// The traits of a role (a struct of the role's), as `using type = detail::type_list<Trait…>`: what its facts can be.
 /// Specialized once per role, where its traits are defined, each a struct with its words and what it means
-/// (`holds<…>()`); never defined otherwise, so a role whose list is not visible does not compile.
+/// (`holds<…>()`). A role whose facts are no traits (a row's own tags) has none and specializes detail::role_facts.
 template<typename Role>
 struct traits_of_role;
 
@@ -53,48 +53,39 @@ constexpr void put_trait(property_set& into, bool holds)
     if (holds)
         into.put(trait_tag<Trait>);
 }
-/// What a Store is for role Role, where it answers for itself (as an element, as what an order compares): `value`,
-/// its facts, from its request alone, so that it is never completed to answer. Specialized beside a Store's semantics
-/// (urd/store/store_facts.hpp); where it is not, the role's traits are asked as of any type (a row's).
-template<typename Role, typename... Args>
+/// What T is held as an element (urd/type_traits_of.hpp): a row, with its tags and its elements' type, or plain.
+template<typename T>
+struct held_as;
+
+/// What a Store is for a role whose traits are Traits (traits_of_role<Role>::type: roles that share their traits share
+/// this), where it answers for itself: `value`, its facts, from its request alone, so that it is never completed to
+/// answer. Specialized beside a Store's semantics (urd/store/store_facts.hpp).
+template<typename Traits, typename... Args>
 struct store_facts;
 
-/// The traits of role Role that hold of Args (Trait::holds<Args…>()), about no role; a Store's own facts where it
-/// answers for itself; none where an argument is void (a kind without values has no value type).
-template<typename Role, typename... Args>
-consteval property_set traits_holding()
-{
-    if constexpr ((std::is_void_v<Args> || ...))
-        return property_set::roots();
-    else if constexpr (requires { store_facts<Role, Args...>::value; })
-        return store_facts<Role, Args...>::value;
-    else
-    {
-        auto result = property_set::roots();
-        []<typename... Traits>(type_list<Traits...> /*traits*/, property_set& into)
-        { (put_trait<Traits>(into, Traits::template holds<Args...>()), ...); }(typename traits_of_role<Role>::type {}, result);
-        return result;
-    }
-}
-
-/// How the facts of role Role are computed for the types that play it (Args): by default the role's traits that hold
-/// (or a Store's own facts). A role whose facts are something else (a row's own tags) specializes it.
+/// The facts of role Role for the types that play it (Args), about no role: none where an argument is void (a kind
+/// without values has no value type); a Store's own facts where it answers for itself (store_facts); else the role's
+/// traits that hold (Trait::holds<Args…>()). A role whose facts are something else (a row's own tags) specializes it.
 template<typename Role>
 struct role_facts
 {
     template<typename... Args>
     static consteval property_set of()
-    { return traits_holding<Role, Args...>(); }
+    {
+        using traits = typename traits_of_role<Role>::type;
+        if constexpr ((std::is_void_v<Args> || ...))
+            return property_set::roots();
+        else if constexpr (requires { store_facts<traits, Args...>::value; })
+            return store_facts<traits, Args...>::value;
+        else
+            return []<typename... Traits>(type_list<Traits...> /*traits*/)
+            {
+                auto result = property_set::roots();
+                (put_trait<Traits>(result, Traits::template holds<Args...>()), ...);
+                return result;
+            }(traits {});
+    }
 };
-
-/// The traits Traits, about no role.
-template<typename... Traits>
-constexpr property_set trait_set_of()
-{
-    auto result = property_set::roots();
-    (result.put(trait_tag<Traits>), ...);
-    return result;
-}
 
 }  // namespace urd::detail
 
@@ -175,7 +166,7 @@ constexpr property_set facts_where(const property_set& set, bool about_role)
 constexpr property_set stated(std::initializer_list<tag> listed) { return property_set::of(listed); }
 template<typename Role, typename... Traits>
 constexpr property_set traits()
-{ return about(role_v<Role>, trait_set_of<Traits...>()); }
+{ return property_set::of({ trait_tag<Traits>.about(role_v<Role>)... }); }
 template<typename Role>
 constexpr property_set tags(std::initializer_list<tag> listed)
 { return about(role_v<Role>, property_set::of(listed)); }
@@ -184,7 +175,7 @@ constexpr property_set tags(std::initializer_list<tag> listed)
 constexpr property_set relies(const auto&... pieces)
 {
     auto result = property_set::roots();
-    (pieces.for_each([&result](tag each) { result.put(each); }), ...);
+    ((result = with(result, pieces)), ...);
     return result;
 }
 

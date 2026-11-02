@@ -49,7 +49,6 @@ namespace urd
 namespace detail
 {
 
-/// CSR multimap (each key's values together, in key order)
 struct csr_multimap_decl
 {
     static constexpr std::string_view id = "csr_multimap";
@@ -78,7 +77,6 @@ struct declaration_of<repr::CsrMultiMap<K, V>>
 namespace detail
 {
 
-/// dense multimap (a vector of values per index, growing)
 struct dense_multimap_decl
 {
     static constexpr std::string_view id = "dense_multimap";
@@ -109,7 +107,6 @@ struct declaration_of<repr::DenseMultiMap<K, V>>
 namespace detail
 {
 
-/// postings (a flat hash table of value vectors)
 struct posting_map_decl
 {
     static constexpr std::string_view id = "posting_map";
@@ -139,7 +136,6 @@ struct declaration_of<repr::PostingMap<K, V>>
 namespace detail
 {
 
-/// bidirectional CSR (each key's values and each value's keys together)
 struct bidirectional_csr_decl
 {
     static constexpr std::string_view id = "bidirectional_csr";

@@ -42,11 +42,6 @@ struct tag_in<Root, Tag, Tags...> : std::conditional_t<std::is_same_v<typename T
 {
 };
 
-}  // namespace detail
-
-namespace detail
-{
-
 /// The comparator a request orders by: its order_by<C>'s C (Order), else urd::Less over Ordered (Order is void).
 template<typename Order, typename Ordered>
 struct comparator_of

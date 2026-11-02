@@ -3,13 +3,15 @@
 
     record.py record --binary build/benchmark_comparisons    measure the missing and stale cells (all with --all)
     record.py coverage --binary build/benchmark_comparisons  the binary registers exactly the cells (a test)
-    record.py check                                          every cell measured and current; every choice holds
+    record.py check                                          every cell measured; every choice holds (stale ones reported)
     record.py doc [--check]                                  write (or check) the generated part of BENCHMARKS.md
 
 What is measured (benchmarks/requests.json): each container on each shape of element, its whole lifecycle at three
 sizes, every operation it offers timed in turn. A cell is one such experiment at one size; its result is the median
 time per operation (ns), with a fingerprint of the sources it measured (the container's headers with every urd
-header they include, the Store's facets, the benchmark code). A result whose fingerprint no longer matches is stale.
+header they include, the Store's facets, the benchmark code). A result whose fingerprint no longer matches is stale:
+check reports stale cells and judges from them still (a change to urd's headers stales most of them, and measuring
+takes hours); it fails for a cell never measured.
 Results are per machine (benchmarks/results/<machine>.json).
 
 What is judged, from data only: for each request, the container the registry chooses against every other that serves
@@ -417,8 +419,8 @@ def quadratic_cells(results: dict) -> tuple[dict[str, str], list[str]]:
 
 
 def check(arguments: argparse.Namespace) -> int:
-    """Every claim consistent with the costs; every cell measured and current; every measured claim holding; every
-    measured time within its declared cost."""
+    """Every claim consistent with the costs; every cell measured; every measured claim holding; every measured time
+    within its declared cost. Stale cells are reported, not failed: their results still judge."""
     found = comparisons()
     failures = claim_failures(found)
     for line in failures:
@@ -428,20 +430,23 @@ def check(arguments: argparse.Namespace) -> int:
         print("no results: run benchmarks/record.py record")
         return 1
     results = load_results(path)
-    missing = stale_or_missing(results, fingerprints())
+    outdated = stale_or_missing(results, fingerprints())
+    missing = [name for name in outdated if name not in results["cells"]]
+    stale = len(outdated) - len(missing)
     failed, smaller, traded = verdicts(results, found)
     slow = growth_failures(results)
     known, slow_cells = quadratic_cells(results)
     slow += [f"{name}: ran past {result['timed_out']} s" for name, result in results["cells"].items() if "timed_out" in result and name not in known]
     slow += [f"{name}: failed ({result['failed'][-120:]})" for name, result in results["cells"].items() if "failed" in result]
     for name in missing:
-        print(f"stale or missing: {name}")
+        print(f"missing: {name}")
     for line in failed:
         print(f"choice fails: {line}")
     for line in slow:
         print(f"cost: {line}")
-    if missing:
-        print(f"{len(missing)} cells to measure: benchmarks/record.py record --binary <build>/benchmark_comparisons")
+    if outdated:
+        print(f"{len(missing)} cells never measured, {stale} stale (measured with other sources): "
+              "benchmarks/record.py record --binary <build>/benchmark_comparisons")
     for name in slow_cells:
         print(f"known: {name} ran past the limit; a declared cost is quadratic over its run ({known[name]})")
     print(f"{path.name}: {len(results['cells'])} cells, {len(found)} claims, {len(failed)} failing, {len(smaller)} slower at a smaller size only, "

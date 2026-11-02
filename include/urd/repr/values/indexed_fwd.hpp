@@ -40,7 +40,6 @@ namespace urd
 namespace detail
 {
 
-/// indexed set (a vector in insertion order, plus a hash table of positions)
 struct indexed_set_decl
 {
     static constexpr std::string_view id = "indexed_set";
@@ -72,7 +71,6 @@ struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 namespace detail
 {
 
-/// stable indexed set (segments that never move, a hash table of positions; no lock)
 struct stable_indexed_set_decl
 {
     static constexpr std::string_view id = "stable_indexed_set";
@@ -102,7 +100,6 @@ struct declaration_of<repr::StableIndexedSet<T, Index>>
 namespace detail
 {
 
-/// concurrent indexed set (segments that never move, a concurrent table of positions)
 struct concurrent_indexed_set_decl
 {
     static constexpr std::string_view id = "concurrent_indexed_set";

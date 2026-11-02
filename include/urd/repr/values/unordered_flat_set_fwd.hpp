@@ -22,7 +22,6 @@ namespace urd
 namespace urd::detail
 {
 
-/// boost::unordered_flat_set (open-addressing hash table)
 struct unordered_flat_set_decl
 {
     static constexpr std::string_view id = "unordered_flat_set";

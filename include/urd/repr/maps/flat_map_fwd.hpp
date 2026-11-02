@@ -30,7 +30,6 @@ namespace urd
 namespace detail
 {
 
-/// boost::container::flat_map (sorted vector)
 struct flat_map_decl
 {
     static constexpr std::string_view id = "flat_map";
@@ -68,7 +67,6 @@ struct declaration_of<boost::container::flat_map<K, V, C, A>>
 namespace detail
 {
 
-/// boost::container::flat_multimap (sorted vector)
 struct flat_multimap_decl
 {
     static constexpr std::string_view id = "flat_multimap";

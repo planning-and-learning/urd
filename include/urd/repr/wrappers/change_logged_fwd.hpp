@@ -6,9 +6,6 @@
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
-#include "urd/repr/maps/dense_map_fwd.hpp"
-#include "urd/repr/values/dense_set_fwd.hpp"
-#include "urd/repr/values/std_set.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -45,7 +42,7 @@ struct change_logged_decl
     static constexpr property_set provides =
         Part::provides.has(keys::dense) ? with(Part::provides, { tracking::change_log, clearing::none }) : with(Part::provides, { tracking::change_log });
     /// The part's, and its own order: the wrapper's type is written for urd::Less.
-    static constexpr property_set relies_on = with(Part::relies_on, { trait_tag<trait::own_order>.about(role_v<role::order>) });
+    static constexpr property_set relies_on = relies(Part::relies_on, traits<role::order, trait::own_order>());
     static constexpr auto gives_elements = Part::gives_elements;
     using operation_costs = costs_over<Part,
                                        cost_entry<operation::erase, costs::lin_changes>,

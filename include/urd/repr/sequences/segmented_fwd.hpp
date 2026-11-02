@@ -30,7 +30,6 @@ namespace urd
 namespace detail
 {
 
-/// segmented vector (elements never move)
 struct segmented_vector_decl
 {
     static constexpr std::string_view id = "segmented_vector";
@@ -58,7 +57,6 @@ struct declaration_of<repr::SegmentedVector<T, N, false, I>>
 namespace detail
 {
 
-/// segmented vector, thread-safe appends
 struct concurrent_segmented_vector_decl
 {
     static constexpr std::string_view id = "concurrent_segmented_vector";

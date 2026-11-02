@@ -28,9 +28,9 @@ namespace urd::detail
 /// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
 /// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
 template<typename S>
-inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&category_table::stops_growth>();
+inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&answer_says::stops_growth>();
 template<typename S>
-inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&category_table::stops_shrinking>();
+inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&answer_says::stops_shrinking>();
 
 /// What a Store and its facets share, whatever its kind: the facts its request decides, and its member types. They come
 /// from the spec S alone, not from the Store, which is still incomplete while its facets are built.
@@ -38,16 +38,16 @@ template<typename S>
 struct store_types
 {
     /// What it holds may change after it is built: no tag stops that (frozen).
-    static constexpr bool changeable = !S::urd_properties.template any_says<&category_table::stops_changes>();
+    static constexpr bool changeable = !S::urd_properties.template any_says<&answer_says::stops_changes>();
     /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
     /// and it is not frozen.
     static constexpr bool writable = appends<typename S::kind> && changeable;
     /// Iterated in an order the request fixes (sorted, insertion_ordered, a sequence): ordered by it.
-    static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&category_table::fixes_iteration_order>();
+    static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&answer_says::fixes_iteration_order>();
     /// Its contents fix the order its elements come in (sorted, canonical, a sequence): hashed by it.
-    static constexpr bool hashed_in_order = S::iterable && S::urd_properties.template any_says<&category_table::fixes_hash_order>();
+    static constexpr bool hashed_in_order = S::iterable && S::urd_properties.template any_says<&answer_says::fixes_hash_order>();
     /// It must hold an element at least (nonempty): it has no default constructor, and what builds it must hold one.
-    static constexpr bool needs_an_element = S::urd_properties.template any_says<&category_table::needs_an_element>();
+    static constexpr bool needs_an_element = S::urd_properties.template any_says<&answer_says::needs_an_element>();
 
     using value_type = typename S::element_type;
     /// What lookups take, as the kind's data says: a map's key, else an element.

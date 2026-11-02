@@ -30,7 +30,6 @@ namespace urd
 namespace detail
 {
 
-/// boost::container::flat_set (sorted vector)
 struct flat_set_decl
 {
     static constexpr std::string_view id = "flat_set";
@@ -69,7 +68,6 @@ struct declaration_of<boost::container::flat_set<T, C, A>>
 namespace detail
 {
 
-/// boost::container::flat_multiset (sorted vector)
 struct flat_multiset_decl
 {
     static constexpr std::string_view id = "flat_multiset";
