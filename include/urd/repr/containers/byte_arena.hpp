@@ -49,6 +49,7 @@ public:
         make_room(amount + padding);
         auto& segment = m_segments[m_current];
         const auto aligned = (m_position + padding) & ~padding;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): an offset into the segment, which make_room sized
         auto* at = segment.storage.get() + aligned;
         if (amount > 0)
             std::memcpy(at, data, amount);
