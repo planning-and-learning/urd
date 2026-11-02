@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/kinds.hpp"
 #include "urd/repr/core/numbered.hpp"
@@ -102,7 +102,7 @@ consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
 template<typename S, typename R>
 using numbered_t = std::conditional_t<hands_out_indices<S>(facets_of<typename S::kind> {}), repr::Numbered<R>, R>;
 
-/// The operations a facet offers (urd::operation, costs.hpp), declared beside the facet as an operation_list: what a Store's container is
+/// The operations a facet offers (urd::operation, cost.hpp), declared beside the facet as an operation_list: what a Store's container is
 /// asked to state a cost for, and what a search knows a kind offers. None by default.
 template<template<typename, typename, typename> class F>
 struct facet_operations

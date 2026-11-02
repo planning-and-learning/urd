@@ -75,6 +75,10 @@ inline constexpr bool is_members_v<Members<Ms...>> = true;
 template<typename T>
 concept MemberIdentified = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
 
+/// @brief T names its members as a Members type (cista_members), so cista can serialize it.
+template<typename T>
+concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
+
 /// @brief T names what identifies it: its identifying members, or a function that returns what identifies it; Hash,
 /// EqualTo and Less then follow from that.
 template<typename T>

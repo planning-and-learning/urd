@@ -3,6 +3,7 @@
 // A multimap whose values are grouped by key, each key's values one span, over a grouping policy.
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -215,7 +216,16 @@ public:
     };
 
 private:
+    friend struct urd::memory_of<GroupedMultiMap>;
+
     Groups m_groups;
 };
 
 }  // namespace urd::repr
+
+/// A grouped multimap holds what its groups hold.
+template<typename Groups>
+struct urd::memory_of<urd::repr::GroupedMultiMap<Groups>>
+{
+    static std::size_t bytes(const repr::GroupedMultiMap<Groups>& held) { return memory_usage(held.m_groups); }
+};

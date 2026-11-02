@@ -49,10 +49,20 @@ private:
         return CsrMultiMap<V, K>(swapped.begin(), swapped.end());
     }
 
+    friend struct urd::memory_of<BidirectionalCsr>;
+
     CsrMultiMap<V, K> m_inverse;
 };
 
 }  // namespace urd::repr
+
+/// The rows by key, and the inverse rows by value.
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::BidirectionalCsr<K, V>>
+{
+    static std::size_t bytes(const repr::BidirectionalCsr<K, V>& held)
+    { return memory_usage(static_cast<const repr::CsrMultiMap<K, V>&>(held)) + memory_usage(held.m_inverse); }
+};
 
 namespace urd
 {

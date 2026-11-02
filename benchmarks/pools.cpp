@@ -70,7 +70,7 @@ void value_states(benchmark::State& state)
         for (const auto handle : handles)
             pool.read(handle, row);
         benchmark::DoNotOptimize(row);
-        state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
+        state.counters["bytes/state"] = static_cast<double>(urd::memory_usage(pool)) / static_cast<double>(states);
     }
     state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }
@@ -107,7 +107,7 @@ void fact_states(benchmark::State& state)
         for (const auto handle : handles)
             total += pool.contains(handle, width / 2) ? 1U : 0U;
         benchmark::DoNotOptimize(total);
-        state.counters["bytes/state"] = static_cast<double>(pool.memory_usage()) / static_cast<double>(states);
+        state.counters["bytes/state"] = static_cast<double>(urd::memory_usage(pool)) / static_cast<double>(states);
     }
     state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(states));
 }

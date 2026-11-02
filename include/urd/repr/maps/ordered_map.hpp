@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/maps/ordered_map_fwd.hpp"
@@ -202,11 +203,20 @@ private:
         return static_cast<size_type>(found - m_keys.begin());
     }
 
+    friend struct urd::memory_of<OrderedMap>;
+
     Keys m_keys;
     std::vector<V> m_values;
 };
 
 }  // namespace urd::repr
+
+/// Its set of keys, and the vector of values beside it.
+template<typename Keys, typename V>
+struct urd::memory_of<urd::repr::OrderedMap<Keys, V>>
+{
+    static std::size_t bytes(const repr::OrderedMap<Keys, V>& held) { return memory_usage(held.m_keys) + memory_usage(held.m_values); }
+};
 
 namespace urd
 {

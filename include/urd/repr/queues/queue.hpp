@@ -4,7 +4,9 @@
 
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/std_memory.hpp"
 #include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
 #include "urd/traits.hpp"
@@ -30,6 +32,8 @@ namespace urd::repr
 template<typename T, leaving Order, typename Compare>
 class Queue
 {
+    friend struct urd::memory_of<Queue>;
+
     static constexpr bool fifo = Order == leaving::first_in;
     using Elements = std::conditional_t<fifo, std::deque<T>, std::vector<T>>;
 
@@ -116,3 +120,10 @@ struct representation_of<heap_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its elements: a deque for first in, first out, else a vector.
+template<typename T, urd::repr::leaving Order, typename Compare>
+struct urd::memory_of<urd::repr::Queue<T, Order, Compare>>
+{
+    static std::size_t bytes(const repr::Queue<T, Order, Compare>& held) { return memory_usage(held.m_elements); }
+};

@@ -75,8 +75,9 @@ struct representation
     std::string id;
     std::string description;
     std::set<std::string> kinds;
-    std::string part;  ///< what a wrapper passes operations on to
-    double words = 0;  ///< memory per element, a wrapper's with its part's
+    std::string part;                            ///< what a wrapper passes operations on to
+    double words = 0;                            ///< memory per element, a wrapper's with its part's
+    urd::quantity words_per = urd::quantity::n;  ///< what words count per: an element, a key, a slot
     std::string holds;
     /// Its tags, for a tool to match a need against: what it provides, and what it relies on, by role.
     std::string provides;
@@ -105,9 +106,15 @@ struct collect<S, urd::detail::type_list<Rs...>>
             auto found = std::ranges::find(into, id, &representation::id);
             if (found == into.end())
             {
-                auto made = representation {
-                    id, std::string(urd::test::name<R>::value), {}, std::string(urd::test::part_name<R>()), urd::test::words_of<R>().value_or(0), {}, {}, {}
-                };
+                auto made = representation { id,
+                                             std::string(urd::test::name<R>::value),
+                                             {},
+                                             std::string(urd::test::part_name<R>()),
+                                             urd::test::words_of<R>().value_or(0),
+                                             urd::test::words_per_of<urd::detail::declaration_t<R>>(),
+                                             {},
+                                             {},
+                                             {} };
                 if constexpr (requires { urd::container_synopsis<R>::holds; })
                     made.holds = std::string(urd::container_synopsis<R>::holds);
                 else
@@ -201,6 +208,7 @@ std::string generate()
         if (!each.part.empty())
             out += ", \"part\": " + json_text(each.part);
         out += ", \"words\": " + std::to_string(each.words);
+        out += ", \"memory\": " + json_text(fmt::format("{}", urd::cost { .grows = urd::growth::linear, .of = each.words_per }));
         out += ", \"costs\": " + costs + "}}";
     }
     return out + "\n]}\n";

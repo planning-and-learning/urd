@@ -4,6 +4,7 @@
 
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
 #include "urd/traits.hpp"
@@ -40,6 +41,8 @@ template<typename T, typename Compare>
 template<typename T, typename Compare>
 class BucketQueue
 {
+    friend struct urd::memory_of<BucketQueue>;
+
 public:
     using value_type = T;
     using size_type = std::size_t;
@@ -112,3 +115,10 @@ struct representation_of<bucket_queue_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// A vector per priority up to the greatest pushed, each keeping its storage.
+template<typename T, typename Compare>
+struct urd::memory_of<urd::repr::BucketQueue<T, Compare>>
+{
+    static std::size_t bytes(const repr::BucketQueue<T, Compare>& held) { return memory_usage(held.m_buckets); }
+};

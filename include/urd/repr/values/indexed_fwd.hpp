@@ -3,7 +3,7 @@
 // A set kept in insertion order whose positions are its elements' indices (an interner), declared with its defaults
 // and what the registry reads of it. Defined in urd/repr/values/indexed.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -56,6 +56,7 @@ struct indexed_set_decl
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
     static constexpr double words = 2.5;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
     static constexpr std::string_view holds = "n elements in order + a table of positions";
 };
@@ -85,6 +86,7 @@ struct stable_indexed_set_decl
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
     static constexpr double words = 2.5;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
     static constexpr std::string_view holds = "segments that never move + a table of positions";
 };
@@ -114,6 +116,7 @@ struct concurrent_indexed_set_decl
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
     static constexpr double words = 2.6;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };

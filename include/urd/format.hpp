@@ -9,7 +9,7 @@
 // Types are written by functions (urd::spelling<T>(), urd::spelling_of_spec<S>()), not by formatting an object: an
 // object whose type names a Store would complete that Store, and writing a request completes nothing.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/spec.hpp"

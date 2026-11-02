@@ -4,6 +4,7 @@
 
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
@@ -37,6 +38,7 @@ template<typename K, bool TrackWords>
 class DenseSet
 {
     static_assert(indexable<K>, "urd::repr::DenseSet: keys must be indices (urd::index_of)");
+    friend struct urd::memory_of<DenseSet>;
 
     using word = std::uint64_t;
     using Bits = BitsetSpan<word>;
@@ -299,6 +301,19 @@ private:
 
 namespace urd
 {
+
+/// Its words, and where TrackWords, the set of those not zero.
+template<typename K, bool TrackWords>
+struct memory_of<repr::DenseSet<K, TrackWords>>
+{
+    static std::size_t bytes(const repr::DenseSet<K, TrackWords>& held)
+    {
+        if constexpr (TrackWords)
+            return memory_usage(held.m_words) + memory_usage(held.m_touched);
+        else
+            return memory_usage(held.m_words);
+    }
+};
 
 template<>
 struct include<"urd/repr/values/dense_set.hpp">

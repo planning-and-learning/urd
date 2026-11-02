@@ -50,9 +50,9 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
        static constexpr urd::detail::property_set relies_on =                            // what a request must promise
            urd::detail::relies(urd::detail::traits<urd::role::order, urd::trait::natural_ordered>());
        static constexpr std::array<urd::tag, 0> gives_elements {};                       // what Stores held in it get
-       using operation_costs = urd::cost_table<urd::cost_entry<urd::operation::insert, urd::costs::log_n>,  // see costs.hpp
+       using operation_costs = urd::cost_table<urd::cost_entry<urd::operation::insert, urd::costs::log_n>,  // see cost.hpp
                                                urd::cost_entry<urd::operation::lookup, urd::costs::log_n>>;
-       static constexpr double words = 3;                                                // memory per element
+       static constexpr double words = 3;  // memory per element, each at least a word; per key (U) or slot with words_per
        static constexpr std::string_view description = "my set", holds = "a node per element";
    };
 
@@ -60,6 +60,9 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
   header, which also defines the marker ``urd::include<"my/my_set.hpp">``.
 - ``declaration_of<MySet<T>>`` names the declaration of a type, with the roles its template arguments give, as the
   kind it serves has them (``roles_of<urd::set<T>, C>()``).
+- ``urd::memory_of<MySet<T>>`` tells the heap it holds, for ``urd::memory_usage``: ``static std::size_t
+  bytes(const MySet<T>&)``, beside the type. The benchmarks check it, and the declared memory, against what is
+  allocated (``benchmarks/record.py``).
 - ``declarations_of<Kind>`` lists a kind's containers in order of preference; a container added to an existing kind
   is placed there.
 
@@ -112,7 +115,7 @@ promises it.
 An operation and a facet
 ------------------------
 
-An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/costs.hpp``); a container
+An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/cost.hpp``); a container
 states its cost by an entry for it in its ``operation_costs``, a ``cost_table`` (a wrapper's, ``costs_over`` its part's
 declaration, passes on every operation it has no entry for). ``tests/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
 ``facet_condition<F>`` (when a Store has it; always, unless specialized) and ``facet_operations<F>`` (the operations

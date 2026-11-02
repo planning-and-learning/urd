@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Measures each container on its own and judges the registry's choices from the results.
 
-    record.py record --binary build/benchmark_comparisons    measure the missing and stale cells (all with --all)
+    record.py record --binary build/benchmark_comparisons    measure the missing and stale cells (all with --all); their
+                                                             memory by benchmark_memory, beside it
     record.py coverage --binary build/benchmark_comparisons  the binary registers exactly the cells (a test)
     record.py check                                          every cell measured; every choice holds (stale ones reported)
     record.py doc [--check]                                  write (or check) the generated part of BENCHMARKS.md
@@ -103,7 +104,7 @@ def code_of(path: Path) -> str:
 def fingerprints() -> dict[str, str]:
     """For each container, the hash of the sources its cells measure: its headers, the Store, the benchmark."""
     common = [*sorted((ROOT / "include" / "urd" / "store").glob("*.hpp")), ROOT / "include" / "urd" / "store.hpp",
-              *(ROOT / "benchmarks" / name for name in ("experiment.cpp", "lifecycle.hpp", "cells.hpp")),
+              *(ROOT / "benchmarks" / name for name in ("experiment.cpp", "lifecycle.hpp", "cells.hpp", "experiments_main.cpp.in")),
               ROOT / "docs" / "SOURCES.json"]
     result = {}
     for container, headers in requests()["headers"].items():
@@ -149,10 +150,10 @@ def escaped(text: str) -> str:
     return re.sub(r"([.^$|?*+()\[\]{}\\])", r"\\\1", text)
 
 
-def measure(binary: Path, cell: str, cpu: int | None, arguments: argparse.Namespace) -> dict | None:
-    """The median time of each operation of one cell's lifecycle (ns), or None where it ran past the time limit."""
+def runs_of(binary: Path, cell: str, cpu: int | None, repetitions: int, arguments: argparse.Namespace) -> list[dict] | dict | None:
+    """The runs of one cell by `binary`, a failure ({"failed": why}), or None where it ran past the time limit."""
     pattern = "^" + escaped(cell) + "(/iterations:[0-9]+)?$"
-    command = [str(binary), f"--benchmark_filter={pattern}", "--benchmark_repetitions=3", "--benchmark_format=json"]
+    command = [str(binary), f"--benchmark_filter={pattern}", f"--benchmark_repetitions={repetitions}", "--benchmark_format=json"]
     if cpu is not None:
         command = ["taskset", "-c", str(cpu), *command]
     try:
@@ -166,7 +167,23 @@ def measure(binary: Path, cell: str, cpu: int | None, arguments: argparse.Namesp
     runs = [r for r in json.loads(done.stdout)["benchmarks"] if r.get("run_type") == "iteration" and not r.get("error_occurred")]
     if not runs:
         raise RuntimeError(f"{cell}: no run (" + done.stderr.strip()[:200] + ")")
-    return {op: round(statistics.median(r[op] for r in runs), 3) for op in complexity()["operations"] if op in runs[0]}
+    return runs
+
+
+def measure(binary: Path, cell: str, cpu: int | None, arguments: argparse.Namespace) -> dict | None:
+    """The median time of each operation of one cell's lifecycle (ns), timed by `binary` with the heap as it is; and
+    apart, by benchmark_memory beside it, the memory its Store holds (once filled: the heap bytes counted, those it
+    tells, over how many elements of what size, and whether they own nothing more). None where it ran past the time
+    limit."""
+    runs = runs_of(binary, cell, cpu, 3, arguments)
+    if not isinstance(runs, list):
+        return runs
+    result = {"ns": {op: round(statistics.median(r[op] for r in runs), 3) for op in complexity()["operations"] if op in runs[0]}}
+    held = runs_of(binary.with_name("benchmark_memory"), cell, cpu, 1, arguments)
+    if isinstance(held, list) and "memory_counted" in held[0]:
+        counted = {name: int(held[0][f"memory_{name}"]) for name in ("counted", "told", "elements", "element_size", "plain")}
+        result["memory"] = {**counted, "plain": bool(counted["plain"])}
+    return result
 
 
 def record(arguments: argparse.Namespace) -> int:
@@ -201,24 +218,25 @@ def record(arguments: argparse.Namespace) -> int:
             cpus.put(cpu)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpus.qsize()) as pool:
-        for done, (cell, ns) in enumerate(pool.map(one, wanted), 1):
+        for done, (cell, measured) in enumerate(pool.map(one, wanted), 1):
             with lock:
-                record_cell(results, path, cell, ns, prints, today, arguments.limit)
-            shown = ("timed out" if ns is None else "failed: " + ns["failed"][-120:] if "failed" in ns
-                     else ", ".join(f"{op} {value:.1f}" for op, value in ns.items()))
-            print(f"[{done}/{len(wanted)}] {cell}: {shown} ns", flush=True)
+                record_cell(results, path, cell, measured, prints, today, arguments.limit)
+            shown = ("timed out" if measured is None else "failed: " + measured["failed"][-120:] if "failed" in measured
+                     else ", ".join(f"{op} {value:.1f}" for op, value in measured["ns"].items()) + " ns"
+                     + (f", {measured['memory']['counted']} bytes" if "memory" in measured else ""))
+            print(f"[{done}/{len(wanted)}] {cell}: {shown}", flush=True)
     return 0
 
 
-def record_cell(results: dict, path: Path, cell: str, ns: dict | None, prints: dict[str, str], today: str, limit: int) -> None:
+def record_cell(results: dict, path: Path, cell: str, measured: dict | None, prints: dict[str, str], today: str, limit: int) -> None:
     """Merges one cell's result in and writes the results."""
     entry = {"fingerprint": prints[container_of(cell)], "recorded": today}
-    if ns is None:
+    if measured is None:
         entry["timed_out"] = limit
-    elif "failed" in ns:
-        entry["failed"] = ns["failed"]
+    elif "failed" in measured:
+        entry["failed"] = measured["failed"]
     else:
-        entry["ns"] = ns
+        entry.update(measured)
     results["cells"][cell] = entry
     results["cells"] = dict(sorted(results["cells"].items()))
     path.write_text(json.dumps(results, indent=1) + "\n")
@@ -362,11 +380,21 @@ def verdicts(results: dict, found: dict[str, dict]) -> tuple[list[str], list[str
             if theirs:
                 totals[size] = (sum(result["ns"].get(op, 0) for op in claim["operations"]), sum(theirs.get(op, 0) for op in claim["operations"]))
         largest = max(totals, default=None)
+        mine_held = results["cells"].get(f"{mine_at}/{largest}", {}).get("memory")
+        theirs_held = results["cells"].get(f"{theirs_at}/{largest}", {}).get("memory")
+        # Measured where both are, else as declared (words per element).
+        less_memory = mine_held["counted"] < theirs_held["counted"] if mine_held and theirs_held else claim["less_memory"]
         for size, (mine, other) in sorted(totals.items()):
             if mine > other + max(other * TOLERANCE, FLOOR):
                 line = f"{key}: at {size}, {mine:.1f} against {other:.1f} ns per element ({claim['requests'][0]})"
-                (smaller if size != largest else traded if claim["less_memory"] else failed).append(line)
+                (smaller if size != largest else traded if less_memory else failed).append(line)
     return failed, smaller, traded
+
+
+def allowed_growth(growth: str, smallest: int, largest: int) -> float:
+    """How much a cost of this growth may grow from `smallest` to `largest` of its quantity."""
+    grown, logs = largest / smallest, math.log(largest) / math.log(smallest)
+    return {"one": 1, "log": logs, "linear": grown, "n_log_n": grown * logs, "n_times": grown * grown}[growth]
 
 
 def growth_failures(results: dict) -> list[str]:
@@ -395,11 +423,43 @@ def growth_failures(results: dict) -> list[str]:
             continue
         smallest, largest = min(by_size), max(by_size)
         (high, over), (low, under) = by_size[largest], by_size[smallest]
-        ratio, grown = high * over / (max(low, FLOOR) * under), largest / smallest
-        allowed = {"one": 1, "log": math.log(largest) / math.log(smallest), "linear": grown, "n_log_n": grown * math.log(largest) / math.log(smallest),
-                   "n_times": grown * grown}[how["growth"]]
-        if ratio > 10 * allowed:
+        ratio = high * over / (max(low, FLOOR) * under)
+        if ratio > 10 * allowed_growth(how["growth"], smallest, largest):
             failures.append(f"{experiment} {operation}: declared {how['cost']}, time grew {ratio:.0f}x from {smallest} to {largest}")
+    return failures
+
+
+def memories(results: dict) -> dict[str, dict[int, dict]]:
+    """The memory each experiment's Store held, by size: small requests left out (their few elements say nothing of
+    growth, and their containers' first allocation is most of it)."""
+    found: dict[str, dict[int, dict]] = {}
+    for name, result in results["cells"].items():
+        experiment, size = name.rsplit("/", 1)
+        if "memory" in result and "/small" not in experiment:
+            found.setdefault(experiment, {})[int(size)] = result["memory"]
+    return found
+
+
+def memory_failures(results: dict) -> list[str]:
+    """Memory that refutes its declaration, or a container's account of it (urd::memory_usage):
+    - words: where the elements own nothing more, the bytes counted per element exceed the declared words, each the
+      size of an element and at least a machine word, by more than the tolerance (words per key or slot are judged per
+      element too: the cells' keys fill their range, and a table's slack is part of its words);
+    - account: memory_usage differs from the bytes counted by more than the tolerance (or 256 bytes)."""
+    table = costs()
+    failures = []
+    for experiment, by_size in sorted(memories(results).items()):
+        container = container_of(experiment)
+        words = table.get(container, {}).get("words")
+        for size, held in sorted(by_size.items()):
+            counted, told = held["counted"], held["told"]
+            if abs(told - counted) > max(TOLERANCE * counted, 256):
+                failures.append(f"{experiment}/{size}: memory_usage tells {told} bytes, {counted} counted")
+            if held["plain"] and words is not None and held["elements"] > 0:
+                per = counted / held["elements"]
+                bound = words * max(8, held["element_size"])
+                if per > bound * (1 + TOLERANCE):
+                    failures.append(f"{experiment}/{size}: {per:.1f} bytes per element, declared {words} words ({bound:.1f} bytes)")
     return failures
 
 
@@ -420,7 +480,8 @@ def quadratic_cells(results: dict) -> tuple[dict[str, str], list[str]]:
 
 def check(arguments: argparse.Namespace) -> int:
     """Every claim consistent with the costs; every cell measured; every measured claim holding; every measured time
-    within its declared cost. Stale cells are reported, not failed: their results still judge."""
+    within its declared cost; every measured memory within its declaration and as its container tells it (memory_failures).
+    Stale cells are reported, not failed: their results still judge; so are cells recorded before memory was measured."""
     found = comparisons()
     failures = claim_failures(found)
     for line in failures:
@@ -435,6 +496,8 @@ def check(arguments: argparse.Namespace) -> int:
     stale = len(outdated) - len(missing)
     failed, smaller, traded = verdicts(results, found)
     slow = growth_failures(results)
+    memory = memory_failures(results)
+    unmeasured = sum(1 for result in results["cells"].values() if "ns" in result and "memory" not in result)
     known, slow_cells = quadratic_cells(results)
     slow += [f"{name}: ran past {result['timed_out']} s" for name, result in results["cells"].items() if "timed_out" in result and name not in known]
     slow += [f"{name}: failed ({result['failed'][-120:]})" for name, result in results["cells"].items() if "failed" in result]
@@ -444,6 +507,10 @@ def check(arguments: argparse.Namespace) -> int:
         print(f"choice fails: {line}")
     for line in slow:
         print(f"cost: {line}")
+    for line in memory:
+        print(f"memory: {line}")
+    if unmeasured:
+        print(f"{unmeasured} cells without memory measured (recorded before it was): benchmarks/record.py record --all")
     if outdated:
         print(f"{len(missing)} cells never measured, {stale} stale (measured with other sources): "
               "benchmarks/record.py record --binary <build>/benchmark_comparisons")
@@ -451,7 +518,7 @@ def check(arguments: argparse.Namespace) -> int:
         print(f"known: {name} ran past the limit; a declared cost is quadratic over its run ({known[name]})")
     print(f"{path.name}: {len(results['cells'])} cells, {len(found)} claims, {len(failed)} failing, {len(smaller)} slower at a smaller size only, "
           f"{len(traded)} slower for less memory")
-    return 1 if failures or missing or failed or slow else 0
+    return 1 if failures or missing or failed or slow or memory else 0
 
 
 def doc_block(results: dict, path: Path) -> str:
@@ -479,7 +546,40 @@ def doc_block(results: dict, path: Path) -> str:
     lines += [f"- {line}" for line in smaller] or ["None."]
     lines += ["", "### Slower for less memory", ""]
     lines += [f"- {line}" for line in traded] or ["None."]
+    lines += memory_block(results)
     return "\n".join([*lines, "", END])
+
+
+def memory_block(results: dict) -> list[str]:
+    """The memory part of BENCHMARKS.md: per container, its declared memory, the most it was measured to take per
+    element where its elements own nothing more (in words the size of an element, at least a machine word), and how far
+    memory_usage was from what was counted; then the memory that fails."""
+    table = costs()
+    measured: dict[str, dict] = {}
+    for experiment, by_size in memories(results).items():
+        row = measured.setdefault(container_of(experiment), {"words": None, "off": 0.0})
+        for held in by_size.values():
+            if held["counted"] > 0:
+                row["off"] = max(row["off"], abs(held["told"] - held["counted"]) / held["counted"])
+            if held["plain"] and held["elements"] > 0:
+                words = held["counted"] / held["elements"] / max(8, held["element_size"])
+                row["words"] = max(row["words"] or 0.0, words)
+    lines = ["", "## Memory, measured", "",
+             "The heap each container's Store holds once its lifecycle filled it, counted apart from the timing (benchmark_memory) and "
+             "as `urd::memory_usage` tells it. Words are per element, each the size of an element and at least a "
+             "machine word, at most over the sizes measured (where the elements own nothing more).", "",
+             "| Container | Declared | Measured words | memory_usage off by |", "|---|---|---|---|"]
+    for container in sorted(measured):
+        declared = f"{table[container]['memory']}, {table[container]['words']:g} words" if container in table else "—"
+        row = measured[container]
+        words = "—" if row["words"] is None else f"{row['words']:.2f}"
+        lines.append(f"| `{container}` | {declared} | {words} | {row['off']:.1%} |")
+    if not measured:
+        lines.append("| — | | | |")
+    failures = memory_failures(results)
+    lines += ["", "### Memory that fails", ""]
+    lines += [f"- {line}" for line in failures] or ["None."]
+    return lines
 
 
 def doc(arguments: argparse.Namespace) -> int:

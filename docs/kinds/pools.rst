@@ -114,7 +114,6 @@ Member functions: interning pools (``handles, unique``)
    The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set its
    bits (``BitsetSpan``). Valid until the pool is cleared.
 
-.. cpp:function:: std::size_t memory_usage() const
 .. cpp:function:: void clear()
 
    Forgets every row; the handles given so far mean nothing after. Shrinkable pools.

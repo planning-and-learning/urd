@@ -2,6 +2,7 @@
 
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
@@ -12,7 +13,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <numeric>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -157,14 +157,6 @@ public:
             std::ranges::copy(stored(handle), out.begin());
     }
 
-    /// The bytes its storage takes: the rows' elements, their vectors, and the table.
-    [[nodiscard]] size_type memory_usage() const
-    {
-        return std::accumulate(m_rows.begin(),
-                               m_rows.end(),
-                               m_rows.memory_usage(),
-                               [](size_type total, const auto& row) { return total + row.capacity() * sizeof(typename stored_row::value_type); });
-    }
     void reserve(size_type count) { m_rows.reserve(count); }
     void clear() { m_rows.clear(); }
     /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
@@ -212,6 +204,8 @@ private:
         bits[at / Bits::Digits] |= word { 1 } << (at % Bits::Digits);
     }
 
+    friend struct urd::memory_of<RowInterner>;
+
     InterningTable<stored_row, ThreadSafe> m_rows;
 };
 
@@ -219,6 +213,13 @@ private:
 
 namespace urd
 {
+
+/// Its table of rows, each row's vector with it.
+template<typename Row, bool ThreadSafe>
+struct memory_of<repr::RowInterner<Row, ThreadSafe>>
+{
+    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe>& held) { return memory_usage(held.m_rows); }
+};
 
 template<>
 struct include<"urd/repr/pools/pools.hpp">

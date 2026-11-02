@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/cost.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 
@@ -78,8 +79,6 @@ public:
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
-    /// The bytes the stored rows take.
-    [[nodiscard]] std::size_t memory_usage() const { return constant().memory_usage(); }
     /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
     /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
     /// row's views stay valid, the erased row's do not.

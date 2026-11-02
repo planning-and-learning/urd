@@ -4,7 +4,7 @@
 // and written nowhere else: container_traits (what it provides, where its template arguments give elements it takes),
 // container_costs and container_synopsis (the declaration's), and defined_in (its own header, the last of its headers).
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/traits.hpp"
 

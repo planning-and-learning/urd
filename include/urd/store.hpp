@@ -19,6 +19,7 @@
 #include "urd/store/iteration.hpp"
 #include "urd/store/layers.hpp"
 #include "urd/store/lookup.hpp"
+#include "urd/store/memory.hpp"
 #include "urd/store/multi_values.hpp"
 #include "urd/store/ordered_lookup.hpp"
 #include "urd/store/ordering.hpp"

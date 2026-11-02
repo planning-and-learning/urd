@@ -3,6 +3,7 @@
 // Rows that keep their storage for reuse: a vector of row Stores whose erased rows wait to be refilled.
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/sequences/rows_fwd.hpp"
@@ -30,6 +31,8 @@ namespace urd::repr
 template<typename Inner>
 class RowPool
 {
+    friend struct urd::memory_of<RowPool>;
+
 public:
     using value_type = Inner;
     using iterator = typename std::vector<Inner>::iterator;
@@ -135,3 +138,10 @@ struct representation_of<row_pool_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its rows, those kept for reuse included, each with what it holds.
+template<typename Inner>
+struct urd::memory_of<urd::repr::RowPool<Inner>>
+{
+    static std::size_t bytes(const repr::RowPool<Inner>& held) { return memory_usage(held.m_rows); }
+};

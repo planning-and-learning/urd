@@ -3,7 +3,7 @@
 // A map in insertion order over an insertion-ordered set of keys, declared with what the registry reads of it.
 // Defined in urd/repr/maps/ordered_map.hpp; its keys (an indexed set or a sparse set) in theirs.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"

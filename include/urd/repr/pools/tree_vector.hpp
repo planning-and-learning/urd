@@ -62,7 +62,6 @@ inline constexpr std::uint32_t unused_child = std::numeric_limits<std::uint32_t>
 struct NoLeaves
 {
     static constexpr std::size_t size() noexcept { return 0; }
-    static constexpr std::size_t memory_usage() noexcept { return 0; }
     static void clear() noexcept {}
 };
 
@@ -160,7 +159,6 @@ public:
             read_recursive(handle.root, out);
     }
 
-    [[nodiscard]] size_type memory_usage() const { return m_leaves.memory_usage() + m_nodes.memory_usage(); }
     [[nodiscard]] size_type num_leaves() const { return m_leaves.size(); }
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
     [[nodiscard]] bool empty() const { return m_leaves.size() == 0 && m_nodes.empty(); }
@@ -276,6 +274,8 @@ private:
             read_recursive(node[k], values.subspan(offset, std::min(step, size - offset)));
     }
 
+    friend struct urd::memory_of<TreeVectorSet>;
+
     [[no_unique_address]] Leaves m_leaves;
     InterningTable<Children, ThreadSafe> m_nodes;
 };
@@ -284,6 +284,13 @@ private:
 
 namespace urd
 {
+
+/// Its leaf table (none where leaves are inline) and its node table.
+template<typename Row, std::size_t Arity, bool ThreadSafe>
+struct memory_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
+{
+    static std::size_t bytes(const repr::TreeVectorSet<Row, Arity, ThreadSafe>& held) { return memory_usage(held.m_leaves) + memory_usage(held.m_nodes); }
+};
 
 template<>
 struct include<"urd/repr/pools/tree_vector.hpp">

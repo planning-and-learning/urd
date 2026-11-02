@@ -3,7 +3,7 @@
 // A set that records what changed since its log was cleared, declared with what the registry reads of it. Defined in
 // urd/repr/wrappers/change_logged.hpp (its log is two indexed sets); the set it logs in its own header.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"
@@ -30,6 +30,8 @@ namespace detail
 inline constexpr std::string_view change_logged_prefix = "change_logged_";
 inline constexpr std::string_view change_logged_description = "change-logged (plus what was added and removed) ";
 
+// ponytail: the log grows in the changes since it was cleared (holds says so); words count per the part's unit
+// only. Words per change besides are the upgrade where the log's memory must be judged.
 /// A set that logs its changes, over Part's declaration: its id and words are the part's, prefixed; its offer the
 /// part's with change_log (and any clear for a dense part, whose words a clear must walk).
 template<typename Part>
@@ -48,7 +50,7 @@ struct change_logged_decl
                                        cost_entry<operation::erase, costs::lin_changes>,
                                        // A clear walks the elements, then clears the part: in every part logged, iterating costs at least clearing.
                                        cost_entry<operation::clear, Part::operation_costs::template of<operation::iterate>().value()>>;
-    static constexpr double words = Part::words + 1;
+    static constexpr double words = Part::words + 2;
     static constexpr std::string_view description = joined<change_logged_description, Part::description>::value;
     static constexpr std::string_view holds = "+ the elements added and removed";
 };

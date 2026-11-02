@@ -2,6 +2,7 @@
 
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/slots/slots_fwd.hpp"
@@ -28,6 +29,8 @@ namespace urd::repr
 template<typename T, bool ThreadSafe>
 class SlotVector
 {
+    friend struct urd::memory_of<SlotVector>;
+
     struct NoMutex
     {
         static void lock() noexcept {}
@@ -153,3 +156,10 @@ struct representation_of<thread_safe_slot_vector_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its slots, freed ones included, and the free list.
+template<typename T, bool ThreadSafe>
+struct urd::memory_of<urd::repr::SlotVector<T, ThreadSafe>>
+{
+    static std::size_t bytes(const repr::SlotVector<T, ThreadSafe>& held) { return memory_usage(held.m_slots) + memory_usage(held.m_free); }
+};

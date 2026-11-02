@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/partitions/disjoint_sets_fwd.hpp"
 #include "urd/traits.hpp"
@@ -22,6 +23,8 @@ namespace urd::repr
 template<typename K>
 class DisjointSets
 {
+    friend struct urd::memory_of<DisjointSets>;
+
 public:
     using value_type = K;
     using key_type = K;
@@ -121,3 +124,10 @@ struct representation_of<disjoint_sets_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// A parent and a class size per key.
+template<typename K>
+struct urd::memory_of<urd::repr::DisjointSets<K>>
+{
+    static std::size_t bytes(const repr::DisjointSets<K>& held) { return memory_usage(held.m_parent) + memory_usage(held.m_sizes); }
+};

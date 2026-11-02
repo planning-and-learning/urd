@@ -3,6 +3,7 @@
 // Rows of rows: one offsets array per level and the values in one array, rows changed in place.
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/sequences/rows_fwd.hpp"
@@ -53,6 +54,8 @@ struct shape_below<Jagged<Inner, TrackRows>>
 template<typename Inner, bool TrackRows>
 class Jagged
 {
+    friend struct urd::memory_of<Jagged>;
+
     using Si = container_traits<Inner>;
     using T = typename Si::element_type;
     static constexpr bool leaf = !is_store<T>;
@@ -379,3 +382,11 @@ struct representation_of<tracked_jagged_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its offsets, its elements (or the rows below, or a dense set's words), the lengths and the touched rows.
+template<typename Inner, bool TrackRows>
+struct urd::memory_of<urd::repr::Jagged<Inner, TrackRows>>
+{
+    static std::size_t bytes(const repr::Jagged<Inner, TrackRows>& held)
+    { return memory_usage(held.m_offsets) + memory_usage(held.m_data) + memory_usage(held.m_lengths) + memory_usage(held.m_touched); }
+};

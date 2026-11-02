@@ -3,10 +3,12 @@
 // gtl's sharded hash maps (flat, or a node per element), defined. Include it where a Store resolves to one.
 
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/gtl_memory.hpp"
 #include "urd/repr/maps/parallel_hash_map_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <concepts>
+#include <cstddef>
 #include <gtl/phmap.hpp>
 #include <memory>
 #include <mutex>
@@ -96,6 +98,17 @@ public:
 };
 
 }  // namespace urd::repr
+
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::ParallelHashMap<K, V>>
+{
+    static std::size_t bytes(const repr::ParallelHashMap<K, V>& held) { return detail::sharded_table_bytes(held); }
+};
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::ParallelNodeHashMap<K, V>>
+{
+    static std::size_t bytes(const repr::ParallelNodeHashMap<K, V>& held) { return detail::sharded_table_bytes(held); }
+};
 
 namespace urd::detail
 {

@@ -4,6 +4,7 @@
 
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/traits.hpp"
@@ -35,6 +36,7 @@ template<typename K, bool KeepOrder>
 class SparseSet
 {
     static_assert(indexable<K>, "urd::repr::SparseSet: keys must be indices (urd::index_of)");
+    friend struct urd::memory_of<SparseSet>;
 
 public:
     using iterator = typename std::vector<K>::const_iterator;
@@ -150,6 +152,13 @@ private:
 
 namespace urd
 {
+
+/// Its members, and the place of each index.
+template<typename K, bool KeepOrder>
+struct memory_of<repr::SparseSet<K, KeepOrder>>
+{
+    static std::size_t bytes(const repr::SparseSet<K, KeepOrder>& held) { return memory_usage(held.m_members) + memory_usage(held.m_places); }
+};
 
 template<>
 struct include<"urd/repr/values/sparse_set.hpp">

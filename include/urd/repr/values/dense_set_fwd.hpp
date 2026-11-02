@@ -5,7 +5,7 @@
 // names them for any element type, so they are unconstrained templates; their container_traits declare properties
 // only for indexable keys.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -50,7 +50,8 @@ struct dense_set_decl
                                        cost_entry<operation::erase, costs::one>,
                                        cost_entry<operation::clear, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
-    static constexpr double words = 0.016;
+    static constexpr double words = 0.03;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense set (a bitset over indices)";
     static constexpr std::string_view holds = "U bits";
 };
@@ -82,6 +83,7 @@ struct tracked_dense_set_decl
                                        cost_entry<operation::clear, costs::lin_n>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 0.03;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense set tracking its words (a bitset over indices, cleared by the words it touched)";
     static constexpr std::string_view holds = "U bits + the indices of the words in use";
 };
@@ -112,6 +114,7 @@ struct sparse_set_decl
                                        cost_entry<operation::clear, costs::one>,
                                        cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 2;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "sparse set (members array plus index positions, O(1) clear)";
     static constexpr std::string_view holds = "n members + U positions";
 };
@@ -143,6 +146,7 @@ struct ordered_sparse_set_decl
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
     static constexpr double words = 2;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "sparse set keeping insertion order (erase shifts the members after it)";
     static constexpr std::string_view holds = "n members in insertion order + U positions";
 };

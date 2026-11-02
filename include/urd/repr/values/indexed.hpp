@@ -3,9 +3,11 @@
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
+#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -42,6 +44,7 @@ template<typename T, typename Index, bool ThreadSafe, bool Stable>
 class IndexedSet
 {
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
+    friend struct urd::memory_of<IndexedSet>;
     using Elements = std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>;
 
     /// A position in the vector, as the table holds it: a type of its own, so that it is never taken for an element,
@@ -129,23 +132,6 @@ public:
         m_elements->reserve(count);
         m_positions.reserve(count);
     }
-    /// The bytes its storage takes: the elements' storage (segments, or the vector's capacity), and the table's
-    /// slots (with their metadata byte; a concurrent table counts its elements only, not its slack).
-    [[nodiscard]] size_type memory_usage() const
-    {
-        const auto elements = [this]
-        {
-            if constexpr (Stable)
-                return m_elements->memory_usage();
-            else
-                return m_elements->capacity() * sizeof(T);
-        }();
-        if constexpr (ThreadSafe)
-            return elements + m_positions.size() * (sizeof(Position) + 1);
-        else
-            return elements + m_positions.bucket_count() * (sizeof(Position) + 1);
-    }
-
     [[nodiscard]] iterator find(const T& element) const
     {
         const auto found = position_of(element);
@@ -287,6 +273,14 @@ private:
 
 namespace urd
 {
+
+/// Its elements (on the heap, with their storage) and the table of their positions.
+template<typename T, typename Index, bool ThreadSafe, bool Stable>
+struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable>>
+{
+    static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable>& held)
+    { return sizeof(*held.m_elements) + memory_usage(*held.m_elements) + memory_usage(held.m_positions); }
+};
 
 template<>
 struct include<"urd/repr/values/indexed.hpp">

@@ -3,6 +3,7 @@
 // The grouping of a growing multimap by dense key: a vector of values per index.
 
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -105,8 +106,17 @@ public:
     }
 
 private:
+    friend struct urd::memory_of<DenseGroups>;
+
     std::vector<std::vector<V>> m_rows;
     std::size_t m_count = 0;
 };
 
 }  // namespace urd::repr
+
+/// A row per key index, and each row's values.
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::DenseGroups<K, V>>
+{
+    static std::size_t bytes(const repr::DenseGroups<K, V>& held) { return memory_usage(held.m_rows); }
+};

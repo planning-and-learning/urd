@@ -4,7 +4,7 @@
 // changes. Declared with what the registry reads of them; defined in urd/repr/wrappers/layer.hpp and
 // urd/repr/wrappers/layered_pool.hpp. What is layered is defined in its own header.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"

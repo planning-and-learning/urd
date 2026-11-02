@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -36,6 +36,7 @@ struct unordered_flat_set_decl
                                        cost_entry<operation::clear, costs::lin_capacity>,
                                        cost_entry<operation::iterate, costs::lin_capacity>>;
     static constexpr double words = 1.3;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "boost::unordered_flat_set (open-addressing hash table)";
     static constexpr std::string_view holds = "~n/0.875 slots + 1 byte each; retains";
 };

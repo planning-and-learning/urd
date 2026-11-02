@@ -13,7 +13,8 @@
 //         static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
 //         static constexpr std::array<tag, 1> gives_elements { memory::reclaims };     // what Stores held as elements get
 //         using operation_costs = cost_table<cost_entry<operation::insert, costs::one>, …>;  // urd::container_costs
-//         static constexpr double words = …;                                  // memory per element
+//         static constexpr double words = …;      // memory: at most so many words per element (urd/memory.hpp)
+//         static constexpr quantity words_per = quantity::keys;  // optional: per key of its range, or slot (capacity)
 //         static constexpr std::string_view description = "…", holds = "…";  // in words
 //     };
 //

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
@@ -55,6 +55,7 @@ struct parallel_hash_set_decl
                                        cost_entry<operation::clear, costs::lin_capacity>,
                                        cost_entry<operation::iterate, costs::lin_capacity>>;
     static constexpr double words = 1.3;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "parallel hash set (gtl: shards, each behind its mutex)";
     static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
 };

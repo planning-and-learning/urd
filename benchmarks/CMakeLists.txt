@@ -21,3 +21,7 @@ endforeach()
 configure_file(experiments_main.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp @ONLY)
 add_executable(benchmark_comparisons ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp)
 target_link_libraries(benchmark_comparisons PRIVATE ${experiment_objects} benchmark::benchmark fmt::fmt)
+# The same cells, measuring only memory: the heap counted, so the times above run without it.
+add_executable(benchmark_memory ${CMAKE_CURRENT_BINARY_DIR}/experiments_main.cpp)
+target_compile_definitions(benchmark_memory PRIVATE URD_COUNT_HEAP)
+target_link_libraries(benchmark_memory PRIVATE ${experiment_objects} benchmark::benchmark fmt::fmt)

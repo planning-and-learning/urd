@@ -1,6 +1,6 @@
 #pragma once
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
 #include "urd/traits.hpp"

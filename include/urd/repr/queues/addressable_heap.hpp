@@ -4,6 +4,7 @@
 
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
@@ -30,6 +31,8 @@ namespace urd::repr
 template<typename T, typename Compare>
 class AddressableHeap
 {
+    friend struct urd::memory_of<AddressableHeap>;
+
 public:
     using value_type = T;
     using size_type = std::size_t;
@@ -162,3 +165,18 @@ struct representation_of<addressable_heap_decl, S>
 };
 
 }  // namespace urd::detail
+
+/// Its heap of handles, its slots by handle (those given out again included) with what their elements own, and the
+/// free handles.
+template<typename T, typename Compare>
+struct urd::memory_of<urd::repr::AddressableHeap<T, Compare>>
+{
+    static std::size_t bytes(const repr::AddressableHeap<T, Compare>& held)
+    {
+        auto result = memory_usage(held.m_heap) + memory_usage(held.m_free) + (held.m_slots.capacity() * sizeof(typename decltype(held.m_slots)::value_type));
+        if constexpr (!std::is_trivially_copyable_v<T>)
+            for (const auto& slot : held.m_slots)
+                result += memory_usage(slot.element);
+        return result;
+    }
+};

@@ -3,6 +3,7 @@
 // Boost's flat map and multimap (a sorted vector of entries), defined. Include it where a Store resolves to one.
 
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/maps/flat_map_fwd.hpp"
 #include "urd/traits.hpp"
 

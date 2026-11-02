@@ -1,9 +1,10 @@
 #pragma once
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
+#include "urd/repr/core/std_memory.hpp"
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
@@ -101,7 +102,7 @@ struct unordered_map_decl
                                        cost_entry<operation::erase, costs::one_e>,
                                        cost_entry<operation::clear, costs::lin_n>,
                                        cost_entry<operation::iterate, costs::lin_n>>;
-    static constexpr double words = 4;
+    static constexpr double words = 5;
     static constexpr std::string_view description = "std::unordered_map (hash table)";
     static constexpr std::string_view holds = "a node per entry + buckets; stable references";
 };

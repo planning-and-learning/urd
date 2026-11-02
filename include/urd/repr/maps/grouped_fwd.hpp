@@ -4,7 +4,7 @@
 // (frozen, by key index, with or without the inverse), growing rows per index, and postings in a hash table. Defined
 // in urd/repr/maps/csr_multimap.hpp, bidirectional_csr.hpp, dense_multimap.hpp and postings.hpp.
 
-#include "urd/costs.hpp"
+#include "urd/cost.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -62,6 +62,7 @@ struct csr_multimap_decl
                                        cost_entry<operation::ordered_lookup, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.2;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "CSR multimap (each key's values together, in key order)";
     static constexpr std::string_view holds = "n values + U + 1 offsets";
 };
@@ -92,6 +93,7 @@ struct dense_multimap_decl
                                        cost_entry<operation::clear, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 4;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense multimap (a vector of values per index, growing)";
     static constexpr std::string_view holds = "a vector per index; retains";
 };
@@ -121,6 +123,7 @@ struct posting_map_decl
                                        cost_entry<operation::clear, costs::lin_capacity>,
                                        cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 4;
+    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "postings (a flat hash table of value vectors)";
     static constexpr std::string_view holds = "a vector of values per key";
 };
@@ -152,6 +155,7 @@ struct bidirectional_csr_decl
                                        cost_entry<operation::ordered_lookup, costs::lin_keys>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 2.4;
+    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "bidirectional CSR (each key's values and each value's keys together)";
     static constexpr std::string_view holds = "n values + U + 1 offsets, both ways";
 };

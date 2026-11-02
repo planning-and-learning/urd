@@ -3,6 +3,8 @@
 // A byte arena: segments that never move, so what was written stays where it is. Copied in shape from yggdrasil
 // (include/yggdrasil/buffer/segmented_buffer.hpp), names moved to urd::repr.
 
+#include "urd/memory.hpp"
+
 #include <algorithm>
 #include <bit>
 #include <cassert>
@@ -77,6 +79,8 @@ public:
     [[nodiscard]] std::size_t segments() const noexcept { return m_segments.size(); }
 
 private:
+    friend struct urd::memory_of<ByteArena>;
+
     /// A current segment with `needed` bytes free: this one, a later one kept from before a clear, or a new one.
     void make_room(std::size_t needed)
     {
@@ -110,3 +114,10 @@ private:
 };
 
 }  // namespace urd::repr
+
+/// Its segments, and the table of them.
+template<>
+struct urd::memory_of<urd::repr::ByteArena>
+{
+    static std::size_t bytes(const repr::ByteArena& held) { return held.capacity() + (held.m_segments.capacity() * sizeof(repr::ByteArena::Segment)); }
+};

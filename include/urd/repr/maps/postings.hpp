@@ -7,6 +7,7 @@
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/repr/maps/grouped_multimap.hpp"
 #include "urd/traits.hpp"
@@ -89,11 +90,20 @@ public:
     }
 
 private:
+    friend struct urd::memory_of<HashGroups>;
+
     Table m_table;
     std::size_t m_count = 0;
 };
 
 }  // namespace urd::repr
+
+/// The table of keys, and each key's row of values.
+template<typename K, typename V>
+struct urd::memory_of<urd::repr::HashGroups<K, V>>
+{
+    static std::size_t bytes(const repr::HashGroups<K, V>& held) { return memory_usage(held.m_table); }
+};
 
 namespace urd
 {
