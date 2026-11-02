@@ -37,7 +37,6 @@ namespace urd
 namespace detail
 {
 
-/// record interner (trivially copyable records in an indexed set)
 struct record_interner_decl
 {
     static constexpr std::string_view id = "record_interner";
@@ -86,7 +85,6 @@ struct declaration_of<repr::RecordInterner<T, false>>
 namespace detail
 {
 
-/// record interner over segments that never move (no lock)
 struct stable_record_interner_decl
 {
     static constexpr std::string_view id = "stable_record_interner";
@@ -136,7 +134,6 @@ struct declaration_of<repr::RecordInterner<T, false, true>>
 namespace detail
 {
 
-/// record interner, thread-safe
 struct thread_safe_record_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_record_interner";
@@ -186,7 +183,6 @@ struct declaration_of<repr::RecordInterner<T, true>>
 namespace detail
 {
 
-/// arena interner (records serialized by cista into a byte arena)
 struct arena_interner_decl
 {
     static constexpr std::string_view id = "arena_interner";
@@ -215,7 +211,6 @@ struct declaration_of<repr::ArenaInterner<T, false>>
 namespace detail
 {
 
-/// arena interner, thread-safe
 struct thread_safe_arena_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_arena_interner";

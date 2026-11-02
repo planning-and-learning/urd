@@ -19,34 +19,48 @@
 namespace urd
 {
 
+/// The heading of a category outside semantics: none.
+struct no_heading
+{
+    static constexpr std::string_view id = "";
+    static constexpr std::string_view title = "";
+};
+
+/// What an answer says of a Store, each false unless the tag says so (`static constexpr answer_says says { .x = true }`):
+/// demanded (a container that has it needs the request to promise it); whether it stops the Store growing, shrinking
+/// or changing an element in place; whether the Store must always hold an element; whether it fixes the order the
+/// Store is iterated in or hashed in; and whether giving it costs something (storage by index, nodes, locks,
+/// generations, a log, a parent, shared parts), so that a container that gives it unasked is a surprise, unlike one
+/// that also happens to keep its memory or lie contiguous. A tag derived from another restates what it keeps of it.
+struct answer_says
+{
+    bool demanded = false;
+    bool stops_growth = false;
+    bool stops_shrinking = false;
+    bool stops_changes = false;
+    bool needs_an_element = false;
+    bool fixes_iteration_order = false;
+    bool fixes_hash_order = false;
+    bool costly = false;
+};
+
 /// What every tag says unless it says otherwise: every category's root derives from it, and its answers from the root,
 /// so each piece of a tag's data is always there (read by urd/property_set.hpp, table_of_tags). How its category is
-/// matched: exact (a container holds what the request holds, no more), demanded (a container that has it needs the
-/// request to promise it), request_only (no container declares it). What it means for a Store, as lists of tag types:
-/// what it implies (frozen: stable_refs), what of that the Store keeps itself and asks of no container (frozen:
-/// stable_refs), what it promises its container (nonempty: monotone), and which containers come after the others
-/// (holding these: frozen and small put stable_refs later). Whether it stops the Store growing, shrinking or changing an
-/// element in place, whether the Store must always hold an element, and whether it fixes the order the Store is
-/// iterated in or hashed in.
+/// matched: exact (a container holds what the request holds, no more), request_only (no container declares it). What
+/// it means for a Store, as lists of tag types: what it implies (frozen: stable_refs), what of that the Store keeps
+/// itself and asks of no container (frozen: stable_refs), what it promises its container (nonempty: monotone), and
+/// which containers come after the others (holding these: frozen and small put stable_refs later). What else it says
+/// of a Store (says), and its category's reading heading (none outside semantics).
 struct tag_defaults
 {
     static constexpr bool exact = false;
-    static constexpr bool demanded = false;
     static constexpr bool request_only = false;
     using implies = detail::type_list<>;
     using kept_by_store = detail::type_list<>;
     using promises = detail::type_list<>;
     using later = detail::type_list<>;
-    static constexpr bool stops_growth = false;
-    static constexpr bool stops_shrinking = false;
-    static constexpr bool stops_changes = false;
-    static constexpr bool needs_an_element = false;
-    static constexpr bool fixes_iteration_order = false;
-    static constexpr bool fixes_hash_order = false;
-    /// Whether giving it costs something (storage by index, nodes, locks, generations, a log, a parent, shared parts):
-    /// a container that gives it unasked is a surprise, unlike one that also happens to keep its memory or lie
-    /// contiguous.
-    static constexpr bool costly = false;
+    static constexpr answer_says says {};
+    using heading = no_heading;
 };
 
 // The groups, by what leaving out a tag one needs causes. Every category is in exactly one.
@@ -114,13 +128,6 @@ struct memory_heading
 /// The headings, in order.
 using all_headings = std::tuple<promise_heading, holds_heading, more_heading, memory_heading>;
 
-/// The heading of a category outside semantics: none.
-struct no_heading
-{
-    static constexpr std::string_view id = "";
-    static constexpr std::string_view title = "";
-};
-
 /// The tag types of a category's enum E: its none, then its answers, in the order of E (each category's, beside its
 /// tags below).
 template<typename E>
@@ -163,26 +170,24 @@ struct sorted : any_order
 {
     static constexpr auto value = order::sorted;
     /// Its contents fix the order it is iterated and hashed in.
-    static constexpr bool fixes_iteration_order = true;
-    static constexpr bool fixes_hash_order = true;
     static constexpr std::string_view name = "sorted";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Iterated in ascending order by urd::Less.";
     static constexpr std::array<std::string_view, 4> phrases { "sorted", "in order", "ordered by key", "range queries" };
+    static constexpr answer_says says { .fixes_iteration_order = true, .fixes_hash_order = true };
 };
 /// In the order they were inserted: a new element goes last, and the others keep their places.
 struct insertion_ordered : any_order
 {
     static constexpr auto value = order::insertion_ordered;
     /// It is iterated in the order its elements came.
-    static constexpr bool fixes_iteration_order = true;
     static constexpr std::string_view name = "insertion_ordered";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Iterated in the order elements were first inserted.";
     static constexpr std::array<std::string_view, 3> phrases { "insertion order", "first come first listed", "keeps the order added" };
+    static constexpr answer_says says { .fixes_iteration_order = true };
 };
 
-/// The tag types oforder: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<order>
 {
@@ -217,7 +222,6 @@ struct unique : duplicates
     static constexpr std::array<std::string_view, 3> phrases { "no duplicates", "distinct", "each at most once" };
 };
 
-/// The tag types ofuniqueness: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<uniqueness>
 {
@@ -244,14 +248,13 @@ struct any_keys : tag_defaults
 struct dense : any_keys
 {
     static constexpr auto value = keys::dense;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "dense";
     static constexpr std::string_view promise = "caller";
     static constexpr std::string_view description = "The keys are 0..n-1, or nearly so: indices filling their range.";
     static constexpr std::array<std::string_view, 4> phrases { "ids", "indices", "vertices numbered 0..n-1", "small key range" };
     /// Demanded: a container that keeps it stores by index, so it needs keys that are indices, which the request must
     /// promise (its storage grows with the largest key, and a negative key is no index at all).
-    static constexpr bool demanded = true;
+    static constexpr answer_says says { .demanded = true, .costly = true };
 };
 /// The keys are few compared to their range.
 struct sparse : any_keys
@@ -263,7 +266,6 @@ struct sparse : any_keys
     static constexpr std::array<std::string_view, 3> phrases { "few keys in a large range", "scattered keys", "arbitrary keys" };
 };
 
-/// The tag types ofkeys: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<keys>
 {
@@ -294,14 +296,13 @@ struct moving_refs : tag_defaults
 struct stable_refs : moving_refs
 {
     static constexpr auto value = referencing::stable_refs;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "stable_refs";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A reference to an element stays valid until that element is removed.";
     static constexpr std::array<std::string_view, 3> phrases { "pointers stay valid", "stable addresses", "references survive inserts" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofreferencing: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<referencing>
 {
@@ -333,7 +334,6 @@ struct contiguous : any_layout
     static constexpr std::array<std::string_view, 4> phrases { "contiguous", "cache friendly", "as a span", "one array" };
 };
 
-/// The tag types oflayout: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<layout>
 {
@@ -360,14 +360,13 @@ struct canonical : any_representation
 {
     static constexpr auto value = representation::canonical;
     /// Equal contents are equal bytes, so its order is fixed by its contents for hashing.
-    static constexpr bool fixes_hash_order = true;
     static constexpr std::string_view name = "canonical";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Equal contents have equal representations.";
     static constexpr std::array<std::string_view, 3> phrases { "canonical", "same contents same bytes", "hashable by contents" };
+    static constexpr answer_says says { .fixes_hash_order = true };
 };
 
-/// The tag types ofrepresentation: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<representation>
 {
@@ -402,14 +401,13 @@ struct single_threaded : tag_defaults
 struct concurrent : single_threaded
 {
     static constexpr auto value = threading::concurrent;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "concurrent";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Threads share it: inserts from several threads at once, and the reads each kind allows beside them.";
     static constexpr std::array<std::string_view, 3> phrases { "thread safe", "shared between threads", "parallel inserts" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofthreading: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<threading>
 {
@@ -430,7 +428,6 @@ struct any_memory : tag_defaults
     static constexpr std::string_view name = "any_memory";
     using group = costs_group;
     static constexpr std::string_view question = "What happens to freed memory?";
-    using heading = no_heading;
 };
 /// Storage that erase and clear free is kept for reuse: refilling up to an earlier size allocates nothing.
 struct retains : any_memory
@@ -451,7 +448,6 @@ struct reclaims : any_memory
     static constexpr std::array<std::string_view, 3> phrases { "frees memory", "shrinks", "gives memory back" };
 };
 
-/// The tag types ofmemory: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<memory>
 {
@@ -472,7 +468,6 @@ struct any_clear : tag_defaults
     static constexpr std::string_view name = "any_clear";
     using group = costs_group;
     static constexpr std::string_view question = "How is it cleared?";
-    using heading = no_heading;
 };
 /// Clear takes time in proportion to the elements present, not to the keys or capacity seen before.
 struct proportional_clear : any_clear
@@ -487,14 +482,13 @@ struct proportional_clear : any_clear
 struct constant_clear : proportional_clear
 {
     static constexpr auto value = clearing::constant_clear;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "constant_clear";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Clear takes constant time, as with a generation counter.";
     static constexpr std::array<std::string_view, 3> phrases { "reset every round", "cleared per search", "O(1) clear" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofclearing: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<clearing>
 {
@@ -516,7 +510,6 @@ struct any_access : tag_defaults
     static constexpr std::string_view name = "any_access";
     using group = kind_group;
     static constexpr std::string_view question = "How are elements taken out?";
-    using heading = no_heading;
 };
 /// A queue: elements leave in the order they came (front, push, pop).
 struct fifo : any_access
@@ -546,7 +539,6 @@ struct by_priority : any_access
     static constexpr std::array<std::string_view, 4> phrases { "priority queue", "heap", "best first", "open list" };
 };
 
-/// The tag types ofaccess: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<access>
 {
@@ -572,14 +564,13 @@ struct any_scope : tag_defaults
 struct scoped : any_scope
 {
     static constexpr auto value = scoping::scoped;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "scoped";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "push_scope and pop_scope: popping undoes every change since the matching push.";
     static constexpr std::array<std::string_view, 3> phrases { "nested scopes", "undo on backtrack", "symbol table" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofscoping: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<scoping>
 {
@@ -605,14 +596,13 @@ struct any_layering : tag_defaults
 struct layered : any_layering
 {
     static constexpr auto value = layering::layered;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "layered";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.";
     static constexpr std::array<std::string_view, 3> phrases { "falls through to a parent", "overlay", "phase over phase" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types oflayering: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<layering>
 {
@@ -632,7 +622,6 @@ struct any_handle : tag_defaults
     static constexpr std::string_view name = "any_handle";
     using group = kind_group;
     static constexpr std::string_view question = "Reached by handle?";
-    using heading = no_heading;
     /// Exact: a container must hold what the request holds here, no more (handles make a pool, or give a priority queue update and erase by handle).
     static constexpr bool exact = true;
 };
@@ -642,14 +631,13 @@ struct any_handle : tag_defaults
 struct handles : any_handle
 {
     static constexpr auto value = handling::handles;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "handles";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A pool: insert gives a handle; with unique, equal elements get equal handles.";
     static constexpr std::array<std::string_view, 4> phrases { "interning", "handles", "deduplicated rows", "hash consing" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofhandling: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<handling>
 {
@@ -669,20 +657,18 @@ struct any_sharing : tag_defaults
     static constexpr std::string_view name = "any_sharing";
     using group = costs_group;
     static constexpr std::string_view question = "Rows share structure?";
-    using heading = no_heading;
 };
 /// Parts that are equal across elements (rows) are stored once.
 struct structural_sharing : any_sharing
 {
     static constexpr auto value = sharing::structural_sharing;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "structural_sharing";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Parts that are equal across rows are stored once.";
     static constexpr std::array<std::string_view, 3> phrases { "rows differing in a few places", "persistent", "shared structure" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofsharing: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<sharing>
 {
@@ -708,14 +694,13 @@ struct any_direction : tag_defaults
 struct bidirectional : any_direction
 {
     static constexpr auto value = direction::bidirectional;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "bidirectional";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A map that answers by value too: keys(v) gives the keys that map to v.";
     static constexpr std::array<std::string_view, 3> phrases { "predecessors", "reverse edges", "inverse map" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofdirection: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<direction>
 {
@@ -742,16 +727,14 @@ struct any_shape : tag_defaults
 struct fixed_shape : any_shape
 {
     static constexpr auto value = shape::fixed_shape;
-    static constexpr bool costly = true;
     /// Its rows keep their lengths: nothing is inserted or erased.
-    static constexpr bool stops_growth = true;
     static constexpr std::string_view name = "fixed_shape";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Rows whose number and lengths are set at construction; only their contents change.";
     static constexpr std::array<std::string_view, 3> phrases { "fixed rows", "matrix", "table of known shape" };
+    static constexpr answer_says says { .stops_growth = true, .costly = true };
 };
 
-/// The tag types ofshape: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<shape>
 {
@@ -784,7 +767,6 @@ struct flat : any_packing
     static constexpr std::array<std::string_view, 3> phrases { "flat records", "serialized", "one block per record" };
 };
 
-/// The tag types ofpacking: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<packing>
 {
@@ -804,21 +786,19 @@ struct any_grouping : tag_defaults
     static constexpr std::string_view name = "any_grouping";
     using group = kind_group;
     static constexpr std::string_view question = "Groups of keys?";
-    using heading = no_heading;
 };
 /// A partition: its elements fall into disjoint classes; merge joins two classes, find names an element's class. What
 /// a partition<K> means (urd/kinds.hpp), not stated.
 struct partitioned : any_grouping
 {
     static constexpr auto value = grouping::partition;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "partition";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A partition: elements fall into disjoint classes that merge joins.";
     static constexpr std::array<std::string_view, 3> phrases { "union find", "disjoint sets", "equivalence classes" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types ofgrouping: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<grouping>
 {
@@ -844,14 +824,13 @@ struct any_tracking : tag_defaults
 struct change_log : any_tracking
 {
     static constexpr auto value = tracking::change_log;
-    static constexpr bool costly = true;
     static constexpr std::string_view name = "change_log";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "added() and removed(): the elements changed since clear_changes().";
     static constexpr std::array<std::string_view, 3> phrases { "delta", "what changed", "semi-naive evaluation" };
+    static constexpr answer_says says { .costly = true };
 };
 
-/// The tag types oftracking: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<tracking>
 {
@@ -881,11 +860,11 @@ struct monotone : may_change
 {
     static constexpr auto value = change::monotone;
     /// Nothing is removed.
-    static constexpr bool stops_shrinking = true;
     static constexpr std::string_view name = "monotone";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Only grows: nothing is ever removed.";
     static constexpr std::array<std::string_view, 3> phrases { "append only", "only grows", "never erased" };
+    static constexpr answer_says says { .stops_shrinking = true };
 };
 /// No change after construction (assign rebuilds it whole): any number of threads may read it between rebuilds,
 /// so concurrent, which is about inserts from threads at once, is not asked of it.
@@ -897,15 +876,13 @@ struct frozen : monotone
     using implies = detail::type_list<stable_refs>;
     using kept_by_store = detail::type_list<stable_refs>;
     using later = detail::type_list<stable_refs>;
-    static constexpr bool stops_growth = true;
-    static constexpr bool stops_changes = true;
     static constexpr std::string_view name = "frozen";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No change after construction; assign rebuilds it whole.";
     static constexpr std::array<std::string_view, 3> phrases { "built once", "read only", "immutable after building" };
+    static constexpr answer_says says { .stops_growth = true, .stops_shrinking = true, .stops_changes = true };
 };
 
-/// The tag types ofchange: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<change>
 {
@@ -934,15 +911,13 @@ struct nonempty : maybe_empty
     static constexpr auto value = emptiness::nonempty;
     /// It never erases, so it promises its container that it only grows; it is built from an element at least.
     using promises = detail::type_list<monotone>;
-    static constexpr bool stops_shrinking = true;
-    static constexpr bool needs_an_element = true;
     static constexpr std::string_view name = "nonempty";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "At least one element.";
     static constexpr std::array<std::string_view, 2> phrases { "never empty", "nonempty" };
+    static constexpr answer_says says { .stops_shrinking = true, .needs_an_element = true };
 };
 
-/// The tag types ofemptiness: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<emptiness>
 {
@@ -975,7 +950,6 @@ struct multi : any_multiplicity
     static constexpr std::array<std::string_view, 3> phrases { "multimap", "many values per key", "adjacency lists" };
 };
 
-/// The tag types ofmultiplicity: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<multiplicity>
 {
@@ -1002,15 +976,13 @@ struct positional : by_key
 {
     static constexpr auto value = position::positional;
     /// Positions are contents: they fix the order it is iterated and hashed in.
-    static constexpr bool fixes_iteration_order = true;
-    static constexpr bool fixes_hash_order = true;
     static constexpr std::string_view name = "positional";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Identified by position 0..n-1, in order.";
     static constexpr std::array<std::string_view, 3> phrases { "by position", "numbered as inserted", "interner" };
+    static constexpr answer_says says { .fixes_iteration_order = true, .fixes_hash_order = true };
 };
 
-/// The tag types ofposition: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<position>
 {
@@ -1032,7 +1004,6 @@ struct general : tag_defaults
     static constexpr std::string_view name = "general";
     using group = hints_group;
     static constexpr std::string_view question = "How many elements?";
-    using heading = no_heading;
 };
 /// A few elements, or a few at a time.
 struct small : general
@@ -1046,7 +1017,6 @@ struct small : general
     static constexpr std::array<std::string_view, 3> phrases { "few elements", "small", "tiny" };
 };
 
-/// The tag types ofworkload: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<workload>
 {
@@ -1080,7 +1050,6 @@ struct monotone_priority : any_priority
     static constexpr std::array<std::string_view, 3> phrases { "dijkstra", "non-negative lengths", "event simulation" };
 };
 
-/// The tag types ofpriority: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<priority>
 {
@@ -1113,7 +1082,6 @@ struct given_comparison : any_comparison
     static constexpr std::array<std::string_view, 3> phrases { "order by", "comparator", "priority function" };
 };
 
-/// The tag types of comparison: its none, then its answers, in the order of its enum.
 template<>
 struct tags_of<comparison>
 {

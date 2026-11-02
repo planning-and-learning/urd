@@ -48,11 +48,10 @@ namespace urd
 namespace detail
 {
 
-/// recycling map (std::map that keeps erased nodes and their values for reuse)
 struct recycling_map_decl
 {
     static constexpr std::string_view id = "recycling_map";
-    static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/recycling.hpp" };
+    static constexpr auto headers = with_header(map_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
@@ -75,11 +74,10 @@ struct declaration_of<repr::Recycling<std::map<K, V, C>>>
 namespace detail
 {
 
-/// recycling hash set (std::unordered_set that keeps erased nodes for reuse)
 struct recycling_hash_set_decl
 {
     static constexpr std::string_view id = "recycling_hash_set";
-    static constexpr auto headers = header_list<2> { "urd/repr/values/std_set.hpp", "urd/repr/wrappers/recycling.hpp" };
+    static constexpr auto headers = with_header(unordered_set_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = set_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
@@ -101,11 +99,10 @@ struct declaration_of<repr::RecyclingHashSet<T>>
 namespace detail
 {
 
-/// recycling tree set (std::set that keeps erased nodes for reuse)
 struct recycling_tree_set_decl
 {
     static constexpr std::string_view id = "recycling_tree_set";
-    static constexpr auto headers = header_list<2> { "urd/repr/values/std_set.hpp", "urd/repr/wrappers/recycling.hpp" };
+    static constexpr auto headers = with_header(set_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, clearing::proportional_clear });
@@ -128,11 +125,10 @@ struct declaration_of<repr::RecyclingTreeSet<T>>
 namespace detail
 {
 
-/// recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)
 struct recycling_hash_map_decl
 {
     static constexpr std::string_view id = "recycling_hash_map";
-    static constexpr auto headers = header_list<2> { "urd/repr/maps/std_map.hpp", "urd/repr/wrappers/recycling.hpp" };
+    static constexpr auto headers = with_header(unordered_map_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());

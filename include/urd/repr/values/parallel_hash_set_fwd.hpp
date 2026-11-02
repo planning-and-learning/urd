@@ -41,7 +41,6 @@ namespace urd
 namespace detail
 {
 
-/// parallel hash set (gtl: shards, each behind its mutex)
 struct parallel_hash_set_decl
 {
     static constexpr std::string_view id = "parallel_hash_set";
@@ -71,7 +70,6 @@ struct declaration_of<repr::ParallelHashSet<T>>
 namespace detail
 {
 
-/// parallel node hash set (gtl: shards behind mutexes, a node per element that never moves)
 struct parallel_node_hash_set_decl
 {
     static constexpr std::string_view id = "parallel_node_hash_set";

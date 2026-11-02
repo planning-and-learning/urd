@@ -2,8 +2,7 @@
 
 // What urd's traits say about a registered container, derived from its declaration (urd/registry/declaration.hpp)
 // and written nowhere else: container_traits (what it provides, where its template arguments give elements it takes),
-// relies_on (what a request must state for it), container_costs and container_synopsis (the declaration's), and
-// defined_in (its own header, the last of its headers).
+// container_costs and container_synopsis (the declaration's), and defined_in (its own header, the last of its headers).
 
 #include "urd/costs.hpp"
 #include "urd/registry/declaration.hpp"
@@ -34,10 +33,10 @@ concept declared_container = requires {
 template<typename R>
 using declaration_t = typename declaration_of<R>::declaration;
 
-/// Whether R takes the elements its template arguments give: what they are meets what its declaration relies on (its
-/// elements', values' and rows' tags; what a Store must state is a request's to promise, relies_on below).
+/// Whether R takes the elements its template arguments give: what they are meets what its declaration relies on about
+/// its roles (its elements', values' and rows' tags; what a Store must state is a request's to promise).
 template<declared_container R>
-inline constexpr bool takes_v = [] { return promises(declaration_of<R>::roles, facts_where(declaration_t<R>::relies_on, true)); }();
+inline constexpr bool takes_v = promises(declaration_of<R>::roles, facts_where(declaration_t<R>::relies_on, true));
 
 }  // namespace detail
 

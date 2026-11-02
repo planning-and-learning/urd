@@ -14,7 +14,7 @@ beside urd's. Adding one is its own file, plus its entry in the one list it belo
      - Its entry
    * - A container
      - ``declarations_of<Kind>`` (``include/urd/registry/declarations.hpp``: its place is its preference) and the
-       include of its ``*_fwd.hpp`` there
+       include of its ``*_fwd.hpp`` there; in urd also its header in ``tests/all_containers.hpp``
    * - A kind
      - ``urd::kinds`` (``include/urd/kinds.hpp``) and its ``declarations_of<Kind>``
    * - A tag answer, or a category
@@ -29,8 +29,8 @@ beside urd's. Adding one is its own file, plus its entry in the one list it belo
      - the ``facets`` of the kinds that offer it; for now also its declaration in ``include/urd/kinds.hpp`` and its
        include in ``include/urd/store.hpp``
 
-What a tag means for a Store is the tag's own data (``urd::tag_defaults``: what it implies, keeps, promises, puts
-later, stops or fixes), a trait's meaning is its ``holds``, a facet's is its condition (``facet_defaults``), and the
+What a tag means for a Store is the tag's own data (``urd::tag_defaults``: what it implies, keeps, promises and puts
+later; ``urd::answer_says``: what it stops or fixes, whether it is demanded or costly), a trait's meaning is its ``holds``, a facet's is its condition (``facet_defaults``), and the
 tables, tests and docs derive their lists from these registries. ``tests/store/outside_kind.cpp`` adds a kind with a
 category, a facet, operations and a container, and resolves a Store to it; it is the example below.
 
@@ -101,7 +101,8 @@ a request states, what a container provides); with one, about part of its data: 
    template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash /*, … */>; };
 
 A role lists its traits once, where they are defined (``traits_of_role``); urd evaluates each for the role's type
-(``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. The element and order traits are in
+(``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. A role whose facts are no traits
+(a row's own tags) specializes ``role_facts`` instead. The element and order traits are in
 ``include/urd/type_traits_of.hpp``, the traits of rows beside the row containers that rely on them
 (``include/urd/repr/sequences/rows_fwd.hpp``). A request's facts and a
 container's reliance are one set of them (``property_set``); a container relies on

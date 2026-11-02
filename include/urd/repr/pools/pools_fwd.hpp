@@ -42,7 +42,6 @@ namespace urd
 namespace detail
 {
 
-/// row interner (each row once, in full)
 struct row_interner_decl
 {
     static constexpr std::string_view id = "row_interner";
@@ -116,7 +115,6 @@ struct declaration_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 namespace detail
 {
 
-/// row interner, thread-safe
 struct thread_safe_row_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_row_interner";

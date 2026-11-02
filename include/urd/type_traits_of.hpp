@@ -59,7 +59,7 @@ namespace urd::trait
 {
 
 // What a type is, for the containers that hold it: derived from the types, never stated. Each trait is its words and
-// what it means of a plain type (holds), read for its role by urd::detail::traits_holding (urd/registry/facts.hpp); a
+// what it means of a plain type (holds), read for its role by urd::detail::role_facts (urd/registry/facts.hpp); a
 // Store answers for itself (urd/store/store_facts.hpp, store_facts), so no trait is asked of one.
 
 // What an element, a map's value or a row's element is (role element, mapped, row_element).
@@ -170,8 +170,7 @@ struct urd::traits_of_role<urd::role::order>
 namespace urd::detail
 {
 
-/// A row's facts are its own tags (where it is a Store or a registered container); its elements' are their traits
-/// (none where it is no row: its elements are void).
+/// A row's facts are its own tags (where it is a Store or a registered container).
 template<>
 struct role_facts<role::row>
 {
@@ -179,41 +178,23 @@ struct role_facts<role::row>
     static consteval property_set of()
     { return held_as<T>::properties; }
 };
-template<>
-struct role_facts<role::row_element>
-{
-    template<typename T>
-    static consteval property_set of()
-    { return traits_holding<role::row_element, typename held_as<T>::elements>(); }
-};
-
-/// The facts by role of a kind's played types (type_list<plays<Role, Args…>…>): each role's facts, about that role.
-template<typename Played>
-consteval property_set facts_of()
-{
-    auto result = property_set::roots();
-    []<typename... Plays>(type_list<Plays...> /*played*/, property_set& into)
-    {
-        const auto put = [&into]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
-        { about(role_v<Role>, role_facts<Role>::template of<Args...>()).for_each([&into](tag fact) { into.put(fact); }); };
-        (put(Plays {}), ...);
-    }(Played {}, result);
-    return result;
-}
 
 /// The facts by role of Data, a kind with its element types (urd::set<K>, …) or a request's spec, ordered by Order:
-/// what a container's template arguments make (declaration_of::roles) and what a request's data is.
+/// each role its played types (Data::played<Order>: plays<Role, Args…>) have, about that role. What a container's
+/// template arguments make (declaration_of::roles) and what a request's data is.
 template<typename Data, typename Order = Less<typename Data::ordered_type>>
 consteval property_set roles_of()
-{ return facts_of<typename Data::template played<Order>>(); }
+{
+    auto result = property_set::roots();
+    const auto add = [&result]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
+    { result = with(result, about(role_v<Role>, role_facts<Role>::template of<Args...>())); };
+    []<typename... Plays>(type_list<Plays...> /*played*/, const auto& each) { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
+    return result;
+}
 
 /// The facts of spec S: what it promises, and its data's facts by role.
 template<typename S>
 consteval property_set request_roles()
-{
-    auto result = S::promised;
-    roles_of<S, typename S::order_type>().for_each([&result](tag fact) { result.put(fact); });
-    return result;
-}
+{ return with(S::promised, roles_of<S, typename S::order_type>()); }
 
 }  // namespace urd::detail

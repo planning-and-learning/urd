@@ -11,7 +11,6 @@
 namespace urd::detail
 {
 
-/// std::vector
 struct vector_decl
 {
     static constexpr std::string_view id = "vector";

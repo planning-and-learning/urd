@@ -59,17 +59,6 @@ inline constexpr op op_v = []<typename... Ops>(urd::operation_list<Ops...> /*ope
 /// Their names, in order.
 inline constexpr auto op_names = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
 { return std::array<std::string_view, sizeof...(Ops)> { Ops::name... }; }(operations {});
-/// The op of operation `of`.
-constexpr op op_of(const urd::operation_info* of)
-{
-    const auto infos = []<typename... Ops>(urd::operation_list<Ops...> /*operations*/)
-    { return std::array<const urd::operation_info*, sizeof...(Ops)> { urd::operation_v<Ops>... }; }(operations {});
-    for (std::size_t each = 0; each < infos.size(); ++each)
-        if (infos[each] == of)
-            return static_cast<op>(each);
-    throw "urd: an operation no kind's facet offers (tests/complexity.hpp, operations)";
-}
-
 /// Which operations a Store offers, by op.
 using offers = std::array<bool, op_count>;
 
@@ -147,7 +136,7 @@ inline constexpr auto costly = []
         for_each_tag(
             [&result](urd::tag each)
             {
-                if (each.in->costly[each.answer])
+                if (each.in->says[each.answer].costly)
                     ++result;
             });
         return result;
@@ -157,7 +146,7 @@ inline constexpr auto costly = []
     for_each_tag(
         [&](urd::tag each)
         {
-            if (each.in->costly[each.answer])
+            if (each.in->says[each.answer].costly)
                 result[at++] = each;
         });
     return result;
@@ -166,7 +155,7 @@ inline constexpr auto costly = []
 /// The ops of operations Ops, by position.
 template<typename... Ops>
 constexpr std::array<op, sizeof...(Ops)> ops_of(urd::operation_list<Ops...> /*operations*/)
-{ return { op_of(urd::operation_v<Ops>)... }; }
+{ return { op_v<Ops>... }; }
 template<typename List>
 inline constexpr auto ops_v = ops_of(List {});
 /// Marks the operations of facet F of a Store of R for S where it is on, and of all its facets.

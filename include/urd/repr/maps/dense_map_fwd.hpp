@@ -30,7 +30,6 @@ namespace urd
 namespace detail
 {
 
-/// dense map (a slot per index)
 struct dense_map_decl
 {
     static constexpr std::string_view id = "dense_map";
@@ -61,7 +60,6 @@ struct declaration_of<repr::IndexMap<K, V, false>>
 namespace detail
 {
 
-/// dense map over slots that never move (segments)
 struct stable_dense_map_decl
 {
     static constexpr std::string_view id = "stable_dense_map";
@@ -92,7 +90,6 @@ struct declaration_of<repr::IndexMap<K, V, false, false, true>>
 namespace detail
 {
 
-/// generation map (a slot per index, O(1) clear by generation)
 struct generation_map_decl
 {
     static constexpr std::string_view id = "generation_map";
@@ -124,7 +121,6 @@ struct declaration_of<repr::IndexMap<K, V, true>>
 namespace detail
 {
 
-/// generation map over slots that never move (segments)
 struct stable_generation_map_decl
 {
     static constexpr std::string_view id = "stable_generation_map";
@@ -156,7 +152,6 @@ struct declaration_of<repr::IndexMap<K, V, true, false, true>>
 namespace detail
 {
 
-/// generation map, thread-safe updates (a slot and a spin lock per index)
 struct thread_safe_generation_map_decl
 {
     static constexpr std::string_view id = "thread_safe_generation_map";

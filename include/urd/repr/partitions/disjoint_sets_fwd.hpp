@@ -24,7 +24,6 @@ class DisjointSets;
 namespace urd::detail
 {
 
-/// disjoint sets (union-find by size, path halving)
 struct disjoint_sets_decl
 {
     static constexpr std::string_view id = "disjoint_sets";

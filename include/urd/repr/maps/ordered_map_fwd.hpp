@@ -30,11 +30,10 @@ namespace urd
 namespace detail
 {
 
-/// ordered map (keys in an insertion-ordered set, values beside them)
 struct ordered_map_decl
 {
     static constexpr std::string_view id = "ordered_map";
-    static constexpr auto headers = header_list<2> { "urd/repr/values/indexed.hpp", "urd/repr/maps/ordered_map.hpp" };
+    static constexpr auto headers = with_header(indexed_set_decl::headers, "urd/repr/maps/ordered_map.hpp");
     using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::insertion_ordered, uniqueness::unique, position::none, layout::none, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
@@ -56,11 +55,10 @@ struct declaration_of<repr::OrderedMap<repr::IndexedSet<K>, V>>
 namespace detail
 {
 
-/// dense ordered map (indices in an insertion-ordered sparse set, values beside them)
 struct dense_ordered_map_decl
 {
     static constexpr std::string_view id = "dense_ordered_map";
-    static constexpr auto headers = header_list<2> { "urd/repr/values/sparse_set.hpp", "urd/repr/maps/ordered_map.hpp" };
+    static constexpr auto headers = with_header(ordered_sparse_set_decl::headers, "urd/repr/maps/ordered_map.hpp");
     using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::insertion_ordered, uniqueness::unique, keys::dense, position::none, layout::none, memory::retains, clearing::constant_clear });

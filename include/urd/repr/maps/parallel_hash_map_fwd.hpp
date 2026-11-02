@@ -38,7 +38,6 @@ namespace urd
 namespace detail
 {
 
-/// parallel hash map (gtl: shards, each behind its mutex; update and read under it)
 struct parallel_hash_map_decl
 {
     static constexpr std::string_view id = "parallel_hash_map";
@@ -68,7 +67,6 @@ struct declaration_of<repr::ParallelHashMap<K, V>>
 namespace detail
 {
 
-/// parallel node hash map (gtl: shards behind mutexes, a node per entry that never moves)
 struct parallel_node_hash_map_decl
 {
     static constexpr std::string_view id = "parallel_node_hash_map";

@@ -92,7 +92,6 @@ namespace urd
 namespace detail
 {
 
-/// jagged array (CSR: offsets + one data array)
 struct jagged_decl
 {
     static constexpr std::string_view id = "jagged";
@@ -112,7 +111,6 @@ struct jagged_decl
     static constexpr std::string_view holds = "one offsets array per level";
 };
 
-/// jagged array of rows changed in place (fixed shape: offsets + one data array)
 struct fixed_jagged_decl
 {
     static constexpr std::string_view id = "fixed_jagged";
@@ -139,7 +137,6 @@ struct declaration_of<repr::Jagged<Inner>>
 namespace detail
 {
 
-/// row pool (cleared rows are kept for reuse)
 struct row_pool_decl
 {
     static constexpr std::string_view id = "row_pool";
@@ -169,7 +166,6 @@ struct declaration_of<repr::RowPool<Inner>>
 namespace detail
 {
 
-/// jagged rows that track the rows handed out to change
 struct tracked_jagged_decl
 {
     static constexpr std::string_view id = "tracked_jagged";

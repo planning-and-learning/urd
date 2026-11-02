@@ -26,7 +26,6 @@ namespace urd
 namespace detail
 {
 
-/// std::map (balanced tree)
 struct map_decl
 {
     static constexpr std::string_view id = "map";
@@ -58,7 +57,6 @@ struct declaration_of<std::map<K, V, C, A>>
 namespace detail
 {
 
-/// std::multimap (balanced tree)
 struct multimap_decl
 {
     static constexpr std::string_view id = "multimap";
@@ -90,7 +88,6 @@ struct declaration_of<std::multimap<K, V, C, A>>
 namespace detail
 {
 
-/// std::unordered_map (hash table)
 struct unordered_map_decl
 {
     static constexpr std::string_view id = "unordered_map";
@@ -120,7 +117,6 @@ struct declaration_of<std::unordered_map<K, V, H, E, A>>
 namespace detail
 {
 
-/// std::unordered_multimap (hash table)
 struct unordered_multimap_decl
 {
     static constexpr std::string_view id = "unordered_multimap";

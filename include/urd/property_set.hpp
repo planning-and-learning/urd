@@ -44,8 +44,8 @@ struct tag_list
 };
 
 /// What the machinery knows of a category, from its tag types (urd/tags.hpp, tags_of): its name (its none's), its
-/// answers' names, which answer is at least which (an answer derived from another), whether it is exact, which answers
-/// are demanded, and whether only a request states it.
+/// answers' names, which answer is at least which (an answer derived from another), whether it is exact, and whether
+/// only a request states it; and per answer, what it says (urd::answer_says) and lists (urd::tag_defaults).
 struct category_table
 {
     std::string_view name;
@@ -54,22 +54,15 @@ struct category_table
     std::array<std::string_view, most_answers> names {};
     std::array<std::array<bool, most_answers>, most_answers> at_least {};
     bool exact = false;
-    std::array<bool, most_answers> demanded {};
     bool request_only = false;
-    /// What each answer says of the Store (urd::tag_defaults): what it implies, what the Store keeps itself rather
-    /// than asks of its container, what it promises its container, which containers it puts later, whether it stops
-    /// growing or shrinking, whether it fixes the order the Store is iterated or hashed in.
+    /// What each answer says of the Store (urd::answer_says).
+    std::array<answer_says, most_answers> says {};
+    /// What each answer lists (urd::tag_defaults): what it implies, what the Store keeps itself rather than asks of its
+    /// container, what it promises its container, which containers it puts later.
     std::array<tag_list, most_answers> implies {};
     std::array<tag_list, most_answers> kept_by_store {};
     std::array<tag_list, most_answers> promises {};
     std::array<tag_list, most_answers> later {};
-    std::array<bool, most_answers> stops_growth {};
-    std::array<bool, most_answers> stops_shrinking {};
-    std::array<bool, most_answers> stops_changes {};
-    std::array<bool, most_answers> needs_an_element {};
-    std::array<bool, most_answers> fixes_iteration_order {};
-    std::array<bool, most_answers> fixes_hash_order {};
-    std::array<bool, most_answers> costly {};
 };
 /// The tags of a type list of tag types (defined once `tag` is, below).
 template<typename List>
@@ -89,18 +82,11 @@ consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
     const auto row = [&]<typename Have>(std::type_identity<Have> /*have*/)
     {
         result.at_least[have] = { std::is_base_of_v<Root, Have>, std::is_base_of_v<Ts, Have>... };
-        result.demanded[have] = Have::demanded;
+        result.says[have] = Have::says;
         result.implies[have] = tag_list_of<typename Have::implies>();
         result.kept_by_store[have] = tag_list_of<typename Have::kept_by_store>();
         result.promises[have] = tag_list_of<typename Have::promises>();
         result.later[have] = tag_list_of<typename Have::later>();
-        result.stops_growth[have] = Have::stops_growth;
-        result.stops_shrinking[have] = Have::stops_shrinking;
-        result.stops_changes[have] = Have::stops_changes;
-        result.needs_an_element[have] = Have::needs_an_element;
-        result.fixes_iteration_order[have] = Have::fixes_iteration_order;
-        result.fixes_hash_order[have] = Have::fixes_hash_order;
-        result.costly[have] = Have::costly;
         ++have;
     };
     row(std::type_identity<Root> {});
@@ -116,8 +102,8 @@ inline constexpr category_table category_table_v = table_of_tags(typename tags_o
 
 }  // namespace detail
 
-/// The words of a thing identified by them, by their address, as a category is by its table: a type trait, a role, an
-/// operation (Of tells them apart, so no trait's words pass for a role's). No number and no list of all of them, so a
+/// The words of a thing identified by them, by their address, as a category is by its table: a role, an operation (Of
+/// tells them apart, so no role's words pass for an operation's; a type trait is a category, with its table). No number and no list of all of them, so a
 /// kind added outside urd adds its own.
 template<typename Of>
 struct words
@@ -241,12 +227,12 @@ struct property_set : fixed_list<tag, most_categories>
     { return static_cast<E>(in(urd::category<E>) .answer); }
     /// Whether the tag held in `of`'s category is at least `of`.
     [[nodiscard]] constexpr bool has(tag of) const { return at_least(of.in, in(of.in, of.role).answer, of.answer); }
-    /// Whether any of its tags about the Store itself says Field (a per-answer flag of detail::category_table:
-    /// stops_growth, fixes_hash_order, …).
+    /// Whether any of its tags about the Store itself says Field (a flag of urd::answer_says: &answer_says::stops_growth,
+    /// …).
     template<auto Field>
     [[nodiscard]] constexpr bool any_says() const
     {
-        return std::ranges::any_of(*this, [](tag each) { return each.role == nullptr && (each.in->*Field)[each.answer]; });
+        return std::ranges::any_of(*this, [](tag each) { return each.role == nullptr && each.in->says[each.answer].*Field; });
     }
     /// Calls f on every tag its tags about the Store itself list in Field (a per-answer list of detail::category_table:
     /// implies, promises, …).
@@ -304,7 +290,7 @@ constexpr property_set demands_of(const property_set& declared)
     declared.for_each(
         [&result](tag each)
         {
-            if (each.in->demanded[each.answer])
+            if (each.in->says[each.answer].demanded)
                 result.put(each);
         });
     return result;

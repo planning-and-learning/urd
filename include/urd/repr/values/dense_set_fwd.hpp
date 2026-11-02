@@ -35,7 +35,6 @@ namespace urd
 namespace detail
 {
 
-/// dense set (a bitset over indices)
 struct dense_set_decl
 {
     static constexpr std::string_view id = "dense_set";
@@ -67,7 +66,6 @@ struct declaration_of<repr::DenseSet<K, false>>
 namespace detail
 {
 
-/// dense set tracking its words (a bitset over indices, cleared by the words it touched)
 struct tracked_dense_set_decl
 {
     static constexpr std::string_view id = "tracked_dense_set";
@@ -99,7 +97,6 @@ struct declaration_of<repr::DenseSet<K, true>>
 namespace detail
 {
 
-/// sparse set (members array plus index positions, O(1) clear)
 struct sparse_set_decl
 {
     static constexpr std::string_view id = "sparse_set";
@@ -130,7 +127,6 @@ struct declaration_of<repr::SparseSet<K, false>>
 namespace detail
 {
 
-/// sparse set keeping insertion order (erase shifts the members after it)
 struct ordered_sparse_set_decl
 {
     static constexpr std::string_view id = "ordered_sparse_set";

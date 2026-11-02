@@ -32,7 +32,6 @@ namespace urd
 namespace detail
 {
 
-/// slot vector (slots that never move, freed ones reused)
 struct slot_vector_decl
 {
     static constexpr std::string_view id = "slot_vector";
@@ -58,7 +57,6 @@ struct declaration_of<repr::SlotVector<T, false>>
 namespace detail
 {
 
-/// slot vector (slots that never move, freed ones reused)
 struct thread_safe_slot_vector_decl
 {
     static constexpr std::string_view id = "thread_safe_slot_vector";
