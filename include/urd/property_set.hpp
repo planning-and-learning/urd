@@ -266,17 +266,59 @@ struct property_set : fixed_list<tag, most_categories>
     }
 };
 
-/// Whether `have` provides, in every category a container declares, at least what `want` asks for; exactly that, in
-/// the categories that declare themselves exact (urd/tags.hpp).
-constexpr bool satisfies(const property_set& have, const property_set& want)
+/// Whether `have` provides what `want` asks for in `asked`'s category: at least it; exactly it where the category
+/// declares itself exact (urd/tags.hpp); anything for a category only a request answers.
+constexpr bool provided(const property_set& have, tag asked)
+{ return asked.in->request_only || (asked.in->exact ? have.in(asked.in, asked.role) == asked : have.has(asked)); }
+/// Whether `have` answers `given`'s exact category where `want` leaves it open: the request must state that answer.
+constexpr bool unasked(const property_set& want, tag given) { return given.in->exact && !given.in->request_only && want.in(given.in, given.role).answer == 0; }
+
+/// What `want` asks for that `have` does not provide.
+constexpr property_set lacking(const property_set& have, const property_set& want)
 {
-    const auto provided = [&have](tag asked) { return asked.in->request_only || (asked.in->exact ? have.in(asked.in, asked.role) == asked : have.has(asked)); };
-    // and no exact category answered beyond what is asked
-    const auto unasked = [&want](tag given) { return given.in->exact && !given.in->request_only && want.in(given.in, given.role).answer == 0; };
-    return std::ranges::all_of(want, provided) && std::ranges::none_of(have, unasked);
+    auto result = property_set::roots();
+    want.for_each(
+        [&](tag asked)
+        {
+            if (!provided(have, asked))
+                result.put(asked);
+        });
+    return result;
+}
+/// The answers `have` gives in exact categories that `want` leaves open.
+constexpr property_set unasked_of(const property_set& have, const property_set& want)
+{
+    auto result = property_set::roots();
+    have.for_each(
+        [&](tag given)
+        {
+            if (unasked(want, given))
+                result.put(given);
+        });
+    return result;
+}
+/// The promises in `needed` that `stated` does not make.
+constexpr property_set unpromised(const property_set& stated, const property_set& needed)
+{
+    auto result = property_set::roots();
+    needed.for_each(
+        [&](tag each)
+        {
+            if (!stated.has(each))
+                result.put(each);
+        });
+    return result;
 }
 
-/// Whether a request that holds `stated` makes every promise in `needed`.
+/// Whether `have` provides, in every category a container declares, what `want` asks for, and answers no exact
+/// category `want` leaves open (lacking and unasked_of, as bools that stop at the first miss).
+constexpr bool satisfies(const property_set& have, const property_set& want)
+{
+    return std::ranges::all_of(want, [&have](tag asked) { return provided(have, asked); })
+           && std::ranges::none_of(have, [&want](tag given) { return unasked(want, given); });
+}
+
+/// Whether a request that holds `stated` makes every promise in `needed` (unpromised, as a bool).
 constexpr bool promises(const property_set& stated, const property_set& needed)
 {
     return std::ranges::all_of(needed, [&stated](tag each) { return stated.has(each); });

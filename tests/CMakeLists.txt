@@ -6,7 +6,7 @@ find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}"
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
 # nested Stores. Those below count allocations (allocations.cpp replaces operator new).
-foreach(test properties rows semantics queues pools views concurrency complexity)
+foreach(test properties rows semantics queues pools views concurrency complexity shortfall)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
@@ -183,6 +183,7 @@ urd_compile_fail_expects(compile_fail_store 13 "two properties answer the same q
 urd_compile_fail_expects(compile_fail_store 24 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 25 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 62 "the request contradicts itself")
+urd_compile_fail_expects(compile_fail_store 26 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 27 "C compares two elements")
 urd_compile_fail_expects(compile_fail_store 32 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")
@@ -198,8 +199,11 @@ urd_compile_fail_expects(compile_fail_store 45 "no container serves this request
 urd_compile_fail_expects(compile_fail_store 46 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 47 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 48 "no container serves this request")
-# A request no container serves (urd/registry/select.hpp).
-urd_compile_fail_expects(compile_fail_store 7 "no container serves this request")
+# A request no container serves (urd/registry/select.hpp), the first with the whole sentence an agent reads. The
+# cases without a message fail by the language (a member the Store does not have), not by an urd assertion.
+urd_compile_fail_expects(compile_fail_store 7 "no container serves this request: drop or change a tag [(]urd-search's why_not")
+urd_compile_fail_expects(compile_fail_store 19 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 34 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 28 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 29 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 36 "no container serves this request")
