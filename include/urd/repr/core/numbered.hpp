@@ -29,8 +29,10 @@ public:
 
     /// Its number, as it was given.
     [[nodiscard]] std::size_t layer() const noexcept { return m_number.number; }
+    /// Its container, as the base it is.
+    [[nodiscard]] const R& container() const noexcept { return *this; }
     /// Identified by its container alone (urd::EqualTo, Hash, Less): the number names the Store, not its contents.
-    [[nodiscard]] auto identifying_members() const noexcept { return std::tie(static_cast<const R&>(*this)); }
+    static constexpr auto identifying_members() noexcept { return Members<&Numbered::container> {}; }
 
 private:
     urd::layer m_number;

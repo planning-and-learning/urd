@@ -69,7 +69,7 @@ template<typename List>
 consteval tag_list tag_list_of();
 
 template<typename Root, typename... Ts>
-consteval category_table table_of_tags(type_list<Root, Ts...> /*tags*/)
+consteval category_table table_of_tags(boost::mp11::mp_list<Root, Ts...> /*tags*/)
 {
     static_assert(sizeof...(Ts) + 1 <= most_answers, "urd: a category has more answers than most_answers");
     static_assert(std::is_same_v<typename Root::root, Root>, "urd: a category's tag types list its none first");
@@ -148,7 +148,7 @@ namespace detail
 template<typename List>
 inline constexpr std::array<tag, 0> tags_array {};
 template<typename... Tags>
-inline constexpr std::array<tag, sizeof...(Tags)> tags_array<type_list<Tags...>> { tag(Tags::value)... };
+inline constexpr std::array<tag, sizeof...(Tags)> tags_array<boost::mp11::mp_list<Tags...>> { tag(Tags::value)... };
 template<typename List>
 consteval tag_list tag_list_of()
 { return { tags_array<List>.data(), std::to_address(tags_array<List>.end()) }; }

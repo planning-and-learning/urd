@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <type_traits>
 
 namespace urd
 {
@@ -29,6 +30,8 @@ template<typename T>
 struct index
 {
     using element_type = T;
+    /// What it locates: an index is a handle (urd::handle).
+    using located = T;
     using value_type = std::uint32_t;
     static constexpr value_type none_value = std::numeric_limits<value_type>::max();
 
@@ -38,12 +41,20 @@ struct index
     constexpr explicit index(value_type at) noexcept : value(at) {}
 
     [[nodiscard]] constexpr bool is_none() const noexcept { return value == none_value; }
+    /// The record it locates, as the context holds it (what a view of it reads: urd::view).
+    [[nodiscard]] decltype(auto) read(const auto& context) const { return context[*this]; }
 
     friend constexpr auto operator<=>(const index&, const index&) = default;
     static constexpr auto identifying_members() noexcept { return Members<&index::value> {}; }
     /// For records stored flat: cista serializes an index by its value.
     static constexpr auto cista_members() noexcept { return Members<&index::value> {}; }
 };
+
+/// A handle locates a T in a context, which resolves it (context[h] is the record, context.view(h) its view): it names
+/// what it locates (`using located = T;`) and reads it, `h.read(context)` (context[h]), as a view's holding type does
+/// (urd::view). urd::index<T> is one; a library's composite handle declares the same (a binding's relation and row).
+template<typename H>
+concept handle = requires { typename H::located; };
 
 /// An index is a dense key; none is no index, so a lookup of it finds nothing.
 template<typename T>
@@ -78,8 +89,9 @@ struct Write
 template<typename T>
 struct context_of;
 
-/// A reference to an element held by index: the index, and the context that resolves it (urd/elements/view.hpp).
-template<typename T, typename C = typename context_of<T>::type>
+/// A T read through a context, holding what reads its record (H): an index, or a record held outside the context
+/// (urd/elements/view.hpp).
+template<typename T, typename C = typename context_of<T>::type, typename H = index<T>>
 class view;
 
 }  // namespace urd

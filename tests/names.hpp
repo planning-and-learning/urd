@@ -78,8 +78,8 @@ struct union_of
     using type = Acc;
 };
 template<typename Acc, template<typename> class Of, typename Item, typename... Items>
-struct union_of<Acc, Of, urd::detail::type_list<Item, Items...>> :
-    union_of<typename append_list<Acc, typename Of<Item>::type>::type, Of, urd::detail::type_list<Items...>>
+struct union_of<Acc, Of, boost::mp11::mp_list<Item, Items...>> :
+    union_of<typename append_list<Acc, typename Of<Item>::type>::type, Of, boost::mp11::mp_list<Items...>>
 {
 };
 
@@ -116,7 +116,7 @@ constexpr void for_each_tag(F f)
 template<typename Role>
 struct traits_of_role_or_none
 {
-    using type = urd::detail::type_list<>;
+    using type = boost::mp11::mp_list<>;
 };
 template<typename Role>
     requires requires { typename urd::traits_of_role<Role>::type; }
@@ -125,13 +125,13 @@ struct traits_of_role_or_none<Role>
     using type = typename urd::traits_of_role<Role>::type;
 };
 template<typename... Traits>
-constexpr auto trait_infos(urd::detail::type_list<Traits...> /*traits*/)
+constexpr auto trait_infos(boost::mp11::mp_list<Traits...> /*traits*/)
 { return std::array<const urd::trait_info*, sizeof...(Traits)> { urd::trait_v<Traits>... }; }
-inline constexpr auto vocabulary_traits = trait_infos(typename union_of<urd::detail::type_list<>, traits_of_role_or_none, urd::roles>::type {});
+inline constexpr auto vocabulary_traits = trait_infos(typename union_of<boost::mp11::mp_list<>, traits_of_role_or_none, urd::roles>::type {});
 
 /// urd's roles (urd::roles), in the order share/urd/complexity.json lists them.
 template<typename... Roles>
-constexpr auto role_infos(urd::detail::type_list<Roles...> /*roles*/)
+constexpr auto role_infos(boost::mp11::mp_list<Roles...> /*roles*/)
 { return std::array<const urd::role_info*, sizeof...(Roles)> { urd::role_v<Roles>... }; }
 inline constexpr auto vocabulary_roles = role_infos(urd::roles {});
 
@@ -144,7 +144,7 @@ struct category_entry
     std::string_view question;
 };
 template<typename Root, typename... Tags>
-constexpr category_entry category_of(urd::detail::type_list<Root, Tags...> /*tags*/)
+constexpr category_entry category_of(boost::mp11::mp_list<Root, Tags...> /*tags*/)
 { return { Root::group::id, Root::heading::id, Root::question }; }
 template<typename... Es>
 constexpr auto categories_of(urd::detail::request_format<Es...> /*categories*/)
@@ -188,7 +188,7 @@ constexpr tag_entry entry_of()
     return result;
 }
 template<typename... Tags>
-constexpr std::array<tag_entry, most_answers> entries_of(urd::detail::type_list<Tags...> /*tags*/)
+constexpr std::array<tag_entry, most_answers> entries_of(boost::mp11::mp_list<Tags...> /*tags*/)
 { return { entry_of<Tags>()... }; }
 template<typename... Es>
 constexpr auto all_entries_of(urd::detail::request_format<Es...> /*categories*/)

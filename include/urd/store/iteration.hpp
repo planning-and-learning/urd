@@ -24,11 +24,12 @@ public:
 
     [[nodiscard]] const_iterator begin() const { return representation().begin(); }
     [[nodiscard]] const_iterator end() const { return representation().end(); }
+    /// Where what it iterates may change in place (a sequence's elements, a map's values).
     [[nodiscard]] iterator begin()
-        requires types::writable
+        requires types::values_writable
     { return store_access::of<Derived>(*this).begin(); }
     [[nodiscard]] iterator end()
-        requires types::writable
+        requires types::values_writable
     { return store_access::of<Derived>(*this).end(); }
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
     [[nodiscard]] const_iterator cend() const { return end(); }

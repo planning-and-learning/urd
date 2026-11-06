@@ -6,6 +6,7 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/sparse_set.hpp"
@@ -280,7 +281,7 @@ private:
         for (auto block = std::min(Bits::block_index(index) + 1, m_words.size()); block-- > 0;)
         {
             const auto keep = block == Bits::block_index(index) ? Bits::block_pos(index) : Bits::Digits;
-            const auto below = keep == Bits::Digits ? m_words[block] : m_words[block] & ((word { 1 } << keep) - 1);
+            const auto below = m_words[block] & bit::lo_set<word>[keep];
             if (below != 0)
                 return block * Bits::Digits + Bits::Digits - 1 - static_cast<std::size_t>(std::countl_zero(below));
         }

@@ -6,7 +6,7 @@ find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}"
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
 # nested Stores. Those below count allocations (allocations.cpp replaces operator new).
-foreach(test properties rows semantics queues pools views concurrency complexity shortfall)
+foreach(test properties rows semantics queues pools views children family concurrency complexity shortfall)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
@@ -40,6 +40,21 @@ foreach(topic ${store_topics})
 endforeach()
 # The rules are compile-time only.
 set_tests_properties(store_rules PROPERTIES PASS_REGULAR_EXPRESSION "Running 0 tests|PASSED")
+
+# The nanobind casters (urd/python/): round trips through a module, where nanobind is found (-Dnanobind_DIR=...).
+find_package(Python 3.11 COMPONENTS Interpreter Development.Module)
+find_package(nanobind CONFIG QUIET)
+if(nanobind_FOUND AND Python_FOUND)
+    nanobind_add_module(urd_casters_test NB_SUPPRESS_WARNINGS python/casters_module.cpp)
+    target_link_libraries(urd_casters_test PRIVATE urd::urd)
+    add_test(NAME python_casters COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/python/casters.py $<TARGET_FILE:urd_casters_test>)
+    nanobind_add_module(urd_views_test NB_SUPPRESS_WARNINGS python/views_module.cpp)
+    target_link_libraries(urd_views_test PRIVATE urd::urd)
+    add_test(NAME python_views COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/python/views.py $<TARGET_FILE:urd_views_test>)
+    set_tests_properties(python_views PROPERTIES PASS_REGULAR_EXPRESSION "PASSED")
+else()
+    message(STATUS "urd: nanobind not found; the caster test (tests/python/casters.py) is not built")
+endif()
 
 # The resolution table: docs/RESOLUTION.md is generated from the request grid and checked against the registry.
 add_executable(resolution_table resolution_table.cpp)
@@ -91,8 +106,8 @@ endif()
 # The glue names no specific tag: what a tag means is declared beside it, in the rules or by a container (tests/generic.py).
 add_test(NAME generic COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/generic.py ${PROJECT_SOURCE_DIR})
 
-# The tests that came with the representations copied from yggdrasil, unchanged but for names.
-foreach(test segmented_vector tree_vector_set tree_bitset_set)
+# Tests of the containers in repr/containers.
+foreach(test segmented_vector tree_vector_set tree_bitset_set bitset_span)
     add_executable(test_repr_${test} repr/containers/${test}.cpp repr/main.cpp)
     target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)
     add_test(NAME repr_${test} COMMAND test_repr_${test})
@@ -189,7 +204,7 @@ urd_compile_fail_expects(compile_fail_store 32 "no container serves this request
 urd_compile_fail_expects(compile_fail_store 33 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 39 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 40 "no container serves this request")
-urd_compile_fail_expects(compile_fail_store 12 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 12 "changes_in_the_middle")
 urd_compile_fail_expects(compile_fail_store 60 "means nothing for this kind of Store")
 urd_compile_fail_expects(compile_fail_store 43 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 41 "no container serves this request")

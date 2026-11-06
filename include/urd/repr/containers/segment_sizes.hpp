@@ -15,7 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/containers/segment_sizes.hpp); names moved from ygg to urd::repr.
 #pragma once
 
 #include <cstddef>

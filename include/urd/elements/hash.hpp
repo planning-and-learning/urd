@@ -15,8 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/semantics/hash.hpp); names moved from ygg to urd.
-
 #pragma once
 
 #include "urd/elements/concepts.hpp"
@@ -84,13 +82,31 @@ inline void hash_combine(hash_t& seed, const T& value)
 /// The hash of a range's elements, in order. Elements hashed as their bytes (integers, enums) are hashed as the bytes
 /// of their values, contiguous or not, so that decoded and segmented ranges hash as contiguous ones of the same
 /// element type; any other element is mixed in one by one.
+namespace detail
+{
+/// Whether hash_range hashes a range as one block of bytes: contiguous, sized, of byte-hashed elements.
+template<typename Range>
+inline constexpr bool hashed_as_bytes = hashing::ByteHashable<std::ranges::range_value_t<Range>> && std::ranges::sized_range<Range>
+                                        && std::ranges::contiguous_range<Range>
+                                        && !std::is_volatile_v<std::remove_reference_t<std::ranges::range_reference_t<Range>>>;
+/// Whether hash_range of such a range throws nothing: taking its data and size throws nothing.
+template<typename Range>
+consteval bool hashes_without_throwing()
+{
+    if constexpr (hashed_as_bytes<Range>)
+        return noexcept(std::ranges::data(std::declval<Range&>())) && noexcept(std::ranges::size(std::declval<Range&>()));
+    else
+        return false;
+}
+}  // namespace detail
+
+/// Hashing a block of bytes throws only where taking the range's data or size does.
 template<std::ranges::input_range Range>
     requires Hashable<std::ranges::range_value_t<Range>>
-inline hash_t hash_range(Range&& range)
+inline hash_t hash_range(Range&& range) noexcept(detail::hashes_without_throwing<Range>())
 {
     using Value = std::ranges::range_value_t<Range>;
-    if constexpr (hashing::ByteHashable<Value> && std::ranges::sized_range<Range> && std::ranges::contiguous_range<Range>
-                  && !std::is_volatile_v<std::remove_reference_t<std::ranges::range_reference_t<Range>>>)
+    if constexpr (detail::hashed_as_bytes<Range>)
     {
         // A span of const elements also takes rvalue ranges; std::views::all would need a copy of
         // a const view, which move-only views do not have.
@@ -192,47 +208,85 @@ struct Hash<std::tuple<Ts...>>
     }
 };
 
-/// A pair hashes as the tuple of its two members.
-template<typename T1, typename T2>
-struct Hash<std::pair<T1, T2>>
+/// A pair (std's or cista's), as the tuple of its two members.
+template<template<typename, typename> typename P, typename T1, typename T2>
+    requires pair_value<P<T1, T2>>
+struct Hash<P<T1, T2>>
 {
-    hash_t operator()(const std::pair<T1, T2>& pair) const
+    hash_t operator()(const P<T1, T2>& pair) const
         requires Hashable<T1> && Hashable<T2>
     { return Hash<std::tuple<const T1&, const T2&>> {}(std::tie(pair.first, pair.second)); }
 };
 
-template<typename... Ts>
-struct Hash<std::variant<Ts...>>
+/// A variant (std's or cista's) hashes the index it holds and the alternative.
+template<template<typename...> typename V, typename... Ts>
+    requires variant_value<V<Ts...>>
+struct Hash<V<Ts...>>
 {
-    hash_t operator()(const std::variant<Ts...>& variant) const
+    hash_t operator()(const V<Ts...>& variant) const
         requires(Hashable<Ts> && ...)
     {
         hash_t seed = variant.index();
-        std::visit([&seed](const auto& arg) { urd::hash_combine(seed, arg); }, variant);
+        if (variant.index() < sizeof...(Ts))
+            visit([&seed](const auto& alternative) { urd::hash_combine(seed, alternative); }, variant);
         return seed;
     }
 };
-
-template<typename T>
-struct Hash<std::optional<T>>
+/// An optional (std's or cista's) hashes whether it holds a value, and the value.
+template<optional_value M>
+struct Hash<M>
 {
-    hash_t operator()(const std::optional<T>& optional) const
-        requires Hashable<T>
+    hash_t operator()(const M& optional) const
+        requires Hashable<optional_value_t<M>>
     {
         hash_t seed = optional.has_value() ? 1 : 0;
         if (optional.has_value())
-            urd::hash_combine(seed, optional.value());
+            urd::hash_combine(seed, *optional);
         return seed;
     }
 };
-
-/// An identified type hashes as what identifies it (detail::identity).
+/// An identified type hashes as what identifies it (detail::identity); it also hashes what identifies it given alone
+/// (detail::identity_t, or its parts by value), alike, so that a lookup may take it in place of the element.
 template<Identifiable T>
 struct Hash<T>
 {
+    using is_transparent = void;
+
     hash_t operator()(const T& element) const
         requires Hashable<detail::identity_t<T>>
     { return Hash<detail::identity_t<T>> {}(detail::identity(element)); }
+    template<identity_of<T> U>
+    hash_t operator()(const U& identity) const
+        requires Hashable<detail::identity_t<T>>
+    { return Hash<detail::identity_t<T>> {}(identity); }
 };
+
+/// Hashes any hashable value by its type's Hash.
+template<>
+struct Hash<void>
+{
+    using is_transparent = void;
+
+    template<Hashable T>
+    hash_t operator()(const T& value) const
+    { return Hash<std::remove_cvref_t<T>> {}(value); }
+};
+
+/// Mixes the hashes of `values` into `seed`, in order.
+template<Hashable First, Hashable... Rest>
+inline void hash_combine(hash_t& seed, const First& first, const Rest&... rest)
+{
+    urd::hash_combine(seed, first);
+    (urd::hash_combine(seed, rest), ...);
+}
+
+/// The hashes of `values` mixed in order into a zero seed.
+template<Hashable... Ts>
+inline hash_t hash_combine(const Ts&... values)
+{
+    hash_t seed = 0;
+    (urd::hash_combine(seed, values), ...);
+    return seed;
+}
 
 }  // namespace urd

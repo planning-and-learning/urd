@@ -8,7 +8,7 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
-#include "urd/repr/core/config.hpp"
+#include "urd/config.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -336,7 +336,7 @@ private:
         else
         {
             auto& present_slot = m_slots[index];
-            URD_REPR_ASSUME(present_slot.has_value());  // callers look a value up only where present
+            URD_ASSUME(present_slot.has_value());  // callers look a value up only where present
             return *present_slot;
         }
     }
@@ -347,7 +347,7 @@ private:
         else
         {
             auto& present_slot = m_slots[index];
-            URD_REPR_ASSUME(present_slot.has_value());  // callers look a value up only where present
+            URD_ASSUME(present_slot.has_value());  // callers look a value up only where present
             return *present_slot;
         }
     }

@@ -40,6 +40,9 @@ using DenseMultiMap = GroupedMultiMap<DenseGroups<K, V>>;
 /// A multimap as postings: each key's values together in a flat hash table.
 template<typename K, typename V>
 using PostingMap = GroupedMultiMap<HashGroups<K, V>>;
+/// A multimap as chained postings: a flat hash table of key chains over one pool of value slots; retains.
+template<typename K, typename V>
+class ChainedPostingMap;
 
 }  // namespace urd::repr
 
@@ -138,6 +141,31 @@ struct declaration_of<repr::PostingMap<K, V>>
 
 namespace detail
 {
+
+struct chained_posting_map_decl
+{
+    static constexpr std::string_view id = "chained_posting_map";
+    static constexpr auto headers = header_list<1> { "urd/repr/maps/postings.hpp" };
+    using kind = map_kind;
+    static constexpr property_set provides = property_set::of({ multiplicity::multi, keys::sparse, memory::retains });
+    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
+    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
+                                       cost_entry<operation::lookup, costs::one_e>,
+                                       cost_entry<operation::erase, costs::lin_row>,
+                                       cost_entry<operation::clear, costs::lin_capacity>,
+                                       cost_entry<operation::iterate, costs::lin_n>>;
+    static constexpr double words = 8.5;
+    static constexpr quantity words_per = quantity::capacity;
+    static constexpr std::string_view description = "chained postings (a flat hash table of key chains over one pool of value slots)";
+    static constexpr std::string_view holds = "a slot per value, freed slots reused by any key; retains";
+};
+template<typename K, typename V>
+struct declaration_of<repr::ChainedPostingMap<K, V>>
+{
+    using declaration = chained_posting_map_decl;
+    static constexpr property_set roles = roles_of<urd::map<K, V>>();
+};
 
 struct bidirectional_csr_decl
 {

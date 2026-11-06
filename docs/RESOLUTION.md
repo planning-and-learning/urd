@@ -376,7 +376,9 @@ indexable).
 | `Store<sequence<int>, monotone>` | monotone, positional | `vector` | sequence.hpp |
 | `Store<sequence<int>, stable_refs, monotone>` | stable_refs, monotone, positional | `segmented_vector` | segmented.hpp |
 | `Store<sequence<int>, stable_refs, frozen>` | stable_refs, frozen, positional | `vector` | sequence.hpp |
-| `Store<sequence<int>, monotone, concurrent>` | concurrent, monotone, positional | `concurrent_segmented_vector` | segmented.hpp |
+| `Store<sequence<int>, monotone, concurrent>` | stable_refs, concurrent, monotone, positional | `concurrent_segmented_vector` | segmented.hpp |
+| `Store<sequence<int>, stable_refs>` | stable_refs, positional | `segmented_vector` | segmented.hpp |
+| `Store<sequence<int>, concurrent>` | stable_refs, concurrent, positional | `concurrent_segmented_vector` | segmented.hpp |
 | `Store<sequence<std::string>>` | positional | `vector` | sequence.hpp |
 | `Store<multiset<Id>, sorted>` | sorted, positional | `flat_multiset` | flat_set.hpp |
 | `Store<sequence<Store<sequence<int>, positional>>>` | positional | `vector` | sequence.hpp |

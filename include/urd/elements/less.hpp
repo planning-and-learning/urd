@@ -15,13 +15,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/semantics/comparators.hpp); names moved from ygg to urd.
-
 #pragma once
 
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/equal_to.hpp"
 
 #include <algorithm>
+#include <compare>
 #include <functional>
 #include <optional>
 #include <ranges>
@@ -90,10 +90,12 @@ private:
 };
 
 /// A pair orders as the tuple of its two members.
-template<typename T1, typename T2>
-struct Less<std::pair<T1, T2>>
+/// A pair (std's or cista's), as the tuple of its two members.
+template<template<typename, typename> typename P, typename T1, typename T2>
+    requires pair_value<P<T1, T2>>
+struct Less<P<T1, T2>>
 {
-    constexpr bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const
+    constexpr bool operator()(const P<T1, T2>& lhs, const P<T1, T2>& rhs) const
         requires OrderedByLess<T1> && OrderedByLess<T2>
     { return Less<std::tuple<const T1&, const T2&>> {}(std::tie(lhs.first, lhs.second), std::tie(rhs.first, rhs.second)); }
 };
@@ -117,47 +119,153 @@ struct Less<std::reference_wrapper<T>>
     { return Less<std::remove_cvref_t<T>> {}(lhs.get(), rhs.get()); }
 };
 
-template<typename T>
-struct Less<std::optional<T>>
+/// Optionals (std's or cista's) order the empty one first, then by value.
+template<optional_value M>
+struct Less<M>
 {
-    constexpr bool operator()(const std::optional<T>& lhs, const std::optional<T>& rhs) const
-        requires OrderedByLess<T>
+    constexpr bool operator()(const M& lhs, const M& rhs) const
+        requires OrderedByLess<optional_value_t<M>>
     {
         if (lhs.has_value() != rhs.has_value())
             return !lhs.has_value();
-
-        return lhs.has_value() && Less<std::remove_cvref_t<T>> {}(*lhs, *rhs);
+        return lhs.has_value() && Less<optional_value_t<M>> {}(*lhs, *rhs);
     }
 };
-
-template<typename... Ts>
-struct Less<std::variant<Ts...>>
+/// Variants (std's or cista's) order by the index they hold, then by the alternative.
+template<template<typename...> typename V, typename... Ts>
+    requires variant_value<V<Ts...>>
+struct Less<V<Ts...>>
 {
-    constexpr bool operator()(const std::variant<Ts...>& lhs, const std::variant<Ts...>& rhs) const
+    constexpr bool operator()(const V<Ts...>& lhs, const V<Ts...>& rhs) const
         requires(OrderedByLess<Ts> && ...)
     {
         if (lhs.index() != rhs.index())
             return lhs.index() < rhs.index();
-
-        return std::visit(
-            []<typename L, typename R>(const L& l, const R& r)
-            {
-                if constexpr (std::is_same_v<L, R>)
-                    return Less<L> {}(l, r);
-                return false;
-            },
-            lhs,
-            rhs);
+        return lhs.index() < sizeof...(Ts) && visit(
+                   []<typename L, typename R>(const L& l, const R& r)
+                   {
+                       if constexpr (std::is_same_v<L, R>)
+                           return Less<L> {}(l, r);
+                       else
+                           return false;
+                   },
+                   lhs,
+                   rhs);
     }
 };
-
-/// An identified type orders as what identifies it (detail::identity).
+/// An identified type orders as what identifies it (detail::identity); it also orders with what identifies it given
+/// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
 template<Identifiable T>
 struct Less<T>
 {
+    using is_transparent = void;
+
     constexpr bool operator()(const T& lhs, const T& rhs) const
         requires OrderedByLess<detail::identity_t<T>>
     { return Less<detail::identity_t<T>> {}(detail::identity(lhs), detail::identity(rhs)); }
+    template<identity_of<T> U>
+    constexpr bool operator()(const T& lhs, const U& rhs) const
+        requires OrderedByLess<detail::identity_t<T>>
+    { return Less<detail::identity_t<T>> {}(detail::identity(lhs), rhs); }
+    template<identity_of<T> U>
+    constexpr bool operator()(const U& lhs, const T& rhs) const
+        requires OrderedByLess<detail::identity_t<T>>
+    { return Less<detail::identity_t<T>> {}(lhs, detail::identity(rhs)); }
+    template<identity_of<T> U, identity_of<T> V>
+    constexpr bool operator()(const U& lhs, const V& rhs) const
+        requires OrderedByLess<detail::identity_t<T>>
+    { return Less<detail::identity_t<T>> {}(lhs, rhs); }
+};
+
+/// Orders any two values by the first one's Less.
+template<>
+struct Less<void>
+{
+    using is_transparent = void;
+
+    template<typename T, typename U>
+        requires LessFor<Less<std::remove_cvref_t<T>>, T, U>
+    constexpr bool operator()(const T& lhs, const U& rhs) const noexcept(noexcept(Less<std::remove_cvref_t<T>> {}(lhs, rhs)))
+    { return Less<std::remove_cvref_t<T>> {}(lhs, rhs); }
+};
+
+namespace detail
+{
+/// The Less a predicate of T uses on a U: T's, or with T void (transparent), U's.
+template<typename T, typename U>
+using order_of = Less<std::conditional_t<std::is_void_v<T>, std::remove_cvref_t<U>, T>>;
+}  // namespace detail
+
+/// The other order predicates and a three-way comparison, all from Less, so that every predicate shares its order.
+template<typename T = void>
+struct LessEqual
+{
+    using is_transparent = void;
+
+    template<typename U = T, typename V = T>
+        requires LessFor<detail::order_of<T, U>, V, U>
+    constexpr bool operator()(const U& lhs, const V& rhs) const
+    { return !detail::order_of<T, U> {}(rhs, lhs); }
+};
+template<typename T = void>
+struct Greater
+{
+    using is_transparent = void;
+
+    template<typename U = T, typename V = T>
+        requires LessFor<detail::order_of<T, U>, V, U>
+    constexpr bool operator()(const U& lhs, const V& rhs) const
+    { return detail::order_of<T, U> {}(rhs, lhs); }
+};
+template<typename T = void>
+struct GreaterEqual
+{
+    using is_transparent = void;
+
+    template<typename U = T, typename V = T>
+        requires LessFor<detail::order_of<T, U>, U, V>
+    constexpr bool operator()(const U& lhs, const V& rhs) const
+    { return !detail::order_of<T, U> {}(lhs, rhs); }
+};
+template<typename T = void>
+struct ThreeWayCompare
+{
+    using is_transparent = void;
+
+    template<typename U = T, typename V = T>
+        requires LessFor<detail::order_of<T, U>, U, V> && LessFor<detail::order_of<T, U>, V, U>
+    constexpr std::strong_ordering operator()(const U& lhs, const V& rhs) const
+    {
+        using Compare = detail::order_of<T, U>;
+        if (Compare {}(lhs, rhs))
+            return std::strong_ordering::less;
+        if (Compare {}(rhs, lhs))
+            return std::strong_ordering::greater;
+        return std::strong_ordering::equal;
+    }
+};
+
+/// Whether `lhs` comes before `rhs` element by element (by Less), as std::lexicographical_compare.
+template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
+    requires OrderedByLess<std::ranges::range_value_t<LhsRange>>
+constexpr bool less_range(LhsRange&& lhs, RhsRange&& rhs)
+{
+    using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
+    return std::ranges::lexicographical_compare(lhs, rhs, Less<Value> {});
+}
+
+/// Gives Derived `==` and `<=>` by what identifies it (its identifying_members(), through EqualTo and ThreeWayCompare):
+/// `struct Key : urd::compared_by_identity<Key> { … identifying_members() … };`.
+template<typename Derived>
+struct compared_by_identity
+{
+    friend constexpr bool operator==(const Derived& lhs, const Derived& rhs)
+        requires Identifiable<Derived>
+    { return EqualTo<Derived> {}(lhs, rhs); }
+
+    friend constexpr std::strong_ordering operator<=>(const Derived& lhs, const Derived& rhs)
+        requires Identifiable<Derived> && std::invocable<ThreeWayCompare<Derived>, const Derived&, const Derived&>
+    { return ThreeWayCompare<Derived> {}(lhs, rhs); }
 };
 
 }  // namespace urd

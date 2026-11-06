@@ -24,15 +24,15 @@ template<typename... Ps>
 struct request
 {
     using spec = typename detail::to_spec<Ps...>::type;
-    using stated = detail::type_list<Ps...>;
+    using stated = boost::mp11::mp_list<Ps...>;
 };
 
 /// A list of requests.
 template<typename... Rs>
-using requests = detail::type_list<Rs...>;
+using requests = boost::mp11::mp_list<Rs...>;
 /// Lists of requests, joined in order.
 template<typename... Lists>
-using cat_t = typename detail::concat<detail::type_list<>, Lists...>::type;
+using cat_t = boost::mp11::mp_append<boost::mp11::mp_list<>, Lists...>;
 
 /// Calls f on each request type of a list, as std::type_identity<request<...>>.
 template<typename F, typename... Rs>
@@ -45,14 +45,16 @@ void element_headers_of(std::vector<std::string>& into);
 namespace detail
 {
 
-template<typename R, typename S>
-void element_headers_of_store(std::type_identity<detail::Store<R, S>> /*store*/, std::vector<std::string>& into)
+/// A Store as named: from the row its request resolves to, which lists them whether or not they are included here,
+/// without completing it.
+template<typename Kind, typename... Tags>
+void element_headers_of_store(std::type_identity<urd::Store<Kind, Tags...>> /*store*/, std::vector<std::string>& into)
 {
-    // From the row the Store's request resolves to, which lists them whether or not they are included here.
+    using S = typename to_spec<Kind, Tags...>::type;
     for (const auto header : detail::choose<S>::headers)
         if (!header.empty() && std::ranges::find(into, header) == into.end())
             into.emplace_back(header);
-    [&into]<typename... Types>(type_list<Types...> /*types*/) { (element_headers_of<Types>(into), ...); }(typename S::element_types {});
+    [&into]<typename... Types>(boost::mp11::mp_list<Types...> /*types*/) { (element_headers_of<Types>(into), ...); }(typename S::element_types {});
 }
 
 }  // namespace detail
@@ -78,7 +80,7 @@ std::string spelling_of_stated()
     else
     {
         auto types = std::vector<std::string>();
-        [&types]<typename... Types>(type_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename P::element_types {});
+        [&types]<typename... Types>(boost::mp11::mp_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename P::element_types {});
         return fmt::format("{}<{}>", P::kind::name, fmt::join(types, ", "));
     }
 }
@@ -86,7 +88,7 @@ std::string spelling_of_stated()
 template<typename List>
 struct stated_spelling;
 template<typename... Ps>
-struct stated_spelling<type_list<Ps...>>
+struct stated_spelling<boost::mp11::mp_list<Ps...>>
 {
     static std::string spelled() { return fmt::format("Store<{}>", fmt::join(std::array<std::string, sizeof...(Ps)> { spelling_of_stated<Ps>()... }, ", ")); }
 };

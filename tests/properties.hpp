@@ -82,10 +82,10 @@ struct representation_of
 {
     using type = T;
 };
-template<typename R, typename S>
-struct representation_of<urd::detail::Store<R, S>>
+template<typename Kind, typename... Tags>
+struct representation_of<urd::Store<Kind, Tags...>>
 {
-    using type = R;
+    using type = typename urd::Store<Kind, Tags...>::representation;
 };
 
 template<typename R>

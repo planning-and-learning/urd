@@ -45,7 +45,7 @@ constexpr bool with_representation = true;
 template<std::size_t Index>
 using spec_at = typename urd::test::request_at<positions[2 * Index], positions[(2 * Index) + 1]>::spec;
 template<std::size_t Index>
-using store_at = urd::detail::Store<typename urd::test::serving_named<container, spec_at<Index>>::type, spec_at<Index>>;
+using store_at = urd::test::store_over<spec_at<Index>, typename urd::test::serving_named<container, spec_at<Index>>::type>;
 
 /// The types this object tests: the container (in its first object), then the Store over it for each request.
 template<std::size_t... I>

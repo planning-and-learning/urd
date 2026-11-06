@@ -67,6 +67,19 @@ public:
             erase_if(mutable_self(), [&other](const auto& element) { return other.contains(element); });
         return mutable_self();
     }
+    /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others. With the
+    /// representation's own merge where it has one (a node-based set relinks its nodes), else by insert and erase.
+    void merge(Derived& source)
+        requires grows<S> && shrinks<S>
+    {
+        if constexpr (requires { mutable_representation().merge(store_access::representation(source)); })
+            mutable_representation().merge(store_access::representation(source));
+        else
+            erase_if(source, [this](const auto& element) { return mutable_self().insert(element).second; });
+    }
+    void merge(Derived&& source)
+        requires grows<S> && shrinks<S>
+    { merge(source); }
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }

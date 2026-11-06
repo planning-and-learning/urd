@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements/index.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
@@ -30,25 +31,27 @@ public:
     using handle_type = urd::index<T>;
     using size_type = std::size_t;
 
-    std::pair<handle_type, bool> insert(const T& record)
-    {
-        const auto [found, inserted] = m_records.insert(record);
-        return { at(found), inserted };
-    }
+    // Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
+    std::pair<handle_type, bool> insert(const T& record) { return inserted(m_records.insert(record)); }
+    std::pair<handle_type, bool> insert(const prehashed<T>& key) { return inserted(m_records.insert(key)); }
     /// The index `key` gets, built where new from `make(index)`, which must give a record equal to `key`.
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
+    { return insert(prehash(key), std::move(make)); }
+    template<std::invocable<handle_type> Factory>
+    std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
-        const auto [found, inserted] =
-            m_records.insert_with(key, [&make](std::size_t position) { return make(handle_type(static_cast<std::uint32_t>(position))); });
-        return { at(found), inserted };
+        return inserted(
+            m_records.insert_with(key, [&make](std::size_t position) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
     }
-    [[nodiscard]] handle_type find(const T& record) const
+    [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
+    [[nodiscard]] handle_type find(const prehashed<T>& key) const
     {
-        const auto found = m_records.position(record);
+        const auto found = m_records.position(key);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
     [[nodiscard]] bool contains(const T& record) const { return m_records.contains(record); }
+    [[nodiscard]] bool contains(const prehashed<T>& key) const { return m_records.contains(key); }
     [[nodiscard]] const T& operator[](handle_type at) const { return m_records[at.value]; }
     [[nodiscard]] size_type size() const { return m_records.size(); }
     [[nodiscard]] bool empty() const { return m_records.empty(); }
@@ -58,6 +61,8 @@ private:
     friend struct urd::memory_of<RecordInterner>;
 
     [[nodiscard]] handle_type at(typename Records::iterator it) const { return handle_type(static_cast<std::uint32_t>(it - m_records.begin())); }
+    [[nodiscard]] std::pair<handle_type, bool> inserted(std::pair<typename Records::iterator, bool> result) const
+    { return { at(result.first), result.second }; }
 
     Records m_records;
 };

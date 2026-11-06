@@ -9,10 +9,9 @@ urd_source(URD_BOOST_SHA256 boost sha256)
 
 message(STATUS "Preparing external project \"boost\":")
 
-# Only Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2
-# (xxHash, for urd::Hash).
 ExternalProject_Add(
     boost
+    DEPENDS icu mpich
     URL ${URD_BOOST_URLS}
     URL_HASH SHA256=${URD_BOOST_SHA256}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -22,12 +21,24 @@ ExternalProject_Add(
     LIST_SEPARATOR |
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+        -DCMAKE_CXX_STANDARD=17
         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
         -DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}
+        -DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}
+        -DMPI_HOME=${CMAKE_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DBUILD_SHARED_LIBS=ON
         -DBUILD_TESTING=OFF
-        -DBOOST_INCLUDE_LIBRARIES=container|unordered|hash2
+        -DBOOST_INCLUDE_LIBRARIES=container|hash2|iostreams|json|locale|mpi|numeric/interval|serialization
+        -DBOOST_ENABLE_MPI=ON
+        -DBOOST_ENABLE_PYTHON=OFF
+        -DBOOST_IOSTREAMS_ENABLE_ZSTD=OFF
+        -DBOOST_LOCALE_ENABLE_ICU=ON
+        -DBOOST_LOCALE_ENABLE_ICONV=OFF
+        -DBOOST_LOCALE_ENABLE_POSIX=OFF
+        -DBOOST_LOCALE_ENABLE_STD=OFF
+        -DBOOST_LOCALE_ENABLE_WINAPI=OFF
+        -DICU_ROOT=${CMAKE_INSTALL_PREFIX}
         -DCMAKE_INSTALL_RPATH=${URD_DEPENDENCY_INSTALL_RPATH}
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
 )

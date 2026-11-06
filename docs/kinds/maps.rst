@@ -42,7 +42,8 @@ A map holds one value per key, or many (``multi``: a multimap). Its elements are
    * - ``Store<map<K, V>, insertion_ordered>``
      - ``OrderedMap`` (over a ``SparseSet`` with ``dense``)
    * - ``Store<map<K, V>, multi>``
-     - ``PostingMap`` (a flat hash table of value vectors); with ``sorted``, ``std::multimap``
+     - ``PostingMap`` (a flat hash table of value vectors); with ``retains``, ``ChainedPostingMap`` (its values in
+       one pool of slots, so churning keys and clearing allocate nothing once warm); with ``sorted``, ``std::multimap``
    * - ``Store<map<I, V>, multi, dense, frozen>``
      - ``CsrMultiMap`` (compressed sparse rows); with ``bidirectional`` and values of ``I`` (``map<I, I>``), ``BidirectionalCsr``
    * - ``Store<map<I, V>, multi, dense>``

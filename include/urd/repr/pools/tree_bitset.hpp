@@ -24,9 +24,9 @@
 #include <vector>
 
 // Sets of indices as bitsets, each a balanced tree of 32-bit blocks whose nodes are interned, so that equal subtrees
-// of different sets are stored once and all-zero subtrees not at all. Copied from yggdrasil's TreeBitsetSet
-// (containers/tree_bitset_set.hpp) with its blocks fixed at the width of a child slot (stored inline), and changed
-// to fit urd's pools: a row goes in as its elements, a delta as the elements added and removed.
+// of different sets are stored once and all-zero subtrees not at all. Blocks are
+// fixed at the width of a child slot (stored inline); a row goes in as its elements, a delta as the elements added and
+// removed.
 
 namespace urd::repr
 {
@@ -58,6 +58,9 @@ class TreeBitsetSet
     static constexpr std::uint32_t zero_subtree = std::numeric_limits<std::uint32_t>::max();
 
 public:
+    /// A row's blocks, and a change to one of them, as the block interface takes them.
+    using block_type = Block;
+    using flip_type = BlockFlip;
     using value_type = Row;
     using handle_type = TreeHandle;
     using size_type = std::size_t;

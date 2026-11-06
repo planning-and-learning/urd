@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <boost/mp11.hpp>
 #include <concepts>
 #include <cstddef>
 #include <initializer_list>
@@ -165,6 +166,51 @@ struct to_spec
     using type = typename spec_answers<spec<Kind, compare>, format, meant>::type;
 };
 
+/// Not a tag: among a Store's Tags, it puts the Store over container R instead of the one urd chooses, for the tests
+/// and benchmarks that run a Store over each container serving its request. The request is the other Tags (to_spec
+/// drops it), and R must serve it (urd/store.hpp).
+template<typename R>
+struct over
+{
+};
+template<typename T>
+inline constexpr bool is_over = false;
+template<typename R>
+inline constexpr bool is_over<over<R>> = true;
+template<typename T>
+using is_over_t = boost::mp11::mp_bool<is_over<T>>;
+
+/// The container an over<R> among Tags names, else void.
+template<typename... Tags>
+struct over_in
+{
+    using type = void;
+};
+template<typename R, typename... Tags>
+struct over_in<over<R>, Tags...>
+{
+    using type = R;
+};
+template<typename T, typename... Tags>
+struct over_in<T, Tags...> : over_in<Tags...>
+{
+};
+
+/// A request with an over<R> is the request without it.
+template<typename Kind, typename... Tags>
+    requires(is_over<Tags> || ...)
+struct to_spec<Kind, Tags...> : boost::mp11::mp_apply<to_spec, boost::mp11::mp_remove_if<boost::mp11::mp_list<Kind, Tags...>, is_over_t>>
+{
+};
+
 }  // namespace detail
+
+/// Whether X is a Store of Kind (its kind and element types: set<int>, map<K, V>, …) whose request holds at least Tags
+/// (a stronger answer holds a weaker one: frozen holds monotone). A function that takes `const store_of<set<int>,
+/// sorted> auto&` accepts every such Store, whatever else its request states and in whatever order; only definitions
+/// spell a Store's whole request.
+template<typename X, typename Kind, typename... Tags>
+concept store_of = is_store<std::remove_cvref_t<X>> && std::derived_from<traits_t<std::remove_cvref_t<X>>, Kind>
+                   && has<std::remove_cvref_t<X>, Tags...>;
 
 }  // namespace urd

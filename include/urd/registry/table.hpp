@@ -11,7 +11,7 @@ namespace urd::detail
 {
 
 template<typename... Decls>
-constexpr auto entries_from(type_list<Decls...> /*declarations*/)
+constexpr auto entries_from(boost::mp11::mp_list<Decls...> /*declarations*/)
 { return std::array<registry_entry, sizeof...(Decls)> { entry_of<Decls>()... }; }
 
 /// A list of declarations as values, one entry each, in the same order; and a kind's table (kinds sharing their

@@ -174,6 +174,168 @@
     "top": 0.288
    }
   },
+  "chained_posting_map/Id;Id/1000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 1.398,
+    "lookup": 2.485,
+    "insert": 16.368,
+    "erase": 3.673,
+    "clear": 0.496
+   },
+   "memory": {
+    "counted": 64504,
+    "told": 64504,
+    "elements": 1000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/Id;Id/10000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 1.643,
+    "lookup": 3.023,
+    "insert": 24.215,
+    "erase": 3.971,
+    "clear": 0.526
+   },
+   "memory": {
+    "counted": 647176,
+    "told": 647176,
+    "elements": 10000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/Id;Id/100000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 1.96,
+    "lookup": 6.937,
+    "insert": 31.95,
+    "erase": 12.162,
+    "clear": 0.645
+   },
+   "memory": {
+    "counted": 5177336,
+    "told": 5177336,
+    "elements": 100000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/int;int/1000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 1.404,
+    "lookup": 1.791,
+    "insert": 16.152,
+    "erase": 3.054,
+    "clear": 0.507
+   },
+   "memory": {
+    "counted": 64504,
+    "told": 64504,
+    "elements": 1000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/int;int/10000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 2.398,
+    "lookup": 3.702,
+    "insert": 38.257,
+    "erase": 6.692,
+    "clear": 1.047
+   },
+   "memory": {
+    "counted": 647176,
+    "told": 647176,
+    "elements": 10000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/int;int/100000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 1.783,
+    "lookup": 5.011,
+    "insert": 29.846,
+    "erase": 10.971,
+    "clear": 0.632
+   },
+   "memory": {
+    "counted": 5177336,
+    "told": 5177336,
+    "elements": 100000,
+    "element_size": 8,
+    "plain": true
+   }
+  },
+  "chained_posting_map/std::string;double/1000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 12.492,
+    "lookup": 31.996,
+    "insert": 77.442,
+    "erase": 39.412,
+    "clear": 4.137
+   },
+   "memory": {
+    "counted": 148642,
+    "told": 148642,
+    "elements": 1000,
+    "element_size": 40,
+    "plain": false
+   }
+  },
+  "chained_posting_map/std::string;double/10000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 11.596,
+    "lookup": 40.17,
+    "insert": 94.692,
+    "erase": 44.068,
+    "clear": 6.57
+   },
+   "memory": {
+    "counted": 1455754,
+    "told": 1455754,
+    "elements": 10000,
+    "element_size": 40,
+    "plain": false
+   }
+  },
+  "chained_posting_map/std::string;double/100000": {
+   "fingerprint": "e1372904a425225d",
+   "recorded": "2026-11-03",
+   "ns": {
+    "iterate": 15.811,
+    "lookup": 54.761,
+    "insert": 104.678,
+    "erase": 61.376,
+    "clear": 11.981
+   },
+   "memory": {
+    "counted": 12363898,
+    "told": 12363898,
+    "elements": 100000,
+    "element_size": 40,
+    "plain": false
+   }
+  },
   "change_logged_set/Id;-/1000": {
    "fingerprint": "a4a3463d7d0d919e",
    "recorded": "2026-11-01",
@@ -17044,7 +17206,7 @@
    }
   }
  },
- "compiler": "g++ 13.3, Release (-O3)",
+ "compiler": "g++",
  "context": {
   "host": "dominik-MS-7D31",
   "cpu": "12th Gen Intel(R) Core(TM) i9-12900KF",

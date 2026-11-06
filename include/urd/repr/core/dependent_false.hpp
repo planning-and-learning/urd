@@ -15,7 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/core/dependent_false.hpp); names moved from ygg to urd::repr.
 #ifndef URD_REPR_CORE_DEPENDENT_FALSE_HPP_
 #define URD_REPR_CORE_DEPENDENT_FALSE_HPP_
 

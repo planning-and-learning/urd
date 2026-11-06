@@ -29,18 +29,31 @@ public:
     typename iterator_types<R, S>::reference emplace_back(Args&&... args)
     { return representation().emplace_back(std::forward<Args>(args)...); }
     iterator_type insert(const_iterator_type pos, const value_type& element)
-        requires shrinks<S>
+        requires changes_in_the_middle<S>
     { return representation().insert(pos, element); }
+    /// Copies of [first, last) before `pos`, as std::vector::insert.
+    template<std::input_iterator InputIt>
+    iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
+        requires changes_in_the_middle<S>
+    { return representation().insert(pos, first, last); }
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
-        requires shrinks<S>
+        requires changes_in_the_middle<S>
     { return representation().emplace(pos, std::forward<Args>(args)...); }
     void pop_back()
         requires shrinks<S>
     { representation().pop_back(); }
+    /// Grows to `count` elements, value-initialized or copies of `value`, or removes those after the first `count`, as
+    /// std::vector::resize; where the representation resizes.
+    void resize(std::size_t count)
+        requires shrinks<S> && requires(R& held, std::size_t n) { held.resize(n); }
+    { representation().resize(count); }
+    void resize(std::size_t count, const value_type& value)
+        requires shrinks<S> && requires(R& held, std::size_t n, const value_type& v) { held.resize(n, v); }
+    { representation().resize(count, value); }
     /// Every element equal to `element`; how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)
-        requires shrinks<S>
+        requires changes_in_the_middle<S>
     {
         return erase_if(store, [&](const value_type& candidate) { return candidate == element; });
     }

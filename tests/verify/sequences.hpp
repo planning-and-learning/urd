@@ -256,6 +256,16 @@ std::optional<std::string> run(R& range, unsigned seed, int steps)
                             model.elements.pop_back();
                         }
                     }
+                    else if constexpr (!keyed && !changes_in_the_middle_of<R>())
+                    {
+                        // A sequence with stable references removes at its end only.
+                        if (size > 0)
+                        {
+                            operation = "pop_back";
+                            range.pop_back();
+                            model.elements.pop_back();
+                        }
+                    }
                     else if (op >= 3)
                     {
                         if constexpr (!keyed)

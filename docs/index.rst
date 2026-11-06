@@ -62,6 +62,7 @@ complexity of each operation per representation.
 
    representations
    extending
+   python
    RESOLUTION
 
 .. toctree::

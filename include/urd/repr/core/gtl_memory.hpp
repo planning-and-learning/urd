@@ -25,3 +25,27 @@ std::size_t sharded_table_bytes(const Table& held)
 }
 
 }  // namespace urd::detail
+
+namespace urd
+{
+
+/// The sharded sets: what urd's parallel sets are, and the table of a thread-safe indexed set.
+template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename C>
+struct memory_of<gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>>
+{
+    static std::size_t bytes(const gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>& held) { return detail::sharded_table_bytes(held); }
+};
+/// gtl's single table: a control byte and a slot per bucket, and what the elements own.
+template<typename T, typename H, typename E, typename A>
+struct memory_of<gtl::flat_hash_set<T, H, E, A>>
+{
+    static std::size_t bytes(const gtl::flat_hash_set<T, H, E, A>& held)
+    { return (held.capacity() == 0 ? 0 : held.capacity() * (sizeof(T) + 1)) + detail::held_bytes(held); }
+};
+template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename C>
+struct memory_of<gtl::parallel_node_hash_set<T, H, E, A, N, M, C>>
+{
+    static std::size_t bytes(const gtl::parallel_node_hash_set<T, H, E, A, N, M, C>& held) { return detail::sharded_table_bytes(held); }
+};
+
+}  // namespace urd

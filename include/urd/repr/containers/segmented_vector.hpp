@@ -15,7 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/containers/segmented_vector.hpp); names moved from ygg to urd::repr.
 #ifndef URD_REPR_CONTAINERS_SEGMENTED_VECTOR_HPP_
 #define URD_REPR_CONTAINERS_SEGMENTED_VECTOR_HPP_
 
@@ -351,7 +350,10 @@ public:
                                                  if (index == std::numeric_limits<size_t>::max() || index > max_index)
                                                      throw std::length_error("SegmentedVector: index is too large.");
                                                  resize_to_fit(index + 1);
-                                                 emplace_back_at_unlocked(index, std::forward<Factory>(factory)(index));
+                                                 // Built in place from what the factory returns, so that elements that
+                                                 // cannot move (an atomic counter) are appended too.
+                                                 ::new (static_cast<void*>(element(index))) T(std::forward<Factory>(factory)(index));
+                                                 detail::store_size<ThreadSafe>(m_size, index + 1);
                                                  return index;
                                              });
     }

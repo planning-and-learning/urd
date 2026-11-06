@@ -28,22 +28,29 @@ list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
 if(URD_ENABLE_FMT_FORMATTERS OR URD_BUILD_TESTS OR URD_BUILD_BENCHMARKS)
     find_package(fmt CONFIG REQUIRED)
 endif()
-# Boost.Container (flat sets and maps), Boost.Unordered (open-addressing hash tables) and Boost.Hash2 (xxHash for
+# Boost.Container (flat sets and maps), Boost.Mp11 (type lists), Boost.Unordered (open-addressing hash tables) and Boost.Hash2 (xxHash for
 # urd::Hash, in Boost since 1.89); cista (serialization, for records stored flat); gtl (sharded hash tables, for
 # concurrent sets and maps by hashed keys). All header-only but for Boost.Container's small runtime library.
-find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container unordered hash2)
+find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container unordered hash2 mp11)
 find_package(cista REQUIRED CONFIG)
 find_package(gtl REQUIRED CONFIG)
+
+# Where the headers are installed: the include directory, or the pyurd package's in the wheel (python/).
+if(SKBUILD)
+    set(URD_INSTALL_INCLUDEDIR "pyurd/include")
+else()
+    set(URD_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
 
 add_library(urd INTERFACE)
 add_library(urd::urd ALIAS urd)
 target_include_directories(urd INTERFACE
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    "$<INSTALL_INTERFACE:${URD_INSTALL_INCLUDEDIR}>"
 )
 target_compile_features(urd INTERFACE cxx_std_20)
 # Imported targets' headers are system headers, so the build's warnings cover only urd.
-target_link_libraries(urd INTERFACE Boost::container Boost::unordered Boost::hash2 cista::cista gtl::gtl)
+target_link_libraries(urd INTERFACE Boost::container Boost::unordered Boost::hash2 Boost::mp11 cista::cista gtl::gtl)
 if(URD_ENABLE_FMT_FORMATTERS)
     target_link_libraries(urd INTERFACE fmt::fmt)
     target_compile_definitions(urd INTERFACE URD_ENABLE_FMT_FORMATTERS=1)
@@ -104,4 +111,8 @@ if(URD_BUILD_BENCHMARKS)
 endif()
 if(URD_BUILD_TESTS)
     add_subdirectory(tests)
+endif()
+# The pyurd wheel (pyproject.toml, scikit-build-core): urd and the native prefix, under pyurd/.
+if(SKBUILD)
+    add_subdirectory(python)
 endif()

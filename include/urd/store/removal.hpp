@@ -23,13 +23,16 @@ class removal
 
 public:
     iterator_type erase(const_iterator_type pos)
+        requires changes_in_the_middle<S>
     {
         // Two conversions, one at a time: the representation's result (perhaps a proxy) to its iterator_type, that
         // to the Store's.
         const std::ranges::iterator_t<R> next = representation().erase(pos);
         return next;
     }
-    iterator_type erase(const_iterator_type first, const_iterator_type last) { return representation().erase(first, last); }
+    iterator_type erase(const_iterator_type first, const_iterator_type last)
+        requires changes_in_the_middle<S>
+    { return representation().erase(first, last); }
     /// Every element equal to `element` (in a map, with that key); how many there were. Where the kind places elements
     /// by their value or key (it does not append): one erase with the other erases, as std::set has it.
     std::size_t erase(const typename types::lookup_type& element)
@@ -40,6 +43,7 @@ public:
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
     template<typename Pred>
     friend std::size_t erase_if(Derived& store, Pred pred)
+        requires changes_in_the_middle<S>
     {
         const auto before = store.size();
         if constexpr (types::writable)

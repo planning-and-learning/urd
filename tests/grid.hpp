@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <array>
+#include <boost/mp11.hpp>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <fmt/format.h>
@@ -185,6 +187,8 @@ using sequences = requests<request<sequence<int>>,
                            request<sequence<int>, stable_refs, monotone>,
                            request<sequence<int>, stable_refs, frozen>,
                            request<sequence<int>, monotone, concurrent>,
+                           request<sequence<int>, stable_refs>,
+                           request<sequence<int>, concurrent>,
                            request<sequence<std::string>>,
                            request<multiset<Id>, sorted>,
                            request<sequence<Store<sequence<int>>>>,
@@ -314,14 +318,39 @@ struct serving_named
         return urd::detail::no_entry;
     }
     static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");
-    using declaration = typename urd::detail::nth<at(), urd::detail::declarations_t<typename S::kind>>::type;
+    using declaration = boost::mp11::mp_at_c<urd::detail::declarations_t<typename S::kind>, at()>;
     using type = typename urd::detail::representation_of<declaration, S>::type;
 };
+
+/// The tag type of answer A: its place among its category's tags (urd::tags_of); a given comparison is order_by<Compare>.
+template<typename Compare, auto A>
+struct tag_of
+{
+    using type = boost::mp11::mp_at_c<typename urd::tags_of<decltype(A)>::type, static_cast<std::size_t>(A)>;
+};
+template<typename Compare>
+struct tag_of<Compare, urd::comparison::given>
+{
+    using type = urd::order_by<Compare>;
+};
+
+/// The Store for spec S over container R (which must serve S): its request, written back from S, with over<R>.
+template<typename S, typename R>
+struct store_over_of;
+template<typename Kind, typename Compare, auto... As, typename R>
+struct store_over_of<urd::spec<Kind, Compare, As...>, R>
+{
+    using type = urd::Store<Kind, typename tag_of<Compare, As>::type..., urd::detail::over<R>>;
+    static_assert(std::same_as<typename urd::detail::to_spec<Kind, typename tag_of<Compare, As>::type...>::type, urd::spec<Kind, Compare, As...>>,
+                  "store_over: the request written back from the spec resolves to another spec");
+};
+template<typename S, typename R>
+using store_over = typename store_over_of<S, R>::type;
 
 /// The containers serving spec S, in the order they are preferred, as types: for files that include every container's
 /// header.
 template<typename S, typename... Decls>
-auto containers_of(urd::detail::type_list<Decls...> /*declarations*/) -> urd::detail::type_list<typename urd::detail::representation_of<Decls, S>::type...>;
+auto containers_of(boost::mp11::mp_list<Decls...> /*declarations*/) -> boost::mp11::mp_list<typename urd::detail::representation_of<Decls, S>::type...>;
 template<typename S>
 using serving_containers = decltype(urd::test::containers_of<S>(urd::detail::serving_declarations<S> {}));
 
@@ -329,7 +358,7 @@ using serving_containers = decltype(urd::test::containers_of<S>(urd::detail::ser
 template<typename S, typename F>
 void for_each_serving(F f)
 {
-    [&]<typename... Decls>(urd::detail::type_list<Decls...>) { (f(std::type_identity<Decls> {}), ...); }(urd::detail::serving_declarations<S> {});
+    [&]<typename... Decls>(boost::mp11::mp_list<Decls...>) { (f(std::type_identity<Decls> {}), ...); }(urd::detail::serving_declarations<S> {});
 }
 
 /// The request at position P of group G: how a benchmark names the request it measures a container for.

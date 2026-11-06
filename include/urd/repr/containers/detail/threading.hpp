@@ -15,7 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/containers/detail/threading.hpp); names moved from ygg to urd::repr.
 #ifndef URD_REPR_CONTAINERS_DETAIL_THREADING_HPP_
 #define URD_REPR_CONTAINERS_DETAIL_THREADING_HPP_
 

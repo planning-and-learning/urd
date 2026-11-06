@@ -195,3 +195,26 @@ TEST(Assign, RebuildsRowsAndOthers)
 }
 
 }  // namespace
+
+// The standard's equal_range, ordered or not: a multimap's values of a key; a unique container's one element or none.
+TEST(Multimap, EqualRangeOfAnUnorderedMultimapAndOfAUniqueSet)
+{
+    auto edges = urd::Store<urd::map<int, int>, urd::multi, urd::retains>();
+    edges.insert({ 1, 10 });
+    edges.insert({ 2, 20 });
+    edges.insert({ 1, 11 });
+    const auto [first, last] = edges.equal_range(1);
+    auto values = std::vector<int>();
+    for (auto it = first; it != last; ++it)
+        values.push_back(it->second);
+    std::ranges::sort(values);
+    EXPECT_EQ(values, (std::vector<int> { 10, 11 }));
+    const auto found = std::find_if(first, last, [](const auto& entry) { return entry.second == 10; });
+    edges.erase(found);
+    EXPECT_EQ(edges.count(1), 1U);
+    EXPECT_EQ(edges.size(), 2U);
+
+    const auto seen = urd::Store<urd::set<int>> { 3, 5 };
+    EXPECT_EQ(std::distance(seen.equal_range(3).first, seen.equal_range(3).second), 1);
+    EXPECT_EQ(seen.equal_range(4).first, seen.equal_range(4).second);
+}

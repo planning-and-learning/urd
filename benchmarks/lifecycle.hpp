@@ -1,7 +1,7 @@
 #pragma once
 
 // One container's lifecycle on one Store, each operation it offers timed in turn: insert (or build), probe, iterate,
-// erase, pop, clear; for a pool, its rows. Through the Store over the container (urd::detail::Store<R, S>), so every
+// erase, pop, clear; for a pool, its rows. Through the Store over the container (urd::test::store_over<S, R>), so every
 // container is measured through the same members. Included by benchmarks/experiment.cpp, once per container.
 
 #include "../tests/grid.hpp"
@@ -175,7 +175,7 @@ struct element_of<true, K, V, E>
 template<typename R, typename S>
 struct workload
 {
-    using Store = urd::detail::Store<R, S>;
+    using Store = urd::test::store_over<S, R>;
     using K = typename urd::test::key_of<S>::type;
     using V = typename urd::test::value_of<S>::type;
     using E = typename S::lookup_type;  // what the kind's data finds by: a key, else a value
@@ -386,7 +386,7 @@ struct workload
 template<typename R, typename S>
 struct row_workload
 {
-    using Store = urd::detail::Store<R, S>;
+    using Store = urd::test::store_over<S, R>;
     static constexpr std::size_t rows = 256;
 
     static auto row(std::size_t at, std::size_t length)

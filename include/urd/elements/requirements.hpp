@@ -80,7 +80,7 @@ struct single_member<Members<M>>
 };
 
 template<typename K>
-concept single_member_identified = MemberIdentified<K> && requires { single_member<decltype(K::identifying_members())>::pointer; };
+concept single_member_identified = Identifiable<K> && requires { single_member<decltype(K::identifying_members())>::pointer; };
 
 }  // namespace detail
 

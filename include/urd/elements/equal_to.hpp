@@ -15,8 +15,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/semantics/equal_to.hpp); names moved from ygg to urd.
-
 #pragma once
 
 #include "urd/elements/concepts.hpp"
@@ -92,54 +90,93 @@ struct EqualTo<std::tuple<Ts...>>
 };
 
 /// A pair equals as the tuple of its two members.
-template<typename T1, typename T2>
-struct EqualTo<std::pair<T1, T2>>
+/// A pair (std's or cista's), as the tuple of its two members.
+template<template<typename, typename> typename P, typename T1, typename T2>
+    requires pair_value<P<T1, T2>>
+struct EqualTo<P<T1, T2>>
 {
-    constexpr bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const
+    constexpr bool operator()(const P<T1, T2>& lhs, const P<T1, T2>& rhs) const
         requires EqualityComparableByEqualTo<T1> && EqualityComparableByEqualTo<T2>
     { return EqualTo<std::tuple<const T1&, const T2&>> {}(std::tie(lhs.first, lhs.second), std::tie(rhs.first, rhs.second)); }
 };
 
-template<typename... Ts>
-struct EqualTo<std::variant<Ts...>>
+/// Variants (std's or cista's) are equal holding the same alternative, equal, or both nothing.
+template<template<typename...> typename V, typename... Ts>
+    requires variant_value<V<Ts...>>
+struct EqualTo<V<Ts...>>
 {
-    constexpr bool operator()(const std::variant<Ts...>& lhs, const std::variant<Ts...>& rhs) const
+    constexpr bool operator()(const V<Ts...>& lhs, const V<Ts...>& rhs) const
         requires(EqualityComparableByEqualTo<Ts> && ...)
     {
         if (lhs.index() != rhs.index())
             return false;
-
-        return std::visit(
-            []<typename L, typename R>(const L& l, const R& r)
-            {
-                if constexpr (std::is_same_v<L, R>)
-                    return EqualTo<L> {}(l, r);
-                return false;
-            },
-            lhs,
-            rhs);
+        return lhs.index() >= sizeof...(Ts) || visit(
+                   []<typename L, typename R>(const L& l, const R& r)
+                   {
+                       if constexpr (std::is_same_v<L, R>)
+                           return EqualTo<L> {}(l, r);
+                       else
+                           return false;
+                   },
+                   lhs,
+                   rhs);
     }
 };
-
-template<typename T>
-struct EqualTo<std::optional<T>>
+/// Optionals (std's or cista's) are equal both empty, or holding equal values.
+template<optional_value M>
+struct EqualTo<M>
 {
-    constexpr bool operator()(const std::optional<T>& lhs, const std::optional<T>& rhs) const
-        requires EqualityComparableByEqualTo<T>
+    constexpr bool operator()(const M& lhs, const M& rhs) const
+        requires EqualityComparableByEqualTo<optional_value_t<M>>
     {
         if (lhs.has_value() != rhs.has_value())
             return false;
-        return !lhs.has_value() || EqualTo<std::remove_cvref_t<T>> {}(*lhs, *rhs);
+        return !lhs.has_value() || EqualTo<optional_value_t<M>> {}(*lhs, *rhs);
     }
 };
-
-/// An identified type equals as what identifies it (detail::identity).
+/// An identified type equals as what identifies it (detail::identity); it also compares with what identifies it given
+/// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
 template<Identifiable T>
 struct EqualTo<T>
 {
+    using is_transparent = void;
+
     constexpr bool operator()(const T& lhs, const T& rhs) const
         requires EqualityComparableByEqualTo<detail::identity_t<T>>
     { return EqualTo<detail::identity_t<T>> {}(detail::identity(lhs), detail::identity(rhs)); }
+    template<identity_of<T> U>
+    constexpr bool operator()(const T& lhs, const U& rhs) const
+        requires EqualityComparableByEqualTo<detail::identity_t<T>>
+    { return EqualTo<detail::identity_t<T>> {}(detail::identity(lhs), rhs); }
+    template<identity_of<T> U>
+    constexpr bool operator()(const U& lhs, const T& rhs) const
+        requires EqualityComparableByEqualTo<detail::identity_t<T>>
+    { return EqualTo<detail::identity_t<T>> {}(lhs, detail::identity(rhs)); }
+    template<identity_of<T> U, identity_of<T> V>
+    constexpr bool operator()(const U& lhs, const V& rhs) const
+        requires EqualityComparableByEqualTo<detail::identity_t<T>>
+    { return EqualTo<detail::identity_t<T>> {}(lhs, rhs); }
 };
+
+/// Compares any two values by the first one's EqualTo.
+template<>
+struct EqualTo<void>
+{
+    using is_transparent = void;
+
+    template<typename T, typename U>
+        requires EqualToFor<EqualTo<std::remove_cvref_t<T>>, T, U>
+    constexpr bool operator()(const T& lhs, const U& rhs) const
+    { return EqualTo<std::remove_cvref_t<T>> {}(lhs, rhs); }
+};
+
+/// Whether two ranges hold equal elements (by EqualTo), in order.
+template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
+    requires EqualityComparableByEqualTo<std::ranges::range_value_t<LhsRange>>
+constexpr bool equal_range(LhsRange&& lhs, RhsRange&& rhs)
+{
+    using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
+    return std::ranges::equal(lhs, rhs, EqualTo<Value> {});
+}
 
 }  // namespace urd

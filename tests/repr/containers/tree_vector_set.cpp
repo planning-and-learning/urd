@@ -1,7 +1,3 @@
-// Copied from yggdrasil (tests/unit/containers/tree_vector_set.cpp); names moved from ygg to urd::repr, and the sets
-// hold rows of a vector type, with yggdrasil's default arity 2 spelled out. The concurrent test comes with the concurrent
-// node tables.
-
 #include "urd/repr/pools/tree_vector.hpp"
 
 #include <array>

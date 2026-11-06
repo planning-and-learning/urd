@@ -7,7 +7,7 @@
 // is a struct and a template like these; its containers are added by specializing urd::detail::declarations_of
 // (urd/registry/declarations.hpp).
 
-#include "urd/detail/type_list.hpp"
+#include <boost/mp11.hpp>
 #include "urd/elements/requirements.hpp"
 #include "urd/property_set.hpp"
 #include "urd/registry/facts.hpp"
@@ -37,9 +37,13 @@ template<template<typename, typename, typename> class F, typename List>
 inline constexpr bool listed_facet = false;
 template<template<typename, typename, typename> class F, template<typename, typename, typename> class... Fs>
 inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet_list<F>, facet_list<Fs>> || ...);
-template<template<typename, typename, typename> class... As, template<typename, typename, typename> class... Bs, typename... Rest>
-struct concat<facet_list<As...>, facet_list<Bs...>, Rest...> : concat<facet_list<As..., Bs...>, Rest...>
+/// Two facet lists joined in order (facets are templates, so boost::mp11::mp_append does not apply).
+template<typename A, typename B>
+struct join_facets;
+template<template<typename, typename, typename> class... As, template<typename, typename, typename> class... Bs>
+struct join_facets<facet_list<As...>, facet_list<Bs...>>
 {
+    using type = facet_list<As..., Bs...>;
 };
 
 /// The categories a kind's requests answer (urd/tags.hpp): its request format.
@@ -72,7 +76,7 @@ class insertion_positions;
 template<typename Derived, typename R, typename S>
 class contiguous_data;
 template<typename Derived, typename R, typename S>
-class capacity;
+class reserving;
 template<typename Derived, typename R, typename S>
 class insertion;
 template<typename Derived, typename R, typename S>
@@ -127,6 +131,7 @@ struct any_kind
     /// The questions every kind's requests answer: how it stores, what it costs, how it is used.
     using common_format = request_format<referencing,
                                          layout,
+                                         width,
                                          representation,
                                          threading,
                                          memory,
@@ -146,7 +151,7 @@ struct any_kind
                                      facet::ordering,
                                      facet::ordered_lookup,
                                      facet::contiguous_data,
-                                     facet::capacity,
+                                     facet::reserving,
                                      facet::scopes,
                                      facet::layers,
                                      facet::changes,
@@ -209,7 +214,7 @@ struct partition_kind : detail::any_kind
 };
 
 /// Values reached by their front or top: by arrival, first in first out (fifo) or last in first out (lifo), or by
-/// priority (by_priority: the top is the greatest by the order, order_by<C>, else urd::Less). Visited in no order
+/// priority (by_priority: the top is the least by the order, order_by<C>, else urd::Less). Visited in no order
 /// urd reads.
 struct queue_kind : detail::any_kind
 {
@@ -321,15 +326,22 @@ struct sequence_kind : detail::any_kind
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, keys, shape>;
     using facets = detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
-    /// Its elements have positions.
-    static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
+    /// Its elements have positions; appended from several threads, they never move (what another thread reads stays
+    /// where it is).
+    static constexpr property_set meaning(property_set stated)
+    {
+        stated = stated.put(position::positional);
+        if (stated.has(threading::concurrent))
+            stated = stated.put(referencing::stable_refs);
+        return any_kind::meaning(stated);
+    }
     /// Rows of a fixed shape are built from their lengths (urd::row_lengths), or for rows of rows, each row's shape.
     template<typename S, typename From>
     static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
 };
 
 /// urd's kinds: what its tables list.
-using kinds = detail::type_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind>;
+using kinds = boost::mp11::mp_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind>;
 
 namespace detail
 {
@@ -340,7 +352,7 @@ template<typename Kind, typename Element, typename Mapped = void>
 struct data_of : Kind
 {
     using kind = Kind;
-    using element_types = type_list<Element>;
+    using element_types = boost::mp11::mp_list<Element>;
     using element_type = Element;
     /// What may be a Store (a row): a map's values, else its elements.
     using held_type = std::conditional_t<std::is_void_v<Mapped>, Element, Mapped>;
@@ -352,7 +364,7 @@ struct data_of : Kind
     /// values are mapped (void elsewhere: no facts), what it holds are its rows, and its rows' elements (void where it
     /// holds no rows) are its row elements.
     template<typename Order>
-    using played = type_list<plays<role::element, Element>,
+    using played = boost::mp11::mp_list<plays<role::element, Element>,
                              plays<role::mapped, Mapped>,
                              plays<role::order, Element, Order>,
                              plays<role::row, held_type>,
@@ -374,7 +386,7 @@ struct set : detail::data_of<set_kind, K>
 template<typename K, typename V>
 struct map : detail::data_of<map_kind, K, V>
 {
-    using element_types = detail::type_list<K, V>;
+    using element_types = boost::mp11::mp_list<K, V>;
     using key_type = K;
     using mapped_type = V;
     using element_type = std::pair<const K, V>;
@@ -422,9 +434,9 @@ namespace detail
 /// The questions a request of Kind answers (its own, then every kind's), and its Store's facets (every kind's, then
 /// its own).
 template<typename Kind>
-using format_of = typename concat<typename Kind::format, typename any_kind::common_format>::type;
+using format_of = boost::mp11::mp_append<typename Kind::format, typename any_kind::common_format>;
 template<typename Kind>
-using facets_of = typename concat<typename any_kind::common_facets, typename Kind::facets>::type;
+using facets_of = typename join_facets<typename any_kind::common_facets, typename Kind::facets>::type;
 
 /// Whether a Store of Kind keeps its elements where they are put (it lists appending, as a sequence does), rather than
 /// placing them by their value or key.

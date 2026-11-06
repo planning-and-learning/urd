@@ -43,10 +43,18 @@ public:
 
     [[nodiscard]] size_type size() const { return m_elements.size(); }
     [[nodiscard]] bool empty() const { return m_elements.empty(); }
+    // As std::queue and std::stack: the ends a first-in or last-in queue gives may be changed in place (moved from
+    // before a pop); a heap's top may not, as std::priority_queue's, its place depends on it.
     [[nodiscard]] const T& front() const
         requires fifo
     { return m_elements.front(); }
+    [[nodiscard]] T& front()
+        requires fifo
+    { return m_elements.front(); }
     [[nodiscard]] const T& back() const
+        requires fifo
+    { return m_elements.back(); }
+    [[nodiscard]] T& back()
         requires fifo
     { return m_elements.back(); }
     /// The elements in the order pushed (first in, last in), or in no particular order (the least first).
@@ -55,6 +63,9 @@ public:
     [[nodiscard]] const T& top() const
         requires(!fifo)
     { return Order == leaving::last_in ? m_elements.back() : m_elements.front(); }
+    [[nodiscard]] T& top()
+        requires(Order == leaving::last_in)
+    { return m_elements.back(); }
 
     void push(const T& element) { emplace(element); }
     void push(T&& element) { emplace(std::move(element)); }

@@ -1,7 +1,6 @@
 #pragma once
 
-// Copied from yggdrasil (include/yggdrasil/core/spin_mutex.hpp): SpinMutex and its backoff; names moved from ygg to
-// urd::repr. A lock of one byte, for locks per element.
+// SpinMutex and its backoff: a lock of one byte, for locks per element.
 
 #include <atomic>
 #include <cstdint>
@@ -69,6 +68,69 @@ public:
     bool try_lock() noexcept { return !m_flag.load(std::memory_order_relaxed) && !m_flag.exchange(true); }
 
     void unlock() noexcept { m_flag.store(false, std::memory_order_release); }
+};
+
+/// The algorithm and state word of oneTBB's spin_rw_mutex: unfair and writer-preferred; a shared mutex for short
+/// critical sections (the shards of a concurrent table).
+class SpinSharedMutex
+{
+    using State = std::intptr_t;
+    static constexpr State WRITER = 1;
+    static constexpr State WRITER_PENDING = 2;
+    static constexpr State READERS = ~(WRITER | WRITER_PENDING);
+    static constexpr State ONE_READER = 4;
+    static constexpr State BUSY = WRITER | READERS;
+
+    std::atomic<State> m_state { 0 };
+
+public:
+    SpinSharedMutex() noexcept = default;
+    SpinSharedMutex(const SpinSharedMutex&) = delete;
+    SpinSharedMutex& operator=(const SpinSharedMutex&) = delete;
+    SpinSharedMutex(SpinSharedMutex&&) = delete;
+    SpinSharedMutex& operator=(SpinSharedMutex&&) = delete;
+    ~SpinSharedMutex() = default;
+
+    void lock() noexcept
+    {
+        for (detail::SpinBackoff backoff;; backoff.pause())
+        {
+            auto state = m_state.load(std::memory_order_relaxed);
+            if (!(state & BUSY))
+            {
+                if (m_state.compare_exchange_strong(state, WRITER))
+                    return;
+                backoff.reset();
+            }
+            else if (!(state & WRITER_PENDING))
+            {
+                m_state |= WRITER_PENDING;
+            }
+        }
+    }
+    bool try_lock() noexcept
+    {
+        auto state = m_state.load(std::memory_order_relaxed);
+        return !(state & BUSY) && m_state.compare_exchange_strong(state, WRITER);
+    }
+    void unlock() noexcept { m_state &= READERS; }
+
+    void lock_shared() noexcept
+    {
+        for (detail::SpinBackoff backoff;; backoff.pause())
+            if (try_lock_shared())
+                return;
+    }
+    bool try_lock_shared() noexcept
+    {
+        if (m_state.load(std::memory_order_relaxed) & (WRITER | WRITER_PENDING))
+            return false;
+        if (!(m_state.fetch_add(ONE_READER) & WRITER))
+            return true;
+        m_state -= ONE_READER;
+        return false;
+    }
+    void unlock_shared() noexcept { m_state -= ONE_READER; }
 };
 
 /// A lock that does nothing: where a ThreadSafe policy is off, in place of a mutex, taking no space.

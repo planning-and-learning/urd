@@ -81,10 +81,10 @@ struct type_spelling<std::vector<T, A>>
 {
     static std::string spelled() { return fmt::format("std::vector<{}>", spelling<T>()); }
 };
-template<typename R, typename S>
-struct type_spelling<detail::Store<R, S>>
+template<typename Kind, typename... Tags>
+struct type_spelling<Store<Kind, Tags...>>
 {
-    static std::string spelled() { return spelling_of_spec<S>(); }
+    static std::string spelled() { return spelling_of_spec<typename detail::to_spec<Kind, Tags...>::type>(); }
 };
 
 /// Type T as a request names it; "-" for none (void).
@@ -103,7 +103,7 @@ template<typename S>
 std::string spelling_of_spec()
 {
     auto types = std::vector<std::string>();
-    [&types]<typename... Types>(detail::type_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename S::element_types {});
+    [&types]<typename... Types>(boost::mp11::mp_list<Types...> /*types*/) { (types.push_back(spelling<Types>()), ...); }(typename S::element_types {});
     auto parts = std::vector<std::string> { fmt::format("{}<{}>", S::kind::name, fmt::join(types, ", ")) };
     S::urd_properties.for_each([&parts](tag each) { parts.emplace_back(tag_name(each)); });
     return fmt::format("Store<{}>", fmt::join(parts, ", "));

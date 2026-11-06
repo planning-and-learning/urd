@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -36,6 +37,13 @@ template<typename A, typename B>
 struct memory_of<std::pair<A, B>>
 {
     static std::size_t bytes(const std::pair<A, B>& held) { return memory_usage(held.first) + memory_usage(held.second); }
+};
+
+/// A unique pointer owns its object, and what that owns, where it points at one.
+template<typename V, typename Deleter>
+struct memory_of<std::unique_ptr<V, Deleter>>
+{
+    static std::size_t bytes(const std::unique_ptr<V, Deleter>& held) { return held ? sizeof(V) + memory_usage(*held) : 0; }
 };
 
 /// An optional owns what its value owns, where it has one.

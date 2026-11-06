@@ -4,6 +4,7 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
 #include "urd/repr/values/indexed.hpp"
@@ -32,14 +33,37 @@ namespace urd::repr
 /// view(h) hands out the stored row without copying: a span of its elements, or a BitsetSpan over its words. Each row
 /// keeps its storage while others are inserted (the table moves the rows' vectors, never their elements), so a view
 /// stays valid until the pool is cleared.
-template<typename Row, bool ThreadSafe>
+///
+/// Rows of trivially copyable elements (flat) are stored flat, without a vector per row (urd/repr/containers/
+/// flat_rows.hpp: while all have one width, without offsets either); a row that is a sequence goes in and is looked up
+/// as the span of its elements, no row built.
+///
+/// With Bits (a request of urd::bit, rows of indices), each element is stored in the bit width the pool is built with
+/// (urd/repr/containers/bit_rows.hpp), and view(h) hands out the row as a range that decodes its elements.
+template<typename Row, bool ThreadSafe, bool Bits>
 class RowInterner
 {
     using element = std::ranges::range_value_t<Row>;
     using word = std::uint64_t;
     static constexpr bool words = has<traits_t<Row>, unique> && has<traits_t<Row>, dense>;  // a dense set: its bits
     using stored_row = std::vector<std::conditional_t<words, word, element>>;
-    using Bits = BitsetSpan<const word>;
+    using BitsView = BitsetSpan<const word>;
+    static constexpr bool flat = Bits || (!words && std::is_trivially_copyable_v<element> && Hashable<element>);
+    /// A sequence keeps its elements as given: the given elements are the row.
+    static constexpr bool as_given = []
+    {
+        if constexpr (flat && is_store<Row>)
+            return std::same_as<typename traits_t<Row>::kind, sequence_kind>;
+        else
+            return false;
+    }();
+    using Table = std::conditional_t<Bits,
+                                     BitInterningTable<stored_row, ThreadSafe>,
+                                     std::conditional_t<flat, FlatInterningTable<stored_row, ThreadSafe>, InterningTable<stored_row, ThreadSafe>>>;
+    /// Contiguous elements of a row, taken as they are.
+    template<typename Elements>
+    static constexpr bool contiguous_of = std::ranges::contiguous_range<Elements> && std::ranges::sized_range<Elements>
+                                          && std::same_as<std::ranges::range_value_t<Elements>, element>;
 
 public:
     using value_type = Row;
@@ -48,19 +72,55 @@ public:
     using write_type = Write<element>;
     using size_type = std::size_t;
 
-    RowInterner() = default;
+    RowInterner()
+        requires(!Bits)
+    = default;
+    /// Rows whose elements each fit in `width` (urd::bit).
+    explicit RowInterner(urd::bit_width width)
+        requires Bits
+        : m_rows(width)
+    {
+    }
 
     /// The handle of the row with these elements, and whether it was stored now (no equal row was held).
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
-    { return intern(canonical(elements)); }
+    {
+        if constexpr (as_given && contiguous_of<Elements>)
+            return intern(elements);
+        else
+            return intern(canonical(elements));
+    }
     /// The handle of the row with these elements, or none.
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
     {
-        const auto found = m_rows.position(canonical(elements));
+        const auto found = [&]
+        {
+            if constexpr (as_given && contiguous_of<Elements>)
+                return m_rows.position(std::span<const element>(std::ranges::data(elements), std::ranges::size(elements)));
+            else
+                return m_rows.position(canonical(elements));
+        }();
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
+    /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), which is not hashed
+    /// again: a row of a sequence, stored flat, as its contiguous elements.
+    template<typename Elements>
+        requires as_given && contiguous_of<Elements>
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
+    { return intern(key); }
+    template<typename Elements>
+        requires as_given && contiguous_of<Elements>
+    [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
+    {
+        const auto found = m_rows.position(key);
+        return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
+    }
+    /// The bit width of the rows' elements (Bits: urd::bit).
+    [[nodiscard]] urd::bit_width width() const noexcept
+        requires Bits
+    { return m_rows.width(); }
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
 
@@ -68,7 +128,7 @@ public:
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
         requires(!words)
     {
-        auto row = stored(base);
+        auto row = copy_of(stored(base));
         for (const auto& write : writes)
             row.at(write.position) = write.value;
         return insert(row);
@@ -83,15 +143,15 @@ public:
             for (const auto& each : added)
                 set(bits, index_of<element>::to_index(each));
             for (const auto& each : removed)
-                if (const auto at = index_of<element>::to_index(each); at / Bits::Digits < bits.size())
-                    bits[at / Bits::Digits] &= ~(word { 1 } << (at % Bits::Digits));
+                if (const auto at = index_of<element>::to_index(each); at / BitsView::Digits < bits.size())
+                    bit::bit_reference<word>(bits, at) = false;
             while (!bits.empty() && bits.back() == 0)
                 bits.pop_back();
             return intern(std::move(bits));
         }
         else
         {
-            auto elements = stored(base);
+            auto elements = copy_of(stored(base));
             elements.insert(elements.end(), added.begin(), added.end());
             std::erase_if(elements, [&removed](const element& each) { return std::ranges::find(removed, each) != removed.end(); });
             return insert(elements);
@@ -107,7 +167,10 @@ public:
             return at < bits.size() && bits.test(at);
         }
         else
-            return std::ranges::find(stored(handle), value) != stored(handle).end();
+        {
+            const auto row = view(handle);
+            return std::ranges::find(row, value) != row.end();
+        }
     }
 
     /// The stored row, without copying: valid until the pool is cleared.
@@ -115,9 +178,11 @@ public:
     {
         const auto& row = stored(handle);
         if constexpr (words)
-            return Bits(row.data(), row.size() * Bits::Digits);
+            return BitsView(row.data(), row.size() * BitsView::Digits);
+        else if constexpr (Bits)
+            return row;  // decoding its elements
         else
-            return std::span<const element>(row);
+            return std::span<const element>(std::ranges::data(row), std::ranges::size(row));
     }
 
     [[nodiscard]] Row get(handle_type handle) const
@@ -130,7 +195,7 @@ public:
         }
         else
         {
-            const auto& row = stored(handle);
+            const auto row = view(handle);
             return Row(row.begin(), row.end());
         }
     }
@@ -150,14 +215,18 @@ public:
         {
             const auto bits = view(handle);
             auto next = out.begin();
-            for (auto at = bits.find_first(); at != Bits::npos; at = bits.find_next(at))
+            for (auto at = bits.find_first(); at != BitsView::npos; at = bits.find_next(at))
                 *next++ = index_of<element>::from_index(at);
         }
         else
             std::ranges::copy(stored(handle), out.begin());
     }
 
-    void reserve(size_type count) { m_rows.reserve(count); }
+    void reserve(size_type count)
+    {
+        if constexpr (requires { m_rows.reserve(count); })
+            m_rows.reserve(count);
+    }
     void clear() { m_rows.clear(); }
     /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
     /// Gives the handle the moved row had, or none where `handle` was the last. Views of the moved row stay valid.
@@ -186,27 +255,30 @@ private:
         else
             return stored_row(row.begin(), row.end());
     }
-    [[nodiscard]] const stored_row& stored(handle_type handle) const
+    /// The stored row: its vector, or where flat, the span of its elements.
+    [[nodiscard]] decltype(auto) stored(handle_type handle) const
     {
         assert((handle.value) < m_rows.size());
         return m_rows[handle.value];
     }
-    std::pair<handle_type, bool> intern(stored_row row)
+    [[nodiscard]] static stored_row copy_of(const auto& row) { return stored_row(row.begin(), row.end()); }
+    template<typename Elements>
+    std::pair<handle_type, bool> intern(Elements&& row)
     {
-        const auto [found, inserted] = m_rows.insert(std::move(row));
+        const auto [found, inserted] = m_rows.insert(std::forward<Elements>(row));
         return { handle_type(static_cast<std::uint32_t>(found - m_rows.begin())), inserted };
     }
     /// Sets bit `at`, growing the words to hold it.
     static void set(stored_row& bits, std::size_t at)
     {
-        if (at / Bits::Digits >= bits.size())
-            bits.resize((at / Bits::Digits) + 1, 0);
-        bits[at / Bits::Digits] |= word { 1 } << (at % Bits::Digits);
+        if (at / BitsView::Digits >= bits.size())
+            bits.resize((at / BitsView::Digits) + 1, 0);
+        bit::bit_reference<word>(bits, at) = true;
     }
 
     friend struct urd::memory_of<RowInterner>;
 
-    InterningTable<stored_row, ThreadSafe> m_rows;
+    Table m_rows;
 };
 
 }  // namespace urd::repr
@@ -215,10 +287,10 @@ namespace urd
 {
 
 /// Its table of rows, each row's vector with it.
-template<typename Row, bool ThreadSafe>
-struct memory_of<repr::RowInterner<Row, ThreadSafe>>
+template<typename Row, bool ThreadSafe, bool Bits>
+struct memory_of<repr::RowInterner<Row, ThreadSafe, Bits>>
 {
-    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe>& held) { return memory_usage(held.m_rows); }
+    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe, Bits>& held) { return memory_usage(held.m_rows); }
 };
 
 template<>
@@ -240,6 +312,11 @@ template<typename S>
 struct representation_of<thread_safe_row_interner_decl, S>
 {
     using type = repr::RowInterner<typename S::element_type, true>;
+};
+template<typename S, bool ThreadSafe>
+struct representation_of<bit_row_interner_decl<ThreadSafe>, S>
+{
+    using type = repr::RowInterner<typename S::element_type, ThreadSafe, true>;
 };
 
 }  // namespace urd::detail

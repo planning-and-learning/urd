@@ -15,12 +15,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Copied from yggdrasil (include/yggdrasil/core/concepts.hpp); names moved from ygg to urd.
-
 #pragma once
 
 #include <array>
 #include <concepts>
+#include <functional>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -30,6 +29,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace urd
@@ -47,16 +47,18 @@ constexpr bool is_nan(T value) noexcept
     return !(value >= -infinity && value <= infinity);
 }
 
-template<typename T>
+/// With T void (EqualTo<>, Hash<>, Less<>): transparent, by the type of what they are given.
+template<typename T = void>
 struct EqualTo;
 
-template<typename T>
+template<typename T = void>
 struct Hash;
 
-template<typename T>
+template<typename T = void>
 struct Less;
 
-/// The members that identify a record, as member pointers:
+/// The members that identify a record: data members, const getters, or captureless lambdas over the record for a part
+/// that is computed or held elsewhere (each read by std::invoke):
 /// `static constexpr auto identifying_members() noexcept { return urd::Members<&Data::a, &Data::b> {}; }`.
 template<auto... Ms>
 struct Members
@@ -71,34 +73,43 @@ template<auto... Ms>
 inline constexpr bool is_members_v<Members<Ms...>> = true;
 }  // namespace detail
 
-/// @brief T lists its identifying members as a Members type.
-template<typename T>
-concept MemberIdentified = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
-
 /// @brief T names its members as a Members type (cista_members), so cista can serialize it.
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
+/// @brief Empties every member a record names for cista (Serializable), keeping the buffers they own: each by its
+/// clear(), or else set to its default. A record reused in place (a builder) is reset with it.
+template<Serializable T>
+void clear_members(T& record)
+{
+    const auto clear = [](auto& member)
+    {
+        if constexpr (requires { member.clear(); })
+            member.clear();
+        else
+            member = std::remove_cvref_t<decltype(member)> {};
+    };
+    [&]<auto... Ms>(Members<Ms...> /*members*/) { (clear(record.*Ms), ...); }(T::cista_members());
+}
 
-/// @brief T names what identifies it: its identifying members, or a function that returns what identifies it; Hash,
-/// EqualTo and Less then follow from that.
+/// @brief T names what identifies it, as a Members list (its identifying_members()); Hash, EqualTo and Less then
+/// follow from that.
 template<typename T>
-concept Identifiable = MemberIdentified<T> || requires(const T& x) { x.identifying_members(); };
+concept Identifiable = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
 
 namespace detail
 {
 
-/// What identifies `x`, as one value that Hash, EqualTo and Less read: its identifying members as a tuple of
-/// references, or what its identifying_members() returns.
+/// What identifies `x`, as one value that Hash, EqualTo and Less read: its identifying members, in order, as a tuple
+/// (a data member by reference, a getter's result as the getter gives it).
 template<Identifiable T>
-constexpr decltype(auto) identity(const T& x)
+constexpr auto identity(const T& x)
 {
-    if constexpr (MemberIdentified<T>)
-        return []<auto... Ms>(const T& of, Members<Ms...> /*members*/) { return std::tie(of.*Ms...); }(x, T::identifying_members());
-    else
-        return x.identifying_members();
+    return []<auto... Ms>(const T& of, Members<Ms...> /*members*/)
+    { return std::tuple<decltype(std::invoke(Ms, of))...>(std::invoke(Ms, of)...); }(x, T::identifying_members());
 }
 template<Identifiable T>
-using identity_t = std::remove_cvref_t<decltype(identity(std::declval<const T&>()))>;
+using identity_t = decltype(identity(std::declval<const T&>()));
+
 
 }  // namespace detail
 
@@ -121,19 +132,59 @@ inline constexpr bool value_range<std::span<T, Extent>> = true;
 template<typename T>
 concept Enumeration = std::is_enum_v<T>;
 
-template<typename T>
-concept Hashable = requires(const T& value) {
-    { Hash<std::remove_cvref_t<T>> {}(value) } -> std::same_as<hash_t>;
+/// A hasher H of T, an equality E of Lhs and Rhs, an order C of Lhs and Rhs: what a container takes as its predicates.
+template<typename H, typename T>
+concept HashFor = requires(const H& hash, const T& value) {
+    { hash(value) } -> std::same_as<hash_t>;
+};
+template<typename E, typename Lhs, typename Rhs = Lhs>
+concept EqualToFor = requires(const E& equal_to, const Lhs& lhs, const Rhs& rhs) {
+    { equal_to(lhs, rhs) } -> std::same_as<bool>;
+};
+template<typename C, typename Lhs, typename Rhs = Lhs>
+concept LessFor = requires(const C& less, const Lhs& lhs, const Rhs& rhs) {
+    { less(lhs, rhs) } -> std::same_as<bool>;
 };
 
 template<typename T>
-concept EqualityComparableByEqualTo = requires(const T& lhs, const T& rhs) {
-    { EqualTo<std::remove_cvref_t<T>> {}(lhs, rhs) } -> std::same_as<bool>;
-};
+concept Hashable = HashFor<Hash<std::remove_cvref_t<T>>, T>;
 
 template<typename T>
-concept OrderedByLess = requires(const T& lhs, const T& rhs) {
-    { Less<std::remove_cvref_t<T>> {}(lhs, rhs) } -> std::same_as<bool>;
+concept EqualityComparableByEqualTo = EqualToFor<EqualTo<std::remove_cvref_t<T>>, T>;
+
+template<typename T>
+concept OrderedByLess = LessFor<Less<std::remove_cvref_t<T>>, T>;
+
+/// U is what identifies T, given alone (its identity_t: data members by reference, as std::tie gives them, getters' results
+/// as they give them), so a transparent lookup takes a U for a T.
+template<typename U, typename T>
+concept identity_of = Identifiable<T> && std::same_as<std::remove_cvref_t<U>, detail::identity_t<T>>;
+
+/// Whether M is an optional value: std::optional, or cista's.
+template<typename M>
+concept optional_value = requires(const M& member) {
+    { member.has_value() } -> std::convertible_to<bool>;
+    *member;
 };
+
+/// Whether M is a pair: std::pair, or cista's.
+template<typename M>
+concept pair_value = requires(const M& member) {
+    typename M::first_type;
+    typename M::second_type;
+    member.first;
+    member.second;
+};
+
+/// Whether M is a variant: std::variant, or cista's, each visited by its own visit (found by ADL).
+template<typename M>
+concept variant_value = requires(const M& member) {
+    { member.index() } -> std::convertible_to<std::size_t>;
+    visit([](const auto&) {}, member);
+};
+
+/// The value type of an optional value.
+template<optional_value M>
+using optional_value_t = std::remove_cvref_t<decltype(*std::declval<const M&>())>;
 
 }  // namespace urd

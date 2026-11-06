@@ -107,3 +107,21 @@ TEST(Queues, ReadByHandle)
 }
 
 }  // namespace
+
+// As std::queue's and std::stack's, a first-in or last-in queue's ends change in place; a heap's top does not.
+TEST(Queues, EndsChangeInPlaceAsTheStandardAdaptors)
+{
+    auto fifo = Store<queue<std::string>, urd::fifo>();
+    fifo.push("a");
+    fifo.push("b");
+    fifo.back() += "!";
+    const auto first = std::move(fifo.front());
+    fifo.pop();
+    EXPECT_EQ(first, "a");
+    EXPECT_EQ(fifo.front(), "b!");
+    auto lifo = Store<queue<std::string>, urd::lifo>();
+    lifo.push("a");
+    lifo.top() += "!";
+    EXPECT_EQ(lifo.top(), "a!");
+    static_assert(std::same_as<decltype(Store<queue<int>, urd::by_priority>().top()), const int&>);
+}

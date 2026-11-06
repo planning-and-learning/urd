@@ -198,7 +198,7 @@ registry moves containers with stable storage last and the two are level.
 
 ## The registry's choices, measured
 
-Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, g++ 13.3, Release (-O3)). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 693 not compared, as the other gives a costly guarantee the request did not ask for; 117 settled by their costs; 127 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
+Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, g++). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 692 not compared, as the other gives a costly guarantee the request did not ask for; 117 settled by their costs; 133 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
 
 ### Choices that fail
 
@@ -211,10 +211,15 @@ None.
 - unordered_set > set / iterate,lookup,insert,erase,clear / std::string;- / small: at 8, 167.1 against 140.7 ns per element (Store<set<std::string>, small, stable_refs>)
 - unordered_set > recycling_tree_set / iterate,lookup,insert,erase,clear / std::string;- / small: at 8, 167.1 against 138.0 ns per element (Store<set<std::string>, small, stable_refs>)
 - flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 49.7 against 44.3 ns per element (Store<map<int, int>, sorted, frozen>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 1000, 34.6 against 22.9 ns per element (Store<map<int, int>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / std::string;double: at 1000, 190.5 against 165.5 ns per element (Store<map<std::string, double>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 1000, 38.0 against 24.4 ns per element (Store<map<Id, Id>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 10000, 52.5 against 33.4 ns per element (Store<map<Id, Id>, multi>)
 
 ### Slower for less memory
 
-None.
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 100000, 57.3 against 48.2 ns per element (Store<map<int, int>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 100000, 69.3 against 53.7 ns per element (Store<map<Id, Id>, multi>)
 
 ## Memory, measured
 
@@ -222,7 +227,7 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 
 | Container | Declared | Measured words | memory_usage off by |
 |---|---|---|---|
-| — | | | |
+| `chained_posting_map` | O(capacity), 8.5 words | 8.09 | 0.0% |
 
 ### Memory that fails
 

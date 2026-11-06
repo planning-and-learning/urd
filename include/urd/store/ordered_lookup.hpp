@@ -3,8 +3,6 @@
 #include "urd/cost.hpp"
 #include "urd/store/types.hpp"
 
-#include <utility>
-
 namespace urd::detail::facet
 {
 
@@ -18,8 +16,6 @@ class ordered_lookup
 public:
     [[nodiscard]] const_iterator_type lower_bound(const typename types::lookup_type& element) const { return representation().lower_bound(element); }
     [[nodiscard]] const_iterator_type upper_bound(const typename types::lookup_type& element) const { return representation().upper_bound(element); }
-    [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const typename types::lookup_type& element) const
-    { return representation().equal_range(element); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }

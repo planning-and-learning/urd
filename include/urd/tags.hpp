@@ -8,7 +8,7 @@
 // with tag types is another category, and a kind lists the categories its requests answer (urd/kinds.hpp, format).
 // The machinery that computes with them is in urd/property_set.hpp; share/urd/vocabulary.json is generated from them.
 
-#include "urd/detail/type_list.hpp"
+#include <boost/mp11.hpp>
 
 #include <array>
 #include <cstddef>
@@ -28,7 +28,8 @@ struct no_heading
 
 /// What an answer says of a Store, each false unless the tag says so (`static constexpr answer_says says { .x = true }`):
 /// demanded (a container that has it needs the request to promise it); whether it stops the Store growing, shrinking
-/// or changing an element in place; whether the Store must always hold an element; whether it fixes the order the
+/// or changing an element in place; whether a sequence it holds changes at its end only (no insert before, or erase
+/// of, a position: that would move the elements after); whether the Store must always hold an element; whether it fixes the order the
 /// Store is iterated in or hashed in; and whether giving it costs something (storage by index, nodes, locks,
 /// generations, a log, a parent, shared parts), so that a container that gives it unasked is a surprise, unlike one
 /// that also happens to keep its memory or lie contiguous. A tag derived from another restates what it keeps of it.
@@ -38,7 +39,9 @@ struct answer_says
     bool stops_growth = false;
     bool stops_shrinking = false;
     bool stops_changes = false;
+    bool changes_at_ends = false;
     bool needs_an_element = false;
+    bool built_with_width = false;  ///< Built with the bit width its elements fit in (urd::bit_width).
     bool fixes_iteration_order = false;
     bool fixes_hash_order = false;
     bool costly = false;
@@ -55,10 +58,10 @@ struct tag_defaults
 {
     static constexpr bool exact = false;
     static constexpr bool request_only = false;
-    using implies = detail::type_list<>;
-    using kept_by_store = detail::type_list<>;
-    using promises = detail::type_list<>;
-    using later = detail::type_list<>;
+    using implies = boost::mp11::mp_list<>;
+    using kept_by_store = boost::mp11::mp_list<>;
+    using promises = boost::mp11::mp_list<>;
+    using later = boost::mp11::mp_list<>;
     static constexpr answer_says says {};
     using heading = no_heading;
 };
@@ -191,7 +194,7 @@ struct insertion_ordered : any_order
 template<>
 struct tags_of<order>
 {
-    using type = detail::type_list<any_order, sorted, insertion_ordered>;
+    using type = boost::mp11::mp_list<any_order, sorted, insertion_ordered>;
 };
 
 enum class uniqueness : std::uint8_t
@@ -225,7 +228,7 @@ struct unique : duplicates
 template<>
 struct tags_of<uniqueness>
 {
-    using type = detail::type_list<duplicates, unique>;
+    using type = boost::mp11::mp_list<duplicates, unique>;
 };
 
 enum class keys : std::uint8_t
@@ -269,7 +272,7 @@ struct sparse : any_keys
 template<>
 struct tags_of<keys>
 {
-    using type = detail::type_list<any_keys, dense, sparse>;
+    using type = boost::mp11::mp_list<any_keys, dense, sparse>;
 };
 
 enum class referencing : std::uint8_t
@@ -300,13 +303,14 @@ struct stable_refs : moving_refs
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "A reference to an element stays valid until that element is removed.";
     static constexpr std::array<std::string_view, 3> phrases { "pointers stay valid", "stable addresses", "references survive inserts" };
-    static constexpr answer_says says { .costly = true };
+    /// A sequence with stable references removes at its end only: erasing a position would move the elements after.
+    static constexpr answer_says says { .changes_at_ends = true, .costly = true };
 };
 
 template<>
 struct tags_of<referencing>
 {
-    using type = detail::type_list<moving_refs, stable_refs>;
+    using type = boost::mp11::mp_list<moving_refs, stable_refs>;
 };
 
 enum class layout : std::uint8_t
@@ -337,7 +341,7 @@ struct contiguous : any_layout
 template<>
 struct tags_of<layout>
 {
-    using type = detail::type_list<any_layout, contiguous>;
+    using type = boost::mp11::mp_list<any_layout, contiguous>;
 };
 
 enum class representation : std::uint8_t
@@ -370,7 +374,7 @@ struct canonical : any_representation
 template<>
 struct tags_of<representation>
 {
-    using type = detail::type_list<any_representation, canonical>;
+    using type = boost::mp11::mp_list<any_representation, canonical>;
 };
 
 enum class threading : std::uint8_t
@@ -411,7 +415,7 @@ struct concurrent : single_threaded
 template<>
 struct tags_of<threading>
 {
-    using type = detail::type_list<single_threaded, concurrent>;
+    using type = boost::mp11::mp_list<single_threaded, concurrent>;
 };
 
 enum class memory : std::uint8_t
@@ -451,7 +455,7 @@ struct reclaims : any_memory
 template<>
 struct tags_of<memory>
 {
-    using type = detail::type_list<any_memory, retains, reclaims>;
+    using type = boost::mp11::mp_list<any_memory, retains, reclaims>;
 };
 
 enum class clearing : std::uint8_t
@@ -492,7 +496,7 @@ struct constant_clear : proportional_clear
 template<>
 struct tags_of<clearing>
 {
-    using type = detail::type_list<any_clear, proportional_clear, constant_clear>;
+    using type = boost::mp11::mp_list<any_clear, proportional_clear, constant_clear>;
 };
 
 enum class access : std::uint8_t
@@ -542,7 +546,7 @@ struct by_priority : any_access
 template<>
 struct tags_of<access>
 {
-    using type = detail::type_list<any_access, fifo, lifo, by_priority>;
+    using type = boost::mp11::mp_list<any_access, fifo, lifo, by_priority>;
 };
 
 enum class scoping : std::uint8_t
@@ -574,7 +578,7 @@ struct scoped : any_scope
 template<>
 struct tags_of<scoping>
 {
-    using type = detail::type_list<any_scope, scoped>;
+    using type = boost::mp11::mp_list<any_scope, scoped>;
 };
 
 enum class layering : std::uint8_t
@@ -606,7 +610,7 @@ struct layered : any_layering
 template<>
 struct tags_of<layering>
 {
-    using type = detail::type_list<any_layering, layered>;
+    using type = boost::mp11::mp_list<any_layering, layered>;
 };
 
 enum class handling : std::uint8_t
@@ -641,7 +645,7 @@ struct handles : any_handle
 template<>
 struct tags_of<handling>
 {
-    using type = detail::type_list<any_handle, handles>;
+    using type = boost::mp11::mp_list<any_handle, handles>;
 };
 
 enum class sharing : std::uint8_t
@@ -672,7 +676,7 @@ struct structural_sharing : any_sharing
 template<>
 struct tags_of<sharing>
 {
-    using type = detail::type_list<any_sharing, structural_sharing>;
+    using type = boost::mp11::mp_list<any_sharing, structural_sharing>;
 };
 
 enum class direction : std::uint8_t
@@ -704,7 +708,7 @@ struct bidirectional : any_direction
 template<>
 struct tags_of<direction>
 {
-    using type = detail::type_list<any_direction, bidirectional>;
+    using type = boost::mp11::mp_list<any_direction, bidirectional>;
 };
 
 enum class shape : std::uint8_t
@@ -738,7 +742,7 @@ struct fixed_shape : any_shape
 template<>
 struct tags_of<shape>
 {
-    using type = detail::type_list<any_shape, fixed_shape>;
+    using type = boost::mp11::mp_list<any_shape, fixed_shape>;
 };
 
 enum class packing : std::uint8_t
@@ -770,7 +774,58 @@ struct flat : any_packing
 template<>
 struct tags_of<packing>
 {
-    using type = detail::type_list<any_packing, flat>;
+    using type = boost::mp11::mp_list<any_packing, flat>;
+};
+
+enum class width : std::uint8_t
+{
+    word,
+    bit,
+};
+
+/// Each element whole, stored as its type: what a Store holds unless a request promises more (the default).
+struct word : tag_defaults
+{
+    using root = word;
+    static constexpr bool request_only = true;  ///< no container declares it: only a request states it
+    static constexpr auto value = width::word;
+    static constexpr std::string_view name = "word";
+    using group = semantics_group;
+    using heading = memory_heading;
+    static constexpr std::string_view question = "Elements stored whole, or in fewer bits?";
+};
+/// Every element fits in the bit width given at construction (urd::bit_width): a representation may store each in
+/// that many bits, and the Store hands out values, not references, to them. Every word representation still serves
+/// the request, not using the promise.
+struct bit : word
+{
+    static constexpr auto value = width::bit;
+    static constexpr std::string_view name = "bit";
+    static constexpr std::string_view promise = "caller";
+    static constexpr std::string_view description = "Every element fits in the bit width given at construction (urd::bit_width).";
+    static constexpr std::array<std::string_view, 3> phrases { "bit packed", "packed integers", "few bits per element" };
+    static constexpr answer_says says { .built_with_width = true };
+};
+
+template<>
+struct tags_of<width>
+{
+    using type = boost::mp11::mp_list<word, bit>;
+};
+
+/// The bit width a Store of urd::bit is built with: every element fits in `bits` bits.
+struct bit_width
+{
+    std::uint8_t bits;
+
+    /// The width that holds every value below `bound` (at least one bit).
+    [[nodiscard]] static constexpr bit_width for_bound(std::uint64_t bound) noexcept
+    {
+        auto bits = std::uint8_t { 1 };
+        while (bits < 64 && (std::uint64_t { 1 } << bits) < bound)
+            ++bits;
+        return bit_width { bits };
+    }
 };
 
 enum class grouping : std::uint8_t
@@ -802,7 +857,7 @@ struct partitioned : any_grouping
 template<>
 struct tags_of<grouping>
 {
-    using type = detail::type_list<any_grouping, partitioned>;
+    using type = boost::mp11::mp_list<any_grouping, partitioned>;
 };
 
 enum class tracking : std::uint8_t
@@ -834,7 +889,7 @@ struct change_log : any_tracking
 template<>
 struct tags_of<tracking>
 {
-    using type = detail::type_list<any_tracking, change_log>;
+    using type = boost::mp11::mp_list<any_tracking, change_log>;
 };
 
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on
@@ -873,9 +928,9 @@ struct frozen : monotone
     static constexpr auto value = change::frozen;
     /// Nothing changes, so nothing moves: it means stable_refs, which the Store keeps itself (its container need not);
     /// contiguous storage serves it best, so containers with stable references come after the others.
-    using implies = detail::type_list<stable_refs>;
-    using kept_by_store = detail::type_list<stable_refs>;
-    using later = detail::type_list<stable_refs>;
+    using implies = boost::mp11::mp_list<stable_refs>;
+    using kept_by_store = boost::mp11::mp_list<stable_refs>;
+    using later = boost::mp11::mp_list<stable_refs>;
     static constexpr std::string_view name = "frozen";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No change after construction; assign rebuilds it whole.";
@@ -886,7 +941,7 @@ struct frozen : monotone
 template<>
 struct tags_of<change>
 {
-    using type = detail::type_list<may_change, monotone, frozen>;
+    using type = boost::mp11::mp_list<may_change, monotone, frozen>;
 };
 
 enum class emptiness : std::uint8_t
@@ -910,7 +965,7 @@ struct nonempty : maybe_empty
 {
     static constexpr auto value = emptiness::nonempty;
     /// It never erases, so it promises its container that it only grows; it is built from an element at least.
-    using promises = detail::type_list<monotone>;
+    using promises = boost::mp11::mp_list<monotone>;
     static constexpr std::string_view name = "nonempty";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "At least one element.";
@@ -921,7 +976,7 @@ struct nonempty : maybe_empty
 template<>
 struct tags_of<emptiness>
 {
-    using type = detail::type_list<maybe_empty, nonempty>;
+    using type = boost::mp11::mp_list<maybe_empty, nonempty>;
 };
 
 enum class multiplicity : std::uint8_t
@@ -953,7 +1008,7 @@ struct multi : any_multiplicity
 template<>
 struct tags_of<multiplicity>
 {
-    using type = detail::type_list<any_multiplicity, multi>;
+    using type = boost::mp11::mp_list<any_multiplicity, multi>;
 };
 
 enum class position : std::uint8_t
@@ -986,7 +1041,7 @@ struct positional : by_key
 template<>
 struct tags_of<position>
 {
-    using type = detail::type_list<by_key, positional>;
+    using type = boost::mp11::mp_list<by_key, positional>;
 };
 
 // How a Store is used: it changes which representation is chosen, never what the Store guarantees. Only a
@@ -1010,7 +1065,7 @@ struct small : general
 {
     static constexpr auto value = workload::small;
     /// Few elements: contiguous storage serves them best, so containers with stable references come after the others.
-    using later = detail::type_list<stable_refs>;
+    using later = boost::mp11::mp_list<stable_refs>;
     static constexpr std::string_view name = "small";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A few elements, or a few at a time: compact containers first.";
@@ -1020,7 +1075,7 @@ struct small : general
 template<>
 struct tags_of<workload>
 {
-    using type = detail::type_list<general, small>;
+    using type = boost::mp11::mp_list<general, small>;
 };
 
 enum class priority : std::uint8_t
@@ -1053,7 +1108,7 @@ struct monotone_priority : any_priority
 template<>
 struct tags_of<priority>
 {
-    using type = detail::type_list<any_priority, monotone_priority>;
+    using type = boost::mp11::mp_list<any_priority, monotone_priority>;
 };
 
 enum class comparison : std::uint8_t
@@ -1085,7 +1140,7 @@ struct given_comparison : any_comparison
 template<>
 struct tags_of<comparison>
 {
-    using type = detail::type_list<any_comparison, given_comparison>;
+    using type = boost::mp11::mp_list<any_comparison, given_comparison>;
 };
 
 /// Orders a sorted Store, or a by_priority queue, by comparator Compare instead of urd::Less: Compare compares two

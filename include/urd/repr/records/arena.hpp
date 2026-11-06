@@ -7,6 +7,7 @@
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/byte_arena.hpp"
@@ -62,6 +63,14 @@ class ArenaInterner
 
         friend bool operator==(Position, Position) = default;
     };
+    /// A position entering the table with its record's hash, so the table does not hash the record again.
+    struct Placed
+    {
+        std::uint32_t value;
+        hash_t hash;
+
+        operator Position() const noexcept { return Position { value }; }  // NOLINT(google-explicit-constructor)
+    };
     struct PositionHash
     {
         using is_transparent = void;
@@ -69,6 +78,8 @@ class ArenaInterner
 
         [[nodiscard]] std::size_t operator()(Position position) const { return Hash<T> {}(*(*records)[position.value]); }
         [[nodiscard]] std::size_t operator()(const T& record) const { return Hash<T> {}(record); }
+        [[nodiscard]] std::size_t operator()(const prehashed<T>& key) const noexcept { return key.hash; }
+        [[nodiscard]] std::size_t operator()(Placed placed) const noexcept { return placed.hash; }
     };
     struct PositionEqual
     {
@@ -79,6 +90,10 @@ class ArenaInterner
         [[nodiscard]] bool operator()(const T& lhs, Position rhs) const { return EqualTo<T> {}(lhs, *(*records)[rhs.value]); }
         [[nodiscard]] bool operator()(Position lhs, const T& rhs) const { return EqualTo<T> {}(*(*records)[lhs.value], rhs); }
         [[nodiscard]] bool operator()(const T& lhs, const T& rhs) const { return EqualTo<T> {}(lhs, rhs); }
+        [[nodiscard]] bool operator()(const prehashed<T>& lhs, Position rhs) const { return (*this)(lhs.key, rhs); }
+        [[nodiscard]] bool operator()(Position lhs, const prehashed<T>& rhs) const { return (*this)(lhs, rhs.key); }
+        [[nodiscard]] bool operator()(Placed lhs, Position rhs) const { return (*this)(Position { lhs.value }, rhs); }
+        [[nodiscard]] bool operator()(Position lhs, Placed rhs) const { return (*this)(lhs, Position { rhs.value }); }
     };
     using Table = std::conditional_t<ThreadSafe,
                                      boost::concurrent_flat_set<Position, PositionHash, PositionEqual>,
@@ -101,24 +116,29 @@ public:
     ArenaInterner() = default;
     ArenaInterner(const ArenaInterner&) = delete;
     ArenaInterner& operator=(const ArenaInterner&) = delete;
-    ArenaInterner(ArenaInterner&& other) noexcept : m_state(std::exchange(other.m_state, std::make_unique<State>())) {}
+    ArenaInterner(ArenaInterner&& other) noexcept : m_state(std::exchange(other.m_state, fresh_state())) {}
     ArenaInterner& operator=(ArenaInterner&& other) noexcept
     {
         if (this != &other)
-            m_state = std::exchange(other.m_state, std::make_unique<State>());
+            m_state = std::exchange(other.m_state, fresh_state());
         return *this;
     }
     ~ArenaInterner() = default;
 
     /// The record's index, and whether it was new: an equal record already stored gives its index.
-    std::pair<handle_type, bool> insert(const T& record)
+    /// Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
+    std::pair<handle_type, bool> insert(const T& record) { return insert(prehash(record)); }
+    std::pair<handle_type, bool> insert(const prehashed<T>& key)
     {
-        return insert(record, [&record](handle_type) -> const T& { return record; });
+        return insert(key, [&key](handle_type) -> const T& { return key.key; });
     }
     /// The index `key` gets; where it is new, what `make(index)` gives is stored, built with the index reserved for it.
     /// It must equal `key` (asserted in Debug builds), and `make` must not touch this pool.
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
+    { return insert(prehash(key), std::move(make)); }
+    template<std::invocable<handle_type> Factory>
+    std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
         if (const auto found = position_of(key))
             return { handle_type(*found), false };
@@ -126,31 +146,35 @@ public:
         if constexpr (ThreadSafe)
             if (const auto found = position_of(key))
                 return { handle_type(*found), false };
-        auto& state = *m_state;
+        auto& state = this->state();
         const auto position = static_cast<std::uint32_t>(state.records.size());
         const T* stored = publish(make(handle_type(position)));
-        assert(EqualTo<T> {}(*stored, key) && "urd::repr::ArenaInterner: the factory must give a record equal to the key");
+        assert(EqualTo<T> {}(*stored, key.key) && "urd::repr::ArenaInterner: the factory must give a record equal to the key");
         state.records.push_back(stored);
-        state.positions.insert(Position { position });
+        state.positions.insert(Placed { position, key.hash });
         return { handle_type(position), true };
     }
     /// The index of an equal record, or none.
-    [[nodiscard]] handle_type find(const T& record) const
+    [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
+    [[nodiscard]] handle_type find(const prehashed<T>& key) const
     {
-        const auto found = position_of(record);
+        const auto found = position_of(key);
         return found ? handle_type(*found) : handle_type();
     }
-    [[nodiscard]] bool contains(const T& record) const { return position_of(record).has_value(); }
+    [[nodiscard]] bool contains(const T& record) const { return contains(prehash(record)); }
+    [[nodiscard]] bool contains(const prehashed<T>& key) const { return position_of(key).has_value(); }
     [[nodiscard]] const T& operator[](handle_type at) const
     {
         assert((at.value) < m_state->records.size());
         return *m_state->records[at.value];
     }
-    [[nodiscard]] size_type size() const { return m_state->records.size(); }
+    [[nodiscard]] size_type size() const { return m_state ? m_state->records.size() : 0; }
     [[nodiscard]] bool empty() const { return size() == 0; }
     /// Forgets every record; the arena keeps its segments.
     void clear()
     {
+        if (!m_state)
+            return;
         auto& state = *m_state;
         state.positions.clear();
         state.records.clear();
@@ -160,24 +184,26 @@ public:
 private:
     friend struct urd::memory_of<ArenaInterner>;
 
-    [[nodiscard]] std::optional<std::uint32_t> position_of(const T& record) const
+    [[nodiscard]] std::optional<std::uint32_t> position_of(const prehashed<T>& key) const
     {
+        if (!m_state)
+            return std::nullopt;
         if constexpr (ThreadSafe)
         {
             auto found = std::optional<std::uint32_t>();
-            m_state->positions.cvisit(record, [&found](const Position& position) { found = position.value; });
+            m_state->positions.cvisit(key, [&found](const Position& position) { found = position.value; });
             return found;
         }
         else
         {
-            const auto found = m_state->positions.find(record);
+            const auto found = m_state->positions.find(key);
             return found == m_state->positions.end() ? std::nullopt : std::optional<std::uint32_t>(found->value);
         }
     }
     /// Serializes `record` into the arena and reads it back in place: the stored record. Under the writer lock.
     const T* publish(const T& record)
     {
-        auto& state = *m_state;
+        auto& state = this->state();
         state.scratch.reset();
         ::cista::serialize<cista_mode>(state.scratch, record);
         const auto* bytes = state.arena.write(state.scratch.base(), state.scratch.size(), alignof(T));
@@ -185,8 +211,27 @@ private:
         return ::cista::deserialize<const T, cista_mode>(bytes, bytes + state.scratch.size());
     }
 
-    std::unique_ptr<State> m_state = std::make_unique<State>();
-    [[no_unique_address]] std::conditional_t<ThreadSafe, std::mutex, NoLock> m_writer;
+    /// The state a new or moved-from interner has: none until the first insert where single-threaded (an empty pool
+    /// owns no memory); made at once where threads share it, as lookups without a lock cannot race its making.
+    [[nodiscard]] static std::unique_ptr<State> fresh_state()
+    {
+        if constexpr (ThreadSafe)
+            return std::make_unique<State>();
+        else
+            return nullptr;
+    }
+    /// The state, made where there is none. Under the writer lock.
+    State& state()
+    {
+        if (!m_state)
+            m_state = std::make_unique<State>();
+        return *m_state;
+    }
+
+    std::unique_ptr<State> m_state = fresh_state();
+    // A spin lock: the critical section is an append and a table insert, short as yggdrasil's benchmarks of its
+    // interners found, where it beat std::mutex.
+    [[no_unique_address]] std::conditional_t<ThreadSafe, SpinMutex, NoLock> m_writer;
 };
 
 }  // namespace urd::repr
@@ -200,6 +245,8 @@ struct memory_of<repr::ArenaInterner<T, ThreadSafe>>
 {
     static std::size_t bytes(const repr::ArenaInterner<T, ThreadSafe>& held)
     {
+        if (!held.m_state)
+            return 0;
         const auto& state = *held.m_state;
         return sizeof(state) + memory_usage(state.records) + memory_usage(state.positions) + memory_usage(state.arena) + state.scratch.buf_.capacity();
     }

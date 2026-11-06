@@ -56,8 +56,8 @@ while (!frontier.empty())
 
   ```
   error: static assertion failed: urd::Store: this file does not include the headers that define the container its
-  request resolves to. #include each header urd::include<"..."> names in the type_list above, in that order
-  ... type_list<urd::include<"urd/repr/values/dense_set.hpp">> ...
+  request resolves to. #include each header urd::include<"..."> names in the mp_list above, in that order
+  ... boost::mp11::mp_list<urd::include<"urd/repr/values/dense_set.hpp">> ...
   ```
 - **Promises are checked.** Every container urd can choose is compared with a reference model through thousands of
   random operations, and deliberately broken containers are caught by the same tests. Its time and its memory

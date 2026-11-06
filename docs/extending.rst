@@ -80,7 +80,7 @@ A category is an enum, ``none`` first, with a tag type per answer and the list o
    enum class tallying : std::uint8_t { none, tallied };
    struct any_tallying { using root = any_tallying; static constexpr auto value = tallying::none; static constexpr std::string_view name = "any_tallying"; };
    struct tallied : any_tallying { static constexpr auto value = tallying::tallied; static constexpr std::string_view name = "tallied"; };
-   template<> struct urd::tags_of<tallying> { using type = urd::detail::type_list<any_tallying, tallied>; };
+   template<> struct urd::tags_of<tallying> { using type = boost::mp11::mp_list<any_tallying, tallied>; };
 
 A tag type derived from another promises at least what it does. ``exact``, ``demanded`` and ``request_only`` on the
 none type or a tag change how the category is matched (``include/urd/property_set.hpp``).
@@ -101,7 +101,7 @@ a request states, what a container provides); with one, about part of its data: 
        static constexpr std::string_view name = "can_hash", description = "urd::Hash and urd::EqualTo hash and compare it";
        template<typename T> static consteval bool holds() { return urd::hashable<T>; }
    };
-   template<> struct urd::traits_of_role<urd::role::element> { using type = urd::detail::type_list<can_hash /*, … */>; };
+   template<> struct urd::traits_of_role<urd::role::element> { using type = boost::mp11::mp_list<can_hash /*, … */>; };
 
 A role lists its traits once, where they are defined (``traits_of_role``); urd evaluates each for the role's type
 (``holds<T>()``, or for an order ``holds<Ordered, C>()``) and names none of them. A role whose facts are no traits

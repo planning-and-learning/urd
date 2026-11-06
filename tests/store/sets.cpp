@@ -321,6 +321,35 @@ TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
     }
 }
 
+// As std::set::merge: the target gains what it lacked, the source keeps what the target had.
+TYPED_TEST(SetAlgebra, MergeAgreesWithTheStandardSets)
+{
+    auto random = std::mt19937(47);
+    for (int round = 0; round < 200; ++round)
+    {
+        auto lhs = urd::test::make_empty<TypeParam>();
+        auto rhs = urd::test::make_empty<TypeParam>();
+        auto lhs_expected = std::set<int>();
+        auto rhs_expected = std::set<int>();
+        for (int count = static_cast<int>(random() % 8); count > 0; --count)
+        {
+            const auto element = static_cast<int>(random() % 20);
+            lhs.insert(element);
+            lhs_expected.insert(element);
+        }
+        for (int count = static_cast<int>(random() % 8); count > 0; --count)
+        {
+            const auto element = static_cast<int>(random() % 20);
+            rhs.insert(element);
+            rhs_expected.insert(element);
+        }
+        lhs.merge(rhs);
+        lhs_expected.merge(rhs_expected);
+        EXPECT_EQ(sorted_copy(lhs), std::vector<int>(lhs_expected.begin(), lhs_expected.end()));
+        EXPECT_EQ(sorted_copy(rhs), std::vector<int>(rhs_expected.begin(), rhs_expected.end()));
+    }
+}
+
 // Stores as sorted keys: ordered lexicographically by their elements, equal by contents.
 TEST(Less, StoresAsKeys)
 {

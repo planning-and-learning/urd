@@ -1,9 +1,10 @@
 #pragma once
 
-// Copied from yggdrasil (include/yggdrasil/containers/dynamic_bitset.hpp): BitsetSpan, a bitset over blocks it does
-// not own, and SetBitIndices, its set bits as a range; names moved from ygg to urd::repr. yggdrasil's adapters for
-// boost::dynamic_bitset and the multi-bitset combinators are not copied. Casts added where urd's -Wsign-conversion
-// asks for them.
+// BitsetSpan, a bitset over blocks it does not own (the caller keeps the trailing bits of the last block clear), and
+// SetBitIndices, its set bits as a range; their comparison, urd::Hash, and for_each_bit over several spans at once.
+
+#include "urd/elements/hash.hpp"
+#include "urd/repr/containers/bit.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -15,12 +16,13 @@
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 
 namespace urd::repr
 {
 
-/// Copied from yggdrasil (include/yggdrasil/core/concepts.hpp): T and U are the same type but for const.
+/// T and U are the same type but for const.
 template<typename T, typename U>
 concept SameAsIgnoringConst = std::same_as<std::remove_const_t<T>, std::remove_const_t<U>>;
 
@@ -34,47 +36,7 @@ private:
 public:
     using U = std::remove_const_t<Block>;
 
-    class bit_reference
-    {
-    private:
-        U* m_block;
-        U m_mask;
-
-        bit_reference(U& block, U mask) noexcept : m_block(&block), m_mask(mask) {}
-
-        friend class BitsetSpan;
-
-    public:
-        bit_reference(const bit_reference&) noexcept = default;
-
-        operator bool() const noexcept { return (*m_block & m_mask) != U { 0 }; }
-
-        bit_reference& operator=(bool value) noexcept
-        {
-            if (value)
-                *m_block |= m_mask;
-            else
-                *m_block &= ~m_mask;
-
-            return *this;
-        }
-
-        ~bit_reference() = default;
-        bit_reference& operator=(const bit_reference& other) noexcept
-        {
-            if (this != &other)
-                *this = static_cast<bool>(other);
-            return *this;
-        }
-        bit_reference(bit_reference&&) noexcept = default;
-        bit_reference& operator=(bit_reference&& other) noexcept { return *this = static_cast<const bit_reference&>(other); }
-
-        bit_reference& flip() noexcept
-        {
-            *m_block ^= m_mask;
-            return *this;
-        }
-    };
+    using bit_reference = bit::bit_reference<U>;
 
     static constexpr std::size_t Digits = std::numeric_limits<U>::digits;
     static constexpr std::size_t BlockShift = std::countr_zero(Digits);
@@ -86,12 +48,12 @@ public:
 
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
-    static constexpr U full_mask() noexcept { return ~U { 0 }; }
+    static constexpr U full_mask() noexcept { return static_cast<U>(~U { 0 }); }
 
     static constexpr U last_mask(std::size_t num_bits) noexcept
     {
         const std::size_t r = num_bits % Digits;
-        return (r == 0) ? full_mask() : (U { 1 } << r) - U { 1 };
+        return (r == 0) ? full_mask() : bit::lo_set<U>[r];
     }
 
 public:
@@ -153,7 +115,7 @@ public:
     {
         assert(pos < m_num_bits);
 
-        return bit_reference(blocks()[block_index(pos)], U { 1 } << block_pos(pos));
+        return bit_reference(blocks(), pos);
     }
 
     bit_reference at(std::size_t pos)
@@ -188,7 +150,7 @@ public:
         assert(other.trailing_bits_zero());
         std::size_t result = 0;
         for (std::size_t i = 0; i < num_blocks(m_num_bits); ++i)
-            result += std::popcount(static_cast<U>(blocks()[i] & other.blocks()[i]));
+            result += static_cast<std::size_t>(std::popcount(static_cast<U>(blocks()[i] & other.blocks()[i])));
         return result;
     }
 
@@ -302,7 +264,7 @@ public:
     {
         assert(pos < m_num_bits);
 
-        blocks()[block_index(pos)] |= (U { 1 } << block_pos(pos));
+        blocks()[block_index(pos)] |= static_cast<U>(U { 1 } << block_pos(pos));
     }
 
     void set(std::size_t pos, bool value) noexcept
@@ -359,99 +321,18 @@ public:
     [[nodiscard]] std::size_t find_first() const noexcept
     {
         assert(trailing_bits_zero());
-
-        const std::size_t n = num_blocks(m_num_bits);
-        for (std::size_t i = 0; i < n; ++i)
-        {
-            U w = blocks()[i];
-            if (w == U { 0 })
-                continue;
-
-            const std::size_t bit = i * Digits + static_cast<std::size_t>(std::countr_zero(w));
-            return bit < m_num_bits ? bit : npos;
-        }
-
-        return npos;
+        return find_from(0, U { 0 });
     }
 
     [[nodiscard]] std::size_t find_next(std::size_t pos) const noexcept
     {
         assert(trailing_bits_zero());
-
-        if (pos >= m_num_bits)
-            return npos;
-        ++pos;
-        if (pos >= m_num_bits)
-            return npos;
-
-        std::size_t i = block_index(pos);
-        U w = blocks()[i] & (~U { 0 } << block_pos(pos));
-
-        const std::size_t n = num_blocks(m_num_bits);
-        for (;;)
-        {
-            if (w != U { 0 })
-            {
-                const std::size_t bit = i * Digits + static_cast<std::size_t>(std::countr_zero(w));
-                return bit < m_num_bits ? bit : npos;
-            }
-
-            if (++i == n)
-                return npos;
-
-            w = blocks()[i];
-        }
+        return pos >= m_num_bits ? npos : find_from(pos + 1, U { 0 });
     }
 
-    [[nodiscard]] std::size_t find_first_zero() const noexcept
-    {
-        const std::size_t n = num_blocks(m_num_bits);
-        for (std::size_t i = 0; i < n; ++i)
-        {
-            U w = ~blocks()[i];
+    [[nodiscard]] std::size_t find_first_zero() const noexcept { return find_from(0, full_mask()); }
 
-            if (i == n - 1)
-                w &= last_mask(m_num_bits);
-
-            if (w == U { 0 })
-                continue;
-
-            const std::size_t bit = i * Digits + static_cast<std::size_t>(std::countr_zero(w));
-            return bit < m_num_bits ? bit : npos;
-        }
-
-        return npos;
-    }
-
-    [[nodiscard]] std::size_t find_next_zero(std::size_t pos) const noexcept
-    {
-        if (pos >= m_num_bits)
-            return npos;
-        ++pos;
-        if (pos >= m_num_bits)
-            return npos;
-
-        std::size_t i = block_index(pos);
-        U w = ~blocks()[i] & (~U { 0 } << block_pos(pos));
-
-        const std::size_t n = num_blocks(m_num_bits);
-        for (;;)
-        {
-            if (i == n - 1)
-                w &= last_mask(m_num_bits);
-
-            if (w != U { 0 })
-            {
-                const std::size_t bit = i * Digits + static_cast<std::size_t>(std::countr_zero(w));
-                return bit < m_num_bits ? bit : npos;
-            }
-
-            if (++i == n)
-                return npos;
-
-            w = ~blocks()[i];
-        }
-    }
+    [[nodiscard]] std::size_t find_next_zero(std::size_t pos) const noexcept { return pos >= m_num_bits ? npos : find_from(pos + 1, full_mask()); }
 
     /**
      * Operators
@@ -583,6 +464,26 @@ private:
             throw std::logic_error("BitsetSpan: invalid span.");
     }
 
+    /// The first position at or after `pos` whose bit differs from the same bit of `flip`, else npos.
+    [[nodiscard]] std::size_t find_from(std::size_t pos, U flip) const noexcept
+    {
+        if (pos >= m_num_bits)
+            return npos;
+        const std::size_t n = num_blocks(m_num_bits);
+        std::size_t i = block_index(pos);
+        U w = (blocks()[i] ^ flip) & (full_mask() << block_pos(pos));
+        for (;;)
+        {
+            if (i + 1 == n)
+                w &= last_mask(m_num_bits);
+            if (w != U { 0 })
+                return (i * Digits) + static_cast<std::size_t>(std::countr_zero(w));
+            if (++i == n)
+                return npos;
+            w = blocks()[i] ^ flip;
+        }
+    }
+
     Block* m_data;
     std::size_t m_num_bits;
 };
@@ -658,7 +559,70 @@ template<std::unsigned_integral Block>
 auto set_bit_indices(BitsetSpan<Block> bits) noexcept
 { return SetBitIndices<std::remove_const_t<Block>>(BitsetSpan<const std::remove_const_t<Block>>(bits)); }
 
+/// Equal bits; both spans keep their trailing bits clear.
+template<std::unsigned_integral B1, std::unsigned_integral B2>
+    requires SameAsIgnoringConst<B1, B2>
+constexpr bool operator==(const BitsetSpan<B1>& lhs, const BitsetSpan<B2>& rhs) noexcept
+{
+    assert(lhs.trailing_bits_zero());
+    assert(rhs.trailing_bits_zero());
+    if (lhs.num_bits() != rhs.num_bits())
+        return false;
+    const std::size_t n = BitsetSpan<std::remove_const_t<B1>>::num_blocks(lhs.num_bits());
+    const auto lb = lhs.blocks();
+    const auto rb = rhs.blocks();
+    for (std::size_t i = 0; i < n; ++i)
+        if (lb[i] != rb[i])
+            return false;
+    return true;
+}
+
+/// Calls `callback` with the position of every bit set in the blocks `combiner` makes of the spans' blocks, one block
+/// of each at a time (the last block masked to the size); the spans have the same size, else std::invalid_argument.
+template<typename Callback, typename BlockCombiner, std::unsigned_integral Block0, std::unsigned_integral... Blocks>
+    requires(SameAsIgnoringConst<Block0, Blocks> && ...)
+void for_each_bit(Callback callback, BlockCombiner combiner, const BitsetSpan<Block0>& first, const BitsetSpan<Blocks>&... rest)
+{
+    using U = std::remove_const_t<Block0>;
+    const std::size_t num_bits = first.num_bits();
+    if (!((rest.num_bits() == num_bits) && ...))
+        throw std::invalid_argument("BitsetSpan operands must have the same size.");
+    assert(first.trailing_bits_zero());
+    assert(((rest.trailing_bits_zero()) && ...));
+    const auto fb = first.blocks();
+    const auto rb = std::tuple { rest.blocks()... };
+    const std::size_t n = fb.size();
+    const U last = BitsetSpan<const U>::last_mask(num_bits);
+    std::size_t offset = 0;
+    for (std::size_t block = 0; block < n; ++block)
+    {
+        U w = std::apply([&](const auto&... b) noexcept -> U { return static_cast<U>(combiner(fb[block], b[block]...)); }, rb);
+        if (block + 1 == n)
+            w &= last;
+        bit::for_each_set_bit(w, [&](std::size_t at) { callback(offset + at); });
+        offset += BitsetSpan<const U>::Digits;
+    }
+}
+
 }  // namespace urd::repr
+
+namespace urd
+{
+
+/// A span hashes by its size and its blocks (the trailing bits clear).
+template<std::unsigned_integral Block>
+struct Hash<repr::BitsetSpan<Block>>
+{
+    hash_t operator()(const repr::BitsetSpan<Block>& bitset_span) const noexcept
+    {
+        hash_t aggregated_hash = bitset_span.num_bits();
+        for (const auto block : bitset_span.blocks())
+            urd::hash_combine(aggregated_hash, block);
+        return aggregated_hash;
+    }
+};
+
+}  // namespace urd
 
 namespace std::ranges
 {

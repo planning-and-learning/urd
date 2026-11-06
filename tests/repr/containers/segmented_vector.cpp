@@ -1,6 +1,5 @@
 
 
-// Copied from yggdrasil (tests/unit/containers/segmented_vector.cpp); names moved from ygg to urd::repr.
 #include "urd/repr/containers/segmented_vector.hpp"
 
 #include <concepts>

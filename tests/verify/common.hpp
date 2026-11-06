@@ -89,6 +89,16 @@ consteval bool shrinks_of()
     else
         return grows_of<R>() && !facts_where(declaration_t<R>::relies_on, false).has(change::monotone);
 }
+/// Whether a sequence that shrinks also inserts and erases in the middle: one with stable references removes at its
+/// end only.
+template<typename R>
+consteval bool changes_in_the_middle_of()
+{
+    if constexpr (is_store<R>)
+        return changes_in_the_middle<container_traits<R>>;
+    else
+        return shrinks_of<R>() && !declaration_t<R>::provides.has(referencing::stable_refs);
+}
 template<typename R>
 inline constexpr bool container_grows = grows_of<R>();
 template<typename R>

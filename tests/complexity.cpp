@@ -27,7 +27,7 @@ using urd::test::op_count;
 template<typename S, typename List>
 struct audit;
 template<typename S, typename... Rs>
-struct audit<S, urd::detail::type_list<Rs...>>
+struct audit<S, boost::mp11::mp_list<Rs...>>
 {
     template<typename R>
     static void one(std::set<std::string>& missing, std::set<std::pair<std::string, op>>& used, std::set<std::pair<std::string, op>>& declared)

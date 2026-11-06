@@ -3,6 +3,7 @@
 #include "urd/cost.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -26,12 +27,12 @@ namespace urd::repr
 inline constexpr std::size_t shard_bits = 4;
 
 template<typename T>
-using ParallelHashSet = gtl::parallel_flat_hash_set<T, Hash<T>, EqualTo<T>, std::allocator<T>, shard_bits, std::mutex>;
+using ParallelHashSet = gtl::parallel_flat_hash_set<T, urd::detail::prehash_hash<T>, urd::detail::prehash_equal<T>, std::allocator<T>, shard_bits, std::mutex>;
 
 /// The same tables with a node per element: a rehash moves the nodes' pointers, not the elements, so references
 /// hold while threads insert.
 template<typename T>
-using ParallelNodeHashSet = gtl::parallel_node_hash_set<T, Hash<T>, EqualTo<T>, std::allocator<T>, shard_bits, std::mutex>;
+using ParallelNodeHashSet = gtl::parallel_node_hash_set<T, urd::detail::prehash_hash<T>, urd::detail::prehash_equal<T>, std::allocator<T>, shard_bits, std::mutex>;
 
 }  // namespace urd::repr
 

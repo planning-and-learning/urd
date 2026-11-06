@@ -18,7 +18,7 @@ namespace urd::repr
 /// The elements in a vector, and a hash table of their positions. Stable: the elements lie in segments that never
 /// move. ThreadSafe (with Stable): threads insert and look up at once. The registry names it for any element type,
 /// so it is an unconstrained template; its container_traits declare properties only for hashable elements.
-template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe>
+template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe, bool Rows = false, bool Bits = false>
 class IndexedSet;
 
 /// An IndexedSet whose elements never move: an interner that hands out references.
@@ -27,6 +27,13 @@ using StableIndexedSet = IndexedSet<T, Index, false, true>;
 /// An IndexedSet that threads may insert into at once.
 template<typename T, typename Index = std::uint32_t>
 using ConcurrentIndexedSet = IndexedSet<T, Index, true, true>;
+/// The table a pool interns plain rows in (sequences of trivially copyable elements), stored flat: thread-safe where
+/// ThreadSafe.
+template<typename T, bool ThreadSafe>
+using FlatInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true>;
+/// The table a pool interns rows of indices in, each element in a bit width given at construction (urd::bit).
+template<typename T, bool ThreadSafe>
+using BitInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, true>;
 
 /// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
 template<typename T, bool ThreadSafe>
@@ -128,5 +135,6 @@ struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 };
 
 }  // namespace detail
+
 
 }  // namespace urd

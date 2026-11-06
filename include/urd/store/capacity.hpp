@@ -9,7 +9,7 @@ namespace urd::detail::facet
 
 /// Growable: room for elements still to come.
 template<typename Derived, typename R, typename S>
-class capacity
+class reserving
 {
 public:
     /// Hints how many elements will be inserted; does nothing where the representation cannot reserve.
@@ -28,7 +28,7 @@ namespace urd::detail
 
 /// When a Store has this facet: from its spec S.
 template<>
-struct facet_condition<facet::capacity> : facet_defaults
+struct facet_condition<facet::reserving> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()

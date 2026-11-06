@@ -150,7 +150,7 @@ template<>
 struct urd::traits_of_role<urd::role::element>
 {
     using type =
-        detail::type_list<trait::can_hash, trait::an_index, trait::copies_as_bytes, trait::destroys_trivially, trait::names_members, trait::whole_value>;
+        boost::mp11::mp_list<trait::can_hash, trait::an_index, trait::copies_as_bytes, trait::destroys_trivially, trait::names_members, trait::whole_value>;
 };
 template<>
 struct urd::traits_of_role<urd::role::mapped> : traits_of_role<role::element>
@@ -163,7 +163,7 @@ struct urd::traits_of_role<urd::role::row_element> : traits_of_role<role::elemen
 template<>
 struct urd::traits_of_role<urd::role::order>
 {
-    using type = detail::type_list<trait::own_order, trait::natural_ordered, trait::integral_priority>;
+    using type = boost::mp11::mp_list<trait::own_order, trait::natural_ordered, trait::integral_priority>;
 };
 
 namespace urd::detail
@@ -187,7 +187,7 @@ consteval property_set roles_of()
     auto result = property_set::roots();
     const auto add = [&result]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
     { result = with(result, about(role_v<Role>, role_facts<Role>::template of<Args...>())); };
-    []<typename... Plays>(type_list<Plays...> /*played*/, const auto& each) { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
+    []<typename... Plays>(boost::mp11::mp_list<Plays...> /*played*/, const auto& each) { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
     return result;
 }
 

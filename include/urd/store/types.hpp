@@ -31,6 +31,12 @@ template<typename S>
 inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&answer_says::stops_growth>();
 template<typename S>
 inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&answer_says::stops_shrinking>();
+/// Whether a Store that shrinks also changes in the middle: inserts before, and erases, any position. A sequence whose
+/// request says it changes at its ends only (urd::answer_says) removes at its end only: pop_back, clear, resize.
+template<typename S>
+inline constexpr bool changes_in_the_middle =
+    shrinks<S>
+    && !(std::same_as<typename S::kind, sequence_kind> && traits_t<S>::urd_properties.template any_says<&answer_says::changes_at_ends>());
 
 /// What a Store and its facets share, whatever its kind: the facts its request decides, and its member types. They come
 /// from the spec S alone, not from the Store, which is still incomplete while its facets are built.
@@ -42,12 +48,17 @@ struct store_types
     /// Elements change in place: its kind keeps them where they are put (a sequence: nothing depends on their values),
     /// and it is not frozen.
     static constexpr bool writable = appends<typename S::kind> && changeable;
+    /// What iterating gives may be changed in place: a writable sequence's elements, and a changeable map's values (its
+    /// keys stay const, as in the standard's maps).
+    static constexpr bool values_writable = writable || (std::same_as<typename S::kind, map_kind> && changeable);
     /// Iterated in an order the request fixes (sorted, insertion_ordered, a sequence): ordered by it.
     static constexpr bool ordered = S::iterable && S::urd_properties.template any_says<&answer_says::fixes_iteration_order>();
     /// Its contents fix the order its elements come in (sorted, canonical, a sequence): hashed by it.
     static constexpr bool hashed_in_order = S::iterable && S::urd_properties.template any_says<&answer_says::fixes_hash_order>();
     /// It must hold an element at least (nonempty): it has no default constructor, and what builds it must hold one.
     static constexpr bool needs_an_element = S::urd_properties.template any_says<&answer_says::needs_an_element>();
+    /// Built with the bit width its elements fit in (urd::bit: urd::bit_width).
+    static constexpr bool built_with_width = S::urd_properties.template any_says<&answer_says::built_with_width>();
 
     using value_type = typename S::element_type;
     /// What lookups take, as the kind's data says: a map's key, else an element.
@@ -63,9 +74,9 @@ struct iterator_types
 {
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
     using const_reference = std::ranges::range_reference_t<const R>;
-    using reference = std::conditional_t<store_types<S>::writable, std::ranges::range_reference_t<R>, const_reference>;
+    using reference = std::conditional_t<store_types<S>::values_writable, std::ranges::range_reference_t<R>, const_reference>;
     using const_iterator = std::ranges::iterator_t<const R>;
-    using iterator = std::conditional_t<store_types<S>::writable, std::ranges::iterator_t<R>, const_iterator>;
+    using iterator = std::conditional_t<store_types<S>::values_writable, std::ranges::iterator_t<R>, const_iterator>;
 };
 
 /// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet

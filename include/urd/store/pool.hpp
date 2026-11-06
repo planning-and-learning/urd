@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/cost.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/store/types.hpp"
 
@@ -10,7 +11,29 @@
 #include <initializer_list>
 #include <ranges>
 #include <span>
+#include <type_traits>
 #include <utility>
+
+namespace urd::detail
+{
+/// What a pool's representation names a block and a block flip of its rows (urd::repr::TreeBitsetSet), else void.
+template<typename R>
+struct row_blocks_of
+{
+    using block_type = void;
+    using flip_type = void;
+};
+template<typename R>
+    requires requires {
+        typename R::block_type;
+        typename R::flip_type;
+    }
+struct row_blocks_of<R>
+{
+    using block_type = typename R::block_type;
+    using flip_type = typename R::flip_type;
+};
+}  // namespace urd::detail
 
 namespace urd::detail::facet
 {
@@ -33,6 +56,9 @@ public:
     using row_type = typename S::element_type;
     /// A change to a sequence row: its value at a position.
     using write_type = Write<row_element>;
+    /// Rows that are sets of indices kept as bits: a block of a row, and a change to one (void elsewhere).
+    using block_type = typename row_blocks_of<R>::block_type;
+    using flip_type = typename row_blocks_of<R>::flip_type;
 
     /// The handle of the row with these elements, and whether the insert stored anything: false where find would have
     /// given the handle, as an equal row is held (or, with structural_sharing, every node of it is).
@@ -64,6 +90,28 @@ public:
     /// The handle insert(elements) would give, where inserting would store nothing; else none (handle.is_none()).
     /// Without structural_sharing that is an equal row inserted before. A pool with structural_sharing also finds a row
     /// it can build from the nodes it holds (a part of a longer row), which inserting would then not store either.
+    /// By a row with its hash (urd/elements/prehashed.hpp; the hash urd::hash_range gives its elements), not hashed
+    /// again: where the representation takes one (a pool of plain sequences).
+    template<typename Elements>
+        requires requires(R& rows, const prehashed<Elements>& key) { rows.insert(key); }
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
+    { return representation().insert(key); }
+    template<typename Elements>
+        requires requires(const R& rows, const prehashed<Elements>& key) { rows.find(key); }
+    [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
+    { return constant().find(key); }
+    template<typename Elements>
+        requires requires(const R& rows, const prehashed<Elements>& key) { rows.find(key); }
+    [[nodiscard]] bool contains(const prehashed<Elements>& key) const
+    { return !find(key).is_none(); }
+    /// The bit width it was built with (urd::bit), where its representation stores elements in it.
+    [[nodiscard]] urd::bit_width width() const noexcept
+        requires requires(const R& rows) { rows.width(); }
+    { return constant().width(); }
+    /// Whether a row with these elements is stored, as a set's contains.
+    template<std::ranges::input_range Elements>
+    [[nodiscard]] bool contains(const Elements& elements) const
+    { return !find(elements).is_none(); }
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
     { return constant().find(elements); }
@@ -79,6 +127,22 @@ public:
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
+
+    // Rows that are sets of indices kept as bits, by their blocks, where the representation keeps them so: a row
+    // changes by the blocks that differ, without listing its elements.
+
+    /// The handle of the row with these blocks, whose last must not be zero.
+    handle_type insert_blocks(std::span<const block_type> blocks)
+        requires(!std::is_void_v<block_type>)
+    { return representation().insert_blocks(blocks); }
+    /// The row `base` with `flips` applied (sorted by unique position).
+    handle_type insert_flips(handle_type base, std::span<const flip_type> flips)
+        requires(!std::is_void_v<flip_type>)
+    { return representation().insert_flips(base, flips); }
+    /// The row's blocks into `blocks`, which must hold as many as the handle counts.
+    void read_blocks(handle_type handle, std::span<block_type> blocks) const
+        requires(!std::is_void_v<block_type>)
+    { constant().read_blocks(handle, blocks); }
     /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
     /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
     /// row's views stay valid, the erased row's do not.

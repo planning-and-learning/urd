@@ -52,7 +52,7 @@ std::string tags_where(urd::tag of, Keep keep)
 std::string kinds_answering(urd::tag of)
 {
     auto result = std::string("[");
-    [&]<typename... Kinds>(urd::detail::type_list<Kinds...> /*kinds*/)
+    [&]<typename... Kinds>(boost::mp11::mp_list<Kinds...> /*kinds*/)
     {
         (
             [&]<typename... Es>(urd::detail::request_format<Es...> /*format*/)

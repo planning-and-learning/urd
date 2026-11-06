@@ -20,8 +20,9 @@
 namespace urd::repr
 {
 
-/// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full.
-template<typename Row, bool ThreadSafe = false>
+/// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full; with
+/// Bits, rows of indices, each element in a bit width given at construction (urd::bit).
+template<typename Row, bool ThreadSafe = false, bool Bits = false>
 class RowInterner;
 
 /// A pool of sequence rows, each a balanced tree with Arity children per node, equal subtrees stored once.
@@ -61,6 +62,35 @@ template<typename Row>
 struct declaration_of<repr::RowInterner<Row, false>>
 {
     using declaration = row_interner_decl;
+    static constexpr property_set roles = roles_of<urd::pool<Row>>();
+};
+
+/// A row interner of rows of indices whose request promises urd::bit: each element in the bit width given at
+/// construction, rows of one length packed back to back; thread-safe or not.
+template<bool ThreadSafe>
+struct bit_row_interner_decl
+{
+    static constexpr std::string_view id = ThreadSafe ? "thread_safe_bit_row_interner" : "bit_row_interner";
+    static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
+    using kind = pool_kind;
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none) });
+    static constexpr property_set relies_on = relies(stated({ width::bit }),
+                                                     tags<role::row>({ position::positional }),
+                                                     traits<role::row_element, trait::an_index>(),
+                                                     traits<role::row_element, trait::can_hash>());
+    static constexpr std::array<tag, 0> gives_elements {};
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
+                                       cost_entry<operation::find_row, costs::lin_row_e>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 0.5;
+    static constexpr std::string_view description = "bit row interner (rows of indices, each element in a bit width given at construction)";
+    static constexpr std::string_view holds = "each distinct row once, its elements in the given bits, rows of one length back to back";
+};
+template<typename Row, bool ThreadSafe>
+struct declaration_of<repr::RowInterner<Row, ThreadSafe, true>>
+{
+    using declaration = bit_row_interner_decl<ThreadSafe>;
     static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
 

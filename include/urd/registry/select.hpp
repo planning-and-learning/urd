@@ -13,6 +13,7 @@
 #include "urd/type_traits_of.hpp"
 
 #include <array>
+#include <boost/mp11.hpp>
 #include <cstddef>
 #include <span>
 #include <string_view>
@@ -36,7 +37,7 @@ inline constexpr request_shape shape_of = []
 template<typename S>
 inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
 template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> type_list<typename nth<serving_v<S>.held[I], declarations_t<typename S::kind>>::type...>;
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> boost::mp11::mp_list<boost::mp11::mp_at_c<declarations_t<typename S::kind>, serving_v<S>.held[I]>...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 
@@ -60,16 +61,16 @@ struct choose
 template<typename S, fixed_string Container, typename Missing>
 struct missing_container;
 
-/// The headers of S's chosen container that this file lacks, as urd::include<"..."> in a type_list, a wrapper's
+/// The headers of S's chosen container that this file lacks, as urd::include<"..."> in a boost::mp11::mp_list, a wrapper's
 /// part's first.
 template<typename S, std::size_t... I>
 consteval auto missing_headers(std::index_sequence<I...> /*headers*/)
 {
     constexpr auto headers = choose<S>::headers;
-    return typename concat<type_list<>,
-                           std::conditional_t<included<fixed_string<headers[I].size() + 1>(headers[I])>,
-                                              type_list<>,
-                                              type_list<include<fixed_string<headers[I].size() + 1>(headers[I])>>>...>::type {};
+    return boost::mp11::mp_append<boost::mp11::mp_list<>,
+                                  std::conditional_t<included<fixed_string<headers[I].size() + 1>(headers[I])>,
+                                                     boost::mp11::mp_list<>,
+                                                     boost::mp11::mp_list<include<fixed_string<headers[I].size() + 1>(headers[I])>>>...> {};
 }
 
 /// The container declaration Decl names for spec S, numbered where the Store hands out indices (numbered_t), where
@@ -80,7 +81,7 @@ struct container_of_declaration
     using type = missing_container<S, fixed_string<Decl::id.size() + 1>(Decl::id), Missing>;
 };
 template<typename S, typename Decl>
-struct container_of_declaration<S, Decl, type_list<>>
+struct container_of_declaration<S, Decl, boost::mp11::mp_list<>>
 {
     using type = numbered_t<S, typename representation_of<Decl, S>::type>;
 };
@@ -89,7 +90,7 @@ struct container_of_declaration<S, Decl, type_list<>>
 template<typename S>
 struct chosen_type
 {
-    using declaration = typename nth<choose<S>::position, declarations_t<typename S::kind>>::type;
+    using declaration = boost::mp11::mp_at_c<declarations_t<typename S::kind>, choose<S>::position>;
     using type = typename container_of_declaration<S, declaration, decltype(missing_headers<S>(std::make_index_sequence<choose<S>::headers.size()> {}))>::type;
 };
 

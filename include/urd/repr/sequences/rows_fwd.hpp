@@ -83,7 +83,7 @@ struct rows_reused
 template<>
 struct urd::traits_of_role<urd::role::rows>
 {
-    using type = detail::type_list<trait::rows_flatten, trait::rows_in_place, trait::rows_reused>;
+    using type = boost::mp11::mp_list<trait::rows_flatten, trait::rows_in_place, trait::rows_reused>;
 };
 
 namespace urd

@@ -55,11 +55,11 @@ template<>
 struct declarations_of<sequence_kind>
 {
     using type =
-        type_list<jagged_decl, fixed_jagged_decl, tracked_jagged_decl, vector_decl, segmented_vector_decl, concurrent_segmented_vector_decl, row_pool_decl>;
+        boost::mp11::mp_list<jagged_decl, fixed_jagged_decl, tracked_jagged_decl, vector_decl, segmented_vector_decl, concurrent_segmented_vector_decl, row_pool_decl>;
 };
 
 /// Sets and multisets: values kept by value, the same containers (a set requires unique, which no multiset container provides).
-using values_declarations = type_list<unordered_flat_set_decl,
+using values_declarations = boost::mp11::mp_list<unordered_flat_set_decl,
                                       unordered_set_decl,
                                       set_decl,
                                       flat_multiset_decl,
@@ -96,9 +96,10 @@ struct declarations_of<multiset_kind>
 template<>
 struct declarations_of<map_kind>
 {
-    using type = type_list<unordered_flat_map_decl,
+    using type = boost::mp11::mp_list<unordered_flat_map_decl,
                            unordered_map_decl,
                            posting_map_decl,
+                           chained_posting_map_decl,
                            unordered_multimap_decl,
                            parallel_hash_map_decl,
                            parallel_node_hash_map_decl,
@@ -131,7 +132,7 @@ struct declarations_of<map_kind>
 template<>
 struct declarations_of<queue_kind>
 {
-    using type = type_list<bucket_queue_decl, heap_decl, addressable_heap_decl, fifo_decl, ring_fifo_decl, lifo_decl>;
+    using type = boost::mp11::mp_list<bucket_queue_decl, heap_decl, addressable_heap_decl, fifo_decl, ring_fifo_decl, lifo_decl>;
 };
 
 /// Pools interning values by handle: rows first (a Store or a registered container is interned as a row), then values
@@ -139,9 +140,11 @@ struct declarations_of<queue_kind>
 template<>
 struct declarations_of<pool_kind>
 {
-    using type = type_list<row_interner_decl,
+    using type = boost::mp11::mp_list<bit_row_interner_decl<false>,
+                           row_interner_decl,
                            tree_pool_decl<false, false>,
                            tree_pool_decl<true, false>,
+                           bit_row_interner_decl<true>,
                            thread_safe_row_interner_decl,
                            tree_pool_decl<false, true>,
                            tree_pool_decl<true, true>,
@@ -166,14 +169,14 @@ struct declarations_of<pool_kind>
 template<>
 struct declarations_of<slots_kind>
 {
-    using type = type_list<slot_vector_decl, thread_safe_slot_vector_decl>;
+    using type = boost::mp11::mp_list<slot_vector_decl, thread_safe_slot_vector_decl>;
 };
 
 /// Partitions: the declarations, in order of preference.
 template<>
 struct declarations_of<partition_kind>
 {
-    using type = type_list<disjoint_sets_decl>;
+    using type = boost::mp11::mp_list<disjoint_sets_decl>;
 };
 
 }  // namespace urd::detail

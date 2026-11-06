@@ -1,4 +1,5 @@
-// Maps: values by key. The same properties as for sets choose the container; values change only by key.
+// Maps: values by key. The same properties as for sets choose the container; values change by key or through the
+// iterators, keys never.
 
 #include "show.hpp"
 #include "urd/repr/maps/ordered_map.hpp"

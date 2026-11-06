@@ -22,19 +22,15 @@
 namespace urd
 {
 
-namespace detail
-{
-template<typename R, typename S>
+/// A Store: a data structure described by its kind and properties (urd/store.hpp).
+template<typename Kind, typename... Tags>
 class Store;
-}
 
 /// Whether T is a Store. Known from its name alone, so that what a Store is as an element or a row (its facts, held_as)
 /// is read from its request and never by completing it: a Store's container is defined only where the Store is held,
 /// not where it is named as another Store's element.
 template<typename T>
 inline constexpr bool is_store = false;
-template<typename R, typename S>
-inline constexpr bool is_store<detail::Store<R, S>> = true;
 
 /// What a container guarantees, by itself, through every operation it offers: derived from its declaration's
 /// `provides` (urd/registry/derived.hpp), and checked by its property tests (tests/properties.hpp). A container is

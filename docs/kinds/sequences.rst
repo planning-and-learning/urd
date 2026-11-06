@@ -27,8 +27,10 @@ With ``sorted`` it keeps its elements in order and takes ``insert`` instead of `
      - ``std::vector``
    * - ``Store<multiset<T>, sorted>``
      - ``boost::container::flat_multiset``
-   * - ``Store<sequence<T>, monotone, stable_refs>``
-     - ``SegmentedVector`` (thread-safe with ``concurrent``)
+   * - ``Store<sequence<T>, stable_refs>``
+     - ``SegmentedVector`` (thread-safe with ``concurrent``, which implies ``stable_refs``). A sequence with stable
+       references changes at its end only: ``pop_back``, ``clear`` and a shrinking ``resize``, no ``erase`` or
+       ``insert`` at a position, which would move the elements after; with ``monotone``, not even those.
    * - ``Store<sequence<Store<sequence<T>, frozen>>>``
      - ``Jagged`` (compressed rows, any depth)
    * - ``Store<sequence<Store<...>>, fixed_shape>``

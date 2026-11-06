@@ -4,7 +4,7 @@
 // states, and what its data is (urd/type_traits_of.hpp), its elements, order, values and rows. Type traits and roles
 // are open, as categories are: each is a struct with its words.
 
-#include "urd/detail/type_list.hpp"
+#include <boost/mp11.hpp>
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
@@ -35,7 +35,7 @@ inline constexpr const trait_info* trait_v = &trait_table_v<Trait>;
 template<typename Trait>
 inline constexpr tag trait_tag { trait_v<Trait>, 1 };
 
-/// The traits of a role (a struct of the role's), as `using type = detail::type_list<Trait…>`: what its facts can be.
+/// The traits of a role (a struct of the role's), as `using type = boost::mp11::mp_list<Trait…>`: what its facts can be.
 /// Specialized once per role, where its traits are defined, each a struct with its words and what it means
 /// (`holds<…>()`). A role whose facts are no traits (a row's own tags) has none and specializes detail::role_facts.
 template<typename Role>
@@ -78,7 +78,7 @@ struct role_facts
         else if constexpr (requires { store_facts<traits, Args...>::value; })
             return store_facts<traits, Args...>::value;
         else
-            return []<typename... Traits>(type_list<Traits...> /*traits*/)
+            return []<typename... Traits>(boost::mp11::mp_list<Traits...> /*traits*/)
             {
                 auto result = property_set::roots();
                 (put_trait<Traits>(result, Traits::template holds<Args...>()), ...);
@@ -135,7 +135,7 @@ struct row_element
 }  // namespace role
 
 /// urd's roles: what its tables list (a role added outside urd is a struct like these, in its own list).
-using roles = detail::type_list<role::element, role::order, role::rows, role::mapped, role::row, role::row_element>;
+using roles = boost::mp11::mp_list<role::element, role::order, role::rows, role::mapped, role::row, role::row_element>;
 
 }  // namespace urd
 

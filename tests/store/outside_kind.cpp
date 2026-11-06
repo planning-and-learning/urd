@@ -41,7 +41,7 @@ struct tallied : any_tallying
 template<>
 struct urd::tags_of<tally::tallying>
 {
-    using type = detail::type_list<tally::any_tallying, tally::tallied>;
+    using type = boost::mp11::mp_list<tally::any_tallying, tally::tallied>;
 };
 
 namespace
@@ -153,7 +153,7 @@ struct urd::detail::facet_operations<tally::counting>
 template<>
 struct urd::detail::declarations_of<tally::tally_kind>
 {
-    using type = type_list<tally::tally_decl>;
+    using type = boost::mp11::mp_list<tally::tally_decl>;
 };
 template<typename S>
 struct urd::detail::representation_of<tally::tally_decl, S>

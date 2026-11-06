@@ -10,13 +10,17 @@
 #include "urd/elements/view.hpp"
 #include "urd/memory.hpp"
 
+#include <boost/mp11/algorithm.hpp>
 #include <cista/containers/optional.h>
+#include <cista/containers/pair.h>
 #include <cista/containers/string.h>
 #include <cista/containers/variant.h>
 #include <cista/containers/vector.h>
 #include <cstddef>
 #include <optional>
 #include <ranges>
+#include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -30,16 +34,9 @@ using flat_vector = ::cista::offset::vector<T>;
 using flat_string = ::cista::offset::string;
 template<typename... Ts>
 using flat_variant = ::cista::offset::variant<Ts...>;
-
-namespace detail
-{
-
-/// The alternative a flat variant holds, as the type its apply takes.
-template<typename... Ts>
-[[nodiscard]] constexpr auto held_index(const flat_variant<Ts...>& held) noexcept
-{ return static_cast<typename flat_variant<Ts...>::index_t>(held.index()); }
-
-}  // namespace detail
+/// The flat_variant of the indices of a type list's tags.
+template<typename L>
+using index_variant = boost::mp11::mp_apply<flat_variant, boost::mp11::mp_transform<index, L>>;
 
 /// Text hashes as its bytes (Hash<std::string_view>), so equal text hashes alike in every representation; it compares
 /// by cista's ==.
@@ -61,60 +58,62 @@ template<Serializable T>
 struct memory_of<T>
 {
     static std::size_t bytes(const T& record)
-    {
-        return []<auto... Ms>(Members<Ms...> /*members*/, const T& of) { return (std::size_t { 0 } + ... + memory_usage(of.*Ms)); }(T::cista_members(), record);
-    }
+    { return []<auto... Ms>(Members<Ms...> /*members*/, const T& of) { return (std::size_t { 0 } + ... + memory_usage(of.*Ms)); }(T::cista_members(), record); }
 };
 
 /// A flat vector is a value range: hashed, compared and ordered as its elements.
 template<typename T, template<typename> typename Ptr, bool IndexPointers, typename SizeType, class Allocator>
 inline constexpr bool value_range<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>> = true;
 
-template<typename... Ts>
-struct Hash<flat_variant<Ts...>>
+namespace detail
 {
-    hash_t operator()(const flat_variant<Ts...>& held) const
-        requires(Hashable<Ts> && ...)
-    {
-        hash_t seed = held.index();
-        if (held.valid())
-            flat_variant<Ts...>::apply([&seed](const auto& alternative) { urd::hash_combine(seed, alternative); }, detail::held_index(held), held);
-        return seed;
-    }
-};
-template<typename... Ts>
-struct EqualTo<flat_variant<Ts...>>
-{
-    bool operator()(const flat_variant<Ts...>& lhs, const flat_variant<Ts...>& rhs) const
-        requires(EqualityComparableByEqualTo<Ts> && ...)
-    {
-        if (lhs.valid() != rhs.valid())
-            return false;
-        if (!lhs.valid())
-            return true;
-        if (lhs.index() != rhs.index())
-            return false;
-        return flat_variant<Ts...>::apply([]<typename U>(const U& a, const U& b) { return EqualTo<std::remove_cvref_t<U>> {}(a, b); },
-                                          detail::held_index(lhs),
-                                          lhs,
-                                          rhs);
-    }
-};
+template<typename T, template<typename...> typename Of>
+inline constexpr bool specializes = false;
+template<template<typename...> typename Of, typename... Ts>
+inline constexpr bool specializes<Of<Ts...>, Of> = true;
+}  // namespace detail
 
-/// A view resolves a flat variant as it does a std::variant: the variant of its alternatives resolved.
-template<typename... Ts>
-struct resolution<flat_variant<Ts...>>
+/// The stored form of a readout, the inverse of urd::resolve: what a record holds for what a view reads. A variant
+/// (std's or cista's) gives the flat_variant of its alternatives' stored forms, a std::optional the cista::optional, a
+/// pair the cista::pair; a view of an element held by index gives its index (index()), a view of a record held elsewhere
+/// a copy of its record (data()); a range (not text) gives the flat_vector of its elements'; anything else is its own
+/// stored form.
+template<typename R>
+[[nodiscard]] auto to_stored(const R& readout)
 {
-    template<typename C>
-    static auto of(const flat_variant<Ts...>& member, const C& context)
+    if constexpr (variant_value<R>)
+        return []<template<typename...> typename V, typename... Vs>(const V<Vs...>& alternatives)
+        {
+            using stored = flat_variant<decltype(urd::to_stored(std::declval<const Vs&>()))...>;
+            return visit([](const auto& alternative) { return stored(urd::to_stored(alternative)); }, alternatives);
+        }(readout);
+    else if constexpr (detail::specializes<R, std::optional>)
     {
-        using resolved = std::variant<resolved_t<Ts, C>...>;
-        if (!member.valid())
-            throw std::bad_variant_access();
-        return flat_variant<Ts...>::apply([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); },
-                                          detail::held_index(member),
-                                          member);
+        using stored = ::cista::optional<decltype(urd::to_stored(*readout))>;
+        return readout.has_value() ? stored(urd::to_stored(*readout)) : stored();
     }
-};
+    else if constexpr (pair_value<R>)
+        return ::cista::pair<decltype(urd::to_stored(readout.first)), decltype(urd::to_stored(readout.second))> { urd::to_stored(readout.first),
+                                                                                                                urd::to_stored(readout.second) };
+    else if constexpr (requires { readout.index(); })
+        return readout.index();
+    else if constexpr (requires { requires std::is_class_v<std::remove_cvref_t<decltype(readout.data())>>; })
+        return readout.data();
+    else if constexpr (std::ranges::input_range<const R> && !std::convertible_to<const R&, std::string_view>)
+    {
+        auto stored = flat_vector<decltype(urd::to_stored(*std::ranges::begin(readout)))>();
+        if constexpr (std::ranges::sized_range<const R>)
+            stored.reserve(static_cast<typename decltype(stored)::size_type>(std::ranges::size(readout)));
+        for (const auto& element : readout)
+            stored.push_back(urd::to_stored(element));
+        return stored;
+    }
+    else
+        return readout;
+}
+
+/// The type to_stored gives for a readout of type R.
+template<typename R>
+using stored_t = decltype(urd::to_stored(std::declval<const R&>()));
 
 }  // namespace urd

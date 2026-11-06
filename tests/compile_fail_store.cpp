@@ -57,9 +57,9 @@ int main()
     sorted[0] = 3;
 #elif URD_CASE == 11  // a nonempty Store cannot start empty
     (void) Store<set<int>, urd::nonempty>();
-#elif URD_CASE == 12  // erasing from a sequence moves later elements: no representation keeps references then
-    using S = Store<sequence<int>, urd::stable_refs>;
-    (void) S();
+#elif URD_CASE == 12  // erasing a position of a sequence moves later elements: one with stable references has no erase
+    auto s = Store<sequence<int>, urd::stable_refs>();
+    s.erase(s.begin());
 #elif URD_CASE == 13  // memory is either kept for reuse or returned
     using S = Store<set<int>, urd::retains, urd::reclaims>;
     (void) S();
@@ -114,7 +114,7 @@ int main()
 #elif URD_CASE == 30  // a view reads through a context that resolves its index: a hash set has no indices
     using Items = Store<set<int>>;
     [[maybe_unused]] auto items = Items { 1 };
-    (void) urd::view<int, Items>(urd::index<int>(0), items).record();
+    (void) urd::view<int, Items>(urd::index<int>(0), items).data();
 #elif URD_CASE == 31  // an index of A is no index of B
     struct A;
     struct B;

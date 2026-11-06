@@ -96,7 +96,7 @@ std::string kind_of()
 template<typename S, typename List>
 struct collect;
 template<typename S, typename... Rs>
-struct collect<S, urd::detail::type_list<Rs...>>
+struct collect<S, boost::mp11::mp_list<Rs...>>
 {
     template<typename R>
     static void one(std::vector<representation>& into)

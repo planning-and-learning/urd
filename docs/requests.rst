@@ -7,10 +7,12 @@ A Store is a request: its kind with its element types, then a list of property t
 
 .. cpp:class:: template<typename Kind, typename... Tags> Store
 
-   An alias (``urd/store.hpp``) for the Store class resolved from the request: ``Kind`` is one of the kinds below with
-   its element types, and ``Tags`` are property tags from :doc:`language/index`, at most one per category. Equal
-   requests, in whatever order, are the same type. ``Store<...>::representation`` names the container chosen, for
-   tests that pin it; code that uses a Store never needs it.
+   A class template (``urd/store.hpp``) deriving from the Store resolved from the request: ``Kind`` is one of the kinds
+   below with its element types, and ``Tags`` are property tags from :doc:`language/index`, at most one per category.
+   Being a class template, it lets function templates deduce what it holds (``template<typename K> void f(const
+   Store<set<K>>&)``), as the standard's containers do. Equal requests, in whatever order, resolve to the same container,
+   though each spelling is its own class. ``Store<...>::representation``
+   names the container chosen, for tests that pin it; code that uses a Store never needs it.
 
 .. cpp:class:: template<typename K> set
 .. cpp:class:: template<typename K, typename V> map

@@ -2,6 +2,7 @@
 
 #include "urd/cost.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/store/layers.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
@@ -22,6 +23,11 @@ template<typename Derived, typename R, typename S>
 class records
 {
     using T = typename S::element_type;
+
+    /// A factory of records: what it gives converts to one, or refers to one.
+    template<typename Factory>
+    static constexpr bool makes_record = std::convertible_to<std::invoke_result_t<Factory, urd::index<T>>, T>
+                                         || std::same_as<std::remove_cvref_t<std::invoke_result_t<Factory, urd::index<T>>>, T>;
 
 public:
     using record_type = T;
@@ -67,16 +73,31 @@ public:
 
     /// The record's index, and whether it was new: an equal record already held gives its index.
     std::pair<index_type, bool> insert(const T& record) { return representation().insert(record); }
+    /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
+    std::pair<index_type, bool> insert(const prehashed<T>& key)
+        requires requires(R& held) { held.insert(key); }
+    { return representation().insert(key); }
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
     /// must not touch this Store.
+    /// `make` gives the record or a reference to it: a record serialized into an arena needs no copy of its own.
     template<std::invocable<index_type> Factory>
-        requires std::convertible_to<std::invoke_result_t<Factory, index_type>, T>
+        requires makes_record<Factory>
     std::pair<index_type, bool> insert(const T& key, Factory make)
+    { return representation().insert(key, make); }
+    template<std::invocable<index_type> Factory>
+        requires makes_record<Factory> && requires(R& held, const prehashed<T>& key, Factory make) { held.insert(key, make); }
+    std::pair<index_type, bool> insert(const prehashed<T>& key, Factory make)
     { return representation().insert(key, make); }
     /// The index of an equal record, or none.
     [[nodiscard]] index_type find(const T& record) const { return constant().find(record); }
     [[nodiscard]] bool contains(const T& record) const { return constant().contains(record); }
+    [[nodiscard]] index_type find(const prehashed<T>& key) const
+        requires requires(const R& held) { held.find(key); }
+    { return constant().find(key); }
+    [[nodiscard]] bool contains(const prehashed<T>& key) const
+        requires requires(const R& held) { held.contains(key); }
+    { return constant().contains(key); }
     [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
     [[nodiscard]] bool contains(index_type at) const { return !at.is_none() && (at.value) < constant().size(); }
     [[nodiscard]] const T& operator[](index_type at) const { return constant()[at]; }

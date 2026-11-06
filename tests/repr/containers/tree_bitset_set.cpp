@@ -1,8 +1,3 @@
-// Copied from yggdrasil (tests/unit/containers/tree_bitset_set.cpp); names moved from ygg to urd::repr, the block-level
-// operations named insert_blocks, insert_flips and read_blocks (insert and read take a row's elements here), blocks
-// fixed at 32 bits, and yggdrasil's default arity 2 spelled out. The concurrent tests come with the concurrent node
-// tables; the boost::dynamic_bitset adapters are not copied.
-
 #include "urd/repr/pools/tree_bitset.hpp"
 #include "urd/repr/values/dense_set.hpp"
 

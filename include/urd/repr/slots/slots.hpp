@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <memory_resource>
 #include <mutex>
 #include <type_traits>
 #include <utility>
@@ -38,6 +40,7 @@ class SlotVector
     };
     using Mutex = std::conditional_t<ThreadSafe, std::mutex, NoMutex>;
     using Count = std::conditional_t<ThreadSafe, std::atomic<std::size_t>, std::size_t>;
+    using Blocks = std::conditional_t<ThreadSafe, std::pmr::synchronized_pool_resource, std::pmr::unsynchronized_pool_resource>;
 
 public:
     using value_type = T;
@@ -88,6 +91,15 @@ public:
         return m_slots[handle.value];
     }
 
+    /// Where shared owners of its elements (urd/store/slots.hpp, acquire_shared) take their control blocks from: made on
+    /// first use, so a SlotVector that shares nothing allocates none, and a moved-from one makes a new one.
+    [[nodiscard]] std::pmr::memory_resource* blocks()
+    {
+        if (!m_blocks)
+            m_blocks = std::make_unique<Blocks>();
+        return m_blocks.get();
+    }
+
     /// How many elements are in use.
     [[nodiscard]] size_type size() const { return m_count; }
     [[nodiscard]] bool empty() const { return size() == 0; }
@@ -127,6 +139,9 @@ private:
     std::vector<std::uint32_t> m_free;
     Mutex m_mutex;
     Count m_count { 0 };
+    /// Every control block taken from it must be back before it goes. Made on first use where single-threaded (blocks());
+    /// made up front where thread-safe, which a concurrent first use could otherwise race on (and which never moves).
+    std::unique_ptr<Blocks> m_blocks = ThreadSafe ? std::make_unique<Blocks>() : nullptr;
 };
 
 }  // namespace urd::repr

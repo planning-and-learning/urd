@@ -64,13 +64,25 @@ using urd::Store;
 
 // The order of the properties does not matter.
 static_assert(std::same_as<Store<set<int>, urd::sorted>, Store<set<int>, urd::sorted>>);
-static_assert(std::same_as<Store<multiset<int>, urd::unique, urd::sorted>, Store<multiset<int>, urd::sorted, urd::unique>>);
+// The same request in any order of its tags is over the same representation; each spelling is its own class, so that
+// function templates deduce through it.
+static_assert(std::same_as<Store<multiset<int>, urd::unique, urd::sorted>::representation, Store<multiset<int>, urd::sorted, urd::unique>::representation>);
 
 // What a request is: what it states, and what that means (urd::meaning): a set's keys are unique, a frozen Store's
 // references are stable. Values without keys are a sequence by kind, not by a tag.
 static_assert(urd::has<Store<set<int>>, urd::unique>);
 static_assert(std::same_as<urd::container_traits<Store<sequence<int>>>::kind, urd::sequence_kind> && !urd::has<Store<sequence<int>>, urd::dense>);
 static_assert(urd::has<Store<set<int>, urd::frozen>, urd::stable_refs>);
+// store_of: by kind, element types and tags held, whatever else the request states and in whatever order.
+static_assert(urd::store_of<Store<set<int>, urd::sorted>, set<int>, urd::sorted>);
+static_assert(urd::store_of<const Store<set<int>, urd::sorted, urd::stable_refs>&, set<int>, urd::sorted>);
+static_assert(urd::store_of<Store<multiset<int>, urd::unique, urd::sorted>, multiset<int>, urd::sorted, urd::unique>);
+static_assert(urd::store_of<Store<set<int>, urd::frozen>, set<int>, urd::monotone>);
+static_assert(urd::store_of<Store<set<int>>, set<int>>);
+static_assert(!urd::store_of<Store<set<int>>, set<int>, urd::sorted>);
+static_assert(!urd::store_of<Store<set<long>, urd::sorted>, set<int>, urd::sorted>);
+static_assert(!urd::store_of<Store<sequence<int>>, set<int>>);
+static_assert(!urd::store_of<int, set<int>>);
 
 // What each request resolves to (pinned, so a change in the selection shows up here). Where no order is asked
 // for, an open-addressing hash table, which docs/BENCHMARKS.md finds fastest at every size.
@@ -80,14 +92,17 @@ static_assert(urd::has<Store<set<int>, urd::frozen>, urd::stable_refs>);
 // Maps: by key, as the sets are by element.
 // A multimap is postings: a key's values together, one probe away. Stable references need the node-based table.
 // A map of rows holds the inner Stores; flattening by dense key comes with dense maps.
-// A map's values change by key, never through its iterators; only a map with unique keys has at and try_emplace.
+// A map's values change by key, or through its iterators as in the standard's maps (its keys stay const); a frozen map's
+// do not. Only a map with unique keys has at and try_emplace.
 template<typename S>
 concept can_assign_by_key = requires(S store) { store[1] = 2; };
 template<typename S>
 concept can_try_emplace = requires(S store) { store.try_emplace(1, 2); };
 static_assert(can_assign_by_key<Store<map<int, int>>> && !can_assign_by_key<Store<map<int, int>, urd::frozen>>);
 static_assert(can_try_emplace<Store<map<int, int>>> && !can_try_emplace<Store<map<int, int>, urd::multi>>);
-static_assert(std::same_as<decltype(*Store<map<int, int>>().begin()), const std::pair<const int, int>&>);
+static_assert(std::same_as<decltype(*Store<map<int, int>>().begin()), std::pair<const int, int>&>);
+static_assert(std::same_as<decltype(*std::declval<const Store<map<int, int>>&>().begin()), const std::pair<const int, int>&>);
+static_assert(std::same_as<decltype(*Store<map<int, int>, urd::frozen>().begin()), const std::pair<const int, int>&>);
 
 // Dense keys (indices): stored by position, a bitset where nothing else is asked, a sparse set where clear must be
 // O(1).
