@@ -416,9 +416,12 @@ public:
         if (position != last)
             m_positions.insert(Position { position });
     }
+    /// The table of an empty set is left as it is: clearing it costs its capacity, and the thread-safe one locks each of
+    /// its 2^7 shards, which a set cleared over and over while empty (a relation layer reset per state) would pay each time.
     void clear()
     {
-        m_positions.clear();
+        if (!empty())
+            m_positions.clear();
         if (m_elements)
             m_elements->clear();
     }

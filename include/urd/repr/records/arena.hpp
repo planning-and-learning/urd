@@ -170,10 +170,11 @@ public:
     }
     [[nodiscard]] size_type size() const { return m_state ? m_state->records.size() : 0; }
     [[nodiscard]] bool empty() const { return size() == 0; }
-    /// Forgets every record; the arena keeps its segments.
+    /// Forgets every record; the arena keeps its segments. An empty pool is left as it is: the thread-safe table locks
+    /// each of its shards to clear, which a pool cleared over and over while empty (a layer reset per state) would pay.
     void clear()
     {
-        if (!m_state)
+        if (empty())
             return;
         auto& state = *m_state;
         state.positions.clear();
