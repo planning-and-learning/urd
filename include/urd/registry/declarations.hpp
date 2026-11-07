@@ -72,8 +72,6 @@ using values_declarations = boost::mp11::mp_list<unordered_flat_set_decl,
                                       sparse_set_decl,
                                       stable_indexed_set_decl,
                                       ordered_sparse_set_decl,
-                                      layered_decl<unordered_flat_set_decl, false>,
-                                      layered_decl<unordered_set_decl, false>,
                                       change_logged_decl<unordered_flat_set_decl>,
                                       change_logged_decl<tracked_dense_set_decl>,
                                       change_logged_decl<unordered_set_decl>,
@@ -122,10 +120,8 @@ struct declarations_of<map_kind>
                            scoped_map_decl,
                            scoped_tree_map_decl,
                            scoped_dense_map_decl,
-                           layered_decl<unordered_flat_map_decl, false>,
-                           layered_decl<unordered_map_decl, false>,
                            layered_decl<dense_map_decl, false>,
-                           layered_decl<generation_map_decl, false>>;
+                           layered_decl<thread_safe_generation_map_decl, false>>;
 };
 
 /// Queues, by arrival and by priority: the declarations, in order of preference (each serves one access).
@@ -148,7 +144,9 @@ struct declarations_of<pool_kind>
                            thread_safe_row_interner_decl,
                            tree_pool_decl<false, true>,
                            tree_pool_decl<true, true>,
+                           layered_decl<bit_row_interner_decl<false>, true>,
                            layered_decl<row_interner_decl, true>,
+                           layered_decl<bit_row_interner_decl<true>, true>,
                            layered_decl<thread_safe_row_interner_decl, true>,
                            value_interner_decl,
                            stable_value_interner_decl,
@@ -158,7 +156,6 @@ struct declarations_of<pool_kind>
                            stable_record_interner_decl,
                            thread_safe_record_interner_decl,
                            thread_safe_arena_interner_decl,
-                           layered_decl<record_interner_decl, true>,
                            layered_decl<arena_interner_decl, true>,
                            layered_decl<stable_record_interner_decl, true>,
                            layered_decl<thread_safe_record_interner_decl, true>,

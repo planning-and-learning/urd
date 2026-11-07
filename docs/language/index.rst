@@ -211,9 +211,9 @@ this request: drop or change a tag". Some examples:
      - A tree pool numbers nodes, not rows; no layer continues its handles.
      - Drop ``structural_sharing``.
      - 37
-   * - ``dense, layered, concurrent`` maps
-     - Missing, not incompatible: the concurrent slot directory is not written yet (see the note in :doc:`/RESOLUTION`).
-     - ``dense, layered`` single-threaded, or ``dense, constant_clear, concurrent`` without layers.
+   * - ``pool<V, H>, structural_sharing`` with ``H`` not ``index<V>``
+     - A tree pool hands out its own handles (a root and a size), not the index the request names.
+     - Drop ``structural_sharing``, or the handle.
      - 38
    * - ``map<int, int>, concurrent, retains``
      - The concurrent tables (gtl) return their storage on ``clear``; no concurrent table retains.

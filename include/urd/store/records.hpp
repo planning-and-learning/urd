@@ -26,12 +26,13 @@ class records
 
     /// A factory of records: what it gives converts to one, or refers to one.
     template<typename Factory>
-    static constexpr bool makes_record = std::convertible_to<std::invoke_result_t<Factory, urd::index<T>>, T>
-                                         || std::same_as<std::remove_cvref_t<std::invoke_result_t<Factory, urd::index<T>>>, T>;
+    static constexpr bool makes_record = std::convertible_to<std::invoke_result_t<Factory, typename S::handle_type>, T>
+                                         || std::same_as<std::remove_cvref_t<std::invoke_result_t<Factory, typename S::handle_type>>, T>;
 
 public:
     using record_type = T;
-    using index_type = urd::index<T>;
+    /// The handle the request names (urd::pool<V, H>): index<T> by default.
+    using index_type = typename S::handle_type;
     using handle_type = index_type;
 
     /// The records in index order, 0 to size() - 1, each read by its index.
@@ -107,14 +108,16 @@ public:
             throw std::out_of_range("urd::Store::at: no record at this index");
         return (*this)[at];
     }
-    /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
-    [[nodiscard]] urd::index_view<T, Derived> view(index_type at) const
+    /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made):
+    /// of the handle's element type (of U for a pool of urd::data<U> handing out index<U>).
+    [[nodiscard]] auto view(index_type at) const
     {
-        static_assert(requires { sizeof(urd::index_view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
+        using view_type = urd::index_view<typename index_type::element_type, Derived>;
+        static_assert(requires { sizeof(view_type); }, "urd::Store::view: include <urd/elements/view.hpp>");
         if constexpr (chains_layers<R>)
-            return urd::index_view<T, Derived>(at, &static_cast<const Derived&>(*this).owner(at));
+            return view_type(at, &static_cast<const Derived&>(*this).owner(at));
         else
-            return urd::index_view<T, Derived>(at, &static_cast<const Derived&>(*this));
+            return view_type(at, &static_cast<const Derived&>(*this));
     }
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
     [[nodiscard]] std::size_t layer() const { return constant().layer(); }

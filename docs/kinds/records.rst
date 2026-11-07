@@ -7,6 +7,8 @@ Records, repositories, views
 
    template<typename Record, typename... Properties>
    using Records = Store<pool<Record>, flat, Properties...>;
+   template<typename T, typename... Properties>
+   using Symbols = Store<pool<urd::data<T>, index<T>>, flat, Properties...>;   // records of T, handing out index<T>
 
 .. cpp:class:: Records
 
@@ -19,7 +21,9 @@ Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an
 strings is ``Store<pool<std::string>>``). With ``flat``, records are stored as bytes:
 
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
-bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it; read back by index, looked up by record, counted.
+bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it (or the index the request names,
+``pool<urd::data<T>, index<T>>``: the record a Store holds for an ``index<T>``, whose views are ``index_view<T, Store>``);
+read back by index, looked up by record, counted.
 A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista
 (``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/elements/flat.hpp``. The
 records are frozen once stored.
@@ -38,8 +42,9 @@ records are frozen once stored.
      - the records in segments that never move, no lock (the arena never moves a block, so it has ``stable_refs`` already)
    * - either with ``concurrent``
      - the same, thread-safe: lookups without a lock, a new record under the writer lock
-   * - either with ``layered``
-     - ``LayeredPool`` over it
+   * - with ``layered``
+     - ``LayeredPool`` over one that never moves a record: the arena, the record interner over segments, or a
+       thread-safe one
 
 Each pool has its header: ``urd/repr/records/records.hpp`` (the record interner) or ``urd/repr/records/arena.hpp`` (the arena
 interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a flat record is written.
@@ -167,3 +172,15 @@ predicate the phase did not touch, and continue that pool's indices for one it d
    auto task = Relations();
    task.layer_over(&domain);
    task[on].insert({ a, b });     // the domain's row, if it had one, else a new one after the domain's rows
+   task.owner(on);                // the Store whose own pool holds on's rows: task now
+
+Rows of a width given at construction (``bit``) are built from it: ``try_emplace`` builds a predicate's own pool from
+its arguments and layers it over the parent's, which may be narrower. With ``concurrent`` at both levels, threads
+reach and fill the pools at once, each own pool made and layered once (:doc:`maps`):
+
+.. code-block:: cpp
+
+   using BitRows = Store<pool<Row, index<Binding>>, monotone, bit, layered, concurrent>;
+   using Relations = Store<map<index<Predicate>, BitRows>, dense, layered, concurrent>;
+   task.try_emplace(on, bit_width::for_bound(num_objects));   // made once, over the domain's pool of on
+   task.at(on).insert({ a, b });                              // from any thread

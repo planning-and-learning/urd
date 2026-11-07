@@ -8,6 +8,7 @@
 // (urd/registry/declarations.hpp).
 
 #include <boost/mp11.hpp>
+#include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/property_set.hpp"
 #include "urd/registry/facts.hpp"
@@ -415,11 +416,15 @@ struct queue : detail::data_of<queue_kind, V>
 {
     using value_type = V;
 };
-/// Values of type V interned by handle, each distinct one once.
-template<typename V>
+/// Values of type V interned by handle, each distinct one once. H is the handle insert hands out: an urd::index, of V
+/// by default, of any type where the pool names it (a pool of urd::data<T> handing out index<T>). Pools that number
+/// their values serve it; a tree pool, whose handle is its own (a root and a size), serves only the default.
+template<typename V, typename H = index<V>>
 struct pool : detail::data_of<pool_kind, V>
 {
+    static_assert(is_index_type<H>, "urd::pool<V, H>: H, the handle a pool hands out, is an urd::index");
     using value_type = V;
+    using handle_type = H;
 };
 /// Values of type V in slots, by handle.
 template<typename V>

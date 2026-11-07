@@ -3,7 +3,12 @@
 #include "urd/store/types.hpp"
 
 #include <algorithm>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
 #include <ranges>
+#include <span>
+#include <utility>
 
 namespace urd::detail::facet
 {
@@ -80,6 +85,25 @@ public:
     void merge(Derived&& source)
         requires grows<S> && shrinks<S>
     { merge(source); }
+
+    // A bitset's words (a dense set), where the representation keeps them: 64 bits each, key k at bit k % 64 of word
+    // k / 64.
+
+    /// The words up to the last one with a bit set: equal sets give equal words, however many each keeps.
+    [[nodiscard]] std::span<const std::uint64_t> significant_words() const noexcept
+        requires requires(const R& held) { held.significant_words(); }
+    { return representation().significant_words(); }
+    /// Makes this the set whose bits `words` set, its storage reused: a whole assignment, as operator= is (a frozen
+    /// set takes it too).
+    void assign_words(std::span<const std::uint64_t> words)
+        requires requires(R& held, std::span<const std::uint64_t> some) { held.assign_words(some); }
+    { mutable_representation().assign_words(words); }
+    /// Makes this the set whose bits fill(words) sets in `count` words, zeroed first, written in place.
+    template<typename Fill>
+        requires std::invocable<Fill&, std::span<std::uint64_t>>
+    void assign_words(std::size_t count, Fill fill)
+        requires requires(R& held, std::size_t n, Fill& with) { held.assign_words(n, with); }
+    { mutable_representation().assign_words(count, std::move(fill)); }
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }

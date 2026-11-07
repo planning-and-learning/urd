@@ -45,8 +45,6 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - ``Store<set<K>, concurrent>``
      - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); with ``stable_refs``, ``parallel_node_hash_set``
        (a node per element); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
-   * - ``Store<set<K>, layered>``
-     - ``Layered`` over a flat hash set; over a node set with ``stable_refs``
    * - ``Store<set<K>, change_log>``
      - ``ChangeLogged`` over a flat hash set; over a tracked bitset with ``dense``, a tree with ``sorted``, a node
        set with ``stable_refs``
@@ -190,6 +188,26 @@ Set algebra
    Inserts every element of ``other``; whether that added any, as fixpoints ask. Two bitsets do all three by
    words.
 
+Words (``dense``, a bitset)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Where the set is a bitset (``DenseSet``), its words: 64 bits each, key ``k`` at bit ``k % 64`` of word ``k / 64``.
+A pool of such sets as trees of blocks (:doc:`pools`) takes and gives rows by them.
+
+.. cpp:function:: std::span<const std::uint64_t> significant_words() const noexcept
+
+   The words up to the last one with a bit set: equal sets give equal words, however many each keeps.
+
+.. cpp:function:: void assign_words(std::span<const std::uint64_t> words)
+
+   Makes this the set whose bits ``words`` set, its storage reused: a whole assignment, as ``operator=`` is, so a
+   ``frozen`` set takes it too.
+
+.. cpp:function:: template<typename Fill> void assign_words(std::size_t count, Fill fill)
+
+   The same, written in place: ``count`` words, zeroed, then ``fill(std::span<std::uint64_t>)`` sets their bits.
+   Nothing is copied; nothing is allocated where the set holds ``count`` words already.
+
 Positions (``positional``, and ``insertion_ordered``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -226,17 +244,6 @@ Least and greatest (``sorted``, not ``dense``)
 and greatest keys), O(1) in a tree or a sorted array; the Store must not be empty. Dense keys find their first by a
 scan of the key range, so a dense set reads ``*begin()`` where that cost is meant.
 
-Layers (``layered``)
-^^^^^^^^^^^^^^^^^^^^
-
-.. cpp:function:: void layer_over(const Set* parent)
-
-   Lookups find ``parent``'s elements too, from now on; ``nullptr`` ends it. The Store holds, iterates and erases
-   only its own elements; inserting what the parent has inserts nothing. The parent is not owned: it must outlive
-   the layer and stay unchanged. A layered Store has no ``==``: its contents include its parent's.
-
-.. cpp:function:: const Set* parent() const noexcept
-
 Change log (``change_log``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -258,8 +265,7 @@ Comparison
 
 .. cpp:function:: friend bool operator==(const Set& lhs, const Set& rhs)
 
-   Equal contents: by the representation's ``==`` where it has one, else element by element in iteration order. Not
-   where ``layered``.
+   Equal contents: by the representation's ``==`` where it has one, else element by element in iteration order.
 
 .. cpp:function:: friend auto operator<=>(const Set& lhs, const Set& rhs)
 

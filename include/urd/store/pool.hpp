@@ -127,6 +127,11 @@ public:
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
+    /// The row into `out`, whose storage is reused, where the pool writes a row whole (a tree bitset into a dense set,
+    /// word by word): allocates nothing where `out` holds the row's words already.
+    void read(handle_type handle, row_type& out) const
+        requires requires(const R& rows) { rows.read(handle, out); }
+    { constant().read(handle, out); }
 
     // Rows that are sets of indices kept as bits, by their blocks, where the representation keeps them so: a row
     // changes by the blocks that differ, without listing its elements.

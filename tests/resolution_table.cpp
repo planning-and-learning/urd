@@ -72,9 +72,6 @@ const std::map<std::string, std::string>& notes()
         { "Store<set<Id>, dense, concurrent>", "missing: a dense set written by threads (an atomic bitset)" },
         { "Store<set<int>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
         { "Store<set<Id>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
-        { "Store<map<index<Id>, Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, unique, "
-          "handles, concurrent, layered, monotone>>, dense, layered, concurrent>",
-          "missing: the concurrent slot directory (compile-fail case 38)" },
         { "Store<map<int, int>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
         { "Store<map<std::string, double>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
         { "Store<map<Id, Id>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },

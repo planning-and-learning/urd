@@ -21,14 +21,15 @@ namespace urd::repr
 /// A pool of trivially copyable records, each distinct one once, in an indexed set: a record is its own block of
 /// bytes already. With Stable the records lie in segments that never move, so [index] hands out references that
 /// hold; thread-safe where ThreadSafe (which needs Stable): lookups without a lock, a new record appended under one.
-template<typename T, bool ThreadSafe, bool Stable>
+/// H is the index it hands out (urd::pool<V, H>).
+template<typename T, bool ThreadSafe, bool Stable, typename H>
 class RecordInterner
 {
     using Records = IndexedSet<T, std::uint32_t, ThreadSafe, Stable>;
 
 public:
     using value_type = T;
-    using handle_type = urd::index<T>;
+    using handle_type = H;
     using size_type = std::size_t;
 
     // Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
@@ -68,11 +69,11 @@ private:
 };
 
 /// A pool of values interned whole: the record interner's indexed set for any hashable value, not stored as bytes.
-template<typename T, bool ThreadSafe, bool Stable>
-class ValueInterner : public RecordInterner<T, ThreadSafe, Stable>
+template<typename T, bool ThreadSafe, bool Stable, typename H>
+class ValueInterner : public RecordInterner<T, ThreadSafe, Stable, H>
 {
 public:
-    using RecordInterner<T, ThreadSafe, Stable>::RecordInterner;
+    using RecordInterner<T, ThreadSafe, Stable, H>::RecordInterner;
 };
 
 }  // namespace urd::repr
@@ -81,13 +82,13 @@ namespace urd
 {
 
 /// Its indexed set's.
-template<typename T, bool ThreadSafe, bool Stable>
-struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable>>
+template<typename T, bool ThreadSafe, bool Stable, typename H>
+struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>>
 {
-    static std::size_t bytes(const repr::RecordInterner<T, ThreadSafe, Stable>& held) { return memory_usage(held.m_records); }
+    static std::size_t bytes(const repr::RecordInterner<T, ThreadSafe, Stable, H>& held) { return memory_usage(held.m_records); }
 };
-template<typename T, bool ThreadSafe, bool Stable>
-struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable>> : memory_of<repr::RecordInterner<T, ThreadSafe, Stable>>
+template<typename T, bool ThreadSafe, bool Stable, typename H>
+struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>>
 {
 };
 
@@ -104,32 +105,32 @@ namespace urd::detail
 template<typename S>
 struct representation_of<record_interner_decl, S>
 {
-    using type = repr::RecordInterner<typename S::element_type>;
+    using type = repr::RecordInterner<typename S::element_type, false, false, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<stable_record_interner_decl, S>
 {
-    using type = repr::RecordInterner<typename S::element_type, false, true>;
+    using type = repr::RecordInterner<typename S::element_type, false, true, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_record_interner_decl, S>
 {
-    using type = repr::RecordInterner<typename S::element_type, true>;
+    using type = repr::RecordInterner<typename S::element_type, true, true, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<value_interner_decl, S>
 {
-    using type = repr::ValueInterner<typename S::element_type>;
+    using type = repr::ValueInterner<typename S::element_type, false, false, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<stable_value_interner_decl, S>
 {
-    using type = repr::ValueInterner<typename S::element_type, false, true>;
+    using type = repr::ValueInterner<typename S::element_type, false, true, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_value_interner_decl, S>
 {
-    using type = repr::ValueInterner<typename S::element_type, true>;
+    using type = repr::ValueInterner<typename S::element_type, true, true, typename S::handle_type>;
 };
 
 }  // namespace urd::detail

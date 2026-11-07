@@ -1,10 +1,9 @@
 #pragma once
 
-// A family of Stores, one per type: the context through which views of records holding indices of several types
-// resolve. A utility, not a kind: it selects no representation (its members are Stores, which do).
+// A family of Stores, one per type, reached by type. A utility, not a kind: it selects no representation (its members
+// are Stores, which do).
 
 #include "urd/elements/index.hpp"
-#include "urd/elements/view.hpp"
 
 #include <array>
 #include <concepts>
@@ -20,10 +19,9 @@ namespace urd::utils
 /// of view. F is usually an alias of a Store: template<typename T> using Ids = urd::Store<urd::key<T>, urd::positional>.
 /// Not a Store kind of its own: a fixed set of Stores named by type.
 ///
-/// Where the members number their elements (positional sets, pools), the family resolves an index of any member
-/// type (urd::resolves), so an index_view<T, Family> reads a record and the indices in it through one context. Where the
-/// members layer, a family layers too: Family(&parent) layers each member over the parent's member of its type and
-/// numbers itself along the chain, and a view made of the family points at the layer that owns the element.
+/// Where the members layer, a family layers too: Family(&parent) layers each member over the parent's member of its
+/// type and numbers itself along the chain (urd::layer). Its operator[] reads an element by its member's handle (a
+/// pool of urd::data<T> handing out index<T>: urd::pool<V, H>), whichever layer holds it.
 template<template<typename> class F, typename... Ts>
 class Family
 {
@@ -41,8 +39,6 @@ class Family
     static_assert(((occurrences<Ts> == 1) && ...), "urd::utils::Family: each type once");
 
     static constexpr bool layerable = (requires(F<Ts>& member, const F<Ts>* parent) { member.layer_over(parent); } && ...);
-    template<typename T>
-    static constexpr bool chained = requires(const F<T>& member) { member.base(); };
 
     /// A member numbered as the family is (urd::layer), where it numbers its elements.
     template<typename M>
@@ -98,46 +94,11 @@ public:
     /// This family's number along the chain: 0 for a root.
     [[nodiscard]] std::size_t layer() const noexcept { return m_layer; }
 
-    /// The record of `at`, from the member for T, whichever layer holds it.
+    /// The element of `at`, from the member for T, whichever layer holds it.
     template<typename T>
     [[nodiscard]] decltype(auto) operator[](urd::index<T> at) const
     {
         return get<T>()[at];
-    }
-    /// A view of the record at `at` through this family, which resolves the indices in it; where the members layer,
-    /// through the layer that owns the record.
-    template<typename T>
-    [[nodiscard]] auto view(urd::index<T> at) const
-    {
-        return urd::index_view<T, Family>(at, &owner(at));
-    }
-    /// The record's index in the member for T, and whether it was new.
-    template<typename T>
-    std::pair<urd::index<T>, bool> insert(const T& record)
-    {
-        auto& member = get<T>();
-        const auto result = member.insert(record);
-        if constexpr (std::same_as<std::remove_cvref_t<decltype(result.first)>, urd::index<T>>)
-            return result;
-        else
-            return { member.index(result.first), result.second };
-    }
-    /// The index `key` gets, built where new by `make(index)` (a pool of records).
-    template<typename T, std::invocable<urd::index<T>> Factory>
-    std::pair<urd::index<T>, bool> insert(const T& key, Factory make)
-    {
-        return get<T>().insert(key, make);
-    }
-    /// The index of an equal record in the member for T, or none.
-    template<typename T>
-    [[nodiscard]] urd::index<T> find(const T& record) const
-    {
-        const auto& member = get<T>();
-        const auto found = member.find(record);
-        if constexpr (std::same_as<std::remove_cvref_t<decltype(found)>, urd::index<T>>)
-            return found;
-        else
-            return found == member.end() ? urd::index<T>() : member.index(found);
     }
     /// Whether the member for T has a record at `at`.
     template<typename T>
@@ -153,21 +114,6 @@ public:
     }
 
 private:
-    /// The family along the chain whose member for T holds `at`: this one, or an ancestor.
-    template<typename T>
-    [[nodiscard]] const Family& owner(urd::index<T> at) const
-    {
-        if constexpr (chained<T>)
-        {
-            const auto* family = this;
-            while ((at.value) < family->template get<T>().base())
-                family = family->m_parent;
-            return *family;
-        }
-        else
-            return *this;
-    }
-
     std::tuple<F<Ts>...> m_members;
     const Family* m_parent = nullptr;
     std::size_t m_layer = 0;

@@ -62,11 +62,18 @@ class LayeredPool
 
 public:
     using value_type = T;
-    using handle_type = urd::index<T>;
+    /// The parent pool's handle: its index, of T or the one its request names (urd::pool<V, H>).
+    using handle_type = typename R::handle_type;
     using write_type = typename detail::write_of<R>::type;
     using size_type = std::size_t;
 
     LayeredPool() = default;
+    /// A root whose own pool is built from `args` (a bit row interner from its urd::bit_width).
+    template<typename... Args>
+        requires(sizeof...(Args) > 0 && std::constructible_from<R, Args...>)
+    explicit LayeredPool(Args&&... args) : m_own(std::forward<Args>(args)...)
+    {
+    }
 
     /// Answers from `parent` too, from now on, with indices continuing after its size; nullptr makes it a root. Only
     /// while this layer holds nothing of its own.
@@ -104,7 +111,7 @@ public:
         if (const auto at = find(key); !at.is_none())
             return { at, false };
         assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
-        const auto [local_at, inserted] = m_own.insert(key, [this, &make](handle_type at) { return make(global(at)); });
+        const auto [local_at, inserted] = m_own.insert(key, [this, &make](handle_type at) -> decltype(auto) { return make(global(at)); });
         return { global(local_at), inserted };
     }
     [[nodiscard]] handle_type find(const T& record) const

@@ -183,6 +183,23 @@ public:
         return std::span<const word>(m_words.data(), count);
     }
 
+    /// Makes this the set whose bits `words` set (key k at bit k % 64 of word k / 64), its storage reused.
+    void assign_words(std::span<const word> words)
+    {
+        m_words.assign(words.begin(), words.end());
+        recount();
+    }
+    /// Makes this the set whose bits fill(words) sets in `count` words, zeroed first, written in place: its storage
+    /// reused, nothing copied.
+    template<typename Fill>
+        requires std::invocable<Fill&, std::span<word>>
+    void assign_words(std::size_t count, Fill fill)
+    {
+        m_words.assign(count, word { 0 });
+        fill(std::span<word>(m_words));
+        recount();
+    }
+
     /// Equal keys; how many words each holds does not matter.
     [[nodiscard]] friend bool operator==(const DenseSet& lhs, const DenseSet& rhs)
     {

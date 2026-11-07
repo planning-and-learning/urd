@@ -2,6 +2,7 @@
 
 #include "urd/store/types.hpp"
 
+#include <cassert>
 #include <cstddef>
 
 namespace urd::detail
@@ -20,7 +21,7 @@ namespace urd::detail::facet
 /// Layered: lookups find a parent Store's elements too. The parent is not owned or changed; it must outlive this
 /// Store and stay unchanged while layered over. A layered pool continues the parent's indices, numbers its layer
 /// along the chain, and knows which layer owns an index, so that a view of an element points at the Store that
-/// holds it.
+/// holds it; a layered map knows which layer owns a key.
 template<typename Derived, typename R, typename S>
 class layers
 {
@@ -50,6 +51,20 @@ public:
         const auto* layer = static_cast<const Derived*>(this);
         while ((at.value) < store_access::representation(*layer).base())
             layer = layer->m_parent;
+        return *layer;
+    }
+    /// The Store along the chain whose own values hold `key` (a layered map): this one, or an ancestor. Some layer must
+    /// hold it (contains(key)).
+    template<typename Key>
+    [[nodiscard]] const Derived& owner(const Key& key) const
+        requires(!chained)
+    {
+        const auto* layer = static_cast<const Derived*>(this);
+        while (!store_access::representation(*layer).owns(key))
+        {
+            layer = layer->m_parent;
+            assert(layer != nullptr && "urd::Store::owner: no layer holds the key");
+        }
         return *layer;
     }
 

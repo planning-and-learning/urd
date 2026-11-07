@@ -6,6 +6,7 @@
 // tree_vector.hpp, tree_bitset.hpp and slots.hpp.
 
 #include "urd/cost.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -21,8 +22,9 @@ namespace urd::repr
 {
 
 /// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full; with
-/// Bits, rows of indices, each element in a bit width given at construction (urd::bit).
-template<typename Row, bool ThreadSafe = false, bool Bits = false>
+/// Bits, rows of indices, each element in a bit width given at construction (urd::bit). H is the index it hands out
+/// (urd::pool<V, H>).
+template<typename Row, bool ThreadSafe = false, bool Bits = false, typename H = urd::index<Row>>
 class RowInterner;
 
 /// A pool of sequence rows, each a balanced tree with Arity children per node, equal subtrees stored once.
@@ -58,11 +60,11 @@ struct row_interner_decl
     static constexpr std::string_view description = "row interner (each row once, in full)";
     static constexpr std::string_view holds = "each distinct row once, in full";
 };
-template<typename Row>
-struct declaration_of<repr::RowInterner<Row, false>>
+template<typename Row, typename H>
+struct declaration_of<repr::RowInterner<Row, false, false, H>>
 {
     using declaration = row_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<Row>>();
+    static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
 };
 
 /// A row interner of rows of indices whose request promises urd::bit: each element in the bit width given at
@@ -87,11 +89,11 @@ struct bit_row_interner_decl
     static constexpr std::string_view description = "bit row interner (rows of indices, each element in a bit width given at construction)";
     static constexpr std::string_view holds = "each distinct row once, its elements in the given bits, rows of one length back to back";
 };
-template<typename Row, bool ThreadSafe>
-struct declaration_of<repr::RowInterner<Row, ThreadSafe, true>>
+template<typename Row, bool ThreadSafe, typename H>
+struct declaration_of<repr::RowInterner<Row, ThreadSafe, true, H>>
 {
     using declaration = bit_row_interner_decl<ThreadSafe>;
-    static constexpr property_set roles = roles_of<urd::pool<Row>>();
+    static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
 };
 
 }  // namespace detail
@@ -160,11 +162,11 @@ struct thread_safe_row_interner_decl
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };
-template<typename Row>
-struct declaration_of<repr::RowInterner<Row, true>>
+template<typename Row, typename H>
+struct declaration_of<repr::RowInterner<Row, true, false, H>>
 {
     using declaration = thread_safe_row_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<Row>>();
+    static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
 };
 
 }  // namespace detail

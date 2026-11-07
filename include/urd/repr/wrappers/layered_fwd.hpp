@@ -1,6 +1,6 @@
 #pragma once
 
-// Layers: a set, map or pool that answers lookups from its own elements, then from a parent's it neither owns nor
+// Layers: a dense map or a pool that answers lookups from its own elements, then from a parent's it neither owns nor
 // changes. Declared with what the registry reads of them; defined in urd/repr/wrappers/layer.hpp and
 // urd/repr/wrappers/layered_pool.hpp. What is layered is defined in its own header.
 
@@ -13,7 +13,8 @@
 namespace urd::repr
 {
 
-/// A set or map with unique keys over a parent: holds, iterates and erases its own elements, looks up in both.
+/// A dense map (an IndexMap) over a parent: holds, iterates and erases its own values, looks up in both; thread-safe
+/// over the thread-safe one.
 template<typename R>
 class Layered;
 /// A pool over a parent pool: its indices continue the parent's, a lookup answers from the chain.
@@ -40,7 +41,7 @@ struct layered_decl
     static constexpr std::string_view id = joined<layered_prefix, Part::id>::value;
     static constexpr auto headers = with_header(Part::headers, Pool ? "urd/repr/wrappers/layered_pool.hpp" : "urd/repr/wrappers/layer.hpp");
     static_assert(Part::provides.has(uniqueness::unique) && (!Pool || Part::provides.has(handling::handles)),
-                  "layered_decl: a layer is over a set, map or pool");
+                  "layered_decl: a layer is over a map or pool");
     using kind = typename Part::kind;
     static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered }) : with(Part::provides, { layering::layered, order::none });
     static constexpr property_set relies_on = Part::relies_on;

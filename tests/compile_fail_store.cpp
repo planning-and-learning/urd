@@ -153,10 +153,9 @@ int main()
 #elif URD_CASE == 37  // a tree pool numbers nodes, not rows: no layer continues its handles
     using S = Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::layered>;
     (void) S();
-#elif URD_CASE == 38  // a layered dense map shared by threads has no representation yet (the concurrent slot directory)
-    struct Predicate;
-    using Rows = Store<pool<Store<sequence<int>, urd::frozen>>, urd::monotone, urd::layered, urd::concurrent>;
-    using S = Store<map<urd::index<Predicate>, Rows>, urd::dense, urd::layered, urd::concurrent>;
+#elif URD_CASE == 38  // a tree pool hands out its own handles (a root and a size), not the index a pool names
+    struct Other;
+    using S = Store<pool<Store<set<int>, urd::dense, urd::frozen>, urd::index<Other>>, urd::structural_sharing>;
     (void) S();
 #elif URD_CASE == 39  // a partition groups keys, each once: multi is a map's question
     using S = Store<partition<int>, urd::multi>;
@@ -183,13 +182,13 @@ int main()
     using S = Store<set<int>, urd::dense, urd::sorted, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();
 #elif URD_CASE == 47  // a layer iterates its own elements, not its parent's: no order holds over both
-    using S = Store<set<int>, urd::layered, urd::sorted>;
+    using S = Store<map<int, int>, urd::dense, urd::layered, urd::sorted>;
     (void) S();
 #elif URD_CASE == 48  // a partition's merge rewrites parents along two paths: single-threaded
     using S = Store<partition<int>, urd::concurrent>;
     (void) S();
 #elif URD_CASE == 49  // a layered Store's contents include its parent's: no ==
-    using S = Store<set<int>, urd::layered>;
+    using S = Store<map<int, int>, urd::dense, urd::layered>;
     (void) (S() == S());
 #elif URD_CASE == 50  // erase moves the last row in: not where the pool only grows
     using S = Store<pool<Store<sequence<int>, urd::frozen>>, urd::monotone>;

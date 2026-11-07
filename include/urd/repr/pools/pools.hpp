@@ -40,7 +40,7 @@ namespace urd::repr
 ///
 /// With Bits (a request of urd::bit, rows of indices), each element is stored in the bit width the pool is built with
 /// (urd/repr/containers/bit_rows.hpp), and view(h) hands out the row as a range that decodes its elements.
-template<typename Row, bool ThreadSafe, bool Bits>
+template<typename Row, bool ThreadSafe, bool Bits, typename H>
 class RowInterner
 {
     using element = std::ranges::range_value_t<Row>;
@@ -67,14 +67,21 @@ class RowInterner
 
 public:
     using value_type = Row;
-    /// A row's handle is its index: its position, in the order rows were first inserted.
-    using handle_type = urd::index<Row>;
+    /// A row's handle is its index (H: urd::pool<V, H>): its position, in the order rows were first inserted.
+    using handle_type = H;
     using write_type = Write<element>;
     using size_type = std::size_t;
 
     RowInterner()
         requires(!Bits)
     = default;
+    /// With Bits, elements of any width (64 bits): what a slot holds before its value is built with its width (a map
+    /// of layered pools, Layered::try_emplace).
+    RowInterner()
+        requires Bits
+        : RowInterner(urd::bit_width { 64 })
+    {
+    }
     /// Rows whose elements each fit in `width` (urd::bit).
     explicit RowInterner(urd::bit_width width)
         requires Bits
@@ -287,10 +294,10 @@ namespace urd
 {
 
 /// Its table of rows, each row's vector with it.
-template<typename Row, bool ThreadSafe, bool Bits>
-struct memory_of<repr::RowInterner<Row, ThreadSafe, Bits>>
+template<typename Row, bool ThreadSafe, bool Bits, typename H>
+struct memory_of<repr::RowInterner<Row, ThreadSafe, Bits, H>>
 {
-    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe, Bits>& held) { return memory_usage(held.m_rows); }
+    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe, Bits, H>& held) { return memory_usage(held.m_rows); }
 };
 
 template<>
@@ -306,17 +313,17 @@ namespace urd::detail
 template<typename S>
 struct representation_of<row_interner_decl, S>
 {
-    using type = repr::RowInterner<typename S::element_type>;
+    using type = repr::RowInterner<typename S::element_type, false, false, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_row_interner_decl, S>
 {
-    using type = repr::RowInterner<typename S::element_type, true>;
+    using type = repr::RowInterner<typename S::element_type, true, false, typename S::handle_type>;
 };
 template<typename S, bool ThreadSafe>
 struct representation_of<bit_row_interner_decl<ThreadSafe>, S>
 {
-    using type = repr::RowInterner<typename S::element_type, ThreadSafe, true>;
+    using type = repr::RowInterner<typename S::element_type, ThreadSafe, true, typename S::handle_type>;
 };
 
 }  // namespace urd::detail

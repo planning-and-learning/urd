@@ -7,6 +7,8 @@ Pools
 
    template<typename Row, typename... Properties>
    using Interned = Store<pool<Row>, Properties...>;   // rows, each stored once, by handle
+   template<typename Row, typename Handle, typename... Properties>
+   using Named = Store<pool<Row, Handle>, Properties...>;      // the same, handing out the index Handle
    template<typename T, typename... Properties>
    using Slots = Store<slots<T>, Properties...>;                // elements in slots that never move
 
@@ -20,8 +22,9 @@ A pool is one kind (``pool``, ``handles`` with ``unique``) whatever it holds: ro
 container of elements) are interned as rows, on this page; values that are not rows are interned whole, on
 :doc:`records`. Slots (``handles`` without ``unique``) are a kind of their own.
 
-A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`: a pool of rows kept in
-full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
+A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`, or the index the
+request names, ``pool<V, H>`` (an ``urd::index`` of any type: a pool of ``urd::data<T>`` handing out ``index<T>``,
+rows handing out a repository's own row index): a pool of rows kept in full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
 with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its
 own, and no ``size``. Every handle type has a none value (``is_none()``), which ``find`` and ``erase`` give where there is
 no row to name, as a pool of records does.
@@ -41,7 +44,8 @@ no row to name, as a pool of records does.
    * - any of them with ``concurrent``
      - the same, thread-safe
    * - ``Store<pool<Row>, layered>``
-     - ``LayeredPool`` over the row interner (:doc:`records`)
+     - ``LayeredPool`` over the row interner (:doc:`records`); with ``bit``, over the bit row interner, built with its
+       width
 
 Template parameters
 -------------------
@@ -49,6 +53,10 @@ Template parameters
 ``Row``
    A Store (``Store<sequence<T>, frozen>``, ``Store<set<I>, dense, frozen>``), or any range constructible from its
    elements. The Row's own rules decide which rows are equal: a set's in any order, once.
+
+``H``
+   The handle, ``index<Row>`` by default: any ``urd::index``. Pools that number their rows hand it out; a tree pool,
+   whose handle is its own, takes only the default (a ``static_assert``).
 
 Member types
 ------------
@@ -59,7 +67,7 @@ Member types
    * - ``row_type``
      - ``Row``
    * - ``handle_type``
-     - :cpp:struct:`index\<Row\> <urd::index>`, or the tree pools' handle
+     - ``H`` (:cpp:struct:`index\<Row\> <urd::index>` by default), or the tree pools' handle
    * - ``write_type``
      - ``Write<element>``: a change to a sequence row, its value at a position
 
@@ -71,6 +79,8 @@ Member functions: interning pools (``handles, unique``)
 
    The handle of the row with these elements, and whether the insert stored anything: ``false`` where an equal row is
    held (with ``structural_sharing``, where every node of it is), exactly where ``find`` would have given the handle.
+   A tree pool of dense sets takes a row that keeps its bits (``significant_words()``, :doc:`sets`) by its 64-bit
+   words, read as its blocks in place: no element listed, nothing allocated. ``find`` likewise.
 
 .. cpp:function:: template<std::ranges::input_range Elements> handle_type find(const Elements& elements) const
 .. cpp:function:: handle_type find(std::initializer_list<element> elements) const
@@ -107,7 +117,13 @@ Member functions: interning pools (``handles, unique``)
 .. cpp:function:: std::size_t row_size(handle_type handle) const
 .. cpp:function:: void read(handle_type handle, std::span<element> out) const
 
-   The row's elements into ``out``, which must hold ``row_size(handle)`` of them; allocates nothing.
+   The row's elements into ``out``, which must hold ``row_size(handle)`` of them; allocates nothing (a tree pool
+   reads them, and counts them for ``row_size``, along the tree).
+
+.. cpp:function:: void read(handle_type handle, row_type& out) const
+
+   A tree pool of dense sets: the row into ``out`` word by word (``assign_words``, :doc:`sets`), its storage reused;
+   allocates nothing where ``out`` holds the row's words already.
 
 .. cpp:function:: auto view(handle_type handle) const
 

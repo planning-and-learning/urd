@@ -1,7 +1,8 @@
-// Scopes, layers and memo tables: a symbol table whose inner bindings end with their scope, a map that reuses a
-// parent's entries, and a memo kept for two generations.
+// Scopes, layers and memo tables: a symbol table whose inner bindings end with their scope, a map by index that
+// reuses a parent's entries, and a memo kept for two generations.
 
 #include "show.hpp"
+#include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
@@ -26,14 +27,15 @@ namespace
 {
 
 using Symbols = Store<map<std::string, int>, urd::scoped>;
-using Translations = Store<map<std::string, std::string>, urd::layered>;
+using Predicate = urd::index<struct PredicateTag>;
+using Translations = Store<map<Predicate, std::string>, urd::dense, urd::layered>;
 using Memo = Store<map<int, std::int64_t>>;
 
 void run()
 {
     std::cout << "Scopes and layers:\n";
     example::show<Symbols>("Store<map<string, int>, scoped>      bindings that end with their scope");
-    example::show<Translations>("Store<map<string, string>, layered>  a layer over a parent's entries");
+    example::show<Translations>("Store<map<index<P>, string>, dense, layered>  a layer over a parent's entries");
 
     // A parser's symbol table: x is bound outside, rebound inside an action, and back once the action ends.
     auto symbols = Symbols();
@@ -46,11 +48,14 @@ void run()
     std::cout << "\noutside: x = " << symbols.at("x") << ", y bound: " << symbols.contains("y") << '\n';
 
     // A problem's translations over its domain's: found from the parent, added to its own.
-    const auto domain = Translations { { "on", "on'" }, { "clear", "clear'" } };
+    const auto on = Predicate(0);
+    auto domain = Translations();
+    domain.insert_or_assign(on, "on'");
+    domain.insert_or_assign(Predicate(1), "clear'");
     auto problem = Translations();
     problem.layer_over(&domain);
-    problem.try_emplace("goal", "goal'");
-    std::cout << "problem translates on to " << std::as_const(problem).at("on") << " and holds " << problem.size() << " of its own\n";
+    problem.try_emplace(Predicate(2), "goal'");
+    std::cout << "problem translates on to " << std::as_const(problem).at(on) << " and holds " << problem.size() << " of its own\n";
 
     // A memo kept for two generations: the current one, and the last, swapped and cleared per generation.
     auto current = Memo();

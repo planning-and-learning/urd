@@ -1,6 +1,7 @@
 // Queues: handles, iteration, and reading by handle. Each header a Store here needs is included.
 
 #include "../allocations.hpp"
+#include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
@@ -46,7 +47,7 @@ using urd::set;
 using urd::Store;
 
 // A layered Store has no ==: its contents include its parent's.
-static_assert(!std::equality_comparable<Store<set<int>, urd::layered>> && std::equality_comparable<Store<set<int>>>);
+static_assert(!std::equality_comparable<Store<urd::map<int, int>, urd::dense, urd::layered>> && std::equality_comparable<Store<set<int>>>);
 
 // A priority queue with handles gives the handle from emplace as from push, to update the element later.
 TEST(Queues, EmplaceGivesTheHandle)

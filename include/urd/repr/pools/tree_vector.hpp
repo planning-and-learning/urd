@@ -12,6 +12,7 @@
 #include <bit>
 #include <cassert>
 #include <cstddef>
+#include <concepts>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -305,6 +306,8 @@ namespace urd::detail
 template<bool ThreadSafe, typename S>
 struct representation_of<tree_pool_decl<false, ThreadSafe>, S>
 {
+    static_assert(std::same_as<typename S::handle_type, urd::index<typename S::element_type>>,
+                  "urd::Store: a tree pool hands out its own handles (a root and a size), not the index urd::pool<V, H> names");
     using type = repr::TreeVectorSet<typename S::element_type, 4, ThreadSafe>;
 };
 

@@ -51,9 +51,9 @@ A map holds one value per key, or many (``multi``: a multimap). Its elements are
    * - ``Store<map<K, V>, scoped>``
      - ``Scoped`` over a flat hash map (scopes undone by a log); over a tree with ``sorted``, an ``IndexMap`` with
        ``dense``
-   * - ``Store<map<K, V>, layered>``
-     - ``Layered`` over a flat hash map; over a node map with ``stable_refs``; with ``dense``, over an ``IndexMap``
-       (with generations under ``constant_clear``)
+   * - ``Store<map<I, V>, dense, layered>``
+     - ``Layered`` over an ``IndexMap``; with ``concurrent`` (or ``constant_clear``), over the thread-safe generation
+       map. Keys that are no indices have no layer.
 
 Template parameters
 -------------------
@@ -176,10 +176,31 @@ Scopes (``scoped``)
 Layers (``layered``)
 ^^^^^^^^^^^^^^^^^^^^
 
-As for sets (no ``==``), and in a map a key's own value shadows the parent's: ``insert_or_assign`` writes its own, and ``at()``
-on a layer that may change makes an own value before handing it out: a layer over the parent's value where values
-layer themselves (a map of layered pools layers through both levels, see :doc:`records`), else a copy of it. Read
-through a const Store to avoid that.
+A layer is over a map by index (``dense``): a repository's per-predicate directory over a parent's.
+
+.. cpp:function:: void layer_over(const Map* parent)
+
+   Lookups find ``parent``'s values too, from now on; ``nullptr`` ends it. The Store holds, iterates and erases only
+   its own values; inserting a key the parent holds inserts nothing. The parent is not owned: it must outlive the
+   layer and stay unchanged. A layered Store has no ``==``: its contents include its parent's.
+
+.. cpp:function:: const Map* parent() const noexcept
+
+.. cpp:function:: const Map& owner(const key_type& key) const
+
+   The Store along the chain whose own values hold ``key``: this one, or an ancestor. Some layer must hold it
+   (``contains(key)``).
+
+A key's own value shadows the parent's. ``insert_or_assign`` writes its own; ``at()``, ``update()`` and
+``try_emplace(key, args...)`` on a layer that may change make an own value where the layer has none, once: where
+values layer themselves (a map of layered pools layers through both levels, see :doc:`records`), one built from
+``try_emplace``'s arguments (a pool's ``urd::bit_width``), or default, layered over the parent's value; else one built
+from the arguments, or else a copy of the parent's. Read through a const Store (``at``, ``read``) to make nothing.
+
+With ``concurrent``, ``at``, ``update``, ``read``, ``try_emplace``, ``contains`` and ``owner`` run from threads at
+once: each own value is made and layered once, under its slot's lock, and threads then insert into it as the value
+allows (a ``concurrent`` pool). ``clear``, ``erase``, ``insert_or_assign`` and iteration need no other operation
+running.
 
 Complexity
 ----------

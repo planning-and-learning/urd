@@ -77,7 +77,7 @@ container's header is missing fails to compile naming the headers to include, a 
      - the scoped map (with the scoped map's header)
      - nothing
    * - ``layer.hpp``, ``layered_pool.hpp``
-     - layered sets, maps and pools (with the layered container's header)
+     - layered dense maps and pools (with the layered container's header)
      - nothing
    * - ``parallel_hash.hpp``
      - gtl's sharded tables
@@ -143,7 +143,7 @@ urd's own
      - records stored once, in an indexed set or serialized into a byte arena
      - ``flat`` pools
    * - ``LayeredPool``, ``Layered``
-     - a pool, set or map over a parent
+     - a pool, or a dense map (thread-safe over the thread-safe generation map), over a parent
      - ``layered``
    * - ``Scoped`` (over a flat hash, tree or dense map), ``ChangeLogged`` (over a flat hash, dense, tree or node set), ``DisjointSets``, ``SegmentedVector``
      - a map with a log of previous values; a set logging its changes; union-find; a vector of doubling segments

@@ -1,80 +1,78 @@
-// urd::utils::Family: one Store per type, the context through which views of records holding indices of several types
-// resolve; layered where its members layer.
+// urd::utils::Family: one Store per type, reached by type; read by any member's handle, and layered where its members
+// layer.
 
-#include "urd/repr/pools/pools.hpp"
-#include "urd/repr/values/indexed.hpp"
+#include "urd/elements/data.hpp"
+#include "urd/repr/records/arena.hpp"
+#include "urd/repr/records/records.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
 #include "urd/utils/family.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <gtest/gtest.h>
-#include <string>
-#include <string_view>
 #include <vector>
 
 namespace
 {
+struct Object;
+struct Predicate;
+}  // namespace
 
-struct Owner
+template<>
+struct urd::data<Object>
 {
-    std::string name;
-    static constexpr auto identifying_members() noexcept { return urd::Members<&Owner::name> {}; }
+    std::uint32_t id = 0;
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::id> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::id> {}; }
 };
-struct Rec
+template<>
+struct urd::data<Predicate>
 {
-    std::string name;
-    std::vector<urd::index<Owner>> parts;
-    static constexpr auto identifying_members() noexcept { return urd::Members<&Rec::name, &Rec::parts> {}; }
+    std::uint32_t arity = 0;
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::arity> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::arity> {}; }
 };
 
-template<typename T>
-using Interned = urd::Store<urd::set<T>, urd::positional, urd::monotone>;
-using Records = urd::utils::Family<Interned, Owner, Rec>;
+namespace
+{
 
-// A family resolves every member's type; views of a record resolve its indices through it.
-static_assert(urd::resolves<Records, Owner> && urd::resolves<Records, Rec>);
-
-using Row = urd::Store<urd::sequence<int>, urd::frozen>;
+/// A repository's symbols: per type, the records of T handing out index<T> (urd::pool<V, H>), layered.
 template<typename T>
-using Layered = urd::Store<urd::pool<T>, urd::monotone, urd::layered>;
-using Rows = urd::utils::Family<Layered, Row>;
+using Symbols = urd::Store<urd::pool<urd::data<T>, urd::index<T>>, urd::flat, urd::stable_refs, urd::layered>;
+using Repository = urd::utils::Family<Symbols, Object, Predicate>;
 
 }  // namespace
 
-TEST(Family, InsertsFindsAndResolvesViewsByType)
+TEST(Family, ReadsEachMemberByItsHandle)
 {
-    auto family = Records();
-    const auto [a, inserted] = family.insert(Owner { "a" });
-    EXPECT_TRUE(inserted);
-    const auto b = family.insert(Owner { "b" }).first;
-    EXPECT_EQ(family.insert(Owner { "a" }).first, a);
-    const auto rec = family.insert(Rec { "r", { b, a } }).first;
-    EXPECT_EQ(family.find(Owner { "b" }), b);
-    EXPECT_TRUE(family.find(Owner { "c" }).is_none());
-    EXPECT_TRUE(family.contains(rec));
-    EXPECT_EQ(family[a].name, "a");
-
-    const auto view = family.view(rec);
-    auto names = std::vector<std::string_view>();
-    for (const auto part : view.get<&Rec::parts>())
-        names.push_back(part.get<&Owner::name>());
-    EXPECT_EQ(names, (std::vector<std::string_view> { "b", "a" }));
-
+    auto root = Repository(nullptr);
+    const auto a = root.get<Object>().insert(urd::data<Object> { 1 }).first;
+    const auto p = root.get<Predicate>().insert(urd::data<Predicate> { 2 }).first;
+    EXPECT_EQ(root[a].id, 1U);
+    EXPECT_EQ(root[p].arity, 2U);
+    EXPECT_TRUE(root.contains(a) && root.contains(p));
+    EXPECT_FALSE(root.contains(urd::index<Object>(1)));
     auto sizes = std::vector<std::size_t>();
-    family.for_each([&](const auto& member) { sizes.push_back(member.size()); });
-    EXPECT_EQ(sizes, (std::vector<std::size_t> { 2, 1 }));
+    root.for_each([&](const auto& member) { sizes.push_back(member.size()); });
+    EXPECT_EQ(sizes, (std::vector<std::size_t> { 1, 1 }));
 }
 
 TEST(Family, LayersEachMemberOverItsParents)
 {
-    auto root = Rows(nullptr);
-    const auto first = root.insert(Row { 1, 2 }).first;
-    auto child = Rows(&root);
+    auto root = Repository(nullptr);
+    const auto a = root.get<Object>().insert(urd::data<Object> { 1 }).first;
+    auto child = Repository(&root);
     EXPECT_EQ(child.layer(), 1U);
     EXPECT_EQ(child.parent(), &root);
-    EXPECT_EQ(child.insert(Row { 1, 2 }).first, first);  // found in the parent
-    const auto second = child.insert(Row { 3 }).first;
-    EXPECT_NE(second, first);
-    EXPECT_TRUE(root.find(Row { 3 }).is_none());
-    EXPECT_EQ(child.find(Row { 3 }), second);
+    EXPECT_EQ(child.get<Object>().insert(urd::data<Object> { 1 }).first, a);  // found in the parent
+    const auto b = child.get<Object>().insert(urd::data<Object> { 3 }).first;
+    EXPECT_EQ(b, urd::index<Object>(1));  // after the parent's
+    EXPECT_EQ(child[a].id, 1U);           // the parent's, through the chain
+    EXPECT_EQ(child[b].id, 3U);
+    EXPECT_FALSE(root.contains(b));
+    EXPECT_TRUE(child.contains(b));
+    child.clear();
+    EXPECT_FALSE(child.contains(b));
+    EXPECT_TRUE(child.contains(a));
 }

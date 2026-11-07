@@ -1,6 +1,6 @@
 #pragma once
 
-// A Store over a parent: its own elements, and lookups that fall through to the parent's.
+// A map over a parent: its own values, and lookups that fall through to the parent's.
 
 #include "urd/elements/index.hpp"
 #include "urd/memory.hpp"
@@ -26,25 +26,27 @@
 namespace urd::repr
 {
 
-/// A set or map with unique keys that answers lookups from its own elements, then from a parent's, which it does
+/// A map with dense keys (an IndexMap) that answers lookups from its own values, then from a parent's, which it does
 /// not own and never changes: a layer over a repository built earlier. It holds, iterates and erases only its own
-/// elements; inserting what the parent has inserts nothing and finds the parent's. In a map, a key's own value
-/// shadows the parent's: insert_or_assign writes its own, and at() makes an own value before handing it out to
-/// change, a layer over the parent's where values layer (a map of layered pools layers through both levels), else
-/// a copy of it. The parent must outlive the layer and not change while layered over.
+/// values; inserting a key the parent has inserts nothing and finds the parent's. A key's own value shadows the
+/// parent's: at(), update() and try_emplace() make an own value where this layer has none, once, under the slot's lock
+/// (IndexMap::update): where values layer (a map of layered pools layers through both levels) one built from
+/// try_emplace's arguments (a bit width), or default, layered over the parent's value; else one built from the
+/// arguments, or else a copy of the parent's.
+/// insert_or_assign writes its own. owner(key) is the layer whose own values hold `key`.
+///
+/// Over a thread-safe map (layered, concurrent: the thread-safe generation map), at, update, read, try_emplace,
+/// contains and owner run from threads at once; clear, erase, insert_or_assign and iteration need no other operation
+/// running. The parent must outlive the layer and not change while layered over.
 template<typename R>
 class Layered
 {
-    /// A map's elements are (key, value) pairs; a set's are its keys.
-    static constexpr bool is_map = !std::same_as<typename R::key_type, typename R::value_type>;
-
 public:
     using iterator = typename R::const_iterator;
     using const_iterator = iterator;
     using key_type = typename R::key_type;
     using value_type = typename R::value_type;
-    /// A map's value type: the second of its elements, which a dense map builds as a pair of references.
-    using mapped_type = std::remove_cvref_t<typename std::conditional_t<is_map, std::tuple_element<1, value_type>, std::type_identity<void>>::type>;
+    using mapped_type = typename R::mapped_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -64,101 +66,125 @@ public:
     [[nodiscard]] size_type size() const { return m_own.size(); }
     [[nodiscard]] bool empty() const { return m_own.empty(); }
 
-    /// The own element, else the parent's, else end().
+    /// Whether this layer's own values hold `key`.
+    [[nodiscard]] bool owns(const key_type& key) const
+    { return m_own.read(key, [](const mapped_type& /*value*/) { return true; }, false); }
+    /// The nearest layer, this one or a parent, whose own values hold `key`; nullptr where none does.
+    [[nodiscard]] const Layered* owner(const key_type& key) const
+    {
+        const auto* layer = this;
+        while (layer != nullptr && !layer->owns(key))
+            layer = layer->m_parent;
+        return layer;
+    }
+
+    /// The owner's element, else end().
     [[nodiscard]] iterator find(const key_type& key) const
     {
-        const auto found = m_own.find(key);
-        if (found != m_own.end() || m_parent == nullptr || !m_parent->contains(key))
-            return found;
-        return m_parent->find(key);
+        const auto* layer = owner(key);
+        return layer == nullptr ? end() : layer->m_own.find(key);
     }
-    [[nodiscard]] bool contains(const key_type& key) const { return m_own.contains(key) || (m_parent != nullptr && m_parent->contains(key)); }
+    [[nodiscard]] bool contains(const key_type& key) const { return owner(key) != nullptr; }
     [[nodiscard]] size_type count(const key_type& key) const { return contains(key) ? 1 : 0; }
 
-    std::pair<iterator, bool> insert(const value_type& element)
+    /// A key and its value, as any pair: inserts nothing where a parent holds the key.
+    template<typename Pair>
+    std::pair<iterator, bool> insert(const Pair& pair)
     {
-        if (const auto found = in_parent(element))
-            return { *found, false };
-        return m_own.insert(element);
+        const auto key = key_type(pair.first);
+        if (const auto* layer = owner(key); layer != nullptr && layer != this)
+            return { layer->m_own.find(key), false };
+        return m_own.insert(pair);
     }
-    std::pair<iterator, bool> insert(value_type&& element)
-    {
-        if (const auto found = in_parent(element))
-            return { *found, false };
-        return m_own.insert(std::move(element));
-    }
-    iterator insert(const_iterator /*hint*/, const value_type& element) { return insert(element).first; }
+    template<typename Pair>
+    iterator insert(const_iterator /*hint*/, const Pair& pair)
+    { return insert(pair).first; }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         for (; first != last; ++first)
-            insert(value_type(*first));
+            insert(*first);
     }
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
-    { return insert(value_type(std::forward<Args>(args)...)); }
+    { return insert(std::pair<key_type, mapped_type>(std::forward<Args>(args)...)); }
 
-    /// Own elements only: the parent's stay.
+    /// Own values only: the parent's stay.
     size_type erase(const key_type& key) { return m_own.erase(key); }
     iterator erase(const_iterator pos) { return m_own.erase(pos); }
     iterator erase(const_iterator first, const_iterator last) { return m_own.erase(first, last); }
     void clear() { m_own.clear(); }
 
-    /// The value of the nearest layer, this one or a parent, that holds `key`.
-    [[nodiscard]] decltype(auto) at(const key_type& key) const
-        requires is_map
+    /// The value of the owner of `key`.
+    [[nodiscard]] const mapped_type& at(const key_type& key) const
     {
-        const auto* layer = this;
-        while (!layer->m_own.contains(key) && layer->m_parent != nullptr)
-            layer = layer->m_parent;
-        return layer->m_own.at(key);
+        if (const auto* value = value_of(key))
+            return *value;
+        throw std::out_of_range("urd::repr::Layered::at: no layer holds the key");
     }
-    /// The own value: where only the parent has one, a value that layers (a layered Store) is made here as a layer
-    /// over the parent's, else the parent's is copied up first.
-    [[nodiscard]] decltype(auto) at(const key_type& key)
-        requires is_map
+    /// The own value, made where there is none.
+    [[nodiscard]] mapped_type& at(const key_type& key)
+    { return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; }); }
+    /// read(value) with the owner's value of `key`, under its slot's lock where threads share it, else `missing`.
+    template<typename Read, typename Result>
+        requires std::invocable<Read&, const mapped_type&>
+    [[nodiscard]] Result read(const key_type& key, Read read, Result missing) const
     {
-        if (in_parent_only(key))
-        {
-            if constexpr (requires(mapped_type& own, const mapped_type* above) { own.layer_over(above); })
-            {
-                m_own.try_emplace(key);
-                m_own.at(key).layer_over(&m_parent->at(key));
-            }
-            else
-                m_own.try_emplace(key, m_parent->at(key));
-        }
-        return m_own.at(key);
+        const auto* layer = owner(key);
+        return layer == nullptr ? missing : layer->m_own.read(key, read, missing);
     }
+    /// update(value, held) with the own value of `key`, made where there is none (held is then false).
+    template<typename Update>
+        requires std::invocable<Update&, mapped_type&, bool>
+    decltype(auto) update(const key_type& key, Update update)
+    { return own(key, update); }
+    /// The own value of `key`, made from `args` where there is none: whether it was made now.
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
-        requires is_map
     {
-        if (in_parent_only(key))
-            return { m_parent->find(key), false };
-        return m_own.try_emplace(key, std::forward<Args>(args)...);
+        const bool made = own(key, [](mapped_type& /*value*/, bool held) { return !held; }, std::forward<Args>(args)...);
+        return { m_own.find(key), made };
     }
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)
-        requires is_map
     { return m_own.insert_or_assign(key, std::forward<M>(value)); }
 
 private:
-    /// The parent's element with the key of `element`, where only the parent has one.
-    [[nodiscard]] std::optional<iterator> in_parent(const value_type& element) const
+    /// Whether values layer (are layered Stores).
+    static constexpr bool layers_values = requires(mapped_type& own, const mapped_type* above) { own.layer_over(above); };
+
+    [[nodiscard]] const mapped_type* value_of(const key_type& key) const
+    { return read(key, [](const mapped_type& value) { return &value; }, static_cast<const mapped_type*>(nullptr)); }
+
+    /// update(value, held) with the own value of `key`, made from `args` once, under the slot's lock, where new.
+    template<typename Update, typename... Args>
+    decltype(auto) own(const key_type& key, Update update, Args&&... args)
     {
-        const auto& key = [&element]() -> const key_type&
-        {
-            if constexpr (is_map)
-                return element.first;
-            else
-                return element;
-        }();
-        if (!in_parent_only(key))
-            return std::nullopt;
-        return m_parent->find(key);
+        const mapped_type* above = m_parent == nullptr ? nullptr : m_parent->value_of(key);
+        return m_own.update(key,
+                            [&](mapped_type& value, bool held) -> decltype(auto)
+                            {
+                                if (!held)
+                                    make(value, above, std::forward<Args>(args)...);
+                                return update(value, held);
+                            });
     }
-    [[nodiscard]] bool in_parent_only(const key_type& key) const { return m_parent != nullptr && !m_own.contains(key) && m_parent->contains(key); }
+    /// The slot's value made own (see the class). ponytail: a value that layers is built anew, so a generation map's
+    /// earlier value is not reused, storage and all; clear() it instead where the value may shrink (not monotone) if
+    /// re-layering after clear shows in a profile.
+    template<typename... Args>
+    static void make(mapped_type& value, const mapped_type* above, Args&&... args)
+    {
+        if constexpr (layers_values)
+        {
+            value = mapped_type(std::forward<Args>(args)...);
+            value.layer_over(above);
+        }
+        else if (above != nullptr && sizeof...(Args) == 0)
+            value = *above;
+        else
+            value = mapped_type(std::forward<Args>(args)...);
+    }
 
     friend struct urd::memory_of<Layered>;
 

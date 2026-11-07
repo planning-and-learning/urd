@@ -129,7 +129,6 @@ using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    Store<pool<Plain>, urd::flat, urd::stable_refs>,
                                    Store<pool<Named>, urd::flat>,
                                    Store<pool<Named>, urd::flat, urd::monotone, urd::concurrent>,
-                                   urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>,
                                    urd::repr::LayeredPool<urd::repr::RecordInterner<Point, false, true>>,
                                    urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>,
                                    Store<pool<Plain>, urd::flat, urd::stable_refs, urd::layered>,
@@ -155,9 +154,9 @@ static_assert(std::same_as<Store<pool<Plain>, urd::flat, urd::stable_refs, urd::
                            urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::RecordInterner<Plain, false, true>>>>);
 static_assert(std::same_as<Store<pool<Named>, urd::flat>::representation, urd::repr::Numbered<urd::repr::ArenaInterner<Named>>>);
 static_assert(std::same_as<Store<pool<Named>, urd::flat, urd::concurrent>::representation, urd::repr::Numbered<urd::repr::ArenaInterner<Named, true>>>);
-// Layered pools: the same interners over a parent, indices continuing after the parent's.
+// Layered pools: the interners that never move a record, over a parent, indices continuing after the parent's.
 static_assert(std::same_as<Store<pool<Point>, urd::flat, urd::monotone, urd::layered>::representation,
-                           urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::RecordInterner<Point>>>>);
+                           urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::ArenaInterner<Point>>>>);
 static_assert(std::same_as<Store<pool<Named>, urd::flat, urd::layered, urd::concurrent>::representation,
                            urd::repr::Numbered<urd::repr::LayeredPool<urd::repr::ArenaInterner<Named, true>>>>);
 static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>, urd::layered>::representation,
@@ -613,4 +612,54 @@ TEST(Layered, ViewsPointAtTheOwningLayer)
     EXPECT_EQ(child.size(), 1U);
     EXPECT_FALSE(child.contains(Point(2)));
     EXPECT_TRUE(child.contains(Point(1)));
+}
+
+// A pool names the handle it hands out (urd::pool<V, H>): a pool of urd::data<T>, the record a Store holds for an
+// index<T>, hands out index<T>, and its views are of T; layered too, its indices continuing the parent's.
+namespace
+{
+struct Symbol;
+}  // namespace
+
+template<>
+struct urd::data<Symbol>
+{
+    int id = 0;
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::id> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::id> {}; }
+};
+
+namespace
+{
+using SymbolIndex = urd::index<Symbol>;
+using Symbols = Store<pool<urd::data<Symbol>, SymbolIndex>, urd::flat>;
+using LayeredSymbols = Store<pool<urd::data<Symbol>, SymbolIndex>, urd::flat, urd::stable_refs, urd::layered>;
+static_assert(std::same_as<Symbols::handle_type, SymbolIndex>);
+static_assert(std::same_as<Symbols::representation, urd::repr::Numbered<urd::repr::RecordInterner<urd::data<Symbol>, false, false, SymbolIndex>>>);
+static_assert(std::same_as<LayeredSymbols::handle_type, SymbolIndex>);
+// The default is unchanged: a pool of V hands out index<V>.
+static_assert(std::same_as<Store<pool<Point>, urd::flat>::handle_type, urd::index<Point>>);
+}  // namespace
+
+TEST(Pools, NameTheHandleTheyHandOut)
+{
+    auto symbols = Symbols(urd::layer { 0 });
+    const auto [a, inserted] = symbols.insert(urd::data<Symbol> { 7 });
+    static_assert(std::same_as<std::remove_const_t<decltype(a)>, SymbolIndex>);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(symbols.find(urd::data<Symbol> { 7 }), a);
+    EXPECT_EQ(symbols[a].id, 7);
+    static_assert(std::same_as<decltype(symbols.view(a)), urd::index_view<Symbol, Symbols>>);
+    EXPECT_EQ(symbols.view(a).index(), a);
+
+    auto root = LayeredSymbols(urd::layer { 0 });
+    const auto one = root.insert(urd::data<Symbol> { 1 }).first;
+    auto child = LayeredSymbols(urd::layer { 1 });
+    child.layer_over(&root);
+    const auto two = child.insert(urd::data<Symbol> { 2 }).first;
+    EXPECT_EQ(child.insert(urd::data<Symbol> { 1 }).first, one);
+    EXPECT_EQ(two, SymbolIndex(1));
+    EXPECT_EQ(child[two].id, 2);
+    EXPECT_EQ(child[one].id, 1);
+    EXPECT_EQ(&child.owner(one), &root);
 }

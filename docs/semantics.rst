@@ -242,3 +242,30 @@ What all four give:
    views of an index and of a record of ``T`` share ``T``'s mixin; views of a builder use ``builder<T>``'s, which is
    ``T``'s unless specialized. The view's
    ``get<&T::m>()`` hides any ``get`` a mixin would declare: a mixin names its accessors otherwise.
+
+Children of a record
+--------------------
+
+``urd/elements/children.hpp`` walks the handles a record holds: its children, every ``index<U>`` with ``U`` in a
+type list ``Types``, found in its cista members directly, in (nested) flat vectors, as a variant's alternative, in an
+optional or a pair, or in a nested record. ``U`` may be the record's own type ``T``: only a direct member of type
+``index<T>``, the record's own handle, is no child. An index of a type not in ``Types`` is neither handed out nor
+walked into.
+
+.. cpp:function:: template<typename Types, typename T, typename R, typename C, typename F> void for_each_child(const R& record, const C& context, F f)
+
+   Calls ``f(context.view(child))`` for each child, in member order.
+
+.. cpp:function:: template<typename Types, typename T, typename R, typename C, typename F> R map_children(R record, const C& context, F f)
+
+   The record with each child ``c`` replaced by ``to_stored(f(context.view(c)))``: ``f`` returns an index of ``c``'s
+   type or a view of one. A variant keeps its alternative.
+
+.. cpp:function:: template<typename Types, typename T, typename R, typename C, typename F> R map_variant_children(R record, const C& context, F f)
+
+   ``map_children``, but each ``flat_variant`` slot not inside another variant (whatever its alternatives) is
+   replaced whole, by ``to_stored(f(resolve(slot, context)))``: ``f`` gets the ``std::variant`` of the slot's
+   alternatives resolved and may return another alternative (a ``not`` becoming an ``or``), as a view, an index or
+   the variant. The walk does not enter a slot: the children inside it are ``f``'s to map. Children outside variants
+   are replaced as ``map_children`` replaces them, so ``f`` takes both views and resolved variants (an overload set,
+   or a generic callback).

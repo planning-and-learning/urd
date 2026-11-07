@@ -130,10 +130,14 @@ public:
                       {
                           if constexpr (Generations)
                           {
+                              // Written only where new: a slot present stays unwritten, so a thread that saw it present
+                              // under the lock reads it without one.
                               const bool held = entry.generation == m_generation;
-                              entry.generation = m_generation;
                               if (!held)
+                              {
+                                  entry.generation = m_generation;
                                   ++m_count;
+                              }
                               return update(entry.value, held);
                           }
                           else

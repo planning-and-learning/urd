@@ -9,6 +9,7 @@
 #include "urd/repr/maps/postings.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/pools/tree_bitset.hpp"
 #include "urd/repr/records/arena.hpp"
 #include "urd/repr/records/records.hpp"
 #include "urd/repr/values/dense_set.hpp"
@@ -202,6 +203,60 @@ TEST(Interner, ThreadsAgreeOnPositions)
         ASSERT_EQ(positions[position], position);
     for (int element = 0; element < each; ++element)
         ASSERT_EQ(symbols[seen[0][static_cast<std::size_t>(element)]], element);
+}
+
+// A dense set hands out its words and takes them back, through the Store (key k: bit k % 64 of word k / 64).
+TEST(DenseSets, WordsGoOutAndBackThroughTheStore)
+{
+    using Bits = Store<set<int>, urd::dense>;
+    auto keys = Bits();
+    for (const int key : { 1, 64, 130 })
+        keys.insert(key);
+    const auto words = std::vector<std::uint64_t>(keys.significant_words().begin(), keys.significant_words().end());
+    EXPECT_EQ(words, (std::vector<std::uint64_t> { 2, 1, 4 }));
+    auto copy = Bits();
+    copy.insert(500);
+    copy.assign_words(words);
+    EXPECT_EQ(copy.size(), 3U);
+    EXPECT_FALSE(copy.contains(500));
+    EXPECT_TRUE(std::ranges::equal(copy, keys));
+    copy.assign_words(2, [](std::span<std::uint64_t> in_place) { in_place[1] = 1; });
+    EXPECT_TRUE(std::ranges::equal(copy, std::vector<int> { 64 }));
+}
+
+// A tree pool of dense sets takes a row by its words and writes one back word by word; reading a row's size, its
+// elements, or the row into a set that holds its words already allocates nothing.
+TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
+{
+    using Row = Store<set<int>, urd::dense, urd::frozen>;
+    using Rows = Store<pool<Row>, urd::structural_sharing>;
+    auto rows = Rows();
+    const auto values = std::vector<int> { 1, 33, 64, 200 };
+    const auto row = Row(values.begin(), values.end());
+    const auto [by_elements, stored] = rows.insert(values);
+    EXPECT_TRUE(stored);
+    const auto [by_words, again] = rows.insert(row);
+    EXPECT_EQ(by_words, by_elements);
+    EXPECT_FALSE(again);
+    EXPECT_EQ(rows.find(row), by_elements);
+    auto elements = std::vector<int>(values.size());
+    auto out = Row(values.begin(), values.end());
+    auto size = std::size_t { 0 };
+    {
+        const auto counted = urd::test::Counted();
+        size = rows.row_size(by_words);
+        rows.read(by_words, std::span<int>(elements));
+        rows.read(by_words, out);
+    }
+    if (urd::test::counts_allocations)
+        EXPECT_EQ(urd::test::allocations(), 0);
+    EXPECT_EQ(size, values.size());
+    EXPECT_EQ(elements, values);
+    EXPECT_TRUE(std::ranges::equal(out, row));
+    // Into a set of other keys: its words replaced by the row's.
+    auto other = Row(values.begin(), values.begin() + 1);
+    rows.read(by_words, other);
+    EXPECT_TRUE(std::ranges::equal(other, values));
 }
 
 }  // namespace

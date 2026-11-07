@@ -223,7 +223,7 @@ urd_compile_fail_expects(compile_fail_store 28 "no container serves this request
 urd_compile_fail_expects(compile_fail_store 29 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 36 "no container serves this request")
 urd_compile_fail_expects(compile_fail_store 37 "no container serves this request")
-urd_compile_fail_expects(compile_fail_store 38 "no container serves this request")
+urd_compile_fail_expects(compile_fail_store 38 "a tree pool hands out its own handles")
 # A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
 # chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)
@@ -234,7 +234,7 @@ urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/values/uno
 urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/repr/values/flat_set[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/repr/queues/queue[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/repr/pools/pools[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/maps/unordered_flat_map[.]hpp\".*include<.*\"urd/repr/wrappers/layer[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/maps/index_map[.]hpp\".*include<.*\"urd/repr/wrappers/layer[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/repr/wrappers/layer[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/repr/wrappers/scoped[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")

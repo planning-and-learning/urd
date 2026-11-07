@@ -5,6 +5,7 @@
 // definitions are urd/repr/records/records.hpp (the record interner) and urd/repr/records/arena.hpp (the arena interner).
 
 #include "urd/cost.hpp"
+#include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/registry/derived.hpp"
@@ -17,16 +18,16 @@ namespace urd::repr
 {
 
 /// A pool of trivially copyable records, each distinct one once, in an indexed set (urd/repr/records/records.hpp).
-template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe>
+template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe, typename H = urd::index<T>>
 class RecordInterner;
 
 /// A pool of values interned whole, each distinct one once, in an indexed set: the record interner's engine for values
 /// not stored as bytes (urd/repr/records/records.hpp).
-template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe>
+template<typename T, bool ThreadSafe = false, bool Stable = ThreadSafe, typename H = urd::index<T>>
 class ValueInterner;
 
 /// A pool of records serialized by cista into a byte arena, each distinct one once (urd/repr/records/arena.hpp).
-template<typename T, bool ThreadSafe = false>
+template<typename T, bool ThreadSafe = false, typename H = urd::index<T>>
 class ArenaInterner;
 
 }  // namespace urd::repr
@@ -67,17 +68,17 @@ struct value_interner_decl
     static constexpr std::string_view description = "value interner (distinct values in an indexed set)";
     static constexpr std::string_view holds = "each distinct value once";
 };
-template<typename T>
-struct declaration_of<repr::ValueInterner<T, false>>
+template<typename T, typename H>
+struct declaration_of<repr::ValueInterner<T, false, false, H>>
 {
     using declaration = value_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
-template<typename T>
-struct declaration_of<repr::RecordInterner<T, false>>
+template<typename T, typename H>
+struct declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = record_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
 
 }  // namespace detail
@@ -116,17 +117,17 @@ struct stable_value_interner_decl
     static constexpr std::string_view description = "value interner over segments that never move (no lock)";
     static constexpr std::string_view holds = "each distinct value once, in segments that never move";
 };
-template<typename T>
-struct declaration_of<repr::ValueInterner<T, false, true>>
+template<typename T, typename H>
+struct declaration_of<repr::ValueInterner<T, false, true, H>>
 {
     using declaration = stable_value_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
-template<typename T>
-struct declaration_of<repr::RecordInterner<T, false, true>>
+template<typename T, typename H>
+struct declaration_of<repr::RecordInterner<T, false, true, H>>
 {
     using declaration = stable_record_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
 
 }  // namespace detail
@@ -165,17 +166,17 @@ struct thread_safe_value_interner_decl
     static constexpr std::string_view description = "value interner, thread-safe";
     static constexpr std::string_view holds = "each distinct value once; inserts under a lock";
 };
-template<typename T>
-struct declaration_of<repr::ValueInterner<T, true>>
+template<typename T, typename H>
+struct declaration_of<repr::ValueInterner<T, true, true, H>>
 {
     using declaration = thread_safe_value_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
-template<typename T>
-struct declaration_of<repr::RecordInterner<T, true>>
+template<typename T, typename H>
+struct declaration_of<repr::RecordInterner<T, true, true, H>>
 {
     using declaration = thread_safe_record_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
 
 }  // namespace detail
@@ -199,11 +200,11 @@ struct arena_interner_decl
     static constexpr std::string_view description = "arena interner (records serialized by cista into a byte arena)";
     static constexpr std::string_view holds = "each distinct record once, serialized into an arena";
 };
-template<typename T>
-struct declaration_of<repr::ArenaInterner<T, false>>
+template<typename T, typename H>
+struct declaration_of<repr::ArenaInterner<T, false, H>>
 {
     using declaration = arena_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
 
 }  // namespace detail
@@ -227,11 +228,11 @@ struct thread_safe_arena_interner_decl
     static constexpr std::string_view description = "arena interner, thread-safe";
     static constexpr std::string_view holds = "each distinct record once, serialized; inserts under a lock";
 };
-template<typename T>
-struct declaration_of<repr::ArenaInterner<T, true>>
+template<typename T, typename H>
+struct declaration_of<repr::ArenaInterner<T, true, H>>
 {
     using declaration = thread_safe_arena_interner_decl;
-    static constexpr property_set roles = roles_of<urd::pool<T>>();
+    static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
 
 }  // namespace detail

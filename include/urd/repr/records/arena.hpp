@@ -47,8 +47,9 @@ inline constexpr ::cista::mode cista_mode = ::cista::mode::NONE;
 /// A record goes in as an ordinary object; what is stored is its serialization, one block in the arena, read back in
 /// place as a const record whose vectors and strings point inside the block. Lookups go through a hash table of
 /// indices that hashes and compares the stored records. Thread-safe where ThreadSafe: lookups without a lock, a new
-/// record serialized and published under the writer lock; clear, move and destruction need quiescence.
-template<typename T, bool ThreadSafe>
+/// record serialized and published under the writer lock; clear, move and destruction need quiescence. H is the index it
+/// hands out (urd::pool<V, H>).
+template<typename T, bool ThreadSafe, typename H>
 class ArenaInterner
 {
     static_assert(alignof(T) <= alignof(std::max_align_t), "urd::repr::ArenaInterner: over-aligned records cannot be placed in the arena");
@@ -110,7 +111,7 @@ class ArenaInterner
 
 public:
     using value_type = T;
-    using handle_type = urd::index<T>;
+    using handle_type = H;
     using size_type = std::size_t;
 
     ArenaInterner() = default;
@@ -241,10 +242,10 @@ namespace urd
 {
 
 /// Its state: the pointers to the records, the table, the arena's segments and the scratch buffer.
-template<typename T, bool ThreadSafe>
-struct memory_of<repr::ArenaInterner<T, ThreadSafe>>
+template<typename T, bool ThreadSafe, typename H>
+struct memory_of<repr::ArenaInterner<T, ThreadSafe, H>>
 {
-    static std::size_t bytes(const repr::ArenaInterner<T, ThreadSafe>& held)
+    static std::size_t bytes(const repr::ArenaInterner<T, ThreadSafe, H>& held)
     {
         if (!held.m_state)
             return 0;
@@ -266,12 +267,12 @@ namespace urd::detail
 template<typename S>
 struct representation_of<arena_interner_decl, S>
 {
-    using type = repr::ArenaInterner<typename S::element_type>;
+    using type = repr::ArenaInterner<typename S::element_type, false, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_arena_interner_decl, S>
 {
-    using type = repr::ArenaInterner<typename S::element_type, true>;
+    using type = repr::ArenaInterner<typename S::element_type, true, typename S::handle_type>;
 };
 
 }  // namespace urd::detail

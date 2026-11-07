@@ -44,8 +44,6 @@ indexable).
 | `Store<set<int>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<int>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
 | `Store<set<int>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<int>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<set<int>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
 | `Store<set<int>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
 | `Store<set<int>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<int>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
@@ -86,8 +84,6 @@ indexable).
 | `Store<set<std::string>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<std::string>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
 | `Store<set<std::string>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<std::string>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<set<std::string>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
 | `Store<set<std::string>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
 | `Store<set<std::string>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
@@ -128,8 +124,6 @@ indexable).
 | `Store<set<Id>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<Id>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
 | `Store<set<Id>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<Id>, layered>` | unique, layered | `layered_unordered_flat_set` | unordered_flat_set.hpp + layer.hpp |
-| `Store<set<Id>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_set` | std_set.hpp + layer.hpp |
 | `Store<set<Id>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
 | `Store<set<Id>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<Id>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
@@ -199,7 +193,9 @@ indexable).
 | `Store<set<index<Id>>, sorted>` | sorted, unique | `set` | std_set.hpp |
 | `Store<map<index<Id>, int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<map<index<Id>, Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, unique, handles, layered, monotone>>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
-| `Store<map<index<Id>, Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, unique, handles, concurrent, layered, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered | `none` — missing: the concurrent slot directory (compile-fail case 38) |  |
+| `Store<map<index<Id>, Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, unique, handles, concurrent, layered, monotone>>, dense, layered, concurrent>` | unique, dense, concurrent, layered | `layered_thread_safe_generation_map` | index_map.hpp + layer.hpp |
+| `Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>` | unique, handles, bit, layered, monotone | `layered_bit_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>` | unique, handles, bit, concurrent, layered, monotone | `layered_thread_safe_bit_row_interner` | pools.hpp + layered_pool.hpp |
 
 ## Maps int to int
 
@@ -221,8 +217,6 @@ indexable).
 | `Store<map<int, int>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
 | `Store<map<int, int>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
 | `Store<map<int, int>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<map<int, int>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<map<int, int>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
 | `Store<map<int, int>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
 | `Store<map<int, int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<map<int, int>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
@@ -254,8 +248,6 @@ indexable).
 | `Store<map<std::string, double>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
 | `Store<map<std::string, double>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
 | `Store<map<std::string, double>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<map<std::string, double>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<map<std::string, double>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
 | `Store<map<std::string, double>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
 | `Store<map<std::string, double>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<map<std::string, double>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
@@ -287,8 +279,6 @@ indexable).
 | `Store<map<Id, Id>, scoped>` | unique, scoped | `scoped_map` | unordered_flat_map.hpp + scoped.hpp |
 | `Store<map<Id, Id>, sorted, scoped>` | sorted, unique, scoped | `scoped_tree_map` | std_map.hpp + scoped.hpp |
 | `Store<map<Id, Id>, concurrent, layered>` | unique, concurrent, layered | `none` — missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks |  |
-| `Store<map<Id, Id>, layered>` | unique, layered | `layered_unordered_flat_map` | unordered_flat_map.hpp + layer.hpp |
-| `Store<map<Id, Id>, stable_refs, layered>` | unique, stable_refs, layered | `layered_unordered_map` | std_map.hpp + layer.hpp |
 | `Store<map<Id, Id>, concurrent>` | unique, concurrent | `parallel_hash_map` | parallel_hash_map.hpp |
 | `Store<map<Id, Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_map` | parallel_hash_map.hpp |
 | `Store<map<Id, Id>, concurrent, retains>` | unique, concurrent, retains | `none` — incompatible: the concurrent tables return their storage on clear |  |
@@ -323,7 +313,7 @@ indexable).
 | `Store<map<int, int>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
 | `Store<map<int, int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<map<int, int>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<map<int, int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
+| `Store<map<int, int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_thread_safe_generation_map` | index_map.hpp + layer.hpp |
 | `Store<map<int, int>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<map<int, int>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<map<int, int>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
@@ -350,7 +340,7 @@ indexable).
 | `Store<map<Id, double>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
 | `Store<map<Id, double>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<map<Id, double>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<map<Id, double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
+| `Store<map<Id, double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_thread_safe_generation_map` | index_map.hpp + layer.hpp |
 | `Store<map<Id, double>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<map<Id, double>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<map<Id, double>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
@@ -479,7 +469,7 @@ indexable).
 | `Store<pool<Id>, flat, concurrent>` | unique, handles, flat, concurrent | `thread_safe_record_interner` | records.hpp |
 | `Store<pool<Text>, flat>` | unique, handles, flat | `arena_interner` | arena.hpp |
 | `Store<pool<Text>, flat, monotone, concurrent>` | unique, handles, flat, concurrent, monotone | `thread_safe_arena_interner` | arena.hpp |
-| `Store<pool<Id>, flat, monotone, layered>` | unique, handles, flat, layered, monotone | `layered_record_interner` | records.hpp + layered_pool.hpp |
+| `Store<pool<Id>, flat, monotone, layered>` | unique, handles, flat, layered, monotone | `layered_stable_record_interner` | records.hpp + layered_pool.hpp |
 | `Store<pool<Text>, flat, layered, concurrent>` | unique, handles, flat, concurrent, layered | `layered_thread_safe_arena_interner` | arena.hpp + layered_pool.hpp |
 | `Store<pool<Id>>` | unique, handles | `value_interner` | records.hpp |
 | `Store<pool<Text>>` | unique, handles | `value_interner` | records.hpp |

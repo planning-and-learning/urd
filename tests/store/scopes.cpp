@@ -162,37 +162,49 @@ TEST(ChangeLog, WasAddedAndWasRemoved)
     EXPECT_TRUE(facts.was_added(3) && !facts.was_added(2) && facts.was_removed(1) && !facts.was_removed(3));
 }
 
-// A layer finds its parent's elements, holds only its own, and shadows the parent's values with its own.
+// A layer finds its parent's values, holds only its own, and shadows the parent's with its own; owner(key) is the
+// layer that holds a key.
 TEST(Layered, AnswersFromItselfThenItsParent)
 {
-    using Names = Store<map<std::string, int>, urd::layered>;
-    const auto parent = Names { { "on", 0 }, { "clear", 1 } };
-    auto child = Names { { "holding", 2 } };
+    using Name = urd::index<struct NameTag>;
+    using Names = Store<map<Name, int>, urd::dense, urd::layered>;
+    const auto on = Name(0);
+    const auto clear = Name(1);
+    const auto holding = Name(2);
+    const auto empty = Name(3);
+    auto parent = Names();
+    parent.insert_or_assign(on, 0);
+    parent.insert_or_assign(clear, 1);
+    auto child = Names();
+    child.insert_or_assign(holding, 2);
     child.layer_over(&parent);
-    EXPECT_TRUE(child.contains("on") && child.contains("holding") && !child.contains("empty"));
+    EXPECT_TRUE(child.contains(on) && child.contains(holding) && !child.contains(empty));
     EXPECT_EQ(child.size(), 1U);
-    EXPECT_EQ(std::as_const(child).at("clear"), 1);
-    EXPECT_FALSE(child.try_emplace("on", 7).second);
-    EXPECT_EQ(std::as_const(child).at("on"), 0);
-    child.insert_or_assign("on", 5);
-    EXPECT_EQ(child.at("on"), 5);
-    EXPECT_EQ(parent.at("on"), 0);
-    EXPECT_EQ(child.erase("clear"), 0U);
-    EXPECT_TRUE(child.contains("clear"));
+    EXPECT_EQ(std::as_const(child).at(clear), 1);
+    EXPECT_EQ(&child.owner(clear), &parent);
+    EXPECT_EQ(&child.owner(holding), &child);
+    EXPECT_EQ(child.read(clear, [](int value) { return value; }, -1), 1);
+    EXPECT_EQ(child.read(empty, [](int value) { return value; }, -1), -1);
+    // try_emplace makes an own value from its arguments where the layer has none, shadowing the parent's.
+    EXPECT_TRUE(child.try_emplace(on, 7).second);
+    EXPECT_FALSE(child.try_emplace(on, 8).second);
+    EXPECT_EQ(std::as_const(child).at(on), 7);
+    EXPECT_EQ(&child.owner(on), &child);
+    EXPECT_EQ(parent.at(on), 0);
+    child.insert_or_assign(on, 5);
+    EXPECT_EQ(child.at(on), 5);
+    EXPECT_EQ(child.erase(clear), 0U);
+    EXPECT_TRUE(child.contains(clear));
     // at() on a layer that may change hands out its own value to change: the parent's is copied up first.
-    child.at("clear") = 3;
+    child.at(clear) = 3;
     EXPECT_EQ(child.size(), 3U);
-    EXPECT_EQ(parent.at("clear"), 1);
-
-    using Seen = Store<set<int>, urd::layered>;
-    const auto before = Seen { 1, 2 };
-    auto after = Seen { 3 };
-    after.layer_over(&before);
-    EXPECT_FALSE(after.insert(2).second);
-    EXPECT_TRUE(after.insert(4).second);
-    EXPECT_EQ(std::set<int>(after.begin(), after.end()), (std::set<int> { 3, 4 }));
-    after.layer_over(nullptr);
-    EXPECT_FALSE(after.contains(1));
+    EXPECT_EQ(parent.at(clear), 1);
+    // update() too, where neither holds the key: held is false, the value a default one.
+    EXPECT_FALSE(child.update(empty, [](int& value, bool held) { value = 4; return held; }));
+    EXPECT_EQ(std::as_const(child).at(empty), 4);
+    child.layer_over(nullptr);
+    EXPECT_FALSE(child.contains(Name(9)));
+    EXPECT_EQ(child.size(), 4U);
 }
 
 namespace
@@ -293,6 +305,43 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     const auto holding_b = task[holding].insert({ b }).first;  // a predicate new in the task: a root pool of its own
     EXPECT_EQ(holding_b, urd::index<Row>(0));
     EXPECT_EQ(task.size(), 2U);
+    // The layer that holds a predicate's rows: the task's own pool, else the domain's.
+    EXPECT_EQ(&task.owner(on), &task);
+    EXPECT_EQ(&task.owner(clear), &domain);
+    // A cleared task holds nothing of its own; a predicate touched again gets its pool layered again, over the domain's.
+    task.clear();
+    EXPECT_EQ(task.size(), 0U);
+    EXPECT_EQ(&task.owner(on), &domain);
+    EXPECT_EQ(task[on].base(), 2U);
+    EXPECT_EQ(task[on].insert({ a, a }).first, urd::index<Row>(2));
+}
+
+// Rows of a width given at construction (urd::bit): try_emplace builds a predicate's own pool from its arguments and
+// layers it over the parent's, which may be narrower.
+namespace
+{
+
+using BitRows = Store<pool<Row>, urd::monotone, urd::bit, urd::layered>;
+using BitRelations = Store<map<urd::index<PredicateTag>, BitRows>, urd::dense, urd::layered>;
+static_assert(std::same_as<BitRows::representation, urd::repr::LayeredPool<urd::repr::RowInterner<Row, false, true>>>);
+
+}  // namespace
+
+TEST(Layered, RelationsBuildEachLayersPoolFromItsArguments)
+{
+    const auto on = urd::index<PredicateTag>(0);
+    auto domain = BitRelations();
+    EXPECT_TRUE(domain.try_emplace(on, urd::bit_width::for_bound(4)).second);
+    const auto on_12 = domain[on].insert({ Object(1), Object(2) }).first;
+    auto task = BitRelations();
+    task.layer_over(&domain);
+    EXPECT_TRUE(task.try_emplace(on, urd::bit_width::for_bound(1000)).second);
+    EXPECT_FALSE(task.try_emplace(on, urd::bit_width::for_bound(1000)).second);
+    EXPECT_EQ(task[on].base(), 1U);
+    EXPECT_EQ(task[on].insert({ Object(1), Object(2) }), std::pair(on_12, false));  // found in the domain's pool
+    const auto wide = task[on].insert({ Object(999), Object(3) }).first;             // too wide for the domain's
+    EXPECT_EQ(wide, urd::index<Row>(1));
+    EXPECT_EQ(task[on].get(wide), (Row { Object(999), Object(3) }));
 }
 
 }  // namespace

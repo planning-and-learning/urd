@@ -36,6 +36,7 @@
 #include "urd/store.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -461,6 +462,61 @@ TEST(ConcurrentSlots, ThreadsWorkOnTheirOwnHandlesAtOnce)
             }
         });
     EXPECT_EQ(wrong, std::vector<int>(threads));
+}
+
+// A layered dense map shared by threads (a concurrent relation repository): threads touch the same predicates at once;
+// each predicate's own pool is made and layered over the parent's once, under its slot's lock, so every thread
+// inserts into that one pool, equal rows get equal handles, and the handles continue the parent's.
+
+struct ConcurrentPredicate;
+using ConcurrentRow = Store<sequence<std::uint32_t>, urd::frozen>;
+using ConcurrentRows = Store<pool<ConcurrentRow>, urd::monotone, urd::layered, urd::concurrent>;
+using ConcurrentRelations = Store<map<urd::index<ConcurrentPredicate>, ConcurrentRows>, urd::dense, urd::layered, urd::concurrent>;
+static_assert(std::same_as<ConcurrentRelations::representation,
+                           urd::repr::Layered<urd::repr::IndexMap<urd::index<ConcurrentPredicate>, ConcurrentRows, true, true>>>);
+
+TEST(ConcurrentLayered, EachLayersValueIsMadeOnceAcrossThreads)
+{
+    constexpr int predicates = 16;
+    constexpr int per_predicate = 200;
+    constexpr int count = predicates * per_predicate;
+    const auto predicate_of = [](int drawn) { return urd::index<ConcurrentPredicate>(static_cast<std::uint32_t>(drawn % predicates)); };
+    // Every other predicate has one row in the domain, which no thread changes.
+    auto domain = ConcurrentRelations();
+    for (int drawn = 0; drawn < predicates; drawn += 2)
+        domain[predicate_of(drawn)].insert({ 0U, 0U });
+    auto task = ConcurrentRelations();
+    task.layer_over(&domain);
+    auto handles = std::vector<std::vector<urd::index<ConcurrentRow>>>(threads, std::vector<urd::index<ConcurrentRow>>(count));
+    in_threads(
+        [&](int thread)
+        {
+            for (int step = 0; step < count; ++step)
+            {
+                const int drawn = rotated(thread, step, count);
+                const auto row = std::array<std::uint32_t, 2> { static_cast<std::uint32_t>(drawn / predicates), 1U };
+                handles[static_cast<std::size_t>(thread)][static_cast<std::size_t>(drawn)] = task.at(predicate_of(drawn)).insert(row).first;
+                // The domain's row, read through the task beside the inserts.
+                if (drawn % 2 == 0 && std::as_const(task).at(predicate_of(drawn)).row_size(urd::index<ConcurrentRow>(0)) != 2)
+                    handles[static_cast<std::size_t>(thread)][static_cast<std::size_t>(drawn)] = urd::index<ConcurrentRow>();
+            }
+        });
+    EXPECT_EQ(task.size(), static_cast<std::size_t>(predicates));
+    for (int drawn = 0; drawn < count; ++drawn)
+        for (int thread = 1; thread < threads; ++thread)
+            ASSERT_EQ(handles[static_cast<std::size_t>(thread)][static_cast<std::size_t>(drawn)], handles[0][static_cast<std::size_t>(drawn)])
+                << "row " << drawn;
+    for (int drawn = 0; drawn < predicates; ++drawn)
+    {
+        const auto& rows = std::as_const(task).at(predicate_of(drawn));
+        const auto base = drawn % 2 == 0 ? 1U : 0U;
+        EXPECT_EQ(rows.base(), base);
+        EXPECT_EQ(rows.size(), base + per_predicate);
+        EXPECT_EQ(&task.owner(predicate_of(drawn)), &task);
+        EXPECT_FALSE(rows.parent_grew());
+    }
+    for (int drawn = 0; drawn < predicates; drawn += 2)
+        EXPECT_EQ(std::as_const(domain).at(predicate_of(drawn)).size(), 1U);
 }
 
 }  // namespace

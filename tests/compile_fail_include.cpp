@@ -9,7 +9,7 @@
 #if URD_CASE != 2
 #include <urd/repr/values/dense_set.hpp>
 #endif
-#if URD_CASE != 3 && URD_CASE != 8 && URD_CASE != 11 && URD_CASE != 12 && URD_CASE != 13
+#if URD_CASE != 3 && URD_CASE != 11 && URD_CASE != 12 && URD_CASE != 13
 #include <urd/repr/values/unordered_flat_set.hpp>
 #endif
 #if URD_CASE != 4
@@ -24,9 +24,7 @@
 #if URD_CASE != 7
 #include <urd/repr/pools/pools.hpp>
 #endif
-#if URD_CASE != 8
 #include <urd/repr/maps/unordered_flat_map.hpp>
-#endif
 #if URD_CASE != 8 && URD_CASE != 9
 #include <urd/repr/wrappers/layer.hpp>
 #endif
@@ -34,7 +32,9 @@
 #include <urd/repr/wrappers/scoped.hpp>
 #endif
 #include <string>
+#if URD_CASE != 8
 #include <urd/repr/maps/index_map.hpp>
+#endif
 #include <urd/repr/sequences/sequence.hpp>
 
 namespace
@@ -92,11 +92,11 @@ int main()
     (void) rows;
 #endif
 #if URD_HOLDS(8)  // a layered map missing its part's header and its own: one error names both, the part first
-    auto layered = urd::Store<urd::map<int, int>, urd::layered>();
+    auto layered = urd::Store<urd::map<int, int>, urd::dense, urd::layered>();
     (void) layered.size();
 #endif
 #if URD_HOLDS(9)  // a layered map whose part is included: only the wrapper's header is named
-    auto layered_only = urd::Store<urd::map<int, int>, urd::layered>();
+    auto layered_only = urd::Store<urd::map<int, int>, urd::dense, urd::layered>();
     (void) layered_only.size();
 #endif
 #if URD_HOLDS(10)  // a scoped map: the wrapper's header

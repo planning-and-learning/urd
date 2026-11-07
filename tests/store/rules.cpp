@@ -117,10 +117,10 @@ static_assert(!urd::has<Store<set<int>, urd::insertion_ordered>, urd::positional
 // A frozen multimap by dense key: compressed sparse rows, each key's values a span.
 // A dense multimap that grows: a vector of values per index (runir's graph builders).
 
-// Scopes and layers: a scoped map is a flat hash table with an undo log; a layered Store a flat hash table over a
+// Scopes and layers: a scoped map is a flat hash table with an undo log; a layered map a slot per index over a
 // parent.
 // Scopes over the map the other properties pick: a tree with sorted, a slot per index with dense.
-// Layers over the set or map the other properties pick: nodes with stable_refs, a generation map with constant_clear.
+// Layers over the dense map the other properties pick: the thread-safe generation map with constant_clear or concurrent.
 
 // The log over the set the other properties pick: a tracked bitset for dense keys, a tree for sorted, nodes for
 // stable references (runir's denotation states, tyr's delta fact sets).

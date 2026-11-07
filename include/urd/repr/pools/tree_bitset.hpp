@@ -14,6 +14,7 @@
 #include <bit>
 #include <cassert>
 #include <cstddef>
+#include <concepts>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -56,6 +57,11 @@ class TreeBitsetSet
     using Nodes = InterningTable<Children, ThreadSafe>;
     /// The slot of an all-zero subtree of more than one block. A zero block is the value 0.
     static constexpr std::uint32_t zero_subtree = std::numeric_limits<std::uint32_t>::max();
+    /// Whether a row keeps its bits as 64-bit words (a dense set), which it hands out up to its last nonzero one.
+    template<typename Elements>
+    static constexpr bool keeps_words = requires(const Elements& row) {
+        { row.significant_words() } -> std::convertible_to<std::span<const std::uint64_t>>;
+    };
 
 public:
     /// A row's blocks, and a change to one of them, as the block interface takes them.
@@ -72,18 +78,25 @@ public:
     /// The handle of the row, and whether inserting it stored a node (find would have given none).
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
-    { return store_blocks(blocks_of(elements)); }
+    { return store_blocks(std::span<const Block>(blocks_of(elements))); }
+    /// A row that keeps its bits (a dense set: significant_words()), by its 64-bit words, read as blocks in place:
+    /// allocates nothing.
+    template<std::ranges::input_range Elements>
+        requires keeps_words<Elements>
+    std::pair<handle_type, bool> insert(const Elements& row)
+    { return store_blocks(WordBlocks(row.significant_words())); }
     /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
     /// already, as a row or as a part of a longer one (all-zero parts and one-block rows need none). Else none.
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
     {
         const auto blocks = blocks_of(elements);
-        if (blocks.empty())
-            return handle_type {};
-        const auto root = find_recursive(blocks);
-        return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : handle_type::none();
+        return find_blocks(std::span<const Block>(blocks));
     }
+    template<std::ranges::input_range Elements>
+        requires keeps_words<Elements>
+    [[nodiscard]] handle_type find(const Elements& row) const
+    { return find_blocks(WordBlocks(row.significant_words())); }
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
     /// from blocks at a changed length, to the root are rebuilt.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const K> added, std::span<const K> removed)
@@ -139,20 +152,38 @@ public:
         read(handle, elements);
         return Row(elements.begin(), elements.end());
     }
-    /// How many elements the row holds: the set bits.
+    /// How many elements the row holds: the set bits, read along the tree; allocates nothing.
     [[nodiscard]] size_type row_size(handle_type handle) const
     {
-        const auto blocks = read_all(handle);
-        return ConstBits(blocks.data(), blocks.size() * Bits::Digits).count();
+        auto count = size_type { 0 };
+        for_each_block(handle, [&count](std::uint32_t /*position*/, Block block) { count += static_cast<size_type>(std::popcount(block)); });
+        return count;
     }
-    /// The row's elements, in key order, into `out`, which must hold row_size(handle) of them.
+    /// The row's elements, in key order, into `out`, which must hold row_size(handle) of them; allocates nothing.
     void read(handle_type handle, std::span<K> out) const
     {
-        const auto blocks = read_all(handle);
-        const auto row = ConstBits(blocks.data(), blocks.size() * Bits::Digits);
-        if (out.size() != row.count())
+        if (out.size() != row_size(handle))
             throw std::invalid_argument("urd::repr::TreeBitsetSet::read: the output must hold the row");
-        std::ranges::transform(set_bit_indices(row), out.begin(), [](std::size_t bit) { return index_of<K>::from_index(bit); });
+        auto next = out.begin();
+        for_each_block(handle,
+                       [&next](std::uint32_t position, Block block)
+                       {
+                           for (; block != 0; block &= block - 1)
+                               *next++ = index_of<K>::from_index(std::size_t { position } * Bits::Digits + static_cast<std::size_t>(std::countr_zero(block)));
+                       });
+    }
+    /// The row into `out`, a row that takes its bits as 64-bit words (a dense set: assign_words), word by word into its
+    /// storage, which is reused: allocates nothing where `out` holds as many words already.
+    void read(handle_type handle, Row& out) const
+        requires requires(Row& row, void (*fill)(std::span<std::uint64_t>)) { row.assign_words(std::size_t {}, fill); }
+    {
+        out.assign_words((std::size_t { handle.size } + 1) / 2,
+                         [this, handle](std::span<std::uint64_t> words)
+                         {
+                             for_each_block(handle,
+                                            [&words](std::uint32_t position, Block block)
+                                            { words[position / 2] |= std::uint64_t { block } << (Bits::Digits * (position % 2)); });
+                         });
     }
 
     // The rows, as their blocks, as yggdrasil's TreeBitsetSet offers them.
@@ -201,11 +232,70 @@ private:
         return children;
     }
 
-    [[nodiscard]] std::vector<Block> read_all(handle_type handle) const
+    /// 64-bit words read as the 32-bit blocks they hold, block i the low (even i) or high (odd i) half of word i / 2,
+    /// without a copy; up to the last nonzero block. What insert_recursive and find_recursive read, as they read a span.
+    class WordBlocks
     {
-        auto blocks = std::vector<Block>(handle.size);
-        read_blocks(handle, blocks);
-        return blocks;
+    public:
+        explicit WordBlocks(std::span<const std::uint64_t> words) : m_words(words), m_count(2 * words.size())
+        {
+            while (m_count > 0 && (*this)[m_count - 1] == Block { 0 })
+                --m_count;
+        }
+        [[nodiscard]] std::size_t size() const noexcept { return m_count; }
+        [[nodiscard]] bool empty() const noexcept { return m_count == 0; }
+        [[nodiscard]] Block operator[](std::size_t i) const noexcept
+        {
+            const auto at = m_first + i;
+            return static_cast<Block>(m_words[at / 2] >> (Bits::Digits * (at % 2)));
+        }
+        [[nodiscard]] Block front() const noexcept { return (*this)[0]; }
+        [[nodiscard]] Block back() const noexcept { return (*this)[m_count - 1]; }
+        [[nodiscard]] WordBlocks subspan(std::size_t offset, std::size_t count) const noexcept
+        {
+            auto part = *this;
+            part.m_first += offset;
+            part.m_count = count;
+            return part;
+        }
+
+    private:
+        std::span<const std::uint64_t> m_words;
+        std::size_t m_first = 0;
+        std::size_t m_count = 0;
+    };
+
+    /// Calls f(position, block) for each nonzero block of the row, in order, along the tree; allocates nothing.
+    template<typename F>
+    void for_each_block(handle_type handle, F f) const
+    {
+        if (handle.size > 0)
+            for_each_block(handle.root, 0, handle.size, f);
+    }
+    template<typename F>
+    void for_each_block(std::uint32_t root, std::uint32_t offset, std::uint32_t size, F& f) const
+    {
+        if (size == 1)
+        {
+            if (root != Block { 0 })
+                f(offset, Block { root });
+            return;
+        }
+        if (root == zero_subtree)
+            return;
+        const auto& node = m_nodes[root];
+        for (std::uint32_t k = 0, at = 0; at < size; ++k, at += tree::chunk<Arity>(size))
+            for_each_block(node[k], offset + at, child_size(size, k), f);
+    }
+
+    /// The handle of the row with these blocks (a span, or WordBlocks), where every node is held; else none.
+    template<typename Blocks>
+    [[nodiscard]] handle_type find_blocks(const Blocks& blocks) const
+    {
+        if (blocks.empty())
+            return handle_type {};
+        const auto root = find_recursive(blocks);
+        return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : handle_type::none();
     }
 
     /// The blocks of the row holding `elements`, up to its last nonzero block.
@@ -224,7 +314,8 @@ private:
     }
 
     /// insert_blocks and insert_flips, with whether they stored a node. `stored` is per call: threads never share it.
-    std::pair<handle_type, bool> store_blocks(std::span<const Block> blocks)
+    template<typename Blocks>
+    std::pair<handle_type, bool> store_blocks(const Blocks& blocks)
     {
         if (!blocks.empty() && blocks.back() == Block { 0 })
             throw std::invalid_argument("urd::repr::TreeBitsetSet::insert_blocks: the last block must not be zero");
@@ -279,7 +370,8 @@ private:
     }
 
     /// insert_recursive's root for `blocks`, looked up instead of stored: none where a node is missing.
-    [[nodiscard]] std::optional<std::uint32_t> find_recursive(std::span<const Block> blocks) const
+    template<typename Blocks>
+    [[nodiscard]] std::optional<std::uint32_t> find_recursive(const Blocks& blocks) const
     {
         assert(!blocks.empty());
         if (blocks.size() == 1)
@@ -303,7 +395,8 @@ private:
         return zero_subtree;
     }
 
-    std::uint32_t insert_recursive(std::span<const Block> blocks, bool& stored)
+    template<typename Blocks>
+    std::uint32_t insert_recursive(const Blocks& blocks, bool& stored)
     {
         assert(!blocks.empty());
         if (blocks.size() == 1)
@@ -503,6 +596,8 @@ namespace urd::detail
 template<bool ThreadSafe, typename S>
 struct representation_of<tree_pool_decl<true, ThreadSafe>, S>
 {
+    static_assert(std::same_as<typename S::handle_type, urd::index<typename S::element_type>>,
+                  "urd::Store: a tree pool hands out its own handles (a root and a size), not the index urd::pool<V, H> names");
     using type = repr::TreeBitsetSet<typename S::element_type, 4, ThreadSafe>;
 };
 
