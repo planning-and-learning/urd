@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/kinds.hpp"
+#include "urd/repr/core/numbered.hpp"
 #include "urd/store.hpp"
 #include "urd/traits.hpp"
 
@@ -23,6 +24,12 @@ namespace urd::python
 /// Whether a Store whose representation is R converts to and from Python: specialized by R's header in urd/python/.
 template<typename R>
 inline constexpr bool casts = false;
+
+/// A numbered container (urd/repr/core/numbered.hpp: the representation of a Store that hands out indices, a
+/// positional set or an interner) converts as its container does. Only to Python: built from Python, it would have no
+/// number (urd::layer) to be built with.
+template<typename R>
+inline constexpr bool casts<repr::Numbered<R>> = casts<R>;
 
 /// A Store whose representation converts.
 template<typename S>

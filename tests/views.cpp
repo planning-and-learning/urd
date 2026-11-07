@@ -327,7 +327,7 @@ TEST(View, ToStoredInvertsResolve)
     // Each part read back as its flat counterpart: views as indices, ranges as flat vectors, pairs and optionals as cista's.
     const auto stored = urd::to_stored(urd::resolve(groups, both));
     static_assert(std::same_as<std::remove_const_t<decltype(stored)>,
-                               urd::flat_vector<::cista::pair<urd::index<Owner>, urd::flat_vector<::cista::optional<urd::index<Owner>>>>>>);
+                               urd::flat_vector<urd::flat_pair<urd::index<Owner>, urd::flat_vector<urd::flat_optional<urd::index<Owner>>>>>>);
     ASSERT_EQ(stored.size(), 2U);
     EXPECT_EQ(stored[0].first, a);
     ASSERT_EQ(stored[0].second.size(), 2U);
@@ -432,11 +432,14 @@ struct PairHandle
 };
 static_assert(urd::handle<urd::index<Owner>> && urd::handle<PairHandle> && !urd::handle<int> && !urd::handle<Rec>);
 
+template<typename C>
+concept views_a_temporary = requires(const C& context) { context.view(Rec {}); };
+
 TEST(View, BorrowsAHeldRecord)
 {
     // A record held outside the context (a form of T) is pointed at; a temporary one is not viewed. A handle (an
     // index) is resolved through the context instead.
-    static_assert(!requires(const Both& both) { both.view(Rec {}); });
+    static_assert(!views_a_temporary<Both>);
     const auto both = make_both();
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
     EXPECT_EQ(&both.view(record).data(), &record);

@@ -144,8 +144,10 @@ struct resolution<M>
 /// its iterators do not point into it: they outlive it, and it is a borrowed range. It traverses as R does (random
 /// access where R is); its end is R's sentinel where R has one. R must outlive it where R is not a view. F is a small
 /// function object (a captureless lambda, or a struct naming what it reads through). A named type, so that it can be
-/// spelled (an alias, a parameter) before F can be called (urd::resolved_range).
-template<std::ranges::input_range R, std::semiregular F>
+/// spelled (an alias, a parameter) before F can be called (urd::resolved_range): F is semiregular, but that is checked
+/// where one is made (urd::transform), not in the template head (checking it looks up swap through the context, and a
+/// context named while incomplete would be instantiated too early).
+template<std::ranges::input_range R, typename F>
 class transformed_range : public std::ranges::view_interface<transformed_range<R, F>>
 {
     static_assert(!std::ranges::view<R> || std::ranges::borrowed_range<R>,
@@ -264,14 +266,14 @@ public:
     {
         if (position >= std::ranges::size(m_range))
             throw std::out_of_range("urd::transformed_range::at: position out of range");
-        return (*this)[position];
+        return (*this)[static_cast<std::ranges::range_difference_t<const R>>(position)];
     }
 };
 
 /// `range` read through `function` (urd::transformed_range): a borrowed std::views::transform. An rvalue range only
 /// where it is borrowed (a view whose iterators outlive it); a container must outlive the result.
 template<std::ranges::input_range R, typename F>
-    requires std::ranges::borrowed_range<R>
+    requires std::ranges::borrowed_range<R> && std::semiregular<std::decay_t<F>>
 [[nodiscard]] transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)
 { return { range, std::forward<F>(function) }; }
 

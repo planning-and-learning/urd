@@ -4,6 +4,7 @@
 
 #include "urd/repr/pools/pools.hpp"
 #include "urd/repr/sequences/sequence.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -17,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace
@@ -184,6 +186,26 @@ TEST(RowPools, PrehashedRowsAreHashedOnce)
     EXPECT_TRUE(rows.contains(key));
     EXPECT_EQ(hashes, 3) << "lookups and the insert by a prehashed row hash nothing";
     EXPECT_EQ(rows.find(row), handle);  // the same row, hashed here, finds it
+}
+
+// A layered pool passes a prehashed row through its chain: found in the parent without hashing again.
+TEST(RowPools, LayeredPrehashedRowsAreHashedOnce)
+{
+    using Rows = urd::Store<urd::pool<urd::Store<urd::sequence<Counted>, urd::frozen>>, urd::monotone, urd::layered>;
+    const auto row = std::array<Counted, 3> { Counted { 1 }, Counted { 2 }, Counted { 3 } };
+    auto parent = Rows();
+    const auto handle = parent.insert(row).first;
+    auto child = Rows();
+    child.layer_over(&parent);
+    hashes = 0;
+    const auto key = urd::prehashed<std::array<Counted, 3>> { row, urd::hash_range(row) };
+    EXPECT_EQ(child.find(key), handle);
+    EXPECT_EQ(child.insert(key), std::pair(handle, false));
+    const auto other = std::array<Counted, 3> { Counted { 4 }, Counted { 5 }, Counted { 6 } };
+    const auto other_key = urd::prehashed<std::array<Counted, 3>> { other, urd::hash_range(other) };
+    EXPECT_TRUE(child.insert(other_key).second);
+    EXPECT_EQ(child.find(other_key).value, 1U);
+    EXPECT_EQ(hashes, 6) << "each row hashed once, for every layer of the chain";
 }
 
 // A pool of rows of indices whose request promises urd::bit stores each element in the bit width it is built with:

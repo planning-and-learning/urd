@@ -10,6 +10,7 @@
 #include "urd/repr/records/records.hpp"
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/store.hpp"
 
@@ -89,6 +90,29 @@ TEST(Prehashed, ThreadSafeRecordInterner) { finds_and_inserts_hashing_once<Store
 TEST(Prehashed, ValueInterner) { finds_and_inserts_hashing_once<Store<pool<Key>>>(); }
 TEST(Prehashed, ArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key>>>(); }
 TEST(Prehashed, ThreadSafeArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key, true>>>(); }
+TEST(Prehashed, LayeredPool) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat, urd::layered>>(); }
+
+// A layered pool hashes a key once for its whole chain of layers, not once per layer.
+TEST(Prehashed, LayeredPoolHashesOnceForTheChain)
+{
+    using Keys = Store<pool<Key>, urd::flat, urd::layered>;
+    auto root = Keys(urd::layer { 0 });
+    const auto one = root.insert(Key { 1 }).first;
+    auto middle = Keys(urd::layer { 1 });
+    middle.layer_over(&root);
+    auto leaf = Keys(urd::layer { 2 });
+    leaf.layer_over(&middle);
+    hashes = 0;
+    EXPECT_EQ(leaf.find(Key { 1 }), one);
+    EXPECT_FALSE(leaf.insert(Key { 1 }).second);
+    EXPECT_TRUE(leaf.insert(Key { 2 }).second);
+    EXPECT_EQ(hashes, 3) << "one hash per lookup or insert";
+    const auto two_key = Key { 2 };
+    const auto two = urd::prehash(two_key);
+    EXPECT_FALSE(leaf.find(two).is_none());
+    EXPECT_TRUE(middle.find(two).is_none());
+    EXPECT_EQ(hashes, 4) << "a prehashed key is not hashed again in any layer";
+}
 
 /// A record that cannot be copied: an arena interner serializes it from a reference.
 struct Unique

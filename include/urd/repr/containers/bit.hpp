@@ -85,13 +85,13 @@ constexpr void write_int(std::type_identity_t<std::span<Block>> words, Block x, 
         offset = (offset + len) & (digits - 1);  // bits written into words[1]; zero on an exact boundary
         if (offset != 0)
         {
-            words[1] &= (~lo_set<Block>[offset]);
+            words[1] &= static_cast<Block>(~lo_set<Block>[offset]);
             words[1] |= (x >> (len - offset));
         }
     }
     else
     {
-        words[0] &= ((all_set << (offset + len)) | lo_set<Block>[offset]);
+        words[0] &= static_cast<Block>((all_set << (offset + len)) | lo_set<Block>[offset]);
         words[0] |= (x << offset);
     }
 }

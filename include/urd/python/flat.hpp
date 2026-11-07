@@ -12,11 +12,8 @@
 // The flat forms of records (urd/elements/flat.hpp: cista's offset containers) convert to and from Python like their
 // std counterparts.
 
-#include <cista/containers/optional.h>
-#include <cista/containers/pair.h>
-#include <cista/containers/string.h>
-#include <cista/containers/variant.h>
-#include <cista/containers/vector.h>
+#include "urd/elements/flat.hpp"
+
 #include <cstddef>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/detail/nb_list.h>
@@ -69,9 +66,9 @@ public:
 
 // Adapted from nanobind/stl/variant.h
 template<typename... Ts>
-struct type_caster<::cista::offset::variant<Ts...>>
+struct type_caster<urd::flat_variant<Ts...>>
 {
-    using Variant = ::cista::offset::variant<Ts...>;
+    using Variant = urd::flat_variant<Ts...>;
 
     // Cista variants are default-constructible even if their alternatives are not.
     NB_TYPE_CASTER(Variant, union_name(make_caster<Ts>::Name...))
@@ -119,15 +116,15 @@ struct type_caster<::cista::offset::variant<Ts...>>
 
 // Taken from nanobind/stl/optional.h
 template<typename T>
-struct type_caster<::cista::optional<T>> : optional_caster<::cista::optional<T>>
+struct type_caster<urd::flat_optional<T>> : optional_caster<urd::flat_optional<T>>
 {
 };
 
 // Reuse Nanobind's pair conversions, constructing a Cista pair on input.
 template<typename T1, typename T2>
-struct type_caster<::cista::pair<T1, T2>> : type_caster<std::pair<T1, T2>>
+struct type_caster<urd::flat_pair<T1, T2>> : type_caster<std::pair<T1, T2>>
 {
-    using Value = ::cista::pair<T1, T2>;
+    using Value = urd::flat_pair<T1, T2>;
 
     template<typename T>
     using Cast = Value;

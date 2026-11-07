@@ -107,7 +107,10 @@ Indices and views
 
       The number; ``none_value`` by default.
 
-   .. cpp:function:: static index none() noexcept
+   .. cpp:member:: static constexpr value_type none_value
+
+      The ``none`` value: the largest ``value_type``. A default-built ``index`` is none.
+
    .. cpp:function:: bool is_none() const noexcept
 
 .. cpp:struct:: layer
@@ -170,9 +173,10 @@ What all four give:
       A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes the
       ``index_view<U, C>`` the context makes, pointing at the layer that owns the element; a range of indices a range
       of views; a variant the variant of its alternatives resolved; an optional the optional of its value resolved; a
-      stored record held in the record its borrowed_view; anything else stays as it is.
+      pair the pair of its members resolved; a stored record held in the record its borrowed_view; anything else
+      stays as it is.
 
-   .. cpp:function:: auto identifying_members() const noexcept
+   .. cpp:function:: static constexpr auto identifying_members() noexcept
 
       The identity: the handle, or the record, and the context's number (:cpp:struct:`layer`); only where the context
       has a number.
@@ -199,8 +203,9 @@ What all four give:
 .. cpp:struct:: template<typename M> resolution
 
    How a member of type ``M`` resolves: as it is, unless specialized. Given for handles (:cpp:concept:`handle`: ``index<U>``, or a type naming what it locates; the context's view),
-   ranges of indices (a range of views), ``std::variant`` and ``std::optional`` (their contents resolved), and in
-   ``urd/elements/flat.hpp`` for cista's variant and optional. A new member type resolves by specializing it.
+   ranges of indices (a range of views), and variants, optionals and pairs, std's and cista's alike (their contents
+   resolved; ``urd/elements/view.hpp``, by the concepts ``variant_value``, ``optional_value`` and ``pair_value``). A
+   new member type resolves by specializing it.
 
 .. cpp:class:: template<std::ranges::input_range R, std::semiregular F> transformed_range
 .. cpp:function:: template<std::ranges::input_range R, typename F> transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)

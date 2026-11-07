@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/cost.hpp"
+#include "urd/elements/equal_to.hpp"
 #include "urd/store/types.hpp"
 
 #include <cstddef>
@@ -51,11 +52,11 @@ public:
     void resize(std::size_t count, const value_type& value)
         requires shrinks<S> && requires(R& held, std::size_t n, const value_type& v) { held.resize(n, v); }
     { representation().resize(count, value); }
-    /// Every element equal to `element`; how many. As std::erase.
+    /// Every element equal to `element` (urd::EqualTo, as the Store's ==); how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)
         requires changes_in_the_middle<S>
     {
-        return erase_if(store, [&](const value_type& candidate) { return candidate == element; });
+        return erase_if(store, [&](const value_type& candidate) { return EqualTo<value_type> {}(candidate, element); });
     }
 
 private:

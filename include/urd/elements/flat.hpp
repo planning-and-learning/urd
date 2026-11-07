@@ -28,12 +28,34 @@
 namespace urd
 {
 
-/// The sequence, text and variant of a record stored flat: cista's offset containers, which serialize as a whole.
+/// The containers of a record stored flat: cista's, which serialize as a whole.
 template<typename T>
 using flat_vector = ::cista::offset::vector<T>;
 using flat_string = ::cista::offset::string;
 template<typename... Ts>
 using flat_variant = ::cista::offset::variant<Ts...>;
+template<typename T>
+using flat_optional = ::cista::optional<T>;
+template<typename T1, typename T2>
+using flat_pair = ::cista::pair<T1, T2>;
+
+/// Whether T is one of the flat containers above.
+template<typename T>
+inline constexpr bool is_flat_vector = false;
+template<typename T>
+inline constexpr bool is_flat_vector<flat_vector<T>> = true;
+template<typename T>
+inline constexpr bool is_flat_variant = false;
+template<typename... Ts>
+inline constexpr bool is_flat_variant<flat_variant<Ts...>> = true;
+template<typename T>
+inline constexpr bool is_flat_optional = false;
+template<typename T>
+inline constexpr bool is_flat_optional<flat_optional<T>> = true;
+template<typename T>
+inline constexpr bool is_flat_pair = false;
+template<typename T1, typename T2>
+inline constexpr bool is_flat_pair<flat_pair<T1, T2>> = true;
 /// The flat_variant of the indices of a type list's tags.
 template<typename L>
 using index_variant = boost::mp11::mp_apply<flat_variant, boost::mp11::mp_transform<index, L>>;
@@ -74,8 +96,8 @@ inline constexpr bool specializes<Of<Ts...>, Of> = true;
 }  // namespace detail
 
 /// The stored form of a readout, the inverse of urd::resolve: what a record holds for what a view reads. A variant
-/// (std's or cista's) gives the flat_variant of its alternatives' stored forms, a std::optional the cista::optional, a
-/// pair the cista::pair; a view of an element held by index gives its index (index()), a view of a record held elsewhere
+/// (std's or cista's) gives the flat_variant of its alternatives' stored forms, a std::optional the flat_optional, a
+/// pair the flat_pair; a view of an element held by index gives its index (index()), a view of a record held elsewhere
 /// a copy of its record (data()); a range (not text) gives the flat_vector of its elements'; anything else is its own
 /// stored form.
 template<typename R>
@@ -89,11 +111,11 @@ template<typename R>
         }(readout);
     else if constexpr (detail::specializes<R, std::optional>)
     {
-        using stored = ::cista::optional<decltype(urd::to_stored(*readout))>;
+        using stored = flat_optional<decltype(urd::to_stored(*readout))>;
         return readout.has_value() ? stored(urd::to_stored(*readout)) : stored();
     }
     else if constexpr (pair_value<R>)
-        return ::cista::pair<decltype(urd::to_stored(readout.first)), decltype(urd::to_stored(readout.second))> { urd::to_stored(readout.first),
+        return flat_pair<decltype(urd::to_stored(readout.first)), decltype(urd::to_stored(readout.second))> { urd::to_stored(readout.first),
                                                                                                                 urd::to_stored(readout.second) };
     else if constexpr (requires { readout.index(); })
         return readout.index();

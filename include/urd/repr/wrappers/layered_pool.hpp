@@ -3,6 +3,7 @@
 // A pool over a parent pool: its own rows, numbered after the parent's.
 
 #include "urd/elements/index.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/pools/pools_fwd.hpp"
@@ -84,15 +85,20 @@ public:
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
-    // Records.
+    // Records. A record is hashed once (urd::prehash) and found by that hash in every layer of the chain.
 
     std::pair<handle_type, bool> insert(const T& record)
         requires(!row_pool)
-    {
-        return insert(record, [&record](handle_type) -> const T& { return record; });
-    }
+    { return insert(prehash(record)); }
+    std::pair<handle_type, bool> insert(const prehashed<T>& key)
+        requires(!row_pool)
+    { return insert(key, [&key](handle_type) -> const T& { return key.key; }); }
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
+        requires(!row_pool)
+    { return insert(prehash(key), std::move(make)); }
+    template<std::invocable<handle_type> Factory>
+    std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
         requires(!row_pool)
     {
         if (const auto at = find(key); !at.is_none())
@@ -103,14 +109,16 @@ public:
     }
     [[nodiscard]] handle_type find(const T& record) const
         requires(!row_pool)
-    {
-        if (const auto at = m_own.find(record); !at.is_none())
-            return global(at);
-        return m_parent == nullptr ? handle_type() : m_parent->find(record);
-    }
+    { return find(prehash(record)); }
+    [[nodiscard]] handle_type find(const prehashed<T>& key) const
+        requires(!row_pool)
+    { return find_in_chain(key); }
     [[nodiscard]] bool contains(const T& record) const
         requires(!row_pool)
     { return !find(record).is_none(); }
+    [[nodiscard]] bool contains(const prehashed<T>& key) const
+        requires(!row_pool)
+    { return !find(key).is_none(); }
     [[nodiscard]] const T& operator[](handle_type at) const
         requires(!row_pool)
     {
@@ -124,13 +132,13 @@ public:
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
         requires row_pool
-    {
-        if (const auto at = find(elements); !at.is_none())
-            return { at, false };
-        assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
-        const auto [own, stored] = m_own.insert(elements);
-        return { global(own), stored };
-    }
+    { return insert_row(elements); }
+    /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), where the parent pool
+    /// takes one: hashed once for the whole chain, where a row given as it is is hashed again in every layer.
+    template<typename Elements>
+        requires row_pool && requires(R& own, const prehashed<Elements>& key) { own.insert(key); }
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
+    { return insert_row(key); }
     /// The row `base` with `writes` applied, stored here where new.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
         requires row_pool && requires(R& own, handle_type at, std::span<const write_type> some) { own.insert(at, some); }
@@ -152,11 +160,11 @@ public:
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
         requires row_pool
-    {
-        if (const auto at = m_own.find(elements); !at.is_none())
-            return global(at);
-        return m_parent == nullptr ? handle_type() : m_parent->find(elements);
-    }
+    { return find_in_chain(elements); }
+    template<typename Elements>
+        requires row_pool && requires(const R& own, const prehashed<Elements>& key) { own.find(key); }
+    [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
+    { return find_in_chain(key); }
     [[nodiscard]] bool contains(handle_type at, const element& value) const
         requires row_pool
     {
@@ -196,6 +204,25 @@ public:
     }
 
 private:
+    /// The handle of `key` (a record or row, or it prehashed) in the nearest layer of the chain that holds it, or none.
+    template<typename K>
+    [[nodiscard]] handle_type find_in_chain(const K& key) const
+    {
+        for (const auto* layer = this; layer != nullptr; layer = layer->m_parent)
+            if (const auto at = layer->m_own.find(key); !at.is_none())
+                return layer->global(at);
+        return handle_type();
+    }
+    /// The row `key` (its elements, or them prehashed) found in the chain, else stored here.
+    template<typename K>
+    std::pair<handle_type, bool> insert_row(const K& key)
+    {
+        if (const auto at = find_in_chain(key); !at.is_none())
+            return { at, false };
+        assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
+        const auto [own, stored] = m_own.insert(key);
+        return { global(own), stored };
+    }
     /// The layer that holds `at`: this one, or the ancestor whose range it lies in.
     [[nodiscard]] const LayeredPool& owner(handle_type at) const
     {

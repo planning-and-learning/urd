@@ -27,9 +27,13 @@ using SortedSet = urd::Store<urd::set<int>, urd::sorted>;
 using Map = urd::Store<urd::map<std::string, int>>;
 using SortedMap = urd::Store<urd::map<int, std::string>, urd::sorted>;
 using Nested = urd::Store<urd::sequence<urd::Store<urd::sequence<int>>>>;
+// A positional set hands out indices: its representation is a numbered indexed set (urd::repr::Numbered).
+using Positional = urd::Store<urd::set<int>, urd::positional, urd::monotone>;
+static_assert(requires(const Positional::representation& numbered) { numbered.container(); });
 
 static_assert(urd::python::castable<Sequence> && urd::python::castable<StableSequence> && urd::python::castable<Set>
-              && urd::python::castable<SortedSet> && urd::python::castable<Map> && urd::python::castable<SortedMap>);
+              && urd::python::castable<SortedSet> && urd::python::castable<Map> && urd::python::castable<SortedMap>
+              && urd::python::castable<Positional>);
 static_assert(!urd::python::castable<urd::Store<urd::map<int, int>, urd::multi>>, "a multimap has no caster: a dict keeps one value per key");
 
 }  // namespace
@@ -43,6 +47,12 @@ NB_MODULE(urd_casters_test, m)
     m.def("map", [](Map values) { return values; });
     m.def("sorted_map", [](SortedMap values) { return values; });
     m.def("nested", [](Nested values) { return values; });
+    m.def("positional_set", [](const Sequence& values) {
+        auto positions = Positional(urd::layer { 0 });
+        for (const int value : values)
+            positions.insert(value);
+        return positions;
+    });
     m.def("sizes", [](const Nested& values) {
         auto sizes = Sequence();
         for (const auto& row : values)

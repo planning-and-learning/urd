@@ -308,8 +308,8 @@ TEST(Predicates, CapabilitiesCoverTheVocabularyAndRejectUnsupportedValues)
     static_assert(OrderedByAllPredicates<std::pair<int, int>> && OrderedByAllPredicates<std::tuple<int, int>>);
     static_assert(OrderedByAllPredicates<std::variant<int, unsigned>> && OrderedByAllPredicates<std::optional<int>>);
     static_assert(OrderedByAllPredicates<std::reference_wrapper<int>> && OrderedByAllPredicates<std::span<const int>>);
-    static_assert(OrderedByAllPredicates<cista::offset::string> && OrderedByAllPredicates<cista::offset::vector<int>>);
-    static_assert(OrderedByAllPredicates<cista::optional<int>> && OrderedByAllPredicates<cista::offset::variant<int, unsigned>>);
+    static_assert(OrderedByAllPredicates<urd::flat_string> && OrderedByAllPredicates<urd::flat_vector<int>>);
+    static_assert(OrderedByAllPredicates<urd::flat_optional<int>> && OrderedByAllPredicates<urd::flat_variant<int, unsigned>>);
     static_assert(urd::OrderedByLess<std::set<int>> && urd::OrderedByLess<std::map<int, int>>);
 
     static_assert(urd::HashFor<ValidHash, int> && !urd::HashFor<InvalidHash, int>);
@@ -328,10 +328,10 @@ TEST(Predicates, CapabilitiesCoverTheVocabularyAndRejectUnsupportedValues)
     static_assert(rejected.operator()<std::variant<int, Unsupported>>());
     static_assert(rejected.operator()<std::span<const Unsupported>>());
     static_assert(rejected.operator()<std::reference_wrapper<Unsupported>>());
-    static_assert(rejected.operator()<cista::offset::vector<Unsupported>>());
-    static_assert(rejected.operator()<cista::pair<int, Unsupported>>());
-    static_assert(rejected.operator()<cista::optional<Unsupported>>());
-    static_assert(rejected.operator()<cista::offset::variant<int, Unsupported>>());
+    static_assert(rejected.operator()<urd::flat_vector<Unsupported>>());
+    static_assert(rejected.operator()<urd::flat_pair<int, Unsupported>>());
+    static_assert(rejected.operator()<urd::flat_optional<Unsupported>>());
+    static_assert(rejected.operator()<urd::flat_variant<int, Unsupported>>());
     static_assert(!urd::HashFor<urd::Hash<>, Unsupported> && !urd::EqualToFor<urd::EqualTo<>, Unsupported> && !urd::LessFor<urd::Less<>, Unsupported>);
     static_assert(!urd::LessFor<urd::LessEqual<Unsupported>, Unsupported> && !urd::LessFor<urd::Greater<Unsupported>, Unsupported>
                   && !urd::LessFor<urd::GreaterEqual<Unsupported>, Unsupported>);
@@ -384,7 +384,7 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
         {
             SCOPED_TRACE(size);
             auto values = urd::Store<urd::sequence<T>, urd::contiguous> {};
-            auto cista_values = cista::offset::vector<T> {};
+            auto cista_values = urd::flat_vector<T> {};
             auto segmented = urd::Store<urd::sequence<T>, urd::stable_refs> {};
             for (auto i = 0U; i < size; ++i)
             {
@@ -471,10 +471,10 @@ TEST(Predicates, DistinguishAlternativesEngagementAndReferencedValues)
     auto high = 2;
     distinct(std::ref(low), std::ref(high));
 
-    using CistaVariant = cista::offset::variant<int, unsigned>;
-    auto first = cista::offset::variant<int, int> {};
+    using CistaVariant = urd::flat_variant<int, unsigned>;
+    auto first = urd::flat_variant<int, int> {};
     first.emplace<0>(9);
-    auto second = cista::offset::variant<int, int> {};
+    auto second = urd::flat_variant<int, int> {};
     second.emplace<1>(9);
     distinct(first, second);
     distinct(CistaVariant { 9 }, CistaVariant { 9U });
@@ -482,8 +482,8 @@ TEST(Predicates, DistinguishAlternativesEngagementAndReferencedValues)
     EXPECT_EQ(urd::Hash<CistaVariant> {}(CistaVariant {}), urd::Hash<CistaVariant> {}(CistaVariant {}));
     EXPECT_FALSE(urd::EqualTo<CistaVariant> {}(CistaVariant {}, CistaVariant { 9 }));
     EXPECT_NE(urd::Hash<CistaVariant> {}(CistaVariant {}), urd::Hash<CistaVariant> {}(CistaVariant { 9 }));
-    EXPECT_FALSE(urd::EqualTo<cista::optional<int>> {}(cista::optional<int> { 7 }, cista::optional<int> {}));
-    EXPECT_NE(urd::Hash<cista::optional<int>> {}(cista::optional<int> { 0 }), urd::Hash<cista::optional<int>> {}(cista::optional<int> {}));
+    EXPECT_FALSE(urd::EqualTo<urd::flat_optional<int>> {}(urd::flat_optional<int> { 7 }, urd::flat_optional<int> {}));
+    EXPECT_NE(urd::Hash<urd::flat_optional<int>> {}(urd::flat_optional<int> { 0 }), urd::Hash<urd::flat_optional<int>> {}(urd::flat_optional<int> {}));
 
     const auto nan = std::numeric_limits<double>::quiet_NaN();
     EXPECT_TRUE(urd::EqualTo<double> {}(nan, std::numeric_limits<double>::signaling_NaN()));
@@ -506,9 +506,9 @@ TEST(Predicates, ForeignContainersCompareAndHashByTheirValues)
         EXPECT_EQ(urd::Hash<T> {}(lhs), urd::Hash<T> {}(same));
         EXPECT_NE(urd::Hash<T> {}(lhs), urd::Hash<T> {}(rhs));
     };
-    ordered(cista::offset::string("ab"), cista::offset::string("ab"), cista::offset::string("ac"));
-    ordered(cista::offset::vector<int> { 1, 2 }, cista::offset::vector<int> { 1, 2 }, cista::offset::vector<int> { 1, 3 });
-    ordered(cista::optional<int> { 7 }, cista::optional<int> { 7 }, cista::optional<int> { 8 });
+    ordered(urd::flat_string("ab"), urd::flat_string("ab"), urd::flat_string("ac"));
+    ordered(urd::flat_vector<int> { 1, 2 }, urd::flat_vector<int> { 1, 2 }, urd::flat_vector<int> { 1, 3 });
+    ordered(urd::flat_optional<int> { 7 }, urd::flat_optional<int> { 7 }, urd::flat_optional<int> { 8 });
     ordered(Segmented { 1, 2 }, Segmented { 1, 2 }, Segmented { 1, 3 });
     ordered(SortedSet { 1, 2 }, SortedSet { 1, 2 }, SortedSet { 1, 3 });
     ordered(SortedMap { { 1, 2 } }, SortedMap { { 1, 2 } }, SortedMap { { 1, 3 } });

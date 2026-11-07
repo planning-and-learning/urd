@@ -24,6 +24,7 @@ def main() -> None:
     assert module.map({"on": 2, "clear": 1}) == {"on": 2, "clear": 1}
     assert module.sorted_map({2: "b", 1: "a"}) == {1: "a", 2: "b"}
     assert module.nested([[1, 2], [], [3]]) == [[1, 2], [], [3]]
+    assert module.positional_set([3, 1, 3]) == {1, 3}
     assert module.sizes([[1, 2], [], [3]]) == [2, 0, 1]
     for function, bad in ((module.sequence, ["x"]), (module.map, {1: 2}), (module.set, "abc")):
         try:

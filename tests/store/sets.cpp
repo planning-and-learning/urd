@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -191,6 +192,19 @@ TEST(Store, BuildsAndChangesAsAsked)
     EXPECT_TRUE(erase(numbers, 2) == 2);
     EXPECT_TRUE(numbers == (Store<sequence<int>> { 7, 9, 3 }) && numbers.at(2) == 3 && numbers < Store<sequence<int>> { 8 });
     EXPECT_TRUE(erase_if(numbers, [](int element) { return element > 8; }) == 1 && numbers.size() == 2);
+}
+
+// <=> and erase compare as == does (urd::EqualTo, urd::Less): a NaN equals a NaN and orders after every number.
+TEST(Store, OrdersAndErasesAsItCompares)
+{
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    const auto with_nan = Store<sequence<double>> { 1.0, nan };
+    EXPECT_TRUE(with_nan == (Store<sequence<double>> { 1.0, nan }));
+    EXPECT_EQ(with_nan <=> (Store<sequence<double>> { 1.0, nan }), std::strong_ordering::equal);
+    EXPECT_EQ(with_nan <=> (Store<sequence<double>> { 1.0, 2.0 }), std::strong_ordering::greater);
+    auto numbers = Store<sequence<double>> { nan, 1.0, nan };
+    EXPECT_EQ(erase(numbers, nan), 2U);
+    EXPECT_TRUE(numbers == (Store<sequence<double>> { 1.0 }));
 }
 
 namespace

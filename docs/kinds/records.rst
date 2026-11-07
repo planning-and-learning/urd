@@ -62,6 +62,11 @@ Flat containers
 .. cpp:type:: template<typename T> flat_vector = cista::offset::vector<T>
 .. cpp:type:: flat_string = cista::offset::string
 .. cpp:type:: template<typename... Ts> flat_variant = cista::offset::variant<Ts...>
+.. cpp:type:: template<typename T> flat_optional = cista::optional<T>
+.. cpp:type:: template<typename T1, typename T2> flat_pair = cista::pair<T1, T2>
+
+   ``is_flat_vector<T>``, ``is_flat_variant<T>``, ``is_flat_optional<T>`` and ``is_flat_pair<T>`` say whether a type is
+   one of them.
 
    With :cpp:struct:`Hash` and :cpp:struct:`EqualTo` (the same byte hash as ``std::string``, so equal text hashes
    alike), and resolved by views like their standard counterparts.
