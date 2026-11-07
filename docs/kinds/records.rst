@@ -100,9 +100,9 @@ Member functions
 
    ``std::out_of_range`` where there is no record at ``at``.
 
-.. cpp:function:: view<Record, Store> view(index_type at) const
+.. cpp:function:: index_view<Record, Store> view(index_type at) const
 
-   A :cpp:class:`view\<Record, Store\> <urd::view>` of the record through this Store; of a layered pool, through the layer that
+   A :cpp:class:`index_view\<Record, Store\> <urd::index_view>` of the record through this Store; of a layered pool, through the layer that
    owns it.
 
 .. cpp:function:: std::size_t layer() const

@@ -9,6 +9,7 @@
 #include <compare>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -32,7 +33,7 @@ concept resolves = requires(const C& context, index<T> at) {
     requires(std::same_as<std::remove_cvref_t<decltype(context[at])>, data<T>> && stored_record<T>)
                 || std::convertible_to<decltype(context[at]), const T&>;
     { context.layer() } -> std::same_as<std::size_t>;
-    { context.view(at) } -> std::same_as<view<T, C>>;
+    { context.view(at) } -> std::same_as<index_view<T, C>>;
 };
 
 /// Hook for the named accessors of a record's views, one line each over get<>: `template<typename V> struct
@@ -44,7 +45,12 @@ struct view_mixin
 {
 };
 
-/// A builder's views read as the views of what it builds, unless its mixin says otherwise.
+/// A record view's accessors are its record's mixin (view_mixin<R, V>): a stored record and a builder read as T,
+/// unless a mixin of their own says otherwise.
+template<typename T, typename V>
+struct view_mixin<data<T>, V> : view_mixin<T, V>
+{
+};
 template<typename T, typename V>
 struct view_mixin<builder<T>, V> : view_mixin<T, V>
 {
@@ -70,7 +76,7 @@ struct resolution
 };
 
 /// A record's member, as a view sees it: what its resolution makes of it. The member is passed on as it is given, so
-/// that a resolution which borrows it (a record or builder: urd::borrowed) refuses a temporary.
+/// that a resolution which borrows it (a record or builder: urd::borrowed_view) refuses a temporary.
 template<typename M, typename C>
 [[nodiscard]] decltype(auto) resolve(M&& member, const C& context)
 { return resolution<std::remove_cvref_t<M>>::of(std::forward<M>(member), context); }
@@ -133,28 +139,33 @@ struct resolution<M>
     }
 };
 
-/// A range of resolving elements read through a context: each element resolved (urd::resolve) when it is read; held
-/// are the range's iterators (a container's, or a borrowed view's: a span, a decoded row) and the context, both
-/// borrowed. A named type, so that it can be spelled (an alias, a parameter) while the context is still incomplete.
-template<typename M, typename C>
-class resolved_range : public std::ranges::view_interface<resolved_range<M, C>>
+/// A range R read through a function F: each element x read as f(x). Held are R's iterators (a container's, or a
+/// borrowed view's: a span, iota, the set bits of a bitset) and the function, so that, unlike std::views::transform,
+/// its iterators do not point into it: they outlive it, and it is a borrowed range. It traverses as R does (random
+/// access where R is); its end is R's sentinel where R has one. R must outlive it where R is not a view. F is a small
+/// function object (a captureless lambda, or a struct naming what it reads through). A named type, so that it can be
+/// spelled (an alias, a parameter) before F can be called (urd::resolved_range).
+template<std::ranges::input_range R, std::semiregular F>
+class transformed_range : public std::ranges::view_interface<transformed_range<R, F>>
 {
-    static_assert(!std::ranges::view<M> || std::ranges::borrowed_range<M>,
-                  "urd::resolved_range: a view read through a context must be a borrowed range (its iterators outlive it)");
-    using base_iterator = std::ranges::iterator_t<const M>;
-    using held_range = decltype(std::ranges::subrange(std::declval<const M&>()));
+    static_assert(!std::ranges::view<R> || std::ranges::borrowed_range<R>,
+                  "urd::transformed_range: a view read through a function must be a borrowed range (its iterators outlive it)");
+    using base_iterator = std::ranges::iterator_t<const R>;
+    using base_sentinel = std::ranges::sentinel_t<const R>;
+    using held_range = decltype(std::ranges::subrange(std::declval<const R&>()));
     held_range m_range;
-    const C* m_context;
+    F m_function {};
 
 public:
     class iterator
     {
         base_iterator m_it {};
-        const C* m_context = nullptr;
+        F m_function {};
 
     public:
+        using reference = std::invoke_result_t<const F&, std::iter_reference_t<base_iterator>>;
         using difference_type = std::iter_difference_t<base_iterator>;
-        using value_type = resolved_t<std::ranges::range_value_t<M>, C>;
+        using value_type = std::remove_cvref_t<reference>;
         using iterator_concept = std::conditional_t<std::random_access_iterator<base_iterator>,
                                                     std::random_access_iterator_tag,
                                                     std::conditional_t<std::bidirectional_iterator<base_iterator>,
@@ -164,10 +175,10 @@ public:
                                                                                           std::input_iterator_tag>>>;
 
         iterator() = default;
-        iterator(base_iterator it, const C* context) : m_it(std::move(it)), m_context(context) {}
+        iterator(base_iterator it, const F& function) : m_it(std::move(it)), m_function(function) {}
 
-        [[nodiscard]] value_type operator*() const { return urd::resolve(*m_it, *m_context); }
-        [[nodiscard]] value_type operator[](difference_type n) const
+        [[nodiscard]] reference operator*() const { return std::invoke(m_function, *m_it); }
+        [[nodiscard]] reference operator[](difference_type n) const
             requires std::random_access_iterator<base_iterator>
         { return *(*this + n); }
         iterator& operator++()
@@ -219,39 +230,73 @@ public:
             requires std::sized_sentinel_for<base_iterator, base_iterator>
         { return lhs.m_it - rhs.m_it; }
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_it == rhs.m_it; }
+        friend bool operator==(const iterator& it, const base_sentinel& end)
+            requires(!std::same_as<base_sentinel, base_iterator>)
+        { return it.m_it == end; }
         friend auto operator<=>(const iterator& lhs, const iterator& rhs)
             requires std::random_access_iterator<base_iterator>
         { return (lhs.m_it - rhs.m_it) <=> difference_type { 0 }; }
     };
 
-    resolved_range(const M& range, const C& context) : m_range(range), m_context(&context) {}
+    transformed_range(const R& range, F function) : m_range(range), m_function(std::move(function)) {}
 
-    /// The stored range read through (its elements unresolved), as std's views name it, and the context it is read
-    /// through.
+    /// The range read through (its elements as they are), as std's views name it, and the function.
     [[nodiscard]] const held_range& base() const noexcept { return m_range; }
-    [[nodiscard]] const C& context() const noexcept { return *m_context; }
+    [[nodiscard]] const F& function() const noexcept { return m_function; }
+    /// The context it is read through, where its function names one (urd::resolver).
+    [[nodiscard]] const auto& context() const noexcept
+        requires requires(const F& function) { *function.context; }
+    { return *m_function.context; }
 
-    [[nodiscard]] iterator begin() const { return { m_range.begin(), m_context }; }
+    [[nodiscard]] iterator begin() const { return { m_range.begin(), m_function }; }
     [[nodiscard]] iterator end() const
-        requires std::ranges::common_range<const M>
-    { return { m_range.end(), m_context }; }
+        requires std::ranges::common_range<const R>
+    { return { m_range.end(), m_function }; }
+    [[nodiscard]] base_sentinel end() const
+        requires(!std::ranges::common_range<const R>)
+    { return m_range.end(); }
     [[nodiscard]] auto size() const
-        requires std::ranges::sized_range<const M>
+        requires std::ranges::sized_range<const R>
     { return std::ranges::size(m_range); }
     /// The element at a position, checked as std's containers do (std::out_of_range).
-    [[nodiscard]] auto at(std::size_t position) const
-        requires std::ranges::random_access_range<const M> && std::ranges::sized_range<const M>
+    [[nodiscard]] decltype(auto) at(std::size_t position) const
+        requires std::ranges::random_access_range<const R> && std::ranges::sized_range<const R>
     {
         if (position >= std::ranges::size(m_range))
-            throw std::out_of_range("urd::resolved_range::at: position out of range");
+            throw std::out_of_range("urd::transformed_range::at: position out of range");
         return (*this)[position];
     }
 };
 
-/// A readout is a value range where the range it reads is one (or is a view: a span, a decoded row): Hash, EqualTo
-/// and Less follow from its elements, the views.
+/// `range` read through `function` (urd::transformed_range): a borrowed std::views::transform. An rvalue range only
+/// where it is borrowed (a view whose iterators outlive it); a container must outlive the result.
+template<std::ranges::input_range R, typename F>
+    requires std::ranges::borrowed_range<R>
+[[nodiscard]] transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)
+{ return { range, std::forward<F>(function) }; }
+
+/// What a resolved_range reads its elements through: urd::resolve with the context, each element passed on as the
+/// range gives it (so that a stored record, which its view borrows, is refused as a temporary).
+template<typename C>
+struct resolver
+{
+    const C* context = nullptr;
+
+    template<typename M>
+    [[nodiscard]] auto operator()(M&& member) const
+    { return urd::resolve(std::forward<M>(member), *context); }
+};
+
+/// A range of resolving elements read through a context: each element resolved (urd::resolve) when it is read; the
+/// transformed_range whose function is the context's resolver (the context borrowed: context() gives it). A named
+/// type, so that it can be spelled (an alias, a parameter) while the context is still incomplete.
 template<typename M, typename C>
-inline constexpr bool value_range<resolved_range<M, C>> = value_range<M> || std::ranges::view<M>;
+using resolved_range = transformed_range<M, resolver<C>>;
+
+/// A transformed range is a value range where the range it reads is one (or is a view: a span, a decoded row, iota):
+/// Hash, EqualTo and Less follow from its elements.
+template<typename R, typename F>
+inline constexpr bool value_range<transformed_range<R, F>> = value_range<R> || std::ranges::view<R>;
 
 /// A range of resolving elements (indices, or compositions of them, at any depth) as its resolved_range.
 template<std::ranges::input_range M>
@@ -260,155 +305,165 @@ struct resolution<M>
 {
     template<typename C>
     static resolved_range<M, C> of(const M& member, const C& context)
-    { return { member, context }; }
-};
-
-/// What a view holds, and how it reads its record (h.read(context)): one of four holding types.
-/// - A handle (urd::handle: an index, or a library's composite handle): the element interned in the context, which
-///   resolves it (context[handle] is the record).
-/// - borrowed<R>: a record R stored elsewhere, which outlives the view (a stored record in place, a caller's, a
-///   builder). Never a temporary.
-/// - shared<R>: a record R the view shares ownership of (std::shared_ptr), released with the last copy.
-/// - owned<R>: a record R computed on the fly, which the view owns by value.
-/// Each compares and hashes by what identifies it: a handle by itself, a record holder by its record. A record holder
-/// names the record it reads (record_type).
-template<typename R>
-struct borrowed
-{
-    using record_type = R;
-    const R* record;
-
-    borrowed(const R& held) noexcept : record(&held) {}  // NOLINT(google-explicit-constructor): a view is made of the record it borrows
-    borrowed(const R&& held) = delete;
-
-    [[nodiscard]] const R& read(const auto& /*context*/) const noexcept { return *record; }
-    static constexpr auto identifying_members() noexcept { return Members<[](const borrowed& h) -> const R& { return *h.record; }> {}; }
-};
-
-template<typename R>
-struct shared
-{
-    using record_type = R;
-    std::shared_ptr<const R> record;
-
-    template<typename P>
-        requires std::convertible_to<P, std::shared_ptr<const R>>
-    shared(P&& held) noexcept : record(std::forward<P>(held))  // NOLINT(google-explicit-constructor): a view is made of the record it shares
-    {
-    }
-
-    [[nodiscard]] const R& read(const auto& /*context*/) const noexcept { return *record; }
-    static constexpr auto identifying_members() noexcept { return Members<[](const shared& h) -> const R& { return *h.record; }> {}; }
-};
-
-template<typename R>
-struct owned
-{
-    using record_type = R;
-    R record;
-
-    owned(R held) noexcept(std::is_nothrow_move_constructible_v<R>) : record(std::move(held)) {}  // NOLINT(google-explicit-constructor): a view is made of the record it owns
-
-    [[nodiscard]] const R& read(const auto& /*context*/) const noexcept { return record; }
-    static constexpr auto identifying_members() noexcept { return Members<&owned::record> {}; }
+    { return { member, resolver<C> { &context } }; }
 };
 
 namespace detail
 {
-/// The mixin a view's accessors come from: a builder's own where H reads a builder (else T's, view_mixin<builder<T>, V>
-/// falling back to it), T's otherwise.
-template<typename T, typename H>
-struct mixin_key
+/// What the four views share (V: the view; K: the key of its mixin): the context, a const C* the context must outlive;
+/// the record, V's data(); its members resolved through the context, get<&T::m>(); the mixin's accessors; and the
+/// identity: what V identifies its record by (V's identity()) and the number of its context (urd::layer), so that
+/// equal views are the same element wherever they were made.
+template<typename V, typename T, typename C, typename K>
+class view_base : public view_mixin<K, V>, public compared_by_identity<V>
 {
-    using type = T;
-};
-template<typename T, typename H>
-    requires is_builder<typename H::record_type>
-struct mixin_key<T, H>
-{
-    using type = typename H::record_type;
-};
-
-/// A view of a handle gives it, index(); a view of a record names none, so that the record's mixin may.
-template<typename V, typename H, typename M>
-struct handle_index : M
-{
-};
-template<typename V, handle H, typename M>
-struct handle_index<V, H, M> : M
-{
-    [[nodiscard]] H index() const noexcept { return static_cast<const V&>(*this).m_held; }
-};
-}  // namespace detail
-
-/// A T read through a context C it borrows, which must outlive it, holding what reads its record (H, a holding type
-/// above: by default the index). It resolves the record's members through the context (get<&T::m>(), the view_mixin
-/// accessors: a builder's own, else T's). It compares and hashes by what it holds and the number of its context
-/// (urd::layer), so that equal views of an index are the same element wherever they were made. A context makes them:
-/// context.view(index), context.view(record).
-template<typename T, typename C, typename H>
-class view :
-    public detail::handle_index<view<T, C, H>, H, view_mixin<typename detail::mixin_key<T, H>::type, view<T, C, H>>>,
-    public compared_by_identity<view<T, C, H>>
-{
-    friend detail::handle_index<view, H, view_mixin<typename detail::mixin_key<T, H>::type, view>>;
-
 public:
     using value_type = T;
 
-    view(H held, const C& context) noexcept(std::is_nothrow_move_constructible_v<H>) : m_held(std::move(held)), m_context(&context) {}
-
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
-    /// The record itself, as the holding type reads it (an index: as the context holds it, a T or the stored record
-    /// data<T>).
-    [[nodiscard]] decltype(auto) data() const { return m_held.read(*m_context); }
     /// A member of the record, resolved through the context (urd::resolve).
     template<auto Member>
     [[nodiscard]] decltype(auto) get() const
-    { return urd::resolve(data().*Member, *m_context); }
+    { return urd::resolve(static_cast<const V&>(*this).data().*Member, *m_context); }
 
-    /// The identity: what it holds, and the number of its context (a context without a number gives none).
+    /// The identity: what identifies the record, and the number of the context (a context without a number gives
+    /// none).
     static constexpr auto identifying_members() noexcept
         requires requires(const C& context) { context.layer(); }
     {
-        return Members<[](const view& v) -> const H& { return v.m_held; }, [](const view& v) { return v.context().layer(); }> {};
+        return Members<[](const V& v) -> decltype(auto) { return v.identity(); },
+                       [](const V& v) { return v.context().layer(); }> {};
     }
 
+protected:
+    explicit view_base(const C* context) noexcept : m_context(context) {}
+
 private:
-    H m_held;
     const C* m_context;
 };
 
-/// The views of each holding type.
-template<typename T, typename C>
-using index_view = view<T, C, index<T>>;
-template<typename T, typename C, typename R = data<T>>
-using borrowed_view = view<T, C, borrowed<R>>;
-template<typename T, typename C, typename R = data<T>>
-using shared_view = view<T, C, shared<R>>;
-template<typename T, typename C, typename R = data<T>>
-using owned_view = view<T, C, owned<R>>;
+}  // namespace detail
 
-/// A stored record held in place (inside a composition, or given to urd::resolve): its view, which borrows it.
+/// A T through a context C, held as a handle H (urd::handle: by default the index): read through the context,
+/// context[h] (a T, or the stored record data<T>), and identified by the handle. What a context makes of its handles,
+/// context.view(h); the only view that names its handle, index().
+template<typename T, typename C, typename H>
+class index_view : public detail::view_base<index_view<T, C, H>, T, C, T>
+{
+    friend detail::view_base<index_view, T, C, T>;
+
+public:
+    index_view(H at, const C* context) noexcept(std::is_nothrow_move_constructible_v<H>) :
+        detail::view_base<index_view, T, C, T>(context),
+        m_at(std::move(at))
+    {
+    }
+
+    [[nodiscard]] H index() const noexcept { return m_at; }
+    [[nodiscard]] decltype(auto) data() const { return this->context()[m_at]; }
+
+private:
+    [[nodiscard]] const H& identity() const noexcept { return m_at; }
+
+    H m_at;
+};
+
+/// A T through a context C, held as a record R (data<T>, or builder<T>) outside the context, which it points at: the
+/// record must outlive the view. What urd::resolve makes of a record held in place. Read and identified by the record.
+template<typename T, typename C, typename R>
+class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
+{
+    friend detail::view_base<borrowed_view, T, C, R>;
+
+public:
+    borrowed_view(const R* record, const C* context) noexcept :
+        detail::view_base<borrowed_view, T, C, R>(context),
+        m_record(record)
+    {
+    }
+
+    [[nodiscard]] const R& data() const noexcept { return *m_record; }
+
+private:
+    [[nodiscard]] const R& identity() const noexcept { return *m_record; }
+
+    const R* m_record;
+};
+
+/// A T through a context C, holding its record R (data<T>, or builder<T>) by value: a record computed rather than
+/// stored. Read and identified by the record.
+template<typename T, typename C, typename R>
+class owning_view : public detail::view_base<owning_view<T, C, R>, T, C, R>
+{
+    friend detail::view_base<owning_view, T, C, R>;
+
+public:
+    owning_view(R record, const C* context) noexcept(std::is_nothrow_move_constructible_v<R>) :
+        detail::view_base<owning_view, T, C, R>(context),
+        m_record(std::move(record))
+    {
+    }
+
+    [[nodiscard]] const R& data() const noexcept { return m_record; }
+
+private:
+    [[nodiscard]] const R& identity() const noexcept { return m_record; }
+
+    R m_record;
+};
+
+/// A T through a context C, sharing its record R (data<T>, or builder<T>): released with the last copy. Read and
+/// identified by the record.
+template<typename T, typename C, typename R>
+class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
+{
+    friend detail::view_base<shared_view, T, C, R>;
+
+public:
+    shared_view(std::shared_ptr<const R> record, const C* context) noexcept :
+        detail::view_base<shared_view, T, C, R>(context),
+        m_record(std::move(record))
+    {
+    }
+
+    [[nodiscard]] const R& data() const noexcept { return *m_record; }
+
+private:
+    [[nodiscard]] const R& identity() const noexcept { return *m_record; }
+
+    std::shared_ptr<const R> m_record;
+};
+
+/// A stored record held in place (inside a composition, or given to urd::resolve): its borrowed_view. Never a
+/// temporary.
 template<typename T>
 struct resolution<data<T>>
 {
     static_assert(stored_record<T>, "urd::data<T> must be Serializable: cista_members() returning urd::Members<...>");
 
-    template<typename M, typename C>
-        requires std::constructible_from<borrowed<data<T>>, M>
-    static borrowed_view<T, C> of(M&& member, const C& context) noexcept
-    { return { std::forward<M>(member), context }; }
+    template<typename C>
+    static borrowed_view<T, C> of(const data<T>& member, const C& context) noexcept
+    { return { &member, &context }; }
+    template<typename C>
+    static void of(const data<T>&& member, const C& context) = delete;
 };
 
-/// A builder read through a context: its view, which borrows it.
+/// A builder read through a context: its borrowed_view. Never a temporary.
 template<typename T>
 struct resolution<builder<T>>
 {
-    template<typename M, typename C>
-        requires std::constructible_from<borrowed<builder<T>>, M>
-    static borrowed_view<T, C, builder<T>> of(M&& member, const C& context) noexcept
-    { return { std::forward<M>(member), context }; }
+    template<typename C>
+    static borrowed_view<T, C, builder<T>> of(const builder<T>& member, const C& context) noexcept
+    { return { &member, &context }; }
+    template<typename C>
+    static void of(const builder<T>&& member, const C& context) = delete;
 };
 
 }  // namespace urd
+
+namespace std::ranges
+{
+/// Its iterators hold what they read (the range's iterators and the function): they outlive it.
+template<typename R, typename F>
+inline constexpr bool enable_borrowed_range<urd::transformed_range<R, F>> = true;
+}  // namespace std::ranges

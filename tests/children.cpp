@@ -39,8 +39,8 @@ struct Node
 struct Context
 {
     template<typename T>
-    [[nodiscard]] urd::view<T, Context> view(urd::index<T> at) const
-    { return { at, *this }; }
+    [[nodiscard]] urd::index_view<T, Context> view(urd::index<T> at) const
+    { return { at, this }; }
 };
 
 // Node is listed, but a record's own type is never its child.
@@ -65,7 +65,7 @@ TEST(Children, VisitsEveryNestedShapeInMemberOrder)
 {
     const auto context = Context();
     auto visited = std::vector<LeafIndex::value_type>();
-    urd::for_each_child<Children, Node>(make_node(), context, [&](urd::view<Leaf, Context> child) { visited.push_back(child.index().value); });
+    urd::for_each_child<Children, Node>(make_node(), context, [&](urd::index_view<Leaf, Context> child) { visited.push_back(child.index().value); });
     EXPECT_EQ(visited, (std::vector<LeafIndex::value_type> { 1, 2, 3, 4, 5, 6 }));
 }
 
@@ -73,7 +73,7 @@ TEST(Children, MapsEveryNestedShapeAndKeepsTheRest)
 {
     const auto context = Context();
     const auto mapped = urd::map_children<Children, Node>(make_node(), context,
-                                                          [](urd::view<Leaf, Context> child) { return LeafIndex(child.index().value + 100); });
+                                                          [](urd::index_view<Leaf, Context> child) { return LeafIndex(child.index().value + 100); });
     EXPECT_EQ(mapped.single.value, 101U);
     EXPECT_EQ(mapped.matrix[0][0].value, 102U);
     EXPECT_EQ(mapped.matrix[0][1].value, 103U);

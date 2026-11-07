@@ -11,7 +11,7 @@ What a container needs of its elements comes from three function objects, with n
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
    :cpp:concept:`Identifiable` type, :cpp:struct:`urd::index`,
-   :cpp:class:`urd::view`, the flat containers of ``urd/elements/flat.hpp``, any range whose elements in order are its
+   the views (:cpp:class:`urd::index_view` and the record views), the flat containers of ``urd/elements/flat.hpp``, any range whose elements in order are its
    value (``urd::value_range<R> = true``: hashed, compared and ordered as its elements), and Stores whose contents fix
    their order (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.
 
@@ -51,7 +51,7 @@ A type names its identity once and is then hashable, comparable and ordered, in 
 .. cpp:concept:: template<typename T> Identifiable
 
    ``T`` is :cpp:concept:`MemberIdentified`, or its ``identifying_members()`` gives its identity as a value (a
-   :cpp:class:`urd::view` gives a tuple). Hash, EqualTo and Less of ``T`` are those of that identity.
+   view gives a tuple). Hash, EqualTo and Less of ``T`` are those of that identity.
 
 .. cpp:concept:: template<typename T> hashable
 
@@ -118,79 +118,83 @@ Indices and views
 
    .. cpp:member:: std::size_t number
 
-.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename H = index<T>> view
+A ``T`` is read through a context ``C`` that resolves the handles in its record (:cpp:concept:`resolves`), by one of
+four views (``urd/elements/view.hpp``), which differ only in how they hold the record. Each borrows its context as a
+``const C*``, which must outlive it, and has the same surface: ``context()``, ``data()``, ``get<&T::m>()``, the
+accessors of its :cpp:struct:`view_mixin`, ``value_type`` (``T``), and an identity (what identifies the record, and
+the context's number) that ``==``, ``<=>``, ``EqualTo``, ``Hash`` and ``Less`` compare by. A positional set and a pool
+of records resolve their own type; any type that gives the record, its number and the view of an index serves.
 
-   A ``T`` read through a context (``urd/elements/view.hpp``): what locates it and a pointer to a context ``C`` that
-   resolves it (:cpp:concept:`resolves`). A positional set and a pool of records resolve their own type; any type
-   that gives the record, its number and the view of an index serves. The context must outlive the view.
+.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename H = index<T>> index_view
 
-   It holds what reads the record, its third parameter ``H``: one of the holding types below. By default the index
-   (``index_view``), read through the context; ``resolve`` makes the views of records held in place (borrowed), and
-   the context those of its indices. The view itself has no cases: ``data()`` is ``held.read(context)``.
+   Holds a handle (:cpp:concept:`handle`; by default the index), read through the context as ``context[h]`` (a ``T``,
+   or its stored record ``data<T>``) and identified by itself: what a context makes of its handles,
+   ``context.view(h)``. Two views of one element from one context are equal and hash equally, wherever they were
+   made; views from differently numbered contexts are not.
 
-   .. cpp:function:: view(H held, const C& context)
-
-      ``held`` converts from what the holding type holds (an index, a record, a ``std::shared_ptr``); a
-      ``borrowed<R>`` only from an lvalue.
-
+   .. cpp:function:: index_view(H at, const C* context)
    .. cpp:function:: H index() const noexcept
 
-      Only where it holds a handle (:cpp:concept:`handle`); a view of a record names none, so that the record's
-      mixin may.
+      Only an index_view names its handle; a view of a record names none, so that the record's mixin may.
+
+.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename R = data<T>> borrowed_view
+
+   Points at a record ``R`` (``data<T>``, a ``builder<T>``, or another form of ``T``) held outside the context, which
+   must outlive the view; read and identified by the record. What :cpp:func:`resolve` makes of a record or builder
+   held in place (never of a temporary).
+
+   .. cpp:function:: borrowed_view(const R* record, const C* context)
+
+.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename R = data<T>> owning_view
+
+   Holds a record ``R`` by value: one computed rather than stored. Read and identified by the record.
+
+   .. cpp:function:: owning_view(R record, const C* context)
+
+.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename R = data<T>> shared_view
+
+   Shares a record ``R`` (``std::shared_ptr<const R>``), released with the last copy. Read and identified by the
+   record.
+
+   .. cpp:function:: shared_view(std::shared_ptr<const R> record, const C* context)
+
+What all four give:
 
    .. cpp:function:: const C& context() const noexcept
    .. cpp:function:: decltype(auto) data() const
 
-      The record, as the holding type reads it: for a handle as the context holds it (a ``T``, or its stored record
-      ``data<T>``), else the record held.
+      The record: for an index_view as the context holds it, else the record held.
 
    .. cpp:function:: template<auto Member> decltype(auto) get() const
 
       A member of the record resolved through the context (:cpp:func:`resolve`): an ``index<U>`` becomes the
-      ``view<U, C>`` the context makes, pointing at the layer that owns the element; a range of indices a range of
-      views; a variant the variant of its alternatives resolved; an optional the optional of its value resolved;
-      anything else stays as it is.
+      ``index_view<U, C>`` the context makes, pointing at the layer that owns the element; a range of indices a range
+      of views; a variant the variant of its alternatives resolved; an optional the optional of its value resolved; a
+      stored record held in the record its borrowed_view; anything else stays as it is.
 
    .. cpp:function:: auto identifying_members() const noexcept
 
-      The identity: what it holds (a handle itself, a record holder by what identifies its record), and the context's number
-      (:cpp:struct:`layer`). Two views of one element from one
-      context are equal under ``EqualTo`` and hash equally, wherever they were made; views from differently numbered
-      contexts are not. ``==`` and ``<=>`` compare by it, and so do ``EqualTo``, ``Hash`` and ``Less``.
+      The identity: the handle, or the record, and the context's number (:cpp:struct:`layer`); only where the context
+      has a number.
 
 .. cpp:concept:: template<typename C, typename T> resolves
 
    ``context[index<T>]`` is convertible to ``const T&``, or is the stored record ``data<T>`` (the slot of
    ``urd/elements/data.hpp``, which must be Serializable); ``context.layer()`` is its number; ``context.view(index<T>)``
-   gives the ``view<T, C>`` of the index, through the context that owns it (a layer points it at the layer that owns
+   gives the ``index_view<T, C>`` of the index, through the context that owns it (a layer points it at the layer that owns
    the element; a context made of several Stores writes one per type).
 
 .. cpp:concept:: template<typename H> handle
 
-   ``H`` locates a record in a context, which resolves it: it names what it locates (``using located = T;``) and reads
-   it, ``h.read(context)`` being ``context[h]``. ``index<T>`` is one; a library's composite handle (a relation and a
-   row) declares the same.
-
-.. cpp:struct:: template<typename R> borrowed
-.. cpp:struct:: template<typename R> shared
-.. cpp:struct:: template<typename R> owned
-
-   The holding types of a record ``R`` (``data<T>``, a ``builder<T>``, or another form of ``T``), each naming it
-   (``record_type``) and reading it, ``read(context)``, regardless of the context:
-
-   - ``borrowed<R>``: a record stored elsewhere (in place in a record, a caller's, a builder), which must outlive the
-     view. Built from an lvalue only: a temporary is refused, and so is ``resolve`` of one.
-   - ``shared<R>``: a record the view shares (``std::shared_ptr<const R>``), released with its last holder.
-   - ``owned<R>``: a record computed on the fly, owned by value; a copy of the view copies it.
-
-   Each compares and hashes by its record (its identity), so views of equal records from one context are equal.
-   ``index_view<T, C>``, ``borrowed_view<T, C, R = data<T>>``, ``shared_view<T, C, R>`` and ``owned_view<T, C, R>``
-   name the views of each.
+   ``H`` is a key that locates a record in a context, which resolves it: it only names what it locates (``using
+   located = T;``); the context gives the record, ``context[h]``, and its view, ``context.view(h)``. ``index<T>`` is
+   one; a library's composite handle (a relation and a row) declares the same, and its context gives ``operator[]``
+   for it.
 
 .. cpp:function:: template<typename M, typename C> decltype(auto) resolve(M&& member, const C& context)
 
    A record's member as a view sees it: ``resolution<M>::of(member, context)``, the member passed on as given (so
-   that a record or builder, which its resolution borrows, is refused as a temporary); see :cpp:func:`view::get`.
+   that a record or builder, which its resolution borrows, is refused as a temporary); see :cpp:func:`index_view::get`.
 
 .. cpp:struct:: template<typename M> resolution
 
@@ -198,17 +202,38 @@ Indices and views
    ranges of indices (a range of views), ``std::variant`` and ``std::optional`` (their contents resolved), and in
    ``urd/elements/flat.hpp`` for cista's variant and optional. A new member type resolves by specializing it.
 
+.. cpp:class:: template<std::ranges::input_range R, std::semiregular F> transformed_range
+.. cpp:function:: template<std::ranges::input_range R, typename F> transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)
+
+   ``range`` read through ``function``: each element ``x`` read as ``function(x)``, a borrowed
+   ``std::views::transform``. It holds ``range``'s iterators and the function, and so do its iterators: unlike
+   ``std::views::transform``'s, they do not point into the range object and outlive it, so it is a
+   ``std::ranges::borrowed_range`` (a function may return it, Python may iterate it after the call). It traverses
+   as ``range`` does (random access, sized where it is), ends at ``range``'s sentinel where it has one, and has
+   ``base()``, ``function()`` and a checked ``at(position)``. ``range`` must outlive it unless it is a borrowed view
+   (iota, a span, the set bits of a bitset); a view that is not borrowed is refused, and ``transform`` takes an rvalue
+   only where it is borrowed. The function is a small semiregular function object: a captureless lambda, or a struct
+   holding what it reads through (a pointer). It owns nothing else. Where what it reads is a value range
+   (``urd::value_range``) or a view, it is a value range itself.
+
+.. cpp:type:: template<typename M, typename C> resolved_range = transformed_range<M, resolver<C>>
+
+   A range of resolving elements read through a context: the :cpp:class:`transformed_range` of ``M`` whose function,
+   ``resolver<C>`` (``{ &context }``), resolves each element (:cpp:func:`resolve`) through the context, which it
+   borrows; what :cpp:struct:`resolution` makes of a range of indices. ``context()`` gives the context. It can be
+   spelled while ``C`` is still incomplete.
+
 .. cpp:struct:: template<typename T> context_of
 
    Names a record type's default context once (``template<> struct urd::context_of<Atom> { using type =
-   Repository; };``), so that ``view<Atom>`` needs no second argument.
+   Repository; };``), so that ``index_view<Atom>`` needs no second argument.
 
 .. cpp:struct:: template<typename T, typename V> view_mixin
 
    Where a library adds the named accessors of a record's views, one line each over ``get<>``: ``template<typename
    V> struct urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template
    get<&urd::record_of<V>::predicate>(); } };``, where ``record_of<V>`` is the record the view reads (named through
-   ``V``, so it may be incomplete where the mixin is declared). The mixin is keyed on what the holding type reads:
-   views of an index and of a held record of ``T`` share ``T``'s mixin; views holding a builder use ``builder<T>``'s,
-   which is ``T``'s unless specialized. The view's
+   ``V``, so it may be incomplete where the mixin is declared). The mixin is keyed on what the view reads:
+   views of an index and of a record of ``T`` share ``T``'s mixin; views of a builder use ``builder<T>``'s, which is
+   ``T``'s unless specialized. The view's
    ``get<&T::m>()`` hides any ``get`` a mixin would declare: a mixin names its accessors otherwise.

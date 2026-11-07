@@ -1,4 +1,4 @@
-// urd::index<T> and urd::view<T, C>: a strong index minted by the Store that numbers Ts, and a reference made of
+// urd::index<T> and urd::index_view<T, C>: a strong index minted by the Store that numbers Ts, and a reference made of
 // an index and the context that resolves it, which resolves the record's members through the same context.
 
 #include "urd/elements/flat.hpp"
@@ -31,6 +31,7 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
 
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -38,6 +39,7 @@
 #include <memory>
 #include <ranges>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -53,7 +55,7 @@ using urd::sequence;
 using urd::set;
 using urd::slots;
 using urd::Store;
-using urd::view;
+using urd::index_view;
 
 struct Owner
 {
@@ -96,9 +98,10 @@ struct Both
     [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
     [[nodiscard]] const Rec& operator[](urd::index<Rec> at) const { return recs[at]; }
     [[nodiscard]] std::size_t layer() const { return recs.layer(); }
-    [[nodiscard]] urd::view<Owner, Both> view(urd::index<Owner> at) const { return { at, *this }; }
-    [[nodiscard]] urd::view<Rec, Both> view(urd::index<Rec> at) const { return { at, *this }; }
-    [[nodiscard]] urd::borrowed_view<Rec, Both, Rec> view(const Rec& record) const { return { record, *this }; }
+    [[nodiscard]] urd::index_view<Owner, Both> view(urd::index<Owner> at) const { return { at, this }; }
+    [[nodiscard]] urd::index_view<Rec, Both> view(urd::index<Rec> at) const { return { at, this }; }
+    [[nodiscard]] urd::borrowed_view<Rec, Both, Rec> view(const Rec& record) const { return { &record, this }; }
+    urd::borrowed_view<Rec, Both, Rec> view(const Rec&& record) const = delete;
 };
 
 }  // namespace
@@ -109,7 +112,7 @@ struct urd::context_of<Rec>
 {
     using type = Both;
 };
-static_assert(std::same_as<view<Rec>, view<Rec, Both>>);
+static_assert(std::same_as<index_view<Rec>, index_view<Rec, Both>>);
 
 namespace
 {
@@ -132,31 +135,36 @@ static_assert(urd::resolves<Owners, Owner> && !urd::resolves<Owners, Rec> && urd
 static_assert(!urd::resolves<Store<set<Owner>>, Owner>);
 
 // What the members resolve to, in each context.
-static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Both>, view<Owner, Both>>);
+static_assert(std::same_as<urd::resolved_t<urd::index<Owner>, Both>, index_view<Owner, Both>>);
 static_assert(std::same_as<urd::resolved_t<std::string, Both>, std::string>);  // text as it is
 static_assert(std::ranges::random_access_range<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>
-              && std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>, view<Owner, Both>>);
-static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Both>, std::variant<view<Owner, Both>, int>>);
+              && std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>, index_view<Owner, Both>>);
+static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Both>, std::variant<index_view<Owner, Both>, int>>);
 // A range's readout is a named type: it can be spelled with a context that is not complete yet.
 struct Later;
 static_assert(sizeof(urd::resolved_range<std::vector<urd::index<Owner>>, Later>) > 0);
+// A readout is a borrowed range (its iterators outlive it), random access where what it reads is.
+static_assert(std::ranges::borrowed_range<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>);
+static_assert(std::ranges::borrowed_range<urd::transformed_range<std::vector<int>, int (*)(int)>>
+              && std::ranges::random_access_range<urd::transformed_range<std::vector<int>, int (*)(int)>>
+              && std::ranges::sized_range<urd::transformed_range<std::vector<int>, int (*)(int)>>);
 
 // Compositions resolve at any depth: ranges of ranges, of optionals, of pairs; ranges of plain values stay as they are.
 static_assert(std::same_as<std::ranges::range_value_t<std::ranges::range_value_t<urd::resolved_t<std::vector<std::vector<urd::index<Owner>>>, Both>>>,
-                           view<Owner, Both>>);
+                           index_view<Owner, Both>>);
 static_assert(std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<std::optional<urd::index<Owner>>>, Both>>,
-                           std::optional<view<Owner, Both>>>);
-static_assert(std::same_as<urd::resolved_t<std::pair<urd::index<Owner>, std::vector<urd::index<Rec>>>, Both>::first_type, view<Owner, Both>>);
+                           std::optional<index_view<Owner, Both>>>);
+static_assert(std::same_as<urd::resolved_t<std::pair<urd::index<Owner>, std::vector<urd::index<Rec>>>, Both>::first_type, index_view<Owner, Both>>);
 static_assert(std::same_as<urd::resolved_t<std::vector<int>, Both>, std::vector<int>>);
 static_assert(urd::Hashable<urd::resolved_t<std::vector<urd::index<Owner>>, Both>> && urd::orderable<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>);
 
 // Views are hashable and comparable, by index and layer number.
-static_assert(urd::hashable<view<Rec, Both>> && urd::hashable<view<Owner, Owners>> && urd::orderable<view<Rec, Both>>);
+static_assert(urd::hashable<index_view<Rec, Both>> && urd::hashable<index_view<Owner, Owners>> && urd::orderable<index_view<Rec, Both>>);
 // A context without a number gives its views no identity.
 struct Unnumbered
 {
 };
-static_assert(!urd::Identifiable<view<Rec, Unnumbered>> && !urd::Identifiable<urd::view<Rec, Unnumbered, Rec>>);
+static_assert(!urd::Identifiable<index_view<Rec, Unnumbered>> && !urd::Identifiable<urd::borrowed_view<Rec, Unnumbered, Rec>>);
 
 }  // namespace
 
@@ -232,15 +240,15 @@ struct Items
     const urd::data<Item>& operator[](urd::index<Item> at) const { return records[at.value]; }
     const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
     [[nodiscard]] std::size_t layer() const noexcept { return 5; }
-    [[nodiscard]] urd::view<Item, Items> view(urd::index<Item> at) const { return { at, *this }; }
-    [[nodiscard]] urd::view<Owner, Items> view(urd::index<Owner> at) const { return { at, *this }; }
+    [[nodiscard]] urd::index_view<Item, Items> view(urd::index<Item> at) const { return { at, this }; }
+    [[nodiscard]] urd::index_view<Owner, Items> view(urd::index<Owner> at) const { return { at, this }; }
 };
 struct Bares
 {
     std::vector<urd::data<Bare>> records;
     const urd::data<Bare>& operator[](urd::index<Bare> at) const { return records[at.value]; }
     [[nodiscard]] std::size_t layer() const noexcept { return 6; }
-    [[nodiscard]] urd::view<Bare, Bares> view(urd::index<Bare> at) const { return { at, *this }; }
+    [[nodiscard]] urd::index_view<Bare, Bares> view(urd::index<Bare> at) const { return { at, this }; }
 };
 static_assert(urd::stored_record<Item> && !urd::stored_record<Bare>);
 static_assert(urd::resolves<Items, Item> && urd::resolves<Items, Owner> && !urd::resolves<Bares, Bare>);
@@ -334,7 +342,7 @@ TEST(View, ToStoredInvertsResolve)
     static_assert(std::same_as<std::remove_const_t<decltype(variant)>, urd::flat_variant<urd::index<Owner>, int>>);
     EXPECT_EQ(cista::get<urd::index<Owner>>(variant), b);
     EXPECT_EQ(urd::to_stored(7), 7);
-    static_assert(std::same_as<urd::stored_t<view<Owner, Both>>, urd::index<Owner>>);
+    static_assert(std::same_as<urd::stored_t<index_view<Owner, Both>>, urd::index<Owner>>);
 
     // A borrowed record as a copy of it.
     const auto record = Rec { "offered", { a }, b, 3 };
@@ -363,7 +371,7 @@ TEST(View, ClearMembersKeepsBuffers)
 TEST(View, ResolvesMembersThroughItsContext)
 {
     const auto both = make_both();
-    const auto whole = view<Rec>(urd::index<Rec>(0), both);  // Both resolves owners too
+    const auto whole = index_view<Rec>(urd::index<Rec>(0), &both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
     EXPECT_EQ(whole.part(1), whole.data().parts[1].value);
     EXPECT_EQ(whole.get<&Rec::owner>().get<&Owner::name>(), "b");
@@ -371,8 +379,8 @@ TEST(View, ResolvesMembersThroughItsContext)
     for (const auto part : whole.get<&Rec::parts>())
         names.push_back(part.get<&Owner::name>());
     EXPECT_EQ(names, (std::vector<std::string_view> { "a", "b" }));
-    EXPECT_EQ((std::get<view<Owner, Both>>(whole.get<&Rec::alternative>()).get<&Owner::name>()), "a");
-    const auto second = view<Rec>(urd::index<Rec>(1), both);
+    EXPECT_EQ((std::get<index_view<Owner, Both>>(whole.get<&Rec::alternative>()).get<&Owner::name>()), "a");
+    const auto second = index_view<Rec>(urd::index<Rec>(1), &both);
     EXPECT_EQ(std::get<int>(second.get<&Rec::alternative>()), 7);
     EXPECT_TRUE(second.get<&Rec::parts>().empty());
 }
@@ -380,32 +388,32 @@ TEST(View, ResolvesMembersThroughItsContext)
 TEST(View, ComparesAndHashesByIndexAndLayer)
 {
     const auto both = make_both();
-    const auto again = view<Rec>(urd::index<Rec>(0), both);
-    const auto equal = urd::EqualTo<view<Rec>> {};
-    EXPECT_TRUE(equal(view<Rec>(urd::index<Rec>(0), both), again));
-    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(1), both), again));
-    EXPECT_EQ(urd::Hash<view<Rec>> {}(view<Rec>(urd::index<Rec>(0), both)), urd::Hash<view<Rec>> {}(again));
+    const auto again = index_view<Rec>(urd::index<Rec>(0), &both);
+    const auto equal = urd::EqualTo<index_view<Rec>> {};
+    EXPECT_TRUE(equal(index_view<Rec>(urd::index<Rec>(0), &both), again));
+    EXPECT_FALSE(equal(index_view<Rec>(urd::index<Rec>(1), &both), again));
+    EXPECT_EQ(urd::Hash<index_view<Rec>> {}(index_view<Rec>(urd::index<Rec>(0), &both)), urd::Hash<index_view<Rec>> {}(again));
     const auto other = make_both(urd::layer { 1 });
-    EXPECT_FALSE(equal(view<Rec>(urd::index<Rec>(0), other), again));  // another layer: another element
-    EXPECT_TRUE(urd::Less<view<Rec>> {}(again, view<Rec>(urd::index<Rec>(1), both)));
+    EXPECT_FALSE(equal(index_view<Rec>(urd::index<Rec>(0), &other), again));  // another layer: another element
+    EXPECT_TRUE(urd::Less<index_view<Rec>> {}(again, index_view<Rec>(urd::index<Rec>(1), &both)));
 
-    auto seen = Store<set<view<Rec>>>();
+    auto seen = Store<set<index_view<Rec>>>();
     seen.insert(again);
-    EXPECT_TRUE(seen.contains(view<Rec>(urd::index<Rec>(0), both)));
-    EXPECT_FALSE(seen.contains(view<Rec>(urd::index<Rec>(1), both)));
+    EXPECT_TRUE(seen.contains(index_view<Rec>(urd::index<Rec>(0), &both)));
+    EXPECT_FALSE(seen.contains(index_view<Rec>(urd::index<Rec>(1), &both)));
 }
 
 TEST(View, ComparesWithItsOperators)
 {
     const auto both = make_both();
-    const auto first = view<Rec>(urd::index<Rec>(0), both);
-    const auto second = view<Rec>(urd::index<Rec>(1), both);
-    EXPECT_EQ(first, view<Rec>(urd::index<Rec>(0), both));
+    const auto first = index_view<Rec>(urd::index<Rec>(0), &both);
+    const auto second = index_view<Rec>(urd::index<Rec>(1), &both);
+    EXPECT_EQ(first, index_view<Rec>(urd::index<Rec>(0), &both));
     EXPECT_NE(first, second);
     EXPECT_LT(first, second);
     EXPECT_EQ(first <=> second, std::strong_ordering::less);
     const auto other = make_both(urd::layer { 1 });
-    EXPECT_NE(first, view<Rec>(urd::index<Rec>(0), other));
+    EXPECT_NE(first, index_view<Rec>(urd::index<Rec>(0), &other));
 
     // Borrowed views compare by the record and the layer.
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
@@ -426,14 +434,13 @@ static_assert(urd::handle<urd::index<Owner>> && urd::handle<PairHandle> && !urd:
 
 TEST(View, BorrowsAHeldRecord)
 {
-    // A record held outside the context (a form of T) is borrowed; a temporary one is not viewed. A handle (an index)
-    // is resolved through the context instead.
-    using Held = urd::borrowed_view<Rec, Both, Rec>;
-    static_assert(!std::is_constructible_v<Held, Rec&&, const Both&>);
+    // A record held outside the context (a form of T) is pointed at; a temporary one is not viewed. A handle (an
+    // index) is resolved through the context instead.
+    static_assert(!requires(const Both& both) { both.view(Rec {}); });
     const auto both = make_both();
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
     EXPECT_EQ(&both.view(record).data(), &record);
-    const auto by_handle = urd::view<Owner, Both>(urd::index<Owner>(1), both);
+    const auto by_handle = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
     EXPECT_EQ(&by_handle.data(), &both[urd::index<Owner>(1)]);
 }
 
@@ -443,22 +450,75 @@ template<typename V>
 concept names_index = requires(const V& v) { v.index(); };
 }  // namespace
 
-TEST(View, OwnsOrSharesARecord)
+TEST(View, SharesARecord)
 {
-    // A record computed on the fly is owned by its view (a copy owns a copy); a shared one lives as long as its views.
-    // Neither names an index: only a view of a handle does.
-    using Owned = urd::owned_view<Rec, Both, Rec>;
-    static_assert(!names_index<Owned> && names_index<view<Rec>>);
+    // A record the view points at through a std::shared_ptr lives as long as its views; views of equal records are
+    // equal. It names no index: only an index_view does.
+    using Shared = urd::shared_view<Rec, Both, Rec>;
+    static_assert(!names_index<Shared> && !names_index<urd::borrowed_view<Rec, Both, Rec>> && !names_index<urd::owning_view<Rec, Both, Rec>>
+                  && names_index<index_view<Rec>>);
+    static_assert(std::same_as<decltype(std::declval<index_view<Rec>>().index()), urd::index<Rec>>);
     const auto both = make_both();
-    const auto owned = Owned(Rec { "computed", {}, urd::index<Owner>(1), 3 }, both);
-    EXPECT_EQ(owned.get<&Rec::owner>().get<&Owner::name>(), "b");
-    const auto copy = owned;
-    EXPECT_NE(&copy.data(), &owned.data());
-    EXPECT_EQ(copy, owned);
-
     auto record = std::make_shared<Rec>(Rec { "shared", {}, urd::index<Owner>(0), 3 });
-    const auto shared = urd::shared_view<Rec, Both, Rec>(record, both);
+    const auto weak = std::weak_ptr<Rec>(record);
+    const auto shared = Shared(record, &both);
     record.reset();
+    EXPECT_FALSE(weak.expired());
     EXPECT_EQ(shared.name(), "shared");
     EXPECT_EQ(shared.get<&Rec::owner>().get<&Owner::name>(), "a");
+    const auto equal = Shared(std::make_shared<const Rec>(shared.data()), &both);
+    EXPECT_NE(&equal.data(), &shared.data());
+    EXPECT_EQ(equal, shared);
+}
+
+TEST(View, OwnsACopyOfARecord)
+{
+    // A record computed rather than stored is held by value: the view reads its own copy, and compares by the record
+    // and the layer.
+    using Owning = urd::owning_view<Rec, Both, Rec>;
+    const auto both = make_both();
+    auto record = Rec { "computed", { urd::index<Owner>(1) }, urd::index<Owner>(1), 3 };
+    const auto owning = Owning(record, &both);
+    EXPECT_NE(&owning.data(), &record);
+    record.name = "changed";
+    EXPECT_EQ(owning.name(), "computed");
+    EXPECT_EQ(owning.get<&Rec::owner>().get<&Owner::name>(), "b");
+    EXPECT_EQ(owning.get<&Rec::parts>()[0].get<&Owner::name>(), "b");
+    EXPECT_EQ(owning, Owning(owning.data(), &both));
+    const auto other = make_both(urd::layer { 1 });
+    EXPECT_NE(owning, Owning(owning.data(), &other));
+}
+
+TEST(TransformedRange, ItsIteratorsOutliveIt)
+{
+    // Unlike std::views::transform, the iterators hold the function (here a function object holding a value): they
+    // outlive the range they came from.
+    struct Shift
+    {
+        int offset = 0;
+        [[nodiscard]] int operator()(int value) const { return value + offset; }
+    };
+    const auto values = std::vector<int> { 1, 2, 3 };
+    const auto shifted = [&values] { return urd::transform(values, Shift { 10 }); };
+    const auto begin = shifted().begin();
+    const auto end = shifted().end();
+    EXPECT_EQ(end - begin, 3);
+    EXPECT_EQ(begin[2], 13);
+    EXPECT_EQ(*std::ranges::next(begin), 12);
+    const auto found = std::ranges::find(shifted(), 12);
+    static_assert(!std::same_as<decltype(found), const std::ranges::dangling>);
+    EXPECT_EQ(found - begin, 1);
+    EXPECT_TRUE(std::ranges::equal(shifted(), std::vector<int> { 11, 12, 13 }));
+    EXPECT_EQ(shifted().size(), 3U);
+    EXPECT_EQ(shifted().at(1), 12);
+    EXPECT_THROW((void) shifted().at(3), std::out_of_range);
+}
+
+TEST(TransformedRange, EndsWhereWhatItReadsEnds)
+{
+    // A range with a sentinel ends at it.
+    const auto squares = urd::transform(std::views::iota(1), [](int value) { return value * value; });
+    static_assert(!std::ranges::common_range<decltype(squares)> && std::ranges::random_access_range<decltype(squares)>);
+    EXPECT_NE(squares.begin(), squares.end());
+    EXPECT_TRUE(std::ranges::equal(squares | std::views::take(3), std::vector<int> { 1, 4, 9 }));
 }

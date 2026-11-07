@@ -211,9 +211,9 @@ Every insertion-ordered set is kept in one array, so it has positions whether th
    The same, through :cpp:struct:`index\<K\> <urd::index>`: what an interner mints. ``at`` throws ``std::out_of_range`` for
    ``none`` or a position past the end.
 
-.. cpp:function:: view<K, Store> view(index_type at) const
+.. cpp:function:: index_view<K, Store> view(index_type at) const
 
-   A :cpp:class:`view\<K, Store\> <urd::view>` of the element, through this Store (``urd/elements/view.hpp`` included).
+   A :cpp:class:`index_view\<K, Store\> <urd::index_view>` of the element, through this Store (``urd/elements/view.hpp`` included).
 
 .. cpp:function:: std::size_t layer() const
 

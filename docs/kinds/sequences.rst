@@ -44,6 +44,13 @@ Template parameters
 ``T``
    Any type; :cpp:concept:`orderable` with ``sorted``. A Store as element is a row (:ref:`rows`).
 
+``P``
+   What addresses the positions, ``sequence<T, P>``: ``std::size_t`` by default, or an index (``urd::index<U>``,
+   any :cpp:concept:`indexable` key). ``Store<sequence<Node, index<Vertex>>>`` is a sequence parallel to the
+   vertices another Store numbers: ``operator[]`` and ``at`` take a vertex's index, ``position`` gives one; it
+   holds an element at every position below its size (no presence, unlike a ``dense`` map), and grows by
+   ``push_back`` and ``resize`` as any sequence.
+
 Member types
 ------------
 
@@ -60,13 +67,17 @@ comparison (``==``, ``<=>``) are as for :doc:`sets`.
 Element access
 ^^^^^^^^^^^^^^
 
-.. cpp:function:: reference operator[](std::size_t pos)
-.. cpp:function:: const_reference operator[](std::size_t pos) const
-.. cpp:function:: reference at(std::size_t pos)
-.. cpp:function:: const_reference at(std::size_t pos) const
+.. cpp:function:: reference operator[](P pos)
+.. cpp:function:: const_reference operator[](P pos) const
+.. cpp:function:: reference at(P pos)
+.. cpp:function:: const_reference at(P pos) const
 .. cpp:function:: reference front()
 .. cpp:function:: reference back()
-.. cpp:function:: std::size_t position(const_iterator it) const
+.. cpp:function:: P position(const_iterator it) const
+
+   ``P`` is ``std::size_t`` but in a ``sequence<T, P>``; ``at`` throws ``std::out_of_range`` past the end and for
+   what is no index (``index<U>()``, none). ``position(end())`` is the position after the last.
+
 .. cpp:function:: auto data()
 
    A pointer to the elements, with ``contiguous``.

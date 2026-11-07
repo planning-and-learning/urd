@@ -4,7 +4,7 @@ Kind
 *Leaving out a tag you need does not compile: the operation does not exist.*
 
 A request names its kind first, with its element types (``include/urd/kinds.hpp``): ``set<K>`` (keys, each once),
-``map<K, V>`` (a value per key), ``multiset<V>`` (values by value, in order), ``sequence<V>`` (values by position),
+``map<K, V>`` (a value per key), ``multiset<V>`` (values by value, in order), ``sequence<V>`` (values by position; ``sequence<V, P>`` addressed by an index type ``P``),
 ``queue<V>`` (values by their front or top: ``fifo``, ``lifo`` or ``by_priority``), ``pool<V>`` (each distinct value
 once, by handle), ``slots<V>`` (values in slots, by handle) and ``partition<K>`` (keys in disjoint classes). Every
 argument after it is a tag.

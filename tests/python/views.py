@@ -66,4 +66,12 @@ assert not gone(ref) and view.value == 2 and [v.value for v in kept] == [1, 2, 3
 del view, kept
 assert gone(ref)
 
+# A view holding its own record (urd::owning_view) keeps its context alive too.
+context, ref = numbers()
+computed = context.computed(9)
+del context
+assert not gone(ref) and computed.value == 9
+del computed
+assert gone(ref)
+
 print("PASSED")

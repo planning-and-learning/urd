@@ -358,6 +358,8 @@ struct data_of : Kind
     using held_type = std::conditional_t<std::is_void_v<Mapped>, Element, Mapped>;
     /// What find takes, where the kind has lookup.
     using lookup_type = Element;
+    /// What addresses its elements, where it has positions (operator[], at): a number.
+    using position_type = std::size_t;
     /// What its order compares.
     using ordered_type = Element;
     /// Which of its types plays which role, ordered by Order: its elements are its elements and are ordered, a map's
@@ -397,11 +399,15 @@ struct multiset : detail::data_of<multiset_kind, V>
 {
     using value_type = V;
 };
-/// Values of type V by position.
-template<typename V>
+/// Values of type V by position, addressed by P: a number, or an index (urd::index<T>, any key urd::index_of maps to
+/// 0..n-1), so that a sequence parallel to the Ts a Store numbers is reached by their indices. P names no presence: a
+/// sequence holds an element at every position below its size.
+template<typename V, typename P = std::size_t>
 struct sequence : detail::data_of<sequence_kind, V>
 {
+    static_assert(indexable<P>, "urd::sequence<V, P>: P addresses positions 0..n-1 (urd::index_of<P>)");
     using value_type = V;
+    using position_type = P;
 };
 /// Values of type V reached by their front or top.
 template<typename V>

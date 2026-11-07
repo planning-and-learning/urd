@@ -526,8 +526,8 @@ struct Shop
     [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
     [[nodiscard]] const Item& operator[](urd::index<Item> at) const { return items[at]; }
     [[nodiscard]] std::size_t layer() const { return owners.layer(); }
-    [[nodiscard]] urd::view<Owner, Shop> view(urd::index<Owner> at) const { return { at, *this }; }
-    [[nodiscard]] urd::view<Item, Shop> view(urd::index<Item> at) const { return { at, *this }; }
+    [[nodiscard]] urd::index_view<Owner, Shop> view(urd::index<Owner> at) const { return { at, this }; }
+    [[nodiscard]] urd::index_view<Item, Shop> view(urd::index<Item> at) const { return { at, this }; }
 };
 
 }  // namespace
@@ -554,9 +554,9 @@ TEST(Records, ViewsResolveFlatMembers)
     EXPECT_TRUE(shop.items.contains(lamp));
 
     EXPECT_EQ(shop.items.view(lamp).get<&Item::name>(), "lamp");  // the Store alone reads members that are no index
-    const auto whole = urd::view<Item, Shop>(lamp, shop);         // the shop resolves owners too
+    const auto whole = urd::index_view<Item, Shop>(lamp, &shop);        // the shop resolves owners too
     EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
-    EXPECT_EQ((std::get<urd::view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
+    EXPECT_EQ((std::get<urd::index_view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
 }
 
 TEST(Layered, RowPoolsContinueTheirParent)
@@ -592,7 +592,7 @@ TEST(Layered, RowPoolsContinueTheirParent)
 TEST(Layered, ViewsPointAtTheOwningLayer)
 {
     using Points = Store<pool<Point>, urd::flat, urd::layered>;
-    using PointView = urd::view<Point, Points>;
+    using PointView = urd::index_view<Point, Points>;
     auto root = Points(urd::layer { 0 });
     const auto one = root.insert(Point(1)).first;
     auto child = Points(urd::layer { 1 });

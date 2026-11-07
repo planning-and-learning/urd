@@ -21,7 +21,7 @@ namespace urd::utils
 /// Not a Store kind of its own: a fixed set of Stores named by type.
 ///
 /// Where the members number their elements (positional sets, pools), the family resolves an index of any member
-/// type (urd::resolves), so a view<T, Family> reads a record and the indices in it through one context. Where the
+/// type (urd::resolves), so an index_view<T, Family> reads a record and the indices in it through one context. Where the
 /// members layer, a family layers too: Family(&parent) layers each member over the parent's member of its type and
 /// numbers itself along the chain, and a view made of the family points at the layer that owns the element.
 template<template<typename> class F, typename... Ts>
@@ -109,7 +109,7 @@ public:
     template<typename T>
     [[nodiscard]] auto view(urd::index<T> at) const
     {
-        return urd::view<T, Family>(at, owner(at));
+        return urd::index_view<T, Family>(at, &owner(at));
     }
     /// The record's index in the member for T, and whether it was new.
     template<typename T>

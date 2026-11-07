@@ -114,7 +114,7 @@ int main()
 #elif URD_CASE == 30  // a view reads through a context that resolves its index: a hash set has no indices
     using Items = Store<set<int>>;
     [[maybe_unused]] auto items = Items { 1 };
-    (void) urd::view<int, Items>(urd::index<int>(0), items).data();
+    (void) urd::index_view<int, Items>(urd::index<int>(0), &items).data();
 #elif URD_CASE == 31  // an index of A is no index of B
     struct A;
     struct B;

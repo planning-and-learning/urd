@@ -108,13 +108,13 @@ public:
         return (*this)[at];
     }
     /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made).
-    [[nodiscard]] urd::view<T, Derived> view(index_type at) const
+    [[nodiscard]] urd::index_view<T, Derived> view(index_type at) const
     {
-        static_assert(requires { sizeof(urd::view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
+        static_assert(requires { sizeof(urd::index_view<T, Derived>); }, "urd::Store::view: include <urd/elements/view.hpp>");
         if constexpr (chains_layers<R>)
-            return urd::view<T, Derived>(at, static_cast<const Derived&>(*this).owner(at));
+            return urd::index_view<T, Derived>(at, &static_cast<const Derived&>(*this).owner(at));
         else
-            return urd::view<T, Derived>(at, static_cast<const Derived&>(*this));
+            return urd::index_view<T, Derived>(at, &static_cast<const Derived&>(*this));
     }
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
     [[nodiscard]] std::size_t layer() const { return constant().layer(); }

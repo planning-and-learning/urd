@@ -26,10 +26,11 @@ struct Numbers
 
     const Number& operator[](urd::index<Number> at) const { return records[at.value]; }
     std::size_t layer() const noexcept { return 0; }
-    urd::view<Number, Numbers> view(urd::index<Number> at) const { return { at, *this }; }
+    urd::index_view<Number, Numbers> view(urd::index<Number> at) const { return { at, this }; }
 };
 
-using NumberView = urd::view<Number, Numbers>;
+using NumberView = urd::index_view<Number, Numbers>;
+using ComputedNumber = urd::owning_view<Number, Numbers, Number>;
 static_assert(urd::resolves<Numbers, Number>);
 
 
@@ -49,6 +50,7 @@ NB_MODULE(urd_views_test, m)
                      views.push_back(numbers.view(urd::index<Number>(at)));
                  return views;
              })
+        .def("computed", [](const Numbers& numbers, int value) { return ComputedNumber(Number { value }, &numbers); })
         .def("first_and_size", [](const Numbers& numbers) { return std::make_tuple(numbers.view(urd::index<Number>(0)), numbers.records.size()); });
 
     // Without self: the view keeps its context's own Python object alive, an argument or not.
@@ -63,4 +65,5 @@ NB_MODULE(urd_views_test, m)
     nb::class_<NumberView>(m, "NumberView")
         .def_prop_ro("value", [](const NumberView& view) { return view.data().value; })
         .def("next", [](const NumberView& view) { return view.context().view(urd::index<Number>(view.index().value + 1)); });
+    nb::class_<ComputedNumber>(m, "ComputedNumber").def_prop_ro("value", [](const ComputedNumber& view) { return view.data().value; });
 }

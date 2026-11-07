@@ -34,6 +34,7 @@
 #include <cista/containers/variant.h>
 #include <cista/containers/vector.h>
 #include <compare>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -603,4 +604,99 @@ TEST(Predicates, FailuresOfUserOperationsPropagate)
         EXPECT_THROW(urd::hash_range(range), std::runtime_error);
     }
     static_assert(noexcept(urd::hash_range(std::span<const unsigned>(values))));
+}
+
+// Moved from yggdrasil's tests/unit/semantics/comparison.cpp: the comparison mixin and identifying member lists.
+namespace
+{
+
+struct ComparedValue : urd::compared_by_identity<ComparedValue>
+{
+    int value;
+
+    constexpr explicit ComparedValue(int value_) noexcept : value(value_) {}
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&ComparedValue::value> {}; }
+};
+
+static_assert(ComparedValue(1) == ComparedValue(1));
+static_assert(ComparedValue(1) != ComparedValue(2));
+static_assert(ComparedValue(1) < ComparedValue(2));
+static_assert(ComparedValue(1) <= ComparedValue(2));
+static_assert(ComparedValue(2) > ComparedValue(1));
+static_assert(ComparedValue(2) >= ComparedValue(1));
+static_assert((ComparedValue(1) <=> ComparedValue(2)) == std::strong_ordering::less);
+static_assert(std::three_way_comparable<ComparedValue, std::strong_ordering>);
+
+struct ThrowingIdentity : urd::compared_by_identity<ThrowingIdentity>
+{
+    [[nodiscard]] int identity() const { throw std::runtime_error("identity"); }
+    static constexpr auto identifying_members() noexcept { return urd::Members<&ThrowingIdentity::identity> {}; }
+};
+
+/// A class template, so the member pointers are formed while the class is still being instantiated.
+template<typename Tag>
+struct ListedRecord
+{
+    int index;
+    int name;
+    double weight;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&ListedRecord::name, &ListedRecord::weight> {}; }
+};
+
+/// Identified through getters: as the record listing its data members.
+struct TiedRecord
+{
+    int name;
+    double weight;
+
+    [[nodiscard]] int get_name() const noexcept { return name; }
+    [[nodiscard]] double get_weight() const noexcept { return weight; }
+    static constexpr auto identifying_members() noexcept { return urd::Members<&TiedRecord::get_name, &TiedRecord::get_weight> {}; }
+};
+
+struct EmptyListedRecord
+{
+    int index;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<> {}; }
+};
+
+}  // namespace
+
+TEST(Predicates, ComparisonMixinPropagatesIdentityFailures)
+{
+    const auto value = ThrowingIdentity {};
+    static_assert(!noexcept(value <=> value));
+    EXPECT_THROW((value <=> value), std::runtime_error);
+}
+
+TEST(Predicates, MemberListsIdentifyLikeTiedMembers)
+{
+    using Listed = ListedRecord<struct ListedTag>;
+    static_assert(urd::Identifiable<Listed> && urd::Identifiable<TiedRecord>);
+    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<TiedRecord>>>, int> && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<TiedRecord>>>, double>);
+    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<Listed>>>, int> && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<Listed>>>, double>);
+
+    // The index is not an identifying member.
+    const auto a = Listed { 0, 1, 2.5 };
+    const auto b = Listed { 7, 1, 2.5 };
+    const auto c = Listed { 0, 1, 3.5 };
+    const auto d = Listed { 0, 2, 0.5 };
+    EXPECT_TRUE(urd::EqualTo<Listed> {}(a, b));
+    EXPECT_FALSE(urd::EqualTo<Listed> {}(a, c));
+    EXPECT_EQ(urd::Hash<Listed> {}(a), urd::Hash<Listed> {}(b));
+    // Members are ordered in list order, like the tuple of tied members.
+    for (const auto& [lhs, rhs] : { std::pair { a, c }, std::pair { c, a }, std::pair { a, d }, std::pair { d, c }, std::pair { a, b } })
+    {
+        const auto tied_lhs = TiedRecord { lhs.name, lhs.weight };
+        const auto tied_rhs = TiedRecord { rhs.name, rhs.weight };
+        EXPECT_EQ(urd::Less<Listed> {}(lhs, rhs), urd::Less<TiedRecord> {}(tied_lhs, tied_rhs));
+        EXPECT_EQ(urd::ThreeWayCompare<Listed> {}(lhs, rhs), urd::ThreeWayCompare<TiedRecord> {}(tied_lhs, tied_rhs));
+    }
+
+    EXPECT_TRUE(urd::EqualTo<EmptyListedRecord> {}(EmptyListedRecord { 1 }, EmptyListedRecord { 2 }));
+    EXPECT_FALSE(urd::Less<EmptyListedRecord> {}(EmptyListedRecord { 1 }, EmptyListedRecord { 2 }));
+    EXPECT_EQ(urd::Hash<EmptyListedRecord> {}(EmptyListedRecord { 1 }), urd::Hash<EmptyListedRecord> {}(EmptyListedRecord { 2 }));
 }

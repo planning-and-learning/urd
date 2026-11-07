@@ -107,7 +107,7 @@ endif()
 add_test(NAME generic COMMAND Python3::Interpreter -I ${PROJECT_SOURCE_DIR}/tests/generic.py ${PROJECT_SOURCE_DIR})
 
 # Tests of the containers in repr/containers.
-foreach(test segmented_vector tree_vector_set tree_bitset_set bitset_span)
+foreach(test segmented_vector tree_vector_set tree_bitset_set bitset_span bit)
     add_executable(test_repr_${test} repr/containers/${test}.cpp repr/main.cpp)
     target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)
     add_test(NAME repr_${test} COMMAND test_repr_${test})

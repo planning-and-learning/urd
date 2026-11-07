@@ -9,9 +9,9 @@ namespace urd
 {
 
 /// The stored form of a T: the record a Store holds for an index<T> and a view's data() reads. Specialize it per type;
-/// it must be Serializable (cista_members() names its members as urd::Members). urd::view<T, C> reads it through its
-/// context; urd::borrowed_view<T, C> borrows one held outside a context, urd::owned_view<T, C> owns one computed on the
-/// fly (urd/elements/view.hpp).
+/// it must be Serializable (cista_members() names its members as urd::Members). urd::index_view<T, C> reads it through
+/// its context; urd::borrowed_view<T, C> points at one held outside a context, urd::owning_view<T, C> holds one,
+/// urd::shared_view<T, C> shares one (urd/elements/view.hpp).
 template<typename T>
 struct data;
 
