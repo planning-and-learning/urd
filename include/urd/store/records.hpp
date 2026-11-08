@@ -3,6 +3,7 @@
 #include "urd/cost.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/store/layers.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
@@ -30,39 +31,16 @@ class records
                                          || std::same_as<std::remove_cvref_t<std::invoke_result_t<Factory, typename S::handle_type>>, T>;
 
 public:
-    using record_type = T;
     /// The handle the request names (urd::pool<V, H>): index<T> by default.
-    using index_type = typename S::handle_type;
-    using handle_type = index_type;
+    using handle_type = typename S::handle_type;
 
-    /// The records in index order, 0 to size() - 1, each read by its index.
-    class const_iterator
+    /// Reads the record at an index, for the iterator.
+    struct record_at
     {
-    public:
-        using value_type = T;
-        using difference_type = std::ptrdiff_t;
-
-        const_iterator() = default;
-        const_iterator(const R* records, std::uint32_t at) : m_records(records), m_at(at) {}
-
-        [[nodiscard]] const T& operator*() const { return (*m_records)[index_type(m_at)]; }
-        const_iterator& operator++()
-        {
-            ++m_at;
-            return *this;
-        }
-        const_iterator operator++(int)
-        {
-            auto before = *this;
-            ++m_at;
-            return before;
-        }
-        friend bool operator==(const const_iterator&, const const_iterator&) = default;
-
-    private:
-        const R* m_records = nullptr;
-        std::uint32_t m_at = 0;
+        const T& operator()(const R& records, std::size_t at) const { return records[handle_type(static_cast<std::uint32_t>(at))]; }
     };
+    /// The records in index order, 0 to size() - 1, each read by its index.
+    using const_iterator = urd::repr::PositionIterator<const R, record_at>;
     /// O(n): the records lie in one store, each at its index. Not where layered: there a record is reached through
     /// the layer that owns it.
     [[nodiscard]] const_iterator begin() const
@@ -73,36 +51,36 @@ public:
     { return { &constant(), static_cast<std::uint32_t>(constant().size()) }; }
 
     /// The record's index, and whether it was new: an equal record already held gives its index.
-    std::pair<index_type, bool> insert(const T& record) { return representation().insert(record); }
+    std::pair<handle_type, bool> insert(const T& record) { return representation().insert(record); }
     /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
-    std::pair<index_type, bool> insert(const prehashed<T>& key)
+    std::pair<handle_type, bool> insert(const prehashed<T>& key)
         requires requires(R& held) { held.insert(key); }
     { return representation().insert(key); }
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
     /// must not touch this Store.
     /// `make` gives the record or a reference to it: a record serialized into an arena needs no copy of its own.
-    template<std::invocable<index_type> Factory>
+    template<std::invocable<handle_type> Factory>
         requires makes_record<Factory>
-    std::pair<index_type, bool> insert(const T& key, Factory make)
+    std::pair<handle_type, bool> insert(const T& key, Factory make)
     { return representation().insert(key, make); }
-    template<std::invocable<index_type> Factory>
+    template<std::invocable<handle_type> Factory>
         requires makes_record<Factory> && requires(R& held, const prehashed<T>& key, Factory make) { held.insert(key, make); }
-    std::pair<index_type, bool> insert(const prehashed<T>& key, Factory make)
+    std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     { return representation().insert(key, make); }
     /// The index of an equal record, or none.
-    [[nodiscard]] index_type find(const T& record) const { return constant().find(record); }
+    [[nodiscard]] handle_type find(const T& record) const { return constant().find(record); }
     [[nodiscard]] bool contains(const T& record) const { return constant().contains(record); }
-    [[nodiscard]] index_type find(const prehashed<T>& key) const
+    [[nodiscard]] handle_type find(const prehashed<T>& key) const
         requires requires(const R& held) { held.find(key); }
     { return constant().find(key); }
     [[nodiscard]] bool contains(const prehashed<T>& key) const
         requires requires(const R& held) { held.contains(key); }
     { return constant().contains(key); }
     [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
-    [[nodiscard]] bool contains(index_type at) const { return !at.is_none() && (at.value) < constant().size(); }
-    [[nodiscard]] const T& operator[](index_type at) const { return constant()[at]; }
-    [[nodiscard]] const T& at(index_type at) const
+    [[nodiscard]] bool contains(handle_type at) const { return !at.is_none() && (at.value) < constant().size(); }
+    [[nodiscard]] const T& operator[](handle_type at) const { return constant()[at]; }
+    [[nodiscard]] const T& at(handle_type at) const
     {
         if (!contains(at))
             throw std::out_of_range("urd::Store::at: no record at this index");
@@ -110,9 +88,9 @@ public:
     }
     /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made):
     /// of the handle's element type (of U for a pool of urd::data<U> handing out index<U>).
-    [[nodiscard]] auto view(index_type at) const
+    [[nodiscard]] auto view(handle_type at) const
     {
-        using view_type = urd::index_view<typename index_type::element_type, Derived>;
+        using view_type = urd::index_view<typename handle_type::element_type, Derived>;
         static_assert(requires { sizeof(view_type); }, "urd::Store::view: include <urd/elements/view.hpp>");
         if constexpr (chains_layers<R>)
             return view_type(at, &static_cast<const Derived&>(*this).owner(at));
@@ -122,7 +100,7 @@ public:
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
     [[nodiscard]] std::size_t layer() const { return constant().layer(); }
     void clear()
-        requires shrinks<S>
+        requires clears<S>
     { representation().clear(); }
 
 private:

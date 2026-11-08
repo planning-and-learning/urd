@@ -6,7 +6,7 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/queues/position_iterator.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -32,6 +33,11 @@ template<typename T, typename Compare>
 class AddressableHeap
 {
     friend struct urd::memory_of<AddressableHeap>;
+    /// Reads the element at a position, for the iterator.
+    struct element_at
+    {
+        const T& operator()(const AddressableHeap& queue, std::size_t position) const { return queue.at_position(position); }
+    };
 
 public:
     using value_type = T;
@@ -44,8 +50,8 @@ public:
     /// The element of `handle`, which must be in the queue.
     [[nodiscard]] const T& operator[](handle_type handle) const { return m_slots[handle].element; }
     /// The elements in no particular order.
-    [[nodiscard]] PositionIterator<AddressableHeap> begin() const { return { this, 0 }; }
-    [[nodiscard]] PositionIterator<AddressableHeap> end() const { return { this, m_heap.size() }; }
+    [[nodiscard]] PositionIterator<const AddressableHeap, element_at, std::forward_iterator_tag> begin() const { return { this, 0 }; }
+    [[nodiscard]] PositionIterator<const AddressableHeap, element_at, std::forward_iterator_tag> end() const { return { this, m_heap.size() }; }
 
     handle_type push(const T& element) { return emplace(element); }
     handle_type push(T&& element) { return emplace(std::move(element)); }
@@ -98,7 +104,6 @@ public:
     }
 
 private:
-    friend class PositionIterator<AddressableHeap>;
     struct slot
     {
         T element;

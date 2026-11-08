@@ -97,7 +97,7 @@ references are stable (``any_kind::meaning``, whatever the kind).
 Tags are what a request states. What its data *is* (whether a key can be hashed, is an index, copies as bytes, ...)
 is not stated but derived from the types: these are **type traits** (``urd::trait::can_hash``, ...,
 ``include/urd/registry/facts.hpp``), which containers rely on by role (the elements, the order, a map's values, the
-rows). They never appear in a request; see :doc:`/semantics` for the concepts they are derived from. What the Store's interface offers follows from ``frozen``, ``monotone``, ``nonempty`` and
+rows). They never appear in a request; see :doc:`/semantics` for the concepts they are derived from. What the Store's interface offers follows from ``frozen``, ``monotone``, ``monotone_until_clear``, ``nonempty`` and
 ``fixed_shape``. Each container declares everything it guarantees, and what it relies on: one that never erases relies
 on ``monotone``, one built once on ``frozen``.
 

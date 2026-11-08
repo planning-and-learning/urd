@@ -7,7 +7,6 @@
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/std_memory.hpp"
-#include "urd/repr/queues/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
 #include "urd/traits.hpp"
 

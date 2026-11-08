@@ -2,7 +2,7 @@
 // to pass a precomputed hash (heterogeneous lookup); an element is hashed once, an insert included. Each family header
 // a Store here needs is included, and no other.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/memory.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"

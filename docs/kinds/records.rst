@@ -79,7 +79,7 @@ Flat containers
 Member types
 ------------
 
-``record_type`` is ``Record``; ``index_type`` and ``handle_type`` are :cpp:struct:`index\<Record\> <urd::index>`.
+``value_type`` is ``Record``; ``handle_type`` is :cpp:struct:`index\<Record\> <urd::index>`.
 
 Member functions
 ----------------
@@ -89,28 +89,28 @@ Member functions
    Empty, numbered (:cpp:struct:`urd::layer`): a pool of records is built only so, and its views are identified by
    index and number. A layer gets its own number, as its parent does.
 
-.. cpp:function:: std::pair<index_type, bool> insert(const record_type& record)
+.. cpp:function:: std::pair<handle_type, bool> insert(const value_type& record)
 
    The record's index, and whether it was new: an equal record already held gives its index.
 
-.. cpp:function:: template<std::invocable<index_type> Factory> std::pair<index_type, bool> insert(const record_type& key, Factory make)
+.. cpp:function:: template<std::invocable<handle_type> Factory> std::pair<handle_type, bool> insert(const value_type& key, Factory make)
 
    The index ``key`` gets, and whether it was new: where it is, the record stored is what ``make(index)`` gives,
    built with the index reserved for it (a record that holds its own index). It must equal ``key``, and ``make``
    must not touch this Store.
 
-.. cpp:function:: index_type find(const record_type& record) const
+.. cpp:function:: handle_type find(const value_type& record) const
 
    The index of an equal record, or ``none``.
 
-.. cpp:function:: bool contains(const record_type& record) const
-.. cpp:function:: bool contains(index_type at) const
-.. cpp:function:: const record_type& operator[](index_type at) const
-.. cpp:function:: const record_type& at(index_type at) const
+.. cpp:function:: bool contains(const value_type& record) const
+.. cpp:function:: bool contains(handle_type at) const
+.. cpp:function:: const value_type& operator[](handle_type at) const
+.. cpp:function:: const value_type& at(handle_type at) const
 
    ``std::out_of_range`` where there is no record at ``at``.
 
-.. cpp:function:: index_view<Record, Store> view(index_type at) const
+.. cpp:function:: index_view<Record, Store> view(handle_type at) const
 
    A :cpp:class:`index_view\<Record, Store\> <urd::index_view>` of the record through this Store; of a layered pool, through the layer that
    owns it.
@@ -119,7 +119,7 @@ Member functions
 
    The number it was built with (:cpp:struct:`urd::layer`): a pool of records has no constructor without one.
 
-.. cpp:function:: std::size_t count(const record_type& record) const
+.. cpp:function:: std::size_t count(const value_type& record) const
 .. cpp:function:: const_iterator begin() const
 .. cpp:function:: const_iterator end() const
 
@@ -130,7 +130,7 @@ Member functions
 .. cpp:function:: bool empty() const
 .. cpp:function:: void clear()
 
-   Shrinkable pools; the arena keeps its segments.
+   Shrinkable or ``monotone_until_clear`` pools; the arena keeps its segments.
 
 Complexity
 ----------
@@ -153,7 +153,7 @@ branch, which inserts assert. The tree pools do not layer, since they number nod
    Where this layer's own indices start: the parent's size at the branch.
 
 .. cpp:function:: bool parent_grew() const
-.. cpp:function:: const Records& owner(index_type at) const
+.. cpp:function:: const Records& owner(handle_type at) const
 
    The Store along the chain that holds the element at ``at``.
 
@@ -180,7 +180,11 @@ reach and fill the pools at once, each own pool made and layered once (:doc:`map
 
 .. code-block:: cpp
 
-   using BitRows = Store<pool<Row, index<Binding>>, monotone, bit, layered, concurrent>;
+   using BitRows = Store<pool<Row, index<Binding>>, monotone_until_clear, bit, layered, concurrent>;
    using Relations = Store<map<index<Predicate>, BitRows>, dense, layered, concurrent>;
    task.try_emplace(on, bit_width::for_bound(num_objects));   // made once, over the domain's pool of on
    task.at(on).insert({ a, b });                              // from any thread
+
+A predicate's pool whose Store offers ``clear`` (``monotone_until_clear``) is reused when the map is cleared and the
+slot made again at the same width: cleared and layered anew, so refilling allocates nothing. A
+``monotone`` pool has no ``clear`` and is built anew.

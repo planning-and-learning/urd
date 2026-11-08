@@ -90,6 +90,10 @@ public:
     [[nodiscard]] bool parent_grew() const noexcept { return m_parent != nullptr && m_parent->size() > m_base; }
 
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
+    /// The bit width its own pool was built with (urd::bit).
+    [[nodiscard]] urd::bit_width width() const noexcept
+        requires requires(const R& own) { own.width(); }
+    { return m_own.width(); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
     // Records. A record is hashed once (urd::prehash) and found by that hash in every layer of the chain.

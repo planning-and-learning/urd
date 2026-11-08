@@ -27,10 +27,13 @@ namespace urd::detail
 
 /// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
 /// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.
+/// clear() also where shrinking alone is stopped (monotone_until_clear): every tag that stops clearing stops shrinking.
 template<typename S>
 inline constexpr bool grows = !traits_t<S>::urd_properties.template any_says<&answer_says::stops_growth>();
 template<typename S>
 inline constexpr bool shrinks = grows<S> && !traits_t<S>::urd_properties.template any_says<&answer_says::stops_shrinking>();
+template<typename S>
+inline constexpr bool clears = grows<S> && !traits_t<S>::urd_properties.template any_says<&answer_says::stops_clearing>();
 /// Whether a Store that shrinks also changes in the middle: inserts before, and erases, any position. A sequence whose
 /// request says it changes at its ends only (urd::answer_says) removes at its end only: pop_back, clear, resize.
 template<typename S>

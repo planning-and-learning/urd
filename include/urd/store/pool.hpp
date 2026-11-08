@@ -43,7 +43,8 @@ namespace urd::detail::facet
 template<typename Derived, typename R, typename S>
 class pool
 {
-    using row_element = std::ranges::range_value_t<typename S::element_type>;
+    using row = typename S::element_type;
+    using row_element = std::ranges::range_value_t<row>;
     /// Rows that are sequences take writes by position.
     static constexpr bool sequence_rows = appends<typename held_as<typename S::element_type>::kind>;
 
@@ -53,7 +54,6 @@ class pool
 
 public:
     using handle_type = typename R::handle_type;
-    using row_type = typename S::element_type;
     /// A change to a sequence row: its value at a position.
     using write_type = Write<row_element>;
     /// Rows that are sets of indices kept as bits: a block of a row, and a change to one (void elsewhere).
@@ -118,7 +118,7 @@ public:
     [[nodiscard]] handle_type find(std::initializer_list<row_element> elements) const
     { return find(std::span<const row_element>(elements.begin(), elements.size())); }
 
-    [[nodiscard]] row_type get(handle_type handle) const { return constant().get(handle); }
+    [[nodiscard]] row get(handle_type handle) const { return constant().get(handle); }
     /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
     /// its bits. Valid until the pool is cleared.
     [[nodiscard]] auto view(handle_type handle) const
@@ -129,7 +129,7 @@ public:
     void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
     /// The row into `out`, whose storage is reused, where the pool writes a row whole (a tree bitset into a dense set,
     /// word by word): allocates nothing where `out` holds the row's words already.
-    void read(handle_type handle, row_type& out) const
+    void read(handle_type handle, row& out) const
         requires requires(const R& rows) { rows.read(handle, out); }
     { constant().read(handle, out); }
 
@@ -154,9 +154,9 @@ public:
     handle_type erase(handle_type handle)
         requires(erasable)
     { return representation().erase(handle); }
-    /// Forgets every row; the handles given so far mean nothing after.
+    /// Forgets every row; the handles given so far mean nothing after. A layered pool forgets its own layer's rows.
     void clear()
-        requires shrinks<S>
+        requires clears<S>
     { representation().clear(); }
 
 private:

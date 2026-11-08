@@ -72,7 +72,7 @@ Member types
 
    * - ``value_type``
      - ``std::pair<const K, V>``
-   * - ``key_type``, ``lookup_type``
+   * - ``key_type``
      - ``K``
    * - ``mapped_type``
      - ``V``

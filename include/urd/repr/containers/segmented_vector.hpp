@@ -23,6 +23,7 @@
 #include "urd/repr/containers/detail/segmented_rows.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/sequences/segmented_fwd.hpp"
 
 #include <algorithm>
@@ -184,11 +185,8 @@ private:
     }
 
 public:
-    template<typename Vector>
-    class BasicIterator;
-
-    using iterator = BasicIterator<SegmentedVector>;
-    using const_iterator = BasicIterator<const SegmentedVector>;
+    using iterator = PositionIterator<SegmentedVector>;
+    using const_iterator = PositionIterator<const SegmentedVector>;
 
     static constexpr bool thread_safe = ThreadSafe;
 
@@ -214,96 +212,6 @@ public:
     }
 
     ~SegmentedVector() { release(); }
-
-    template<typename Vector>
-    class BasicIterator
-    {
-    private:
-        using vector_type = Vector;
-        using vector_pointer = Vector*;
-
-    public:
-        using difference_type = std::ptrdiff_t;
-        using value_type = T;
-        using reference = std::conditional_t<std::is_const_v<vector_type>, const T&, T&>;
-        using pointer = std::conditional_t<std::is_const_v<vector_type>, const T*, T*>;
-        using iterator_category = std::random_access_iterator_tag;
-        using iterator_concept = std::random_access_iterator_tag;
-
-        BasicIterator() noexcept : m_pos(0), m_vector(nullptr) {}
-        BasicIterator(vector_type& vector, size_t pos) noexcept : m_pos(pos), m_vector(&vector) {}
-
-        reference operator*() const { return (*m_vector)[m_pos]; }
-        pointer operator->() const { return std::addressof(**this); }
-
-        BasicIterator& operator++() noexcept
-        {
-            ++m_pos;
-            return *this;
-        }
-
-        BasicIterator operator++(int) noexcept
-        {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        BasicIterator& operator--() noexcept
-        {
-            --m_pos;
-            return *this;
-        }
-
-        BasicIterator operator--(int) noexcept
-        {
-            auto tmp = *this;
-            --(*this);
-            return tmp;
-        }
-
-        BasicIterator& operator+=(difference_type n) noexcept
-        {
-            m_pos = static_cast<size_t>(static_cast<difference_type>(m_pos) + n);
-            return *this;
-        }
-
-        BasicIterator& operator-=(difference_type n) noexcept
-        {
-            m_pos = static_cast<size_t>(static_cast<difference_type>(m_pos) - n);
-            return *this;
-        }
-
-        friend BasicIterator operator+(BasicIterator it, difference_type n) noexcept
-        {
-            it += n;
-            return it;
-        }
-
-        friend BasicIterator operator+(difference_type n, BasicIterator it) noexcept
-        {
-            it += n;
-            return it;
-        }
-
-        friend BasicIterator operator-(BasicIterator it, difference_type n) noexcept
-        {
-            it -= n;
-            return it;
-        }
-
-        friend difference_type operator-(const BasicIterator& lhs, const BasicIterator& rhs) noexcept
-        { return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos); }
-
-        reference operator[](difference_type n) const { return *(*this + n); }
-
-        friend bool operator==(const BasicIterator&, const BasicIterator&) = default;
-        friend auto operator<=>(const BasicIterator&, const BasicIterator&) = default;
-
-    private:
-        size_t m_pos;
-        vector_pointer m_vector;
-    };
 
     void clear() noexcept(std::is_nothrow_destructible_v<T>)
     {
@@ -413,12 +321,12 @@ public:
         return (*this)[size() - 1];
     }
 
-    iterator begin() noexcept { return iterator(*this, 0); }
-    iterator end() noexcept { return iterator(*this, size()); }
-    [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(*this, 0); }
-    [[nodiscard]] const_iterator end() const noexcept { return const_iterator(*this, size()); }
-    [[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(*this, 0); }
-    [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(*this, size()); }
+    iterator begin() noexcept { return iterator(this, 0); }
+    iterator end() noexcept { return iterator(this, size()); }
+    [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(this, 0); }
+    [[nodiscard]] const_iterator end() const noexcept { return const_iterator(this, size()); }
+    [[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(this, 0); }
+    [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(this, size()); }
 
     /// Reads the elements in place; valid while this vector neither moves nor is destroyed.
     [[nodiscard]] detail::SegmentedRows<T, FirstSegmentSize, ThreadSafe, Index> rows() const noexcept { return { m_segments.data(), &m_size }; }

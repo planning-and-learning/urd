@@ -38,7 +38,10 @@ namespace urd::repr
 /// Stable, the slots lie in a SegmentedVector and never move: what is stable is the value at, operator[] and update
 /// reach and the .second of an iterated entry (the entry itself is built on the fly). With ThreadSafe (which needs
 /// Stable and Generations), the segments are the thread-safe ones and each slot has a spin lock: update and read
-/// may run from threads at once; clear, erase, iteration and the rest need no other operation running.
+/// may run from threads at once; clear, erase, iteration and the rest need no other operation running. A slot is
+/// written under its lock, and a new one is published (its generation stored, release) once its value is made; read,
+/// contains and find load the generation (acquire) and read a present value without the lock. So a value is read
+/// while whatever update or at reaches it changes it: it must take that (a concurrent Store), or not change once made.
 template<typename K, typename V, bool Generations, bool ThreadSafe, bool Stable>
 class IndexMap
 {
@@ -49,11 +52,13 @@ class IndexMap
 
     struct generation_slot
     {
-        std::uint64_t generation = 0;
+        /// mutable for std::atomic_ref, which C++20 has only of non-const objects.
+        mutable std::uint64_t generation = 0;
         V value {};
         [[no_unique_address]] mutable std::conditional_t<ThreadSafe, SpinMutex, NoLock> lock;
     };
-    using slot = std::conditional_t<Generations, generation_slot, std::optional<V>>;
+    using optional_slot = std::optional<V>;
+    using slot = std::conditional_t<Generations, generation_slot, optional_slot>;
     using Slots = std::conditional_t<Stable, SegmentedVector<slot, default_first_segment_size, ThreadSafe>, std::vector<slot>>;
     /// A count threads may change at once; moving or copying it, like the map, needs no other operation running.
     struct AtomicCount
@@ -128,28 +133,12 @@ public:
         return locked(entry,
                       [&]() -> decltype(auto)
                       {
-                          if constexpr (Generations)
-                          {
-                              // Written only where new: a slot present stays unwritten, so a thread that saw it present
-                              // under the lock reads it without one.
-                              const bool held = entry.generation == m_generation;
-                              if (!held)
-                              {
-                                  entry.generation = m_generation;
-                                  ++m_count;
-                              }
-                              return update(entry.value, held);
-                          }
-                          else
-                          {
-                              const bool held = entry.has_value();
-                              if (!held)
-                              {
-                                  entry.emplace();
-                                  ++m_count;
-                              }
-                              return update(*entry, held);
-                          }
+                          const bool held = claim(entry);
+                          if (!held)
+                              ++m_count;
+                          // Readers see a new slot only whole: after update made its value.
+                          const auto publish_new_slot_once_made = publish_on_exit { this, held ? nullptr : &entry };
+                          return update(value_of(entry), held);
                       });
     }
     /// read(value) where `key` has a value, else `missing`.
@@ -157,15 +146,13 @@ public:
         requires std::invocable<Read&, const V&>
     [[nodiscard]] Result read(const K& key, Read read, Result missing) const
     {
-        if (!index_of<K>::is_index(key) || index_of<K>::to_index(key) >= m_slots.size())
-            return missing;
-        const auto index = index_of<K>::to_index(key);
-        return locked(m_slots[index], [&] { return present(index) ? Result(read(value(index))) : missing; });
+        const auto* entry = held_slot(key);
+        return entry == nullptr ? missing : Result(read(value_of(*entry)));
     }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
-    [[nodiscard]] bool contains(const K& key) const { return index_of<K>::is_index(key) && present(index_of<K>::to_index(key)); }
+    [[nodiscard]] bool contains(const K& key) const { return held_slot(key) != nullptr; }
     [[nodiscard]] iterator lower_bound(const K& key) const
     { return iterator(this, index_of<K>::is_index(key) ? next_from(index_of<K>::to_index(key)) : next_from(0)); }
     [[nodiscard]] iterator upper_bound(const K& key) const
@@ -174,9 +161,9 @@ public:
 
     [[nodiscard]] const V& at(const K& key) const
     {
-        if (!contains(key))
-            throw std::out_of_range("urd::repr::IndexMap::at: no value for the key");
-        return value(index_of<K>::to_index(key));
+        if (const auto* entry = held_slot(key))
+            return value_of(*entry);
+        throw std::out_of_range("urd::repr::IndexMap::at: no value for the key");
     }
     [[nodiscard]] V& at(const K& key)
     {
@@ -326,45 +313,72 @@ public:
 private:
     [[nodiscard]] bool present(std::size_t index) const
     {
+        return index < m_slots.size() && holds(m_slots[index]);
+    }
+    /// The slot of `key` where it holds a value, else nullptr: the slot is looked up once.
+    [[nodiscard]] const slot* held_slot(const K& key) const
+    {
+        if (!index_of<K>::is_index(key))
+            return nullptr;
+        const auto index = index_of<K>::to_index(key);
         if (index >= m_slots.size())
-            return false;
-        if constexpr (Generations)
-            return m_slots[index].generation == m_generation;
-        else
-            return m_slots[index].has_value();
+            return nullptr;
+        const auto& entry = m_slots[index];
+        return holds(entry) ? &entry : nullptr;
     }
-    [[nodiscard]] const V& value(std::size_t index) const
+    [[nodiscard]] const V& value(std::size_t index) const { return value_of(m_slots[index]); }
+    [[nodiscard]] V& value(std::size_t index) { return value_of(m_slots[index]); }
+
+    // What a slot type does; the storage mode is the slot type. claim makes a slot's value ready and says whether it
+    // held one (a generation slot reuses the value it kept); publish makes a new slot visible.
+    [[nodiscard]] bool holds(const generation_slot& entry) const noexcept { return generation_of(entry) == m_generation; }
+    [[nodiscard]] static bool holds(const optional_slot& entry) noexcept { return entry.has_value(); }
+    template<typename Slot>
+        requires std::same_as<std::remove_const_t<Slot>, generation_slot>
+    [[nodiscard]] static auto& value_of(Slot& entry) noexcept
+    { return entry.value; }
+    template<typename Slot>
+        requires std::same_as<std::remove_const_t<Slot>, optional_slot>
+    [[nodiscard]] static auto& value_of(Slot& entry) noexcept
     {
-        if constexpr (Generations)
-            return m_slots[index].value;
-        else
-        {
-            auto& present_slot = m_slots[index];
-            URD_ASSUME(present_slot.has_value());  // callers look a value up only where present
-            return *present_slot;
-        }
+        URD_ASSUME(entry.has_value());  // callers look a value up only where present
+        return *entry;
     }
-    [[nodiscard]] V& value(std::size_t index)
+    [[nodiscard]] bool claim(generation_slot& entry) const noexcept { return holds(entry); }
+    [[nodiscard]] static bool claim(optional_slot& entry)
     {
-        if constexpr (Generations)
-            return m_slots[index].value;
-        else
-        {
-            auto& present_slot = m_slots[index];
-            URD_ASSUME(present_slot.has_value());  // callers look a value up only where present
-            return *present_slot;
-        }
+        if (entry.has_value())
+            return true;
+        entry.emplace();
+        return false;
     }
+    /// Stores the generation with release where threads share slots: after the value, which readers then see whole.
+    void publish(generation_slot& entry) const noexcept { store_generation(entry, m_generation); }
+    static void publish(optional_slot& /*entry*/) noexcept {}
+    static void vacate(generation_slot& entry) noexcept { store_generation(entry, 0); }
+    static void vacate(optional_slot& entry) noexcept { entry.reset(); }
+    /// Publishes a new slot when it goes out of scope (null: the slot was held, nothing to publish).
+    struct publish_on_exit
+    {
+        const IndexMap* map;
+        slot* entry;
+
+        ~publish_on_exit()
+        {
+            if (entry != nullptr)
+                map->publish(*entry);
+        }
+    };
     /// Puts a value in an empty slot, under its lock where slots have locks.
-    void place(slot& entry, V&& mapped)
+    void place(generation_slot& entry, V&& mapped)
     {
-        if constexpr (Generations)
-        {
-            entry.generation = m_generation;
-            entry.value = std::move(mapped);
-        }
-        else
-            entry.emplace(std::move(mapped));
+        entry.value = std::move(mapped);
+        publish(entry);
+        ++m_count;
+    }
+    void place(optional_slot& entry, V&& mapped)
+    {
+        entry.emplace(std::move(mapped));
         ++m_count;
     }
     /// The slot of `index`, growing to it. Thread-safe slots grow by appends, each under the vector's lock; threads
@@ -390,12 +404,25 @@ private:
         else
             return body();
     }
+    /// A slot's generation, as published: loaded with acquire where threads share slots.
+    [[nodiscard]] static std::uint64_t generation_of(const generation_slot& entry) noexcept
+    {
+        if constexpr (ThreadSafe)
+            return std::atomic_ref(entry.generation).load(std::memory_order_acquire);
+        else
+            return entry.generation;
+    }
+    /// Stores a slot's generation: with release where threads share slots, after its value.
+    static void store_generation(generation_slot& entry, std::uint64_t generation) noexcept
+    {
+        if constexpr (ThreadSafe)
+            std::atomic_ref(entry.generation).store(generation, std::memory_order_release);
+        else
+            entry.generation = generation;
+    }
     void remove(std::size_t index)
     {
-        if constexpr (Generations)
-            m_slots[index].generation = 0;
-        else
-            m_slots[index].reset();
+        vacate(m_slots[index]);
         --m_count;
     }
     /// The first present key at or after `index`, else npos.

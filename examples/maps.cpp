@@ -9,7 +9,6 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
 

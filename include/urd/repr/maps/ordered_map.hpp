@@ -2,6 +2,7 @@
 
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/maps/ordered_map_fwd.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
@@ -30,12 +31,22 @@ class OrderedMap
     using K = typename Keys::value_type;
 
 public:
-    class iterator;
-    using const_iterator = iterator;
     using key_type = K;
     using mapped_type = V;
     /// What iterating gives: a key and a view of its value.
     using value_type = std::pair<const K, const V&>;
+
+private:
+    /// Reads the entry at a position, for the iterator.
+    struct entry_at
+    {
+        value_type operator()(const OrderedMap& map, std::size_t position) const { return { map.keys()[position], map.m_values[position] }; }
+    };
+
+public:
+    /// An entry at a time, in insertion order, with a view of its value.
+    using iterator = PositionIterator<const OrderedMap, entry_at, std::bidirectional_iterator_tag>;
+    using const_iterator = iterator;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -85,7 +96,7 @@ public:
     {
         if (const auto found = find(key); found != end())
         {
-            m_values[found.m_position] = std::forward<M>(mapped);
+            m_values[static_cast<size_type>(found - begin())] = std::forward<M>(mapped);
             return { found, false };
         }
         return try_emplace(key, std::forward<M>(mapped));
@@ -121,14 +132,14 @@ public:
     /// Later entries move up to keep the order (O(n)).
     iterator erase(const_iterator pos)
     {
-        const auto position = pos.m_position;
+        const auto position = static_cast<size_type>(pos - begin());
         m_keys.erase(m_keys.begin() + static_cast<difference_type>(position));
         m_values.erase(m_values.begin() + static_cast<difference_type>(position));
         return iterator(this, position);
     }
     iterator erase(const_iterator first, const_iterator last)
     {
-        for (auto remaining = last.m_position - first.m_position; remaining > 0; --remaining)
+        for (auto remaining = last - first; remaining > 0; --remaining)
             first = erase(first);
         return first;
     }
@@ -137,62 +148,6 @@ public:
         m_keys.clear();
         m_values.clear();
     }
-
-    /// An entry at a time, in insertion order, with a view of its value.
-    class iterator
-    {
-    public:
-        using value_type = typename OrderedMap::value_type;
-        using reference = value_type;
-        using difference_type = std::ptrdiff_t;
-        using iterator_concept = std::bidirectional_iterator_tag;
-        using iterator_category = std::input_iterator_tag;
-
-        /// What -> points at: the pair, kept for the expression's lifetime.
-        struct arrow
-        {
-            value_type pair;
-            const value_type* operator->() const { return &pair; }
-        };
-
-        iterator() = default;
-
-        reference operator*() const { return { m_map->keys()[m_position], m_map->m_values[m_position] }; }
-        arrow operator->() const { return { **this }; }
-        iterator& operator++()
-        {
-            ++m_position;
-            return *this;
-        }
-        iterator operator++(int)
-        {
-            auto copy = *this;
-            ++*this;
-            return copy;
-        }
-        iterator& operator--()
-        {
-            --m_position;
-            return *this;
-        }
-        iterator operator--(int)
-        {
-            auto copy = *this;
-            --*this;
-            return copy;
-        }
-        friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_position == rhs.m_position; }
-        /// How many entries lie between: positions, so that an entry's position is `it - begin()`.
-        friend difference_type operator-(const iterator& lhs, const iterator& rhs)
-        { return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position); }
-
-    private:
-        friend class OrderedMap;
-        iterator(const OrderedMap* map, size_type position) : m_map(map), m_position(position) {}
-
-        const OrderedMap* m_map = nullptr;
-        size_type m_position = 0;
-    };
 
 private:
     [[nodiscard]] size_type position_of(const K& key) const

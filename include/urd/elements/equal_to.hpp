@@ -173,7 +173,7 @@ struct EqualTo<void>
 /// Whether two ranges hold equal elements (by EqualTo), in order.
 template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
     requires EqualityComparableByEqualTo<std::ranges::range_value_t<LhsRange>>
-constexpr bool equal_range(LhsRange&& lhs, RhsRange&& rhs)
+constexpr bool equal_elements(LhsRange&& lhs, RhsRange&& rhs)
 {
     using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
     return std::ranges::equal(lhs, rhs, EqualTo<Value> {});

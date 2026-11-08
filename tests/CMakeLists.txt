@@ -5,37 +5,37 @@ find_package(Threads REQUIRED)
 find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
-# nested Stores. Those below count allocations (allocations.cpp replaces operator new).
-foreach(test properties rows semantics queues pools views children family concurrency complexity shortfall)
+# nested Stores. Those below count allocations (they link urd::count_allocations, which replaces operator new).
+foreach(test properties rows semantics queues pools views children family concurrency shortfall)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
     set_tests_properties(${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 endforeach()
-target_sources(test_properties PRIVATE allocations.cpp)
+target_link_libraries(test_properties PRIVATE urd::count_allocations)
 # Each container's property tests (tests/container.cpp, the suite of tests/properties.hpp), linked into one program;
 # the gtest main collects the instantiations. benchmarks/requests.json's `tested` lists what each is tested for.
 urd_per_container(KEY tested FIELDS 2 PER_OBJECT 3 PREFIX properties SOURCE ${PROJECT_SOURCE_DIR}/tests/container.cpp
                   DEFINE URD_TESTED LINK GTest::gtest Threads::Threads fmt::fmt
                   TAIL "INSTANTIATE_TYPED_TEST_SUITE_P(@object@, Properties, container_types, urd::test::Names);\n"
                   OUT_OBJECTS container_test_objects)
-add_executable(test_containers repr/main.cpp allocations.cpp)
-target_link_libraries(test_containers PRIVATE ${container_test_objects} urd::urd GTest::gtest Threads::Threads fmt::fmt)
+add_executable(test_containers repr/main.cpp)
+target_link_libraries(test_containers PRIVATE ${container_test_objects} urd::urd urd::count_allocations GTest::gtest Threads::Threads fmt::fmt)
 add_test(NAME containers COMMAND test_containers)
 set_tests_properties(containers PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 # GCC's -Wfree-nonheap-object misfires on a row vector built and compared inside a thread's lambda (a known false
 # positive of its optimizer, not a defect of the code); the other warnings stay on.
 target_compile_options(test_concurrency PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-free-nonheap-object>)
-target_sources(test_rows PRIVATE allocations.cpp)
-target_sources(test_queues PRIVATE allocations.cpp)
+target_link_libraries(test_rows PRIVATE urd::count_allocations)
+target_link_libraries(test_queues PRIVATE urd::count_allocations)
 # A Store's behavior, by topic (every tests/store/*.cpp): each file includes the headers of the containers its Stores
 # resolve to.
 file(GLOB store_topics CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/store/*.cpp)
 list(TRANSFORM store_topics REPLACE ".*/([^/]+)\\.cpp$" "\\1")
 foreach(topic ${store_topics})
-    add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp allocations.cpp)
-    target_link_libraries(test_store_${topic} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
+    add_executable(test_store_${topic} store/${topic}.cpp repr/main.cpp)
+    target_link_libraries(test_store_${topic} PRIVATE urd::urd urd::count_allocations GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME store_${topic} COMMAND test_store_${topic})
 endforeach()
 # The rules are compile-time only.
@@ -187,7 +187,7 @@ function(urd_compile_fail_expects name case regex)
     set_tests_properties(${name}_${case} PROPERTIES WILL_FAIL FALSE PASS_REGULAR_EXPRESSION "${regex}")
 endfunction()
 
-urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 62)
+urd_compile_fail_cases(compile_fail_store compile_fail_store.cpp 64)
 # A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")

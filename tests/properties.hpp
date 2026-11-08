@@ -6,7 +6,7 @@
 // (tests/container.cpp, compiled once per container) instantiates it for that container and the Stores over it, so
 // adding a container adds its own tests. The headers a container needs are included before this header.
 
-#include "allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "names.hpp"
 #include "urd/store.hpp"
 #include "verify.hpp"
@@ -38,9 +38,7 @@ namespace
 {
 
 using urd::Store;
-using urd::test::allocations;
-using urd::test::Counted;
-using urd::test::deallocations;
+using urd::testing::Counted;
 
 template<typename R>
 class Properties : public testing::Test
@@ -264,7 +262,7 @@ TYPED_TEST_P(Properties, Nonempty)
 
 TYPED_TEST_P(Properties, Retains)
 {
-    if (!urd::test::counts_allocations)
+    if (!urd::testing::counts_allocations)
         GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!declares<TypeParam, urd::retains> || !urd::detail::container_shrinks<TypeParam>)
         GTEST_SKIP() << "not declared, or nothing is removed";
@@ -282,7 +280,7 @@ TYPED_TEST_P(Properties, Retains)
             for (int element = 0; element < COUNT; ++element)
                 add(range, element);
         }
-        EXPECT_EQ(allocations(), 0) << "after clear";
+        EXPECT_EQ(urd::testing::counts().allocations, 0) << "after clear";
 
         // Erased one by one, then refilled: nothing is allocated either.
         for (int element = 0; element < COUNT; ++element)
@@ -297,13 +295,13 @@ TYPED_TEST_P(Properties, Retains)
             for (int element = 0; element < COUNT; ++element)
                 add(range, element);
         }
-        EXPECT_EQ(allocations(), 0) << "after erasing each element";
+        EXPECT_EQ(urd::testing::counts().allocations, 0) << "after erasing each element";
     }
 }
 
 TYPED_TEST_P(Properties, Reclaims)
 {
-    if (!urd::test::counts_allocations)
+    if (!urd::testing::counts_allocations)
         GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!declares<TypeParam, urd::reclaims>)
         GTEST_SKIP() << "not declared";
@@ -318,7 +316,7 @@ TYPED_TEST_P(Properties, Reclaims)
             const auto counted = Counted();
             range.clear();
         }
-        EXPECT_GE(deallocations(), COUNT);
+        EXPECT_GE(urd::testing::counts().deallocations, COUNT);
     }
 }
 

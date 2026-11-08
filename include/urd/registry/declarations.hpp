@@ -33,7 +33,6 @@
 #include "urd/repr/values/parallel_hash_set_fwd.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set_fwd.hpp"
-#include "urd/repr/wrappers/change_logged_fwd.hpp"
 #include "urd/repr/wrappers/layered_fwd.hpp"
 #include "urd/repr/wrappers/recycling_fwd.hpp"
 #include "urd/repr/wrappers/scoped_fwd.hpp"
@@ -72,10 +71,6 @@ using values_declarations = boost::mp11::mp_list<unordered_flat_set_decl,
                                       sparse_set_decl,
                                       stable_indexed_set_decl,
                                       ordered_sparse_set_decl,
-                                      change_logged_decl<unordered_flat_set_decl>,
-                                      change_logged_decl<tracked_dense_set_decl>,
-                                      change_logged_decl<unordered_set_decl>,
-                                      change_logged_decl<set_decl>,
                                       parallel_hash_set_decl,
                                       parallel_node_hash_set_decl,
                                       concurrent_indexed_set_decl>;

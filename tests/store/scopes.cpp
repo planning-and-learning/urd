@@ -1,6 +1,6 @@
 // Scopes, change logs, layers and families of Stores. Each header a Store here needs is included.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -21,7 +21,6 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/scoped.hpp"
@@ -152,16 +151,6 @@ TEST(Scoped, EqualBindingsCompareEqual)
     EXPECT_FALSE(grown == small);
 }
 
-// The change log answers whether an element is among its changes, without scanning them.
-TEST(ChangeLog, WasAddedAndWasRemoved)
-{
-    auto facts = Store<set<int>, urd::change_log> { 1, 2 };
-    facts.clear_changes();
-    facts.insert(3);
-    facts.erase(1);
-    EXPECT_TRUE(facts.was_added(3) && !facts.was_added(2) && facts.was_removed(1) && !facts.was_removed(3));
-}
-
 // A layer finds its parent's values, holds only its own, and shadows the parent's with its own; owner(key) is the
 // layer that holds a key.
 TEST(Layered, AnswersFromItselfThenItsParent)
@@ -214,46 +203,6 @@ template<typename T>
 using Interned = Store<set<T>, urd::positional, urd::monotone>;
 
 }  // namespace
-
-// A change log holds exactly the difference between the contents and those when it was last cleared.
-TEST(ChangeLog, HoldsTheDifferenceSinceItWasCleared)
-{
-    auto random = std::mt19937(29);
-    auto facts = Store<set<int>, urd::change_log>();
-    auto reference = std::set<int>();
-    for (int step = 0; step < 2000; ++step)
-    {
-        const int element = static_cast<int>(random() % 20);
-        switch (random() % 10)
-        {
-            case 0:
-                facts.clear_changes();
-                reference = std::set<int>(facts.begin(), facts.end());
-                break;
-            case 1:
-                if (random() % 8 == 0)
-                    facts.clear();
-                break;
-            case 2:
-            case 3:
-            case 4:
-                facts.erase(element);
-                break;
-            default:
-                facts.insert(element);
-                break;
-        }
-        const auto now = std::set<int>(facts.begin(), facts.end());
-        auto added = std::vector<int>();
-        auto removed = std::vector<int>();
-        std::ranges::set_difference(now, reference, std::back_inserter(added));
-        std::ranges::set_difference(reference, now, std::back_inserter(removed));
-        ASSERT_EQ(std::set<int>(facts.added().begin(), facts.added().end()), std::set<int>(added.begin(), added.end())) << "step " << step;
-        ASSERT_EQ(facts.added().size(), added.size());
-        ASSERT_EQ(std::set<int>(facts.removed().begin(), facts.removed().end()), std::set<int>(removed.begin(), removed.end())) << "step " << step;
-        ASSERT_EQ(facts.removed().size(), removed.size());
-    }
-}
 
 // Relations as yggdrasil's relation repositories keep them: per predicate, a pool of the rows (tuples of object
 // indices) bound to it, each row once; a phase layers over the previous through both levels: a predicate absent

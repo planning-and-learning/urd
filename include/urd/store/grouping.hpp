@@ -29,7 +29,7 @@ public:
     /// How many classes there are.
     [[nodiscard]] std::size_t classes() const { return constant().classes(); }
     void clear()
-        requires shrinks<S>
+        requires clears<S>
     { representation().clear(); }
 
 private:

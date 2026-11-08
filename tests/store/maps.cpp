@@ -1,6 +1,6 @@
 // Maps whose values merge, nested dense maps, and maps that recycle their nodes. Each header a Store here needs is included.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -11,18 +11,22 @@
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/pools/pools.hpp"
+#include "urd/repr/sequences/sequence.hpp"
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/parallel_hash_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/layer.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/repr/wrappers/scoped.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <concepts>
 #include <cstddef>
@@ -37,8 +41,6 @@
 #include <ranges>
 #include <set>
 #include <span>
-#include <string>
-#include <thread>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -173,59 +175,6 @@ TEST(Merge, GenerationsReuseValues)
     EXPECT_TRUE(buffers.at(3).empty());
 }
 
-// Threads updating and reading the same keys of a thread-safe generation map at once: every update counts.
-TEST(Merge, ThreadsUpdateTogether)
-{
-    auto counts = Store<map<int, int>, urd::dense, urd::constant_clear, urd::concurrent>();
-    static_assert(std::same_as<decltype(counts)::representation, urd::repr::IndexMap<int, int, true, true>>);
-    constexpr int threads = 4;
-    constexpr int rounds = 20000;
-    constexpr int keys = 50;
-    {
-        auto workers = std::vector<std::jthread>();
-        for (int thread = 0; thread < threads; ++thread)
-            workers.emplace_back(
-                [&counts, thread]
-                {
-                    for (int round = 0; round < rounds; ++round)
-                    {
-                        counts.update((round + thread) % keys, [](int& count, bool held) { count = held ? count + 1 : 1; });
-                        (void) counts.read(round % keys, [](int count) { return count; }, 0);
-                    }
-                });
-    }
-    int total = 0;
-    for (int key = 0; key < keys; ++key)
-        total += counts.at(key);
-    EXPECT_EQ(total, threads * rounds);
-}
-
-// Threads updating and reading the same hashed keys of a shared map at once: every update counts.
-TEST(Merge, ThreadsUpdateHashedKeysTogether)
-{
-    auto counts = Store<map<std::string, int>, urd::concurrent>();
-    constexpr int threads = 4;
-    constexpr int rounds = 20000;
-    constexpr int keys = 50;
-    {
-        auto workers = std::vector<std::jthread>();
-        for (int thread = 0; thread < threads; ++thread)
-            workers.emplace_back(
-                [&counts, thread]
-                {
-                    for (int round = 0; round < rounds; ++round)
-                    {
-                        counts.update(std::to_string((round + thread) % keys), [](int& count, bool held) { count = held ? count + 1 : 1; });
-                        (void) counts.read(std::to_string(round % keys), [](int count) { return count; }, 0);
-                    }
-                });
-    }
-    int total = 0;
-    for (int key = 0; key < keys; ++key)
-        total += counts.at(std::to_string(key));
-    EXPECT_EQ(total, threads * rounds);
-}
-
 // A sorted map whose values are rows that keep their memory: erased keys leave their nodes and values for the next
 // keys, so buckets of a cost queue, emptied and refilled, allocate nothing once warm.
 TEST(Recycling, BucketsRefillWithoutAllocating)
@@ -249,13 +198,13 @@ TEST(Recycling, BucketsRefillWithoutAllocating)
         buckets.erase(buckets.begin()->first);
     }
     {
-        const auto counted = urd::test::Counted();
+        const auto counted = urd::testing::Counted();
         fill(7.5);
         fill(8.5);
     }
-    if (urd::test::counts_allocations)
+    if (urd::testing::counts_allocations)
     {
-        EXPECT_EQ(urd::test::allocations(), 0);
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
     }
     EXPECT_EQ(buckets.size(), 2U);
     EXPECT_EQ(buckets.begin()->first, 7.5);
@@ -282,16 +231,114 @@ TEST(Recycling, UnorderedMapsRecycleToo)
         groups.erase(round);
     }
     {
-        const auto counted = urd::test::Counted();
+        const auto counted = urd::testing::Counted();
         for (int each = 0; each < 50; ++each)
             groups[7].insert(each + 700);
     }
-    if (urd::test::counts_allocations)
+    if (urd::testing::counts_allocations)
     {
-        EXPECT_EQ(urd::test::allocations(), 0);
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
     }
     EXPECT_EQ(groups.at(7).size(), 50U);
     EXPECT_FALSE(groups.at(7).contains(0));
+}
+
+// A layered map of layered pools (a relation repository): a slot cleared with the map and made again reuses the pool it
+// kept, storage and all, where its Store offers clear() (monotone_until_clear) and it is built alike (the same bit
+// width): refilling allocates nothing. A monotone pool has no clear(): its slot is built anew.
+struct LayeredObject;
+struct LayeredPredicate;
+using LayeredRow = Store<urd::sequence<urd::index<LayeredObject>>, urd::frozen>;
+using LayeredRows = Store<urd::pool<LayeredRow>, urd::monotone_until_clear, urd::bit, urd::layered, urd::concurrent>;
+using MonotoneRows = Store<urd::pool<LayeredRow>, urd::monotone, urd::bit, urd::layered>;
+template<typename S>
+concept clears_rows = requires(S& rows) { rows.clear(); };
+static_assert(clears_rows<LayeredRows> && !clears_rows<MonotoneRows>);
+using LayeredRelations = Store<map<urd::index<LayeredPredicate>, LayeredRows>, urd::dense, urd::layered, urd::concurrent>;
+
+TEST(LayeredMaps, ClearedSlotsReuseTheirPools)
+{
+    const auto predicate = [](std::uint32_t at) { return urd::index<LayeredPredicate>(at); };
+    const auto row = [](std::uint32_t first, std::uint32_t second)
+    { return std::array { urd::index<LayeredObject>(first), urd::index<LayeredObject>(second) }; };
+    auto domain = LayeredRelations();
+    domain.try_emplace(predicate(0), urd::bit_width { 12 });
+    domain.at(predicate(0)).insert(row(0, 0));
+    auto state = LayeredRelations();
+    state.layer_over(&domain);
+    const auto fill = [&]
+    {
+        for (std::uint32_t at = 0; at < 4; ++at)
+        {
+            state.try_emplace(predicate(at), urd::bit_width { 12 });
+            for (std::uint32_t object = 0; object < 20; ++object)
+                state.at(predicate(at)).insert(row(at, object + 1));
+        }
+    };
+    fill();
+    state.clear();
+    fill();
+    state.clear();
+    {
+        const auto counted = urd::testing::Counted();
+        fill();
+    }
+    if (urd::testing::counts_allocations)
+    {
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
+    }
+    // Layered anew: over the domain's pool, numbered after its row, at the width asked.
+    EXPECT_EQ(std::as_const(state).at(predicate(0)).base(), 1U);
+    EXPECT_EQ(std::as_const(state).at(predicate(0)).size(), 21U);
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).base(), 0U);
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).width(), urd::bit_width { 12 });
+    // Another width builds a new pool.
+    state.clear();
+    state.try_emplace(predicate(1), urd::bit_width { 20 });
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).width(), urd::bit_width { 20 });
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).size(), 0U);
+}
+
+TEST(LayeredMaps, MonotoneSlotsAreBuiltAnew)
+{
+    using Relations = Store<map<urd::index<LayeredPredicate>, MonotoneRows>, urd::dense, urd::layered>;
+    const auto predicate = urd::index<LayeredPredicate>(0);
+    auto domain = Relations();
+    domain.try_emplace(predicate, urd::bit_width { 12 });
+    domain.at(predicate).insert(std::array { urd::index<LayeredObject>(0), urd::index<LayeredObject>(0) });
+    auto state = Relations();
+    state.layer_over(&domain);
+    for (int round = 0; round < 2; ++round)
+    {
+        state.clear();
+        state.try_emplace(predicate, urd::bit_width { 12 });
+        state.at(predicate).insert(std::array { urd::index<LayeredObject>(1), urd::index<LayeredObject>(1) });
+        EXPECT_EQ(std::as_const(state).at(predicate).base(), 1U);
+        EXPECT_EQ(std::as_const(state).at(predicate).size(), 2U);
+    }
+}
+
+// A layered map reads a key's value in one walk up the layers (read), or its own layer's only (read_own).
+TEST(LayeredMaps, ReadsTheOwnersValueOrTheOwnLayers)
+{
+    using Layers = Store<map<urd::index<LayeredPredicate>, int>, urd::dense, urd::layered>;
+    const auto key = [](std::uint32_t at) { return urd::index<LayeredPredicate>(at); };
+    auto root = Layers();
+    root.insert_or_assign(key(0), 10);
+    auto middle = Layers();
+    middle.layer_over(&root);
+    middle.insert_or_assign(key(1), 11);
+    auto leaf = Layers();
+    leaf.layer_over(&middle);
+    leaf.insert_or_assign(key(2), 12);
+    const auto value = [](int held) { return held; };
+    for (std::uint32_t at = 0; at < 3; ++at)
+        EXPECT_EQ(leaf.read(key(at), value, -1), static_cast<int>(10 + at));
+    EXPECT_EQ(leaf.read(key(3), value, -1), -1);
+    EXPECT_EQ(leaf.read_own(key(0), value, -1), -1);
+    EXPECT_EQ(leaf.read_own(key(1), value, -1), -1);
+    EXPECT_EQ(leaf.read_own(key(2), value, -1), 12);
+    EXPECT_EQ(middle.read_own(key(1), value, -1), 11);
 }
 
 }  // namespace

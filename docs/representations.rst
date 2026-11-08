@@ -61,9 +61,6 @@ container's header is missing fails to compile naming the headers to include, a 
    * - ``indexed.hpp``
      - the indexed sets (interners)
      - Boost.Unordered
-   * - ``change_logged.hpp``
-     - the change log (with the logged set's header)
-     - Boost.Unordered
    * - ``flat_set.hpp``, ``flat_map.hpp``
      - Boost's flat sorted containers
      - Boost.Container
@@ -145,9 +142,9 @@ urd's own
    * - ``LayeredPool``, ``Layered``
      - a pool, or a dense map (thread-safe over the thread-safe generation map), over a parent
      - ``layered``
-   * - ``Scoped`` (over a flat hash, tree or dense map), ``ChangeLogged`` (over a flat hash, dense, tree or node set), ``DisjointSets``, ``SegmentedVector``
-     - a map with a log of previous values; a set logging its changes; union-find; a vector of doubling segments
-     - ``scoped``, ``change_log``, ``partition``, ``monotone, stable_refs``
+   * - ``Scoped`` (over a flat hash, tree or dense map), ``DisjointSets``, ``SegmentedVector``
+     - a map with a log of previous values; union-find; a vector of doubling segments
+     - ``scoped``, ``partition``, ``monotone, stable_refs``
 
 Order of preference
 -------------------

@@ -2,7 +2,7 @@
 // by_priority) is checked against a model through random pushes and pops, as tests/properties.cpp checks sets and
 // sequences.
 
-#include "allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/queues/addressable_heap.hpp"
 #include "urd/repr/queues/bucket_queue.hpp"
 #include "urd/repr/queues/queue.hpp"
@@ -95,7 +95,7 @@ TYPED_TEST(Queues, LeavesInItsOrderThroughRandomOperations)
 // A queue that retains its storage refills after clear, or after popping everything, without allocating.
 TYPED_TEST(Queues, Retains)
 {
-    if (!urd::test::counts_allocations)
+    if (!urd::testing::counts_allocations)
         GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!urd::has<TypeParam, urd::retains>)
         GTEST_SKIP() << "not declared";
@@ -107,19 +107,19 @@ TYPED_TEST(Queues, Retains)
             queue.push(element);
         queue.clear();
         {
-            const auto counted = urd::test::Counted();
+            const auto counted = urd::testing::Counted();
             for (int element = 0; element < count; ++element)
                 queue.push(element);
         }
-        EXPECT_EQ(urd::test::allocations(), 0) << "after clear";
+        EXPECT_EQ(urd::testing::counts().allocations, 0) << "after clear";
         while (!queue.empty())
             queue.pop();
         {
-            const auto counted = urd::test::Counted();
+            const auto counted = urd::testing::Counted();
             for (int element = 0; element < count; ++element)
                 queue.push(element);
         }
-        EXPECT_EQ(urd::test::allocations(), 0) << "after popping every element";
+        EXPECT_EQ(urd::testing::counts().allocations, 0) << "after popping every element";
     }
 }
 

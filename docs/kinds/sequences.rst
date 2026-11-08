@@ -103,7 +103,7 @@ Growable (not ``frozen``, not ``fixed_shape``):
 
    Sequences, at a position (not ``monotone``).
 
-Shrinkable (neither ``frozen`` nor ``monotone``):
+Shrinkable (neither ``frozen`` nor ``monotone``; ``monotone_until_clear`` keeps ``clear`` only):
 
 .. cpp:function:: iterator erase(const_iterator pos)
 .. cpp:function:: iterator erase(const_iterator first, const_iterator last)

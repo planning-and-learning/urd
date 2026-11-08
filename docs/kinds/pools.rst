@@ -64,7 +64,7 @@ Member types
 .. list-table::
    :widths: 30 70
 
-   * - ``row_type``
+   * - ``value_type``
      - ``Row``
    * - ``handle_type``
      - ``H`` (:cpp:struct:`index\<Row\> <urd::index>` by default), or the tree pools' handle
@@ -113,14 +113,14 @@ Member functions: interning pools (``handles, unique``)
 
    Rows that are sets; a tree pool reads one path, not the row.
 
-.. cpp:function:: row_type get(handle_type handle) const
+.. cpp:function:: value_type get(handle_type handle) const
 .. cpp:function:: std::size_t row_size(handle_type handle) const
 .. cpp:function:: void read(handle_type handle, std::span<element> out) const
 
    The row's elements into ``out``, which must hold ``row_size(handle)`` of them; allocates nothing (a tree pool
    reads them, and counts them for ``row_size``, along the tree).
 
-.. cpp:function:: void read(handle_type handle, row_type& out) const
+.. cpp:function:: void read(handle_type handle, value_type& out) const
 
    A tree pool of dense sets: the row into ``out`` word by word (``assign_words``, :doc:`sets`), its storage reused;
    allocates nothing where ``out`` holds the row's words already.
@@ -132,7 +132,8 @@ Member functions: interning pools (``handles, unique``)
 
 .. cpp:function:: void clear()
 
-   Forgets every row; the handles given so far mean nothing after. Shrinkable pools.
+   Forgets every row; the handles given so far mean nothing after; a layered pool its own layer's. Shrinkable or
+   ``monotone_until_clear`` pools.
 
 Member functions: slots (``handles`` without ``unique``)
 --------------------------------------------------------

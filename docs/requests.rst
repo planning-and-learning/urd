@@ -108,7 +108,8 @@ assertion that names what is wrong.
   workloads.
 * What you state is what you get, with what it means: a set, and a map without ``multi``, keep each key once; a
   positional set numbers its keys as they come; a ``frozen`` Store has ``stable_refs``. ``frozen`` or ``fixed_shape``
-  Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase.
+  Stores offer no insert, ``monotone`` or ``nonempty`` ones no erase or clear, ``monotone_until_clear`` ones clear
+  but no erase.
 * A queue is reached by ``fifo``, ``lifo`` or ``by_priority``; ``order_by`` orders a ``sorted`` Store or a
   ``by_priority`` queue.
 * Every tag answers a question of the request's kind (its request format): ``bidirectional`` means nothing for a

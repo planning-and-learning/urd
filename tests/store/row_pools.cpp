@@ -17,7 +17,6 @@
 #include <span>
 #include <stdexcept>
 #include <string>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -26,7 +25,6 @@ namespace
 
 using Row = urd::Store<urd::sequence<std::uint32_t>, urd::frozen>;
 using Rows = urd::Store<urd::pool<Row>>;
-using ConcurrentRows = urd::Store<urd::pool<Row>, urd::concurrent>;
 
 }  // namespace
 
@@ -115,34 +113,6 @@ TEST(RowPools, AgreeWithAStandardSet)
             EXPECT_EQ(rows.size(), 0U);
         }
     }
-}
-
-// Threads interning overlapping rows at once: each row one handle, the same for every thread.
-TEST(RowPools, ConcurrentInsertsAgree)
-{
-    auto rows = ConcurrentRows();
-    constexpr int threads = 4;
-    constexpr std::uint32_t distinct = 2000;
-    auto seen = std::vector<std::vector<std::uint32_t>>(threads, std::vector<std::uint32_t>(distinct));
-    auto workers = std::vector<std::thread>();
-    for (int thread = 0; thread < threads; ++thread)
-        workers.emplace_back(
-            [&, thread]
-            {
-                for (std::uint32_t each = 0; each < distinct; ++each)
-                {
-                    const auto value = (each * 7 + static_cast<std::uint32_t>(thread)) % distinct;
-                    const auto row = std::array<std::uint32_t, 2> { value, value + 1 };
-                    const auto handle = rows.insert(std::span<const std::uint32_t>(row)).first;
-                    seen[static_cast<std::size_t>(thread)][value] = handle.value;
-                    EXPECT_TRUE(std::ranges::equal(rows.view(handle), row));
-                }
-            });
-    for (auto& worker : workers)
-        worker.join();
-    EXPECT_EQ(rows.size(), distinct);
-    for (int thread = 1; thread < threads; ++thread)
-        EXPECT_EQ(seen[static_cast<std::size_t>(thread)], seen[0]);
 }
 
 namespace

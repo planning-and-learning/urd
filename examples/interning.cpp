@@ -9,7 +9,6 @@
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/store.hpp"
 
 #include <exception>

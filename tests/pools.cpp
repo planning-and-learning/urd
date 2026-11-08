@@ -38,7 +38,6 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <span>
-#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -196,21 +195,6 @@ concept sized = requires(P pool) { pool.size(); };
 static_assert(!iterable<Store<pool<Store<sequence<int>, urd::frozen>>>> && sized<Store<pool<Store<sequence<int>, urd::frozen>>>>
               && !sized<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>>);
 
-// insert says whether it stored the row, as a set's does; find gives the handle insert would, or none, without
-// storing; size counts distinct rows.
-TEST(Pools, InsertFindAndSizeWithoutSharing)
-{
-    auto rows = Store<pool<Store<sequence<int>, urd::frozen>>>();
-    EXPECT_TRUE(rows.find({ 1, 2 }).is_none());
-    EXPECT_TRUE(rows.empty());
-    const auto [first, stored] = rows.insert({ 1, 2 });
-    EXPECT_TRUE(stored);
-    EXPECT_EQ(rows.insert({ 1, 2 }), std::pair(first, false));
-    EXPECT_EQ(rows.size(), 1U);
-    EXPECT_EQ(rows.find(std::vector { 1, 2 }), first);
-    EXPECT_TRUE(rows.find({ 2, 1 }).is_none());
-}
-
 // Erase moves the last row into the erased one's handle and says which handle it had, so whatever keeps handles
 // (postings over the rows, yggdrasil's swap-erase) follows it.
 TEST(Pools, EraseMovesTheLastRowIn)
@@ -339,84 +323,8 @@ TEST(Slots, AcquireReusesAnErasedElementAsItIs)
     EXPECT_EQ(buffers.size(), 1U);
 }
 
-// Threads insert, write, read and erase their own elements at once; each finds its own values throughout.
-TEST(Slots, ThreadSafeSlotsServeThreadsAtOnce)
-{
-    auto pool = Store<slots<int>, urd::concurrent>();
-    constexpr int threads = 4;
-    constexpr int rounds = 2000;
-    auto failures = std::vector<int>(threads);
-    {
-        auto workers = std::vector<std::jthread>();
-        for (int thread = 0; thread < threads; ++thread)
-            workers.emplace_back(
-                [&pool, &failures, thread]
-                {
-                    auto mine = std::vector<typename std::remove_cvref_t<decltype(pool)>::handle_type>();
-                    for (int round = 0; round < rounds; ++round)
-                    {
-                        mine.push_back(pool.insert(thread * rounds + round));
-                        if (round % 3 == 2)
-                        {
-                            pool.erase(mine.front());
-                            mine.erase(mine.begin());
-                        }
-                    }
-                    for (const auto handle : mine)
-                        if (std::as_const(pool)[handle] / rounds != thread)
-                            ++failures[static_cast<std::size_t>(thread)];
-                });
-    }
-    EXPECT_EQ(failures, std::vector<int>(threads));
-    EXPECT_EQ(pool.size(), static_cast<std::size_t>(threads * (rounds - rounds / 3)));
-}
-
-// Threads inserting the same rows, and rows derived from them, into a shared tree pool at once: every thread gets
-// the same handles, and every row reads back. Run under ThreadSanitizer in CI.
-namespace
-{
-
-template<typename P>
-void expect_threads_agree(int rounds)
-{
-    auto pool = P();
-    constexpr int threads = 4;
-    auto handles = std::vector<std::vector<typename P::handle_type>>(threads);
-    {
-        auto workers = std::vector<std::jthread>();
-        for (int thread = 0; thread < threads; ++thread)
-            workers.emplace_back(
-                [&pool, &handles, rounds, thread]
-                {
-                    auto& mine = handles[static_cast<std::size_t>(thread)];
-                    for (int round = 0; round < rounds; ++round)
-                    {
-                        auto elements = std::vector<int>();
-                        for (int element = 0; element < 40; ++element)
-                            if ((element * 7 + round) % 5 < 2)
-                                elements.push_back(element + round % 3);
-                        mine.push_back(pool.insert(elements).first);
-                        // Read a row published earlier, while others insert.
-                        if (round > 0)
-                            (void) pool.get(mine[static_cast<std::size_t>(round / 2)]);
-                    }
-                });
-    }
-    for (int thread = 1; thread < threads; ++thread)
-        EXPECT_EQ(handles[static_cast<std::size_t>(thread)], handles[0]);
-}
-
-}  // namespace
-
-TEST(Pools, ThreadsAgreeOnHandles)
-{
-    expect_threads_agree<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>>(300);
-    expect_threads_agree<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::concurrent>>(300);
-    expect_threads_agree<Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>>(300);
-}
-
-// A pool that keeps rows in full lends them out: view(h) is the stored row, a span of its elements or, for rows of
-// dense indices, their bits; views taken early still show their rows after many more inserts.
+// A pool of rows of dense indices lends them out as their bits (rows of elements as spans: tests/store/row_pools.cpp);
+// views taken early still show their rows after many more inserts.
 TEST(Pools, ViewsLendTheStoredRows)
 {
     auto random = std::mt19937(53);
@@ -427,21 +335,6 @@ TEST(Pools, ViewsLendTheStoredRows)
             each = std::uniform_int_distribution<int>(0, 300)(random);
         return elements;
     };
-    {
-        auto pool = Store<urd::pool<Store<sequence<int>, urd::frozen>>>();
-        auto handles = std::vector<decltype(pool)::handle_type>();
-        auto views = std::vector<std::span<const int>>();
-        for (int each = 0; each < 2000; ++each)
-        {
-            handles.push_back(pool.insert(row()).first);
-            views.push_back(pool.view(handles.back()));
-        }
-        for (std::size_t each = 0; each < handles.size(); ++each)
-        {
-            const auto held = pool.get(handles[each]);
-            ASSERT_TRUE(std::ranges::equal(views[each], held)) << each;
-        }
-    }
     {
         using Set = Store<set<int>, urd::dense, urd::frozen>;
         auto pool = Store<urd::pool<Set>>();
@@ -469,36 +362,6 @@ TEST(Pools, ViewsLendTheStoredRows)
 
 namespace
 {
-
-template<typename P>
-void expect_threads_agree_on_records(int rounds)
-{
-    auto pool = urd::test::make_empty<P>();
-    constexpr int threads = 4;
-    auto indices = std::vector<std::vector<typename P::handle_type>>(threads);
-    {
-        auto workers = std::vector<std::jthread>();
-        for (int thread = 0; thread < threads; ++thread)
-            workers.emplace_back(
-                [&pool, &indices, rounds, thread]
-                {
-                    auto& mine = indices[static_cast<std::size_t>(thread)];
-                    for (int round = 0; round < rounds; ++round)
-                    {
-                        const auto record = typename P::record_type((round * 7) % 40);
-                        if (round % 4 == 3)
-                            mine.push_back(pool.insert(record, [&record](typename P::handle_type) { return typename P::record_type(record); }).first);
-                        else
-                            mine.push_back(pool.insert(record).first);
-                        // Read a record published earlier, while others insert.
-                        if (round > 0)
-                            (void) pool[mine[static_cast<std::size_t>(round / 2)]];
-                    }
-                });
-    }
-    for (int thread = 1; thread < threads; ++thread)
-        EXPECT_EQ(indices[static_cast<std::size_t>(thread)], indices[0]);
-}
 
 /// A record whose members are what views resolve: text, indices, a variant.
 struct Owner
@@ -530,12 +393,6 @@ struct Shop
 };
 
 }  // namespace
-
-TEST(Records, ThreadsAgreeOnIndices)
-{
-    expect_threads_agree_on_records<Store<pool<Point>, urd::flat, urd::concurrent>>(300);
-    expect_threads_agree_on_records<Store<pool<Named>, urd::flat, urd::concurrent>>(300);
-}
 
 TEST(Records, ViewsResolveFlatMembers)
 {

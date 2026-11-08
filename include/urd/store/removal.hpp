@@ -12,7 +12,8 @@ namespace urd::detail::facet
 {
 
 /// Shrinkable: removing, which a Store that only grows (monotone, frozen) or must keep an element (nonempty)
-/// does not offer. Removing an element ends the references to it.
+/// does not offer; one that only grows until cleared (monotone_until_clear) offers clear() alone. Removing an element
+/// ends the references to it.
 template<typename Derived, typename R, typename S>
 class removal
 {
@@ -36,7 +37,7 @@ public:
     /// Every element equal to `element` (in a map, with that key); how many there were. Where the kind places elements
     /// by their value or key (it does not append): one erase with the other erases, as std::set has it.
     std::size_t erase(const typename types::lookup_type& element)
-        requires(!appends<typename S::kind>)
+        requires(shrinks<S> && !appends<typename S::kind>)
     { return representation().erase(element); }
     void clear() { representation().clear(); }
 
@@ -73,7 +74,7 @@ struct facet_condition<facet::removal> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return shrinks<S>; }
+    { return clears<S>; }
 };
 template<>
 struct facet_operations<facet::removal>

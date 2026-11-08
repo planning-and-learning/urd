@@ -26,7 +26,6 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"

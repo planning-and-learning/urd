@@ -295,11 +295,11 @@ struct workload
                     use(std::as_const(held)[(each * stride) % size]);
                 into.stop(op_v<urd::operation::access>, probes);
             }
-            else if constexpr (requires(const Store& kept) { kept[typename Store::index_type(0)]; })
+            else if constexpr (urd::has<Store, urd::flat> && requires(const Store& kept) { kept[typename Store::handle_type(0)]; })
             {
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
-                    use(std::as_const(held)[typename Store::index_type((each * stride) % size)]);
+                    use(std::as_const(held)[typename Store::handle_type((each * stride) % size)]);
                 into.stop(op_v<urd::operation::access>, probes);
             }
         }

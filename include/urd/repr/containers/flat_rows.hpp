@@ -4,6 +4,7 @@
 // (urd/repr/values/indexed.hpp, Rows).
 
 #include "urd/memory.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/containers/byte_arena.hpp"
 #include "urd/repr/containers/detail/geometric_segment_layout.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
@@ -45,52 +46,7 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    class const_iterator
-    {
-    public:
-        using value_type = std::span<const U>;
-        using reference = value_type;
-        using difference_type = std::ptrdiff_t;
-        using iterator_category = std::random_access_iterator_tag;
-        using iterator_concept = std::random_access_iterator_tag;
-
-        const_iterator() = default;
-        const_iterator(const FlatRows* rows, size_type pos) : m_rows(rows), m_pos(pos) {}
-
-        reference operator*() const { return (*m_rows)[m_pos]; }
-        reference operator[](difference_type n) const { return *(*this + n); }
-        const_iterator& operator++() { return *this += 1; }
-        const_iterator operator++(int)
-        {
-            auto copy = *this;
-            ++*this;
-            return copy;
-        }
-        const_iterator& operator--() { return *this -= 1; }
-        const_iterator operator--(int)
-        {
-            auto copy = *this;
-            --*this;
-            return copy;
-        }
-        const_iterator& operator+=(difference_type n)
-        {
-            m_pos = static_cast<size_type>(static_cast<difference_type>(m_pos) + n);
-            return *this;
-        }
-        const_iterator& operator-=(difference_type n) { return *this += -n; }
-        friend const_iterator operator+(const_iterator it, difference_type n) { return it += n; }
-        friend const_iterator operator+(difference_type n, const_iterator it) { return it += n; }
-        friend const_iterator operator-(const_iterator it, difference_type n) { return it -= n; }
-        friend difference_type operator-(const const_iterator& lhs, const const_iterator& rhs)
-        { return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos); }
-        friend bool operator==(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_pos == rhs.m_pos; }
-        friend auto operator<=>(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_pos <=> rhs.m_pos; }
-
-    private:
-        const FlatRows* m_rows = nullptr;
-        size_type m_pos = 0;
-    };
+    using const_iterator = PositionIterator<const FlatRows>;
     using iterator = const_iterator;
 
     FlatRows() = default;

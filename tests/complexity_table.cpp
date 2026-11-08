@@ -6,7 +6,8 @@
 //
 // One line per representation the registry can choose for a request of the grid, in the grid's order: what it is,
 // the kinds of Store it serves, what it holds, and the cost of each operation it has. The docs render the
-// complexity sections of docs/kinds/*.rst from this file (docs/_ext/urd_language.py).
+// complexity sections of docs/kinds/*.rst from this file (docs/_ext/urd_language.py). It fails where a candidate
+// offers an operation without a cost, or a representation declares a cost no request of the grid offers.
 
 // Every container, before anything that names a Store: a Store's container is resolved where the Store is
 // first named, and only containers whose headers precede that are found defined.
@@ -153,6 +154,25 @@ std::string generate()
                                             collect<S, List>::run(all);
                                         });
         });
+    // The costs cover what the registry can choose: every operation a serving candidate's Store offers has a cost, and
+    // every cost a representation declares itself is for an operation offered over it or over a wrapper of it.
+    auto used = std::set<std::pair<std::string, std::size_t>>();
+    for (const auto& each : all)
+        for (std::size_t what = 0; what < op_count; ++what)
+            if (each.offered[what])
+            {
+                if (!each.costs[what])
+                    throw std::runtime_error(each.id + " " + std::string(urd::test::op_names[what])
+                                             + ": no cost declared (urd::container_costs, beside its container_traits)");
+                used.emplace(each.id, what);
+                if (!each.part.empty())
+                    used.emplace(each.part, what);
+            }
+    for (const auto& each : all)
+        for (std::size_t what = 0; what < op_count; ++what)
+            if (each.costs[what] && !each.passed_on[what] && !used.contains({ each.id, what }))
+                throw std::runtime_error(each.id + " " + std::string(urd::test::op_names[what])
+                                         + ": no request of the grid offers it; drop the cost (urd::container_costs)");
 
     auto out = std::string("{\"generated_by\": \"complexity_table --write share/urd/complexity.json, from urd::container_costs\", "
                            "\"marks\": {\"*\": \"amortized\", \"~\": \"expected\"}, \"operations\": [");

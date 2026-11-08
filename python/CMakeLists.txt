@@ -32,7 +32,7 @@ install(FILES "${PROJECT_SOURCE_DIR}/share/urd/vocabulary.json" "${PROJECT_SOURC
     DESTINATION "${URD_INSTALL_PACKAGEDIR}/share/urd"
     COMPONENT pyurd
 )
-install(TARGETS urd EXPORT urdPackageTargets COMPONENT pyurd)
+install(TARGETS urd urd_count_allocations EXPORT urdPackageTargets COMPONENT pyurd)
 install(EXPORT urdPackageTargets
     NAMESPACE urd::
     FILE "urdTargets.cmake"

@@ -6,7 +6,7 @@
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/queues/position_iterator.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/queues/queues_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -33,6 +34,11 @@ template<typename T>
 class RingFifo
 {
     friend struct urd::memory_of<RingFifo>;
+    /// Reads the element at a position, for the iterator.
+    struct element_at
+    {
+        const T& operator()(const RingFifo& queue, std::size_t position) const { return queue.at_position(position); }
+    };
 
 public:
     using value_type = T;
@@ -51,8 +57,8 @@ public:
         return at_position(m_count - 1);
     }
     /// The elements in the order pushed.
-    [[nodiscard]] PositionIterator<RingFifo> begin() const { return { this, 0 }; }
-    [[nodiscard]] PositionIterator<RingFifo> end() const { return { this, m_count }; }
+    [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> begin() const { return { this, 0 }; }
+    [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> end() const { return { this, m_count }; }
 
     void push(const T& element) { emplace(element); }
     void push(T&& element) { emplace(std::move(element)); }
@@ -88,7 +94,6 @@ public:
     }
 
 private:
-    friend class PositionIterator<RingFifo>;
     /// The element `position` places after the head.
     [[nodiscard]] const T& at_position(size_type position) const
     {

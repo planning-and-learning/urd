@@ -39,9 +39,9 @@ public:
     { return representation().emplace(std::forward<Args>(args)...); }
     /// Removes the next element; the Store must not be empty.
     void pop() { representation().pop(); }
-    /// Removes every element; a monotone queue never empties but by pop.
+    /// Removes every element; a monotone queue never empties but by pop (monotone_until_clear: by clear too).
     void clear()
-        requires shrinks<S>
+        requires clears<S>
     { representation().clear(); }
 
     /// Replaces the element of `handle`, which moves to its place in the order.

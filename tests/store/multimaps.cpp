@@ -1,7 +1,7 @@
 // Multimaps: the values of a key in order, compressed sparse rows, graphs that answer by value too, and rebuilding by assign. Each family header a Store here
 // needs is included, and no other.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -22,7 +22,6 @@
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
 
@@ -163,12 +162,12 @@ TEST(Assign, RebuildsCsrInPlace)
     {
         const auto next = pairs();
         {
-            const auto counted = urd::test::Counted();
+            const auto counted = urd::testing::Counted();
             graph.assign(next.begin(), next.end());
         }
-        if (urd::test::counts_allocations)
+        if (urd::testing::counts_allocations)
         {
-            EXPECT_EQ(urd::test::allocations(), 0) << "round " << round;
+            EXPECT_EQ(urd::testing::counts().allocations, 0) << "round " << round;
         }
         EXPECT_EQ(graph, Successors(next.begin(), next.end())) << "round " << round;
     }

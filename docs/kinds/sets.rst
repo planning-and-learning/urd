@@ -45,9 +45,6 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - ``Store<set<K>, concurrent>``
      - ``gtl::parallel_flat_hash_set`` (16 shards, a mutex each); with ``stable_refs``, ``parallel_node_hash_set``
        (a node per element); ``positional, monotone, concurrent``: ``ConcurrentIndexedSet``
-   * - ``Store<set<K>, change_log>``
-     - ``ChangeLogged`` over a flat hash set; over a tracked bitset with ``dense``, a tree with ``sorted``, a node
-       set with ``stable_refs``
 
 Template parameters
 -------------------
@@ -65,7 +62,7 @@ Member types
 
    * - ``representation``
      - the container chosen
-   * - ``value_type``, ``key_type``, ``lookup_type``
+   * - ``value_type``, ``key_type``
      - ``K``
    * - ``mapped_type``
      - ``void``
@@ -161,7 +158,7 @@ Growable Stores (not ``frozen``):
    Inserts the element unless an equal one is held; the iterator to it and whether it was inserted. In an interner
    (``positional, monotone``) the element's position is its index and never shifts.
 
-Shrinkable Stores (neither ``frozen`` nor ``monotone``):
+Shrinkable Stores (neither ``frozen`` nor ``monotone``; ``monotone_until_clear`` keeps ``clear`` only):
 
 .. cpp:function:: iterator erase(const_iterator pos)
 .. cpp:function:: iterator erase(const_iterator first, const_iterator last)
@@ -243,22 +240,6 @@ Least and greatest (``sorted``, not ``dense``)
 ``front()`` and ``back()``, as above, give a sorted set's least and greatest elements (a map's entries with the least
 and greatest keys), O(1) in a tree or a sorted array; the Store must not be empty. Dense keys find their first by a
 scan of the key range, so a dense set reads ``*begin()`` where that cost is meant.
-
-Change log (``change_log``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. cpp:function:: std::span<const value_type> added() const
-.. cpp:function:: std::span<const value_type> removed() const
-
-   Exactly the elements that changed since ``clear_changes()``; an element added and removed again is in neither.
-   Semi-naive evaluation works on ``added()`` each round.
-
-.. cpp:function:: bool was_added(const value_type& element) const
-.. cpp:function:: bool was_removed(const value_type& element) const
-
-   Whether ``element`` is among ``added()``, or ``removed()``: O(1) expected.
-
-.. cpp:function:: void clear_changes()
 
 Comparison
 ^^^^^^^^^^

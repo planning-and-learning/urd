@@ -13,6 +13,7 @@
 #include "urd/repr/maps/std_map.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/partitions/disjoint_sets.hpp"
+#include "urd/repr/pools/pools.hpp"
 #include "urd/repr/queues/queue.hpp"
 #include "urd/repr/queues/ring_fifo.hpp"
 #include "urd/repr/sequences/jagged.hpp"
@@ -25,7 +26,7 @@
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
 
@@ -187,6 +188,26 @@ static_assert(can_insert<Store<set<int>>> && can_erase<Store<set<int>>> && !can_
 static_assert(!can_insert<Store<set<int>, urd::frozen>> && !can_erase<Store<set<int>, urd::frozen>>);
 static_assert(can_push_back<Store<sequence<int>, urd::monotone>> && !can_erase<Store<sequence<int>, urd::monotone>>);
 static_assert(!can_erase<Store<set<int>, urd::nonempty>>);
+// clear() is removal too: none where nothing is removed (monotone, frozen, nonempty); monotone_until_clear removes by
+// clear() alone, of every kind.
+template<typename S>
+concept can_clear = requires(S store) { store.clear(); };
+template<typename S>
+concept can_erase_value = requires(S store, int element) { store.erase(element); };
+template<typename S>
+concept can_erase_handle = requires(S store, typename S::handle_type handle) { store.erase(handle); };
+using Row = Store<sequence<int>, urd::frozen>;
+static_assert(!can_clear<Store<set<int>, urd::monotone>> && !can_clear<Store<sequence<int>, urd::monotone>>
+              && !can_clear<Store<urd::pool<Row>, urd::monotone>> && !can_clear<Store<urd::pool<Row>, urd::monotone, urd::layered>>);
+static_assert(!can_clear<Store<set<int>, urd::frozen>> && !can_clear<Store<sequence<int>, urd::frozen>> && !can_clear<Store<set<int>, urd::nonempty>>);
+static_assert(can_clear<Store<set<int>, urd::monotone_until_clear>> && !can_erase<Store<set<int>, urd::monotone_until_clear>>
+              && !can_erase_value<Store<set<int>, urd::monotone_until_clear>>);
+static_assert(can_clear<Store<sequence<int>, urd::monotone_until_clear>> && !can_erase<Store<sequence<int>, urd::monotone_until_clear>>
+              && can_push_back<Store<sequence<int>, urd::monotone_until_clear>>);
+static_assert(can_clear<Store<urd::pool<Row>, urd::monotone_until_clear, urd::layered>>
+              && !can_erase_handle<Store<urd::pool<Row>, urd::monotone_until_clear>> && can_erase_handle<Store<urd::pool<Row>>>);
+static_assert(urd::store_of<Store<set<int>, urd::monotone>, set<int>, urd::monotone_until_clear>
+              && !urd::store_of<Store<set<int>, urd::monotone_until_clear>, set<int>, urd::monotone>);
 // A sorted Store is searched by order; a sorted sequence keeps elements by value, as std::flat_multiset.
 static_assert(can_search<Store<set<int>, urd::sorted>> && !can_search<Store<set<int>>>);
 static_assert(can_insert<Store<multiset<int>, urd::sorted>> && !can_push_back<Store<multiset<int>, urd::sorted>>);

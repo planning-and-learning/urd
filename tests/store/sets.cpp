@@ -1,7 +1,7 @@
 // Sets and maps: random use against the standard's containers, set algebra, positions, ends, entries, Stores as keys, and orders by a projection. Each family
 // header a Store here needs is included, and no other.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "../names.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -27,7 +27,6 @@
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
 

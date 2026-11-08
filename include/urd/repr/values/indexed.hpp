@@ -119,7 +119,7 @@ class IndexedSet
     [[nodiscard]] static bool equal_keys(const L& lhs, const R& rhs)
     {
         if constexpr (Rows)
-            return equal_range(lhs, rhs);
+            return equal_elements(lhs, rhs);
         else
             return EqualTo<T> {}(lhs, rhs);
     }
@@ -236,7 +236,7 @@ public:
 
     [[nodiscard]] iterator begin() const { return elements().cbegin(); }
     [[nodiscard]] iterator end() const { return elements().cend(); }
-    [[nodiscard]] size_type size() const { return elements().size(); }
+    [[nodiscard]] size_type size() const { return m_elements ? m_elements->size() : 0; }
     [[nodiscard]] bool empty() const { return size() == 0; }
     /// The bit width of the rows' elements (Bits).
     [[nodiscard]] urd::bit_width width() const noexcept

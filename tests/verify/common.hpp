@@ -87,7 +87,7 @@ consteval bool shrinks_of()
     if constexpr (is_store<R>)
         return shrinks<container_traits<R>>;
     else
-        return grows_of<R>() && !facts_where(declaration_t<R>::relies_on, false).has(change::monotone);
+        return grows_of<R>() && !facts_where(declaration_t<R>::relies_on, false).has(change::monotone_until_clear);
 }
 /// Whether a sequence that shrinks also inserts and erases in the middle: one with stable references removes at its
 /// end only.

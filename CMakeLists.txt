@@ -55,12 +55,22 @@ if(URD_ENABLE_FMT_FORMATTERS)
     target_link_libraries(urd INTERFACE fmt::fmt)
     target_compile_definitions(urd INTERFACE URD_ENABLE_FMT_FORMATTERS=1)
 endif()
+# Opt-in for test programs: links urd/testing/allocations.cpp, which replaces the global operator new and delete so
+# that urd::testing::Counted counts a thread's allocations (urd/testing/allocations.hpp).
+add_library(urd_count_allocations INTERFACE)
+add_library(urd::count_allocations ALIAS urd_count_allocations)
+set_target_properties(urd_count_allocations PROPERTIES EXPORT_NAME count_allocations)
+target_sources(urd_count_allocations INTERFACE
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/urd/testing/allocations.cpp>"
+    "$<INSTALL_INTERFACE:${URD_INSTALL_INCLUDEDIR}/urd/testing/allocations.cpp>"
+)
+target_link_libraries(urd_count_allocations INTERFACE urd)
 
 # The package: find_package(urd) after an install, or against this build tree with urd_DIR=<build>.
 install(DIRECTORY include/urd DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 # The tags in plain words, for tools that write requests (share/urd/vocabulary.json, generated and checked by a test).
 install(FILES share/urd/vocabulary.json share/urd/complexity.json DESTINATION "${CMAKE_INSTALL_DATADIR}/urd")
-install(TARGETS urd EXPORT urdTargets)
+install(TARGETS urd urd_count_allocations EXPORT urdTargets)
 install(EXPORT urdTargets NAMESPACE urd:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd")
 export(EXPORT urdTargets NAMESPACE urd:: FILE "${CMAKE_BINARY_DIR}/urdTargets.cmake")
 configure_package_config_file(cmake/urdConfig.cmake.in "${CMAKE_BINARY_DIR}/urdConfig.cmake"

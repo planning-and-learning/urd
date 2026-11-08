@@ -38,6 +38,7 @@ struct answer_says
     bool demanded = false;
     bool stops_growth = false;
     bool stops_shrinking = false;
+    bool stops_clearing = false;  ///< Stops clear() emptying the Store at once (shrinking stopped, clear() may stay).
     bool stops_changes = false;
     bool changes_at_ends = false;
     bool needs_an_element = false;
@@ -826,6 +827,7 @@ struct bit_width
             ++bits;
         return bit_width { bits };
     }
+    friend constexpr bool operator==(bit_width, bit_width) noexcept = default;
 };
 
 enum class grouping : std::uint8_t
@@ -860,43 +862,12 @@ struct tags_of<grouping>
     using type = boost::mp11::mp_list<any_grouping, partitioned>;
 };
 
-enum class tracking : std::uint8_t
-{
-    none,
-    change_log,
-};
-
-struct any_tracking : tag_defaults
-{
-    using root = any_tracking;
-    static constexpr auto value = tracking::none;
-    static constexpr std::string_view name = "any_tracking";
-    using group = semantics_group;
-    using heading = more_heading;
-    static constexpr std::string_view question = "Tracks what changed?";
-};
-/// Offers added() and removed(): exactly the elements that changed since clear_changes(), for semi-naive evaluation.
-struct change_log : any_tracking
-{
-    static constexpr auto value = tracking::change_log;
-    static constexpr std::string_view name = "change_log";
-    static constexpr std::string_view promise = "guaranteed";
-    static constexpr std::string_view description = "added() and removed(): the elements changed since clear_changes().";
-    static constexpr std::array<std::string_view, 3> phrases { "delta", "what changed", "semi-naive evaluation" };
-    static constexpr answer_says says { .costly = true };
-};
-
-template<>
-struct tags_of<tracking>
-{
-    using type = boost::mp11::mp_list<any_tracking, change_log>;
-};
-
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on
-// monotone, one that cannot insert on frozen. Multiplicity a multimap declares (multi), and a request states it.
+// monotone, one that cannot insert on frozen. monotone_until_clear removes by clear() only. Multiplicity a multimap declares (multi), and a request states it.
 enum class change : std::uint8_t
 {
     none,
+    monotone_until_clear,
     monotone,
     frozen,
 };
@@ -910,8 +881,19 @@ struct may_change : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Does it change after building?";
 };
-/// Only grows: nothing is ever removed.
-struct monotone : may_change
+/// Only grows until cleared: elements are only added; the only removal is clear(), which empties the Store at once.
+struct monotone_until_clear : may_change
+{
+    static constexpr auto value = change::monotone_until_clear;
+    /// Nothing is erased; clear() empties it whole (with retains, refilling allocates nothing).
+    static constexpr std::string_view name = "monotone_until_clear";
+    static constexpr std::string_view promise = "guaranteed";
+    static constexpr std::string_view description = "Only grows until cleared: elements are only added; clear() empties it at once.";
+    static constexpr std::array<std::string_view, 3> phrases { "append only until cleared", "cleared, never erased", "refilled after clear" };
+    static constexpr answer_says says { .stops_shrinking = true };
+};
+/// Only grows: nothing is ever removed, not even by clear().
+struct monotone : monotone_until_clear
 {
     static constexpr auto value = change::monotone;
     /// Nothing is removed.
@@ -919,7 +901,7 @@ struct monotone : may_change
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "Only grows: nothing is ever removed.";
     static constexpr std::array<std::string_view, 3> phrases { "append only", "only grows", "never erased" };
-    static constexpr answer_says says { .stops_shrinking = true };
+    static constexpr answer_says says { .stops_shrinking = true, .stops_clearing = true };
 };
 /// No change after construction (assign rebuilds it whole): any number of threads may read it between rebuilds,
 /// so concurrent, which is about inserts from threads at once, is not asked of it.
@@ -935,13 +917,13 @@ struct frozen : monotone
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No change after construction; assign rebuilds it whole.";
     static constexpr std::array<std::string_view, 3> phrases { "built once", "read only", "immutable after building" };
-    static constexpr answer_says says { .stops_growth = true, .stops_shrinking = true, .stops_changes = true };
+    static constexpr answer_says says { .stops_growth = true, .stops_shrinking = true, .stops_clearing = true, .stops_changes = true };
 };
 
 template<>
 struct tags_of<change>
 {
-    using type = boost::mp11::mp_list<may_change, monotone, frozen>;
+    using type = boost::mp11::mp_list<may_change, monotone_until_clear, monotone, frozen>;
 };
 
 enum class emptiness : std::uint8_t
@@ -970,7 +952,7 @@ struct nonempty : maybe_empty
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "At least one element.";
     static constexpr std::array<std::string_view, 2> phrases { "never empty", "nonempty" };
-    static constexpr answer_says says { .stops_shrinking = true, .needs_an_element = true };
+    static constexpr answer_says says { .stops_shrinking = true, .stops_clearing = true, .needs_an_element = true };
 };
 
 template<>

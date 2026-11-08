@@ -30,7 +30,6 @@
 #include "urd/repr/values/parallel_hash_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
@@ -377,7 +376,7 @@ constexpr bool layered = urd::has<P, urd::layered>;
 TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
 {
     using T = typename TypeParam::value_type;
-    using Index = typename TypeParam::index_type;
+    using Index = typename TypeParam::handle_type;
     constexpr int count = 2000;
     constexpr int rooted = 8;
     // A layered pool works over a root of eight records that no thread changes; its indices continue the root's.
@@ -396,7 +395,9 @@ TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
             for (int step = 0; step < count; ++step)
             {
                 const int drawn = rotated(thread, step, count);
-                indices[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)] = pool.insert(T(drawn)).first;
+                // Every fourth by a factory, which builds the record with the index reserved for it.
+                indices[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)] =
+                    step % 4 == 3 ? pool.insert(T(drawn), [drawn](Index) { return T(drawn); }).first : pool.insert(T(drawn)).first;
                 // A record published by the root, or by this thread just now, reads back beside the inserts.
                 if (!urd::EqualTo<T> {}(std::as_const(pool)[indices[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)]], T(drawn)))
                     indices[static_cast<std::size_t>(thread)][static_cast<std::size_t>(step)] = Index();
@@ -517,6 +518,41 @@ TEST(ConcurrentLayered, EachLayersValueIsMadeOnceAcrossThreads)
     }
     for (int drawn = 0; drawn < predicates; drawn += 2)
         EXPECT_EQ(std::as_const(domain).at(predicate_of(drawn)).size(), 1U);
+}
+
+// Reads of a thread-safe generation map take no lock: a slot is published once its value is made (here, layered over
+// the parent's pool, numbered after its row), so a reader that finds it present finds it whole.
+TEST(ConcurrentLayered, ReadsFindMadeValuesWhole)
+{
+    constexpr std::uint32_t predicates = 512;
+    const auto predicate_of = [](std::uint32_t at) { return urd::index<ConcurrentPredicate>(at); };
+    auto domain = ConcurrentRelations();
+    for (std::uint32_t at = 0; at < predicates; at += 2)
+        domain[predicate_of(at)].insert({ 0U, 0U });
+    auto task = ConcurrentRelations();
+    task.layer_over(&domain);
+    auto wrong = std::vector<int>(threads);
+    in_threads(
+        [&](int thread)
+        {
+            if (thread % 2 == 0)
+                for (std::uint32_t at = 0; at < predicates; ++at)
+                    (void) task.at(predicate_of(at)).insert({ at, 1U });
+            else
+                for (int round = 0; round < 20; ++round)
+                    for (std::uint32_t at = 0; at < predicates; ++at)
+                    {
+                        const auto base = std::as_const(task).read_own(
+                            predicate_of(at), [](const ConcurrentRows& rows) { return static_cast<int>(rows.base()); }, -1);
+                        if (base != -1 && base != (at % 2 == 0 ? 1 : 0))
+                            ++wrong[static_cast<std::size_t>(thread)];
+                        // The domain's row, read through whichever layer holds the predicate.
+                        if (at % 2 == 0 && !std::as_const(task).read(predicate_of(at), [](const ConcurrentRows& rows) { return rows.size() > 0; }, false))
+                            ++wrong[static_cast<std::size_t>(thread)];
+                    }
+        });
+    EXPECT_EQ(wrong, std::vector<int>(threads));
+    EXPECT_EQ(task.size(), static_cast<std::size_t>(predicates));
 }
 
 }  // namespace

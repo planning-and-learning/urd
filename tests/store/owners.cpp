@@ -2,7 +2,7 @@
 // back when the (last) owner goes, the element kept with its storage for the next acquire, and none of it allocates
 // once as many owners have lived at once as will.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/slots/slots.hpp"
 #include "urd/store.hpp"
 
@@ -61,7 +61,7 @@ TEST(Owners, ReleaseKeepsTheElementAndItsStorage)
 // control blocks.
 TEST(Owners, NoAllocationOnceWarm)
 {
-    if (!urd::test::counts_allocations)
+    if (!urd::testing::counts_allocations)
         GTEST_SKIP() << "allocations are not counted here";
     auto pool = Pool();
     const auto round = [&pool]
@@ -80,12 +80,12 @@ TEST(Owners, NoAllocationOnceWarm)
     };
     round();
     {
-        const auto counted = urd::test::Counted();
+        const auto counted = urd::testing::Counted();
         for (int again = 0; again < 10; ++again)
             round();
     }
     // The two vectors of owners are the only allocations: two per round.
-    EXPECT_EQ(urd::test::allocations(), 20);
+    EXPECT_EQ(urd::testing::counts().allocations, 20);
 }
 
 // Threads acquire and release shared owners at once: every slot goes back.

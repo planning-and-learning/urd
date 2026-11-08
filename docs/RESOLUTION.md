@@ -43,12 +43,9 @@ indexable).
 | `Store<set<int>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
 | `Store<set<int>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<int>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<set<int>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<int>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<set<int>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<set<int>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<int>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<int>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<set<int>, monotone_until_clear>` | unique, monotone_until_clear | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<int>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<set<int>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<set<int>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
@@ -83,12 +80,9 @@ indexable).
 | `Store<set<std::string>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
 | `Store<set<std::string>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<std::string>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<set<std::string>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<std::string>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<set<std::string>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<set<std::string>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<std::string>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<std::string>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<set<std::string>, monotone_until_clear>` | unique, monotone_until_clear | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<std::string>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<set<std::string>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<set<std::string>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
@@ -123,12 +117,9 @@ indexable).
 | `Store<set<Id>, insertion_ordered, reclaims>` | insertion_ordered, unique, reclaims | `none` — missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks |  |
 | `Store<set<Id>, scoped>` | unique, scoped | `none` — missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps |  |
 | `Store<set<Id>, positional, monotone, layered>` | insertion_ordered, unique, layered, monotone, positional | `none` — missing: a layered interner continuing its parent's positions, an iterator over both; own milestone |  |
-| `Store<set<Id>, change_log, concurrent>` | unique, concurrent, change_log | `none` — missing: a change log written by threads at once; no site asks |  |
-| `Store<set<Id>, change_log>` | unique, change_log | `change_logged_unordered_flat_set` | unordered_flat_set.hpp + change_logged.hpp |
-| `Store<set<Id>, sorted, change_log>` | sorted, unique, change_log | `change_logged_set` | std_set.hpp + change_logged.hpp |
-| `Store<set<Id>, stable_refs, change_log>` | unique, stable_refs, change_log | `change_logged_unordered_set` | std_set.hpp + change_logged.hpp |
 | `Store<set<Id>, nonempty>` | unique, nonempty | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<Id>, monotone>` | unique, monotone | `unordered_flat_set` | unordered_flat_set.hpp |
+| `Store<set<Id>, monotone_until_clear>` | unique, monotone_until_clear | `unordered_flat_set` | unordered_flat_set.hpp |
 | `Store<set<Id>, sorted, monotone>` | sorted, unique, monotone | `set` | std_set.hpp |
 | `Store<set<Id>, contiguous, frozen>` | unique, stable_refs, contiguous, frozen | `indexed_set` | indexed.hpp |
 | `Store<set<Id>, sorted, contiguous, frozen>` | sorted, unique, stable_refs, contiguous, frozen | `flat_set` | flat_set.hpp |
@@ -158,7 +149,6 @@ indexable).
 | `Store<set<int>, dense, small>` | unique, dense, small | `dense_set` | dense_set.hpp |
 | `Store<set<int>, dense, concurrent>` | unique, dense, concurrent | `none` — missing: a dense set written by threads (an atomic bitset) |  |
 | `Store<set<int>, dense, stable_refs>` | unique, dense, stable_refs | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<set<int>, dense, change_log>` | unique, dense, change_log | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
 | `Store<partition<int>>` | partition | `disjoint_sets` | disjoint_sets.hpp |
 
 ## Dense sets of Id
@@ -179,7 +169,6 @@ indexable).
 | `Store<set<Id>, dense, small>` | unique, dense, small | `dense_set` | dense_set.hpp |
 | `Store<set<Id>, dense, concurrent>` | unique, dense, concurrent | `none` — missing: a dense set written by threads (an atomic bitset) |  |
 | `Store<set<Id>, dense, stable_refs>` | unique, dense, stable_refs | `none` — missing: dense keys in segmented slots; M14 |  |
-| `Store<set<Id>, dense, change_log>` | unique, dense, change_log | `change_logged_tracked_dense_set` | dense_set.hpp + change_logged.hpp |
 | `Store<partition<Id>>` | partition | `disjoint_sets` | disjoint_sets.hpp |
 
 ## Keyed by an index
@@ -364,6 +353,7 @@ indexable).
 | `Store<sequence<int>, reclaims>` | reclaims, positional | `none` — missing: a vector returns its storage only whole (shrink_to_fit); a sequence returning storage per erase is a deque of blocks |  |
 | `Store<sequence<int>, contiguous>` | contiguous, positional | `vector` | sequence.hpp |
 | `Store<sequence<int>, monotone>` | monotone, positional | `vector` | sequence.hpp |
+| `Store<sequence<int>, monotone_until_clear>` | monotone_until_clear, positional | `vector` | sequence.hpp |
 | `Store<sequence<int>, stable_refs, monotone>` | stable_refs, monotone, positional | `segmented_vector` | segmented.hpp |
 | `Store<sequence<int>, stable_refs, frozen>` | stable_refs, frozen, positional | `vector` | sequence.hpp |
 | `Store<sequence<int>, monotone, concurrent>` | stable_refs, concurrent, monotone, positional | `concurrent_segmented_vector` | segmented.hpp |
@@ -437,6 +427,7 @@ indexable).
 | `Store<slots<int>>` | handles | `slot_vector` | slots.hpp |
 | `Store<slots<Id>, stable_refs>` | handles, stable_refs | `slot_vector` | slots.hpp |
 | `Store<pool<Store<sequence<int>, stable_refs, frozen, positional>>, monotone, layered>` | unique, handles, layered, monotone | `layered_row_interner` | pools.hpp + layered_pool.hpp |
+| `Store<pool<Store<sequence<int>, stable_refs, frozen, positional>>, monotone_until_clear, retains, layered>` | unique, handles, retains, layered, monotone_until_clear | `layered_row_interner` | pools.hpp + layered_pool.hpp |
 | `Store<pool<Store<set<int>, unique, dense, stable_refs, frozen>>, layered, concurrent>` | unique, handles, concurrent, layered | `layered_thread_safe_row_interner` | pools.hpp + layered_pool.hpp |
 | `Store<slots<int>, layered>` | handles, layered | `none` — incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36) |  |
 | `Store<pool<Store<sequence<int>, stable_refs, frozen, positional>>, structural_sharing, layered>` | unique, handles, layered, structural_sharing | `none` — incompatible: a tree pool numbers nodes, not rows (compile-fail case 37) |  |

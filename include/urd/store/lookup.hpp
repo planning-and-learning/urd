@@ -23,7 +23,6 @@ class lookup
 public:
     /// What lookups take: a map's key, else an element, as key_type is for the standard's sets.
     using key_type = typename types::lookup_type;
-    using lookup_type = typename types::lookup_type;
 
     [[nodiscard]] typename iterator_types<R, S>::const_iterator find(const typename types::lookup_type& element) const
     { return representation().find(element); }
@@ -36,20 +35,20 @@ public:
     /// Lookups by anything else the representation compares with a key: what a transparent Hash and EqualTo (or Less)
     /// take, as the standard's associative containers do (a record's identity, a view of a key).
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, lookup_type>) && requires(const R& held, const K& key) { held.find(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.find(key); }
     [[nodiscard]] const_iterator_type find(const K& key) const
     { return representation().find(key); }
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, lookup_type>) && (!std::same_as<iterator_type, const_iterator_type>)
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && (!std::same_as<iterator_type, const_iterator_type>)
                 && requires(R& held, const K& key) { held.find(key); }
     [[nodiscard]] iterator_type find(const K& key)
     { return mutable_representation().find(key); }
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, lookup_type>) && requires(const R& held, const K& key) { held.count(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.count(key); }
     [[nodiscard]] typename types::size_type count(const K& key) const
     { return representation().count(key); }
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, lookup_type>) && requires(const R& held, const K& key) { held.contains(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.contains(key); }
     [[nodiscard]] bool contains(const K& key) const
     { return representation().contains(key); }
     /// The elements equal to `element` (in a map, with that key), as a pair of iterators; where the representation has

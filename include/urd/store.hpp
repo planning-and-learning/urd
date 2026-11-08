@@ -10,7 +10,6 @@
 #include "urd/spec.hpp"
 #include "urd/store/appending.hpp"
 #include "urd/store/capacity.hpp"
-#include "urd/store/changes.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/ends.hpp"
 #include "urd/store/entries.hpp"
@@ -134,7 +133,7 @@ public:
     using representation = R;
     using value_type = typename types::value_type;
     // The other member types come with the facets that use them: size_type with sizing, the iterator types and
-    // difference_type with iteration, key_type and lookup_type with lookup, mapped_type with values_by_key and multi_values.
+    // difference_type with iteration, key_type with lookup, mapped_type with values_by_key and multi_values.
 
     Store()
         requires(!detail::store_types<S>::needs_an_element)

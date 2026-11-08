@@ -140,7 +140,7 @@ public:
         requires shrinks<S>
     { representation().erase(handle); }
     void clear()
-        requires shrinks<S>
+        requires clears<S>
     { representation().clear(); }
 
 private:

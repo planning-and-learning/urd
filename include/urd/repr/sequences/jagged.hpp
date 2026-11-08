@@ -6,6 +6,7 @@
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/sequences/rows_fwd.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/traits.hpp"
@@ -63,8 +64,6 @@ class Jagged
     static constexpr bool bits = writable && leaf && has<Si, unique> && has<Si, dense>;  // a dense set: its bits
     using word = std::uint64_t;
     using Data = std::conditional_t<!leaf, Jagged<T>, std::conditional_t<bits, std::vector<word>, std::vector<T>>>;
-    template<bool Const>
-    class basic_iterator;
 
 public:
     using value_type = Inner;
@@ -76,8 +75,8 @@ public:
         writable,
         std::conditional_t<!leaf, std::ranges::subrange<std::ranges::iterator_t<Data>>, std::conditional_t<bits, BitsetSpan<word>, std::span<T>>>,
         const_row>;
-    using iterator = basic_iterator<!writable>;
-    using const_iterator = basic_iterator<true>;
+    using iterator = PositionIterator<std::conditional_t<writable, Jagged, const Jagged>>;
+    using const_iterator = PositionIterator<const Jagged>;
     using shape_type = std::conditional_t<leaf, std::vector<size_type>, std::vector<typename shape_below<Data>::type>>;
 
     Jagged() = default;
@@ -148,13 +147,13 @@ public:
     }
 
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
-    [[nodiscard]] const_iterator end() const { return const_iterator(this, static_cast<difference_type>(size())); }
+    [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
     [[nodiscard]] iterator begin()
         requires writable
     { return iterator(this, 0); }
     [[nodiscard]] iterator end()
         requires writable
-    { return iterator(this, static_cast<difference_type>(size())); }
+    { return iterator(this, size()); }
     [[nodiscard]] size_type size() const { return m_offsets.size() - 1; }
 
     [[nodiscard]] const_row operator[](size_type pos) const { return row_at<const_row>(*this, pos); }
@@ -235,73 +234,6 @@ public:
     { return lhs.m_offsets == rhs.m_offsets && lhs.m_data == rhs.m_data && lhs.m_lengths == rhs.m_lengths; }
 
 private:
-    template<bool Const>
-    class basic_iterator
-    {
-        using Rows = std::conditional_t<Const, const Jagged, Jagged>;
-
-    public:
-        // A row as the slice or span it is handed out as.
-        using value_type = std::conditional_t<Const, const_row, row>;
-        using reference = value_type;
-        using difference_type = std::ptrdiff_t;
-        using iterator_concept = std::random_access_iterator_tag;
-        using iterator_category = std::input_iterator_tag;
-
-        basic_iterator() = default;
-        basic_iterator(Rows* rows, difference_type index) : m_rows(rows), m_index(index) {}
-        /// Rows to change convert to rows to read.
-        operator basic_iterator<true>() const
-            requires(!Const)
-        { return { m_rows, m_index }; }
-
-        reference operator*() const { return (*m_rows)[static_cast<size_type>(m_index)]; }
-        reference operator[](difference_type n) const { return *(*this + n); }
-
-        basic_iterator& operator++()
-        {
-            ++m_index;
-            return *this;
-        }
-        basic_iterator operator++(int)
-        {
-            auto copy = *this;
-            ++m_index;
-            return copy;
-        }
-        basic_iterator& operator--()
-        {
-            --m_index;
-            return *this;
-        }
-        basic_iterator operator--(int)
-        {
-            auto copy = *this;
-            --m_index;
-            return copy;
-        }
-        basic_iterator& operator+=(difference_type n)
-        {
-            m_index += n;
-            return *this;
-        }
-        basic_iterator& operator-=(difference_type n)
-        {
-            m_index -= n;
-            return *this;
-        }
-        friend basic_iterator operator+(basic_iterator it, difference_type n) { return it += n; }
-        friend basic_iterator operator+(difference_type n, basic_iterator it) { return it += n; }
-        friend basic_iterator operator-(basic_iterator it, difference_type n) { return it -= n; }
-        friend difference_type operator-(const basic_iterator& lhs, const basic_iterator& rhs) { return lhs.m_index - rhs.m_index; }
-        friend bool operator==(const basic_iterator& lhs, const basic_iterator& rhs) { return lhs.m_index == rhs.m_index; }
-        friend auto operator<=>(const basic_iterator& lhs, const basic_iterator& rhs) { return lhs.m_index <=> rhs.m_index; }
-
-    private:
-        Rows* m_rows = nullptr;
-        difference_type m_index = 0;
-    };
-
     /// What a row of `length` elements takes of the storage: as many, or for bits the words that hold them.
     [[nodiscard]] static size_type stored(size_type length) { return bits ? BitsetSpan<word>::num_blocks(length) : length; }
 

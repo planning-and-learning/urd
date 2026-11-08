@@ -55,9 +55,12 @@ What holds
 
 .. urd-category:: may_change
 
-   Only grows (no ``erase``, ``clear``, ``pop_back``), or changes only by ``assign(first, last)``, a rebuild in the
-   storage held where the container can; a frozen Store is read by any number of threads between rebuilds. A
-   monotone queue keeps ``pop``: pop is how a queue is consumed, and ``monotone`` takes only ``clear`` away.
+   Only grows until cleared (``monotone_until_clear``: no ``erase`` or ``pop_back``; ``clear`` empties it at once,
+   and with ``retains`` refilling allocates nothing), only grows (``monotone``: no ``clear`` either), or changes only
+   by ``assign(first, last)``, a rebuild in the storage held where the container can; a frozen Store is read by any
+   number of threads between rebuilds. Each is the one before with less: ``monotone_until_clear`` ⊃ ``monotone`` ⊃
+   ``frozen``. A monotone queue keeps ``pop``: pop is how a queue is consumed, and ``monotone`` takes only ``clear``
+   away.
 
 .. urd-category:: maybe_empty
 
@@ -96,10 +99,6 @@ What more it can do
 .. urd-category:: any_layering
 
    Lookups fall through to a parent; on pools, indices continue after the parent's.
-
-.. urd-category:: any_tracking
-
-   ``added()`` and ``removed()`` since ``clear_changes()``.
 
 .. urd-category:: any_direction
 

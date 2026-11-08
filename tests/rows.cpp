@@ -2,7 +2,7 @@
 // inserts and erases of rows, sorted rows answer lookups by position, and a Store that retains at every level
 // allocates nothing when refilled. One typed test per behavior, for every nested Store in the list.
 
-#include "allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "names.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/sequences/jagged.hpp"
@@ -27,8 +27,7 @@ namespace
 using urd::multiset;
 using urd::sequence;
 using urd::Store;
-using urd::test::allocations;
-using urd::test::Counted;
+using urd::testing::Counted;
 
 using Leaf = Store<sequence<int>, urd::frozen>;
 using SortedLeaf = Store<multiset<int>, urd::sorted, urd::frozen>;
@@ -153,7 +152,7 @@ TYPED_TEST(Rows, SortedRowsAreSorted)
 
 TYPED_TEST(Rows, RetainsAtEveryLevel)
 {
-    if (!urd::test::counts_allocations)
+    if (!urd::testing::counts_allocations)
         GTEST_SKIP() << "allocations are not counted under ThreadSanitizer";
     if constexpr (!urd::has<TypeParam, urd::retains>)
         GTEST_SKIP() << "not asked to retain";
@@ -183,7 +182,7 @@ TYPED_TEST(Rows, RetainsAtEveryLevel)
             const auto counted = Counted();
             fill(store);
         }
-        EXPECT_EQ(allocations(), 0);
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
         EXPECT_EQ(materialize(store), expected);
     }
 }

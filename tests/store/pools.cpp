@@ -1,6 +1,6 @@
 // Interners, partitions and pools of records. Each header a Store here needs is included.
 
-#include "../allocations.hpp"
+#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -16,7 +16,6 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -243,13 +242,13 @@ TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
     auto out = Row(values.begin(), values.end());
     auto size = std::size_t { 0 };
     {
-        const auto counted = urd::test::Counted();
+        const auto counted = urd::testing::Counted();
         size = rows.row_size(by_words);
         rows.read(by_words, std::span<int>(elements));
         rows.read(by_words, out);
     }
-    if (urd::test::counts_allocations)
-        EXPECT_EQ(urd::test::allocations(), 0);
+    if (urd::testing::counts_allocations)
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
     EXPECT_EQ(size, values.size());
     EXPECT_EQ(elements, values);
     EXPECT_TRUE(std::ranges::equal(out, row));

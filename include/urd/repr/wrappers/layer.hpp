@@ -31,13 +31,14 @@ namespace urd::repr
 /// values; inserting a key the parent has inserts nothing and finds the parent's. A key's own value shadows the
 /// parent's: at(), update() and try_emplace() make an own value where this layer has none, once, under the slot's lock
 /// (IndexMap::update): where values layer (a map of layered pools layers through both levels) one built from
-/// try_emplace's arguments (a bit width), or default, layered over the parent's value; else one built from the
-/// arguments, or else a copy of the parent's.
+/// try_emplace's arguments (a bit width), or default, layered over the parent's value (the slot's earlier value,
+/// cleared, where its Store offers clear() and it was built alike: without arguments, any earlier value); else one built from the arguments, or
+/// else a copy of the parent's.
 /// insert_or_assign writes its own. owner(key) is the layer whose own values hold `key`.
 ///
 /// Over a thread-safe map (layered, concurrent: the thread-safe generation map), at, update, read, try_emplace,
 /// contains and owner run from threads at once; clear, erase, insert_or_assign and iteration need no other operation
-/// running. The parent must outlive the layer and not change while layered over.
+/// running. The parent must outlive the layer and not change while layered over: frozen, it is read without locks.
 template<typename R>
 class Layered
 {
@@ -68,7 +69,7 @@ public:
 
     /// Whether this layer's own values hold `key`.
     [[nodiscard]] bool owns(const key_type& key) const
-    { return m_own.read(key, [](const mapped_type& /*value*/) { return true; }, false); }
+    { return read_own(key, [](const mapped_type& /*value*/) { return true; }, false); }
     /// The nearest layer, this one or a parent, whose own values hold `key`; nullptr where none does.
     [[nodiscard]] const Layered* owner(const key_type& key) const
     {
@@ -125,14 +126,19 @@ public:
     /// The own value, made where there is none.
     [[nodiscard]] mapped_type& at(const key_type& key)
     { return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; }); }
-    /// read(value) with the owner's value of `key`, under its slot's lock where threads share it, else `missing`.
+    /// read(value) with the owner's value of `key`, else `missing`: one walk up the layers.
     template<typename Read, typename Result>
         requires std::invocable<Read&, const mapped_type&>
     [[nodiscard]] Result read(const key_type& key, Read read, Result missing) const
     {
-        const auto* layer = owner(key);
-        return layer == nullptr ? missing : layer->m_own.read(key, read, missing);
+        const auto* value = value_of(key);
+        return value == nullptr ? missing : Result(read(*value));
     }
+    /// read(value) with this layer's own value of `key`, else `missing`: the parent's are not looked at.
+    template<typename Read, typename Result>
+        requires std::invocable<Read&, const mapped_type&>
+    [[nodiscard]] Result read_own(const key_type& key, Read read, Result missing) const
+    { return m_own.read(key, read, missing); }
     /// update(value, held) with the own value of `key`, made where there is none (held is then false).
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>
@@ -153,31 +159,36 @@ private:
     /// Whether values layer (are layered Stores).
     static constexpr bool layers_values = requires(mapped_type& own, const mapped_type* above) { own.layer_over(above); };
 
+    /// The owner's value of `key`, else nullptr.
     [[nodiscard]] const mapped_type* value_of(const key_type& key) const
-    { return read(key, [](const mapped_type& value) { return &value; }, static_cast<const mapped_type*>(nullptr)); }
+    {
+        for (const auto* layer = this; layer != nullptr; layer = layer->m_parent)
+            if (const auto* value = layer->read_own(key, [](const mapped_type& own) { return &own; }, static_cast<const mapped_type*>(nullptr)))
+                return value;
+        return nullptr;
+    }
 
     /// update(value, held) with the own value of `key`, made from `args` once, under the slot's lock, where new.
     template<typename Update, typename... Args>
     decltype(auto) own(const key_type& key, Update update, Args&&... args)
     {
-        const mapped_type* above = m_parent == nullptr ? nullptr : m_parent->value_of(key);
         return m_own.update(key,
                             [&](mapped_type& value, bool held) -> decltype(auto)
                             {
                                 if (!held)
-                                    make(value, above, std::forward<Args>(args)...);
+                                    make(value, m_parent == nullptr ? nullptr : m_parent->value_of(key), std::forward<Args>(args)...);
                                 return update(value, held);
                             });
     }
-    /// The slot's value made own (see the class). ponytail: a value that layers is built anew, so a generation map's
-    /// earlier value is not reused, storage and all; clear() it instead where the value may shrink (not monotone) if
-    /// re-layering after clear shows in a profile.
+    /// The slot's value made own (see the class). A value that layers reuses what the slot kept (a generation map's
+    /// earlier value), storage and all, where its Store offers clear() and it was built alike: cleared and layered anew.
     template<typename... Args>
     static void make(mapped_type& value, const mapped_type* above, Args&&... args)
     {
         if constexpr (layers_values)
         {
-            value = mapped_type(std::forward<Args>(args)...);
+            if (!reused(value, args...))
+                value = mapped_type(std::forward<Args>(args)...);
             value.layer_over(above);
         }
         else if (above != nullptr && sizeof...(Args) == 0)
@@ -185,6 +196,32 @@ private:
         else
             value = mapped_type(std::forward<Args>(args)...);
     }
+    /// Whether `value` was cleared for reuse: where its Store offers clear() (monotone_until_clear, or one that
+    /// shrinks) and it was built alike.
+    template<typename... Args>
+        requires requires(mapped_type& value) { value.clear(); }
+    static bool reused(mapped_type& value, const Args&... args)
+    {
+        if (!built_alike(value, args...))
+            return false;
+        value.clear();
+        return true;
+    }
+    template<typename... Args>
+    static bool reused(mapped_type& /*value*/, const Args&... /*args*/)
+    { return false; }
+    /// Whether `value` is what `args` would build, but for its contents: no arguments, or the one it reports it was
+    /// built with (a bit width).
+    static bool built_alike(const mapped_type& /*value*/) { return true; }
+    template<typename Arg>
+        requires requires(const mapped_type& value, const Arg& arg) {
+            { value.width() == arg } -> std::convertible_to<bool>;
+        }
+    static bool built_alike(const mapped_type& value, const Arg& arg)
+    { return value.width() == arg; }
+    template<typename... Args>
+    static bool built_alike(const mapped_type& /*value*/, const Args&... /*args*/)
+    { return false; }
 
     friend struct urd::memory_of<Layered>;
 

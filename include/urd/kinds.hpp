@@ -140,7 +140,6 @@ struct any_kind
                                          scoping,
                                          layering,
                                          sharing,
-                                         tracking,
                                          change,
                                          emptiness,
                                          position,
@@ -155,7 +154,6 @@ struct any_kind
                                      facet::reserving,
                                      facet::scopes,
                                      facet::layers,
-                                     facet::changes,
                                      facet::shape,
                                      facet::ends>;
 

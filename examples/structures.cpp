@@ -1,5 +1,4 @@
-// A partition of indices, a family of Stores named by type, and a set that logs what changed,
-// for semi-naive evaluation.
+// A partition of indices and a family of Stores named by type.
 
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -13,14 +12,12 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
-#include "urd/repr/wrappers/change_logged.hpp"
 #include "urd/store.hpp"
 
 #include <exception>
 #include <iostream>
 
 using urd::partition;
-using urd::set;
 using urd::Store;
 
 namespace
@@ -34,17 +31,6 @@ void run()
     terms.merge(0, 3);
     terms.merge(3, 4);
     std::cout << "classes: " << terms.classes() << ", 0 and 4 equal: " << std::boolalpha << terms.same(0, 4) << '\n';
-
-    // Semi-naive evaluation: each round works on the facts new since the last.
-    auto facts = Store<set<int>, urd::change_log>();
-    facts.insert(1);
-    facts.clear_changes();
-    for (const int derived : { 1, 2, 3 })
-        facts.insert(derived);
-    std::cout << "new this round:";
-    for (const int fact : facts.added())
-        std::cout << ' ' << fact;
-    std::cout << '\n';
 }
 
 }  // namespace

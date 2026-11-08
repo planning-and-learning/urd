@@ -234,6 +234,11 @@ int main()
 #elif URD_CASE == 62  // a map with each key once is reached by key: positions would name at and [] again
     using S = Store<map<int, int>, urd::sorted, urd::positional>;
     (void) S();
+#elif URD_CASE == 63  // a monotone Store is never emptied: clear is removal too (monotone_until_clear offers it)
+    growing.clear();
+#elif URD_CASE == 64  // a monotone_until_clear Store removes by clear() alone
+    auto names = Store<set<int>, urd::monotone_until_clear> { 1, 2 };
+    (void) names.erase(1);
 #elif URD_CASE == 25  // order_by<C> orders a set only where it is sorted: unsorted, it orders nothing asked for
     using S = Store<set<int>, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();

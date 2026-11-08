@@ -67,6 +67,11 @@ public:
         }
         return *layer;
     }
+    /// read(value) with this layer's own value of `key` (a layered map), else `missing`: the parent's are not looked at.
+    template<typename Key, typename Read, typename Result>
+    [[nodiscard]] Result read_own(const Key& key, Read read, Result missing) const
+        requires(!chained)
+    { return constant().read_own(key, read, missing); }
 
 private:
     [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
