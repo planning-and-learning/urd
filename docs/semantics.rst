@@ -123,7 +123,7 @@ Indices and views
 
 A ``T`` is read through a context ``C`` that resolves the indices in its record (:cpp:concept:`resolves`), by one of
 four views (``urd/elements/view.hpp``), which differ only in how they hold the record. Each borrows its context as a
-``const C*``, which must outlive it, and has the same surface: ``context()``, ``data()``, ``get<&T::m>()``, the
+``const C*``, which must outlive it, and has the same surface: ``context()``, ``data()``, ``member<&T::m>()``, the
 accessors of its :cpp:struct:`view_mixin`, ``value_type`` (``T``), and an identity (what identifies the record, and
 the context's number) that ``==``, ``<=>``, ``EqualTo``, ``Hash`` and ``Less`` compare by. A positional set and a pool
 of records resolve their own type; any type that gives the record, its number and the view of an index serves.
@@ -229,13 +229,13 @@ What all four give:
 
 .. cpp:struct:: template<typename T, typename V> view_mixin
 
-   Where a library adds the named accessors of a record's views, one line each over ``get<>``: ``template<typename
+   Where a library adds the named accessors of a record's views, one line each over ``member<>``: ``template<typename
    V> struct urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template
-   get<&urd::record_of<V>::predicate>(); } };``, where ``record_of<V>`` is the record the view reads (named through
+   member<&urd::record_of<V>::predicate>(); } };``, where ``record_of<V>`` is the record the view reads (named through
    ``V``, so it may be incomplete where the mixin is declared). The mixin is keyed on what the view reads:
    views of an index and of a record of ``T`` share ``T``'s mixin; views of a builder use ``builder<T>``'s, which is
    ``T``'s unless specialized. The view's
-   ``get<&T::m>()`` hides any ``get`` a mixin would declare: a mixin names its accessors otherwise.
+   ``member<&T::m>()`` hides any ``member`` a mixin would declare.
 
 Children of a record
 --------------------

@@ -36,10 +36,10 @@ concept resolves = requires(const C& context, index<T> at) {
     { context.view(at) } -> std::same_as<index_view<T, C>>;
 };
 
-/// Hook for the named accessors of a record's views, one line each over get<>: `template<typename V> struct
-/// urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template get<&urd::record_of<V>::predicate>(); } };`
-/// (record_of<V>: the record, named through V, so that it may still be incomplete where the mixin is declared). The
-/// view's get<&T::m>() hides any get a mixin would declare: name accessors otherwise.
+/// Hook for the named accessors of a record's views, one line each over member<>: `template<typename V> struct
+/// urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::predicate>(); } };`
+/// (record_of<V>: the record, named through V, so that it may still be incomplete where the mixin is declared). A mixin
+/// must not declare member itself, which the view's member<&T::m>() would hide.
 template<typename T, typename V>
 struct view_mixin
 {
@@ -356,7 +356,7 @@ struct resolution<M>
 namespace detail
 {
 /// What the four views share (V: the view; K: the key of its mixin): the context, a const C* the context must outlive;
-/// the record, V's data(); its members resolved through the context, get<&T::m>(); the mixin's accessors; and the
+/// the record, V's data(); its members resolved through the context, member<&T::m>(); the mixin's accessors; and the
 /// identity: what V identifies its record by (V's identity()) and the number of its context (urd::layer), so that
 /// equal views are the same element wherever they were made.
 template<typename V, typename T, typename C, typename K>
@@ -368,7 +368,7 @@ public:
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
     /// A member of the record, resolved through the context (urd::resolve).
     template<auto Member>
-    [[nodiscard]] decltype(auto) get() const
+    [[nodiscard]] decltype(auto) member() const
     { return urd::resolve(static_cast<const V&>(*this).data().*Member, *m_context); }
 
     /// The identity: what identifies the record, and the number of the context (a context without a number gives

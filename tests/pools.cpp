@@ -409,10 +409,10 @@ TEST(Records, ViewsResolveFlatMembers)
     EXPECT_EQ(shop.items.find(item), lamp);
     EXPECT_TRUE(shop.items.contains(lamp));
 
-    EXPECT_EQ(shop.items.view(lamp).get<&Item::name>(), "lamp");  // the Store alone reads members that are no index
+    EXPECT_EQ(shop.items.view(lamp).member<&Item::name>(), "lamp");  // the Store alone reads members that are no index
     const auto whole = urd::index_view<Item, Shop>(lamp, &shop);        // the shop resolves owners too
-    EXPECT_EQ(whole.get<&Item::owners>()[0].get<&Owner::name>(), "ann");
-    EXPECT_EQ((std::get<urd::index_view<Owner, Shop>>(whole.get<&Item::alternative>()).get<&Owner::name>()), "ann");
+    EXPECT_EQ(whole.member<&Item::owners>()[0].member<&Owner::name>(), "ann");
+    EXPECT_EQ((std::get<urd::index_view<Owner, Shop>>(whole.member<&Item::alternative>()).member<&Owner::name>()), "ann");
 }
 
 TEST(Layered, RowPoolsContinueTheirParent)
@@ -461,7 +461,7 @@ TEST(Layered, ViewsPointAtTheOwningLayer)
     EXPECT_TRUE(equal(child.view(one), root.view(one)));  // the same element, whichever layer it was asked of
     EXPECT_EQ(urd::Hash<PointView> {}(child.view(one)), urd::Hash<PointView> {}(root.view(one)));
     EXPECT_FALSE(equal(child.view(two), root.view(one)));
-    EXPECT_EQ(child.view(one).get<&Point::x>(), 1);
+    EXPECT_EQ(child.view(one).member<&Point::x>(), 1);
     EXPECT_EQ(child.view(two).context().layer(), 1U);
     EXPECT_EQ(child.view(one).context().layer(), 0U);
     EXPECT_FALSE(child.contains(urd::index<Point>(2)));

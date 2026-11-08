@@ -79,7 +79,7 @@ using Recs = Store<set<Rec>, urd::positional, urd::monotone>;
 template<typename V>
 struct urd::view_mixin<Rec, V>
 {
-    [[nodiscard]] std::string_view name() const { return static_cast<const V&>(*this).template get<&Rec::name>(); }
+    [[nodiscard]] std::string_view name() const { return static_cast<const V&>(*this).template member<&Rec::name>(); }
     [[nodiscard]] std::size_t part(std::size_t at) const { return static_cast<const V&>(*this).data().parts.at(at).value; }
 };
 
@@ -264,9 +264,9 @@ TEST(View, ReadsTheStoredRecordOfItsTag)
     const auto item = items.view(urd::index<Item>(0));
     static_assert(std::same_as<decltype(item.data()), const urd::data<Item>&>);
     EXPECT_EQ(item.data().weight, 3);
-    EXPECT_EQ(item.get<&urd::data<Item>::owner>().data().name, "ada");
+    EXPECT_EQ(item.member<&urd::data<Item>::owner>().data().name, "ada");
     const auto held = urd::resolve(items.records[0], items);
-    EXPECT_EQ(held.get<&urd::data<Item>::weight>(), 3);
+    EXPECT_EQ(held.member<&urd::data<Item>::weight>(), 3);
     EXPECT_EQ(held.context().layer(), 5U);
 }
 
@@ -282,9 +282,9 @@ TEST(View, ResolvesCompositionsAtAnyDepth)
     auto names = std::vector<std::string>();
     for (const auto [owner, members] : urd::resolve(groups, both))
     {
-        names.push_back(owner.get<&Owner::name>());
+        names.push_back(owner.member<&Owner::name>());
         for (const auto member : members)
-            names.push_back(member ? member->get<&Owner::name>() : std::string("-"));
+            names.push_back(member ? member->member<&Owner::name>() : std::string("-"));
     }
     EXPECT_EQ(names, (std::vector<std::string> { "a", "b", "-", "b" }));
 
@@ -292,8 +292,8 @@ TEST(View, ResolvesCompositionsAtAnyDepth)
     auto rows = urd::repr::BitRows<urd::index<Owner>, false>(urd::bit_width { 1 });
     rows.push_back(std::vector { b, a });
     const auto row = urd::resolve(rows[0], both);
-    EXPECT_EQ(row[0].get<&Owner::name>(), "b");
-    EXPECT_EQ(row[1].get<&Owner::name>(), "a");
+    EXPECT_EQ(row[0].member<&Owner::name>(), "b");
+    EXPECT_EQ(row[1].member<&Owner::name>(), "a");
 }
 
 TEST(View, BorrowsARecordNotInserted)
@@ -302,10 +302,10 @@ TEST(View, BorrowsARecordNotInserted)
     const auto record = Rec { "offered", { urd::index<Owner>(1), urd::index<Owner>(0) }, urd::index<Owner>(0), 3 };
     const auto offered = both.view(record);
     EXPECT_EQ(&offered.data(), &record);
-    EXPECT_EQ(offered.get<&Rec::owner>().get<&Owner::name>(), "a");
+    EXPECT_EQ(offered.member<&Rec::owner>().member<&Owner::name>(), "a");
     auto names = std::vector<std::string_view>();
-    for (const auto part : offered.get<&Rec::parts>())
-        names.push_back(part.get<&Owner::name>());
+    for (const auto part : offered.member<&Rec::parts>())
+        names.push_back(part.member<&Owner::name>());
     EXPECT_EQ(names, (std::vector<std::string_view> { "b", "a" }));
     // Equal records borrowed through the same context are equal; an inserted one is a view, of another type.
     const auto copy = record;
@@ -373,15 +373,15 @@ TEST(View, ResolvesMembersThroughItsContext)
     const auto whole = index_view<Rec>(urd::index<Rec>(0), &both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
     EXPECT_EQ(whole.part(1), whole.data().parts[1].value);
-    EXPECT_EQ(whole.get<&Rec::owner>().get<&Owner::name>(), "b");
+    EXPECT_EQ(whole.member<&Rec::owner>().member<&Owner::name>(), "b");
     auto names = std::vector<std::string_view>();
-    for (const auto part : whole.get<&Rec::parts>())
-        names.push_back(part.get<&Owner::name>());
+    for (const auto part : whole.member<&Rec::parts>())
+        names.push_back(part.member<&Owner::name>());
     EXPECT_EQ(names, (std::vector<std::string_view> { "a", "b" }));
-    EXPECT_EQ((std::get<index_view<Owner, Both>>(whole.get<&Rec::alternative>()).get<&Owner::name>()), "a");
+    EXPECT_EQ((std::get<index_view<Owner, Both>>(whole.member<&Rec::alternative>()).member<&Owner::name>()), "a");
     const auto second = index_view<Rec>(urd::index<Rec>(1), &both);
-    EXPECT_EQ(std::get<int>(second.get<&Rec::alternative>()), 7);
-    EXPECT_TRUE(second.get<&Rec::parts>().empty());
+    EXPECT_EQ(std::get<int>(second.member<&Rec::alternative>()), 7);
+    EXPECT_TRUE(second.member<&Rec::parts>().empty());
 }
 
 TEST(View, ComparesAndHashesByIndexAndLayer)
@@ -458,7 +458,7 @@ TEST(View, SharesARecord)
     record.reset();
     EXPECT_FALSE(weak.expired());
     EXPECT_EQ(shared.name(), "shared");
-    EXPECT_EQ(shared.get<&Rec::owner>().get<&Owner::name>(), "a");
+    EXPECT_EQ(shared.member<&Rec::owner>().member<&Owner::name>(), "a");
     const auto equal = Shared(std::make_shared<const Rec>(shared.data()), &both);
     EXPECT_NE(&equal.data(), &shared.data());
     EXPECT_EQ(equal, shared);
@@ -475,8 +475,8 @@ TEST(View, OwnsACopyOfARecord)
     EXPECT_NE(&owning.data(), &record);
     record.name = "changed";
     EXPECT_EQ(owning.name(), "computed");
-    EXPECT_EQ(owning.get<&Rec::owner>().get<&Owner::name>(), "b");
-    EXPECT_EQ(owning.get<&Rec::parts>()[0].get<&Owner::name>(), "b");
+    EXPECT_EQ(owning.member<&Rec::owner>().member<&Owner::name>(), "b");
+    EXPECT_EQ(owning.member<&Rec::parts>()[0].member<&Owner::name>(), "b");
     EXPECT_EQ(owning, Owning(owning.data(), &both));
     const auto other = make_both(urd::layer { 1 });
     EXPECT_NE(owning, Owning(owning.data(), &other));
