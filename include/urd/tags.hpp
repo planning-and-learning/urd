@@ -43,6 +43,7 @@ struct answer_says
     bool changes_at_ends = false;
     bool needs_an_element = false;
     bool built_with_width = false;  ///< Built with the bit width its elements fit in (urd::bit_width).
+    bool built_with_column_widths = false;  ///< Built with the column widths its rows are stored by (urd::column_widths).
     bool fixes_iteration_order = false;
     bool fixes_hash_order = false;
     bool costly = false;
@@ -782,6 +783,7 @@ enum class width : std::uint8_t
 {
     word,
     bit,
+    by_column_widths,
 };
 
 /// Each element whole, stored as its type: what a Store holds unless a request promises more (the default).
@@ -808,16 +810,31 @@ struct bit : word
     static constexpr answer_says says { .built_with_width = true };
 };
 
+/// Rows are stored by the column widths given at construction (urd::column_widths, urd/repr/containers/schema_rows.hpp):
+/// unsigned columns, each in the bits its width gives it. The Store hands out rows as values that read their columns.
+struct by_column_widths : word
+{
+    static constexpr auto value = width::by_column_widths;
+    static constexpr std::string_view name = "by_column_widths";
+    static constexpr std::string_view promise = "caller";
+    static constexpr std::string_view description = "Rows are stored by the column widths given at construction (urd::column_widths).";
+    static constexpr std::array<std::string_view, 3> phrases { "column widths", "unsigned columns", "columns in given bits" };
+    static constexpr answer_says says { .built_with_column_widths = true };
+};
+
 template<>
 struct tags_of<width>
 {
-    using type = boost::mp11::mp_list<word, bit>;
+    using type = boost::mp11::mp_list<word, bit, by_column_widths>;
 };
+
+/// What a Store of urd::by_column_widths is built with (urd/repr/containers/schema_rows.hpp).
+class column_widths;
 
 /// The bit width a Store of urd::bit is built with: every element fits in `bits` bits.
 struct bit_width
 {
-    std::uint8_t bits;
+    std::uint8_t bits = 1;
 
     /// The width that holds every value below `bound` (at least one bit).
     [[nodiscard]] static constexpr bit_width for_bound(std::uint64_t bound) noexcept
@@ -860,6 +877,45 @@ template<>
 struct tags_of<grouping>
 {
     using type = boost::mp11::mp_list<any_grouping, partitioned>;
+};
+
+enum class keying : std::uint8_t
+{
+    none,
+    keyed,
+};
+
+struct any_keying : tag_defaults
+{
+    using root = any_keying;
+    static constexpr auto value = keying::none;
+    static constexpr std::string_view name = "any_keying";
+    using group = kind_group;
+    static constexpr std::string_view question = "Freed slots kept by a key?";
+};
+/// Slots acquired by a key (keyed<K>): acquire_shared(key, args...) reuses a slot freed under an equal key, else makes
+/// one from (key, args...); the slot keeps its key. The words of the answer.
+struct keyed_slots : any_keying
+{
+    static constexpr auto value = keying::keyed;
+    static constexpr std::string_view name = "keyed";
+    static constexpr std::string_view promise = "";
+    static constexpr std::string_view description = "Slots acquired by a key: a freed slot is reused only under an equal key.";
+    static constexpr std::array<std::string_view, 3> phrases { "pooled by shape", "reuse by key", "free lists per key" };
+};
+
+template<>
+struct tags_of<keying>
+{
+    using type = boost::mp11::mp_list<any_keying, keyed_slots>;
+};
+
+/// Keys a Store of slots<T> by K (urd::Hash, urd::EqualTo): a slot freed under one key is reused only for an equal
+/// key, and T is made from (key, args...). A tag like any other, answering `keyed`, that also carries K.
+template<typename K>
+struct keyed : keyed_slots
+{
+    using key_type = K;
 };
 
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on

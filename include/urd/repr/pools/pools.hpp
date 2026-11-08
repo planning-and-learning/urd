@@ -14,6 +14,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -38,17 +39,25 @@ namespace urd::repr
 /// flat_rows.hpp: while all have one width, without offsets either); a row that is a sequence goes in and is looked up
 /// as the span of its elements, no row built.
 ///
-/// With Bits (a request of urd::bit, rows of indices), each element is stored in the bit width the pool is built with
-/// (urd/repr/containers/bit_rows.hpp), and view(h) hands out the row as a range that decodes its elements.
-template<typename Row, bool ThreadSafe, bool Bits, typename H>
+/// With Width bit (a request of urd::bit, rows of indices), each element is stored in the bit width the pool is built
+/// with (urd/repr/containers/bit_rows.hpp), and view(h) hands out the row as a range that decodes its elements.
+///
+/// With Width by_column_widths (a request of urd::by_column_widths), rows are unsigned columns stored by the column
+/// widths the pool is built with (urd/repr/containers/schema_rows.hpp): a row goes in as any range of values, one per
+/// column (unsigned integers or indices), or as a row of equal widths; view(h) hands out a SchemaRow (get(i),
+/// get<T>(i)), and EncodedRow (row_builder_type) builds one. A row is hashed by its values, so a lookup down a chain of
+/// layered pools of different bits finds it in each.
+template<typename Row, bool ThreadSafe, urd::width Width, typename H>
 class RowInterner
 {
+    static constexpr bool Bits = Width == urd::width::bit;
+    static constexpr bool by_column_widths = Width == urd::width::by_column_widths;
     using element = std::ranges::range_value_t<Row>;
     using word = std::uint64_t;
-    static constexpr bool words = has<traits_t<Row>, unique> && has<traits_t<Row>, dense>;  // a dense set: its bits
+    static constexpr bool words = !by_column_widths && has<traits_t<Row>, unique> && has<traits_t<Row>, dense>;  // a dense set: its bits
     using stored_row = std::vector<std::conditional_t<words, word, element>>;
     using BitsView = BitsetSpan<const word>;
-    static constexpr bool flat = Bits || (!words && std::is_trivially_copyable_v<element> && Hashable<element>);
+    static constexpr bool flat = Bits || by_column_widths || (!words && std::is_trivially_copyable_v<element> && Hashable<element>);
     /// A sequence keeps its elements as given: the given elements are the row.
     static constexpr bool as_given = []
     {
@@ -57,9 +66,14 @@ class RowInterner
         else
             return false;
     }();
-    using Table = std::conditional_t<Bits,
-                                     BitInterningTable<stored_row, ThreadSafe>,
-                                     std::conditional_t<flat, FlatInterningTable<stored_row, ThreadSafe>, InterningTable<stored_row, ThreadSafe>>>;
+    using Table = std::conditional_t<
+        by_column_widths,
+        SchemaInterningTable<stored_row, ThreadSafe>,
+        std::conditional_t<Bits,
+                           BitInterningTable<stored_row, ThreadSafe>,
+                           std::conditional_t<flat, FlatInterningTable<stored_row, ThreadSafe>, InterningTable<stored_row, ThreadSafe>>>>;
+    /// A row of the widths, as a lookup takes it.
+    using SchemaKey = SchemaRow<ThreadSafe>;
     /// Contiguous elements of a row, taken as they are.
     template<typename Elements>
     static constexpr bool contiguous_of = std::ranges::contiguous_range<Elements> && std::ranges::sized_range<Elements>
@@ -71,9 +85,11 @@ public:
     using handle_type = H;
     using write_type = Write<element>;
     using size_type = std::size_t;
+    /// What a row is built as before it goes in (by_column_widths: an EncodedRow; void elsewhere).
+    using row_builder_type = std::conditional_t<by_column_widths, EncodedRow<ThreadSafe>, void>;
 
     RowInterner()
-        requires(!Bits)
+        requires(!Bits && !by_column_widths)
     = default;
     /// With Bits, elements of any width (64 bits): what a slot holds before its value is built with its width (a map
     /// of layered pools, Layered::try_emplace).
@@ -88,9 +104,68 @@ public:
         : m_rows(width)
     {
     }
+    /// With by_column_widths, no columns: what a slot holds before its value is built with its widths.
+    RowInterner()
+        requires by_column_widths
+        : RowInterner(urd::column_widths())
+    {
+    }
+    /// Rows of these columns (urd::by_column_widths).
+    explicit RowInterner(const urd::column_widths& columns)
+        requires by_column_widths
+        : m_rows(columns)
+    {
+    }
+
+    /// The handle of the row with these values, one per column, and whether it was stored now. A value that does not
+    /// fit its column throws std::out_of_range, a value count other than the columns' std::invalid_argument, before
+    /// anything is stored.
+    template<std::ranges::input_range Values>
+        requires by_column_widths
+    std::pair<handle_type, bool> insert(const Values& values)
+    {
+        if constexpr (std::same_as<Values, SchemaKey>)
+            if (values.column_widths() == column_widths())
+                return intern(values);
+        auto key = EncodedRow<ThreadSafe>(column_widths());
+        encode(key, values);
+        return intern(key.row());
+    }
+    /// By values with their hash (urd::hash_columns of them), which is not computed again.
+    template<std::ranges::input_range Values>
+        requires by_column_widths
+    std::pair<handle_type, bool> insert(const prehashed<Values>& values)
+    {
+        auto key = EncodedRow<ThreadSafe>(column_widths());
+        encode(key, values.key);
+        return intern(prehashed<SchemaKey> { key.row(), values.hash });
+    }
+    /// The handle of the row with these values, or none (also where they do not fit the columns).
+    template<std::ranges::input_range Values>
+        requires by_column_widths
+    [[nodiscard]] handle_type find(const Values& values) const
+    {
+        if constexpr (std::same_as<Values, SchemaKey>)
+            if (values.column_widths() == column_widths())
+                return handle_of(m_rows.position(values));
+        auto key = EncodedRow<ThreadSafe>(column_widths());
+        return key.assign(values) ? handle_of(m_rows.position(key.row())) : handle_type();
+    }
+    template<std::ranges::input_range Values>
+        requires by_column_widths
+    [[nodiscard]] handle_type find(const prehashed<Values>& values) const
+    {
+        auto key = EncodedRow<ThreadSafe>(column_widths());
+        return key.assign(values.key) ? handle_of(m_rows.position(prehashed<SchemaKey> { key.row(), values.hash })) : handle_type();
+    }
+    /// The column widths its rows are stored by (urd::by_column_widths).
+    [[nodiscard]] const urd::column_widths& column_widths() const noexcept
+        requires by_column_widths
+    { return m_rows.built_with(); }
 
     /// The handle of the row with these elements, and whether it was stored now (no equal row was held).
     template<std::ranges::input_range Elements>
+        requires(!by_column_widths)
     std::pair<handle_type, bool> insert(const Elements& elements)
     {
         if constexpr (as_given && contiguous_of<Elements>)
@@ -100,6 +175,7 @@ public:
     }
     /// The handle of the row with these elements, or none.
     template<std::ranges::input_range Elements>
+        requires(!by_column_widths)
     [[nodiscard]] handle_type find(const Elements& elements) const
     {
         const auto found = [&]
@@ -114,11 +190,11 @@ public:
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), which is not hashed
     /// again: a row of a sequence, stored flat, as its contiguous elements.
     template<typename Elements>
-        requires as_given && contiguous_of<Elements>
+        requires(!by_column_widths && as_given && contiguous_of<Elements>)
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return intern(key); }
     template<typename Elements>
-        requires as_given && contiguous_of<Elements>
+        requires(!by_column_widths && as_given && contiguous_of<Elements>)
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
     {
         const auto found = m_rows.position(key);
@@ -127,7 +203,7 @@ public:
     /// The bit width of the rows' elements (Bits: urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
         requires Bits
-    { return m_rows.width(); }
+    { return m_rows.built_with(); }
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
 
@@ -186,7 +262,7 @@ public:
         const auto& row = stored(handle);
         if constexpr (words)
             return BitsView(row.data(), row.size() * BitsView::Digits);
-        else if constexpr (Bits)
+        else if constexpr (Bits || by_column_widths)
             return row;  // decoding its elements
         else
             return std::span<const element>(std::ranges::data(row), std::ranges::size(row));
@@ -202,7 +278,7 @@ public:
         }
         else
         {
-            const auto row = view(handle);
+            const auto row = elements_of(view(handle));
             return Row(row.begin(), row.end());
         }
     }
@@ -226,7 +302,7 @@ public:
                 *next++ = index_of<element>::from_index(at);
         }
         else
-            std::ranges::copy(stored(handle), out.begin());
+            std::ranges::copy(elements_of(stored(handle)), out.begin());
     }
 
     void reserve(size_type count)
@@ -268,7 +344,32 @@ private:
         assert((handle.value) < m_rows.size());
         return m_rows[handle.value];
     }
-    [[nodiscard]] static stored_row copy_of(const auto& row) { return stored_row(row.begin(), row.end()); }
+    [[nodiscard]] static stored_row copy_of(const auto& row)
+    {
+        const auto elements = elements_of(row);
+        return stored_row(elements.begin(), elements.end());
+    }
+    /// A stored row as a range of elements: a row of column widths read as them, column by column.
+    template<typename Stored>
+    [[nodiscard]] static auto elements_of(const Stored& row)
+    {
+        if constexpr (by_column_widths)
+            return row.template as<element>();
+        else
+            return std::ranges::subrange(row.begin(), row.end());
+    }
+    [[nodiscard]] static handle_type handle_of(std::optional<std::size_t> found)
+    { return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type(); }
+    /// The values into `key`, by its widths: std::invalid_argument where they are not one per column, std::out_of_range
+    /// where one does not fit.
+    template<typename Values>
+    static void encode(EncodedRow<ThreadSafe>& key, const Values& values)
+    {
+        if (std::ranges::distance(values) != static_cast<std::ptrdiff_t>(key.row().size()))
+            throw std::invalid_argument("urd::by_column_widths: a row has one value per column");
+        if (!key.assign(values))
+            throw std::out_of_range("urd::by_column_widths: a value does not fit in the bits of its column");
+    }
     template<typename Elements>
     std::pair<handle_type, bool> intern(Elements&& row)
     {
@@ -294,10 +395,10 @@ namespace urd
 {
 
 /// Its table of rows, each row's vector with it.
-template<typename Row, bool ThreadSafe, bool Bits, typename H>
-struct memory_of<repr::RowInterner<Row, ThreadSafe, Bits, H>>
+template<typename Row, bool ThreadSafe, urd::width Width, typename H>
+struct memory_of<repr::RowInterner<Row, ThreadSafe, Width, H>>
 {
-    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe, Bits, H>& held) { return memory_usage(held.m_rows); }
+    static std::size_t bytes(const repr::RowInterner<Row, ThreadSafe, Width, H>& held) { return memory_usage(held.m_rows); }
 };
 
 template<>
@@ -313,17 +414,22 @@ namespace urd::detail
 template<typename S>
 struct representation_of<row_interner_decl, S>
 {
-    using type = repr::RowInterner<typename S::element_type, false, false, typename S::handle_type>;
+    using type = repr::RowInterner<typename S::element_type, false, urd::width::word, typename S::handle_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_row_interner_decl, S>
 {
-    using type = repr::RowInterner<typename S::element_type, true, false, typename S::handle_type>;
+    using type = repr::RowInterner<typename S::element_type, true, urd::width::word, typename S::handle_type>;
 };
 template<typename S, bool ThreadSafe>
 struct representation_of<bit_row_interner_decl<ThreadSafe>, S>
 {
-    using type = repr::RowInterner<typename S::element_type, ThreadSafe, true, typename S::handle_type>;
+    using type = repr::RowInterner<typename S::element_type, ThreadSafe, urd::width::bit, typename S::handle_type>;
+};
+template<typename S, bool ThreadSafe>
+struct representation_of<schema_row_interner_decl<ThreadSafe>, S>
+{
+    using type = repr::RowInterner<typename S::element_type, ThreadSafe, urd::width::by_column_widths, typename S::handle_type>;
 };
 
 }  // namespace urd::detail

@@ -62,6 +62,8 @@ struct store_types
     static constexpr bool needs_an_element = S::urd_properties.template any_says<&answer_says::needs_an_element>();
     /// Built with the bit width its elements fit in (urd::bit: urd::bit_width).
     static constexpr bool built_with_width = S::urd_properties.template any_says<&answer_says::built_with_width>();
+    /// Built with the column widths its rows are stored by (urd::by_column_widths: urd::column_widths).
+    static constexpr bool built_with_column_widths = S::urd_properties.template any_says<&answer_says::built_with_column_widths>();
 
     using value_type = typename S::element_type;
     /// What lookups take, as the kind's data says: a map's key, else an element.

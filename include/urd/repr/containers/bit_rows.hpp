@@ -186,6 +186,8 @@ class BitRows
     };
 
 public:
+    /// What it is built with.
+    using parameter = urd::bit_width;
     using value_type = PackedRow<U, ThreadSafe>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;

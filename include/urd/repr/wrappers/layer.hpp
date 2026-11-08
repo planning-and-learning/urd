@@ -211,7 +211,7 @@ private:
     static bool reused(mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }
     /// Whether `value` is what `args` would build, but for its contents: no arguments, or the one it reports it was
-    /// built with (a bit width).
+    /// built with (a bit width, column widths).
     static bool built_alike(const mapped_type& /*value*/) { return true; }
     template<typename Arg>
         requires requires(const mapped_type& value, const Arg& arg) {
@@ -219,6 +219,12 @@ private:
         }
     static bool built_alike(const mapped_type& value, const Arg& arg)
     { return value.width() == arg; }
+    template<typename Arg>
+        requires requires(const mapped_type& value, const Arg& arg) {
+            { value.column_widths() == arg } -> std::convertible_to<bool>;
+        }
+    static bool built_alike(const mapped_type& value, const Arg& arg)
+    { return value.column_widths() == arg; }
     template<typename... Args>
     static bool built_alike(const mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "urd/elements/equal_to.hpp"
+#include "urd/elements/hash.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
@@ -9,6 +11,7 @@
 #include "urd/traits.hpp"
 
 #include <atomic>
+#include <boost/unordered/unordered_flat_map.hpp>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -28,10 +31,24 @@ namespace urd::repr
 /// references to the other elements stay valid. An erased element is not destroyed; the slot keeps it, and its
 /// storage, until an insert assigns over it or acquire hands it out as it is. With ThreadSafe, inserts, acquires
 /// and erases of different handles may run concurrently, and with reads of elements not erased.
-template<typename T, bool ThreadSafe>
+///
+/// With a key type K (single-threaded), slots are only acquired by key: acquire(key, args...) hands out a slot erased
+/// under an equal key as it is, else one made from T(key, args...). Each slot keeps its key, and its free list is its
+/// key's (a hash map of K, urd::Hash and urd::EqualTo): once each key has had as many slots in use at once, acquiring
+/// and erasing allocate nothing.
+template<typename T, bool ThreadSafe, typename K>
 class SlotVector
 {
     friend struct urd::memory_of<SlotVector>;
+
+    static constexpr bool keyed = !std::is_void_v<K>;
+    static_assert(!(keyed && ThreadSafe), "urd::SlotVector: keyed slots are single-threaded");
+    struct NoKeys
+    {
+    };
+    using Key = std::conditional_t<keyed, K, char>;  ///< K, where it is a type
+    using Keys = std::conditional_t<keyed, std::vector<Key>, NoKeys>;
+    using FreeByKey = std::conditional_t<keyed, boost::unordered_flat_map<Key, std::vector<std::uint32_t>, urd::Hash<Key>, urd::EqualTo<Key>>, NoKeys>;
 
     struct NoMutex
     {
@@ -66,17 +83,38 @@ public:
     /// A slot to use as it is: an erased element, with whatever it held and the storage it kept (a scratch buffer
     /// reused without allocating), else a new default-constructed one.
     handle_type acquire()
-        requires std::default_initializable<T>
+        requires std::default_initializable<T> && (!keyed)
     {
         return place([] { return T(); }, [](T&) {});
     }
+    /// A slot to use as it is, of `key`: one erased under an equal key, with whatever it held, else a new T(key, args...).
+    template<typename... Args>
+        requires keyed && std::constructible_from<T, const Key&, Args...>
+    handle_type acquire(const Key& key, Args&&... args)
+    {
+        if (const auto found = m_free_by_key.find(key); found != m_free_by_key.end() && !found->second.empty())
+        {
+            const auto slot = found->second.back();
+            found->second.pop_back();
+            ++m_count;
+            return handle_type { slot };
+        }
+        const auto index = m_slots.emplace_back_with_index([&](std::size_t) { return T(key, std::forward<Args>(args)...); },
+                                                           std::numeric_limits<std::uint32_t>::max() - 1);
+        m_keys.push_back(key);
+        ++m_count;
+        return handle_type { static_cast<std::uint32_t>(index) };
+    }
 
-    /// Frees the slot for reuse; the handle and references to the element mean nothing after.
+    /// Frees the slot for reuse (keyed: under its key); the handle and references to the element mean nothing after.
     void erase(handle_type handle)
     {
         assert((handle.value) < m_slots.size());
         const auto lock = std::scoped_lock(m_mutex);
-        m_free.push_back(handle.value);
+        if constexpr (keyed)
+            m_free_by_key[m_keys[handle.value]].push_back(handle.value);
+        else
+            m_free.push_back(handle.value);
         --m_count;
     }
 
@@ -108,12 +146,18 @@ public:
     {
         m_slots.clear();
         m_free.clear();
+        if constexpr (keyed)
+        {
+            m_keys.clear();
+            m_free_by_key.clear();
+        }
         m_count = 0;
     }
 
 private:
     /// Reuses an erased slot with `reuse`, else appends one built by `make`.
     template<typename Make, typename Reuse>
+        requires(!keyed)
     handle_type place(Make make, Reuse reuse)
     {
         auto slot = std::numeric_limits<std::uint32_t>::max();
@@ -137,6 +181,9 @@ private:
 
     SegmentedVector<T, default_first_segment_size, ThreadSafe> m_slots;
     std::vector<std::uint32_t> m_free;
+    /// Keyed: each slot's key, by slot, and the erased slots of each key.
+    [[no_unique_address]] Keys m_keys;
+    [[no_unique_address]] FreeByKey m_free_by_key;
     Mutex m_mutex;
     Count m_count { 0 };
     /// Every control block taken from it must be back before it goes. Made on first use where single-threaded (blocks());
@@ -162,7 +209,7 @@ namespace urd::detail
 template<typename S>
 struct representation_of<slot_vector_decl, S>
 {
-    using type = repr::SlotVector<typename S::element_type>;
+    using type = repr::SlotVector<typename S::element_type, false, typename S::slot_key_type>;
 };
 template<typename S>
 struct representation_of<thread_safe_slot_vector_decl, S>
@@ -172,9 +219,19 @@ struct representation_of<thread_safe_slot_vector_decl, S>
 
 }  // namespace urd::detail
 
-/// Its slots, freed ones included, and the free list.
-template<typename T, bool ThreadSafe>
-struct urd::memory_of<urd::repr::SlotVector<T, ThreadSafe>>
+/// Its slots, freed ones included, and the free list (keyed: the keys and the free lists' storage).
+template<typename T, bool ThreadSafe, typename K>
+struct urd::memory_of<urd::repr::SlotVector<T, ThreadSafe, K>>
 {
-    static std::size_t bytes(const repr::SlotVector<T, ThreadSafe>& held) { return memory_usage(held.m_slots) + memory_usage(held.m_free); }
+    static std::size_t bytes(const repr::SlotVector<T, ThreadSafe, K>& held)
+    {
+        auto result = memory_usage(held.m_slots) + memory_usage(held.m_free);
+        if constexpr (!std::is_void_v<K>)
+        {
+            result += held.m_keys.capacity() * sizeof(K) + held.m_free_by_key.capacity() * sizeof(*held.m_free_by_key.begin());
+            for (const auto& [key, free] : held.m_free_by_key)
+                result += memory_usage(free);
+        }
+        return result;
+    }
 };

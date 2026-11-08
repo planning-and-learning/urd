@@ -33,6 +33,30 @@ struct row_blocks_of<R>
     using block_type = typename R::block_type;
     using flip_type = typename R::flip_type;
 };
+/// What a pool's representation hands out as a stored row (view(h)), else void.
+template<typename R>
+struct row_of
+{
+    using type = void;
+};
+template<typename R>
+    requires requires(const R& rows, typename R::handle_type handle) { rows.view(handle); }
+struct row_of<R>
+{
+    using type = decltype(std::declval<const R&>().view(std::declval<typename R::handle_type>()));
+};
+/// What a pool's representation builds a row as before it goes in (by_column_widths), else void.
+template<typename R>
+struct row_builder_of
+{
+    using type = void;
+};
+template<typename R>
+    requires requires { typename R::row_builder_type; }
+struct row_builder_of<R>
+{
+    using type = typename R::row_builder_type;
+};
 }  // namespace urd::detail
 
 namespace urd::detail::facet
@@ -59,6 +83,10 @@ public:
     /// Rows that are sets of indices kept as bits: a block of a row, and a change to one (void elsewhere).
     using block_type = typename row_blocks_of<R>::block_type;
     using flip_type = typename row_blocks_of<R>::flip_type;
+    /// A stored row as view(h) hands it out, and what a row is built as before it goes in (by_column_widths:
+    /// urd::repr::EncodedRow; void elsewhere).
+    using row_type = typename row_of<R>::type;
+    using row_builder_type = typename row_builder_of<R>::type;
 
     /// The handle of the row with these elements, and whether the insert stored anything: false where find would have
     /// given the handle, as an equal row is held (or, with structural_sharing, every node of it is).
@@ -108,6 +136,10 @@ public:
     [[nodiscard]] urd::bit_width width() const noexcept
         requires requires(const R& rows) { rows.width(); }
     { return constant().width(); }
+    /// The column widths it was built with (urd::by_column_widths): its rows' columns.
+    [[nodiscard]] const urd::column_widths& column_widths() const noexcept
+        requires requires(const R& rows) { rows.column_widths(); }
+    { return constant().column_widths(); }
     /// Whether a row with these elements is stored, as a set's contains.
     template<std::ranges::input_range Elements>
     [[nodiscard]] bool contains(const Elements& elements) const

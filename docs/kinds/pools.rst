@@ -43,9 +43,14 @@ no row to name, as a pool of records does.
      - ``SlotVector``: stable slots, freed ones reused
    * - any of them with ``concurrent``
      - the same, thread-safe
+   * - ``Store<pool<Row>, bit>``
+     - the bit row interner: rows of indices, each element in the ``urd::bit_width`` the pool is built with
+   * - ``Store<pool<Row>, by_column_widths>``
+     - the schema row interner: rows of unsigned columns stored by the ``urd::column_widths`` the pool is built with
+       (below)
    * - ``Store<pool<Row>, layered>``
-     - ``LayeredPool`` over the row interner (:doc:`records`); with ``bit``, over the bit row interner, built with its
-       width
+     - ``LayeredPool`` over the row interner (:doc:`records`); with ``bit`` or ``by_column_widths``, over the bit or
+       schema row interner, built with its width or column widths
 
 Template parameters
 -------------------
@@ -167,6 +172,20 @@ Member functions: slots (``handles`` without ``unique``)
 
 .. cpp:function:: void clear()
 
+``acquire_unique()`` and ``acquire_shared()`` own an acquired slot as ``std::unique_ptr`` and ``std::shared_ptr`` do:
+the slot goes back with its (last) owner, and once as many owners have lived at once nothing allocates.
+
+With ``keyed<K>`` (single-threaded), slots are acquired only by key: ``acquire_shared(key, args...)`` hands out a slot
+given back under an equal key (``urd::Hash``, ``urd::EqualTo``) as it is, else a new ``T(key, args...)``. Each slot
+keeps its key and goes back to its key's free list, so a slot is never reused for another key (a buffer shaped by its
+column widths keeps its shape); once each key has had as many owners at once, nothing allocates.
+
+.. code-block:: cpp
+
+   using Buffers = Store<slots<Rows>, keyed<column_widths>>;
+   auto buffers = Buffers();
+   auto rows = buffers.acquire_shared(column_widths { 8, 16 });   // Rows(widths), or one given back under equal widths
+
 Complexity
 ----------
 
@@ -185,3 +204,46 @@ Example
    const auto initial = states.insert(facts);                                 // index<...>
    const auto next = states.insert(initial, added, removed);                  // a delta: only the changed path is new
    states.contains(next, atom);
+
+Rows by column widths
+---------------------
+
+With ``by_column_widths`` a pool is built with an ``urd::column_widths`` (``urd/repr/containers/schema_rows.hpp``):
+its columns, each the bits (1 to 64) of the unsigned value it holds. urd knows no types: what a column's value means
+(an index, a number's bits, a label) is the user's. Rows lie back to back, each the widths' ``bits()``.
+
+.. code-block:: cpp
+
+   using Objects = Store<pool<Store<sequence<index<Object>>, frozen>>, by_column_widths>;
+   auto rows = Objects(column_widths(3, 10));        // three objects of 10 bits per row
+   rows.insert(std::vector { a, b, c });             // any range of values, one per column
+   rows.view(h).get<index<Object>>(0);               // a row_type (SchemaRow): get(i), get<T>(i), as<T>(), size()
+
+   auto row = Objects::row_builder_type(rows.column_widths());   // an EncodedRow
+   row.set(0, 7);                                                 // false where 7 does not fit the column
+   rows.find(row.row());
+
+A row goes in as any range of values, one per column: unsigned integers or indices (``index_of``); or as a row of
+equal widths, taken as it is. A value that does not fit its column throws ``std::out_of_range``, a count other than the
+columns' ``std::invalid_argument``, before anything is stored. ``view(h)`` hands out the Store's ``row_type`` (a
+``SchemaRow``): ``get(i)`` (the column's unsigned value), ``get<T>(i)`` (as an unsigned integer or index type),
+``as<T>()`` (the columns as a random-access range of ``T``), ``size()``. The Store's ``row_builder_type`` (an
+``EncodedRow``) builds a row column by column (``set``, ``copy`` from another row) to look up or insert.
+
+A row's padding is zero. A row hashes and compares by its values (``urd::hash_columns``), whatever the bits of its
+columns, so a layered pool finds a parent's row through wider columns, and a key hashed once (``prehashed``, with
+``hash_columns`` of the values) serves the whole chain.
+
+Some rows of a pool
+-------------------
+
+``urd::subset_view<Pool>`` (``urd/elements/subset_view.hpp``) is some rows of a pool, by their sorted handles: it
+borrows the pool and the handles, which must outlive it. ``size()``, ``empty()``, ``operator[](i)`` (the pool's
+``view`` of the i-th handle) and ``begin()``/``end()`` (a borrowed random-access range of those views) read them;
+``contains(key)`` finds the row in the pool (by values, or a stored row) and then its handle among these by binary
+search. Over a layered pool, the handles may be a parent's.
+
+.. code-block:: cpp
+
+   const auto subset = urd::subset_view(rows, std::span(sorted_handles));
+   subset.contains(std::array<std::uint64_t, 2> { 3, 300 });

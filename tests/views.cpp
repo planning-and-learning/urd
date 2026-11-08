@@ -422,28 +422,19 @@ TEST(View, ComparesWithItsOperators)
     EXPECT_EQ(both.view(record) <=> other.view(copy), std::strong_ordering::less);
 }
 
-// A handle names what it locates.
-struct PairHandle
-{
-    using located = Owner;
-    urd::index<Owner> first;
-    std::uint32_t second;
-};
-static_assert(urd::handle<urd::index<Owner>> && urd::handle<PairHandle> && !urd::handle<int> && !urd::handle<Rec>);
-
 template<typename C>
 concept views_a_temporary = requires(const C& context) { context.view(Rec {}); };
 
 TEST(View, BorrowsAHeldRecord)
 {
-    // A record held outside the context (a form of T) is pointed at; a temporary one is not viewed. A handle (an
-    // index) is resolved through the context instead.
+    // A record held outside the context (a form of T) is pointed at; a temporary one is not viewed. An index is
+    // resolved through the context instead.
     static_assert(!views_a_temporary<Both>);
     const auto both = make_both();
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
     EXPECT_EQ(&both.view(record).data(), &record);
-    const auto by_handle = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
-    EXPECT_EQ(&by_handle.data(), &both[urd::index<Owner>(1)]);
+    const auto by_index = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
+    EXPECT_EQ(&by_index.data(), &both[urd::index<Owner>(1)]);
 }
 
 namespace
@@ -514,6 +505,26 @@ TEST(TransformedRange, ItsIteratorsOutliveIt)
     EXPECT_EQ(shifted().size(), 3U);
     EXPECT_EQ(shifted().at(1), 12);
     EXPECT_THROW((void) shifted().at(3), std::out_of_range);
+}
+
+TEST(TransformedRange, TakesACapturingLambda)
+{
+    // A capturing lambda is neither default-constructible nor assignable; its iterators still outlive the range
+    // expression, holding their own copy of it.
+    const auto values = std::vector<int> { 1, 2, 3 };
+    const auto offset = 10;
+    const auto shifted = [&values, offset] { return urd::transform(values, [offset](int value) { return value + offset; }); };
+    static_assert(!std::default_initializable<decltype([offset](int value) { return value + offset; })>);
+    auto begin = shifted().begin();
+    const auto end = shifted().end();
+    EXPECT_EQ(end - begin, 3);
+    EXPECT_EQ(begin[2], 13);
+    begin = std::ranges::next(begin);
+    EXPECT_EQ(*begin, 12);
+    auto copy = decltype(begin) {};
+    copy = begin;
+    EXPECT_EQ(*copy, 12);
+    EXPECT_TRUE(std::ranges::equal(shifted(), std::vector<int> { 11, 12, 13 }));
 }
 
 TEST(TransformedRange, EndsWhereWhatItReadsEnds)

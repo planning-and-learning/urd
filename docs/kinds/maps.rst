@@ -194,7 +194,7 @@ A layer is over a map by index (``dense``): a repository's per-predicate directo
 A key's own value shadows the parent's. ``insert_or_assign`` writes its own; ``at()``, ``update()`` and
 ``try_emplace(key, args...)`` on a layer that may change make an own value where the layer has none, once: where
 values layer themselves (a map of layered pools layers through both levels, see :doc:`records`), one built from
-``try_emplace``'s arguments (a pool's ``urd::bit_width``), or default, layered over the parent's value; else one built
+``try_emplace``'s arguments (a pool's ``urd::bit_width`` or ``urd::column_widths``), or default, layered over the parent's value; else one built
 from the arguments, or else a copy of the parent's. Read through a const Store (``at``, ``read``) to make nothing.
 
 With ``concurrent``, ``at``, ``update``, ``read``, ``try_emplace``, ``contains`` and ``owner`` run from threads at

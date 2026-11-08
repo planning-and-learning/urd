@@ -127,6 +127,9 @@ keys. :cpp:class:`urd::by` compares by a projection: ``order_by<by<&Job::deadlin
 else: elements ``C`` does not separate are equivalent, so a unique Store keeps one of them. See
 :cpp:class:`urd::order_by`.
 
+``keyed<K>`` likewise carries a key type ``K``: a Store of ``slots<T>`` acquires its slots by key, and reuses a slot
+given back only under an equal key (:doc:`/kinds/pools`).
+
 Incompatible combinations
 -------------------------
 

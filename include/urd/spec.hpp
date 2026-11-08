@@ -43,6 +43,18 @@ struct tag_in<Root, Tag, Tags...> : std::conditional_t<std::is_same_v<typename T
 {
 };
 
+/// The key a request's slots are kept by: its keyed<K>'s K (Keyed), else void.
+template<typename Keyed>
+struct key_of
+{
+    using type = typename Keyed::key_type;
+};
+template<>
+struct key_of<void>
+{
+    using type = void;
+};
+
 /// The comparator a request orders by: its order_by<C>'s C (Order), else urd::Less over Ordered (Order is void).
 template<typename Order, typename Ordered>
 struct comparator_of
@@ -69,17 +81,19 @@ consteval bool compares()
 }  // namespace detail
 
 /// A Store's request in canonical form: its kind with its element types (set<K>, map<K, V>, …), the comparator that
-/// orders it (its order_by<C>'s, else urd::Less), and its answers, one per category that says more than none, each in its category's enum, in
-/// the order of its kind's request format. Whatever order the tags were listed in, equal requests give equal specs, and
+/// orders it (its order_by<C>'s, else urd::Less), the key its slots are kept by (its keyed<K>'s, else void), and its
+/// answers, one per category that says more than none, each in its category's enum, in the order of its kind's request format. Whatever order the tags were listed in, equal requests give equal specs, and
 /// so equal Store types; compilers print the kind and the answers by name (urd::order::sorted). Its types are its
 /// kind's: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
-template<typename Kind, typename Compare, auto... Answers>
+template<typename Kind, typename Compare, typename Key, auto... Answers>
 struct spec : Kind
 {
     /// What the Store is (urd/kinds.hpp).
     using kind = typename Kind::kind;
     /// What orders it.
     using order_type = Compare;
+    /// What its slots are acquired and kept by (keyed<K>), else void.
+    using slot_key_type = Key;
     /// What the Store promises: the request's tags, with what they mean (its kind's meaning, urd/kinds.hpp).
     static constexpr detail::property_set urd_properties = detail::property_set::of({ tag(Answers)... });
 
@@ -120,9 +134,9 @@ struct spec_answers
 {
     using type = S;
 };
-template<typename Kind, typename Compare, auto... As, category_enum E, category_enum... Es, property_set Meant>
-struct spec_answers<spec<Kind, Compare, As...>, request_format<E, Es...>, Meant> :
-    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Compare, As...>, spec<Kind, Compare, As..., Meant.template get<E>()>>,
+template<typename Kind, typename Compare, typename Key, auto... As, category_enum E, category_enum... Es, property_set Meant>
+struct spec_answers<spec<Kind, Compare, Key, As...>, request_format<E, Es...>, Meant> :
+    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Compare, Key, As...>, spec<Kind, Compare, Key, As..., Meant.template get<E>()>>,
                  request_format<Es...>,
                  Meant>
 {
@@ -163,7 +177,9 @@ struct to_spec
                   "without sorted)");
 
     static constexpr property_set meant = kind::meaning(stated);
-    using type = typename spec_answers<spec<Kind, compare>, format, meant>::type;
+    /// Its keyed<K>'s K, or void.
+    using key = typename key_of<typename tag_in<any_keying, Tags...>::type>::type;
+    using type = typename spec_answers<spec<Kind, compare, key>, format, meant>::type;
 };
 
 /// Not a tag: among a Store's Tags, it puts the Store over container R instead of the one urd chooses, for the tests

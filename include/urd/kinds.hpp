@@ -247,7 +247,7 @@ struct slots_kind : detail::any_kind
     static constexpr std::string_view name = "slots";
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
-    using format = detail::request_format<order, uniqueness, keys, handling>;
+    using format = detail::request_format<order, uniqueness, keys, handling, keying>;
     using facets = detail::facet_list<detail::facet::slots>;
     /// Its values are reached by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles)); }

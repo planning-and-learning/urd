@@ -318,26 +318,32 @@ struct serving_named
     using type = typename urd::detail::representation_of<declaration, S>::type;
 };
 
-/// The tag type of answer A: its place among its category's tags (urd::tags_of); a given comparison is order_by<Compare>.
-template<typename Compare, auto A>
+/// The tag type of answer A: its place among its category's tags (urd::tags_of); a given comparison is order_by<Compare>,
+/// keyed slots keyed<Key>.
+template<typename Compare, typename Key, auto A>
 struct tag_of
 {
     using type = boost::mp11::mp_at_c<typename urd::tags_of<decltype(A)>::type, static_cast<std::size_t>(A)>;
 };
-template<typename Compare>
-struct tag_of<Compare, urd::comparison::given>
+template<typename Compare, typename Key>
+struct tag_of<Compare, Key, urd::comparison::given>
 {
     using type = urd::order_by<Compare>;
+};
+template<typename Compare, typename Key>
+struct tag_of<Compare, Key, urd::keying::keyed>
+{
+    using type = urd::keyed<Key>;
 };
 
 /// The Store for spec S over container R (which must serve S): its request, written back from S, with over<R>.
 template<typename S, typename R>
 struct store_over_of;
-template<typename Kind, typename Compare, auto... As, typename R>
-struct store_over_of<urd::spec<Kind, Compare, As...>, R>
+template<typename Kind, typename Compare, typename Key, auto... As, typename R>
+struct store_over_of<urd::spec<Kind, Compare, Key, As...>, R>
 {
-    using type = urd::Store<Kind, typename tag_of<Compare, As>::type..., urd::detail::over<R>>;
-    static_assert(std::same_as<typename urd::detail::to_spec<Kind, typename tag_of<Compare, As>::type...>::type, urd::spec<Kind, Compare, As...>>,
+    using type = urd::Store<Kind, typename tag_of<Compare, Key, As>::type..., urd::detail::over<R>>;
+    static_assert(std::same_as<typename urd::detail::to_spec<Kind, typename tag_of<Compare, Key, As>::type...>::type, urd::spec<Kind, Compare, Key, As...>>,
                   "store_over: the request written back from the spec resolves to another spec");
 };
 template<typename S, typename R>

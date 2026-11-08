@@ -272,7 +272,7 @@ namespace
 
 using BitRows = Store<pool<Row>, urd::monotone, urd::bit, urd::layered>;
 using BitRelations = Store<map<urd::index<PredicateTag>, BitRows>, urd::dense, urd::layered>;
-static_assert(std::same_as<BitRows::representation, urd::repr::LayeredPool<urd::repr::RowInterner<Row, false, true>>>);
+static_assert(std::same_as<BitRows::representation, urd::repr::LayeredPool<urd::repr::RowInterner<Row, false, urd::width::bit>>>);
 
 }  // namespace
 

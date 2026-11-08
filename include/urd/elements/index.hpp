@@ -30,8 +30,6 @@ template<typename T>
 struct index
 {
     using element_type = T;
-    /// What it locates: an index is a handle (urd::handle).
-    using located = T;
     using value_type = std::uint32_t;
     static constexpr value_type none_value = std::numeric_limits<value_type>::max();
 
@@ -47,12 +45,6 @@ struct index
     /// For records stored flat: cista serializes an index by its value.
     static constexpr auto cista_members() noexcept { return Members<&index::value> {}; }
 };
-
-/// A handle is a key that locates a T in a context, which resolves it (context[h] is the record, context.view(h) its
-/// view): it only names what it locates (`using located = T;`). urd::index<T> is one; a library's composite handle
-/// declares the same (a binding's relation and row), and its context gives operator[] for it.
-template<typename H>
-concept handle = requires { typename H::located; };
 
 /// An index is a dense key; none is no index, so a lookup of it finds nothing.
 template<typename T>
@@ -91,10 +83,10 @@ struct context_of;
 template<typename T>
 struct data;
 
-/// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds a handle H (by default the
-/// index) and reads it through the context; borrowed_view, owning_view and shared_view hold a record R (data<T>, or
+/// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index<T> and reads it
+/// through the context; borrowed_view, owning_view and shared_view hold a record R (data<T>, or
 /// builder<T>) outside the context: a pointer to it, it by value, a shared pointer to it.
-template<typename T, typename C = typename context_of<T>::type, typename H = index<T>>
+template<typename T, typename C = typename context_of<T>::type>
 class index_view;
 template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
 class borrowed_view;

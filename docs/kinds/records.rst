@@ -185,6 +185,9 @@ reach and fill the pools at once, each own pool made and layered once (:doc:`map
    task.try_emplace(on, bit_width::for_bound(num_objects));   // made once, over the domain's pool of on
    task.at(on).insert({ a, b });                              // from any thread
 
+Rows by column widths (``by_column_widths``, :doc:`pools`) are built the same way, from ``try_emplace(on, widths)``; a parent's row
+in narrower columns is found through the child's wider ones.
+
 A predicate's pool whose Store offers ``clear`` (``monotone_until_clear``) is reused when the map is cleared and the
-slot made again at the same width: cleared and layered anew, so refilling allocates nothing. A
+slot made again at the same width (or equal column widths): cleared and layered anew, so refilling allocates nothing. A
 ``monotone`` pool has no ``clear`` and is built anew.

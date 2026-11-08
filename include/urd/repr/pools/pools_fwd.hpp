@@ -22,9 +22,10 @@ namespace urd::repr
 {
 
 /// A pool of rows (Row: a Store, or any range constructible from its elements), each stored once and in full; with
-/// Bits, rows of indices, each element in a bit width given at construction (urd::bit). H is the index it hands out
+/// Width bit, rows of indices, each element in a bit width given at construction (urd::bit); with Width by_column_widths, rows
+/// of unsigned columns stored by column widths given at construction (urd::by_column_widths). H is the index it hands out
 /// (urd::pool<V, H>).
-template<typename Row, bool ThreadSafe = false, bool Bits = false, typename H = urd::index<Row>>
+template<typename Row, bool ThreadSafe = false, urd::width Width = urd::width::word, typename H = urd::index<Row>>
 class RowInterner;
 
 /// A pool of sequence rows, each a balanced tree with Arity children per node, equal subtrees stored once.
@@ -61,7 +62,7 @@ struct row_interner_decl
     static constexpr std::string_view holds = "each distinct row once, in full";
 };
 template<typename Row, typename H>
-struct declaration_of<repr::RowInterner<Row, false, false, H>>
+struct declaration_of<repr::RowInterner<Row, false, urd::width::word, H>>
 {
     using declaration = row_interner_decl;
     static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
@@ -90,9 +91,35 @@ struct bit_row_interner_decl
     static constexpr std::string_view holds = "each distinct row once, its elements in the given bits, rows of one length back to back";
 };
 template<typename Row, bool ThreadSafe, typename H>
-struct declaration_of<repr::RowInterner<Row, ThreadSafe, true, H>>
+struct declaration_of<repr::RowInterner<Row, ThreadSafe, urd::width::bit, H>>
 {
     using declaration = bit_row_interner_decl<ThreadSafe>;
+    static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
+};
+
+/// A row interner of rows whose request promises urd::by_column_widths: unsigned columns, each in the bits the column
+/// widths given at construction give it, rows back to back; thread-safe or not.
+template<bool ThreadSafe>
+struct schema_row_interner_decl
+{
+    static constexpr std::string_view id = ThreadSafe ? "thread_safe_schema_row_interner" : "schema_row_interner";
+    static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
+    using kind = pool_kind;
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none) });
+    static constexpr property_set relies_on = relies(stated({ width::by_column_widths }), tags<role::row>({ position::positional }));
+    static constexpr std::array<tag, 0> gives_elements {};
+    using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
+                                       cost_entry<operation::find_row, costs::lin_row_e>,
+                                       cost_entry<operation::access, costs::one>>;
+    static constexpr double words = 0.5;
+    static constexpr std::string_view description = "schema row interner (rows of unsigned columns, each column in the bits the widths given at construction give it)";
+    static constexpr std::string_view holds = "each distinct row once, its columns in their widths' bits, rows back to back";
+};
+template<typename Row, bool ThreadSafe, typename H>
+struct declaration_of<repr::RowInterner<Row, ThreadSafe, urd::width::by_column_widths, H>>
+{
+    using declaration = schema_row_interner_decl<ThreadSafe>;
     static constexpr property_set roles = roles_of<urd::pool<Row, H>>();
 };
 
@@ -163,7 +190,7 @@ struct thread_safe_row_interner_decl
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };
 template<typename Row, typename H>
-struct declaration_of<repr::RowInterner<Row, true, false, H>>
+struct declaration_of<repr::RowInterner<Row, true, urd::width::word, H>>
 {
     using declaration = thread_safe_row_interner_decl;
     static constexpr property_set roles = roles_of<urd::pool<Row, H>>();

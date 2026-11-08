@@ -116,6 +116,7 @@ struct declarations_of<map_kind>
                            scoped_tree_map_decl,
                            scoped_dense_map_decl,
                            layered_decl<dense_map_decl, false>,
+                           layered_decl<generation_map_decl, false>,
                            layered_decl<thread_safe_generation_map_decl, false>>;
 };
 
@@ -131,16 +132,20 @@ struct declarations_of<queue_kind>
 template<>
 struct declarations_of<pool_kind>
 {
-    using type = boost::mp11::mp_list<bit_row_interner_decl<false>,
+    using type = boost::mp11::mp_list<schema_row_interner_decl<false>,
+                           bit_row_interner_decl<false>,
                            row_interner_decl,
                            tree_pool_decl<false, false>,
                            tree_pool_decl<true, false>,
+                           schema_row_interner_decl<true>,
                            bit_row_interner_decl<true>,
                            thread_safe_row_interner_decl,
                            tree_pool_decl<false, true>,
                            tree_pool_decl<true, true>,
+                           layered_decl<schema_row_interner_decl<false>, true>,
                            layered_decl<bit_row_interner_decl<false>, true>,
                            layered_decl<row_interner_decl, true>,
+                           layered_decl<schema_row_interner_decl<true>, true>,
                            layered_decl<bit_row_interner_decl<true>, true>,
                            layered_decl<thread_safe_row_interner_decl, true>,
                            value_interner_decl,

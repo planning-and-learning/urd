@@ -302,7 +302,7 @@ indexable).
 | `Store<map<int, int>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
 | `Store<map<int, int>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<map<int, int>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<map<int, int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_thread_safe_generation_map` | index_map.hpp + layer.hpp |
+| `Store<map<int, int>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
 | `Store<map<int, int>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<map<int, int>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<map<int, int>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |
@@ -329,7 +329,7 @@ indexable).
 | `Store<map<Id, double>, dense, concurrent>` | unique, dense, concurrent | `thread_safe_generation_map` | index_map.hpp |
 | `Store<map<Id, double>, dense, layered>` | unique, dense, layered | `layered_dense_map` | index_map.hpp + layer.hpp |
 | `Store<map<Id, double>, dense, scoped>` | unique, dense, scoped | `scoped_dense_map` | index_map.hpp + scoped.hpp |
-| `Store<map<Id, double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_thread_safe_generation_map` | index_map.hpp + layer.hpp |
+| `Store<map<Id, double>, dense, constant_clear, layered>` | unique, dense, constant_clear, layered | `layered_generation_map` | index_map.hpp + layer.hpp |
 | `Store<map<Id, double>, dense, monotone>` | unique, dense, monotone | `dense_map` | index_map.hpp |
 | `Store<map<Id, double>, multi, dense>` | dense, multi | `dense_multimap` | dense_multimap.hpp |
 | `Store<map<Id, double>, multi, dense, frozen>` | dense, multi, stable_refs, frozen | `csr_multimap` | csr_multimap.hpp |

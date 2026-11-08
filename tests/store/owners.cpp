@@ -4,8 +4,10 @@
 
 #include "urd/testing/allocations.hpp"
 #include "urd/repr/slots/slots.hpp"
+#include "urd/repr/containers/schema_rows.hpp"
 #include "urd/store.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <gtest/gtest.h>
 #include <memory>
@@ -29,6 +31,16 @@ struct Scratch
 };
 
 using Pool = urd::Store<urd::slots<Scratch>>;
+
+/// A buffer shaped by its key: made from the key, it keeps its shape across uses.
+struct Shaped
+{
+    urd::column_widths shape;
+    std::vector<int> buffer;
+
+    explicit Shaped(const urd::column_widths& key, std::size_t reserve = 0) : shape(key) { buffer.reserve(reserve); }
+};
+using KeyedPool = urd::Store<urd::slots<Shaped>, urd::keyed<urd::column_widths>>;
 using ConcurrentPool = urd::Store<urd::slots<Scratch>, urd::concurrent>;
 
 }  // namespace
@@ -188,4 +200,56 @@ TEST(Owners, MovedFromPoolStillSharesItsElements)
     EXPECT_EQ(pool.size(), 0U);  // NOLINT(bugprone-use-after-move)
     auto from_moved = moved.acquire_shared();
     EXPECT_EQ(moved.size(), 1U);
+}
+
+// Keyed slots: a slot given back is reused only under an equal key, as it is; another key makes a new one from the key.
+TEST(Owners, KeyedSlotsAreReusedUnderTheirKey)
+{
+    static_assert(std::same_as<KeyedPool::representation, urd::repr::SlotVector<Shaped, false, urd::column_widths>>);
+    auto pool = KeyedPool();
+    const auto narrow = urd::column_widths { 4, 4 };
+    const auto wide = urd::column_widths { 32, 32, 32 };
+    const Shaped* first = nullptr;
+    {
+        auto owner = pool.acquire_shared(narrow, std::size_t { 64 });
+        first = owner.get();
+        EXPECT_EQ(owner->shape, narrow);
+        EXPECT_GE(owner->buffer.capacity(), 64U);
+        auto other = pool.acquire_shared(wide);
+        EXPECT_NE(other.get(), first);
+        EXPECT_EQ(pool.size(), 2U);
+    }
+    EXPECT_EQ(pool.size(), 0U);
+    auto wide_again = pool.acquire_shared(wide);
+    EXPECT_NE(wide_again.get(), first);
+    EXPECT_EQ(wide_again->shape, wide);
+    auto narrow_again = pool.acquire_shared(urd::column_widths { 4, 4 });
+    EXPECT_EQ(narrow_again.get(), first);
+    EXPECT_GE(narrow_again->buffer.capacity(), 64U);
+    auto narrow_more = pool.acquire_shared(narrow);  // the narrow slot is in use: a new one
+    EXPECT_NE(narrow_more.get(), first);
+    EXPECT_EQ(pool.size(), 3U);
+}
+
+// Once each key has had as many owners at once, acquiring and releasing keyed slots allocates nothing.
+TEST(Owners, KeyedSlotsAllocateNothingOnceWarm)
+{
+    if (!urd::testing::counts_allocations)
+        GTEST_SKIP() << "allocations are not counted here";
+    auto pool = KeyedPool();
+    const auto keys = std::vector<urd::column_widths> { { 4, 4 }, { 32, 32, 32 }, { 1 } };
+    auto owners = std::vector<std::shared_ptr<Shaped>>();
+    owners.reserve(4 * keys.size());
+    const auto round = [&]
+    {
+        for (int each = 0; each < 4; ++each)
+            for (const auto& key : keys)
+                owners.push_back(pool.acquire_shared(key, std::size_t { 16 }));
+        owners.clear();
+    };
+    round();
+    const auto counted = urd::testing::Counted();
+    for (int again = 0; again < 10; ++again)
+        round();
+    EXPECT_EQ(urd::testing::counts().allocations, 0);
 }

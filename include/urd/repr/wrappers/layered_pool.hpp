@@ -44,6 +44,17 @@ struct write_of<R>
 {
     using type = typename R::write_type;
 };
+template<typename R>
+struct row_builder_of
+{
+    using type = void;
+};
+template<typename R>
+    requires requires { typename R::row_builder_type; }
+struct row_builder_of<R>
+{
+    using type = typename R::row_builder_type;
+};
 
 }  // namespace detail
 
@@ -65,10 +76,12 @@ public:
     /// The parent pool's handle: its index, of T or the one its request names (urd::pool<V, H>).
     using handle_type = typename R::handle_type;
     using write_type = typename detail::write_of<R>::type;
+    using row_builder_type = typename detail::row_builder_of<R>::type;
     using size_type = std::size_t;
 
     LayeredPool() = default;
-    /// A root whose own pool is built from `args` (a bit row interner from its urd::bit_width).
+    /// A root whose own pool is built from `args` (a bit row interner from its urd::bit_width, a schema row interner
+    /// from its urd::column_widths).
     template<typename... Args>
         requires(sizeof...(Args) > 0 && std::constructible_from<R, Args...>)
     explicit LayeredPool(Args&&... args) : m_own(std::forward<Args>(args)...)
@@ -94,6 +107,10 @@ public:
     [[nodiscard]] urd::bit_width width() const noexcept
         requires requires(const R& own) { own.width(); }
     { return m_own.width(); }
+    /// The column widths its own pool was built with (urd::by_column_widths).
+    [[nodiscard]] const urd::column_widths& column_widths() const noexcept
+        requires requires(const R& own) { own.column_widths(); }
+    { return m_own.column_widths(); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
     // Records. A record is hashed once (urd::prehash) and found by that hash in every layer of the chain.

@@ -8,6 +8,7 @@
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
 #include "urd/repr/containers/flat_rows.hpp"
+#include "urd/repr/containers/schema_rows.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/core/boost_memory.hpp"
@@ -39,18 +40,38 @@ namespace detail
 {
 
 /// What a set of rows (IndexedSet, Rows) keeps of T, a range of plain elements (a vector, a sequence Store): the
-/// elements, and the span a row is stored, handed out and looked up as. Elsewhere T itself.
-template<typename T, bool Rows>
+/// elements, and the span a row is stored, handed out and looked up as; rows of column widths are looked up as the rows
+/// their storage hands out (SchemaRow). Elsewhere T itself.
+template<typename T, bool Rows, typename Storage>
 struct row_key
 {
     using element = void;
     using type = T;
 };
-template<typename T>
-struct row_key<T, true>
+template<typename T, typename Storage>
+struct row_key<T, true, Storage>
 {
     using element = std::ranges::range_value_t<T>;
     using type = std::span<const element>;
+};
+template<typename T, bool ThreadSafe>
+struct row_key<T, true, SchemaRows<ThreadSafe>>
+{
+    using element = std::ranges::range_value_t<T>;
+    using type = SchemaRow<ThreadSafe>;
+};
+
+/// What a row storage is built with (BitRows: a bit width, SchemaRows: column widths); nothing (std::monostate) elsewhere.
+template<typename Storage>
+struct parameter_of
+{
+    using type = std::monostate;
+};
+template<typename Storage>
+    requires requires { typename Storage::parameter; }
+struct parameter_of<Storage>
+{
+    using type = typename Storage::parameter;
 };
 
 /// A row a set of rows takes besides its elements: a contiguous range of the rows' elements (a span, a vector).
@@ -90,27 +111,37 @@ concept row_input = row_of<X, U> || (is_prehashed<X> && row_of<typename prehashe
 /// while all have one width, no offsets), handed out as spans of their elements, and looked up and inserted by any
 /// contiguous range of them: no row is built to look one up. Rows never move on insert; erase rebuilds.
 ///
-/// With Bits (and Rows), the rows' elements are indices stored in a bit width given at construction
-/// (urd/repr/containers/bit_rows.hpp), handed out as decoding ranges.
-template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, bool Bits>
+/// RowStorage is the rows' storage (with Rows; void elsewhere): FlatRows, BitRows (indices stored in a bit width
+/// given at construction, urd/repr/containers/bit_rows.hpp, handed out as decoding ranges) or SchemaRows (unsigned columns
+/// stored by column widths given at construction, urd/repr/containers/schema_rows.hpp, looked up and handed out as rows of
+/// it). A storage built with something (BitRows::parameter) is built from what the set is built with.
+template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename RowStorage>
 class IndexedSet
 {
-    static_assert(!Bits || Rows, "urd::repr::IndexedSet: bits are a storage of rows");
+    static_assert(Rows != std::is_void_v<RowStorage>, "urd::repr::IndexedSet: rows have a row storage, other elements none");
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
     static_assert(!Rows || Stable, "urd::repr::IndexedSet: rows lie in segments that never move (Stable)");
     friend struct urd::memory_of<IndexedSet>;
-    using row_element = typename detail::row_key<T, Rows>::element;
-    /// What the table hashes and compares: the element, or a row's span.
-    using Key = typename detail::row_key<T, Rows>::type;
-    using Elements = std::conditional_t<Rows,
-                                        std::conditional_t<Bits, BitRows<row_element, ThreadSafe>, FlatRows<row_element, ThreadSafe>>,
-                                        std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>>;
+    using row_element = typename detail::row_key<T, Rows, RowStorage>::element;
+    /// What the table hashes and compares: the element, a row's span, or a row of column widths.
+    using Key = typename detail::row_key<T, Rows, RowStorage>::type;
+    using Elements = std::conditional_t<Rows, RowStorage, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>>;
+    /// What the storage is built with (std::monostate: nothing).
+    using Parameter = typename detail::parameter_of<Elements>::type;
+    /// Rows of column widths, hashed and compared by their storage (by value, whatever their columns' bits).
+    static constexpr bool schema_rows = std::same_as<Elements, SchemaRows<ThreadSafe>>;
+    /// What a set of rows looks up and inserts besides its elements: a contiguous range of them, or a row of column widths;
+    /// either with its hash.
+    template<typename R>
+    static constexpr bool row_input = schema_rows ? (std::same_as<R, Key> || std::same_as<R, prehashed<Key>>) : detail::row_input<R, row_element>;
 
     /// A row (a span, or a stored row however its storage hands it out) hashes as its elements: alike either way.
     template<typename K>
     [[nodiscard]] static hash_t hash_key(const K& key)
     {
-        if constexpr (Rows)
+        if constexpr (schema_rows)
+            return Elements::hash(key);
+        else if constexpr (Rows)
             return hash_range(key);
         else
             return Hash<T> {}(key);
@@ -118,16 +149,18 @@ class IndexedSet
     template<typename L, typename R>
     [[nodiscard]] static bool equal_keys(const L& lhs, const R& rhs)
     {
-        if constexpr (Rows)
+        if constexpr (schema_rows)
+            return Elements::equal(lhs, rhs);
+        else if constexpr (Rows)
             return equal_elements(lhs, rhs);
         else
             return EqualTo<T> {}(lhs, rhs);
     }
-    /// What the table looks `x` up by: a row as the span of its elements, else the element itself.
+    /// What the table looks `x` up by: a row as the span of its elements, else the element (or schema row) itself.
     template<typename X>
     [[nodiscard]] static decltype(auto) key_of(const X& x)
     {
-        if constexpr (Rows)
+        if constexpr (Rows && !schema_rows)
             return Key(std::ranges::data(x), std::ranges::size(x));
         else
             return (x);
@@ -194,21 +227,22 @@ public:
     using difference_type = std::ptrdiff_t;
 
     IndexedSet()
-        requires(!Bits)
+        requires std::same_as<Parameter, std::monostate>
     = default;
-    /// Rows whose elements each fit in `width` (a pool of urd::bit).
-    explicit IndexedSet(urd::bit_width width)
-        requires Bits
-        : m_width(width)
+    /// Rows stored as `parameter` says: elements each in a bit width (a pool of urd::bit), or columns by their widths (a
+    /// pool of urd::by_column_widths).
+    explicit IndexedSet(const Parameter& parameter)
+        requires(!std::same_as<Parameter, std::monostate>)
+        : m_parameter(parameter)
     {
     }
 
     template<std::input_iterator InputIt>
-        requires(!Bits)
+        requires std::same_as<Parameter, std::monostate>
     IndexedSet(InputIt first, InputIt last)
     { insert(first, last); }
 
-    IndexedSet(const IndexedSet& other) : m_width(other.m_width) { insert(other.begin(), other.end()); }
+    IndexedSet(const IndexedSet& other) : m_parameter(other.m_parameter) { insert(other.begin(), other.end()); }
     IndexedSet& operator=(const IndexedSet& other)
     {
         if (this != &other)
@@ -217,7 +251,7 @@ public:
     }
     /// The moved-from set keeps a table and elements of its own, empty.
     IndexedSet(IndexedSet&& other) noexcept :
-        m_width(other.m_width),
+        m_parameter(other.m_parameter),
         m_elements(std::exchange(other.m_elements, other.fresh_elements())),
         m_positions(std::exchange(other.m_positions, table_for(other.elements())))
     {
@@ -226,7 +260,7 @@ public:
     {
         if (this != &other)
         {
-            m_width = other.m_width;
+            m_parameter = other.m_parameter;
             m_elements = std::exchange(other.m_elements, other.fresh_elements());
             m_positions = std::exchange(other.m_positions, table_for(other.elements()));
         }
@@ -238,10 +272,10 @@ public:
     [[nodiscard]] iterator end() const { return elements().cend(); }
     [[nodiscard]] size_type size() const { return m_elements ? m_elements->size() : 0; }
     [[nodiscard]] bool empty() const { return size() == 0; }
-    /// The bit width of the rows' elements (Bits).
-    [[nodiscard]] urd::bit_width width() const noexcept
-        requires Bits
-    { return m_width; }
+    /// What the rows are stored by: their elements' bit width (BitRows), or their column widths (SchemaRows).
+    [[nodiscard]] const Parameter& built_with() const noexcept
+        requires(!std::same_as<Parameter, std::monostate>)
+    { return m_parameter; }
     /// The element, or a row's span.
     [[nodiscard]] decltype(auto) operator[](size_type position) const { return elements()[position]; }
     [[nodiscard]] const T* data() const
@@ -259,28 +293,28 @@ public:
     [[nodiscard]] iterator find(const T& element) const { return found_at(lookup(element)); }
     [[nodiscard]] iterator find(const prehashed<T>& key) const { return found_at(lookup(key)); }
     /// A set of rows looks a row up by any contiguous range of its elements.
-    template<detail::row_input<row_element> R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>>)
+    template<typename R>
+        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
     [[nodiscard]] iterator find(const R& row) const
     { return found_at(lookup(row)); }
     /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
     /// with end() races with the size, which another thread's insert moves between the two calls.
     [[nodiscard]] std::optional<size_type> position(const T& element) const { return position_from(lookup(element)); }
     [[nodiscard]] std::optional<size_type> position(const prehashed<T>& key) const { return position_from(lookup(key)); }
-    template<detail::row_input<row_element> R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>>)
+    template<typename R>
+        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
     [[nodiscard]] std::optional<size_type> position(const R& row) const
     { return position_from(lookup(row)); }
     [[nodiscard]] size_type count(const T& element) const { return contains(element) ? 1 : 0; }
     [[nodiscard]] size_type count(const prehashed<T>& key) const { return contains(key) ? 1 : 0; }
-    template<detail::row_input<row_element> R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>>)
+    template<typename R>
+        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
     [[nodiscard]] size_type count(const R& row) const
     { return contains(row) ? 1 : 0; }
     [[nodiscard]] bool contains(const T& element) const { return lookup(element).has_value(); }
     [[nodiscard]] bool contains(const prehashed<T>& key) const { return lookup(key).has_value(); }
-    template<detail::row_input<row_element> R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>>)
+    template<typename R>
+        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
     [[nodiscard]] bool contains(const R& row) const
     { return lookup(row).has_value(); }
 
@@ -296,8 +330,8 @@ public:
     std::pair<iterator, bool> insert(const prehashed<T>& key) { return inserted(key.key, key.hash); }
     /// A set of rows inserts a row from any contiguous range of its elements, or one with its hash (urd::hash_range
     /// of the elements), copied where it is new.
-    template<detail::row_input<row_element> R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>>)
+    template<typename R>
+        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
     std::pair<iterator, bool> insert(const R& row)
     {
         if constexpr (is_prehashed<R>)
@@ -313,7 +347,7 @@ public:
         std::for_each(first, last,
                       [this](const auto& element)
                       {
-                          if constexpr (Rows && detail::row_of<std::remove_cvref_t<decltype(element)>, row_element>)
+                          if constexpr (Rows && row_input<std::remove_cvref_t<decltype(element)>>)
                               this->insert(element);
                           else if constexpr (Rows)  // a stored row handed out as a range (bits): its elements
                               this->insert(T(std::ranges::begin(element), std::ranges::end(element)));
@@ -478,8 +512,8 @@ private:
     std::pair<iterator, bool> inserted(U&& element, hash_t hash)
     {
         const auto& looked_up = key_of(element);
-        if constexpr (Bits)
-            Elements::check(m_width, looked_up);  // before the table: a row that does not fit changes nothing
+        if constexpr (std::same_as<Parameter, urd::bit_width>)
+            Elements::check(m_parameter, looked_up);  // before the table: a row that does not fit changes nothing
         const auto key = prehashed<Key> { looked_up, hash };
         if constexpr (!ThreadSafe)
             if (const auto found = position_of(key))
@@ -552,21 +586,21 @@ private:
     }
     [[nodiscard]] std::unique_ptr<Elements> make_elements() const
     {
-        if constexpr (Bits)
-            return std::make_unique<Elements>(m_width);
-        else
+        if constexpr (std::same_as<Parameter, std::monostate>)
             return std::make_unique<Elements>();
+        else
+            return std::make_unique<Elements>(m_parameter);
     }
     [[nodiscard]] static const Elements& no_elements()
     {
-        if constexpr (Bits)
+        if constexpr (std::same_as<Parameter, std::monostate>)
         {
-            static const Elements empty(urd::bit_width { 1 });
+            static const Elements empty;
             return empty;
         }
         else
         {
-            static const Elements empty;
+            static const Elements empty { Parameter {} };
             return empty;
         }
     }
@@ -583,8 +617,8 @@ private:
         return *m_elements;
     }
 
-    /// The bit width of rows' elements (with Bits); before the elements, which are made with it.
-    urd::bit_width m_width { 1 };
+    /// What the rows are stored by (a bit width, a schema); before the elements, which are made with it.
+    [[no_unique_address]] Parameter m_parameter {};
     std::unique_ptr<Elements> m_elements = fresh_elements();
     Table m_positions = table_for(elements());
     // A spin lock: the critical section is an append and a table insert, short as yggdrasil's benchmarks of its
@@ -598,10 +632,10 @@ namespace urd
 {
 
 /// Its elements (on the heap, with their storage) and the table of their positions.
-template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, bool Bits>
-struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Bits>>
+template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename RowStorage>
+struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, RowStorage>>
 {
-    static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Bits>& held)
+    static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, RowStorage>& held)
     { return (held.m_elements ? sizeof(*held.m_elements) + memory_usage(*held.m_elements) : 0) + memory_usage(held.m_positions); }
 };
 

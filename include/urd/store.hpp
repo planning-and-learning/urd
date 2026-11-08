@@ -174,6 +174,12 @@ public:
         requires detail::store_types<S>::built_with_width && (!std::constructible_from<R, urd::bit_width>) && std::default_initializable<R>
     {
     }
+    /// A Store of urd::by_column_widths is built with the column widths its rows are stored by.
+    explicit Store(const urd::column_widths& columns)
+        requires detail::store_types<S>::built_with_column_widths && std::constructible_from<R, const urd::column_widths&>
+        : m_representation(columns)
+    {
+    }
 
     /// A Store that hands out indices for views is numbered (urd::layer): built from its number first, then from
     /// whatever else builds its container (nothing, or its elements). Who builds it gives the number.

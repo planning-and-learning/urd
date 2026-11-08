@@ -342,3 +342,59 @@ TEST(LayeredMaps, ReadsTheOwnersValueOrTheOwnLayers)
 }
 
 }  // namespace
+
+// The same with rows by column widths (urd::by_column_widths, a relation repository's rows of objects): a cleared slot made again
+// with equal widths reuses its pool, refilling allocates nothing; a row of the parent's narrower columns is found
+// through the child's wider ones, as rows hash by their values.
+using SchemaLayeredRows = Store<urd::pool<LayeredRow>, urd::monotone_until_clear, urd::by_column_widths, urd::layered, urd::concurrent>;
+using SchemaLayeredRelations = Store<map<urd::index<LayeredPredicate>, SchemaLayeredRows>, urd::dense, urd::layered, urd::concurrent>;
+
+TEST(LayeredMaps, ClearedSlotsReuseTheirSchemaPools)
+{
+    const auto predicate = [](std::uint32_t at) { return urd::index<LayeredPredicate>(at); };
+    const auto row = [](std::uint32_t first, std::uint32_t second)
+    { return std::array { urd::index<LayeredObject>(first), urd::index<LayeredObject>(second) }; };
+    const auto narrow = urd::column_widths(2, 4);
+    const auto wide = urd::column_widths(2, 12);
+    auto domain = SchemaLayeredRelations();
+    domain.try_emplace(predicate(0), narrow);
+    domain.at(predicate(0)).insert(row(3, 5));
+    auto state = SchemaLayeredRelations();
+    state.layer_over(&domain);
+    const auto fill = [&]
+    {
+        for (std::uint32_t at = 0; at < 4; ++at)
+        {
+            state.try_emplace(predicate(at), wide);
+            for (std::uint32_t object = 0; object < 20; ++object)
+                state.at(predicate(at)).insert(row(at, object + 100));
+        }
+    };
+    fill();
+    state.clear();
+    fill();
+    state.clear();
+    {
+        const auto counted = urd::testing::Counted();
+        fill();
+    }
+    if (urd::testing::counts_allocations)
+    {
+        EXPECT_EQ(urd::testing::counts().allocations, 0);
+    }
+    const auto& rows = std::as_const(state).at(predicate(0));
+    EXPECT_EQ(rows.column_widths(), wide);
+    EXPECT_EQ(rows.base(), 1U);
+    EXPECT_EQ(rows.size(), 21U);
+    // The domain's row, stored in 4-bit columns, found through the state's 12-bit ones, and not stored again.
+    EXPECT_EQ(rows.find(row(3, 5)).value, 0U);
+    EXPECT_FALSE(state.at(predicate(0)).insert(row(3, 5)).second);
+    EXPECT_EQ(rows.view(urd::index<LayeredRow>(0)).get<urd::index<LayeredObject>>(1), urd::index<LayeredObject>(5));
+    // A row that does not fit the domain's columns is the state's own.
+    EXPECT_EQ(rows.find(row(0, 100)).value, 1U);
+    // Other widths build a new pool.
+    state.clear();
+    state.try_emplace(predicate(1), urd::column_widths(2, 20));
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).column_widths(), urd::column_widths(2, 20));
+    EXPECT_EQ(std::as_const(state).at(predicate(1)).size(), 0U);
+}
