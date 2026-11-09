@@ -6,7 +6,7 @@ find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}"
 
 # The Store, and typed tests: one per property for every container that declares it, one per behavior of
 # nested Stores. Those below count allocations (they link urd::count_allocations, which replaces operator new).
-foreach(test properties rows semantics queues pools views children family concurrency shortfall)
+foreach(test properties rows semantics queues pools views children concurrency shortfall)
     add_executable(test_${test} ${test}.cpp repr/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})
@@ -155,7 +155,7 @@ urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 
 # A file holding a Store pays for its own container and for no other registered one: tests/scaling.py
 # compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<set<int>>
-# resolves to Boost's flat hash set.
+# resolves to gtl's flat hash set.
 find_program(URD_CLANG_FOR_TRACE NAMES clang++ clang++-18)
 if(URD_CLANG_FOR_TRACE)
     add_executable(test_scaling_one_control EXCLUDE_FROM_ALL scaling/one.cpp)
@@ -163,7 +163,7 @@ if(URD_CLANG_FOR_TRACE)
     urd_syntax_only(compile test_scaling_one_control scaling/one.cpp)
     add_test(NAME scaling
              COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/scaling.py --clang ${URD_CLANG_FOR_TRACE}
-                     --allow "boost::unordered::unordered_flat_set<" -- ${compile}
+                     --allow "gtl::flat_hash_set<" -- ${compile}
              COMMAND_EXPAND_LISTS)
 endif()
 

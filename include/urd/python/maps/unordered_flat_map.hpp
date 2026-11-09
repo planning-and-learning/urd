@@ -9,6 +9,6 @@ namespace urd::python
 {
 
 template<typename K, typename V, typename Hash, typename Equal, typename Allocator>
-inline constexpr bool casts<boost::unordered_flat_map<K, V, Hash, Equal, Allocator>> = true;
+inline constexpr bool casts<gtl::flat_hash_map<K, V, Hash, Equal, Allocator>> = true;
 
 }  // namespace urd::python

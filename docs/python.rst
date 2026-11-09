@@ -19,7 +19,7 @@ resolve to, as it includes the representation itself.
 .. code-block:: cpp
 
    #include <urd/python/sequences/sequence.hpp>      // Store<sequence<T>>: std::vector
-   #include <urd/python/maps/unordered_flat_map.hpp>  // Store<map<K, V>>: boost::unordered_flat_map
+   #include <urd/python/maps/unordered_flat_map.hpp>  // Store<map<K, V>>: gtl::flat_hash_map
 
    NB_MODULE(example, m)
    {

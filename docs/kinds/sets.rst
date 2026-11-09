@@ -24,7 +24,7 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - Request
      - Representation
    * - ``Store<set<K>>``
-     - ``boost::unordered_flat_set`` (open addressing)
+     - ``gtl::flat_hash_set`` (open addressing)
    * - ``Store<set<K>, sorted>``
      - ``std::set``
    * - ``Store<set<K>, sorted, frozen>``

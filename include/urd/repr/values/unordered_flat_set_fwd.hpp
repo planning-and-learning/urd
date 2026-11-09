@@ -7,16 +7,15 @@
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
-#include <boost/unordered/unordered_flat_map_fwd.hpp>
-#include <boost/unordered/unordered_flat_set_fwd.hpp>
 #include <functional>
+#include <gtl/phmap_fwd_decl.hpp>
 
 namespace urd
 {
 
-// Boost's open-addressing hash tables, with a natural hash on hashable elements. Elements live in one array of
-// slots, so a rehash moves them (no stable_refs); erase and clear keep the slots. Declared here through Boost's
-// forward headers; defined by urd/repr/values/unordered_flat_set.hpp and urd/repr/maps/unordered_flat_map.hpp.
+// gtl's open-addressing hash tables, with a natural hash on hashable elements. Elements live in one array of
+// slots, so a rehash moves them (no stable_refs); erase and clear keep the slots. Declared here through gtl's
+// forward header; defined by urd/repr/values/unordered_flat_set.hpp and urd/repr/maps/unordered_flat_map.hpp.
 
 }  // namespace urd
 namespace urd::detail
@@ -37,11 +36,11 @@ struct unordered_flat_set_decl
                                        cost_entry<operation::iterate, costs::lin_capacity>>;
     static constexpr double words = 1.3;
     static constexpr quantity words_per = quantity::capacity;
-    static constexpr std::string_view description = "boost::unordered_flat_set (open-addressing hash table)";
+    static constexpr std::string_view description = "gtl::flat_hash_set (open-addressing hash table)";
     static constexpr std::string_view holds = "~n/0.875 slots + 1 byte each; retains";
 };
 template<typename T, typename H, typename E, typename A>
-struct declaration_of<boost::unordered_flat_set<T, H, E, A>>
+struct declaration_of<gtl::flat_hash_set<T, H, E, A>>
 {
     using declaration = unordered_flat_set_decl;
     static constexpr property_set roles = roles_of<urd::set<T>>();

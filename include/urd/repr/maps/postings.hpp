@@ -1,19 +1,18 @@
 #pragma once
 
 // Postings: multimaps whose values are found per key in a flat hash table. The grouped multimap over hashed groups,
-// and chained postings, whose values share one pool of slots; the containers here pull in Boost.Unordered.
+// and chained postings, whose values share one pool of slots; the containers here pull in gtl.
 
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/core/boost_memory.hpp"
+#include "urd/repr/core/gtl_memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
 #include "urd/repr/maps/grouped_multimap.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
-#include <boost/unordered/unordered_flat_map.hpp>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -31,7 +30,7 @@ namespace urd::repr
 template<typename K, typename V>
 class HashGroups
 {
-    using Table = boost::unordered_flat_map<K, std::vector<V>, Hash<K>, EqualTo<K>>;
+    using Table = gtl::flat_hash_map<K, std::vector<V>, Hash<K>, EqualTo<K>>;
 
 public:
     using key_type = K;
@@ -81,7 +80,7 @@ public:
         --m_count;
         if (!values.empty())
             return { at, index };
-        // Erasing from Boost's open-addressing table moves no other entry, so the next one stays where it is.
+        // Erasing from the open-addressing table moves no other entry, so the next one stays where it is.
         const auto next = std::next(at);
         m_table.erase(at);
         return { next, 0 };
@@ -119,7 +118,7 @@ class ChainedPostingMap
         std::size_t first;
         std::size_t count;
     };
-    using Table = boost::unordered_flat_map<K, Chain, Hash<K>, EqualTo<K>>;
+    using Table = gtl::flat_hash_map<K, Chain, Hash<K>, EqualTo<K>>;
     using entry = typename Table::const_iterator;
 
 public:
@@ -274,7 +273,7 @@ public:
         --m_size;
         if (--chain.count != 0)
             return next == npos ? iterator(this, std::next(pos.m_entry)) : iterator(this, pos.m_entry, next, pos.m_previous);
-        // Erasing from Boost's open-addressing table moves no other entry, so the next one stays where it is.
+        // Erasing from the open-addressing table moves no other entry, so the next one stays where it is.
         const auto after = std::next(pos.m_entry);
         m_table.erase(pos.m_entry);
         return iterator(this, after);
@@ -300,8 +299,8 @@ public:
     /// Room for `count` values and as many keys.
     void reserve(std::size_t count)
     {
-        // Only growing: Boost's reserve rehashes to fit, and so shrinks a larger table.
-        if (count > m_table.max_load())
+        // Only growing: gtl's reserve(0) frees an empty table's slots.
+        if (count != 0)
             m_table.reserve(count);
         m_slots.reserve(count);
     }

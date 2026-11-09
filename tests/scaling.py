@@ -40,8 +40,8 @@ URD = registered_containers()
 CONTAINERS = (*(f"urd::repr::{each}<" for each in URD), "std::set<", "std::multiset<", "std::map<", "std::multimap<",
               "std::unordered_set<", "std::unordered_map<", "std::unordered_multimap<",
               "boost::container::flat_set<", "boost::container::flat_multiset<", "boost::container::flat_map<",
-              "boost::container::flat_multimap<", "boost::unordered::unordered_flat_set<",
-              "boost::unordered::unordered_flat_map<", "gtl::parallel_")
+              "boost::container::flat_multimap<", "gtl::flat_hash_set<",
+              "gtl::flat_hash_map<", "gtl::parallel_")
 
 
 def instantiated(command: list[str], clang: str, *extra: str) -> set[str]:

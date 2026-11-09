@@ -39,7 +39,7 @@ container's header is missing fails to compile naming the headers to include, a 
      - nothing
    * - ``postings.hpp``
      - the postings (values together per key in a hash table)
-     - Boost.Unordered
+     - gtl
    * - ``ordered_map.hpp``
      - the insertion-ordered map (with its keys' header)
      - nothing
@@ -56,20 +56,20 @@ container's header is missing fails to compile naming the headers to include, a 
      - first in (deque or ring), last in, the least first
      - nothing
    * - ``unordered_flat_set.hpp``, ``unordered_flat_map.hpp``
-     - Boost's flat hash tables
-     - Boost.Unordered
+     - gtl's flat hash tables
+     - gtl
    * - ``indexed.hpp``
      - the indexed sets (interners)
-     - Boost.Unordered
+     - gtl
    * - ``flat_set.hpp``, ``flat_map.hpp``
      - Boost's flat sorted containers
      - Boost.Container
    * - ``pools.hpp``, ``tree_vector.hpp``, ``tree_bitset.hpp``, ``slots.hpp``
      - the row interner, the tree pools, the slot vector
-     - Boost.Unordered
+     - gtl
    * - ``records.hpp``, ``arena.hpp``
      - the record interner and the arena interner
-     - Boost.Unordered, cista
+     - gtl, cista
    * - ``scoped.hpp``
      - the scoped map (with the scoped map's header)
      - nothing
@@ -84,7 +84,7 @@ The standard library's and Boost's
 ----------------------------------
 
 ``std::vector``, ``std::set``, ``std::multiset``, ``std::map``, ``std::multimap``, ``std::unordered_set``,
-``std::unordered_map``, ``std::unordered_multimap``, ``boost::unordered_flat_set``, ``boost::unordered_flat_map``,
+``std::unordered_map``, ``std::unordered_multimap``, ``gtl::flat_hash_set``, ``gtl::flat_hash_map``,
 ``boost::container::flat_set``, ``flat_multiset``, ``flat_map``, ``flat_multimap``, and with gtl
 ``gtl::parallel_flat_hash_set``, ``parallel_flat_hash_map`` and their node-based twins, each with urd's :cpp:struct:`urd::Hash`,
 :cpp:struct:`urd::EqualTo` and :cpp:struct:`urd::Less`.

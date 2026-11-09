@@ -40,10 +40,9 @@ public:
     {
     }
 
-    /// Copies `amount` bytes in, at an address aligned to `align` (a power of two), and gives that address.
-    const std::uint8_t* write(const std::uint8_t* data, std::size_t amount, std::size_t align = 1)
+    /// Room for `amount` bytes at an address aligned to `align` (a power of two), not initialized.
+    std::uint8_t* allocate(std::size_t amount, std::size_t align = 1)
     {
-        assert(data != nullptr || amount == 0);
         assert(std::has_single_bit(align));
         const auto padding = align - 1;
         if (amount > std::numeric_limits<std::size_t>::max() - padding)
@@ -51,13 +50,19 @@ public:
         make_room(amount + padding);
         auto& segment = m_segments[m_current];
         const auto aligned = (m_position + padding) & ~padding;
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): an offset into the segment, which make_room sized
-        auto* at = segment.storage.get() + aligned;
-        if (amount > 0)
-            std::memcpy(at, data, amount);
         m_size += amount + (aligned - m_position);
         m_position = aligned + amount;
         segment.size = m_position;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): an offset into the segment, which make_room sized
+        return segment.storage.get() + aligned;
+    }
+    /// Copies `amount` bytes in, at an address aligned to `align` (a power of two), and gives that address.
+    const std::uint8_t* write(const std::uint8_t* data, std::size_t amount, std::size_t align = 1)
+    {
+        assert(data != nullptr || amount == 0);
+        auto* at = allocate(amount, align);
+        if (amount > 0)
+            std::memcpy(at, data, amount);
         return at;
     }
 

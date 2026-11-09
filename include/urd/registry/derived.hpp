@@ -14,7 +14,7 @@ namespace urd
 {
 
 /// What representation R is: `id`, a short stable name (`unordered_flat_set`); `description`, what it is
-/// (`boost::unordered_flat_set (open-addressing hash table)`); and `holds`, what it keeps besides its elements, where
+/// (`gtl::flat_hash_set (open-addressing hash table)`); and `holds`, what it keeps besides its elements, where
 /// its memory goes. Declared for every registered representation; none here.
 template<typename R>
 struct container_synopsis

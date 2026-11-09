@@ -19,15 +19,19 @@ namespace urd::repr
 /// The elements in a vector, and a hash table of their positions. Stable: the elements lie in segments that never
 /// move. ThreadSafe (with Stable): threads insert and look up at once. The registry names it for any element type,
 /// so it is an unconstrained template; its container_traits declare properties only for hashable elements.
-template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe, bool Rows = false, typename RowStorage = void>
+template<typename T, typename Index = std::uint32_t, bool ThreadSafe = false, bool Stable = ThreadSafe, bool Rows = false, typename Storage = void>
 class IndexedSet;
 
+/// A set's row storage (urd/repr/containers/uniform_rows.hpp) and what lays its rows out: as they are (PlainCodec), each
+/// element in a bit width (BitCodec, bit_rows.hpp), or each column in its width (SchemaCodec, schema_rows.hpp).
+template<typename Codec, bool ThreadSafe>
+class UniformRows;
+template<typename U>
+struct PlainCodec;
 template<typename U, bool ThreadSafe>
-class FlatRows;
-template<typename U, bool ThreadSafe>
-class BitRows;
+struct BitCodec;
 template<bool ThreadSafe>
-class SchemaRows;
+struct SchemaCodec;
 
 /// An IndexedSet whose elements never move: an interner that hands out references.
 template<typename T, typename Index = std::uint32_t>
@@ -38,13 +42,13 @@ using ConcurrentIndexedSet = IndexedSet<T, Index, true, true>;
 /// The table a pool interns plain rows in (sequences of trivially copyable elements), stored flat: thread-safe where
 /// ThreadSafe.
 template<typename T, bool ThreadSafe>
-using FlatInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, FlatRows<std::ranges::range_value_t<T>, ThreadSafe>>;
+using FlatInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, UniformRows<PlainCodec<std::ranges::range_value_t<T>>, ThreadSafe>>;
 /// The table a pool interns rows of indices in, each element in a bit width given at construction (urd::bit).
 template<typename T, bool ThreadSafe>
-using BitInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, BitRows<std::ranges::range_value_t<T>, ThreadSafe>>;
+using BitInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, UniformRows<BitCodec<std::ranges::range_value_t<T>, ThreadSafe>, ThreadSafe>>;
 /// The table a pool interns rows of unsigned columns in, stored by column widths given at construction (urd::by_column_widths).
 template<typename T, bool ThreadSafe>
-using SchemaInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, SchemaRows<ThreadSafe>>;
+using SchemaInterningTable = IndexedSet<T, std::uint32_t, ThreadSafe, true, true, UniformRows<SchemaCodec<ThreadSafe>, ThreadSafe>>;
 
 /// The table a pool interns its rows or nodes in: thread-safe where ThreadSafe.
 template<typename T, bool ThreadSafe>

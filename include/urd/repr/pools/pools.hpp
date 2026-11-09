@@ -36,7 +36,7 @@ namespace urd::repr
 /// stays valid until the pool is cleared.
 ///
 /// Rows of trivially copyable elements (flat) are stored flat, without a vector per row (urd/repr/containers/
-/// flat_rows.hpp: while all have one width, without offsets either); a row that is a sequence goes in and is looked up
+/// uniform_rows.hpp: while all have one length, without offsets either); a row that is a sequence goes in and is looked up
 /// as the span of its elements, no row built.
 ///
 /// With Width bit (a request of urd::bit, rows of indices), each element is stored in the bit width the pool is built

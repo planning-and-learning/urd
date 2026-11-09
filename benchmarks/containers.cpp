@@ -17,10 +17,9 @@
 #include <benchmark/benchmark.h>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
-#include <boost/unordered/unordered_flat_map.hpp>
-#include <boost/unordered/unordered_flat_set.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <gtl/phmap.hpp>
 #include <map>
 #include <random>
 #include <set>
@@ -198,7 +197,7 @@ using IndexedSet = urd::repr::IndexedSet<T>;
 template<typename T>
 using HashSet = std::unordered_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using FlatHashSet = boost::unordered_flat_set<T, urd::Hash<T>, urd::EqualTo<T>>;
+using FlatHashSet = gtl::flat_hash_set<T, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
 using TreeSet = std::set<T, urd::Less<T>>;
 template<typename T>
@@ -206,7 +205,7 @@ using FlatSet = boost::container::flat_set<T, urd::Less<T>>;
 template<typename T>
 using HashMap = std::unordered_map<T, int, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
-using FlatHashMap = boost::unordered_flat_map<T, int, urd::Hash<T>, urd::EqualTo<T>>;
+using FlatHashMap = gtl::flat_hash_map<T, int, urd::Hash<T>, urd::EqualTo<T>>;
 template<typename T>
 using TreeMap = std::map<T, int, urd::Less<T>>;
 template<typename T>

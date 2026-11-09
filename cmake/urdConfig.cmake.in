@@ -2,11 +2,11 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-# Boost.Container (flat sets and maps), Boost.Mp11 (type lists), Boost.Unordered (open-addressing hash tables), Boost.Hash2 (xxHash, since 1.89).
-find_dependency(Boost 1.89 CONFIG COMPONENTS container unordered hash2 mp11)
+# Boost.Container (flat sets and maps), Boost.Mp11 (type lists), Boost.Hash2 (xxHash, since 1.89).
+find_dependency(Boost 1.89 CONFIG COMPONENTS container hash2 mp11)
 # cista: serialization, for records stored flat.
 find_dependency(cista CONFIG)
-# gtl: the parallel hash tables behind concurrent sets and maps by hashed keys.
+# gtl: the hash tables behind unordered sets and maps, and the sharded ones behind concurrent sets and maps.
 find_dependency(gtl CONFIG)
 if(@URD_ENABLE_FMT_FORMATTERS@)
     # fmt: how urd's types are written (urd/format.hpp).

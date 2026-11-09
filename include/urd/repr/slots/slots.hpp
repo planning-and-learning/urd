@@ -11,11 +11,11 @@
 #include "urd/traits.hpp"
 
 #include <atomic>
-#include <boost/unordered/unordered_flat_map.hpp>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <gtl/phmap.hpp>
 #include <limits>
 #include <memory>
 #include <memory_resource>
@@ -48,7 +48,7 @@ class SlotVector
     };
     using Key = std::conditional_t<keyed, K, char>;  ///< K, where it is a type
     using Keys = std::conditional_t<keyed, std::vector<Key>, NoKeys>;
-    using FreeByKey = std::conditional_t<keyed, boost::unordered_flat_map<Key, std::vector<std::uint32_t>, urd::Hash<Key>, urd::EqualTo<Key>>, NoKeys>;
+    using FreeByKey = std::conditional_t<keyed, gtl::flat_hash_map<Key, std::vector<std::uint32_t>, urd::Hash<Key>, urd::EqualTo<Key>>, NoKeys>;
 
     struct NoMutex
     {

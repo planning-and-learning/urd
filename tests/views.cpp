@@ -289,7 +289,7 @@ TEST(View, ResolvesCompositionsAtAnyDepth)
     EXPECT_EQ(names, (std::vector<std::string> { "a", "b", "-", "b" }));
 
     // A decoded row read through a temporary: the readout holds a copy of it.
-    auto rows = urd::repr::BitRows<urd::index<Owner>, false>(urd::bit_width { 1 });
+    auto rows = urd::repr::UniformRows<urd::repr::BitCodec<urd::index<Owner>, false>, false>(urd::bit_width { 1 });
     rows.push_back(std::vector { b, a });
     const auto row = urd::resolve(rows[0], both);
     EXPECT_EQ(row[0].member<&Owner::name>(), "b");

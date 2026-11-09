@@ -216,7 +216,7 @@ TEST(Recycling, BucketsRefillWithoutAllocating)
 static_assert(std::same_as<Store<set<int>, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingHashSet<int>>);
 static_assert(std::same_as<Store<set<int>, urd::sorted, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingTreeSet<int>>);
 // Without stable_refs, retains is the flat containers' already.
-static_assert(std::same_as<Store<set<int>, urd::retains>::representation, boost::unordered_flat_set<int, urd::detail::prehash_hash<int>, urd::detail::prehash_equal<int>>>);
+static_assert(std::same_as<Store<set<int>, urd::retains>::representation, gtl::flat_hash_set<int, urd::detail::prehash_hash<int>, urd::detail::prehash_equal<int>>>);
 
 TEST(Recycling, UnorderedMapsRecycleToo)
 {

@@ -1,7 +1,7 @@
 #pragma once
 
-// The memory of gtl's sharded hash tables (urd/memory.hpp, memory_of), which urd's parallel sets and maps are: counted
-// by gtl itself, so its layout is gtl's.
+// The memory of gtl's hash tables (urd/memory.hpp, memory_of): the single tables urd's unordered sets and maps are, and
+// the sharded ones its parallel sets and maps are, counted by gtl itself, so their layout is gtl's.
 
 #include "urd/memory.hpp"
 
@@ -41,6 +41,12 @@ struct memory_of<gtl::flat_hash_set<T, H, E, A>>
 {
     static std::size_t bytes(const gtl::flat_hash_set<T, H, E, A>& held)
     { return (held.capacity() == 0 ? 0 : held.capacity() * (sizeof(T) + 1)) + detail::held_bytes(held); }
+};
+template<typename K, typename V, typename H, typename E, typename A>
+struct memory_of<gtl::flat_hash_map<K, V, H, E, A>>
+{
+    static std::size_t bytes(const gtl::flat_hash_map<K, V, H, E, A>& held)
+    { return (held.capacity() == 0 ? 0 : held.capacity() * (sizeof(typename gtl::flat_hash_map<K, V, H, E, A>::value_type) + 1)) + detail::held_bytes(held); }
 };
 template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename C>
 struct memory_of<gtl::parallel_node_hash_set<T, H, E, A, N, M, C>>

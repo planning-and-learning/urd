@@ -24,7 +24,7 @@ A map holds one value per key, or many (``multi``: a multimap). Its elements are
    * - Request
      - Representation
    * - ``Store<map<K, V>>``
-     - ``boost::unordered_flat_map``
+     - ``gtl::flat_hash_map``
    * - ``Store<map<K, V>, sorted>``
      - ``std::map``; with ``frozen``, ``boost::container::flat_map``
    * - ``Store<map<K, V>, stable_refs>``

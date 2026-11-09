@@ -16,7 +16,7 @@
 #include "urd/traits.hpp"
 #include "urd/type_traits_of.hpp"
 
-#include <boost/unordered/unordered_flat_map_fwd.hpp>
+#include <gtl/phmap_fwd_decl.hpp>
 #include <map>
 
 namespace urd::repr
@@ -29,7 +29,7 @@ class Scoped;
 
 /// Scopes over a flat hash table.
 template<typename K, typename V>
-using ScopedMap = Scoped<boost::unordered_flat_map<K, V, Hash<K>, EqualTo<K>>>;
+using ScopedMap = Scoped<gtl::flat_hash_map<K, V, Hash<K>, EqualTo<K>>>;
 /// Scopes over a tree: sorted.
 template<typename K, typename V>
 using ScopedTreeMap = Scoped<std::map<K, V, Less<K>>>;

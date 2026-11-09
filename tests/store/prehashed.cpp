@@ -14,6 +14,8 @@
 #include "urd/elements/flat.hpp"
 #include "urd/store.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <string>
@@ -32,6 +34,8 @@ struct Key
     static constexpr auto cista_members() noexcept { return urd::Members<&Key::value> {}; }
 };
 int hashes = 0;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables): the counter the tests read
+/// The calls per key (its value's low bits): a table that grows hashes the records it holds again.
+std::array<int, 4> hashes_of {};  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 }  // namespace
 
@@ -41,6 +45,7 @@ struct urd::Hash<Key>
     urd::hash_t operator()(const Key& key) const noexcept
     {
         ++hashes;
+        ++hashes_of[static_cast<std::size_t>(key.value) & 3U];
         return static_cast<urd::hash_t>(key.value) * 0x9e3779b97f4a7c15ULL;
     }
 };
@@ -56,21 +61,21 @@ template<typename Pool>
 void finds_and_inserts_hashing_once()
 {
     auto keys = Pool(urd::layer { 0 });
-    hashes = 0;
+    hashes_of = {};
     const auto [first, inserted] = keys.insert(Key { 1 });
     EXPECT_TRUE(inserted);
-    EXPECT_EQ(hashes, 1) << "a new record is hashed once: the lookup's hash goes into the table";
+    EXPECT_EQ(hashes_of[1], 1) << "a new record is hashed once: the lookup's hash goes into the table";
 
     const auto two_key = Key { 2 };
     const auto two = urd::prehash(two_key);
-    EXPECT_EQ(hashes, 2);
+    EXPECT_EQ(hashes_of[2], 1);
     EXPECT_FALSE(keys.contains(two));
     EXPECT_TRUE(keys.find(two).is_none());
     const auto [second, new_two] = keys.insert(two);
     EXPECT_TRUE(new_two);
     EXPECT_TRUE(keys.contains(two));
     EXPECT_EQ(keys.find(two), second);
-    EXPECT_EQ(hashes, 2) << "a prehashed key is not hashed again";
+    EXPECT_EQ(hashes_of[2], 1) << "a prehashed key is not hashed again";
 
     const auto one_key = Key { 1 };
     const auto one = urd::prehash(one_key);
@@ -82,7 +87,7 @@ void finds_and_inserts_hashing_once()
     const auto [made, new_three] = keys.insert(three, [](auto) { return Key { 3 }; });
     EXPECT_TRUE(new_three);
     EXPECT_EQ(keys[made], Key { 3 });
-    EXPECT_EQ(hashes, 4);
+    EXPECT_EQ(hashes_of[3], 1);
 }
 
 TEST(Prehashed, RecordInterner) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat>>(); }

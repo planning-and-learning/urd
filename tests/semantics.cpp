@@ -401,7 +401,7 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
             EXPECT_EQ(urd::hash_range(values | std::views::transform([](T value) { return value; })), expected);
             if constexpr (std::unsigned_integral<T>)
             {
-                auto rows = urd::repr::BitRows<T, false>(urd::bit_width { static_cast<std::uint8_t>(std::numeric_limits<T>::digits) });
+                auto rows = urd::repr::UniformRows<urd::repr::BitCodec<T, false>, false>(urd::bit_width { static_cast<std::uint8_t>(std::numeric_limits<T>::digits) });
                 rows.push_back(std::span<const T>(values));
                 EXPECT_EQ(urd::hash_range(rows[0]), expected);
             }

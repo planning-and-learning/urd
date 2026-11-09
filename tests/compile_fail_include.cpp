@@ -70,7 +70,7 @@ int main()
     auto bits = urd::Store<urd::set<int>, urd::dense>();
     (void) bits.size();
 #endif
-#if URD_HOLDS(3)  // Boost's flat hash set, declared through Boost's forward header, without its definition
+#if URD_HOLDS(3)  // gtl's flat hash set, declared through gtl's forward header, without its definition
     auto keys = urd::Store<urd::set<int>>();
     (void) keys.size();
 #endif

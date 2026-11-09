@@ -7,23 +7,19 @@
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
-#include "urd/repr/containers/flat_rows.hpp"
 #include "urd/repr/containers/schema_rows.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
-#include "urd/repr/core/boost_memory.hpp"
 #include "urd/repr/core/gtl_memory.hpp"
 #include "urd/repr/core/gtl_spin_lock.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
-#include <boost/unordered/unordered_flat_set.hpp>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
-#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -55,13 +51,13 @@ struct row_key<T, true, Storage>
     using type = std::span<const element>;
 };
 template<typename T, bool ThreadSafe>
-struct row_key<T, true, SchemaRows<ThreadSafe>>
+struct row_key<T, true, UniformRows<SchemaCodec<ThreadSafe>, ThreadSafe>>
 {
     using element = std::ranges::range_value_t<T>;
     using type = SchemaRow<ThreadSafe>;
 };
 
-/// What a row storage is built with (BitRows: a bit width, SchemaRows: column widths); nothing (std::monostate) elsewhere.
+/// What a row storage is built with (its codec's parameter: a bit width, column widths); nothing (std::monostate) elsewhere.
 template<typename Storage>
 struct parameter_of
 {
@@ -107,29 +103,34 @@ concept row_input = row_of<X, U> || (is_prehashed<X> && row_of<typename prehashe
 /// Looking up is lock-free; an insert of a new element takes a lock, so positions stay 0..n-1 without gaps. Clear,
 /// copy and move need no other operation running.
 ///
-/// With Rows, T is a sequence of plain elements (a row), and the rows are stored flat (urd/repr/containers/flat_rows.hpp:
-/// while all have one width, no offsets), handed out as spans of their elements, and looked up and inserted by any
+/// With Rows, T is a sequence of plain elements (a row), and the rows are stored flat (urd/repr/containers/uniform_rows.hpp:
+/// while all have one length, no offsets), handed out as spans of their elements, and looked up and inserted by any
 /// contiguous range of them: no row is built to look one up. Rows never move on insert; erase rebuilds.
 ///
-/// RowStorage is the rows' storage (with Rows; void elsewhere): FlatRows, BitRows (indices stored in a bit width
-/// given at construction, urd/repr/containers/bit_rows.hpp, handed out as decoding ranges) or SchemaRows (unsigned columns
-/// stored by column widths given at construction, urd/repr/containers/schema_rows.hpp, looked up and handed out as rows of
-/// it). A storage built with something (BitRows::parameter) is built from what the set is built with.
-template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename RowStorage>
+/// Storage is where the elements lie, where not in the vector or the segments (void): appended to (push_back), read by
+/// position, cleared, and never moving what it holds. Rows have one: a UniformRows of a codec, which stores the elements
+/// as they are (PlainCodec), indices in a bit width given at construction (BitCodec, urd/repr/containers/bit_rows.hpp,
+/// handed out as decoding ranges) or unsigned columns by column widths given at construction (SchemaCodec,
+/// urd/repr/containers/schema_rows.hpp, looked up and handed out as rows of it). Records serialized into an arena have
+/// another (ArenaRecords, urd/repr/records/arena.hpp). A storage built with something (its parameter) is built from what
+/// the set is built with; one that threads share is appended to under the set's writer lock.
+template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename Storage>
 class IndexedSet
 {
-    static_assert(Rows != std::is_void_v<RowStorage>, "urd::repr::IndexedSet: rows have a row storage, other elements none");
+    static_assert(!Rows || !std::is_void_v<Storage>, "urd::repr::IndexedSet: rows have a storage of their own");
+    static_assert(std::is_void_v<Storage> || Stable, "urd::repr::IndexedSet: a storage of its own never moves its elements (Stable)");
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
     static_assert(!Rows || Stable, "urd::repr::IndexedSet: rows lie in segments that never move (Stable)");
     friend struct urd::memory_of<IndexedSet>;
-    using row_element = typename detail::row_key<T, Rows, RowStorage>::element;
+    using row_element = typename detail::row_key<T, Rows, Storage>::element;
     /// What the table hashes and compares: the element, a row's span, or a row of column widths.
-    using Key = typename detail::row_key<T, Rows, RowStorage>::type;
-    using Elements = std::conditional_t<Rows, RowStorage, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>>;
+    using Key = typename detail::row_key<T, Rows, Storage>::type;
+    using Elements =
+        std::conditional_t<std::is_void_v<Storage>, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>, Storage>;
     /// What the storage is built with (std::monostate: nothing).
     using Parameter = typename detail::parameter_of<Elements>::type;
-    /// Rows of column widths, hashed and compared by their storage (by value, whatever their columns' bits).
-    static constexpr bool schema_rows = std::same_as<Elements, SchemaRows<ThreadSafe>>;
+    /// Rows of column widths, which hash and compare themselves (by value, whatever their columns' bits).
+    static constexpr bool schema_rows = std::same_as<Elements, UniformRows<SchemaCodec<ThreadSafe>, ThreadSafe>>;
     /// What a set of rows looks up and inserts besides its elements: a contiguous range of them, or a row of column widths;
     /// either with its hash.
     template<typename R>
@@ -140,7 +141,7 @@ class IndexedSet
     [[nodiscard]] static hash_t hash_key(const K& key)
     {
         if constexpr (schema_rows)
-            return Elements::hash(key);
+            return key.hash();
         else if constexpr (Rows)
             return hash_range(key);
         else
@@ -150,7 +151,7 @@ class IndexedSet
     [[nodiscard]] static bool equal_keys(const L& lhs, const R& rhs)
     {
         if constexpr (schema_rows)
-            return Elements::equal(lhs, rhs);
+            return lhs.equal(rhs);
         else if constexpr (Rows)
             return equal_elements(lhs, rhs);
         else
@@ -174,16 +175,6 @@ class IndexedSet
 
         friend bool operator==(Position, Position) = default;
     };
-    /// A position about to enter the table, with its element's hash: inserted as itself (it becomes a Position), so
-    /// that the table does not hash the element again.
-    struct Placed
-    {
-        Index value;
-        hash_t hash;
-
-        operator Position() const noexcept { return Position { value }; }  // NOLINT(google-explicit-constructor)
-    };
-
     /// Hashes a position by its element, and an element as itself, so the table can be searched by element.
     struct PositionHash
     {
@@ -193,7 +184,6 @@ class IndexedSet
         [[nodiscard]] std::size_t operator()(Position position) const { return hash_key((*elements)[position.value]); }
         [[nodiscard]] std::size_t operator()(const Key& element) const { return hash_key(element); }
         [[nodiscard]] std::size_t operator()(const prehashed<Key>& key) const noexcept { return key.hash; }
-        [[nodiscard]] std::size_t operator()(Placed placed) const noexcept { return placed.hash; }
     };
     struct PositionEqual
     {
@@ -206,17 +196,12 @@ class IndexedSet
         [[nodiscard]] bool operator()(const Key& lhs, const Key& rhs) const { return equal_keys(lhs, rhs); }
         [[nodiscard]] bool operator()(const prehashed<Key>& lhs, Position rhs) const { return (*this)(lhs.key, rhs); }
         [[nodiscard]] bool operator()(Position lhs, const prehashed<Key>& rhs) const { return (*this)(lhs, rhs.key); }
-        [[nodiscard]] bool operator()(Placed lhs, Position rhs) const { return (*this)(Position { lhs.value }, rhs); }
-        [[nodiscard]] bool operator()(Position lhs, Placed rhs) const { return (*this)(lhs, Position { rhs.value }); }
     };
-    /// Threads share gtl's sharded table, its 2^7 shards each under a shared spin lock (yggdrasil's interners
+    /// gtl's table; threads share its sharded one, the 2^7 shards each under a shared spin lock (yggdrasil's interners
     /// benchmarked this against boost's concurrent table and std::shared_mutex: faster lookups and inserts).
-    /// A set of rows that erases (a relation's rows) keeps gtl's table, which cleans erased slots in place where it has
-    /// room: Boost's rehashes after erasures, allocating.
-    using Table = std::conditional_t<
-        ThreadSafe,
-        gtl::parallel_flat_hash_set<Position, PositionHash, PositionEqual, std::allocator<Position>, 7, SpinSharedMutex>,
-        std::conditional_t<Rows, gtl::flat_hash_set<Position, PositionHash, PositionEqual>, boost::unordered_flat_set<Position, PositionHash, PositionEqual>>>;
+    using Table = std::conditional_t<ThreadSafe,
+                                     gtl::parallel_flat_hash_set<Position, PositionHash, PositionEqual, std::allocator<Position>, 7, SpinSharedMutex>,
+                                     gtl::flat_hash_set<Position, PositionHash, PositionEqual>>;
 
 public:
     using iterator = typename Elements::const_iterator;
@@ -272,7 +257,7 @@ public:
     [[nodiscard]] iterator end() const { return elements().cend(); }
     [[nodiscard]] size_type size() const { return m_elements ? m_elements->size() : 0; }
     [[nodiscard]] bool empty() const { return size() == 0; }
-    /// What the rows are stored by: their elements' bit width (BitRows), or their column widths (SchemaRows).
+    /// What the rows are stored by: their elements' bit width (BitCodec), or their column widths (SchemaCodec).
     [[nodiscard]] const Parameter& built_with() const noexcept
         requires(!std::same_as<Parameter, std::monostate>)
     { return m_parameter; }
@@ -512,8 +497,8 @@ private:
     std::pair<iterator, bool> inserted(U&& element, hash_t hash)
     {
         const auto& looked_up = key_of(element);
-        if constexpr (std::same_as<Parameter, urd::bit_width>)
-            Elements::check(m_parameter, looked_up);  // before the table: a row that does not fit changes nothing
+        if constexpr (Rows)
+            writable().check(looked_up);  // before the table: a row that does not fit changes nothing
         const auto key = prehashed<Key> { looked_up, hash };
         // Most inserts find their element: looked up first, without a lock (threads: the shard's shared one).
         if (const auto found = position_of(key))
@@ -539,8 +524,8 @@ private:
 
     /// Where threads share the set: the key's shard locked exclusively, searched once, and where the key is missing, the
     /// element `make(position)` gives appended and its position put in the shard: one search under the lock, as
-    /// yggdrasil's interners did; the shard's readers wait for the append. The segments append under their own lock,
-    /// numbering the element as they do (positions stay 0..n-1); rows, which have none, under the writer lock.
+    /// yggdrasil's interners did; the shard's readers wait for the append, which is under the writer lock, so positions
+    /// stay 0..n-1.
     template<typename Make>
     std::pair<iterator, bool> intern_concurrently(const prehashed<Key>& key, Make make)
     {
@@ -551,15 +536,12 @@ private:
             [&position](const Position& existing) { position = existing.value; },
             [&](const auto& construct)
             {
-                if constexpr (Rows)
                 {
+                    // ponytail: one lock for every storage (the segments take their own besides); no bound on Index
                     const auto lock = std::scoped_lock(m_writer);
                     position = static_cast<Index>(size());
                     writable().push_back(make(position));
                 }
-                else
-                    position = static_cast<Index>(writable().emplace_back_with_index(
-                        [&](std::size_t at) -> decltype(auto) { return make(static_cast<Index>(at)); }, std::numeric_limits<Index>::max() - 1));
                 construct(Position { position });
                 inserted = true;
             });
@@ -567,13 +549,7 @@ private:
     }
     /// Indexes a new position with its element's hash (`key`'s), which the table does not compute again: gtl takes
     /// the hash as its own hash() gives it, mixed, which for a prehashed key reads only the hash it carries.
-    void place(Index position, const prehashed<Key>& key)
-    {
-        if constexpr (ThreadSafe || Rows)
-            m_positions.emplace_with_hash(m_positions.hash(key), Position { position });
-        else
-            m_positions.insert(Placed { position, key.hash });
-    }
+    void place(Index position, const prehashed<Key>& key) { m_positions.emplace_with_hash(m_positions.hash(key), Position { position }); }
     /// No element storage until the first insert where single-threaded (an empty set owns no memory): reads see an
     /// empty one shared by all, which an empty table, hashing only keys, never reads through. Made at once where
     /// threads share the set, as lookups without a lock cannot race its making.
@@ -632,10 +608,10 @@ namespace urd
 {
 
 /// Its elements (on the heap, with their storage) and the table of their positions.
-template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename RowStorage>
-struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, RowStorage>>
+template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename Storage>
+struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>>
 {
-    static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, RowStorage>& held)
+    static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>& held)
     { return (held.m_elements ? sizeof(*held.m_elements) + memory_usage(*held.m_elements) : 0) + memory_usage(held.m_positions); }
 };
 

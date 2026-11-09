@@ -18,14 +18,15 @@
 namespace urd::repr
 {
 
-/// A pool of trivially copyable records, each distinct one once, in an indexed set: a record is its own block of
-/// bytes already. With Stable the records lie in segments that never move, so [index] hands out references that
-/// hold; thread-safe where ThreadSafe (which needs Stable): lookups without a lock, a new record appended under one.
-/// H is the index it hands out (urd::pool<V, H>).
-template<typename T, bool ThreadSafe, bool Stable, typename H>
-class RecordInterner
+namespace detail
 {
-    using Records = IndexedSet<T, std::uint32_t, ThreadSafe, Stable>;
+
+/// A pool over an indexed set: each distinct element once, under the index H of its position. What the interners here
+/// and the arena interner (urd/repr/records/arena.hpp) are, each over its own set.
+template<typename Records, typename H>
+class Interner
+{
+    using T = typename Records::value_type;
 
 public:
     using value_type = T;
@@ -35,15 +36,16 @@ public:
     // Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
     std::pair<handle_type, bool> insert(const T& record) { return inserted(m_records.insert(record)); }
     std::pair<handle_type, bool> insert(const prehashed<T>& key) { return inserted(m_records.insert(key)); }
-    /// The index `key` gets, built where new from `make(index)`, which must give a record equal to `key`.
+    /// The index `key` gets, built where new from `make(index)`, which must give a record equal to `key` and must not
+    /// touch this pool.
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
     { return insert(prehash(key), std::move(make)); }
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
-        return inserted(
-            m_records.insert_with(key, [&make](std::size_t position) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
+        return inserted(m_records.insert_with(
+            key, [&make](std::size_t position) -> decltype(auto) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
     }
     [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
@@ -59,21 +61,29 @@ public:
     void clear() { m_records.clear(); }
 
 private:
-    friend struct urd::memory_of<RecordInterner>;
+    friend struct urd::memory_of<Interner>;
 
-    [[nodiscard]] handle_type at(typename Records::iterator it) const { return handle_type(static_cast<std::uint32_t>(it - m_records.begin())); }
     [[nodiscard]] std::pair<handle_type, bool> inserted(std::pair<typename Records::iterator, bool> result) const
-    { return { at(result.first), result.second }; }
+    { return { handle_type(static_cast<std::uint32_t>(result.first - m_records.begin())), result.second }; }
 
     Records m_records;
 };
 
+}  // namespace detail
+
+/// A pool of trivially copyable records, each distinct one once, in an indexed set: a record is its own block of
+/// bytes already. With Stable the records lie in segments that never move, so [index] hands out references that
+/// hold; thread-safe where ThreadSafe (which needs Stable): lookups without a lock, a new record appended under one.
+/// H is the index it hands out (urd::pool<V, H>).
+template<typename T, bool ThreadSafe, bool Stable, typename H>
+class RecordInterner : public detail::Interner<IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>
+{
+};
+
 /// A pool of values interned whole: the record interner's indexed set for any hashable value, not stored as bytes.
 template<typename T, bool ThreadSafe, bool Stable, typename H>
-class ValueInterner : public RecordInterner<T, ThreadSafe, Stable, H>
+class ValueInterner : public detail::Interner<IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>
 {
-public:
-    using RecordInterner<T, ThreadSafe, Stable, H>::RecordInterner;
 };
 
 }  // namespace urd::repr
@@ -82,13 +92,17 @@ namespace urd
 {
 
 /// Its indexed set's.
-template<typename T, bool ThreadSafe, bool Stable, typename H>
-struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>>
+template<typename Records, typename H>
+struct memory_of<repr::detail::Interner<Records, H>>
 {
-    static std::size_t bytes(const repr::RecordInterner<T, ThreadSafe, Stable, H>& held) { return memory_usage(held.m_records); }
+    static std::size_t bytes(const repr::detail::Interner<Records, H>& held) { return memory_usage(held.m_records); }
 };
 template<typename T, bool ThreadSafe, bool Stable, typename H>
-struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>>
+struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::detail::Interner<repr::IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>>
+{
+};
+template<typename T, bool ThreadSafe, bool Stable, typename H>
+struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::detail::Interner<repr::IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>>
 {
 };
 

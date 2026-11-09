@@ -2,7 +2,7 @@
 
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
-#include "urd/repr/core/boost_memory.hpp"
+#include "urd/repr/core/gtl_memory.hpp"
 #include "urd/repr/core/std_memory.hpp"
 #include "urd/repr/wrappers/scoped_fwd.hpp"
 #include "urd/traits.hpp"

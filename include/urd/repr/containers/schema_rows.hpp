@@ -1,22 +1,16 @@
 #pragma once
 
-// Rows of unsigned columns, each column in the bits its width gives it, in segments that never move: the element storage
-// of a pool of rows whose request promises urd::by_column_widths (urd/repr/pools/pools.hpp). A row's padding is zero;
-// equal rows are hashed and compared by their values, whatever the bits of their columns.
+// Rows of unsigned columns, each column in the bits its width gives it: how the element storage of a pool of rows whose
+// request promises urd::by_column_widths lays them out (urd/repr/pools/pools.hpp). A row's padding is zero; equal rows
+// are hashed and compared by their values, whatever the bits of their columns.
 
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
-#include "urd/memory.hpp"
 #include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
-#include "urd/repr/containers/detail/geometric_segment_layout.hpp"
-#include "urd/repr/containers/detail/threading.hpp"
-#include "urd/repr/containers/segment_sizes.hpp"
-#include "urd/repr/core/position_iterator.hpp"
 
 #include <algorithm>
-#include <array>
 #include <bit>
 #include <boost/container/small_vector.hpp>
 #include <boost/container_hash/hash.hpp>
@@ -311,127 +305,40 @@ private:
     const urd::column_widths* m_widths = nullptr;
 };
 
-/// Rows of one set of column widths (urd::column_widths), each its columns' bits back to back: row i lies at bit
-/// i * widths.bits() of segments of geometrically growing size (in rows), which never move. Hands out rows as
-/// SchemaRow; takes rows of equal widths. With ThreadSafe, rows below size() may be read while one thread (under the owner's lock) appends.
-/// Clear keeps the segments.
+/// Rows of one set of column widths (urd::column_widths), each its columns' bits back to back; handed out as SchemaRow,
+/// taken as rows of equal widths. What a UniformRows of them is laid out by (urd/repr/containers/uniform_rows.hpp): every
+/// row has as many columns, so they lie in its segments.
 template<bool ThreadSafe>
-class SchemaRows
+struct SchemaCodec
 {
-    friend struct urd::memory_of<SchemaRows>;
-
-    using word = std::uint64_t;
-    using words = detail::packed_words<ThreadSafe>;
-    using Layout = detail::GeometricSegmentLayout<default_first_array_segment_size>;
-
-public:
-    /// What it is built with.
-    using parameter = urd::column_widths;
+    using unit = std::uint64_t;
     using value_type = SchemaRow<ThreadSafe>;
-    using size_type = std::size_t;
-    using difference_type = std::ptrdiff_t;
-    using const_iterator = PositionIterator<const SchemaRows>;
-    using iterator = const_iterator;
+    using parameter = urd::column_widths;
 
-    explicit SchemaRows(const urd::column_widths& widths) : m_widths(widths) {}
-    SchemaRows(const SchemaRows&) = delete;
-    SchemaRows& operator=(const SchemaRows&) = delete;
-    SchemaRows(SchemaRows&&) = delete;
-    SchemaRows& operator=(SchemaRows&&) = delete;
-    ~SchemaRows()
-    {
-        for (auto& segment : m_segments)
-            delete[] repr::detail::load_pointer<ThreadSafe, word>(segment);
-    }
+    explicit SchemaCodec(const urd::column_widths& built_with) : widths(built_with) {}
 
-    [[nodiscard]] const urd::column_widths& column_widths() const noexcept { return m_widths; }
-    [[nodiscard]] size_type size() const noexcept { return repr::detail::load_size<ThreadSafe>(m_size); }
-    [[nodiscard]] bool empty() const noexcept { return size() == 0; }
-    [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
-    [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
-    [[nodiscard]] const_iterator cbegin() const { return begin(); }
-    [[nodiscard]] const_iterator cend() const { return end(); }
-
-    [[nodiscard]] value_type operator[](size_type pos) const noexcept
-    {
-        const auto segment = Layout::segment_index(pos);
-        return value_type(repr::detail::load_pointer<ThreadSafe, word>(m_segments[segment]), Layout::segment_offset(pos, segment) * m_widths.bits(), m_widths);
-    }
-
-    /// Appends a row of equal widths: by one writer at a time (the owner's lock).
+    /// The words of the rows' bits, and a word of room so that a read of the last column's bits never leaves them.
+    [[nodiscard]] std::size_t units(std::size_t rows, std::size_t /*length*/) const noexcept
+    { return bit::ceil_div<std::size_t>(rows * widths.bits(), 64) + 1; }
+    [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t /*length*/) const noexcept
+    { return value_type(data, at * widths.bits(), widths); }
     template<bool OtherThreadSafe>
-    void push_back(const SchemaRow<OtherThreadSafe>& row)
+    void write(unit* data, std::size_t at, const SchemaRow<OtherThreadSafe>& row) const noexcept
     {
-        assert(row.column_widths() == m_widths && "urd::repr::SchemaRows: a row of its widths");
-        const auto pos = size();
-        if (m_widths.bits() != 0)
+        for (std::size_t i = 0; i < widths.size(); ++i)
         {
-            const auto segment = Layout::segment_index(pos);
-            auto* data = repr::detail::load_pointer<ThreadSafe, word>(m_segments[segment]);
-            if (!data)
-            {
-                data = new word[segment_words(segment)]();
-                repr::detail::store_pointer<ThreadSafe, word>(m_segments[segment], data);
-            }
-            write(data, Layout::segment_offset(pos, segment) * m_widths.bits(), row);
+            const auto& field = widths.at(i);
+            detail::packed_words<ThreadSafe>::set(data, (at * widths.bits()) + field.at, field.bits, row.get(i));
         }
-        repr::detail::store_size<ThreadSafe>(m_size, pos + 1);
     }
-
-    /// Moves the last row into `pos` and drops the last. Single-threaded.
-    void swap_erase(size_type pos)
-        requires(!ThreadSafe)
-    {
-        assert(pos < size());
-        const auto last = size() - 1;
-        if (pos != last && m_widths.bits() != 0)
-        {
-            const auto segment = Layout::segment_index(pos);
-            write(m_segments[segment], Layout::segment_offset(pos, segment) * m_widths.bits(), (*this)[last]);
-        }
-        m_size = last;
-    }
-
-    void clear() noexcept { repr::detail::store_size<ThreadSafe>(m_size, 0); }
-
-    /// Hashed and compared by values (SchemaRow::hash, equal).
-    [[nodiscard]] static hash_t hash(const value_type& row) noexcept { return row.hash(); }
-    [[nodiscard]] static bool equal(const value_type& lhs, const value_type& rhs) noexcept { return lhs.equal(rhs); }
-
-private:
-    /// Its rows' bits, and a word of room so that a read of the last column's bits never leaves it.
-    [[nodiscard]] std::size_t segment_words(std::size_t segment) const noexcept
-    { return bit::ceil_div<std::size_t>(Layout::segment_capacity(segment) * m_widths.bits(), 64) + 1; }
     template<bool OtherThreadSafe>
-    void write(word* data, std::size_t first_bit, const SchemaRow<OtherThreadSafe>& row) const noexcept
-    {
-        for (std::size_t i = 0; i < m_widths.size(); ++i)
-        {
-            const auto& field = m_widths.at(i);
-            words::set(data, first_bit + field.at, field.bits, row.get(i));
-        }
-    }
+    void check([[maybe_unused]] const SchemaRow<OtherThreadSafe>& row) const noexcept
+    { assert(row.column_widths() == widths && "urd::repr::SchemaCodec: a row of its widths"); }
 
-    std::array<repr::detail::Pointer<ThreadSafe, word>, Layout::max_segments> m_segments {};
-    urd::column_widths m_widths;
-    repr::detail::Size<ThreadSafe> m_size { 0 };
+    urd::column_widths widths;
 };
 
 }  // namespace urd::repr
-
-/// Its segments.
-template<bool ThreadSafe>
-struct urd::memory_of<urd::repr::SchemaRows<ThreadSafe>>
-{
-    static std::size_t bytes(const urd::repr::SchemaRows<ThreadSafe>& held)
-    {
-        auto total = std::size_t { 0 };
-        for (std::size_t segment = 0; segment < held.m_segments.size(); ++segment)
-            if (urd::repr::detail::load_pointer<ThreadSafe, std::uint64_t>(held.m_segments[segment]))
-                total += held.segment_words(segment) * sizeof(std::uint64_t);
-        return total;
-    }
-};
 
 template<bool ThreadSafe>
 inline constexpr bool std::ranges::enable_borrowed_range<urd::repr::SchemaRow<ThreadSafe>> = true;
