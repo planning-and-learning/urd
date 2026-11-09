@@ -139,6 +139,9 @@ public:
         requires std::invocable<Read&, const mapped_type&>
     [[nodiscard]] Result read_own(const key_type& key, Read read, Result missing) const
     { return m_own.read(key, read, missing); }
+    /// This layer's own value of `key`, or nullptr: the parent's are not looked at.
+    [[nodiscard]] const mapped_type* own_value(const key_type& key) const { return m_own.get_if(key); }
+    [[nodiscard]] mapped_type* own_value(const key_type& key) { return m_own.get_if(key); }
     /// update(value, held) with the own value of `key`, made where there is none (held is then false).
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>

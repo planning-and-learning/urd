@@ -99,7 +99,7 @@ public:
     [[nodiscard]] const LayeredPool* parent() const noexcept { return m_parent; }
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] size_type base() const noexcept { return m_base; }
-    /// Whether the parent grew after the branch, which it must not.
+    /// Whether the parent grew after the branch, which it must not (an insert of a new element throws std::logic_error).
     [[nodiscard]] bool parent_grew() const noexcept { return m_parent != nullptr && m_parent->size() > m_base; }
 
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
@@ -131,7 +131,8 @@ public:
     {
         if (const auto at = find(key); !at.is_none())
             return { at, false };
-        assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
+        if (parent_grew())
+            throw std::logic_error("urd::repr::LayeredPool: the parent grew after the branch");
         const auto [local_at, inserted] = m_own.insert(key, [this, &make](handle_type at) -> decltype(auto) { return make(global(at)); });
         return { global(local_at), inserted };
     }
@@ -247,7 +248,8 @@ private:
     {
         if (const auto at = find_in_chain(key); !at.is_none())
             return { at, false };
-        assert(!parent_grew() && "urd::repr::LayeredPool: the parent grew after the branch");
+        if (parent_grew())
+            throw std::logic_error("urd::repr::LayeredPool: the parent grew after the branch");
         const auto [own, stored] = m_own.insert(key);
         return { global(own), stored };
     }

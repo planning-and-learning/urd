@@ -153,6 +153,10 @@ branch, which inserts assert. The tree pools do not layer, since they number nod
    Where this layer's own indices start: the parent's size at the branch.
 
 .. cpp:function:: bool parent_grew() const
+
+   Whether the parent grew after the branch, which it must not: inserting a new element then throws
+   ``std::logic_error``.
+
 .. cpp:function:: const Records& owner(handle_type at) const
 
    The Store along the chain that holds the element at ``at``.

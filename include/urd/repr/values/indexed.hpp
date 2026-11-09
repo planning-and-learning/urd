@@ -515,9 +515,9 @@ private:
         if constexpr (std::same_as<Parameter, urd::bit_width>)
             Elements::check(m_parameter, looked_up);  // before the table: a row that does not fit changes nothing
         const auto key = prehashed<Key> { looked_up, hash };
-        if constexpr (!ThreadSafe)
-            if (const auto found = position_of(key))
-                return { at(*found), false };
+        // Most inserts find their element: looked up first, without a lock (threads: the shard's shared one).
+        if (const auto found = position_of(key))
+            return { at(*found), false };
         if constexpr (ThreadSafe)
             return intern_concurrently(key,
                                        [&](Index /*position*/) -> decltype(auto)

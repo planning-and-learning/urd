@@ -19,7 +19,7 @@
 #include <array>
 #include <bit>
 #include <boost/container/small_vector.hpp>
-#include <boost/hash2/xxhash.hpp>
+#include <boost/container_hash/hash.hpp>
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -96,17 +96,14 @@ private:
 };
 
 /// The hash of a row whose columns hold these values (value(i) for i below count): alike for a stored row and for the
-/// values it was made from, whatever the bits of its columns.
+/// values it was made from, whatever the bits of its columns. Each value is mixed in (boost::hash_combine).
 template<typename Value>
 [[nodiscard]] hash_t hash_columns(std::size_t count, Value value) noexcept
 {
-    auto hash = boost::hash2::xxhash_64 {};
+    auto hash = std::size_t { 0 };
     for (std::size_t i = 0; i < count; ++i)
-    {
-        const std::uint64_t each = value(i);
-        hash.update(&each, sizeof(each));
-    }
-    return hash.result();
+        boost::hash_combine(hash, static_cast<std::uint64_t>(value(i)));
+    return hash;
 }
 /// The hash of the row made from these values, unsigned integers or indices (index_of; see hash_columns).
 template<std::ranges::sized_range R>

@@ -72,6 +72,15 @@ public:
     [[nodiscard]] Result read_own(const Key& key, Read read, Result missing) const
         requires(!chained)
     { return constant().read_own(key, read, missing); }
+    /// This layer's own value of `key` (a layered map), or nullptr: the parent's are not looked at.
+    template<typename Key>
+    [[nodiscard]] const auto* own_value(const Key& key) const
+        requires(!chained)
+    { return constant().own_value(key); }
+    template<typename Key>
+    [[nodiscard]] auto* own_value(const Key& key)
+        requires(!chained)
+    { return representation().own_value(key); }
 
 private:
     [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }

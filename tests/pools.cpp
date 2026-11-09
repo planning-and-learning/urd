@@ -442,6 +442,7 @@ TEST(Layered, RowPoolsContinueTheirParent)
     EXPECT_EQ(child.get(written), expected_written);
     EXPECT_EQ(parent.insert({ 1, 9, 3 }).first, RowIndex(2));  // the parent knows nothing of it
     EXPECT_TRUE(child.parent_grew());
+    EXPECT_THROW((void) child.insert({ 7, 7 }), std::logic_error);  // its new indices would collide with the parent's
     EXPECT_EQ(child.parent(), &parent);
 }
 

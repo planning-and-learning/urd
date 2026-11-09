@@ -149,6 +149,13 @@ public:
         const auto* entry = held_slot(key);
         return entry == nullptr ? missing : Result(read(value_of(*entry)));
     }
+    /// The value of `key`, or nullptr where it has none.
+    [[nodiscard]] const V* get_if(const K& key) const
+    {
+        const auto* entry = held_slot(key);
+        return entry == nullptr ? nullptr : &value_of(*entry);
+    }
+    [[nodiscard]] V* get_if(const K& key) { return contains(key) ? &value(index_of<K>::to_index(key)) : nullptr; }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
