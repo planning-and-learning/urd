@@ -244,7 +244,9 @@ TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
         rows.copy(by_words, out);
     }
     if (urd::testing::counts_allocations)
+    {
         EXPECT_EQ(urd::testing::counts().allocations, 0);
+    }
     EXPECT_EQ(size, values.size());
     EXPECT_EQ(elements, values);
     EXPECT_TRUE(std::ranges::equal(out, row));

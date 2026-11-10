@@ -187,6 +187,20 @@ struct Hash<M>
         return seed;
     }
 };
+namespace detail
+{
+
+/// The hash of what identifies a type (detail::identity): of one member, that member's own hash, so that a type
+/// wrapping one value (urd::index) hashes as the value does, without mixing it into a seed; of several, the tuple's.
+template<typename M>
+hash_t hash_identity(const std::tuple<M>& identity)
+{ return Hash<std::remove_cvref_t<M>> {}(std::get<0>(identity)); }
+template<typename... Ms>
+hash_t hash_identity(const std::tuple<Ms...>& identity)
+{ return Hash<std::tuple<Ms...>> {}(identity); }
+
+}  // namespace detail
+
 /// An identified type hashes as what identifies it (detail::identity); it also hashes what identifies it given alone
 /// (detail::identity_t, or its parts by value), alike, so that a lookup may take it in place of the element.
 template<Identifiable T>
@@ -196,11 +210,11 @@ struct Hash<T>
 
     hash_t operator()(const T& element) const
         requires Hashable<detail::identity_t<T>>
-    { return Hash<detail::identity_t<T>> {}(detail::identity(element)); }
+    { return detail::hash_identity(detail::identity(element)); }
     template<identity_of<T> U>
     hash_t operator()(const U& identity) const
         requires Hashable<detail::identity_t<T>>
-    { return Hash<detail::identity_t<T>> {}(identity); }
+    { return detail::hash_identity(identity); }
 };
 
 /// Hashes any hashable value by its type's Hash.

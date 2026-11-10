@@ -46,7 +46,7 @@ struct urd::Hash<Key>
     {
         ++hashes;
         ++hashes_of[static_cast<std::size_t>(key.value) & 3U];
-        return static_cast<urd::hash_t>(key.value) * 0x9e3779b97f4a7c15ULL;
+        return static_cast<urd::hash_t>(key.value) * urd::hash_t { 0x9e3779b97f4a7c15 };
     }
 };
 
