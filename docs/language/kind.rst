@@ -35,3 +35,8 @@ is a kind like these (:doc:`/extending`).
 
    Slots acquired by key (``keyed<K>``): ``make_shared(key, args...)`` reuses only a slot given back under an equal
    key, else makes ``T(key, args...)``.
+
+.. urd-category:: any_room
+
+   ``reserve(n)``: room for ``n`` elements before they come. Tables, contiguous storage and the containers built on
+   them have it; trees and segmented storage do not.

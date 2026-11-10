@@ -8,18 +8,13 @@
 namespace urd::detail::facet
 {
 
-/// A multimap: the values of a key, as a range. A representation that keeps them together (compressed sparse rows)
-/// gives them as a span; any other, as the values of its equal_range.
+/// A multimap: what a key maps to, as std::multimap's mapped_type. A key's entries are its equal_range (lookup).
 template<typename Derived, typename R, typename S>
 class multi_values
 {
 public:
     /// What a key maps to (values_by_key says it for unique keys; the two are never both on).
     using mapped_type = typename S::mapped_type;
-
-    [[nodiscard]] auto values(const typename S::key_type& key) const
-        requires requires(const R& held) { held.values(key); }
-    { return store_access::of<Derived>(*this).values(key); }
 };
 
 }  // namespace urd::detail::facet

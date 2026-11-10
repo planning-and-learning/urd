@@ -78,6 +78,42 @@ public:
             row.clear();
         m_used = 0;
     }
+    /// `count` rows: empty ones, or copies of `row`, appended, or the rows after the first `count` removed (cleared and
+    /// kept), as std::vector::resize.
+    void resize(size_type count)
+    {
+        while (m_used > count)
+            pop_back();
+        while (m_used < count)
+            emplace_back();
+    }
+    void resize(size_type count, const Inner& row)
+    {
+        while (m_used > count)
+            pop_back();
+        while (m_used < count)
+            push_back(row);
+    }
+    /// Rebuilds from rows, or as `count` copies of `row`, in the rows kept, as std::vector::assign.
+    template<std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last)
+    {
+        clear();
+        std::for_each(first, last, [this](const auto& row) { this->push_back(row); });
+    }
+    void assign(size_type count, const Inner& row)
+    {
+        clear();
+        resize(count, row);
+    }
+    /// As the vector of its rows: how many fit without growing, the most it can hold, and giving back the rows kept.
+    [[nodiscard]] size_type capacity() const { return m_rows.capacity(); }
+    [[nodiscard]] size_type max_size() const { return m_rows.max_size(); }
+    void shrink_to_fit()
+    {
+        m_rows.resize(m_used);
+        m_rows.shrink_to_fit();
+    }
 
     iterator insert(const_iterator pos, const Inner& row)
     {

@@ -198,11 +198,10 @@ registry moves containers with stable storage last and the two are level.
 
 ## The registry's choices, measured
 
-Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, g++). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 532 not compared, as the other gives a costly guarantee the request did not ask for; 114 settled by their costs; 135 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
+Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, g++). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 602 not compared, as the other gives a costly guarantee the request did not ask for; 88 settled by their costs; 91 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
 
 ### Choices that fail
 
-- set > recycling_tree_set / ordered_lookup,iterate,lookup,insert,erase,clear / std::string;- / small: at 64, 249.0 against 213.2 ns per element (Store<set<std::string>, small, sorted, stable_refs>)
 - unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 27.0 against 21.1 ns per element (Store<set<Id>, small>)
 - unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 64, 26.8 against 20.4 ns per element (Store<map<Id, Id>, small>)
 
@@ -214,23 +213,15 @@ Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core
 - layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4091.4 against 3570.5 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
 - layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 363.5 against 208.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
 - layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4637.5 against 2652.6 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- map > recycling_map / ordered_lookup,iterate,lookup,insert,erase,clear / int;int: at 10000, 384.0 against 330.3 ns per element (Store<map<int, int>, sorted>)
 - unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / int;int / small: at 8, 44.3 against 25.8 ns per element (Store<map<int, int>, small>)
 - flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 53.4 against 46.6 ns per element (Store<map<int, int>, sorted, frozen>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 1000, 41.3 against 24.8 ns per element (Store<map<int, int>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 10000, 62.7 against 34.2 ns per element (Store<map<int, int>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / std::string;double: at 1000, 172.7 against 146.0 ns per element (Store<map<std::string, double>, multi>)
 - unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 8, 47.7 against 26.7 ns per element (Store<map<Id, Id>, small>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 1000, 44.9 against 27.2 ns per element (Store<map<Id, Id>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 10000, 69.4 against 42.5 ns per element (Store<map<Id, Id>, multi>)
 
 ### Slower for less memory
 
 - unordered_flat_set > stable_indexed_set / iterate,lookup / std::string;-: at 100000, 86.7 against 70.2 ns per element (Store<set<std::string>, frozen>)
 - layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83539.3 against 47775.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 100000, 95.5 against 51.4 ns per element (Store<map<int, int>, multi>)
 - flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 100000, 576.4 against 484.6 ns per element (Store<map<std::string, double>, sorted, frozen>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 100000, 102.8 against 58.4 ns per element (Store<map<Id, Id>, multi>)
 
 ## Memory, measured
 
@@ -238,50 +229,50 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 
 | Container | Declared | Measured words | memory_usage off by |
 |---|---|---|---|
-| `addressable_heap` | O(n), 3 words | 4.92 | 0.0% |
+| `addressable_heap` | O(n), 5 words | 4.92 | 0.0% |
 | `arena_interner` | O(n), 2.5 words | 0.90 | 0.0% |
-| `bidirectional_csr` | O(U), 2.4 words | 4.75 | 0.0% |
-| `bucket_queue` | O(U), 2 words | 6.13 | 0.0% |
+| `bidirectional_csr` | O(U), 4.8 words | 4.75 | 0.0% |
+| `bucket_queue` | O(U), 6.2 words | 6.13 | 0.0% |
 | `chained_posting_map` | O(capacity), 8.5 words | 8.45 | 0.0% |
-| `concurrent_indexed_set` | O(capacity), 2.6 words | 4.30 | 0.0% |
+| `concurrent_indexed_set` | O(capacity), 4.3 words | 4.30 | 0.0% |
 | `concurrent_segmented_vector` | O(n), 1.6 words | 1.01 | 0.0% |
-| `csr_multimap` | O(U), 1.2 words | 2.38 | 0.0% |
+| `csr_multimap` | O(U), 2.4 words | 2.38 | 0.0% |
 | `dense_map` | O(U), 2 words | 1.64 | 0.0% |
-| `dense_multimap` | O(U), 4 words | 6.13 | 0.0% |
-| `dense_ordered_map` | O(U), 3 words | 3.51 | 0.0% |
+| `dense_multimap` | O(U), 6.2 words | 6.13 | 0.0% |
+| `dense_ordered_map` | O(U), 3.7 words | 3.51 | 0.0% |
 | `dense_set` | O(U), 0.03 words | 0.03 | 0.0% |
-| `disjoint_sets` | O(n), 2 words | 3.75 | 0.0% |
+| `disjoint_sets` | O(n), 3.8 words | 3.75 | 0.0% |
 | `fifo` | O(n), 1.2 words | 0.53 | 1.5% |
 | `fixed_jagged` | O(n), 1.2 words | — | 0.0% |
 | `flat_map` | O(n), 1.5 words | 1.56 | 0.0% |
 | `flat_multimap` | O(n), 1.5 words | 1.56 | 0.0% |
 | `flat_multiset` | O(n), 1.5 words | 0.78 | 0.0% |
 | `flat_set` | O(n), 1.5 words | 0.78 | 0.0% |
-| `generation_map` | O(U), 1.6 words | 3.28 | 0.0% |
+| `generation_map` | O(U), 3.3 words | 3.28 | 0.0% |
 | `heap` | O(n), 1.5 words | 0.82 | 0.0% |
 | `indexed_set` | O(capacity), 2.5 words | 1.84 | 0.0% |
 | `jagged` | O(n), 1.2 words | — | 0.0% |
 | `layered_arena_interner` | O(n), 2.5 words | 0.90 | 0.0% |
-| `layered_bit_row_interner` | O(n), 0.5 words | 0.61 | 0.0% |
+| `layered_bit_row_interner` | O(n), 0.7 words | 0.61 | 0.0% |
 | `layered_dense_map` | O(U), 2 words | 1.64 | 0.0% |
-| `layered_generation_map` | O(U), 1.6 words | 3.28 | 0.0% |
+| `layered_generation_map` | O(U), 3.3 words | 3.28 | 0.0% |
 | `layered_row_interner` | O(n), 4.5 words | 4.01 | 0.0% |
 | `layered_stable_record_interner` | O(n), 2.6 words | 0.15 | 0.0% |
 | `layered_thread_safe_arena_interner` | O(n), 2.7 words | 1.49 | 0.0% |
-| `layered_thread_safe_bit_row_interner` | O(n), 0.5 words | 1.01 | 0.0% |
-| `layered_thread_safe_generation_map` | O(U), 1.8 words | 4.03 | 0.0% |
+| `layered_thread_safe_bit_row_interner` | O(n), 1.1 words | 1.01 | 0.0% |
+| `layered_thread_safe_generation_map` | O(U), 4.1 words | 4.03 | 0.0% |
 | `layered_thread_safe_record_interner` | O(n), 2.7 words | 0.69 | 0.0% |
-| `layered_thread_safe_row_interner` | O(n), 2.6 words | 4.05 | 0.0% |
+| `layered_thread_safe_row_interner` | O(n), 4.1 words | 4.05 | 0.0% |
 | `lifo` | O(n), 1.5 words | 0.82 | 0.0% |
 | `map` | O(n), 5 words | 5.00 | 0.0% |
 | `multimap` | O(n), 5 words | 5.00 | 0.0% |
 | `ordered_map` | O(capacity), 3.5 words | 2.66 | 0.0% |
-| `ordered_sparse_set` | O(U), 2 words | 2.69 | 0.0% |
-| `parallel_hash_map` | O(capacity), 1.3 words | 2.10 | 0.0% |
+| `ordered_sparse_set` | O(U), 2.7 words | 2.69 | 0.0% |
+| `parallel_hash_map` | O(capacity), 2.1 words | 2.10 | 0.0% |
 | `parallel_hash_set` | O(capacity), 1.3 words | 1.18 | 0.0% |
 | `parallel_node_hash_map` | O(n), 3 words | 3.10 | 0.0% |
 | `parallel_node_hash_set` | O(n), 3 words | 2.60 | 0.0% |
-| `posting_map` | O(capacity), 4 words | 8.95 | 0.0% |
+| `posting_map` | O(capacity), 9 words | 8.95 | 0.0% |
 | `record_interner` | O(n), 2.5 words | 0.11 | 0.0% |
 | `recycling_hash_map` | O(n), 4.5 words | 4.73 | 0.0% |
 | `recycling_hash_set` | O(n), 4.5 words | 4.73 | 0.0% |
@@ -296,159 +287,39 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `segmented_vector` | O(n), 1.5 words | 1.01 | 0.0% |
 | `set` | O(n), 5 words | 5.00 | 0.0% |
 | `slot_vector` | O(n), 1.5 words | 0.45 | 0.0% |
-| `sparse_set` | O(U), 2 words | 2.69 | 0.0% |
-| `stable_dense_map` | O(U), 1.3 words | 2.02 | 0.0% |
-| `stable_generation_map` | O(U), 1.7 words | 4.03 | 0.0% |
+| `sparse_set` | O(U), 2.7 words | 2.69 | 0.0% |
+| `stable_dense_map` | O(U), 2.1 words | 2.02 | 0.0% |
+| `stable_generation_map` | O(U), 4.1 words | 4.03 | 0.0% |
 | `stable_indexed_set` | O(capacity), 2.5 words | 2.36 | 0.0% |
 | `stable_record_interner` | O(n), 2.6 words | 0.15 | 0.0% |
 | `stable_value_interner` | O(n), 2.6 words | 0.80 | 0.0% |
 | `thread_safe_arena_interner` | O(n), 2.7 words | 1.49 | 0.0% |
-| `thread_safe_generation_map` | O(U), 1.8 words | 4.03 | 0.0% |
+| `thread_safe_generation_map` | O(U), 4.1 words | 4.03 | 0.0% |
 | `thread_safe_record_interner` | O(n), 2.7 words | 0.69 | 0.0% |
-| `thread_safe_row_interner` | O(n), 2.6 words | 4.05 | 0.0% |
+| `thread_safe_row_interner` | O(n), 4.1 words | 4.05 | 0.0% |
 | `thread_safe_slot_vector` | O(n), 1.6 words | 0.47 | 26.6% |
-| `thread_safe_tree_bitset_set` | O(n), 0.05 words | 0.71 | 0.0% |
-| `thread_safe_tree_vector_set` | O(n), 1 words | 1.79 | 0.0% |
+| `thread_safe_tree_bitset_set` | O(n), 0.8 words | 0.71 | 0.0% |
+| `thread_safe_tree_vector_set` | O(n), 1.8 words | 1.79 | 0.0% |
 | `thread_safe_value_interner` | O(n), 2.7 words | 1.33 | 0.0% |
-| `tracked_dense_set` | O(U), 0.03 words | 0.08 | 0.0% |
+| `tracked_dense_set` | O(U), 0.08 words | 0.08 | 0.0% |
 | `tracked_jagged` | O(n), 1.3 words | — | 0.0% |
-| `tree_bitset_set` | O(n), 0.05 words | 0.17 | 0.0% |
+| `tree_bitset_set` | O(n), 0.2 words | 0.17 | 0.0% |
 | `tree_vector_set` | O(n), 1 words | 0.82 | 0.0% |
-| `unordered_flat_map` | O(capacity), 1.3 words | 2.31 | 0.0% |
+| `unordered_flat_map` | O(capacity), 2.4 words | 2.31 | 0.0% |
 | `unordered_flat_set` | O(capacity), 1.3 words | 1.28 | 0.0% |
 | `unordered_map` | O(n), 5 words | 4.73 | 0.0% |
-| `unordered_multimap` | O(n), 4 words | 4.73 | 0.0% |
-| `unordered_set` | O(n), 4 words | 4.73 | 0.0% |
+| `unordered_multimap` | O(n), 4.8 words | 4.73 | 0.0% |
+| `unordered_set` | O(n), 4.8 words | 4.73 | 0.0% |
 | `value_interner` | O(n), 2.5 words | 0.56 | 0.0% |
 | `vector` | O(n), 1.5 words | 0.82 | 0.0% |
 
 ### Memory that fails
 
-- addressable_heap/-;Id/10000: 39.3 bytes per element, declared 3.0 words (24.0 bytes)
-- addressable_heap/-;Id/100000: 31.5 bytes per element, declared 3.0 words (24.0 bytes)
-- addressable_heap/-;int/10000: 39.3 bytes per element, declared 3.0 words (24.0 bytes)
-- addressable_heap/-;int/100000: 31.5 bytes per element, declared 3.0 words (24.0 bytes)
-- bidirectional_csr/Id;Id/1000: 24.1 bytes per element, declared 2.4 words (19.2 bytes)
-- bidirectional_csr/Id;Id/10000: 38.0 bytes per element, declared 2.4 words (19.2 bytes)
-- bidirectional_csr/Id;Id/100000: 29.6 bytes per element, declared 2.4 words (19.2 bytes)
-- bidirectional_csr/int;int/1000: 24.1 bytes per element, declared 2.4 words (19.2 bytes)
-- bidirectional_csr/int;int/10000: 38.0 bytes per element, declared 2.4 words (19.2 bytes)
-- bidirectional_csr/int;int/100000: 29.6 bytes per element, declared 2.4 words (19.2 bytes)
-- bucket_queue/-;int/1000: 28.1 bytes per element, declared 2.0 words (16.0 bytes)
-- bucket_queue/-;int/10000: 49.0 bytes per element, declared 2.0 words (16.0 bytes)
-- bucket_queue/-;int/100000: 36.4 bytes per element, declared 2.0 words (16.0 bytes)
-- concurrent_indexed_set/Id;-/1000: 34.3 bytes per element, declared 2.6 words (20.8 bytes)
-- concurrent_indexed_set/int;-/1000: 34.4 bytes per element, declared 2.6 words (20.8 bytes)
-- csr_multimap/Id;double/10000: 23.0 bytes per element, declared 1.2 words (19.2 bytes)
-- csr_multimap/int;int/1000: 12.1 bytes per element, declared 1.2 words (9.6 bytes)
-- csr_multimap/int;int/10000: 19.0 bytes per element, declared 1.2 words (9.6 bytes)
-- csr_multimap/int;int/100000: 14.8 bytes per element, declared 1.2 words (9.6 bytes)
-- dense_multimap/int;int/10000: 49.0 bytes per element, declared 4.0 words (32.0 bytes)
-- dense_multimap/int;int/100000: 36.4 bytes per element, declared 4.0 words (32.0 bytes)
-- dense_multimap/int;int#2/10000: 49.0 bytes per element, declared 4.0 words (32.0 bytes)
-- dense_multimap/int;int#2/100000: 36.4 bytes per element, declared 4.0 words (32.0 bytes)
-- dense_ordered_map/index<Id>;int/10000: 28.1 bytes per element, declared 3.0 words (24.0 bytes)
-- dense_ordered_map/int;int/10000: 28.1 bytes per element, declared 3.0 words (24.0 bytes)
-- disjoint_sets/Id;-/10000: 30.0 bytes per element, declared 2.0 words (16.0 bytes)
-- disjoint_sets/Id;-/100000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- disjoint_sets/int;-/10000: 30.0 bytes per element, declared 2.0 words (16.0 bytes)
-- disjoint_sets/int;-/100000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- generation_map/index<Id>;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
-- generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
-- generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- generation_map/int;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
-- generation_map/int;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
-- generation_map/int;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 4.8 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_generation_map/index<Id>;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_generation_map/int;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_generation_map/int;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_generation_map/int;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/16: 8.1 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 4.9 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_thread_safe_generation_map/Id;double/1000: 48.4 bytes per element, declared 1.8 words (28.8 bytes)
-- layered_thread_safe_generation_map/Id;double/10000: 39.2 bytes per element, declared 1.8 words (28.8 bytes)
-- layered_thread_safe_generation_map/index<Id>;int/1000: 32.3 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_generation_map/int;int/1000: 32.3 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_generation_map/int;int/10000: 26.2 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_generation_map/int;int/100000: 21.0 bytes per element, declared 1.8 words (14.4 bytes)
-- layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/16: 24.1 bytes per element, declared 2.6 words (20.8 bytes)
-- layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/256: 32.4 bytes per element, declared 2.6 words (20.8 bytes)
-- layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/4096: 31.9 bytes per element, declared 2.6 words (20.8 bytes)
-- ordered_sparse_set/Id;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- ordered_sparse_set/index<Id>;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- ordered_sparse_set/int;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- parallel_hash_map/Id;Id/1000: 16.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/Id;Id/10000: 14.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/Id;Id/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/int;int/1000: 15.1 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/int;int/10000: 14.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/int;int/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- posting_map/Id;Id/1000: 71.6 bytes per element, declared 4.0 words (32.0 bytes)
-- posting_map/Id;Id/10000: 58.1 bytes per element, declared 4.0 words (32.0 bytes)
-- posting_map/Id;Id/100000: 47.3 bytes per element, declared 4.0 words (32.0 bytes)
-- posting_map/int;int/1000: 71.6 bytes per element, declared 4.0 words (32.0 bytes)
-- posting_map/int;int/10000: 58.1 bytes per element, declared 4.0 words (32.0 bytes)
-- posting_map/int;int/100000: 47.3 bytes per element, declared 4.0 words (32.0 bytes)
-- sparse_set/Id;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- sparse_set/index<Id>;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- sparse_set/int;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- stable_dense_map/Id;double/1000: 32.3 bytes per element, declared 1.3 words (20.8 bytes)
-- stable_dense_map/Id;double/10000: 26.2 bytes per element, declared 1.3 words (20.8 bytes)
-- stable_dense_map/index<Id>;int/1000: 16.1 bytes per element, declared 1.3 words (10.4 bytes)
-- stable_dense_map/index<Id>;int/10000: 13.1 bytes per element, declared 1.3 words (10.4 bytes)
-- stable_dense_map/int;int/1000: 16.1 bytes per element, declared 1.3 words (10.4 bytes)
-- stable_dense_map/int;int/10000: 13.1 bytes per element, declared 1.3 words (10.4 bytes)
-- stable_generation_map/Id;double/1000: 32.3 bytes per element, declared 1.7 words (27.2 bytes)
-- stable_generation_map/index<Id>;int/1000: 32.3 bytes per element, declared 1.7 words (13.6 bytes)
-- stable_generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.7 words (13.6 bytes)
-- stable_generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.7 words (13.6 bytes)
-- stable_generation_map/int;int/1000: 32.3 bytes per element, declared 1.7 words (13.6 bytes)
-- stable_generation_map/int;int/10000: 26.2 bytes per element, declared 1.7 words (13.6 bytes)
-- stable_generation_map/int;int/100000: 21.0 bytes per element, declared 1.7 words (13.6 bytes)
-- thread_safe_generation_map/Id;double/1000: 48.4 bytes per element, declared 1.8 words (28.8 bytes)
-- thread_safe_generation_map/Id;double/10000: 39.2 bytes per element, declared 1.8 words (28.8 bytes)
-- thread_safe_generation_map/index<Id>;int/1000: 32.3 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_generation_map/int;int/1000: 32.3 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_generation_map/int;int/10000: 26.2 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_generation_map/int;int/100000: 21.0 bytes per element, declared 1.8 words (14.4 bytes)
-- thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/16: 24.1 bytes per element, declared 2.6 words (20.8 bytes)
-- thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/256: 32.4 bytes per element, declared 2.6 words (20.8 bytes)
-- thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/4096: 31.9 bytes per element, declared 2.6 words (20.8 bytes)
 - thread_safe_slot_vector/-;Id/16: memory_usage tells 1920 bytes, 2616 counted
 - thread_safe_slot_vector/-;Id/256: memory_usage tells 1920 bytes, 2616 counted
 - thread_safe_slot_vector/-;Id/4096: memory_usage tells 1920 bytes, 2616 counted
 - thread_safe_slot_vector/-;int/16: memory_usage tells 1920 bytes, 2616 counted
 - thread_safe_slot_vector/-;int/256: memory_usage tells 1920 bytes, 2616 counted
 - thread_safe_slot_vector/-;int/4096: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_tree_bitset_set/-;Store<set<int>, unique, dense, stable_refs, frozen>/16: 5.7 bytes per element, declared 0.05 words (0.4 bytes)
-- thread_safe_tree_vector_set/-;Store<sequence<int>, stable_refs, frozen, positional>/16: 14.3 bytes per element, declared 1.0 words (8.0 bytes)
-- thread_safe_tree_vector_set/-;Store<sequence<int>, stable_refs, frozen, positional>/256: 10.6 bytes per element, declared 1.0 words (8.0 bytes)
-- thread_safe_tree_vector_set/-;Store<sequence<int>, stable_refs, frozen, positional>/4096: 10.5 bytes per element, declared 1.0 words (8.0 bytes)
-- tracked_dense_set/Id;-/1000: 0.4 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/Id;-/10000: 0.7 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/Id;-/100000: 0.5 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/index<Id>;-/1000: 0.4 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/index<Id>;-/10000: 0.7 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/index<Id>;-/100000: 0.5 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/int;-/1000: 0.4 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/int;-/10000: 0.7 bytes per element, declared 0.03 words (0.2 bytes)
-- tracked_dense_set/int;-/100000: 0.5 bytes per element, declared 0.03 words (0.2 bytes)
-- tree_bitset_set/-;Store<set<int>, unique, dense, stable_refs, frozen>/16: 1.3 bytes per element, declared 0.05 words (0.4 bytes)
-- unordered_flat_map/Id;Id/1000: 18.4 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/Id;Id/10000: 14.7 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/Id;Id/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/int;int/1000: 18.4 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/int;int/10000: 14.7 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/int;int/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_multimap/Id;Id/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)
-- unordered_set/Id;-/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)
-- unordered_set/index<Id>;-/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)
 
 <!-- end of the generated block -->

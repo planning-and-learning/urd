@@ -30,6 +30,17 @@ struct Scratch
     }
 };
 
+}  // namespace
+
+template<>
+struct urd::slot_release<Scratch>
+{
+    static void release(Scratch& scratch) noexcept { scratch.on_pool_release(); }
+};
+
+namespace
+{
+
 using Pool = urd::Store<urd::slots<Scratch>>;
 
 /// A buffer shaped by its key: made from the key, it keeps its shape across uses.

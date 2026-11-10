@@ -30,6 +30,15 @@ class SlotVector;
 namespace urd
 {
 
+/// What an element of type T does when the owner of its slot gives the slot back, before the slot is free again: to let
+/// go of what it refers to, keeping its storage. Nothing, unless specialized for T, beside it, with
+/// `static void release(T&) noexcept`. The element is not destroyed.
+template<typename T>
+struct slot_release
+{
+    static void release(T& /*element*/) noexcept {}
+};
+
 namespace detail
 {
 

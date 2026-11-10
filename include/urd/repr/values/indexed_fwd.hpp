@@ -68,7 +68,7 @@ struct indexed_set_decl
     static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
     using kind = set_kind;
     static constexpr property_set provides =
-        property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, layout::contiguous, memory::retains });
+        property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, layout::contiguous, memory::retains, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -129,7 +129,7 @@ struct concurrent_indexed_set_decl : indexed_set_decl
                                        cost_entry<operation::lookup, costs::one_e>,
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
-    static constexpr double words = 2.6;
+    static constexpr double words = 4.3;
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };

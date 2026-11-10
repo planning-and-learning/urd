@@ -26,8 +26,8 @@ class slots
 public:
     using handle_type = typename R::handle_type;
 
-    /// What gives a slot back when its owner goes: the element's on_pool_release() where it has one (to let go of what
-    /// it refers to, keeping its storage), then erase. The element is not destroyed.
+    /// What gives a slot back when its owner goes: the element's release (urd::slot_release: to let go of what it
+    /// refers to, keeping its storage), then erase. The element is not destroyed.
     struct releaser
     {
         Derived* store = nullptr;
@@ -35,11 +35,8 @@ public:
 
         void operator()(value_type* element) const noexcept
         {
-            if constexpr (requires { element->on_pool_release(); })
-            {
-                static_assert(noexcept(element->on_pool_release()), "urd::Store: on_pool_release() must be noexcept");
-                element->on_pool_release();
-            }
+            static_assert(noexcept(slot_release<value_type>::release(*element)), "urd::slot_release: release(T&) must be noexcept");
+            slot_release<value_type>::release(*element);
             store->erase(handle);
         }
     };

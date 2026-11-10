@@ -79,7 +79,7 @@ struct recycling_hash_set_decl
     static constexpr std::string_view id = "recycling_hash_set";
     static constexpr auto headers = with_header(unordered_set_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = costs_over<unordered_set_decl, cost_entry<operation::clear, costs::lin_n>>;
@@ -130,7 +130,7 @@ struct recycling_hash_map_decl
     static constexpr std::string_view id = "recycling_hash_map";
     static constexpr auto headers = with_header(unordered_map_decl::headers, "urd/repr/wrappers/recycling.hpp");
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, memory::retains, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     using operation_costs = costs_over<unordered_map_decl, cost_entry<operation::clear, costs::lin_n>>;

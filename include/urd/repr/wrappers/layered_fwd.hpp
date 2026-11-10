@@ -43,7 +43,7 @@ struct layered_decl
     static_assert(Part::provides.has(uniqueness::unique) && (!Pool || Part::provides.has(handling::handles)),
                   "layered_decl: a layer is over a map or pool");
     using kind = typename Part::kind;
-    static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered }) : with(Part::provides, { layering::layered, order::none });
+    static constexpr property_set provides = Pool ? with(Part::provides, { layering::layered, room::none }) : with(Part::provides, { layering::layered, order::none, room::none });
     static constexpr property_set relies_on = Part::relies_on;
     static constexpr auto gives_elements = Part::gives_elements;
     using operation_costs = costs_over<Part>;

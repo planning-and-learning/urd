@@ -75,7 +75,13 @@ public:
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
     {
         if constexpr (Groups::ordered)
-            return { lower_bound(key), upper_bound(key) };
+        {
+            // The key's values and no further: the end is the next key's place, whether or not that key has values (an
+            // iterator settles on a value when it is read), so keys without values after this one are not walked over.
+            const auto first = m_groups.lower_bound(key), last = m_groups.upper_bound(key);
+            const auto none = first == last || m_groups.row(first).empty();
+            return { iterator(&m_groups, none ? last : first, 0), iterator(&m_groups, last, 0) };
+        }
         if (!contains(key))
             return { end(), end() };
         const auto found = m_groups.find(key);
@@ -122,7 +128,7 @@ public:
     iterator erase(const_iterator pos)
         requires Groups::changes
     {
-        const auto [at, index] = m_groups.erase(pos.m_group, pos.m_index);
+        const auto [at, index] = m_groups.erase(pos.settled(), pos.m_index);
         return iterator(&m_groups, at, index).normalized();
     }
     iterator erase(const_iterator first, const_iterator last)
@@ -160,12 +166,22 @@ public:
 
         iterator() = default;
 
-        reference operator*() const { return { m_groups->key(m_group), m_groups->row(m_group)[m_index] }; }
+        reference operator*() const
+        {
+            const auto at = settled();
+            return { m_groups->key(at), m_groups->row(at)[m_index] };
+        }
         arrow operator->() const { return { **this }; }
+        /// To the next value of its key, else to the next key's place: in constant time, whatever follows.
         iterator& operator++()
         {
-            ++m_index;
-            return normalized();
+            m_group = settled();
+            if (++m_index == m_groups->row(m_group).size())
+            {
+                ++m_group;
+                m_index = 0;
+            }
+            return *this;
         }
         iterator operator++(int)
         {
@@ -195,12 +211,23 @@ public:
             --*this;
             return copy;
         }
-        friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_group == rhs.m_group && lhs.m_index == rhs.m_index; }
+        /// At the same value, or both at the end: a key's place without values is the next value's.
+        friend bool operator==(const iterator& lhs, const iterator& rhs)
+        { return lhs.m_index == rhs.m_index && (lhs.m_group == rhs.m_group || (lhs.m_index == 0 && lhs.settled() == rhs.settled())); }
 
     private:
         friend class GroupedMultiMap;
         iterator(const Groups* groups, group at, std::size_t index) : m_groups(groups), m_group(at), m_index(index) {}
 
+        /// The group of the value it is at: its own, or from a key's place without values, the next with any (the
+        /// end, where none has). An iterator is at a value of its group, or at a group's first place.
+        [[nodiscard]] group settled() const
+        {
+            auto at = m_group;
+            while (at != m_groups->end() && m_groups->row(at).empty())
+                ++at;
+            return at;
+        }
         /// Moves past groups whose values end at or before the index: to the value there, or to the end.
         iterator& normalized()
         {

@@ -174,6 +174,24 @@ public:
         assert(size() > 0);
         erase(end() - 1);
     }
+    /// `count` rows: empty ones, or copies of `elements`, appended, or the rows after the first `count` removed, as
+    /// std::vector::resize.
+    void resize(size_type count) { resize(count, std::ranges::empty_view<T>()); }
+    template<std::ranges::input_range Row>
+    void resize(size_type count, const Row& elements)
+    {
+        if (count < size())
+            erase(begin() + static_cast<std::ptrdiff_t>(count), end());
+        while (size() < count)
+            push_back(elements);
+    }
+    /// `count` rows, each a copy of `elements`, as std::vector::assign.
+    template<std::ranges::input_range Row>
+    void assign(size_type count, const Row& elements)
+    {
+        clear();
+        resize(count, elements);
+    }
     void clear()
     {
         m_data.clear();

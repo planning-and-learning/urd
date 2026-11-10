@@ -26,7 +26,7 @@ struct unordered_flat_map_decl
     static constexpr std::string_view id = "unordered_flat_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/unordered_flat_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, memory::retains });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, memory::retains, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -34,7 +34,7 @@ struct unordered_flat_map_decl
                                        cost_entry<operation::erase, costs::one_e>,
                                        cost_entry<operation::clear, costs::lin_capacity>,
                                        cost_entry<operation::iterate, costs::lin_capacity>>;
-    static constexpr double words = 1.3;
+    static constexpr double words = 2.4;
     static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "gtl::flat_hash_map (open-addressing hash table)";
     static constexpr std::string_view holds = "~n/0.875 slots + 1 byte each; retains";

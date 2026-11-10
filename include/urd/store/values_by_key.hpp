@@ -48,20 +48,22 @@ public:
         requires grows<S>
     { return representation().insert_or_assign(key, std::forward<M>(value)); }
 
+    // update and visit: of the maps that reach a value themselves, an index map (urd::dense: the slot of a key, kept
+    // across clears) and a concurrent one (urd::concurrent: under its lock).
     /// Calls update(value, held) on the value of `key`, inserting a default one first where there is none (held is then
     /// false), and returns what update returns. A map cleared by generation hands over the value it kept from before
     /// the clear, storage and all, for update to reuse. With concurrent, threads may update at once.
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const map_key& key, Update update)
-        requires(grows<S> && std::default_initializable<mapped_type> && requires(R& held) { held.update(key, update); })
+        requires(grows<S> && std::default_initializable<mapped_type> && (has<R, urd::dense> || has<R, urd::concurrent>))
     { return representation().update(key, update); }
     /// f(value) where `key` has a value, else `missing`: the visit of Boost's concurrent maps, giving what f gives. With
     /// concurrent, safe while others update.
     template<typename F, typename Result>
         requires std::invocable<F&, const mapped_type&>
     [[nodiscard]] Result visit(const map_key& key, F f, Result missing) const
-        requires requires(const R& held) { held.visit(key, f, missing); }
+        requires(has<R, urd::dense> || has<R, urd::concurrent>)
     { return representation().visit(key, f, missing); }
 
     /// Inserts `value` where `key` has none, else replaces the value by combine(value held, value): a hull of

@@ -34,7 +34,7 @@ struct disjoint_sets_decl
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs =
         cost_table<cost_entry<operation::insert, costs::one_a>, cost_entry<operation::lookup, costs::one_a>, cost_entry<operation::merge, costs::one_a>>;
-    static constexpr double words = 2;
+    static constexpr double words = 3.8;
     static constexpr std::string_view description = "disjoint sets (union-find by size, path halving)";
     static constexpr std::string_view holds = "a parent and a size per element";
 };

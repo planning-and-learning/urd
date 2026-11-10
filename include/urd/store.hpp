@@ -9,6 +9,7 @@
 #include "urd/registry/select.hpp"
 #include "urd/spec.hpp"
 #include "urd/store/appending.hpp"
+#include "urd/store/assigning.hpp"
 #include "urd/store/capacity.hpp"
 #include "urd/store/contiguous_data.hpp"
 #include "urd/store/ends.hpp"
@@ -192,24 +193,6 @@ public:
             constructible_from<R, urd::layer, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
         : Store(number, elements.begin(), elements.end())
     {
-    }
-
-    /// Replaces the contents by what a Store built from these elements would hold, in place, its storage kept: the
-    /// one way a frozen Store changes.
-    template<std::input_iterator InputIt>
-    void assign(InputIt first, InputIt last)
-        requires requires(R& held) { held.assign(first, last); }
-    {
-        m_representation.assign(first, last);
-        check_holds_one();
-    }
-
-    /// `count` copies of `value`, as std::vector::assign.
-    void assign(std::size_t count, const value_type& value)
-        requires std::same_as<typename S::kind, sequence_kind> && requires(R& held) { held.assign(count, value); }
-    {
-        m_representation.assign(count, value);
-        check_holds_one();
     }
 
     /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from

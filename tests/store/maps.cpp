@@ -102,7 +102,10 @@ template<typename S>
 class Update : public testing::Test
 {
 };
-using UpdateMaps = testing::Types<Store<map<int, int>, urd::dense>, Store<map<int, int>, urd::dense, urd::constant_clear>>;
+using UpdateMaps = testing::Types<Store<map<int, int>, urd::dense>,
+                                  Store<map<int, int>, urd::dense, urd::constant_clear>,
+                                  Store<map<int, int>, urd::dense, urd::insertion_ordered>,
+                                  Store<map<int, int>, urd::dense, urd::scoped>>;
 TYPED_TEST_SUITE(Update, UpdateMaps);
 
 }  // namespace

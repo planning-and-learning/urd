@@ -43,7 +43,7 @@ struct parallel_hash_map_decl
     static constexpr std::string_view id = "parallel_hash_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/parallel_hash_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -51,7 +51,7 @@ struct parallel_hash_map_decl
                                        cost_entry<operation::erase, costs::one_e>,
                                        cost_entry<operation::clear, costs::lin_capacity>,
                                        cost_entry<operation::iterate, costs::lin_capacity>>;
-    static constexpr double words = 1.3;
+    static constexpr double words = 2.1;
     static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "parallel hash map (gtl: shards, each behind its mutex; update and read under it)";
     static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
@@ -73,7 +73,7 @@ struct parallel_node_hash_map_decl
     static constexpr std::string_view id = "parallel_node_hash_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/parallel_hash_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,

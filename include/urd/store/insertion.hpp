@@ -28,11 +28,9 @@ public:
 
     insert_result insert(const value_type& element) { return representation().insert(element); }
     insert_result insert(value_type&& element) { return representation().insert(std::move(element)); }
-    /// A copy of the key where it is new, by a key with its hash (urd/elements/prehashed.hpp): where the
-    /// representation inserts by one, the element is not hashed again.
-    insert_result insert(const prehashed<value_type>& key)
-        requires requires(R& held) { held.insert(key); }
-    { return representation().insert(key); }
+    /// A copy of the key where it is new, by a key with its hash (urd/elements/prehashed.hpp), which is not hashed
+    /// again: another form of a key, forwarded as it is (a representation that inserts by none does not compile).
+    insert_result insert(const prehashed<value_type>& key) { return representation().insert(key); }
     /// With a hint where the element goes.
     iterator_type insert(const_iterator_type hint, const value_type& element) { return representation().insert(hint, element); }
     template<std::input_iterator InputIt>

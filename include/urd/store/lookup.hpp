@@ -32,23 +32,23 @@ public:
     { return representation().find(element); }
     [[nodiscard]] typename types::size_type count(const typename types::lookup_type& element) const { return representation().count(element); }
     [[nodiscard]] bool contains(const typename types::lookup_type& element) const { return representation().contains(element); }
-    /// Lookups by anything else the representation compares with a key: what a transparent Hash and EqualTo (or Less)
-    /// take, as the standard's associative containers do (a record's identity, a view of a key).
+    /// Lookups by another form of a key: forwarded as they are, so what the Store's Hash and EqualTo (or its order)
+    /// compare with a key decides what K may be, as with the standard's associative containers (a key with its hash,
+    /// a record's identity, a view of a key). A K they do not take does not compile.
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.find(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] const_iterator_type find(const K& key) const
     { return representation().find(key); }
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && (!std::same_as<iterator_type, const_iterator_type>)
-                && requires(R& held, const K& key) { held.find(key); }
     [[nodiscard]] iterator_type find(const K& key)
     { return representation().find(key); }
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.count(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] typename types::size_type count(const K& key) const
     { return representation().count(key); }
     template<typename K>
-        requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.contains(key); }
+        requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] bool contains(const K& key) const
     { return representation().contains(key); }
     /// The elements equal to `element` (in a map, with that key), as a pair of iterators.

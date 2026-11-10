@@ -94,7 +94,7 @@ struct unordered_map_decl
     static constexpr std::string_view id = "unordered_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, referencing::stable_refs, keys::sparse, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -123,7 +123,7 @@ struct unordered_multimap_decl
     static constexpr std::string_view id = "unordered_multimap";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/std_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ multiplicity::multi, referencing::stable_refs });
+    static constexpr property_set provides = property_set::of({ multiplicity::multi, referencing::stable_refs, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -131,7 +131,7 @@ struct unordered_multimap_decl
                                        cost_entry<operation::erase, costs::lin_row_e>,
                                        cost_entry<operation::clear, costs::lin_n>,
                                        cost_entry<operation::iterate, costs::lin_n>>;
-    static constexpr double words = 4;
+    static constexpr double words = 4.8;
     static constexpr std::string_view description = "std::unordered_multimap (hash table)";
     static constexpr std::string_view holds = "a node per entry + buckets; stable references";
 };

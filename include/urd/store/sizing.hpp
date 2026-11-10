@@ -18,17 +18,18 @@ public:
     [[nodiscard]] size_type size() const { return std::ranges::size(store_access::of<Derived>(*this)); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 
-    /// The most elements the representation can hold, as the standard containers' max_size.
+    // Of contiguous storage (urd::contiguous), as std::vector's.
+    /// The most elements the representation can hold.
     [[nodiscard]] std::size_t max_size() const
-        requires requires(const R& held) { held.max_size(); }
+        requires has<R, urd::contiguous>
     { return store_access::of<Derived>(*this).max_size(); }
-    /// How many elements fit without growing, where the representation tells.
+    /// How many elements fit without growing.
     [[nodiscard]] std::size_t capacity() const
-        requires requires(const R& held) { held.capacity(); }
+        requires has<R, urd::contiguous>
     { return store_access::of<Derived>(*this).capacity(); }
-    /// Gives back unused room, where the representation can.
+    /// Gives back unused room.
     void shrink_to_fit()
-        requires requires(R& held) { held.shrink_to_fit(); }
+        requires has<R, urd::contiguous>
     { store_access::of<Derived>(*this).shrink_to_fit(); }
 };
 

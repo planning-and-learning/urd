@@ -324,6 +324,16 @@ public:
         held.elements.reserve(count);
         held.positions.reserve(count);
     }
+    /// As the vector of its elements: how many fit without growing, the most it can hold, and giving back unused room.
+    [[nodiscard]] size_type capacity() const
+        requires(!Stable)
+    { return elements().capacity(); }
+    [[nodiscard]] size_type max_size() const
+        requires(!Stable)
+    { return elements().max_size(); }
+    void shrink_to_fit()
+        requires(!Stable)
+    { writable_state().elements.shrink_to_fit(); }
     // Every lookup and insert takes the element itself or a prehashed<T> (urd/elements/prehashed.hpp), which is not
     // hashed again; either way the element is hashed once, an insert included.
     [[nodiscard]] iterator find(const T& element) const { return found_at(lookup(element)); }

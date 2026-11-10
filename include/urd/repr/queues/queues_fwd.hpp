@@ -90,7 +90,7 @@ struct ring_fifo_decl : fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/ring_fifo.hpp" };
-    static constexpr property_set provides = property_set::of({ access::fifo, memory::retains });
+    static constexpr property_set provides = property_set::of({ access::fifo, memory::retains, room::reservable });
     static constexpr double words = 1.5;
     static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
     static constexpr std::string_view holds = "one vector as a ring; retains";
@@ -110,7 +110,7 @@ namespace detail
 struct lifo_decl : fifo_decl
 {
     static constexpr std::string_view id = "lifo";
-    static constexpr property_set provides = property_set::of({ access::lifo, memory::retains });
+    static constexpr property_set provides = property_set::of({ access::lifo, memory::retains, room::reservable });
     static constexpr double words = 1.5;
     static constexpr std::string_view description = "stack (a vector, last in first out)";
     static constexpr std::string_view holds = "a vector; retains";
@@ -130,7 +130,7 @@ namespace detail
 struct heap_decl : lifo_decl
 {
     static constexpr std::string_view id = "heap";
-    static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
+    static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     using operation_costs = cost_table<cost_entry<operation::push, costs::log_na>,
                                        cost_entry<operation::pop, costs::log_n>,
@@ -156,8 +156,8 @@ struct addressable_heap_decl : heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
-    static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
-    static constexpr double words = 3;
+    static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains, room::reservable });
+    static constexpr double words = 5;
     static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
     static constexpr std::string_view holds = "a heap of handles + a slot per handle";
 };
@@ -186,7 +186,7 @@ struct bucket_queue_decl
                                        cost_entry<operation::pop, costs::one_a>,
                                        cost_entry<operation::top, costs::one>,
                                        cost_entry<operation::clear, costs::lin_keys>>;
-    static constexpr double words = 2;
+    static constexpr double words = 6.2;
     static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "bucket queue (a bucket per integral priority)";
     static constexpr std::string_view holds = "a vector per priority";

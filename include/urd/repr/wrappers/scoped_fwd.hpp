@@ -52,7 +52,7 @@ struct scoped_map_decl
     static constexpr std::string_view id = "scoped_map";
     static constexpr auto headers = with_header(unordered_flat_map_decl::headers, "urd/repr/wrappers/scoped.hpp");
     using kind = map_kind;
-    static constexpr property_set provides = with(unordered_flat_map_decl::provides, { scoping::scoped });
+    static constexpr property_set provides = with(unordered_flat_map_decl::provides, { scoping::scoped, room::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr auto gives_elements = unordered_flat_map_decl::gives_elements;
     using operation_costs = costs_over<unordered_flat_map_decl, cost_entry<operation::scope, costs::lin_changes>>;
@@ -77,7 +77,7 @@ struct scoped_tree_map_decl
     static constexpr std::string_view id = "scoped_tree_map";
     static constexpr auto headers = with_header(map_decl::headers, "urd/repr/wrappers/scoped.hpp");
     using kind = map_kind;
-    static constexpr property_set provides = with(map_decl::provides, { scoping::scoped });
+    static constexpr property_set provides = with(map_decl::provides, { scoping::scoped, room::none });
     static constexpr property_set relies_on = relies(traits<role::order, trait::own_order, trait::natural_ordered>());
     static constexpr auto gives_elements = map_decl::gives_elements;
     using operation_costs = costs_over<map_decl, cost_entry<operation::scope, costs::nlog_changes>>;
@@ -102,7 +102,7 @@ struct scoped_dense_map_decl
     static constexpr std::string_view id = "scoped_dense_map";
     static constexpr auto headers = with_header(dense_map_decl::headers, "urd/repr/wrappers/scoped.hpp");
     using kind = map_kind;
-    static constexpr property_set provides = with(dense_map_decl::provides, { scoping::scoped });
+    static constexpr property_set provides = with(dense_map_decl::provides, { scoping::scoped, room::none });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
     static constexpr auto gives_elements = dense_map_decl::gives_elements;
     using operation_costs = costs_over<dense_map_decl, cost_entry<operation::scope, costs::lin_changes>>;

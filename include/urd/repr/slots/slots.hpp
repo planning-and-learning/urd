@@ -53,7 +53,27 @@ class SlotVector
 
     using Mutex = std::conditional_t<ThreadSafe, std::mutex, NoLock>;
     using Count = std::conditional_t<ThreadSafe, std::atomic<std::size_t>, std::size_t>;
-    using Blocks = std::conditional_t<ThreadSafe, std::pmr::synchronized_pool_resource, std::pmr::unsynchronized_pool_resource>;
+    using Pool = std::conditional_t<ThreadSafe, std::pmr::synchronized_pool_resource, std::pmr::unsynchronized_pool_resource>;
+    /// The pool the control blocks come from, over the heap, counting the bytes it holds of it (for memory_usage: a
+    /// pool resource does not tell).
+    struct Blocks final : std::pmr::memory_resource
+    {
+        Count bytes { 0 };
+        Pool pool { this };
+
+    private:
+        void* do_allocate(std::size_t size, std::size_t alignment) override
+        {
+            bytes += size;
+            return std::pmr::new_delete_resource()->allocate(size, alignment);
+        }
+        void do_deallocate(void* at, std::size_t size, std::size_t alignment) override
+        {
+            bytes -= size;
+            std::pmr::new_delete_resource()->deallocate(at, size, alignment);
+        }
+        bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
+    };
 
 public:
     using value_type = T;
@@ -131,7 +151,7 @@ public:
     {
         if (!m_blocks)
             m_blocks = std::make_unique<Blocks>();
-        return m_blocks.get();
+        return &m_blocks->pool;
     }
 
     /// How many elements are in use.
@@ -207,13 +227,14 @@ struct representation_of<thread_safe_slot_vector_decl, S>
 
 }  // namespace urd::detail
 
-/// Its slots, freed ones included, and the free list (keyed: the keys and the free lists' storage).
+/// Its slots, freed ones included, the free list (keyed: the keys and the free lists' storage) and the control
+/// blocks' pool.
 template<typename T, bool ThreadSafe, typename K>
 struct urd::memory_of<urd::repr::SlotVector<T, ThreadSafe, K>>
 {
     static std::size_t bytes(const repr::SlotVector<T, ThreadSafe, K>& held)
     {
-        auto result = memory_usage(held.m_slots) + memory_usage(held.m_free);
+        auto result = memory_usage(held.m_slots) + memory_usage(held.m_free) + (held.m_blocks ? sizeof(*held.m_blocks) + held.m_blocks->bytes : 0);
         if constexpr (!std::is_void_v<K>)
         {
             result += held.m_keys.capacity() * sizeof(K) + held.m_free_by_key.capacity() * sizeof(*held.m_free_by_key.begin());

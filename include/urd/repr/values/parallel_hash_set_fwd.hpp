@@ -47,7 +47,7 @@ struct parallel_hash_set_decl
     static constexpr std::string_view id = "parallel_hash_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/parallel_hash_set.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::none, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
@@ -77,7 +77,7 @@ struct parallel_node_hash_set_decl
     static constexpr std::string_view id = "parallel_node_hash_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/parallel_hash_set.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,

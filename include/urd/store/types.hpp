@@ -23,7 +23,7 @@ namespace urd::detail
 // the members those properties allow, inherited where the Store's properties switch them on. Within one Store a member
 // name must live in one facet only, so that calls are never ambiguous between two of them; across kinds a name may
 // recur (insert in insertion, appending, pool, records, slots and grouping). Within map_kind, entries shares names with
-// positions (position), multi_values (values) and inverse (keys): no container serves a request that has both.
+// positions (position) and inverse (keys): no container serves a request that has both.
 
 /// What a Store's interface lets change, from what its tags say (urd::tag_defaults): nothing where one stops it growing
 /// (frozen, fixed_shape); inserts only where one stops it shrinking (monotone, nonempty); else inserts, erase and clear.

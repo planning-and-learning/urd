@@ -14,7 +14,7 @@ class reserving
 public:
     /// Hints how many elements will be inserted.
     void reserve(std::size_t count)
-        requires requires(R& held) { held.reserve(count); }
+        requires has<R, urd::reservable>
     { store_access::of<Derived>(*this).reserve(count); }
 };
 

@@ -61,6 +61,11 @@ public:
     [[nodiscard]] bool empty() const { return m_members.empty(); }
     [[nodiscard]] const K* data() const { return m_members.data(); }
 
+    /// As the vector of its members: how many fit without growing, the most it can hold, and giving back unused room.
+    [[nodiscard]] size_type capacity() const { return m_members.capacity(); }
+    [[nodiscard]] size_type max_size() const { return m_members.max_size(); }
+    void shrink_to_fit() { m_members.shrink_to_fit(); }
+
     /// Room for keys below `count`.
     void reserve(size_type count)
     {

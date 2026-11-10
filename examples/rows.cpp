@@ -71,8 +71,8 @@ int main()
     const auto pairs = std::vector<std::pair<int, int>> { { 2, 3 }, { 0, 1 }, { 2, 0 }, { 1, 2 } };
     const auto edges = Edges(pairs.begin(), pairs.end());
     std::cout << "values of 2:";
-    for (const int target : edges.values(2))
-        std::cout << ' ' << target;
+    for (auto [edge, last] = edges.equal_range(2); edge != last; ++edge)
+        std::cout << ' ' << (*edge).second;
 
     // A graph: with bidirectional, the keys of a value too, so a vertex's predecessors as well as its successors.
     const auto graph = Store<map<int, int>, urd::multi, urd::dense, urd::frozen, urd::bidirectional>(pairs.begin(), pairs.end());

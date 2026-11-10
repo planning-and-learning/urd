@@ -13,7 +13,7 @@ namespace urd::detail::facet
 {
 
 /// Keeping elements where they are put, as std::vector does: appending, and where the Store shrinks, inserting before
-/// a position (moving the later elements), removing the last, and erasing by value. What a sequence lists.
+/// a position (moving the later elements), removing the last, resizing, and erasing by value. What a sequence lists.
 template<typename Derived, typename R, typename S>
 class appending
 {
@@ -45,12 +45,12 @@ public:
         requires shrinks<S>
     { representation().pop_back(); }
     /// Grows to `count` elements, value-initialized or copies of `value`, or removes those after the first `count`, as
-    /// std::vector::resize; where the representation resizes.
+    /// std::vector::resize.
     void resize(std::size_t count)
-        requires shrinks<S> && requires(R& held, std::size_t n) { held.resize(n); }
+        requires shrinks<S>
     { representation().resize(count); }
     void resize(std::size_t count, const value_type& value)
-        requires shrinks<S> && requires(R& held, std::size_t n, const value_type& v) { held.resize(n, v); }
+        requires shrinks<S>
     { representation().resize(count, value); }
     /// Every element equal to `element` (urd::EqualTo, as the Store's ==); how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)

@@ -15,15 +15,21 @@ that gives a Store its members. The **request** is the spec `S` a Store is asked
 - **F2 No fallbacks.** A facet MUST NOT test whether the container has a member and do the work another way when it
   has not (`if constexpr (requires { representation().x(...); }) ... else ...`). A container that lacks the operation
   does not offer it: calling it MUST be a compile-time error.
-  **Check** (1 site left: `slots`, which asks the element for an optional hook, not the container): `grep -rn "if constexpr (requires" include/urd/store include/urd/store.hpp`
-- **F6 Gate by properties, not by functions** (*open*). Whether a Store has a facet or a facet member MUST be
+  What an element may do is a trait specialized for its type (`urd::slot_release`, `urd::memory_of`), not a member
+  the facet looks for.
+  **Check**: `grep -rn "if constexpr (requires" include/urd/store include/urd/store.hpp`
+- **F6 Gate by properties, not by functions.** Whether a Store has a facet or a facet member MUST be
   decided by properties: of the request (`has<S, Tag>`) or of the container's declaration (`has<R, Tag>`). It MUST
   NOT be decided by whether the container type has a member function (`requires requires(R& held) { held.x(); }`).
   A container that declares a property MUST have every function the facets forward to under that property; a
   missing one is a compile-time error. Representation-specific functionality that no property determines yet gets
   a property of its own, stated by the containers that have it.
-  **Check** (*open*, 15 sites: sizing ahead, the key forms a container accepts, `update` / `visit`, `values(key)`,
-  `assign`, `resize`): `grep -rn "requires.*requires(\(const \)\?R&" include/urd/store include/urd/store.hpp`
+  A member every container of a kind has needs no gate (a sequence's `resize` and `assign`): it is implemented in
+  the containers (F3). A member
+  that takes another form of a key (`find(K)`, a set's `insert(prehashed)`) is a plain forward: the Store's hash,
+  equality or order decide what a key may be. The others, by property: `reserve` by `reservable`; `capacity`,
+  `max_size`, `shrink_to_fit` by `contiguous`; `update`, `visit` by `dense` or `concurrent`.
+  **Check**: `grep -rn "requires.*requires(\(const \)\?R&" include/urd/store include/urd/store.hpp`
 - **F3 Filling a gap.** Where a container lacks a member that the standard library's containers of that kind have
   (`equal_range`, `merge`, `reserve`, ...) or that a caller needs, the member MUST be implemented in the container,
   not in the facet.
@@ -51,7 +57,7 @@ that gives a Store its members. The **request** is the spec `S` a Store is asked
 - **C1 Policies, not branches.** Where variants of a container differ (thread-safe or not, tracked or not, rows or
   elements), the difference MUST be a policy type or an overload set chosen once. A member body MUST NOT branch on
   such a parameter with `if constexpr`; the policy's own body MAY.
-  **Check** (*open*, 84 sites): `grep -rc "if constexpr" include/urd | grep -v ":0"`
+  **Check** (*open*, 79 sites): `grep -rc "if constexpr" include/urd | grep -v ":0"`
 - **C2 No representation special cases.** Generic code MUST NOT name or test for a particular container. One generic
   mechanism per need.
 - **C3 Standard components first.** A component of the standard library or Boost MUST be used where it does the job;

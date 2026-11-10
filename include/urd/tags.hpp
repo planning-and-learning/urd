@@ -445,6 +445,8 @@ struct retains : any_memory
     static constexpr std::string_view name = "retains";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "Storage freed by erase and clear is kept for reuse.";
+    /// Costly: the memory of what was removed stays taken, so a Store keeps it only where asked.
+    static constexpr answer_says says { .costly = true };
     static constexpr std::array<std::string_view, 3> phrases { "no reallocation when refilled", "reuse memory", "keeps capacity" };
 };
 /// Erase and clear return the storage of what they remove.
@@ -914,6 +916,39 @@ template<typename K>
 struct keyed : keyed_slots
 {
     using key_type = K;
+};
+
+// What more a container's interface has: a member only some containers have, offered by a Store where its container
+// states the tag (a request may ask for it, as for any other).
+
+enum class room : std::uint8_t
+{
+    none,
+    reservable,
+};
+
+struct any_room : tag_defaults
+{
+    using root = any_room;
+    static constexpr auto value = room::none;
+    static constexpr std::string_view name = "any_room";
+    using group = kind_group;
+    static constexpr std::string_view question = "Is room made ahead?";
+};
+/// Offers reserve(n): room for n elements before they come, as std::vector's.
+struct reservable : any_room
+{
+    static constexpr auto value = room::reservable;
+    static constexpr std::string_view name = "reservable";
+    static constexpr std::string_view promise = "";
+    static constexpr std::string_view description = "Offers reserve: its storage can be sized ahead.";
+    static constexpr std::array<std::string_view, 3> phrases { "reserve", "preallocate", "size known ahead" };
+};
+
+template<>
+struct tags_of<room>
+{
+    using type = boost::mp11::mp_list<any_room, reservable>;
 };
 
 // What a Store's interface enforces: no container declares a lifecycle or emptiness; one that cannot erase relies on

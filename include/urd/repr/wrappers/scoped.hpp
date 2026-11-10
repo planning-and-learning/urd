@@ -127,6 +127,20 @@ public:
             log(key);
         return m_table.try_emplace(key, std::forward<Args>(args)...);
     }
+    /// Calls update(value, held) with the value of `key`, a default one made first where it had none (held is then
+    /// false): logged first, as any change. Returns what update returns.
+    template<typename Update>
+        requires std::invocable<Update&, V&, bool>
+    decltype(auto) update(const K& key, Update update)
+    {
+        const bool held = !try_emplace(key).second;
+        return update(at(key), held);
+    }
+    /// f(value) where `key` has a value, else `missing`.
+    template<typename F, typename Result>
+        requires std::invocable<F&, const V&>
+    [[nodiscard]] Result visit(const K& key, F f, Result missing) const
+    { return contains(key) ? Result(f(at(key))) : missing; }
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
     {

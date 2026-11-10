@@ -95,6 +95,20 @@ public:
             m_values.emplace_back(std::forward<Args>(args)...);
         return { iterator(this, position), inserted };
     }
+    /// Calls update(value, held) with the value of `key`, a default one inserted last where it had none (held is then
+    /// false); returns what update returns.
+    template<typename Update>
+        requires std::invocable<Update&, V&, bool>
+    decltype(auto) update(const K& key, Update update)
+    {
+        const bool held = !try_emplace(key).second;
+        return update(at(key), held);
+    }
+    /// f(value) where `key` has a value, else `missing`.
+    template<typename F, typename Result>
+        requires std::invocable<F&, const V&>
+    [[nodiscard]] Result visit(const K& key, F f, Result missing) const
+    { return contains(key) ? Result(f(at(key))) : missing; }
     /// Sets the value for `key`, inserting it last where there is none.
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)

@@ -245,6 +245,21 @@ public:
         detail::with_lock<ThreadSafe>(m_writer_mutex, [&] { resize_unlocked(size, [&](T* element) { std::construct_at(element, value); }); });
     }
 
+    /// `count` copies of `value`, or the elements of a range, as std::vector::assign. Not concurrent with anything, as
+    /// clear.
+    void assign(size_t count, const T& value)
+    {
+        clear();
+        resize(count, value);
+    }
+    template<std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last)
+    {
+        clear();
+        for (; first != last; ++first)
+            emplace_back(*first);
+    }
+
     /// Appends only if the returned index is at most max_index.
     size_t push_back_bounded(const T& element, size_t max_index)
     {

@@ -87,8 +87,6 @@ class removal;
 template<typename Derived, typename R, typename S>
 class values_by_key;
 template<typename Derived, typename R, typename S>
-class multi_values;
-template<typename Derived, typename R, typename S>
 class set_algebra;
 template<typename Derived, typename R, typename S>
 class queue_access;
@@ -106,6 +104,10 @@ template<typename Derived, typename R, typename S>
 class slots;
 template<typename Derived, typename R, typename S>
 class grouping;
+template<typename Derived, typename R, typename S>
+class assigning;
+template<typename Derived, typename R, typename S>
+class multi_values;
 template<typename Derived, typename R, typename S>
 class entries;
 template<typename Derived, typename R, typename S>
@@ -144,7 +146,8 @@ struct any_kind
                                          emptiness,
                                          position,
                                          comparison,
-                                         workload>;
+                                         workload,
+                                         room>;
     /// The facets every kind's Store has, each where its condition holds.
     using common_facets = facet_list<facet::sizing,
                                      facet::equality,
@@ -324,7 +327,7 @@ struct sequence_kind : detail::any_kind
     static constexpr std::string_view name = "sequence";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, keys, shape>;
-    using facets = detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::removal>;
+    using facets = detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::assigning, detail::facet::removal>;
     /// Its elements have positions; appended from several threads, they never move (what another thread reads stays
     /// where it is).
     static constexpr property_set meaning(property_set stated)

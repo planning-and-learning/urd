@@ -51,7 +51,7 @@ struct row_interner_decl
     static constexpr std::string_view id = "row_interner";
     static constexpr auto headers = header_list<1> { "urd/repr/pools/pools.hpp" };
     using kind = pool_kind;
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none });
+    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::none, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::row_element, trait::can_hash>());
     static constexpr std::array<tag, 0> gives_elements {};
     using operation_costs = cost_table<cost_entry<operation::insert_row, costs::lin_row_e>,
@@ -75,12 +75,12 @@ struct bit_row_interner_decl : row_interner_decl
 {
     static constexpr std::string_view id = ThreadSafe ? "thread_safe_bit_row_interner" : "bit_row_interner";
     static constexpr property_set provides =
-        property_set::of({ handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none) });
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none), room::reservable });
     static constexpr property_set relies_on = relies(stated({ width::bit }),
                                                      tags<role::row>({ position::positional }),
                                                      traits<role::row_element, trait::an_index>(),
                                                      traits<role::row_element, trait::can_hash>());
-    static constexpr double words = 0.5;
+    static constexpr double words = ThreadSafe ? 1.1 : 0.7;
     static constexpr std::string_view description = "bit row interner (rows of indices, each element in a bit width given at construction)";
     static constexpr std::string_view holds = "each distinct row once, its elements in the given bits, rows of one length back to back";
 };
@@ -135,7 +135,7 @@ struct tree_pool_decl
     using operation_costs = cost_table<cost_entry<operation::insert_row, Bits ? costs::lin_row : costs::lin_row_e>,
                                        cost_entry<operation::find_row, Bits ? costs::lin_row : costs::lin_row_e>,
                                        cost_entry<operation::access, costs::lin_row>>;
-    static constexpr double words = Bits ? 0.05 : 1;
+    static constexpr double words = Bits ? (ThreadSafe ? 0.8 : 0.2) : (ThreadSafe ? 1.8 : 1);
     static constexpr std::string_view description =
         Bits ? "tree bitset set (sets of indices as trees of blocks, equal subtrees once)" : "tree vector set (rows as trees of values, equal subtrees once)";
     static constexpr std::string_view holds =
@@ -162,8 +162,8 @@ namespace detail
 struct thread_safe_row_interner_decl : row_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_row_interner";
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent });
-    static constexpr double words = 2.6;
+    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent, room::reservable });
+    static constexpr double words = 4.1;
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };
