@@ -1,4 +1,5 @@
-"""Round trips through urd's nanobind casters: a Store converts as the standard container of its kind does."""
+"""Round trips through urd's nanobind casters: a Store converts as the standard container of its kind does, a flat form
+of a record as its std counterpart, and a view as a list."""
 
 import importlib.util
 import sys
@@ -33,6 +34,25 @@ def main() -> None:
             pass
         else:
             raise AssertionError(f"{function.__name__} accepted {bad!r}")
+    assert module.array_view() == [1, 2, 3]
+    assert module.pair_view() == (4, 5)
+    assert module.nested_view() == [(6, 7), (8, 9)]
+    assert module.roundtrip_pair((4, 5)) == (4, 5)
+    assert module.roundtrip_pair([-3, 4]) == (-3, 4)
+    assert module.roundtrip_optional_pairs([(1, 2), None, (-3, 4)]) == [(1, 2), None, (-3, 4)]
+    assert module.roundtrip_optional_pairs([]) == []
+    for value in ((), (1,), (1, 2, 3), ("bad", 2), (1, "bad")):
+        for function, argument in ((module.roundtrip_pair, value), (module.roundtrip_optional_pairs, [value])):
+            try:
+                function(argument)
+            except TypeError:
+                pass
+            else:
+                raise AssertionError(f"invalid pair accepted: {value!r}")
+    for value in (42, 3.5, -7):
+        result = module.roundtrip_variant(value)
+        assert type(result) is type(value)
+        assert result == value
     print("casters ok")
 
 

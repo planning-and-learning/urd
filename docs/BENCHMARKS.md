@@ -198,30 +198,36 @@ registry moves containers with stable storage last and the two are level.
 
 ## The registry's choices, measured
 
-Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, g++). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 602 not compared, as the other gives a costly guarantee the request did not ask for; 88 settled by their costs; 91 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
+Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, unknown). Each container is measured on its own (`benchmarks/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 602 not compared, as the other gives a costly guarantee the request did not ask for; 88 settled by their costs; 91 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
 
 ### Choices that fail
 
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 27.0 against 21.1 ns per element (Store<set<Id>, small>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 64, 26.8 against 20.4 ns per element (Store<map<Id, Id>, small>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 27.1 against 20.7 ns per element (Store<set<Id>, small>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 64, 26.7 against 21.3 ns per element (Store<map<Id, Id>, small>)
 
 ### Slower at a smaller size only
 
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.4 against 27.0 ns per element (Store<set<int>, small>)
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 8, 51.7 against 25.3 ns per element (Store<set<Id>, small>)
-- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 286.0 against 233.0 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
-- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4091.4 against 3570.5 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 363.5 against 208.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4637.5 against 2652.6 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / int;int / small: at 8, 44.3 against 25.8 ns per element (Store<map<int, int>, small>)
-- flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 53.4 against 46.6 ns per element (Store<map<int, int>, sorted, frozen>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 8, 47.7 against 26.7 ns per element (Store<map<Id, Id>, small>)
+- flat_set > recycling_tree_set / ordered_lookup,iterate,lookup / int;-: at 1000, 52.1 against 47.0 ns per element (Store<set<int>, sorted, frozen>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.6 against 25.6 ns per element (Store<set<int>, small>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 8, 51.3 against 26.4 ns per element (Store<set<Id>, small>)
+- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 281.9 against 233.5 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
+- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4083.9 against 3711.0 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 353.6 against 200.2 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4648.0 against 2631.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / int;int / small: at 8, 44.3 against 25.7 ns per element (Store<map<int, int>, small>)
+- flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 50.4 against 44.8 ns per element (Store<map<int, int>, sorted, frozen>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 8, 47.3 against 25.0 ns per element (Store<map<Id, Id>, small>)
+- flat_map > map / ordered_lookup,iterate,lookup / Id;Id: at 1000, 49.6 against 41.7 ns per element (Store<map<Id, Id>, sorted, frozen>)
+- stable_value_interner > arena_interner / access,insert_row,find_row / -;Text: at 16, 89.3 against 54.5 ns per element (Store<pool<Text>, stable_refs>)
 
 ### Slower for less memory
 
-- unordered_flat_set > stable_indexed_set / iterate,lookup / std::string;-: at 100000, 86.7 against 70.2 ns per element (Store<set<std::string>, frozen>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83539.3 against 47775.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 100000, 576.4 against 484.6 ns per element (Store<map<std::string, double>, sorted, frozen>)
+- flat_set > recycling_tree_set / ordered_lookup,iterate,lookup / std::string;-: at 100000, 545.4 against 460.9 ns per element (Store<set<std::string>, sorted, frozen>)
+- unordered_flat_set > indexed_set / iterate,lookup / std::string;-: at 100000, 87.6 against 71.6 ns per element (Store<set<std::string>, frozen>)
+- unordered_set > set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 53.8 against 43.2 ns per element (Store<set<Id>, small, stable_refs>)
+- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 69793.3 against 62261.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83112.1 against 48001.2 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 100000, 536.7 against 462.0 ns per element (Store<map<std::string, double>, sorted, frozen>)
 
 ## Memory, measured
 
@@ -297,7 +303,7 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `thread_safe_generation_map` | O(U), 4.1 words | 4.03 | 0.0% |
 | `thread_safe_record_interner` | O(n), 2.7 words | 0.69 | 0.0% |
 | `thread_safe_row_interner` | O(n), 4.1 words | 4.05 | 0.0% |
-| `thread_safe_slot_vector` | O(n), 1.6 words | 0.47 | 26.6% |
+| `thread_safe_slot_vector` | O(n), 1.6 words | 0.47 | 0.0% |
 | `thread_safe_tree_bitset_set` | O(n), 0.8 words | 0.71 | 0.0% |
 | `thread_safe_tree_vector_set` | O(n), 1.8 words | 1.79 | 0.0% |
 | `thread_safe_value_interner` | O(n), 2.7 words | 1.33 | 0.0% |
@@ -315,11 +321,6 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 
 ### Memory that fails
 
-- thread_safe_slot_vector/-;Id/16: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_slot_vector/-;Id/256: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_slot_vector/-;Id/4096: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_slot_vector/-;int/16: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_slot_vector/-;int/256: memory_usage tells 1920 bytes, 2616 counted
-- thread_safe_slot_vector/-;int/4096: memory_usage tells 1920 bytes, 2616 counted
+None.
 
 <!-- end of the generated block -->

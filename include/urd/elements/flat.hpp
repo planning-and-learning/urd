@@ -75,6 +75,14 @@ struct memory_of<flat_string>
     static std::size_t bytes(const flat_string& text) { return text.is_short() ? 0 : text.size(); }
 };
 
+/// A flat vector owns the elements it allocated (none where it reads a buffer it was loaded from), and what they own.
+template<typename T>
+struct memory_of<flat_vector<T>>
+{
+    static std::size_t bytes(const flat_vector<T>& held)
+    { return (held.self_allocated_ ? held.allocated_size_ * sizeof(T) : std::size_t { 0 }) + detail::held_bytes(held); }
+};
+
 /// A record that names its members (as flat storage needs) holds what they hold.
 template<Serializable T>
 struct memory_of<T>

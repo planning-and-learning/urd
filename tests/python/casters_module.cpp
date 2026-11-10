@@ -1,8 +1,12 @@
 // A module of round trips through urd's nanobind casters (urd/python/): a Store goes to Python and back, by
-// representation, for tests/python/casters.py.
+// representation, and so do the flat forms of records (urd/python/flat.hpp) and views of them (urd/python/ranges.hpp),
+// for tests/python/casters.py.
 
+#include "urd/elements/flat.hpp"
+#include "urd/python/flat.hpp"
 #include "urd/python/maps/std_map.hpp"
 #include "urd/python/maps/unordered_flat_map.hpp"
+#include "urd/python/ranges.hpp"
 #include "urd/python/sequences/segmented.hpp"
 #include "urd/python/sequences/sequence.hpp"
 #include "urd/python/values/indexed.hpp"
@@ -11,8 +15,10 @@
 #include "urd/repr/maps/postings.hpp"
 #include "urd/store.hpp"
 
+#include <cista/containers/array.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
+#include <ranges>
 #include <string>
 
 namespace nb = nanobind;
@@ -59,4 +65,23 @@ NB_MODULE(urd_casters_test, m)
             sizes.push_back(static_cast<int>(row.size()));
         return sizes;
     });
+    m.def("array_view", [] {
+        using Array = ::cista::array<int, 3>;
+        static constexpr auto data = Array { 1, 2, 3 };
+        return std::views::all(data);
+    });
+    m.def("pair_view", [] {
+        using Pair = urd::flat_pair<int, int>;
+        static constexpr auto data = Pair { 4, 5 };
+        return data;
+    });
+    m.def("nested_view", [] {
+        using Pair = urd::flat_pair<int, int>;
+        using Array = ::cista::array<Pair, 2>;
+        static constexpr auto data = Array { Pair { 6, 7 }, Pair { 8, 9 } };
+        return std::views::all(data);
+    });
+    m.def("roundtrip_pair", [](urd::flat_pair<int, int> value) { return value; });
+    m.def("roundtrip_optional_pairs", [](urd::flat_vector<urd::flat_optional<urd::flat_pair<int, int>>> values) { return values; });
+    m.def("roundtrip_variant", [](urd::flat_variant<int, double> value) { return value; });
 }

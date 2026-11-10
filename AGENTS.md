@@ -87,6 +87,14 @@ that gives a Store its members. The **request** is the spec `S` a Store is asked
 - **D3 Memory by members.** A container whose memory is the sum of its members' MUST state them with
   `memory_members()`; it MUST NOT specialize `urd::memory_of`.
 
+## Outside urd
+
+- **O1 Public names only.** Code outside urd MUST NOT name `urd::repr::`, except to include the header of the
+  container a Store resolves to. What it needs of a representation has a public name: the bit vocabulary is
+  `urd/bits.hpp` (`urd::bitset_span`, `urd::set_bit_indices`, `urd::bits::`), a tree bitset's flip `urd::block_flip`.
+  A failing assertion in a template is `static_assert(false, ...)`.
+  **Check** (in a downstream checkout): `grep -rn "urd::repr::" include src python tests`
+
 ## Adding or changing a rule
 
 A rule is one sentence with MUST or MUST NOT, an id that is never reused, and a Check where one command can decide

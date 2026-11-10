@@ -42,6 +42,19 @@ struct BlockFlip
     friend bool operator==(const BlockFlip&, const BlockFlip&) = default;
 };
 
+}  // namespace urd::repr
+
+namespace urd
+{
+
+/// A tree bitset's block flip, for code outside urd.
+using block_flip = repr::BlockFlip;
+
+}  // namespace urd
+
+namespace urd::repr
+{
+
 /// A pool of rows that are sets of indices (Row: a dense Store of keys), each a tree of 32-bit blocks with Arity
 /// children per node. Block i always sits at position i, so changing a block only changes its path to the root; a
 /// handle names the root and the number of blocks up to the last nonzero one, so equal sets have equal handles. With

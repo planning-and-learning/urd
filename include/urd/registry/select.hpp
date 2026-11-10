@@ -6,7 +6,6 @@
 
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/scan.hpp"
-#include "urd/repr/core/dependent_false.hpp"
 #include "urd/spec.hpp"
 #include "urd/store/types.hpp"
 #include "urd/traits.hpp"
@@ -99,7 +98,7 @@ struct chosen_type
 template<typename S>
 struct no_representation_for
 {
-    static_assert(repr::dependent_false<S>::value,
+    static_assert(false,
                   "urd::Store: no container serves this request: drop or change a tag (urd-search's why_not names, for a "
                   "container, the tags it lacks and the promises the request must make)");
     /// A stand-in, so that the assertion is the only error.

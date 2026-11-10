@@ -68,7 +68,7 @@ struct complete_representation
 template<typename S, fixed_string Container, typename Missing>
 struct complete_representation<missing_container<S, Container, Missing>>
 {
-    static_assert(repr::dependent_false<S>::value,
+    static_assert(false,
                   "urd::Store: this file does not include the headers that define the container its request resolves to. "
                   "#include each header urd::include<\"...\"> names in the mp_list above, in that order "
                   "(docs/RESOLUTION.md names each request's)");

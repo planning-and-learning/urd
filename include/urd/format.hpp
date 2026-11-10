@@ -4,11 +4,13 @@
 // request names it (`int`, `std::string`, `index<Id>`, `Store<sequence<int>, frozen>`), a spec as the request that states
 // its tags (`Store<set<int>, sorted, unique>`), a cost as the docs
 // write it (`O(log n)*~`), and a tag by its name. Another type is written as its urd::type_spelling says: specialize it
-// for an element type of your own; otherwise its demangled name.
+// for an element type of your own; otherwise its demangled name. Values are written too: an index as its number, a
+// bitset span as the positions of its set bits.
 //
 // Types are written by functions (urd::spelling<T>(), urd::spelling_of_spec<S>()), not by formatting an object: an
 // object whose type names a Store would complete that Store, and writing a request completes nothing.
 
+#include "urd/bits.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
@@ -16,6 +18,7 @@
 #include "urd/traits.hpp"
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdlib>
 #include <fmt/format.h>
@@ -146,4 +149,26 @@ template<>
 struct fmt::formatter<urd::tag> : fmt::formatter<std::string_view>
 {
     auto format(urd::tag of, fmt::format_context& context) const { return fmt::formatter<std::string_view>::format(urd::tag_name(of), context); }
+};
+
+/// An index, as its number.
+template<typename T>
+struct fmt::formatter<urd::index<T>, char>
+{
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
+    template<typename FormatContext>
+    auto format(const urd::index<T>& at, FormatContext& context) const
+    { return fmt::format_to(context.out(), "{}", at.value); }
+};
+
+/// A bitset span, as the positions of its set bits: {p, q, ...}.
+template<std::unsigned_integral Block>
+struct fmt::formatter<urd::bitset_span<Block>, char>
+{
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
+    template<typename FormatContext>
+    auto format(const urd::bitset_span<Block>& bits, FormatContext& context) const
+    { return fmt::format_to(context.out(), "{{{}}}", fmt::join(urd::set_bit_indices(bits), ", ")); }
 };
