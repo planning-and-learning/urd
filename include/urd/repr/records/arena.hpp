@@ -47,6 +47,8 @@ class ArenaRecords
 
 public:
     using value_type = T;
+    using reference = const T&;
+    using const_reference = const T&;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using const_iterator = PositionIterator<const ArenaRecords>;
@@ -102,16 +104,8 @@ struct memory_of<repr::ArenaRecords<T, ThreadSafe>>
     static std::size_t bytes(const repr::ArenaRecords<T, ThreadSafe>& held)
     { return memory_usage(held.m_records) + memory_usage(held.m_arena) + held.m_scratch.buf_.capacity(); }
 };
-template<typename T, bool ThreadSafe, typename H>
-struct memory_of<repr::ArenaInterner<T, ThreadSafe, H>> :
-    memory_of<repr::detail::Interner<repr::IndexedSet<T, std::uint32_t, ThreadSafe, true, false, repr::ArenaRecords<T, ThreadSafe>>, H>>
-{
-};
 
-template<>
-struct include<"urd/repr/records/arena.hpp">
-{
-};
+template<> struct include<"urd/repr/records/arena.hpp"> {};
 
 }  // namespace urd
 

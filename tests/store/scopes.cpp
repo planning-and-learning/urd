@@ -172,8 +172,8 @@ TEST(Layered, AnswersFromItselfThenItsParent)
     EXPECT_EQ(std::as_const(child).at(clear), 1);
     EXPECT_EQ(&child.owner(clear), &parent);
     EXPECT_EQ(&child.owner(holding), &child);
-    EXPECT_EQ(child.read(clear, [](int value) { return value; }, -1), 1);
-    EXPECT_EQ(child.read(empty, [](int value) { return value; }, -1), -1);
+    EXPECT_EQ(child.visit(clear, [](int value) { return value; }, -1), 1);
+    EXPECT_EQ(child.visit(empty, [](int value) { return value; }, -1), -1);
     // try_emplace makes an own value from its arguments where the layer has none, shadowing the parent's.
     EXPECT_TRUE(child.try_emplace(on, 7).second);
     EXPECT_FALSE(child.try_emplace(on, 8).second);
@@ -250,7 +250,7 @@ TEST(Layered, RelationsLayerThroughBothLevels)
     EXPECT_EQ(task[on].get(on_ab), expected);
     EXPECT_EQ(task[on].row_size(on_aa), 2U);
     EXPECT_EQ(std::as_const(domain).at(on).row_size(on_ba), 2U);  // the domain's pool, untouched: still two rows at the branch
-    EXPECT_FALSE(task[on].parent_grew());
+    EXPECT_FALSE((task[on].parent() != nullptr && task[on].parent()->size() > task[on].base()));
     const auto holding_b = task[holding].insert({ b }).first;  // a predicate new in the task: a root pool of its own
     EXPECT_EQ(holding_b, urd::index<Row>(0));
     EXPECT_EQ(task.size(), 2U);

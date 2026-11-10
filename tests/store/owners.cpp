@@ -51,13 +51,13 @@ TEST(Owners, ReleaseKeepsTheElementAndItsStorage)
     auto pool = Pool();
     const Scratch* first = nullptr;
     {
-        auto owner = pool.acquire_unique();
+        auto owner = pool.make_unique();
         owner->buffer.assign(100, 1);
         first = owner.get();
         EXPECT_EQ(pool.size(), 1U);
     }
     EXPECT_EQ(pool.size(), 0U);
-    auto again = pool.acquire_shared();
+    auto again = pool.make_shared();
     EXPECT_EQ(again.get(), first);
     EXPECT_EQ(again->released, 1);
     EXPECT_TRUE(again->buffer.empty());
@@ -84,8 +84,8 @@ TEST(Owners, NoAllocationOnceWarm)
         unique.reserve(8);
         for (int each = 0; each < 8; ++each)
         {
-            shared.push_back(pool.acquire_shared());
-            unique.push_back(pool.acquire_unique());
+            shared.push_back(pool.make_shared());
+            unique.push_back(pool.make_unique());
             shared.back()->buffer.assign(16, each);
             unique.back()->buffer.assign(16, each);
         }
@@ -111,7 +111,7 @@ TEST(Owners, ConcurrentSharedOwners)
             {
                 for (int each = 0; each < 2000; ++each)
                 {
-                    auto owner = pool.acquire_shared();
+                    auto owner = pool.make_shared();
                     auto copy = owner;
                     copy->buffer.push_back(each);
                 }
@@ -145,10 +145,10 @@ TEST(Owners, KeepHoldsTheStoresOwner)
 {
     auto in_use = alive;
     auto owner = std::make_shared<PoolOwner>(&in_use);
-    auto shared = owner->pool.acquire_shared(owner->shared_from_this());
+    auto shared = owner->pool.make_shared(owner->shared_from_this());
     auto copy = shared;
-    auto unique = owner->pool.acquire_unique(owner->shared_from_this());
-    owner->pool.acquire_shared().reset();  // both shared forms take their control blocks from one pool
+    auto unique = owner->pool.make_unique(owner->shared_from_this());
+    owner->pool.make_shared().reset();  // both shared forms take their control blocks from one pool
     owner.reset();
     shared.reset();
     EXPECT_EQ(in_use, alive);
@@ -162,8 +162,8 @@ TEST(Owners, KeepHoldsTheStoresOwnerLastShared)
 {
     auto in_use = alive;
     auto owner = std::make_shared<PoolOwner>(&in_use);
-    auto unique = owner->pool.acquire_unique(owner);
-    auto shared = owner->pool.acquire_shared(owner);
+    auto unique = owner->pool.make_unique(owner);
+    auto shared = owner->pool.make_shared(owner);
     owner.reset();
     unique.reset();
     EXPECT_EQ(in_use, alive);
@@ -178,7 +178,7 @@ TEST(Owners, KeepOutlivesTheControlBlock)
 {
     auto in_use = alive;
     auto owner = std::make_shared<PoolOwner>(&in_use);
-    auto shared = owner->pool.acquire_shared(owner);
+    auto shared = owner->pool.make_shared(owner);
     auto weak = std::weak_ptr<Scratch>(shared);
     owner.reset();
     shared.reset();
@@ -192,13 +192,13 @@ TEST(Owners, MovedFromPoolStillSharesItsElements)
     // The control blocks' pool is made on first use: a moved-from pool makes a new one. (Owners must all be back before a pool
     // moves: each returns its slot to the pool it came from.)
     auto pool = Pool();
-    pool.acquire_shared().reset();
+    pool.make_shared().reset();
     auto moved = std::move(pool);
-    auto again = pool.acquire_shared();  // NOLINT(bugprone-use-after-move): a moved-from pool is valid and empty
+    auto again = pool.make_shared();  // NOLINT(bugprone-use-after-move): a moved-from pool is valid and empty
     EXPECT_NE(again, nullptr);
     again.reset();
     EXPECT_EQ(pool.size(), 0U);  // NOLINT(bugprone-use-after-move)
-    auto from_moved = moved.acquire_shared();
+    auto from_moved = moved.make_shared();
     EXPECT_EQ(moved.size(), 1U);
 }
 
@@ -211,22 +211,22 @@ TEST(Owners, KeyedSlotsAreReusedUnderTheirKey)
     const auto wide = urd::column_widths { 32, 32, 32 };
     const Shaped* first = nullptr;
     {
-        auto owner = pool.acquire_shared(narrow, std::size_t { 64 });
+        auto owner = pool.make_shared(narrow, std::size_t { 64 });
         first = owner.get();
         EXPECT_EQ(owner->shape, narrow);
         EXPECT_GE(owner->buffer.capacity(), 64U);
-        auto other = pool.acquire_shared(wide);
+        auto other = pool.make_shared(wide);
         EXPECT_NE(other.get(), first);
         EXPECT_EQ(pool.size(), 2U);
     }
     EXPECT_EQ(pool.size(), 0U);
-    auto wide_again = pool.acquire_shared(wide);
+    auto wide_again = pool.make_shared(wide);
     EXPECT_NE(wide_again.get(), first);
     EXPECT_EQ(wide_again->shape, wide);
-    auto narrow_again = pool.acquire_shared(urd::column_widths { 4, 4 });
+    auto narrow_again = pool.make_shared(urd::column_widths { 4, 4 });
     EXPECT_EQ(narrow_again.get(), first);
     EXPECT_GE(narrow_again->buffer.capacity(), 64U);
-    auto narrow_more = pool.acquire_shared(narrow);  // the narrow slot is in use: a new one
+    auto narrow_more = pool.make_shared(narrow);  // the narrow slot is in use: a new one
     EXPECT_NE(narrow_more.get(), first);
     EXPECT_EQ(pool.size(), 3U);
 }
@@ -244,7 +244,7 @@ TEST(Owners, KeyedSlotsAllocateNothingOnceWarm)
     {
         for (int each = 0; each < 4; ++each)
             for (const auto& key : keys)
-                owners.push_back(pool.acquire_shared(key, std::size_t { 16 }));
+                owners.push_back(pool.make_shared(key, std::size_t { 16 }));
         owners.clear();
     };
     round();

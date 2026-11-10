@@ -85,6 +85,11 @@ public:
         const auto* layer = owner(key);
         return layer == nullptr ? end() : layer->m_own.find(key);
     }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const key_type& key) const
+    {
+        const auto found = find(key);
+        return { found, found == end() ? found : std::next(found) };
+    }
     [[nodiscard]] bool contains(const key_type& key) const { return owner(key) != nullptr; }
     [[nodiscard]] size_type count(const key_type& key) const { return contains(key) ? 1 : 0; }
 
@@ -126,19 +131,19 @@ public:
     /// The own value, made where there is none.
     [[nodiscard]] mapped_type& at(const key_type& key)
     { return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; }); }
-    /// read(value) with the owner's value of `key`, else `missing`: one walk up the layers.
-    template<typename Read, typename Result>
-        requires std::invocable<Read&, const mapped_type&>
-    [[nodiscard]] Result read(const key_type& key, Read read, Result missing) const
+    /// f(value) with the owner's value of `key`, else `missing`: one walk up the layers.
+    template<typename F, typename Result>
+        requires std::invocable<F&, const mapped_type&>
+    [[nodiscard]] Result visit(const key_type& key, F f, Result missing) const
     {
         const auto* value = value_of(key);
-        return value == nullptr ? missing : Result(read(*value));
+        return value == nullptr ? missing : Result(f(*value));
     }
     /// read(value) with this layer's own value of `key`, else `missing`: the parent's are not looked at.
     template<typename Read, typename Result>
         requires std::invocable<Read&, const mapped_type&>
     [[nodiscard]] Result read_own(const key_type& key, Read read, Result missing) const
-    { return m_own.read(key, read, missing); }
+    { return m_own.visit(key, read, missing); }
     /// This layer's own value of `key`, or nullptr: the parent's are not looked at.
     [[nodiscard]] const mapped_type* own_value(const key_type& key) const { return m_own.get_if(key); }
     [[nodiscard]] mapped_type* own_value(const key_type& key) { return m_own.get_if(key); }
@@ -232,10 +237,13 @@ private:
     static bool built_alike(const mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }
 
-    friend struct urd::memory_of<Layered>;
 
     R m_own;
     const Layered* m_parent = nullptr;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&Layered::m_own> {}; }
 };
 
 }  // namespace urd::repr
@@ -243,17 +251,7 @@ private:
 namespace urd
 {
 
-/// Its own layer's: the parent's is the parent's.
-template<typename R>
-struct memory_of<repr::Layered<R>>
-{
-    static std::size_t bytes(const repr::Layered<R>& held) { return memory_usage(held.m_own); }
-};
-
-template<>
-struct include<"urd/repr/wrappers/layer.hpp">
-{
-};
+template<> struct include<"urd/repr/wrappers/layer.hpp"> {};
 
 }  // namespace urd
 

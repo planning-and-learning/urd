@@ -71,13 +71,13 @@ Tags answer questions, and the questions fall into four groups, by what leaving 
 
 | Group | Leaving it out | In the example |
 |---|---|---|
-| [Kind](https://verdog-ai.github.io/urd/language/kind.html) | does not compile | `fifo` (Frontier) |
-| [Semantics](https://verdog-ai.github.io/urd/language/semantics.html) | is a bug | `positional`, `monotone` (Names); `multi`, `frozen`, `bidirectional` (Follows); `dense` (Seen, Distance, Follows) |
-| [Costs](https://verdog-ai.github.io/urd/language/costs.html) | is slower by a complexity class | `constant_clear` (Distance) |
-| [Hints](https://verdog-ai.github.io/urd/language/hints.html) | is slower by a constant factor | |
+| [Kind](https://planning-and-learning.github.io/urd/language/kind.html) | does not compile | `fifo` (Frontier) |
+| [Semantics](https://planning-and-learning.github.io/urd/language/semantics.html) | is a bug | `positional`, `monotone` (Names); `multi`, `frozen`, `bidirectional` (Follows); `dense` (Seen, Distance, Follows) |
+| [Costs](https://planning-and-learning.github.io/urd/language/costs.html) | is slower by a complexity class | `constant_clear` (Distance) |
+| [Hints](https://planning-and-learning.github.io/urd/language/hints.html) | is slower by a constant factor | |
 
-[How the language is organized](https://verdog-ai.github.io/urd/language/index.html) explains groups, questions and tags;
-[the index by need](https://verdog-ai.github.io/urd/language/needs.html) starts from plain words ("reset every round", "union find").
+[How the language is organized](https://planning-and-learning.github.io/urd/language/index.html) explains groups, questions and tags;
+[the index by need](https://planning-and-learning.github.io/urd/language/needs.html) starts from plain words ("reset every round", "union find").
 
 ## Use it
 
@@ -94,12 +94,12 @@ one fails to compile with the headers to include in the error.
 
 ## Documentation
 
-**https://verdog-ai.github.io/urd/**
+**https://planning-and-learning.github.io/urd/**
 
-- [The request language](https://verdog-ai.github.io/urd/requests.html) and [how it is organized](https://verdog-ai.github.io/urd/language/index.html)
-- The kinds of Store: [sets](https://verdog-ai.github.io/urd/kinds/sets.html), [maps](https://verdog-ai.github.io/urd/kinds/maps.html),
-  [sequences](https://verdog-ai.github.io/urd/kinds/sequences.html), [queues](https://verdog-ai.github.io/urd/kinds/queues.html), [pools](https://verdog-ai.github.io/urd/kinds/pools.html),
-  [records](https://verdog-ai.github.io/urd/kinds/records.html), [partitions](https://verdog-ai.github.io/urd/kinds/partitions.html): members and complexity
+- [The request language](https://planning-and-learning.github.io/urd/requests.html) and [how it is organized](https://planning-and-learning.github.io/urd/language/index.html)
+- The kinds of Store: [sets](https://planning-and-learning.github.io/urd/kinds/sets.html), [maps](https://planning-and-learning.github.io/urd/kinds/maps.html),
+  [sequences](https://planning-and-learning.github.io/urd/kinds/sequences.html), [queues](https://planning-and-learning.github.io/urd/kinds/queues.html), [pools](https://planning-and-learning.github.io/urd/kinds/pools.html),
+  [records](https://planning-and-learning.github.io/urd/kinds/records.html), [partitions](https://planning-and-learning.github.io/urd/kinds/partitions.html): members and complexity
 - [What a request resolves to](docs/RESOLUTION.md), generated from the registry and checked by a test
 - [Benchmarks](docs/BENCHMARKS.md), [examples](examples/)
 

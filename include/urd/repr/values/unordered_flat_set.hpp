@@ -8,15 +8,7 @@
 #include "urd/repr/values/unordered_flat_set_fwd.hpp"
 #include "urd/traits.hpp"
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/values/unordered_flat_set.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/values/unordered_flat_set.hpp"> {};
 
 namespace urd::detail
 {

@@ -2,12 +2,14 @@
 
 // A set of indices as a bitset, for dense keys: stored by position, not hashed.
 
+#include "urd/config.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/containers/detail/tracking.hpp"
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/traits.hpp"
@@ -39,9 +41,8 @@ template<typename K, bool TrackWords>
 class DenseSet
 {
     static_assert(indexable<K>, "urd::repr::DenseSet: keys must be indices (urd::index_of)");
-    friend struct urd::memory_of<DenseSet>;
 
-    using word = std::uint64_t;
+    using word = urd::word_t;
     using Bits = BitsetSpan<word>;
     using ConstBits = BitsetSpan<const word>;
     static constexpr std::size_t npos = Bits::npos;
@@ -50,6 +51,8 @@ public:
     class iterator;
     using const_iterator = iterator;
     using value_type = K;
+    using reference = K;  ///< a key is read from its bit
+    using const_reference = K;
     using key_type = K;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -91,9 +94,8 @@ public:
         if (index >= bits().size())
             m_words.resize(Bits::num_blocks(index + 1));
         const bool inserted = !bits().test(index);
-        if constexpr (TrackWords)
-            if (m_words[Bits::block_index(index)] == 0)
-                m_touched.insert(Bits::block_index(index));
+        if (m_words[Bits::block_index(index)] == 0)
+            m_touched.insert(Bits::block_index(index));
         bits().set(index);
         m_count += inserted ? 1 : 0;
         return { iterator(this, index), inserted };
@@ -129,14 +131,9 @@ public:
     }
     void clear()
     {
-        if constexpr (TrackWords)
-        {
-            for (const auto block : m_touched)
-                m_words[block] = 0;
-            m_touched.clear();
-        }
-        else
-            bits().reset();
+        m_touched.reset(m_words.size(),
+                        [this](std::size_t first, std::size_t last)
+                        { std::fill(m_words.begin() + static_cast<difference_type>(first), m_words.begin() + static_cast<difference_type>(last), word { 0 }); });
         m_count = 0;
     }
 
@@ -174,6 +171,15 @@ public:
         return recount();
     }
 
+    /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
+    void merge(DenseSet& source)
+    {
+        auto moved = source;
+        moved -= *this;
+        *this |= moved;
+        source -= moved;
+    }
+
     /// The words up to the last one with a bit set: equal sets have equal ones, however many words each holds.
     [[nodiscard]] std::span<const word> significant_words() const noexcept
     {
@@ -183,7 +189,7 @@ public:
         return std::span<const word>(m_words.data(), count);
     }
 
-    /// Makes this the set whose bits `words` set (key k at bit k % 64 of word k / 64), its storage reused.
+    /// Makes this the set whose bits `words` set (key k at bit k % word_bits of word k / word_bits), its storage reused.
     void assign_words(std::span<const word> words)
     {
         m_words.assign(words.begin(), words.end());
@@ -267,23 +273,19 @@ private:
     DenseSet& recount()
     {
         m_count = bits().count();
-        if constexpr (TrackWords)
-        {
-            // Set algebra wrote whole words: the words to clear are those not zero now.
-            m_touched.clear();
-            for (std::size_t block = 0; block < m_words.size(); ++block)
-                if (m_words[block] != 0)
-                    m_touched.insert(block);
-        }
+        // Set algebra wrote whole words: the words to clear are those not zero now.
+        m_touched.clear();
+        for (std::size_t block = 0; block < m_words.size(); ++block)
+            if (m_words[block] != 0)
+                m_touched.insert(block);
         return *this;
     }
     void remove(std::size_t index)
     {
         bits().reset(index);
         --m_count;
-        if constexpr (TrackWords)
-            if (m_words[Bits::block_index(index)] == 0)
-                m_touched.erase(Bits::block_index(index));
+        if (m_words[Bits::block_index(index)] == 0)
+            m_touched.erase(Bits::block_index(index));
     }
     /// The first key at or after `index`, else npos.
     [[nodiscard]] std::size_t next_from(std::size_t index) const
@@ -305,14 +307,14 @@ private:
         return npos;
     }
 
-    struct NoWords
-    {
-    };
-
     std::vector<word> m_words;
     std::size_t m_count = 0;
-    /// The words that are not zero, where TrackWords.
-    [[no_unique_address]] std::conditional_t<TrackWords, SparseSet<std::size_t>, NoWords> m_touched;
+    /// The words that are not zero, where TrackWords: what clear zeroes.
+    [[no_unique_address]] detail::Tracking<TrackWords> m_touched;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&DenseSet::m_words, &DenseSet::m_touched> {}; }
 };
 
 }  // namespace urd::repr
@@ -320,23 +322,7 @@ private:
 namespace urd
 {
 
-/// Its words, and where TrackWords, the set of those not zero.
-template<typename K, bool TrackWords>
-struct memory_of<repr::DenseSet<K, TrackWords>>
-{
-    static std::size_t bytes(const repr::DenseSet<K, TrackWords>& held)
-    {
-        if constexpr (TrackWords)
-            return memory_usage(held.m_words) + memory_usage(held.m_touched);
-        else
-            return memory_usage(held.m_words);
-    }
-};
-
-template<>
-struct include<"urd/repr/values/dense_set.hpp">
-{
-};
+template<> struct include<"urd/repr/values/dense_set.hpp"> {};
 
 }  // namespace urd
 

@@ -9,15 +9,7 @@
 
 #include <boost/container/flat_map.hpp>
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/flat_map.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/flat_map.hpp"> {};
 
 namespace urd::detail
 {

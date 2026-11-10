@@ -43,7 +43,7 @@ TEST(RowPools, InternRowsBySpans)
     EXPECT_EQ(rows.size(), 2U);
     EXPECT_EQ(rows.find(a).value, 0U);
     EXPECT_EQ(rows.find(b).value, 1U);
-    EXPECT_TRUE(std::ranges::equal(rows.view(rows.find(b)), b));
+    EXPECT_TRUE(std::ranges::equal(rows.at(rows.find(b)), b));
     EXPECT_TRUE(rows.find(std::vector<std::uint32_t> { 1, 2 }).is_none());
     EXPECT_TRUE(rows.contains(b));
     EXPECT_FALSE(rows.contains(std::vector<std::uint32_t> { 1, 2 }));
@@ -66,15 +66,15 @@ TEST(RowPools, RowsNeverMoveOnInsert)
         if (inserted)
         {
             reference.push_back(row);
-            views.push_back(rows.view(handle));
+            views.push_back(rows.at(handle));
         }
     }
     ASSERT_EQ(rows.size(), reference.size());
     for (std::uint32_t at = 0; at < reference.size(); ++at)
     {
         const auto handle = urd::index<Row>(at);
-        EXPECT_TRUE(std::ranges::equal(rows.view(handle), reference[at]));
-        EXPECT_EQ(rows.view(handle).data(), views[at].data());
+        EXPECT_TRUE(std::ranges::equal(rows.at(handle), reference[at]));
+        EXPECT_EQ(rows.at(handle).data(), views[at].data());
         EXPECT_EQ(rows.find(reference[at]), handle);
     }
 }
@@ -89,7 +89,7 @@ TEST(RowPools, AgreeWithAStandardSet)
         auto random = std::mt19937(11);
         const auto copy = [&rows](std::size_t at)
         {
-            const auto row = rows.view(urd::index<Row>(static_cast<std::uint32_t>(at)));
+            const auto row = rows.at(urd::index<Row>(static_cast<std::uint32_t>(at)));
             return std::vector<std::uint32_t>(row.begin(), row.end());
         };
         for (int round = 0; round < 3; ++round)
@@ -218,7 +218,7 @@ TEST(RowPools, BitRowsPackElements)
         EXPECT_EQ(rows.size(), expected.size());
         for (const auto& [values, handle] : handles)
         {
-            const auto row = rows.view(handle);
+            const auto row = rows.at(handle);
             ASSERT_EQ(row.size(), values.size());
             for (std::size_t at = 0; at < values.size(); ++at)
                 EXPECT_EQ(row[at].value, values[at]);
@@ -280,7 +280,7 @@ TEST(RowPools, SchemaRowsMixColumns)
         }
         for (std::uint64_t at = 0; at < 2000; ++at)
         {
-            const auto row = rows.view(handles[at]);
+            const auto row = rows.at(handles[at]);
             ASSERT_EQ(row.size(), 7U);
             EXPECT_EQ(row.get(0), at % 1000);
             EXPECT_EQ(row.get(1), at + (1ULL << 31));
@@ -313,7 +313,7 @@ TEST(RowPools, SchemaRowsMixColumns)
     EXPECT_THROW(narrow.insert(std::array<std::uint64_t, 1> { 1 }), std::invalid_argument);
     EXPECT_EQ(narrow.size(), 1U);
     EXPECT_TRUE(narrow.find(std::array<std::uint64_t, 2> { 16, 0 }).is_none());
-    EXPECT_EQ(narrow.view(narrow.find(std::array<std::uint64_t, 2> { 15, 8 })).get(1), 8U);
+    EXPECT_EQ(narrow.at(narrow.find(std::array<std::uint64_t, 2> { 15, 8 })).get(1), 8U);
     EXPECT_THROW((void) urd::column_widths(1, 65), std::invalid_argument);
     EXPECT_THROW((void) urd::column_widths(1, 0), std::invalid_argument);
 }
@@ -328,7 +328,7 @@ TEST(RowPools, SchemaRowsOfIndices)
     auto rows = Typed(urd::column_widths(3, 10));
     const auto row = std::vector<Index> { Index(1), Index(1000), Index(7) };
     const auto handle = rows.insert(row).first;
-    EXPECT_TRUE(std::ranges::equal(rows.view(handle).as<Index>(), row));
+    EXPECT_TRUE(std::ranges::equal(rows.at(handle).as<Index>(), row));
     EXPECT_EQ(rows.get(handle), IndexRow(row.begin(), row.end()));
     EXPECT_THROW(rows.insert(std::vector<Index> { Index(1), Index(1024), Index(7) }), std::out_of_range);
     EXPECT_TRUE(rows.find(std::vector<Index> { Index(1), Index(1024), Index(7) }).is_none());
@@ -359,7 +359,7 @@ TEST(RowPools, SubsetViewsReadAndFindTheirRows)
     EXPECT_TRUE(subset.contains(std::array<std::uint64_t, 2> { 3, 300 }));
     EXPECT_FALSE(subset.contains(std::array<std::uint64_t, 2> { 2, 200 }));  // in the pool, not in the subset
     EXPECT_FALSE(subset.contains(std::array<std::uint64_t, 2> { 3, 301 }));  // in neither
-    EXPECT_TRUE(subset.contains(rows.view(handles[5])));
+    EXPECT_TRUE(subset.contains(rows.at(handles[5])));
     EXPECT_TRUE(urd::subset_view(rows, std::span<const Rows::handle_type>()).empty());
 
     using Layered = urd::Store<urd::pool<urd::Store<urd::sequence<std::uint32_t>, urd::frozen>>, urd::monotone, urd::layered>;

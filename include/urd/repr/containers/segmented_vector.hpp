@@ -58,7 +58,7 @@ private:
 
     static_assert(Layout::max_segments > 0);
 
-    [[nodiscard]] T* segment(size_t index) const noexcept { return static_cast<T*>(detail::load_pointer<ThreadSafe, void>(m_segments[index])); }
+    [[nodiscard]] T* segment(size_t index) const noexcept { return static_cast<T*>(detail::load(m_segments[index])); }
 
     [[nodiscard]] T* element(size_t pos) const noexcept
     {
@@ -69,7 +69,7 @@ private:
 
     void resize_to_fit(size_t n)
     {
-        auto capacity = detail::load_size<ThreadSafe>(m_capacity);
+        auto capacity = detail::load(m_capacity);
         while (capacity < n)
         {
             const auto index = m_num_segments;
@@ -81,10 +81,10 @@ private:
                 throw std::length_error("SegmentedVector: segment is too large.");
 
             auto* data = static_cast<T*>(::operator new(new_segment_size * sizeof(T), std::align_val_t { alignof(T) }));
-            detail::store_pointer<ThreadSafe, void>(m_segments[index], static_cast<void*>(data));
+            detail::store(m_segments[index], static_cast<void*>(data));
             m_num_segments = index + 1;
             capacity += new_segment_size;
-            detail::store_size<ThreadSafe>(m_capacity, capacity);
+            detail::store(m_capacity, capacity);
         }
     }
 
@@ -96,17 +96,17 @@ private:
         resize_to_fit(size + 1);
 
         auto* result = std::construct_at(element(size), std::forward<Args>(args)...);
-        detail::store_size<ThreadSafe>(m_size, size + 1);
+        detail::store(m_size, size + 1);
         return *result;
     }
 
     template<typename... Args>
     T& emplace_back_unlocked(Args&&... args)
-    { return emplace_back_at_unlocked(detail::load_size<ThreadSafe>(m_size), std::forward<Args>(args)...); }
+    { return emplace_back_at_unlocked(detail::load(m_size), std::forward<Args>(args)...); }
 
     size_t push_back_bounded_unlocked(const T& element, size_t max_index)
     {
-        const auto index = detail::load_size<ThreadSafe>(m_size);
+        const auto index = detail::load(m_size);
         if (index > max_index)
             throw std::length_error("SegmentedVector: index is too large.");
         emplace_back_at_unlocked(index, element);
@@ -116,8 +116,8 @@ private:
     void pop_back_unlocked()
     {
         ensure_not_empty();
-        const auto size = detail::load_size<ThreadSafe>(m_size) - 1;
-        detail::store_size<ThreadSafe>(m_size, size);
+        const auto size = detail::load(m_size) - 1;
+        detail::store(m_size, size);
         std::destroy_at(element(size));
     }
 
@@ -131,13 +131,13 @@ private:
     template<typename Construct>
     void resize_unlocked(size_t new_size, Construct construct)
     {
-        const auto old_size = detail::load_size<ThreadSafe>(m_size);
+        const auto old_size = detail::load(m_size);
         if (new_size == old_size)
             return;
 
         if (new_size < old_size)
         {
-            detail::store_size<ThreadSafe>(m_size, new_size);
+            detail::store(m_size, new_size);
             destroy_tail(new_size, old_size);
             return;
         }
@@ -154,37 +154,42 @@ private:
             destroy_tail(old_size, size);
             throw;
         }
-        detail::store_size<ThreadSafe>(m_size, new_size);
+        detail::store(m_size, new_size);
     }
 
     void release() noexcept
     {
-        destroy_tail(0, detail::load_size<ThreadSafe>(m_size));
+        destroy_tail(0, detail::load(m_size));
         for (size_t i = 0; i < m_num_segments; ++i)
         {
             ::operator delete(static_cast<void*>(segment(i)), std::align_val_t { alignof(T) });
-            detail::store_pointer<ThreadSafe, void>(m_segments[i], nullptr);
+            detail::store(m_segments[i], nullptr);
         }
         m_num_segments = 0;
-        detail::store_size<ThreadSafe>(m_capacity, 0);
-        detail::store_size<ThreadSafe>(m_size, 0);
+        detail::store(m_capacity, 0);
+        detail::store(m_size, 0);
     }
 
     void take(SegmentedVector& other) noexcept
     {
         for (size_t i = 0; i < other.m_num_segments; ++i)
         {
-            detail::store_pointer<ThreadSafe, void>(m_segments[i], static_cast<void*>(other.segment(i)));
-            detail::store_pointer<ThreadSafe, void>(other.m_segments[i], nullptr);
+            detail::store(m_segments[i], static_cast<void*>(other.segment(i)));
+            detail::store(other.m_segments[i], nullptr);
         }
         m_num_segments = std::exchange(other.m_num_segments, 0);
-        detail::store_size<ThreadSafe>(m_capacity, other.capacity());
-        detail::store_size<ThreadSafe>(m_size, other.size());
-        detail::store_size<ThreadSafe>(other.m_capacity, 0);
-        detail::store_size<ThreadSafe>(other.m_size, 0);
+        detail::store(m_capacity, other.capacity());
+        detail::store(m_size, other.size());
+        detail::store(other.m_capacity, 0);
+        detail::store(other.m_size, 0);
     }
 
 public:
+    using value_type = T;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = T&;
+    using const_reference = const T&;
     using iterator = PositionIterator<SegmentedVector>;
     using const_iterator = PositionIterator<const SegmentedVector>;
 
@@ -215,8 +220,8 @@ public:
 
     void clear() noexcept(std::is_nothrow_destructible_v<T>)
     {
-        const auto size = detail::load_size<ThreadSafe>(m_size);
-        detail::store_size<ThreadSafe>(m_size, 0);
+        const auto size = detail::load(m_size);
+        detail::store(m_size, 0);
         destroy_tail(0, size);
     }
 
@@ -254,14 +259,14 @@ public:
         return detail::with_lock<ThreadSafe>(m_writer_mutex,
                                              [&]
                                              {
-                                                 const auto index = detail::load_size<ThreadSafe>(m_size);
+                                                 const auto index = detail::load(m_size);
                                                  if (index == std::numeric_limits<size_t>::max() || index > max_index)
                                                      throw std::length_error("SegmentedVector: index is too large.");
                                                  resize_to_fit(index + 1);
                                                  // Built in place from what the factory returns, so that elements that
                                                  // cannot move (an atomic counter) are appended too.
                                                  ::new (static_cast<void*>(element(index))) T(std::forward<Factory>(factory)(index));
-                                                 detail::store_size<ThreadSafe>(m_size, index + 1);
+                                                 detail::store(m_size, index + 1);
                                                  return index;
                                              });
     }
@@ -331,8 +336,8 @@ public:
     /// Reads the elements in place; valid while this vector neither moves nor is destroyed.
     [[nodiscard]] detail::SegmentedRows<T, FirstSegmentSize, ThreadSafe, Index> rows() const noexcept { return { m_segments.data(), &m_size }; }
 
-    [[nodiscard]] size_t capacity() const noexcept { return detail::load_size<ThreadSafe>(m_capacity); }
-    [[nodiscard]] size_t size() const noexcept { return detail::load_size<ThreadSafe>(m_size); }
+    [[nodiscard]] size_t capacity() const noexcept { return detail::load(m_capacity); }
+    [[nodiscard]] size_t size() const noexcept { return detail::load(m_size); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
 private:

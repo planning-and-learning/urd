@@ -2,10 +2,12 @@
 
 // Rows of rows: one offsets array per level and the values in one array, rows changed in place.
 
+#include "urd/config.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
+#include "urd/repr/containers/detail/tracking.hpp"
 #include "urd/repr/core/position_iterator.hpp"
 #include "urd/repr/sequences/rows_fwd.hpp"
 #include "urd/repr/values/sparse_set.hpp"
@@ -55,14 +57,13 @@ struct shape_below<Jagged<Inner, TrackRows>>
 template<typename Inner, bool TrackRows>
 class Jagged
 {
-    friend struct urd::memory_of<Jagged>;
 
     using Si = container_traits<Inner>;
     using T = typename Si::element_type;
     static constexpr bool leaf = !is_store<T>;
     static constexpr bool writable = !has<Si, frozen> && (leaf || !has<container_traits<T>, frozen>);
     static constexpr bool bits = writable && leaf && has<Si, unique> && has<Si, dense>;  // a dense set: its bits
-    using word = std::uint64_t;
+    using word = urd::word_t;
     using Data = std::conditional_t<!leaf, Jagged<T>, std::conditional_t<bits, std::vector<word>, std::vector<T>>>;
 
 public:
@@ -77,6 +78,8 @@ public:
         const_row>;
     using iterator = PositionIterator<std::conditional_t<writable, Jagged, const Jagged>>;
     using const_iterator = PositionIterator<const Jagged>;
+    using reference = row;  ///< a row is handed out as a view of its elements
+    using const_reference = const_row;
     using shape_type = std::conditional_t<leaf, std::vector<size_type>, std::vector<typename shape_below<Data>::type>>;
 
     Jagged() = default;
@@ -124,16 +127,7 @@ public:
     /// last reset only.
     void reset()
         requires writable
-    {
-        if constexpr (TrackRows)
-        {
-            for (const auto pos : m_touched)
-                reset_rows(pos, pos + 1);
-            m_touched.clear();
-        }
-        else
-            reset_rows(0, size());
-    }
+    { m_touched.reset(size(), [this](size_type from, size_type to) { reset_rows(from, to); }); }
     /// Rows [from, to) back to their defaults.
     void reset_rows(size_type from, size_type to)
         requires writable
@@ -160,8 +154,7 @@ public:
     [[nodiscard]] row operator[](size_type pos)
         requires writable
     {
-        if constexpr (TrackRows)
-            m_touched.insert(pos);
+        m_touched.insert(pos);
         return row_at<row>(*this, pos);
     }
 
@@ -186,8 +179,7 @@ public:
         m_data.clear();
         m_offsets.resize(1);
         m_lengths.clear();
-        if constexpr (TrackRows)
-            m_touched.clear();
+        m_touched.clear();
     }
 
     template<std::ranges::input_range Row>
@@ -275,24 +267,17 @@ private:
     Data m_data;
     /// The rows' lengths in bits, where they are bits; else always empty.
     std::vector<size_type> m_lengths;
-    struct NoRows
-    {
-    };
     /// The rows handed out to change since the last reset, with TrackRows.
-    [[no_unique_address]] std::conditional_t<TrackRows, SparseSet<size_type>, NoRows> m_touched;
+    [[no_unique_address]] detail::Tracking<TrackRows> m_touched;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&Jagged::m_offsets, &Jagged::m_data, &Jagged::m_lengths, &Jagged::m_touched> {}; }
 };
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/sequences/jagged.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/sequences/jagged.hpp"> {};
 
 namespace urd::detail
 {
@@ -315,10 +300,3 @@ struct representation_of<tracked_jagged_decl, S>
 
 }  // namespace urd::detail
 
-/// Its offsets, its elements (or the rows below, or a dense set's words), the lengths and the touched rows.
-template<typename Inner, bool TrackRows>
-struct urd::memory_of<urd::repr::Jagged<Inner, TrackRows>>
-{
-    static std::size_t bytes(const repr::Jagged<Inner, TrackRows>& held)
-    { return memory_usage(held.m_offsets) + memory_usage(held.m_data) + memory_usage(held.m_lengths) + memory_usage(held.m_touched); }
-};

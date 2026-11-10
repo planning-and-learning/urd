@@ -38,6 +38,8 @@ public:
     using mapped_type = V;
     /// What iterating gives: a key and a view of one of its values.
     using value_type = std::pair<const K, const V&>;
+    using reference = value_type;  ///< an entry is handed out by value: its key and a reference to its value
+    using const_reference = value_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -216,16 +218,13 @@ public:
     };
 
 private:
-    friend struct urd::memory_of<GroupedMultiMap>;
 
     Groups m_groups;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&GroupedMultiMap::m_groups> {}; }
 };
 
 }  // namespace urd::repr
 
-/// A grouped multimap holds what its groups hold.
-template<typename Groups>
-struct urd::memory_of<urd::repr::GroupedMultiMap<Groups>>
-{
-    static std::size_t bytes(const repr::GroupedMultiMap<Groups>& held) { return memory_usage(held.m_groups); }
-};

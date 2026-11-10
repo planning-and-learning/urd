@@ -200,11 +200,11 @@ public:
         const auto& layer = owner(at);
         return layer.m_own.contains(layer.local(at), value);
     }
-    [[nodiscard]] auto view(handle_type at) const
+    [[nodiscard]] auto at(handle_type handle) const
         requires row_pool
     {
-        const auto& layer = owner(at);
-        return layer.m_own.view(layer.local(at));
+        const auto& layer = owner(handle);
+        return layer.m_own.at(layer.local(handle));
     }
     [[nodiscard]] T get(handle_type at) const
         requires row_pool
@@ -218,11 +218,11 @@ public:
         const auto& layer = owner(at);
         return layer.m_own.row_size(layer.local(at));
     }
-    void read(handle_type at, std::span<element> out) const
+    void copy(handle_type at, std::span<element> out) const
         requires row_pool
     {
         const auto& layer = owner(at);
-        layer.m_own.read(layer.local(at), out);
+        layer.m_own.copy(layer.local(at), out);
     }
 
     /// Forgets this layer's own elements; the parent's stay, and the indices start again after them.
@@ -270,15 +270,18 @@ private:
         requires row_pool
     {
         auto out = std::vector<element>(row_size(at));
-        read(at, out);
+        copy(at, out);
         return out;
     }
 
-    friend struct urd::memory_of<LayeredPool>;
 
     R m_own;
     const LayeredPool* m_parent = nullptr;
     std::uint32_t m_base = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&LayeredPool::m_own> {}; }
 };
 
 }  // namespace urd::repr
@@ -286,17 +289,7 @@ private:
 namespace urd
 {
 
-/// Its own layer's: the parent's is the parent's.
-template<typename R>
-struct memory_of<repr::LayeredPool<R>>
-{
-    static std::size_t bytes(const repr::LayeredPool<R>& held) { return memory_usage(held.m_own); }
-};
-
-template<>
-struct include<"urd/repr/wrappers/layered_pool.hpp">
-{
-};
+template<> struct include<"urd/repr/wrappers/layered_pool.hpp"> {};
 
 }  // namespace urd
 

@@ -48,7 +48,7 @@ private:
     [[nodiscard]] const T* element(size_t pos) const noexcept
     {
         const auto index = Layout::segment_index(static_cast<Index>(pos));
-        const auto* segment = static_cast<const T*>(load_pointer<ThreadSafe, void>(std::span(m_segments, Layout::max_segments)[index]));
+        const auto* segment = static_cast<const T*>(load(std::span(m_segments, Layout::max_segments)[index]));
         return &std::span(segment, Layout::segment_capacity(index))[Layout::segment_offset(static_cast<Index>(pos), index)];
     }
 
@@ -87,7 +87,7 @@ public:
         return *element(size() - 1);
     }
 
-    [[nodiscard]] size_t size() const noexcept { return load_size<ThreadSafe>(*m_size); }
+    [[nodiscard]] size_t size() const noexcept { return load(*m_size); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 };
 

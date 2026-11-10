@@ -54,32 +54,21 @@ public:
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const map_key& key, Update update)
-        requires(grows<S> && std::default_initializable<mapped_type>)
-    {
-        if constexpr (requires { representation().update(key, update); })
-            return representation().update(key, update);
-        else
-        {
-            const bool held = !representation().try_emplace(key).second;
-            return update(representation().at(key), held);
-        }
-    }
-    /// read(value) where `key` has a value, else `missing`. With concurrent, safe while others update.
-    template<typename Read, typename Result>
-        requires std::invocable<Read&, const mapped_type&>
-    [[nodiscard]] Result read(const map_key& key, Read read, Result missing) const
-    {
-        if constexpr (requires { representation().read(key, read, missing); })
-            return representation().read(key, read, missing);
-        else
-            return representation().contains(key) ? Result(read(representation().at(key))) : missing;
-    }
+        requires(grows<S> && std::default_initializable<mapped_type> && requires(R& held) { held.update(key, update); })
+    { return representation().update(key, update); }
+    /// f(value) where `key` has a value, else `missing`: the visit of Boost's concurrent maps, giving what f gives. With
+    /// concurrent, safe while others update.
+    template<typename F, typename Result>
+        requires std::invocable<F&, const mapped_type&>
+    [[nodiscard]] Result visit(const map_key& key, F f, Result missing) const
+        requires requires(const R& held) { held.visit(key, f, missing); }
+    { return representation().visit(key, f, missing); }
 
     /// Inserts `value` where `key` has none, else replaces the value by combine(value held, value): a hull of
-    /// intervals, the lower of two costs. Whether the Store changed, as fixpoints ask.
+    /// intervals, the lower of two costs. Whether the Store changed, as fixpoints ask. Next to insert_or_assign.
     template<typename Combine>
         requires std::invocable<Combine&, const mapped_type&, const mapped_type&>
-    bool merge(const map_key& key, const mapped_type& value, Combine combine)
+    bool insert_or_combine(const map_key& key, const mapped_type& value, Combine combine)
         requires grows<S>
     {
         if (representation().try_emplace(key, value).second)

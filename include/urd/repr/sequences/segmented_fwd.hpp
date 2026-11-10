@@ -61,21 +61,11 @@ struct declaration_of<repr::SegmentedVector<T, N, false, I>>
 namespace detail
 {
 
-struct concurrent_segmented_vector_decl
+struct concurrent_segmented_vector_decl : segmented_vector_decl
 {
     static constexpr std::string_view id = "concurrent_segmented_vector";
-    static constexpr auto headers = header_list<1> { "urd/repr/sequences/segmented.hpp" };
-    using kind = sequence_kind;
     static constexpr property_set provides =
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::concurrent });
-    static constexpr property_set relies_on = relies(stated({ referencing::stable_refs }));
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs =
-        cost_table<cost_entry<operation::insert, costs::one_a>,
-                   cost_entry<operation::iterate, costs::lin_n>,
-                   cost_entry<operation::access, costs::one>,
-                   cost_entry<operation::erase, costs::one>,
-                   cost_entry<operation::clear, costs::lin_n>>;
     static constexpr double words = 1.6;
     static constexpr std::string_view description = "segmented vector, thread-safe appends";
     static constexpr std::string_view holds = "doubling segments; stable references; appends from threads";

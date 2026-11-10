@@ -68,25 +68,13 @@ struct declaration_of<boost::container::flat_set<T, C, A>>
 namespace detail
 {
 
-struct flat_multiset_decl
+struct flat_multiset_decl : flat_set_decl
 {
     static constexpr std::string_view id = "flat_multiset";
-    static constexpr auto headers = header_list<1> { "urd/repr/values/flat_set.hpp" };
     using kind = multiset_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, position::positional, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear });
-    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
-                                       cost_entry<operation::lookup, costs::log_n>,
-                                       cost_entry<operation::ordered_lookup, costs::log_n>,
-                                       cost_entry<operation::erase, costs::lin_n>,
-                                       cost_entry<operation::clear, costs::lin_n>,
-                                       cost_entry<operation::iterate, costs::lin_n>,
-                                       cost_entry<operation::access, costs::one>>;
-    static constexpr double words = 1.5;
     static constexpr std::string_view description = "boost::container::flat_multiset (sorted vector)";
-    static constexpr std::string_view holds = "n elements in one array; retains";
 };
 template<typename T, typename C, typename A>
 struct declaration_of<boost::container::flat_multiset<T, C, A>>

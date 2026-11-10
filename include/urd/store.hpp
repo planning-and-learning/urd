@@ -194,15 +194,13 @@ public:
     {
     }
 
-    /// Replaces the contents by what a Store built from these elements would hold: the one way a frozen Store
-    /// changes. A representation that rebuilds in place (assign) keeps its storage; any other is built anew.
+    /// Replaces the contents by what a Store built from these elements would hold, in place, its storage kept: the
+    /// one way a frozen Store changes.
     template<std::input_iterator InputIt>
     void assign(InputIt first, InputIt last)
+        requires requires(R& held) { held.assign(first, last); }
     {
-        if constexpr (requires { m_representation.assign(first, last); })
-            m_representation.assign(first, last);
-        else
-            m_representation = representation(first, last);
+        m_representation.assign(first, last);
         check_holds_one();
     }
 
@@ -276,7 +274,7 @@ struct memory_of<Store<Kind, Tags...>>
     static std::size_t bytes(const Store<Kind, Tags...>& store) { return memory_usage(detail::store_access::representation(store)); }
 };
 
-/// The owner acquire_unique gives of an element of Store<slots<T>, Tags...> (urd/store/slots.hpp): a std::unique_ptr
+/// The owner make_unique gives of an element of Store<slots<T>, Tags...> (urd/store/slots.hpp): a std::unique_ptr
 /// whose deleter gives the slot back. A shared owner is a std::shared_ptr<T>.
 template<typename T, typename... Tags>
 using unique_slot_ptr = std::unique_ptr<T, typename Store<slots<T>, Tags...>::releaser>;

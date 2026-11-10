@@ -21,19 +21,15 @@ public:
     /// Joins the classes of `lhs` and `rhs`; false where they were one already.
     bool merge(const key& lhs, const key& rhs) { return representation().merge(lhs, rhs); }
     /// The element that names the class of `element`.
-    [[nodiscard]] key find(const key& element) const { return constant().find(element); }
+    [[nodiscard]] key find(const key& element) const { return representation().find(element); }
     /// Whether `element` is an element of some class.
-    [[nodiscard]] bool contains(const key& element) const { return constant().contains(element); }
-    [[nodiscard]] bool same(const key& lhs, const key& rhs) const { return constant().same(lhs, rhs); }
-    [[nodiscard]] std::size_t class_size(const key& element) const { return constant().class_size(element); }
-    /// How many classes there are.
-    [[nodiscard]] std::size_t classes() const { return constant().classes(); }
+    [[nodiscard]] bool contains(const key& element) const { return representation().contains(element); }
     void clear()
         requires clears<S>
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 

@@ -48,6 +48,8 @@ public:
     /// What it is built with.
     using parameter = typename Codec::parameter;
     using value_type = typename Codec::value_type;
+    using reference = value_type;  ///< a row is handed out by value
+    using const_reference = value_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using const_iterator = PositionIterator<const UniformRows>;
@@ -66,10 +68,10 @@ public:
     ~UniformRows()
     {
         for (auto& segment : m_segments)
-            delete[] detail::load_pointer<ThreadSafe, unit>(segment);
+            delete[] detail::load(segment);
     }
 
-    [[nodiscard]] size_type size() const noexcept { return detail::load_size<ThreadSafe>(m_size); }
+    [[nodiscard]] size_type size() const noexcept { return detail::load(m_size); }
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
     [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
@@ -84,7 +86,7 @@ public:
         if (pos < m_table.size())
             return m_table[pos];
         const auto segment = Layout::segment_index(pos);
-        return m_codec.read(detail::load_pointer<ThreadSafe, unit>(m_segments[segment]), Layout::segment_offset(pos, segment), m_length);
+        return m_codec.read(detail::load(m_segments[segment]), Layout::segment_offset(pos, segment), m_length);
     }
 
     /// Throws where `row` cannot be stored (Codec::check): what an owner calls before it touches anything, so that a
@@ -102,7 +104,7 @@ public:
         const auto pos = size();
         const auto length = static_cast<size_type>(std::ranges::size(row));
         // The length of the rows to come, from the first. Segments kept by clear (sized for their rows) keep theirs.
-        if (pos == 0 && !detail::load_pointer<ThreadSafe, unit>(m_segments[0]))
+        if (pos == 0 && !detail::load(m_segments[0]))
             m_length = length;
         if (!m_table.empty() || length != m_length)
         {
@@ -118,16 +120,16 @@ public:
         else if (length != 0)
         {
             const auto segment = Layout::segment_index(pos);
-            auto* data = detail::load_pointer<ThreadSafe, unit>(m_segments[segment]);
+            auto* data = detail::load(m_segments[segment]);
             if (!data)
             {
                 // ponytail: zeroed for every codec (packed words are read before they are written; plain rows pay a pass)
                 data = new unit[m_codec.units(Layout::segment_capacity(segment), length)]();
-                detail::store_pointer<ThreadSafe, unit>(m_segments[segment], data);
+                detail::store(m_segments[segment], data);
             }
             m_codec.write(data, Layout::segment_offset(pos, segment), row);
         }
-        detail::store_size<ThreadSafe>(m_size, pos + 1);
+        detail::store(m_size, pos + 1);
     }
 
     /// Moves the last row into `pos` and drops the last: the row at `pos` changes, the others stay. Where rows have
@@ -152,7 +154,7 @@ public:
 
     void clear() noexcept
     {
-        detail::store_size<ThreadSafe>(m_size, 0);
+        detail::store(m_size, 0);
         m_table.clear();
         m_arena.clear();
     }
@@ -195,7 +197,7 @@ struct urd::memory_of<urd::repr::UniformRows<Codec, ThreadSafe>>
         using Rows = urd::repr::UniformRows<Codec, ThreadSafe>;
         auto total = urd::memory_usage(held.m_table) + urd::memory_usage(held.m_arena);
         for (std::size_t segment = 0; segment < held.m_segments.size(); ++segment)
-            if (urd::repr::detail::load_pointer<ThreadSafe, typename Rows::unit>(held.m_segments[segment]))
+            if (urd::repr::detail::load(held.m_segments[segment]))
                 total += held.m_codec.units(Rows::Layout::segment_capacity(segment), held.m_length) * sizeof(typename Rows::unit);
         return total;
     }

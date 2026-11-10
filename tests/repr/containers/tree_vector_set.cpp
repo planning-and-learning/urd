@@ -32,7 +32,7 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
         constexpr auto singleton = std::array<std::uint32_t, 1> { 7 };
         const auto singleton_index = singleton_set.insert(singleton).first;
         auto singleton_output = std::array<std::uint32_t, 1> {};
-        singleton_set.read(singleton_index, singleton_output);
+        singleton_set.copy(singleton_index, singleton_output);
         EXPECT_EQ(singleton_output, singleton);
         EXPECT_EQ(singleton_index.root, singleton.front());
         EXPECT_EQ(singleton_set.num_leaves(), 0);
@@ -44,7 +44,7 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     const auto empty = set.insert(std::span<const std::uint32_t> {}).first;
     EXPECT_EQ(empty, TreeHandle {});
     EXPECT_TRUE(set.empty());
-    set.read(empty, std::span<std::uint32_t> {});
+    set.copy(empty, std::span<std::uint32_t> {});
 
     constexpr auto repeated = std::array<std::uint32_t, 4> { 1, 2, 1, 2 };
     const auto repeated_index = set.insert(repeated).first;
@@ -53,20 +53,20 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     EXPECT_EQ(set.num_nodes(), 2);
 
     auto output = std::array<std::uint32_t, repeated.size()> {};
-    set.read(repeated_index, output);
+    set.copy(repeated_index, output);
     EXPECT_EQ(output, repeated);
 
     constexpr auto shared_subtree = std::array<std::uint32_t, 2> { 1, 2 };
     const auto shared_subtree_index = set.insert(shared_subtree).first;
     auto shared_subtree_output = std::array<std::uint32_t, shared_subtree.size()> {};
-    set.read(shared_subtree_index, shared_subtree_output);
+    set.copy(shared_subtree_index, shared_subtree_output);
     EXPECT_EQ(shared_subtree_output, shared_subtree);
     EXPECT_EQ(set.num_leaves(), 0);
     EXPECT_EQ(set.num_nodes(), 2);
 
     EXPECT_EQ(set.insert(repeated).first, repeated_index);
     EXPECT_EQ(set.insert(shared_subtree).first, shared_subtree_index);
-    EXPECT_THROW(set.read(repeated_index, std::span<std::uint32_t>(output).first(3)), std::invalid_argument);
+    EXPECT_THROW(set.copy(repeated_index, std::span<std::uint32_t>(output).first(3)), std::invalid_argument);
 
     set.clear();
     EXPECT_TRUE(set.empty());
@@ -80,7 +80,7 @@ TEST(CommonTreeVectorSetTest, SupportsDifferentLeafTypesAndLengths)
     constexpr auto floats = std::array<double, 5> { 1.5, 2.5, 3.5, 4.5, 5.5 };
     const auto float_index = float_set.insert(floats).first;
     auto float_output = std::array<double, floats.size()> {};
-    float_set.read(float_index, float_output);
+    float_set.copy(float_index, float_output);
     EXPECT_EQ(float_output, floats);
     EXPECT_EQ(float_set.num_leaves(), floats.size());
 
@@ -88,7 +88,7 @@ TEST(CommonTreeVectorSetTest, SupportsDifferentLeafTypesAndLengths)
     constexpr auto custom = std::array<CustomLeaf, 3> { CustomLeaf { 1, 2 }, CustomLeaf { 3, 4 }, CustomLeaf { 5, 6 } };
     const auto custom_index = custom_set.insert(custom).first;
     auto custom_output = std::array<CustomLeaf, custom.size()> {};
-    custom_set.read(custom_index, custom_output);
+    custom_set.copy(custom_index, custom_output);
     EXPECT_EQ(custom_output, custom);
     EXPECT_EQ(custom_set.num_leaves(), custom.size());
 }
@@ -109,7 +109,7 @@ TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
     {
         indices[i] = set.insert(vectors[i]).first;
         auto output = std::array<std::uint32_t, 5> {};
-        set.read(indices[i], output);
+        set.copy(indices[i], output);
         EXPECT_EQ(output, vectors[i]);
     }
     for (std::size_t i = 0; i < vectors.size(); ++i)
@@ -125,7 +125,7 @@ TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
         const auto index = set.insert(single).first;
         EXPECT_EQ(index, (TreeHandle { value, 1 }));
         auto output = std::array<std::uint32_t, 1> {};
-        set.read(index, output);
+        set.copy(index, output);
         EXPECT_EQ(output, single);
     }
 
@@ -143,7 +143,7 @@ TEST(CommonTreeVectorSetTest, WritesMatchFullInsert)
         for (const auto& write : writes)
             values[write.position] = write.value;
         auto output = std::vector<Value>(values.size());
-        set.read(written, output);
+        set.copy(written, output);
         EXPECT_EQ(output, values);
         EXPECT_EQ(written, set.insert(values).first);
         EXPECT_LE(set.num_nodes() - nodes_before, writes.size() * static_cast<std::size_t>(std::bit_width(values.size())));
@@ -185,7 +185,7 @@ void expect_arity_vectors()
 
         const auto index = set.insert(values).first;
         auto output = std::vector<Value>(size);
-        set.read(index, output);
+        set.copy(index, output);
         EXPECT_EQ(output, values);
         EXPECT_EQ(set.insert(values).first, index);
 
@@ -197,7 +197,7 @@ void expect_arity_vectors()
         const auto written = set.insert(index, std::span<const urd::Write<Value>>(writes)).first;
         for (const auto& write : writes)
             values[write.position] = write.value;
-        set.read(written, output);
+        set.copy(written, output);
         EXPECT_EQ(output, values);
         EXPECT_EQ(written, set.insert(values).first);
         const auto bits = static_cast<std::size_t>(std::countr_zero(Arity));

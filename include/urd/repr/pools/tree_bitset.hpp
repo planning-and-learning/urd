@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bitset_span.hpp"
@@ -51,16 +52,19 @@ class TreeBitsetSet
 {
     using K = std::ranges::range_value_t<Row>;
     using Block = std::uint32_t;
+    /// The blocks a word of a row's bits holds (urd/config.hpp): block i of a row is part i % blocks_per_word of word
+    /// i / blocks_per_word, low parts first.
+    static constexpr std::size_t blocks_per_word = word_bits / std::numeric_limits<Block>::digits;
     using Bits = BitsetSpan<Block>;
     using ConstBits = BitsetSpan<const Block>;
     using Children = std::array<std::uint32_t, Arity>;
     using Nodes = InterningTable<Children, ThreadSafe>;
     /// The slot of an all-zero subtree of more than one block. A zero block is the value 0.
     static constexpr std::uint32_t zero_subtree = std::numeric_limits<std::uint32_t>::max();
-    /// Whether a row keeps its bits as 64-bit words (a dense set), which it hands out up to its last nonzero one.
+    /// Whether a row keeps its bits as words (urd::word_t: a dense set), which it hands out up to its last nonzero one.
     template<typename Elements>
     static constexpr bool keeps_words = requires(const Elements& row) {
-        { row.significant_words() } -> std::convertible_to<std::span<const std::uint64_t>>;
+        { row.significant_words() } -> std::convertible_to<std::span<const word_t>>;
     };
 
 public:
@@ -79,7 +83,7 @@ public:
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
     { return store_blocks(std::span<const Block>(blocks_of(elements))); }
-    /// A row that keeps its bits (a dense set: significant_words()), by its 64-bit words, read as blocks in place:
+    /// A row that keeps its bits (a dense set: significant_words()), by its words, read as blocks in place:
     /// allocates nothing.
     template<std::ranges::input_range Elements>
         requires keeps_words<Elements>
@@ -149,7 +153,7 @@ public:
     [[nodiscard]] Row get(handle_type handle) const
     {
         auto elements = std::vector<K>(row_size(handle));
-        read(handle, elements);
+        copy(handle, elements);
         return Row(elements.begin(), elements.end());
     }
     /// How many elements the row holds: the set bits, read along the tree; allocates nothing.
@@ -160,7 +164,7 @@ public:
         return count;
     }
     /// The row's elements, in key order, into `out`, which must hold row_size(handle) of them; allocates nothing.
-    void read(handle_type handle, std::span<K> out) const
+    void copy(handle_type handle, std::span<K> out) const
     {
         if (out.size() != row_size(handle))
             throw std::invalid_argument("urd::repr::TreeBitsetSet::read: the output must hold the row");
@@ -172,17 +176,17 @@ public:
                                *next++ = index_of<K>::from_index(std::size_t { position } * Bits::Digits + static_cast<std::size_t>(std::countr_zero(block)));
                        });
     }
-    /// The row into `out`, a row that takes its bits as 64-bit words (a dense set: assign_words), word by word into its
+    /// The row into `out`, a row that takes its bits as words (a dense set: assign_words), word by word into its
     /// storage, which is reused: allocates nothing where `out` holds as many words already.
-    void read(handle_type handle, Row& out) const
-        requires requires(Row& row, void (*fill)(std::span<std::uint64_t>)) { row.assign_words(std::size_t {}, fill); }
+    void copy(handle_type handle, Row& out) const
+        requires requires(Row& row, void (*fill)(std::span<word_t>)) { row.assign_words(std::size_t {}, fill); }
     {
-        out.assign_words((std::size_t { handle.size } + 1) / 2,
-                         [this, handle](std::span<std::uint64_t> words)
+        out.assign_words(bit::ceil_div<std::size_t>(handle.size, blocks_per_word),
+                         [this, handle](std::span<word_t> words)
                          {
                              for_each_block(handle,
                                             [&words](std::uint32_t position, Block block)
-                                            { words[position / 2] |= std::uint64_t { block } << (Bits::Digits * (position % 2)); });
+                                            { words[position / blocks_per_word] |= word_t { block } << (Bits::Digits * (position % blocks_per_word)); });
                          });
     }
 
@@ -232,12 +236,12 @@ private:
         return children;
     }
 
-    /// 64-bit words read as the 32-bit blocks they hold, block i the low (even i) or high (odd i) half of word i / 2,
-    /// without a copy; up to the last nonzero block. What insert_recursive and find_recursive read, as they read a span.
+    /// Words read as the blocks they hold (blocks_per_word each, low parts first), without a copy; up to the last nonzero
+    /// block. What insert_recursive and find_recursive read, as they read a span.
     class WordBlocks
     {
     public:
-        explicit WordBlocks(std::span<const std::uint64_t> words) : m_words(words), m_count(2 * words.size())
+        explicit WordBlocks(std::span<const word_t> words) : m_words(words), m_count(blocks_per_word * words.size())
         {
             while (m_count > 0 && (*this)[m_count - 1] == Block { 0 })
                 --m_count;
@@ -247,7 +251,7 @@ private:
         [[nodiscard]] Block operator[](std::size_t i) const noexcept
         {
             const auto at = m_first + i;
-            return static_cast<Block>(m_words[at / 2] >> (Bits::Digits * (at % 2)));
+            return static_cast<Block>(m_words[at / blocks_per_word] >> (Bits::Digits * (at % blocks_per_word)));
         }
         [[nodiscard]] Block front() const noexcept { return (*this)[0]; }
         [[nodiscard]] Block back() const noexcept { return (*this)[m_count - 1]; }
@@ -260,7 +264,7 @@ private:
         }
 
     private:
-        std::span<const std::uint64_t> m_words;
+        std::span<const word_t> m_words;
         std::size_t m_first = 0;
         std::size_t m_count = 0;
     };
@@ -566,9 +570,12 @@ private:
             read_recursive(node[k], blocks.subspan(offset, child_size(size, k)));
     }
 
-    friend struct urd::memory_of<TreeBitsetSet>;
 
     Nodes m_nodes;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&TreeBitsetSet::m_nodes> {}; }
 };
 
 }  // namespace urd::repr
@@ -576,17 +583,7 @@ private:
 namespace urd
 {
 
-/// Its node table.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct memory_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
-{
-    static std::size_t bytes(const repr::TreeBitsetSet<Row, Arity, ThreadSafe>& held) { return memory_usage(held.m_nodes); }
-};
-
-template<>
-struct include<"urd/repr/pools/tree_bitset.hpp">
-{
-};
+template<> struct include<"urd/repr/pools/tree_bitset.hpp"> {};
 
 }  // namespace urd
 

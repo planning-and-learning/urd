@@ -36,12 +36,13 @@ template<typename K, bool KeepOrder>
 class SparseSet
 {
     static_assert(indexable<K>, "urd::repr::SparseSet: keys must be indices (urd::index_of)");
-    friend struct urd::memory_of<SparseSet>;
 
 public:
     using iterator = typename std::vector<K>::const_iterator;
     using const_iterator = iterator;
     using value_type = K;
+    using reference = const K&;
+    using const_reference = const K&;
     using key_type = K;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -69,6 +70,11 @@ public:
 
     [[nodiscard]] iterator find(const K& key) const
     { return contains(key) ? begin() + static_cast<difference_type>(m_places[index_of<K>::to_index(key)]) : end(); }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
+    {
+        const auto found = find(key);
+        return { found, found == end() ? found : std::next(found) };
+    }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
     [[nodiscard]] bool contains(const K& key) const
     {
@@ -105,6 +111,12 @@ public:
             return 0;
         erase_at(m_places[index_of<K>::to_index(key)]);
         return 1;
+    }
+    /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
+    void merge(SparseSet& source)
+    {
+        for (auto it = source.begin(); it != source.end();)
+            it = insert(*it).second ? source.erase(it) : std::next(it);
     }
     /// The member after `pos` takes its place, so the returned iterator is `pos` again.
     iterator erase(const_iterator pos)
@@ -146,6 +158,10 @@ private:
 
     std::vector<K> m_members;
     std::vector<std::size_t> m_places;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&SparseSet::m_members, &SparseSet::m_places> {}; }
 };
 
 }  // namespace urd::repr
@@ -153,17 +169,7 @@ private:
 namespace urd
 {
 
-/// Its members, and the place of each index.
-template<typename K, bool KeepOrder>
-struct memory_of<repr::SparseSet<K, KeepOrder>>
-{
-    static std::size_t bytes(const repr::SparseSet<K, KeepOrder>& held) { return memory_usage(held.m_members) + memory_usage(held.m_places); }
-};
-
-template<>
-struct include<"urd/repr/values/sparse_set.hpp">
-{
-};
+template<> struct include<"urd/repr/values/sparse_set.hpp"> {};
 
 }  // namespace urd
 

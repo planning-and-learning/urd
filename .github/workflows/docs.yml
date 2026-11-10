@@ -1,7 +1,7 @@
 name: Docs
 
 # The documentation (docs/, Sphinx), built with warnings as errors on every pull request; main's is published on
-# GitHub Pages (https://verdog-ai.github.io/urd/), where the README links.
+# GitHub Pages (https://planning-and-learning.github.io/urd/), where the README links.
 on:
   pull_request:
   push:

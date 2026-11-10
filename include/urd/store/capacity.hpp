@@ -12,13 +12,10 @@ template<typename Derived, typename R, typename S>
 class reserving
 {
 public:
-    /// Hints how many elements will be inserted; does nothing where the representation cannot reserve.
+    /// Hints how many elements will be inserted.
     void reserve(std::size_t count)
-    {
-        auto& representation = store_access::of<Derived>(*this);
-        if constexpr (requires { representation.reserve(count); })
-            representation.reserve(count);
-    }
+        requires requires(R& held) { held.reserve(count); }
+    { store_access::of<Derived>(*this).reserve(count); }
 };
 
 }  // namespace urd::detail::facet

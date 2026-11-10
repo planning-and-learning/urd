@@ -10,15 +10,7 @@
 #include <cstddef>
 #include <gtl/phmap.hpp>
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/values/parallel_hash_set.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/values/parallel_hash_set.hpp"> {};
 
 namespace urd::detail
 {

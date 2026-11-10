@@ -61,22 +61,11 @@ struct declaration_of<repr::IndexMap<K, V, false>>
 namespace detail
 {
 
-struct stable_dense_map_decl
+struct stable_dense_map_decl : dense_map_decl
 {
     static constexpr std::string_view id = "stable_dense_map";
-    static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, referencing::stable_refs });
-    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
-                                       cost_entry<operation::lookup, costs::one>,
-                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
-                                       cost_entry<operation::erase, costs::one>,
-                                       cost_entry<operation::clear, costs::lin_keys>,
-                                       cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.3;
-    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "dense map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot per index, in segments that never move";
 };
@@ -92,15 +81,11 @@ struct declaration_of<repr::IndexMap<K, V, false, false, true>>
 namespace detail
 {
 
-struct generation_map_decl
+struct generation_map_decl : dense_map_decl
 {
     static constexpr std::string_view id = "generation_map";
-    static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::none, threading::none });
-    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
                                        cost_entry<operation::lookup, costs::one>,
                                        cost_entry<operation::ordered_lookup, costs::lin_keys>,
@@ -108,7 +93,6 @@ struct generation_map_decl
                                        cost_entry<operation::clear, costs::one>,
                                        cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.6;
-    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
     static constexpr std::string_view holds = "a slot and a generation per index";
 };
@@ -124,23 +108,12 @@ struct declaration_of<repr::IndexMap<K, V, true>>
 namespace detail
 {
 
-struct stable_generation_map_decl
+struct stable_generation_map_decl : generation_map_decl
 {
     static constexpr std::string_view id = "stable_generation_map";
-    static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::none });
-    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
-                                       cost_entry<operation::lookup, costs::one>,
-                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
-                                       cost_entry<operation::erase, costs::one>,
-                                       cost_entry<operation::clear, costs::one>,
-                                       cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.7;
-    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
 };
@@ -156,23 +129,12 @@ struct declaration_of<repr::IndexMap<K, V, true, false, true>>
 namespace detail
 {
 
-struct thread_safe_generation_map_decl
+struct thread_safe_generation_map_decl : generation_map_decl
 {
     static constexpr std::string_view id = "thread_safe_generation_map";
-    static constexpr auto headers = header_list<1> { "urd/repr/maps/index_map.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides = property_set::of(
         { order::sorted, uniqueness::unique, keys::dense, memory::retains, clearing::constant_clear, referencing::stable_refs, threading::concurrent });
-    static constexpr property_set relies_on = relies(traits<role::element, trait::an_index>(), traits<role::order, trait::own_order>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
-                                       cost_entry<operation::lookup, costs::one>,
-                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
-                                       cost_entry<operation::erase, costs::one>,
-                                       cost_entry<operation::clear, costs::one>,
-                                       cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 1.8;
-    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
     static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
 };

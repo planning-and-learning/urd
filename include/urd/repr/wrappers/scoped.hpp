@@ -170,11 +170,14 @@ private:
         m_log.emplace_back(key, found == m_table.end() ? std::nullopt : std::optional<V>(found->second));
     }
 
-    friend struct urd::memory_of<Scoped>;
 
     Table m_table;
     std::vector<std::pair<K, std::optional<V>>> m_log;
     std::vector<std::size_t> m_scopes;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&Scoped::m_table, &Scoped::m_log, &Scoped::m_scopes> {}; }
 };
 
 }  // namespace urd::repr
@@ -182,17 +185,7 @@ private:
 namespace urd
 {
 
-/// Its table, its log and its scopes.
-template<typename Map>
-struct memory_of<repr::Scoped<Map>>
-{
-    static std::size_t bytes(const repr::Scoped<Map>& held) { return memory_usage(held.m_table) + memory_usage(held.m_log) + memory_usage(held.m_scopes); }
-};
-
-template<>
-struct include<"urd/repr/wrappers/scoped.hpp">
-{
-};
+template<> struct include<"urd/repr/wrappers/scoped.hpp"> {};
 
 }  // namespace urd
 

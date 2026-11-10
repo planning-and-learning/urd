@@ -160,7 +160,7 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
             if (!std::ranges::equal(got, rows[each]))
                 return label + "get gives back another row";
             auto out = std::vector<E>(pool.row_size(handles[each]));
-            pool.read(handles[each], out);
+            pool.copy(handles[each], out);
             if (out != rows[each])
                 return label + "read gives back another row";
             if (!rows.empty() && (rows[each] == rows.back()) != (handles[each] == handles.back()))
@@ -266,9 +266,9 @@ std::optional<std::string> run_slots(P& pool, unsigned seed, int steps)
             {
                 if (drawn % 4 == 3)
                 {
-                    // An acquired slot holds whatever it held; the step writes it, as a user would.
-                    operation = "acquire";
-                    const auto handle = pool.acquire();
+                    // A slot with a default element; the step writes it, as a user would.
+                    operation = "emplace default";
+                    const auto handle = pool.emplace();
                     pool[handle] = E(drawn);
                     wrong = added(handle, E(drawn));
                 }

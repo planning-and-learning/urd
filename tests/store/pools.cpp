@@ -127,13 +127,9 @@ TEST(Partition, AgreesWithRelabeling)
             std::ranges::replace(label, old, joined);
             for (int each = 0; each < static_cast<int>(size); ++each)
             {
-                ASSERT_EQ(partition.same(lhs, each), label[static_cast<std::size_t>(lhs)] == label[static_cast<std::size_t>(each)]);
-                ASSERT_EQ(partition.class_size(each), static_cast<std::size_t>(std::ranges::count(label, label[static_cast<std::size_t>(each)])));
-                ASSERT_TRUE(partition.same(partition.find(each), each));
+                ASSERT_EQ(partition.find(lhs) == partition.find(each), label[static_cast<std::size_t>(lhs)] == label[static_cast<std::size_t>(each)]);
+                ASSERT_EQ(partition.find(partition.find(each)), partition.find(each));
             }
-            auto distinct = label;
-            std::ranges::sort(distinct);
-            ASSERT_EQ(partition.classes(), static_cast<std::size_t>(std::ranges::distance(distinct.begin(), std::ranges::unique(distinct).begin())));
         }
     }
 }
@@ -244,8 +240,8 @@ TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
     {
         const auto counted = urd::testing::Counted();
         size = rows.row_size(by_words);
-        rows.read(by_words, std::span<int>(elements));
-        rows.read(by_words, out);
+        rows.copy(by_words, std::span<int>(elements));
+        rows.copy(by_words, out);
     }
     if (urd::testing::counts_allocations)
         EXPECT_EQ(urd::testing::counts().allocations, 0);
@@ -254,7 +250,7 @@ TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
     EXPECT_TRUE(std::ranges::equal(out, row));
     // Into a set of other keys: its words replaced by the row's.
     auto other = Row(values.begin(), values.begin() + 1);
-    rows.read(by_words, other);
+    rows.copy(by_words, other);
     EXPECT_TRUE(std::ranges::equal(other, values));
 }
 

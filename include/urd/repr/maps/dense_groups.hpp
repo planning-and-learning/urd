@@ -106,17 +106,14 @@ public:
     }
 
 private:
-    friend struct urd::memory_of<DenseGroups>;
 
     std::vector<std::vector<V>> m_rows;
     std::size_t m_count = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&DenseGroups::m_rows> {}; }
 };
 
 }  // namespace urd::repr
 
-/// A row per key index, and each row's values.
-template<typename K, typename V>
-struct urd::memory_of<urd::repr::DenseGroups<K, V>>
-{
-    static std::size_t bytes(const repr::DenseGroups<K, V>& held) { return memory_usage(held.m_rows); }
-};

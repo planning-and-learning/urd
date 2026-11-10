@@ -31,7 +31,6 @@ namespace urd::repr
 template<typename Inner>
 class RowPool
 {
-    friend struct urd::memory_of<RowPool>;
 
 public:
     using value_type = Inner;
@@ -114,19 +113,15 @@ public:
 private:
     std::vector<Inner> m_rows;  // m_rows[m_used..] are cleared and kept
     size_type m_used = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&RowPool::m_rows> {}; }
 };
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/sequences/row_pool.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/sequences/row_pool.hpp"> {};
 
 namespace urd::detail
 {
@@ -139,9 +134,3 @@ struct representation_of<row_pool_decl, S>
 
 }  // namespace urd::detail
 
-/// Its rows, those kept for reuse included, each with what it holds.
-template<typename Inner>
-struct urd::memory_of<urd::repr::RowPool<Inner>>
-{
-    static std::size_t bytes(const repr::RowPool<Inner>& held) { return memory_usage(held.m_rows); }
-};

@@ -28,16 +28,11 @@ template<typename R, typename F>
 void for_each_cista_member(R& record, F f)
 { [&]<auto... Ms>(Members<Ms...>) { (f(record.*Ms), ...); }(std::remove_const_t<R>::cista_members()); }
 
-/// Whether a slot of type S is a child: an index of a type in the list Types.
+/// A slot of type S that is a child: an index of a type in the list Types.
+template<typename S, typename Types>
+concept child_of = is_index_type<std::remove_const_t<S>> && boost::mp11::mp_contains<Types, typename std::remove_const_t<S>::element_type>::value;
 template<typename Types, typename S>
-inline constexpr bool is_child = []
-{
-    using V = std::remove_const_t<S>;
-    if constexpr (is_index_type<V>)
-        return boost::mp11::mp_contains<Types, typename V::element_type>::value;
-    else
-        return false;
-}();
+inline constexpr bool is_child = child_of<S, Types>;
 
 /// Walks member (const or not, as member is) in member order, calling f with each slot f takes (std::invocable) and
 /// not descending into it; any other slot is descended into where it is one of the flat containers a stored record

@@ -120,20 +120,22 @@ Member functions: interning pools (``handles, unique``)
 
 .. cpp:function:: value_type get(handle_type handle) const
 .. cpp:function:: std::size_t row_size(handle_type handle) const
-.. cpp:function:: void read(handle_type handle, std::span<element> out) const
+.. cpp:function:: void copy(handle_type handle, std::span<element> out) const
 
    The row's elements into ``out``, which must hold ``row_size(handle)`` of them; allocates nothing (a tree pool
    reads them, and counts them for ``row_size``, along the tree).
 
-.. cpp:function:: void read(handle_type handle, value_type& out) const
+.. cpp:function:: void copy(handle_type handle, value_type& out) const
 
    A tree pool of dense sets: the row into ``out`` word by word (``assign_words``, :doc:`sets`), its storage reused;
    allocates nothing where ``out`` holds the row's words already.
 
-.. cpp:function:: auto view(handle_type handle) const
+.. cpp:function:: auto at(handle_type handle) const
+.. cpp:function:: auto operator[](handle_type handle) const
 
-   The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set its
-   bits (``BitsetSpan``). Valid until the pool is cleared.
+   The stored row without copying: a span of the elements, or for a dense set its bits (``BitsetSpan``). Valid until
+   the pool is cleared. Every pool has it that keeps rows in full; one with ``structural_sharing`` keeps a row as a
+   tree of shared nodes and has neither this nor lookups by ``prehashed`` rows.
 
 .. cpp:function:: void clear()
 
@@ -158,10 +160,6 @@ Member functions: slots (``handles`` without ``unique``)
 
    A slot holding the element: an erased one where there is one, else a new one.
 
-.. cpp:function:: handle_type acquire()
-
-   A slot to use as it is: an erased element with what it held and the storage it kept, else a new one.
-
 .. cpp:function:: const value_type& operator[](handle_type handle) const
 .. cpp:function:: value_type& operator[](handle_type handle)
 .. cpp:function:: std::size_t size() const
@@ -172,10 +170,10 @@ Member functions: slots (``handles`` without ``unique``)
 
 .. cpp:function:: void clear()
 
-``acquire_unique()`` and ``acquire_shared()`` own an acquired slot as ``std::unique_ptr`` and ``std::shared_ptr`` do:
+``make_unique()`` and ``make_shared()`` own an acquired slot as ``std::unique_ptr`` and ``std::shared_ptr`` do:
 the slot goes back with its (last) owner, and once as many owners have lived at once nothing allocates.
 
-With ``keyed<K>`` (single-threaded), slots are acquired only by key: ``acquire_shared(key, args...)`` hands out a slot
+With ``keyed<K>`` (single-threaded), slots are acquired only by key: ``make_shared(key, args...)`` hands out a slot
 given back under an equal key (``urd::Hash``, ``urd::EqualTo``) as it is, else a new ``T(key, args...)``. Each slot
 keeps its key and goes back to its key's free list, so a slot is never reused for another key (a buffer shaped by its
 column widths keeps its shape); once each key has had as many owners at once, nothing allocates.
@@ -184,7 +182,7 @@ column widths keeps its shape); once each key has had as many owners at once, no
 
    using Buffers = Store<slots<Rows>, keyed<column_widths>>;
    auto buffers = Buffers();
-   auto rows = buffers.acquire_shared(column_widths { 8, 16 });   // Rows(widths), or one given back under equal widths
+   auto rows = buffers.make_shared(column_widths { 8, 16 });   // Rows(widths), or one given back under equal widths
 
 Complexity
 ----------
@@ -230,9 +228,9 @@ columns' ``std::invalid_argument``, before anything is stored. ``view(h)`` hands
 ``as<T>()`` (the columns as a random-access range of ``T``), ``size()``. The Store's ``row_builder_type`` (an
 ``EncodedRow``) builds a row column by column (``set``, ``copy`` from another row) to look up or insert.
 
-A row's padding is zero. A row hashes and compares by its values (``urd::hash_columns``), whatever the bits of its
+A row's padding is zero. A row hashes and compares by its values (``urd::hash_range``), whatever the bits of its
 columns, so a layered pool finds a parent's row through wider columns, and a key hashed once (``prehashed``, with
-``hash_columns`` of the values) serves the whole chain.
+``hash_range`` of the values) serves the whole chain.
 
 Some rows of a pool
 -------------------

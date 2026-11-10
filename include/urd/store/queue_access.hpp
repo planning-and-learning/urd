@@ -65,16 +65,16 @@ public:
     [[nodiscard]] const value_type& back() const
         requires has<S, fifo>
     { return representation().back(); }
-    /// As std::queue's and std::stack's, the ends changed in place (moved from before a pop), where the representation
-    /// allows it; a heap's top stays const, as std::priority_queue's, its place depends on it.
+    /// As std::queue's and std::stack's, the ends changed in place (moved from before a pop): first in or last in.
+    /// A queue by priority keeps its top const, as std::priority_queue's, its place depends on it.
     [[nodiscard]] value_type& front()
-        requires has<S, fifo> && requires(R& r) { { r.front() } -> std::same_as<value_type&>; }
+        requires has<S, fifo>
     { return representation().front(); }
     [[nodiscard]] value_type& back()
-        requires has<S, fifo> && requires(R& r) { { r.back() } -> std::same_as<value_type&>; }
+        requires has<S, fifo>
     { return representation().back(); }
     [[nodiscard]] value_type& top()
-        requires(!has<S, fifo>) && requires(R& r) { { r.top() } -> std::same_as<value_type&>; }
+        requires has<S, lifo>
     { return representation().top(); }
     /// The element of `handle`, wherever it is in the order: O(1).
     template<typename Handle = handle_type>

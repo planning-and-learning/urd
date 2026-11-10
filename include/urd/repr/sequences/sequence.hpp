@@ -37,15 +37,7 @@ struct declaration_of<std::vector<T, A>>
 
 }  // namespace urd::detail
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/sequences/sequence.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/sequences/sequence.hpp"> {};
 
 namespace urd::detail
 {

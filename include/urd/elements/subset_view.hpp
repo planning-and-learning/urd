@@ -29,7 +29,7 @@ public:
     [[nodiscard]] auto operator[](std::size_t i) const
     {
         assert(i < size());
-        return m_pool->view(m_handles[i]);
+        return m_pool->at(m_handles[i]);
     }
     [[nodiscard]] auto begin() const { return rows().begin(); }
     [[nodiscard]] auto end() const { return rows().end(); }
@@ -43,7 +43,7 @@ public:
 
 private:
     [[nodiscard]] auto rows() const
-    { return urd::transform(m_handles, [pool = m_pool](handle_type handle) { return pool->view(handle); }); }
+    { return urd::transform(m_handles, [pool = m_pool](handle_type handle) { return pool->at(handle); }); }
 
     const Pool* m_pool;
     std::span<const handle_type> m_handles;

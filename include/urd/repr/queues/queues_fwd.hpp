@@ -86,19 +86,11 @@ struct declaration_of<repr::Fifo<T>>
 namespace detail
 {
 
-struct ring_fifo_decl
+struct ring_fifo_decl : fifo_decl
 {
     static constexpr std::string_view id = "ring_fifo";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/ring_fifo.hpp" };
-    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::fifo, memory::retains });
-    static constexpr property_set relies_on {};
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::push, costs::one_a>,
-                                       cost_entry<operation::pop, costs::one>,
-                                       cost_entry<operation::top, costs::one>,
-                                       cost_entry<operation::clear, costs::lin_n>,
-                                       cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 1.5;
     static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
     static constexpr std::string_view holds = "one vector as a ring; retains";
@@ -115,19 +107,10 @@ struct declaration_of<repr::RingFifo<T>>
 namespace detail
 {
 
-struct lifo_decl
+struct lifo_decl : fifo_decl
 {
     static constexpr std::string_view id = "lifo";
-    static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::lifo, memory::retains });
-    static constexpr property_set relies_on {};
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::push, costs::one_a>,
-                                       cost_entry<operation::pop, costs::one>,
-                                       cost_entry<operation::top, costs::one>,
-                                       cost_entry<operation::clear, costs::lin_n>,
-                                       cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 1.5;
     static constexpr std::string_view description = "stack (a vector, last in first out)";
     static constexpr std::string_view holds = "a vector; retains";
@@ -144,20 +127,16 @@ struct declaration_of<repr::Lifo<T>>
 namespace detail
 {
 
-struct heap_decl
+struct heap_decl : lifo_decl
 {
     static constexpr std::string_view id = "heap";
-    static constexpr auto headers = header_list<1> { "urd/repr/queues/queue.hpp" };
-    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, memory::retains });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::push, costs::log_na>,
                                        cost_entry<operation::pop, costs::log_n>,
                                        cost_entry<operation::top, costs::one>,
                                        cost_entry<operation::clear, costs::lin_n>,
                                        cost_entry<operation::iterate, costs::lin_n>>;
-    static constexpr double words = 1.5;
     static constexpr std::string_view description = "binary heap (a vector, least first, by urd::Less or an order_by)";
     static constexpr std::string_view holds = "a vector as a binary heap; retains";
 };
@@ -173,19 +152,11 @@ struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 namespace detail
 {
 
-struct addressable_heap_decl
+struct addressable_heap_decl : heap_decl
 {
     static constexpr std::string_view id = "addressable_heap";
     static constexpr auto headers = header_list<1> { "urd/repr/queues/addressable_heap.hpp" };
-    using kind = queue_kind;
     static constexpr property_set provides = property_set::of({ access::by_priority, handling::handles, memory::retains });
-    static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::push, costs::log_na>,
-                                       cost_entry<operation::pop, costs::log_n>,
-                                       cost_entry<operation::top, costs::one>,
-                                       cost_entry<operation::clear, costs::lin_n>,
-                                       cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 3;
     static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
     static constexpr std::string_view holds = "a heap of handles + a slot per handle";

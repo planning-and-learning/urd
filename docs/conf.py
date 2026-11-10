@@ -26,7 +26,7 @@ cpp_index_common_prefix = ["urd::", "urd::repr::"]
 html_theme = "furo"
 html_title = "urd"
 html_theme_options = {
-    "source_repository": "https://github.com/verdog-ai/urd/",
+    "source_repository": "https://github.com/planning-and-learning/urd/",
     "source_branch": "main",
     "source_directory": "docs/",
 }

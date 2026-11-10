@@ -7,15 +7,7 @@
 #include "urd/repr/maps/index_groups.hpp"
 #include "urd/traits.hpp"
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/csr_multimap.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/csr_multimap.hpp"> {};
 
 namespace urd::detail
 {

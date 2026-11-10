@@ -30,7 +30,7 @@ test = [
 testpaths = ["python/tests"]
 
 [project.urls]
-Homepage = "https://github.com/verdog-ai/urd"
+Homepage = "https://github.com/planning-and-learning/urd"
 
 [tool.scikit-build]
 build.targets = ["pyurd_wheel"]

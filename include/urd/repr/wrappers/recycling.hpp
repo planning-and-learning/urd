@@ -23,22 +23,81 @@
 namespace urd::repr
 {
 
-/// A map that keeps erased values for reuse: Map (a std::map or std::unordered_map, whose nodes can be taken out and
-/// put back), and the nodes of erased keys, their values cleared but holding their storage. A new key takes such a
-/// node, value and all, before allocating one: values emptied and refilled under changing keys allocate nothing once
-/// warm.
-template<typename Map>
-class Recycling : public Map
+namespace detail
 {
-    using Base = Map;
+
+/// What a recycling map and set share: Container (a std map or set, whose nodes can be taken out and put back), the
+/// nodes of its erased elements, and erasing into them.
+template<typename Container>
+class Recycled : public Container
+{
+public:
+    using typename Container::const_iterator;
+    using typename Container::iterator;
+    using typename Container::key_type;
+    using typename Container::size_type;
+
+    size_type erase(const key_type& key)
+    {
+        const auto found = Container::find(key);
+        if (found == Container::end())
+            return 0;
+        erase(const_iterator(found));
+        return 1;
+    }
+    /// Keeps the node, its storage held; a map's value cleared (or made anew where it has no clear).
+    iterator erase(const_iterator pos)
+    {
+        const auto after = std::next(Container::erase(pos, pos));
+        auto node = Container::extract(pos);
+        reset(node);
+        m_free.push_back(std::move(node));
+        return after;
+    }
+    iterator erase(const_iterator first, const_iterator last)
+    {
+        while (first != last)
+            first = erase(first);
+        return Container::erase(first, first);
+    }
+    void clear()
+    {
+        while (!Container::empty())
+            erase(Container::cbegin());
+    }
+
+protected:
+    template<typename Node>
+        requires requires(Node& node) { node.mapped(); }
+    static void reset(Node& node)
+    {
+        if constexpr (requires { node.mapped().clear(); })
+            node.mapped().clear();
+        else
+            node.mapped() = typename Node::mapped_type();
+    }
+    template<typename Node>
+    static void reset(Node& /*a set's node: nothing to clear*/)
+    {}
+
+    std::vector<typename Container::node_type> m_free;
+};
+
+}  // namespace detail
+
+/// A map that keeps erased values for reuse: Map (a std::map or std::unordered_map), and the nodes of erased keys,
+/// their values cleared but holding their storage. A new key takes such a node, value and all, before allocating
+/// one: values emptied and refilled under changing keys allocate nothing once warm.
+template<typename Map>
+class Recycling : public detail::Recycled<Map>
+{
+    using Base = detail::Recycled<Map>;
     using K = typename Map::key_type;
     using V = typename Map::mapped_type;
 
 public:
     using typename Base::const_iterator;
     using typename Base::iterator;
-    using typename Base::size_type;
-    using typename Base::value_type;
 
     Recycling() = default;
 
@@ -90,58 +149,24 @@ public:
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
 
-    size_type erase(const K& key)
-    {
-        const auto found = Base::find(key);
-        if (found == Base::end())
-            return 0;
-        erase(found);
-        return 1;
-    }
-    /// Keeps the node: its value cleared (or made anew where it has no clear), its storage held.
-    iterator erase(const_iterator pos)
-    {
-        const auto after = std::next(Base::erase(pos, pos));
-        auto node = Base::extract(pos);
-        if constexpr (requires(V& value) { value.clear(); })
-            node.mapped().clear();
-        else
-            node.mapped() = V();
-        m_free.push_back(std::move(node));
-        return after;
-    }
-    iterator erase(const_iterator first, const_iterator last)
-    {
-        while (first != last)
-            first = erase(first);
-        return Base::erase(first, first);
-    }
-    void clear()
-    {
-        while (!Base::empty())
-            erase(Base::cbegin());
-    }
-
 private:
     friend struct urd::memory_of<Recycling>;
 
-    std::vector<typename Base::node_type> m_free;
+    using Base::m_free;
 };
 
 /// A set that keeps erased nodes for reuse: Set (a std::set or std::unordered_set), and the nodes of erased elements,
 /// holding their storage. A new element takes such a node before allocating one, so a set emptied and refilled
 /// allocates nothing once warm, and references to its elements hold as the set's do.
 template<typename Set>
-class RecyclingSet : public Set
+class RecyclingSet : public detail::Recycled<Set>
 {
-    using Base = Set;
+    using Base = detail::Recycled<Set>;
     using T = typename Set::value_type;
 
 public:
     using typename Base::const_iterator;
     using typename Base::iterator;
-    using typename Base::size_type;
-    using typename Base::value_type;
 
     RecyclingSet() = default;
 
@@ -161,33 +186,6 @@ public:
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(T(std::forward<Args>(args)...)); }
 
-    size_type erase(const T& element)
-    {
-        const auto found = Base::find(element);
-        if (found == Base::end())
-            return 0;
-        erase(found);
-        return 1;
-    }
-    /// Keeps the node, its storage held.
-    iterator erase(const_iterator pos)
-    {
-        const auto after = std::next(Base::erase(pos, pos));
-        m_free.push_back(Base::extract(pos));
-        return after;
-    }
-    iterator erase(const_iterator first, const_iterator last)
-    {
-        while (first != last)
-            first = erase(first);
-        return Base::erase(first, first);
-    }
-    void clear()
-    {
-        while (!Base::empty())
-            erase(Base::cbegin());
-    }
-
 private:
     /// Inserts a kept node holding `element` where there is one, else a new one.
     template<typename U>
@@ -205,7 +203,7 @@ private:
 
     friend struct urd::memory_of<RecyclingSet>;
 
-    std::vector<typename Base::node_type> m_free;
+    using Base::m_free;
 };
 
 }  // namespace urd::repr
@@ -247,10 +245,7 @@ struct memory_of<repr::RecyclingSet<Set>>
     static std::size_t bytes(const repr::RecyclingSet<Set>& held) { return memory_usage(static_cast<const Set&>(held)) + detail::kept_bytes(held.m_free); }
 };
 
-template<>
-struct include<"urd/repr/wrappers/recycling.hpp">
-{
-};
+template<> struct include<"urd/repr/wrappers/recycling.hpp"> {};
 
 }  // namespace urd
 

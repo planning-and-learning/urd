@@ -68,7 +68,7 @@ void value_states(benchmark::State& state)
         }
         auto row = std::vector<std::uint32_t>(width);
         for (const auto handle : handles)
-            pool.read(handle, row);
+            pool.copy(handle, row);
         benchmark::DoNotOptimize(row);
         state.counters["bytes/state"] = static_cast<double>(urd::memory_usage(pool)) / static_cast<double>(states);
     }

@@ -68,12 +68,10 @@ void run()
     const auto moved = values.insert(start, std::span<const urd::Write<double>>(writes)).first;
     std::cout << "two states of 1000 values take " << urd::memory_usage(values) << " bytes; value 17 of the second: " << values.get(moved)[17] << '\n';
 
-    // Scratch buffers handed out per successor and returned: acquire gives a freed one back with its storage.
+    // Scratch buffers handed out per successor and returned: a freed one comes back with its storage.
     auto scratch = Scratch();
-    const auto buffer = scratch.acquire();
-    scratch[buffer].assign(64, 0);
-    scratch.erase(buffer);
-    std::cout << "a buffer acquired again keeps its storage: " << (scratch[scratch.acquire()].capacity() >= 64) << '\n';
+    scratch.make_unique()->assign(64, 0);  // used, and returned when its owner goes at the end of the statement
+    std::cout << "a buffer handed out again keeps its storage: " << (scratch.make_unique()->capacity() >= 64) << '\n';
 }
 
 }  // namespace

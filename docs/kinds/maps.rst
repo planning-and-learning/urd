@@ -119,13 +119,15 @@ Values by key (one value per key)
    Calls ``update(value, held)`` on the value of ``key``, inserting a default one first where there is none
    (``held`` is then ``false``), and returns what ``update`` returns. A map cleared by generation hands over the
    value it kept from before the clear, storage and all, for ``update`` to reuse. With ``concurrent``, threads may
-   update at once: a sharded table runs ``update`` under the key's lock.
+   update at once: a sharded table runs ``update`` under the key's lock. Only where the representation has it
+   (maps by index, sharded tables, layers); any other map is updated through ``try_emplace``.
 
-.. cpp:function:: template<typename Read, typename Result> Result read(const key_type& key, Read read, Result missing) const
+.. cpp:function:: template<typename F, typename Result> Result visit(const key_type& key, F f, Result missing) const
 
-   ``read(value)`` where ``key`` has a value, else ``missing``. With ``concurrent``, safe while others update.
+   ``f(value)`` where ``key`` has a value, else ``missing`` (the visit of Boost's concurrent maps). With ``concurrent``, safe while others update.
+   Only where the representation has it, as ``update``; any other map is read through ``find``.
 
-.. cpp:function:: template<typename Combine> bool merge(const key_type& key, const mapped_type& value, Combine combine)
+.. cpp:function:: template<typename Combine> bool insert_or_combine(const key_type& key, const mapped_type& value, Combine combine)
 
    Inserts ``value`` where ``key`` has none, else replaces the held value by ``combine(held, value)`` (a hull of
    intervals, the lower of two costs); whether the map changed, as fixpoints ask.
@@ -135,7 +137,8 @@ Values by key (a multimap)
 
 .. cpp:function:: auto values(const key_type& key) const
 
-   The values of ``key``: a span for a posting map or a CSR, a range of values otherwise.
+   The values of ``key``: a span for a posting map or a CSR. The standard's multimaps (``sorted``,
+   ``stable_refs``) have none: their entries of a key are its ``equal_range``.
 
 Entries in order (``insertion_ordered``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

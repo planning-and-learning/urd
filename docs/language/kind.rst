@@ -33,5 +33,5 @@ is a kind like these (:doc:`/extending`).
 
 .. urd-category:: any_keying
 
-   Slots acquired by key (``keyed<K>``): ``acquire_shared(key, args...)`` reuses only a slot given back under an equal
+   Slots acquired by key (``keyed<K>``): ``make_shared(key, args...)`` reuses only a slot given back under an equal
    key, else makes ``T(key, args...)``.

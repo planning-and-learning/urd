@@ -61,12 +61,15 @@ public:
     void clear() { m_records.clear(); }
 
 private:
-    friend struct urd::memory_of<Interner>;
 
     [[nodiscard]] std::pair<handle_type, bool> inserted(std::pair<typename Records::iterator, bool> result) const
     { return { handle_type(static_cast<std::uint32_t>(result.first - m_records.begin())), result.second }; }
 
     Records m_records;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&Interner::m_records> {}; }
 };
 
 }  // namespace detail
@@ -88,30 +91,7 @@ class ValueInterner : public detail::Interner<IndexedSet<T, std::uint32_t, Threa
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-/// Its indexed set's.
-template<typename Records, typename H>
-struct memory_of<repr::detail::Interner<Records, H>>
-{
-    static std::size_t bytes(const repr::detail::Interner<Records, H>& held) { return memory_usage(held.m_records); }
-};
-template<typename T, bool ThreadSafe, bool Stable, typename H>
-struct memory_of<repr::RecordInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::detail::Interner<repr::IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>>
-{
-};
-template<typename T, bool ThreadSafe, bool Stable, typename H>
-struct memory_of<repr::ValueInterner<T, ThreadSafe, Stable, H>> : memory_of<repr::detail::Interner<repr::IndexedSet<T, std::uint32_t, ThreadSafe, Stable>, H>>
-{
-};
-
-template<>
-struct include<"urd/repr/records/records.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/records/records.hpp"> {};
 
 namespace urd::detail
 {

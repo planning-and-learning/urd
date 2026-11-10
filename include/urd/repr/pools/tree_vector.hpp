@@ -147,12 +147,12 @@ public:
     [[nodiscard]] Row get(handle_type handle) const
     {
         auto values = std::vector<T>(handle.size);
-        read(handle, values);
+        copy(handle, values);
         return Row(values.begin(), values.end());
     }
     [[nodiscard]] size_type row_size(handle_type handle) const { return handle.size; }
     /// The row's values into `out`, which must hold row_size(handle) of them.
-    void read(handle_type handle, std::span<T> out) const
+    void copy(handle_type handle, std::span<T> out) const
     {
         if (out.size() != handle.size)
             throw std::invalid_argument("urd::repr::TreeVectorSet::read: the output must hold the row");
@@ -275,10 +275,13 @@ private:
             read_recursive(node[k], values.subspan(offset, std::min(step, size - offset)));
     }
 
-    friend struct urd::memory_of<TreeVectorSet>;
 
     [[no_unique_address]] Leaves m_leaves;
     InterningTable<Children, ThreadSafe> m_nodes;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&TreeVectorSet::m_leaves, &TreeVectorSet::m_nodes> {}; }
 };
 
 }  // namespace urd::repr
@@ -286,17 +289,7 @@ private:
 namespace urd
 {
 
-/// Its leaf table (none where leaves are inline) and its node table.
-template<typename Row, std::size_t Arity, bool ThreadSafe>
-struct memory_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
-{
-    static std::size_t bytes(const repr::TreeVectorSet<Row, Arity, ThreadSafe>& held) { return memory_usage(held.m_leaves) + memory_usage(held.m_nodes); }
-};
-
-template<>
-struct include<"urd/repr/pools/tree_vector.hpp">
-{
-};
+template<> struct include<"urd/repr/pools/tree_vector.hpp"> {};
 
 }  // namespace urd
 

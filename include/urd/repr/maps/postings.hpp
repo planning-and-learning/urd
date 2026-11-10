@@ -92,10 +92,13 @@ public:
     }
 
 private:
-    friend struct urd::memory_of<HashGroups>;
 
     Table m_table;
     std::size_t m_count = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&HashGroups::m_table> {}; }
 };
 
 
@@ -128,6 +131,8 @@ public:
     using mapped_type = V;
     /// What iterating gives: a key and a view of one of its values.
     using value_type = std::pair<const K, const V&>;
+    using reference = value_type;  ///< an entry is handed out by value: its key and a reference to its value
+    using const_reference = value_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -366,7 +371,6 @@ public:
     };
 
 private:
-    friend struct urd::memory_of<ChainedPostingMap>;
 
     /// Frees a slot; the slot after it in its chain.
     std::size_t release(std::size_t slot)
@@ -382,33 +386,15 @@ private:
     std::vector<Slot> m_slots;
     std::size_t m_free = npos;
     std::size_t m_size = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&ChainedPostingMap::m_table, &ChainedPostingMap::m_slots> {}; }
 };
 
 }  // namespace urd::repr
 
-/// The table of keys, and each key's row of values.
-template<typename K, typename V>
-struct urd::memory_of<urd::repr::HashGroups<K, V>>
-{
-    static std::size_t bytes(const repr::HashGroups<K, V>& held) { return memory_usage(held.m_table); }
-};
-
-/// The table of keys and the pool of slots, free ones included.
-template<typename K, typename V>
-struct urd::memory_of<urd::repr::ChainedPostingMap<K, V>>
-{
-    static std::size_t bytes(const repr::ChainedPostingMap<K, V>& held) { return memory_usage(held.m_table) + memory_usage(held.m_slots); }
-};
-
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/postings.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/postings.hpp"> {};
 
 namespace urd::detail
 {

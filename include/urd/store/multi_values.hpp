@@ -18,16 +18,8 @@ public:
     using mapped_type = typename S::mapped_type;
 
     [[nodiscard]] auto values(const typename S::key_type& key) const
-    {
-        const auto& representation = store_access::of<Derived>(*this);
-        if constexpr (requires { representation.values(key); })
-            return representation.values(key);
-        else
-        {
-            const auto [first, last] = representation.equal_range(key);
-            return std::ranges::subrange(first, last) | std::views::values;
-        }
-    }
+        requires requires(const R& held) { held.values(key); }
+    { return store_access::of<Derived>(*this).values(key); }
 };
 
 }  // namespace urd::detail::facet

@@ -33,17 +33,21 @@ struct row_blocks_of<R>
     using block_type = typename R::block_type;
     using flip_type = typename R::flip_type;
 };
-/// What a pool's representation hands out as a stored row (view(h)), else void.
+/// Whether a pool keeps each row in full: then a row is viewed in place (at(h)) and looked up by its hash. A pool with
+/// structural_sharing keeps a row as a tree of shared nodes, which has neither.
+template<typename R>
+inline constexpr bool keeps_rows_whole = !std::is_void_v<R> && !has<R, urd::structural_sharing>;
+/// What a pool's representation hands out as a stored row (at(h)), else void.
 template<typename R>
 struct row_of
 {
     using type = void;
 };
 template<typename R>
-    requires requires(const R& rows, typename R::handle_type handle) { rows.view(handle); }
+    requires keeps_rows_whole<R>
 struct row_of<R>
 {
-    using type = decltype(std::declval<const R&>().view(std::declval<typename R::handle_type>()));
+    using type = decltype(std::declval<const R&>().at(std::declval<typename R::handle_type>()));
 };
 /// What a pool's representation builds a row as before it goes in (by_column_widths), else void.
 template<typename R>
@@ -83,7 +87,7 @@ public:
     /// Rows that are sets of indices kept as bits: a block of a row, and a change to one (void elsewhere).
     using block_type = typename row_blocks_of<R>::block_type;
     using flip_type = typename row_blocks_of<R>::flip_type;
-    /// A stored row as view(h) hands it out, and what a row is built as before it goes in (by_column_widths:
+    /// A stored row as at(h) hands it out, and what a row is built as before it goes in (by_column_widths:
     /// urd::repr::EncodedRow; void elsewhere).
     using row_type = typename row_of<R>::type;
     using row_builder_type = typename row_builder_of<R>::type;
@@ -113,7 +117,7 @@ public:
     /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
     [[nodiscard]] bool contains(handle_type handle, const row_element& element) const
         requires(!sequence_rows)
-    { return constant().contains(handle, element); }
+    { return representation().contains(handle, element); }
 
     /// The handle insert(elements) would give, where inserting would store nothing; else none (handle.is_none()).
     /// Without structural_sharing that is an equal row inserted before. A pool with structural_sharing also finds a row
@@ -121,49 +125,52 @@ public:
     /// By a row with its hash (urd/elements/prehashed.hpp; the hash urd::hash_range gives its elements), not hashed
     /// again: where the representation takes one (a pool of plain sequences).
     template<typename Elements>
-        requires requires(R& rows, const prehashed<Elements>& key) { rows.insert(key); }
+        requires keeps_rows_whole<R>
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return representation().insert(key); }
     template<typename Elements>
-        requires requires(const R& rows, const prehashed<Elements>& key) { rows.find(key); }
+        requires keeps_rows_whole<R>
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
-    { return constant().find(key); }
+    { return representation().find(key); }
     template<typename Elements>
-        requires requires(const R& rows, const prehashed<Elements>& key) { rows.find(key); }
+        requires keeps_rows_whole<R>
     [[nodiscard]] bool contains(const prehashed<Elements>& key) const
     { return !find(key).is_none(); }
     /// The bit width it was built with (urd::bit), where its representation stores elements in it.
     [[nodiscard]] urd::bit_width width() const noexcept
-        requires requires(const R& rows) { rows.width(); }
-    { return constant().width(); }
+        requires has<S, urd::bit>
+    { return representation().width(); }
     /// The column widths it was built with (urd::by_column_widths): its rows' columns.
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
-        requires requires(const R& rows) { rows.column_widths(); }
-    { return constant().column_widths(); }
+        requires has<S, urd::by_column_widths>
+    { return representation().column_widths(); }
     /// Whether a row with these elements is stored, as a set's contains.
     template<std::ranges::input_range Elements>
     [[nodiscard]] bool contains(const Elements& elements) const
     { return !find(elements).is_none(); }
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
-    { return constant().find(elements); }
+    { return representation().find(elements); }
     [[nodiscard]] handle_type find(std::initializer_list<row_element> elements) const
     { return find(std::span<const row_element>(elements.begin(), elements.size())); }
 
-    [[nodiscard]] row get(handle_type handle) const { return constant().get(handle); }
+    [[nodiscard]] row get(handle_type handle) const { return representation().get(handle); }
     /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
     /// its bits. Valid until the pool is cleared.
-    [[nodiscard]] auto view(handle_type handle) const
-        requires requires(const R& rows) { rows.view(handle); }
-    { return constant().view(handle); }
-    [[nodiscard]] std::size_t row_size(handle_type handle) const { return constant().row_size(handle); }
+    [[nodiscard]] auto at(handle_type handle) const
+        requires keeps_rows_whole<R>
+    { return representation().at(handle); }
+    [[nodiscard]] auto operator[](handle_type handle) const
+        requires keeps_rows_whole<R>
+    { return representation().at(handle); }
+    [[nodiscard]] std::size_t row_size(handle_type handle) const { return representation().row_size(handle); }
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
-    void read(handle_type handle, std::span<row_element> out) const { constant().read(handle, out); }
+    void copy(handle_type handle, std::span<row_element> out) const { representation().copy(handle, out); }
     /// The row into `out`, whose storage is reused, where the pool writes a row whole (a tree bitset into a dense set,
     /// word by word): allocates nothing where `out` holds the row's words already.
-    void read(handle_type handle, row& out) const
-        requires requires(const R& rows) { rows.read(handle, out); }
-    { constant().read(handle, out); }
+    void copy(handle_type handle, row& out) const
+        requires(!sequence_rows && has<R, urd::structural_sharing>)
+    { representation().copy(handle, out); }
 
     // Rows that are sets of indices kept as bits, by their blocks, where the representation keeps them so: a row
     // changes by the blocks that differ, without listing its elements.
@@ -179,7 +186,7 @@ public:
     /// The row's blocks into `blocks`, which must hold as many as the handle counts.
     void read_blocks(handle_type handle, std::span<block_type> blocks) const
         requires(!std::is_void_v<block_type>)
-    { constant().read_blocks(handle, blocks); }
+    { representation().read_blocks(handle, blocks); }
     /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
     /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
     /// row's views stay valid, the erased row's do not.
@@ -192,7 +199,7 @@ public:
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 

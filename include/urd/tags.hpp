@@ -8,9 +8,12 @@
 // with tag types is another category, and a kind lists the categories its requests answer (urd/kinds.hpp, format).
 // The machinery that computes with them is in urd/property_set.hpp; share/urd/vocabulary.json is generated from them.
 
+#include "urd/config.hpp"
+
 #include <boost/mp11.hpp>
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -837,13 +840,8 @@ struct bit_width
     std::uint8_t bits = 1;
 
     /// The width that holds every value below `bound` (at least one bit).
-    [[nodiscard]] static constexpr bit_width for_bound(std::uint64_t bound) noexcept
-    {
-        auto bits = std::uint8_t { 1 };
-        while (bits < 64 && (std::uint64_t { 1 } << bits) < bound)
-            ++bits;
-        return bit_width { bits };
-    }
+    [[nodiscard]] static constexpr bit_width for_bound(word_t bound) noexcept
+    { return bit_width { static_cast<std::uint8_t>(bound <= 1 ? 1 : std::bit_width(static_cast<word_t>(bound - 1))) }; }
     friend constexpr bool operator==(bit_width, bit_width) noexcept = default;
 };
 
@@ -893,7 +891,7 @@ struct any_keying : tag_defaults
     using group = kind_group;
     static constexpr std::string_view question = "Freed slots kept by a key?";
 };
-/// Slots acquired by a key (keyed<K>): acquire_shared(key, args...) reuses a slot freed under an equal key, else makes
+/// Slots acquired by a key (keyed<K>): make_shared(key, args...) reuses a slot freed under an equal key, else makes
 /// one from (key, args...); the slot keeps its key. The words of the answer.
 struct keyed_slots : any_keying
 {

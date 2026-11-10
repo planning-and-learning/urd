@@ -142,21 +142,11 @@ struct declaration_of<repr::PostingMap<K, V>>
 namespace detail
 {
 
-struct chained_posting_map_decl
+struct chained_posting_map_decl : posting_map_decl
 {
     static constexpr std::string_view id = "chained_posting_map";
-    static constexpr auto headers = header_list<1> { "urd/repr/maps/postings.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides = property_set::of({ multiplicity::multi, keys::sparse, memory::retains });
-    static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
-                                       cost_entry<operation::lookup, costs::one_e>,
-                                       cost_entry<operation::erase, costs::lin_row>,
-                                       cost_entry<operation::clear, costs::lin_capacity>,
-                                       cost_entry<operation::iterate, costs::lin_n>>;
     static constexpr double words = 8.5;
-    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "chained postings (a flat hash table of key chains over one pool of value slots)";
     static constexpr std::string_view holds = "a slot per value, freed slots reused by any key; retains";
 };
@@ -167,23 +157,17 @@ struct declaration_of<repr::ChainedPostingMap<K, V>>
     static constexpr property_set roles = roles_of<urd::map<K, V>>();
 };
 
-struct bidirectional_csr_decl
+struct bidirectional_csr_decl : csr_multimap_decl
 {
     static constexpr std::string_view id = "bidirectional_csr";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/bidirectional_csr.hpp" };
-    using kind = map_kind;
     static constexpr property_set provides =
         property_set::of({ order::sorted, multiplicity::multi, keys::dense, representation::canonical, direction::bidirectional });
     static constexpr property_set relies_on = relies(stated({ change::frozen }),
                                                      traits<role::element, trait::an_index>(),
                                                      traits<role::order, trait::own_order>(),
                                                      traits<role::mapped, trait::an_index>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs = cost_table<cost_entry<operation::lookup, costs::one>,
-                                       cost_entry<operation::ordered_lookup, costs::lin_keys>,
-                                       cost_entry<operation::iterate, costs::lin_keys>>;
     static constexpr double words = 2.4;
-    static constexpr quantity words_per = quantity::keys;
     static constexpr std::string_view description = "bidirectional CSR (each key's values and each value's keys together)";
     static constexpr std::string_view holds = "n values + U + 1 offsets, both ways";
 };

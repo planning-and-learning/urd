@@ -94,21 +94,16 @@ struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 namespace detail
 {
 
-struct stable_indexed_set_decl
+struct stable_indexed_set_decl : indexed_set_decl
 {
     static constexpr std::string_view id = "stable_indexed_set";
-    static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
-    using kind = set_kind;
     static constexpr property_set provides =
         property_set::of({ order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::none });
     static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
                                        cost_entry<operation::lookup, costs::one_e>,
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
-    static constexpr double words = 2.5;
-    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
     static constexpr std::string_view holds = "segments that never move + a table of positions";
 };
@@ -124,21 +119,17 @@ struct declaration_of<repr::StableIndexedSet<T, Index>>
 namespace detail
 {
 
-struct concurrent_indexed_set_decl
+struct concurrent_indexed_set_decl : indexed_set_decl
 {
     static constexpr std::string_view id = "concurrent_indexed_set";
-    static constexpr auto headers = header_list<1> { "urd/repr/values/indexed.hpp" };
-    using kind = set_kind;
     static constexpr property_set provides = property_set::of(
         { order::insertion_ordered, uniqueness::unique, position::positional, referencing::stable_refs, memory::retains, threading::concurrent });
     static constexpr property_set relies_on = relies(stated({ change::monotone }), traits<role::element, trait::can_hash>());
-    static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,
                                        cost_entry<operation::lookup, costs::one_e>,
                                        cost_entry<operation::iterate, costs::lin_n>,
                                        cost_entry<operation::access, costs::one>>;
     static constexpr double words = 2.6;
-    static constexpr quantity words_per = quantity::capacity;
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };

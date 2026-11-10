@@ -7,6 +7,7 @@
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
+#include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/schema_rows.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
@@ -35,27 +36,120 @@ namespace urd::repr
 namespace detail
 {
 
-/// What a set of rows (IndexedSet, Rows) keeps of T, a range of plain elements (a vector, a sequence Store): the
-/// elements, and the span a row is stored, handed out and looked up as; rows of column widths are looked up as the rows
-/// their storage hands out (SchemaRow). Elsewhere T itself.
-template<typename T, bool Rows, typename Storage>
-struct row_key
+/// How an indexed set's table is searched: the hash of a key, and whether a stored element equals a key. An element is
+/// its own key (element_keys); a row is looked up by any range of its elements, as it is (row_keys).
+template<typename T>
+struct element_keys
 {
-    using element = void;
-    using type = T;
+    template<typename K>
+    [[nodiscard]] static hash_t hash(const K& key)
+    { return Hash<T> {}(key); }
+    template<typename S, typename K>
+    [[nodiscard]] static bool equal(const S& stored, const K& key)
+    { return EqualTo<T> {}(stored, key); }
 };
-template<typename T, typename Storage>
-struct row_key<T, true, Storage>
+struct row_keys
 {
-    using element = std::ranges::range_value_t<T>;
-    using type = std::span<const element>;
+    template<typename K>
+    [[nodiscard]] static hash_t hash(const K& key)
+    { return hash_range(key); }
+    template<typename S, typename K>
+    [[nodiscard]] static bool equal(const S& stored, const K& key)
+    { return equal_elements(stored, key); }
 };
-template<typename T, bool ThreadSafe>
-struct row_key<T, true, UniformRows<SchemaCodec<ThreadSafe>, ThreadSafe>>
+
+/// How an indexed set's table of positions is held and searched. One thread: gtl's table, searched, and where the key is
+/// new, appended to.
+template<typename Position, typename Hash, typename Equal>
+struct single_table
 {
-    using element = std::ranges::range_value_t<T>;
-    using type = SchemaRow<ThreadSafe>;
+    using type = gtl::flat_hash_set<Position, Hash, Equal>;
+    using mutex = NoLock;
+    using index = decltype(Position::value);
+
+    /// The position `key` is held at, or none.
+    template<typename K>
+    [[nodiscard]] static std::optional<index> find(const type& positions, const prehashed<K>& key)
+    {
+        const auto found = positions.find(key);
+        return found == positions.end() ? std::nullopt : std::optional<index>(found->value);
+    }
+    /// The position of `key`, and whether it is new: then `append()` stored its element and gave the position, which
+    /// enters the table with the key's hash (gtl takes it as its own hash() gives it: for a prehashed key, the hash it
+    /// carries).
+    template<typename K, typename Append>
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& /*writer*/, const prehashed<K>& key, Append append)
+    {
+        if (const auto found = find(positions, key))
+            return { *found, false };
+        const auto position = append();
+        positions.emplace_with_hash(positions.hash(key), Position { position });
+        return { position, true };
+    }
 };
+
+/// Threads share the set: gtl's sharded table, its 2^7 shards each under a shared spin lock (yggdrasil's interners
+/// benchmarked this against boost's concurrent table and std::shared_mutex: faster lookups and inserts). A lookup takes
+/// the key's shard shared. A new key takes it exclusively, searched once, and appends under the writer lock (a spin
+/// lock: the section is an append), so positions stay 0..n-1; the shard's readers wait for the append.
+template<typename Position, typename Hash, typename Equal>
+struct shared_table
+{
+    using type = gtl::parallel_flat_hash_set<Position, Hash, Equal, std::allocator<Position>, 7, SpinSharedMutex>;
+    using mutex = SpinMutex;
+    using index = decltype(Position::value);
+
+    template<typename K>
+    [[nodiscard]] static std::optional<index> find(const type& positions, const prehashed<K>& key)
+    {
+        // The shard of the key's hash, searched with that hash: what gtl's if_contains does, without hashing the key again
+        // for the shard and again for the search.
+        const auto hash = positions.hash(key);
+        auto found = std::optional<index>();
+        positions.with_submap(positions.subidx(hash),
+                              [&](const auto& shard)
+                              {
+                                  if (const auto it = shard.find(key, hash); it != shard.end())
+                                      found = it->value;
+                              });
+        return found;
+    }
+    template<typename K, typename Append>
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& writer, const prehashed<K>& key, Append append)
+    {
+        // Most inserts find their element: looked up first, under the shard's shared lock only.
+        if (const auto found = find(positions, key))
+            return { *found, false };
+        auto position = index {};
+        auto inserted = false;
+        positions.lazy_emplace_l(
+            key,
+            [&position](const Position& existing) { position = existing.value; },
+            [&](const auto& construct)
+            {
+                {
+                    const auto lock = std::scoped_lock(writer);
+                    position = append();
+                }
+                construct(Position { position });
+                inserted = true;
+            });
+        return { position, inserted };
+    }
+};
+
+/// Moves the last element into `position` and drops the last: a storage's own swap_erase, or a vector's.
+template<typename Elements>
+    requires requires(Elements& elements, std::size_t position) { elements.swap_erase(position); }
+void swap_erase(Elements& elements, std::size_t position)
+{ elements.swap_erase(position); }
+template<typename T, typename Allocator>
+void swap_erase(std::vector<T, Allocator>& elements, std::size_t position)
+{
+    if (position + 1 != elements.size())
+        elements[position] = std::move(elements.back());
+    elements.pop_back();
+}
 
 /// What a row storage is built with (its codec's parameter: a bit width, column widths); nothing (std::monostate) elsewhere.
 template<typename Storage>
@@ -70,30 +164,21 @@ struct parameter_of<Storage>
     using type = typename Storage::parameter;
 };
 
-/// A row a set of rows takes besides its elements: a contiguous range of the rows' elements (a span, a vector).
-template<typename R, typename U>
-concept row_of = std::ranges::contiguous_range<R> && std::ranges::sized_range<R> && std::same_as<std::ranges::range_value_t<R>, U>;
+/// A row a set of rows takes besides a T: any range of what its stored rows (Stored) hold (a span, a stored row, decoded
+/// values).
+template<typename R, typename Stored>
+concept row_of = std::ranges::input_range<R> && std::ranges::input_range<Stored> && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<Stored>>;
 
-template<typename X>
-struct prehashed_key
-{
-    using type = void;
-};
-template<typename T>
-struct prehashed_key<prehashed<T>>
-{
-    using type = T;
-};
-/// A row, or a row with its hash (prehashed<R>): what a set of rows looks up and inserts by besides its elements.
-template<typename X, typename U>
-concept row_input = row_of<X, U> || (is_prehashed<X> && row_of<typename prehashed_key<X>::type, U>);
+/// A row, or a row with its hash (prehashed<R>): what a set of rows is looked up by besides a T.
+template<typename X, typename Stored>
+concept row_input = row_of<X, Stored> || (is_prehashed<X> && row_of<std::remove_cvref_t<decltype(std::declval<const X&>().key)>, Stored>);
 
 }  // namespace detail
 
 /// A set kept in insertion order: the elements in a vector, and a hash table of their positions that hashes and
 /// compares through the vector, so each element is stored once. An element's position is its index, which never
-/// changes while nothing is erased: an interner. The vector lives on the heap, where the table's hash and equality
-/// find it however the set moves. The registry names it for any element type, so it is an unconstrained template;
+/// changes while nothing is erased: an interner. The vector and the table live on the heap together, made by the first
+/// insert (an empty set owns no memory). The registry names it for any element type, so it is an unconstrained template;
 /// its container_traits declare properties only for hashable elements.
 ///
 /// With Stable, the elements lie in a SegmentedVector, whose elements never move, so a reference to one holds while
@@ -104,8 +189,8 @@ concept row_input = row_of<X, U> || (is_prehashed<X> && row_of<typename prehashe
 /// copy and move need no other operation running.
 ///
 /// With Rows, T is a sequence of plain elements (a row), and the rows are stored flat (urd/repr/containers/uniform_rows.hpp:
-/// while all have one length, no offsets), handed out as spans of their elements, and looked up and inserted by any
-/// contiguous range of them: no row is built to look one up. Rows never move on insert; erase rebuilds.
+/// while all have one length, no offsets), handed out as their storage reads them (spans, decoded values), and looked up
+/// by any range of their elements: no row is built to look one up. Rows never move on insert; erase rebuilds.
 ///
 /// Storage is where the elements lie, where not in the vector or the segments (void): appended to (push_back), read by
 /// position, cleared, and never moving what it holds. Rows have one: a UniformRows of a codec, which stores the elements
@@ -122,50 +207,15 @@ class IndexedSet
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
     static_assert(!Rows || Stable, "urd::repr::IndexedSet: rows lie in segments that never move (Stable)");
     friend struct urd::memory_of<IndexedSet>;
-    using row_element = typename detail::row_key<T, Rows, Storage>::element;
-    /// What the table hashes and compares: the element, a row's span, or a row of column widths.
-    using Key = typename detail::row_key<T, Rows, Storage>::type;
     using Elements =
         std::conditional_t<std::is_void_v<Storage>, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>, Storage>;
     /// What the storage is built with (std::monostate: nothing).
     using Parameter = typename detail::parameter_of<Elements>::type;
-    /// Rows of column widths, which hash and compare themselves (by value, whatever their columns' bits).
-    static constexpr bool schema_rows = std::same_as<Elements, UniformRows<SchemaCodec<ThreadSafe>, ThreadSafe>>;
-    /// What a set of rows looks up and inserts besides its elements: a contiguous range of them, or a row of column widths;
-    /// either with its hash.
+    /// How keys hash and compare with the stored elements.
+    using Keys = std::conditional_t<Rows, detail::row_keys, detail::element_keys<T>>;
+    /// What a set of rows is looked up by besides a T: a range of its elements, or one with its hash.
     template<typename R>
-    static constexpr bool row_input = schema_rows ? (std::same_as<R, Key> || std::same_as<R, prehashed<Key>>) : detail::row_input<R, row_element>;
-
-    /// A row (a span, or a stored row however its storage hands it out) hashes as its elements: alike either way.
-    template<typename K>
-    [[nodiscard]] static hash_t hash_key(const K& key)
-    {
-        if constexpr (schema_rows)
-            return key.hash();
-        else if constexpr (Rows)
-            return hash_range(key);
-        else
-            return Hash<T> {}(key);
-    }
-    template<typename L, typename R>
-    [[nodiscard]] static bool equal_keys(const L& lhs, const R& rhs)
-    {
-        if constexpr (schema_rows)
-            return lhs.equal(rhs);
-        else if constexpr (Rows)
-            return equal_elements(lhs, rhs);
-        else
-            return EqualTo<T> {}(lhs, rhs);
-    }
-    /// What the table looks `x` up by: a row as the span of its elements, else the element (or schema row) itself.
-    template<typename X>
-    [[nodiscard]] static decltype(auto) key_of(const X& x)
-    {
-        if constexpr (Rows && !schema_rows)
-            return Key(std::ranges::data(x), std::ranges::size(x));
-        else
-            return (x);
-    }
+    static constexpr bool row_input = Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && detail::row_input<R, typename Elements::value_type>;
 
     /// A position in the vector, as the table holds it: a type of its own, so that it is never taken for an element,
     /// even where the elements are integers too.
@@ -175,38 +225,43 @@ class IndexedSet
 
         friend bool operator==(Position, Position) = default;
     };
-    /// Hashes a position by its element, and an element as itself, so the table can be searched by element.
+    /// Hashes a position by its element, and a key by the hash it carries, so the table can be searched by key.
     struct PositionHash
     {
         using is_transparent = void;
         const Elements* elements = nullptr;
 
-        [[nodiscard]] std::size_t operator()(Position position) const { return hash_key((*elements)[position.value]); }
-        [[nodiscard]] std::size_t operator()(const Key& element) const { return hash_key(element); }
-        [[nodiscard]] std::size_t operator()(const prehashed<Key>& key) const noexcept { return key.hash; }
+        [[nodiscard]] std::size_t operator()(Position position) const { return Keys::hash((*elements)[position.value]); }
+        template<typename K>
+        [[nodiscard]] std::size_t operator()(const prehashed<K>& key) const noexcept
+        { return key.hash; }
     };
     struct PositionEqual
     {
         using is_transparent = void;
         const Elements* elements = nullptr;
 
-        [[nodiscard]] bool operator()(Position lhs, Position rhs) const { return equal_keys((*elements)[lhs.value], (*elements)[rhs.value]); }
-        [[nodiscard]] bool operator()(const Key& lhs, Position rhs) const { return equal_keys(lhs, (*elements)[rhs.value]); }
-        [[nodiscard]] bool operator()(Position lhs, const Key& rhs) const { return equal_keys((*elements)[lhs.value], rhs); }
-        [[nodiscard]] bool operator()(const Key& lhs, const Key& rhs) const { return equal_keys(lhs, rhs); }
-        [[nodiscard]] bool operator()(const prehashed<Key>& lhs, Position rhs) const { return (*this)(lhs.key, rhs); }
-        [[nodiscard]] bool operator()(Position lhs, const prehashed<Key>& rhs) const { return (*this)(lhs, rhs.key); }
+        [[nodiscard]] bool operator()(Position lhs, Position rhs) const { return Keys::equal((*elements)[lhs.value], (*elements)[rhs.value]); }
+        // The stored element first: its element type is what a row's elements compare as.
+        template<typename K>
+        [[nodiscard]] bool operator()(const prehashed<K>& lhs, Position rhs) const
+        { return Keys::equal((*elements)[rhs.value], lhs.key); }
+        template<typename K>
+        [[nodiscard]] bool operator()(Position lhs, const prehashed<K>& rhs) const
+        { return Keys::equal((*elements)[lhs.value], rhs.key); }
     };
-    /// gtl's table; threads share its sharded one, the 2^7 shards each under a shared spin lock (yggdrasil's interners
-    /// benchmarked this against boost's concurrent table and std::shared_mutex: faster lookups and inserts).
-    using Table = std::conditional_t<ThreadSafe,
-                                     gtl::parallel_flat_hash_set<Position, PositionHash, PositionEqual, std::allocator<Position>, 7, SpinSharedMutex>,
-                                     gtl::flat_hash_set<Position, PositionHash, PositionEqual>>;
+    /// How the table is held and searched: by one thread, or shared by threads.
+    using Tables = std::conditional_t<ThreadSafe,
+                                      detail::shared_table<Position, PositionHash, PositionEqual>,
+                                      detail::single_table<Position, PositionHash, PositionEqual>>;
+    using Table = typename Tables::type;
 
 public:
     using iterator = typename Elements::const_iterator;
     using const_iterator = iterator;
     using value_type = T;
+    using const_reference = decltype(std::declval<const Elements&>()[std::size_t {}]);  ///< the element, or a row as its storage reads it
+    using reference = const_reference;
     using key_type = T;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -234,28 +289,23 @@ public:
             *this = IndexedSet(other);
         return *this;
     }
-    /// The moved-from set keeps a table and elements of its own, empty.
-    IndexedSet(IndexedSet&& other) noexcept :
-        m_parameter(other.m_parameter),
-        m_elements(std::exchange(other.m_elements, other.fresh_elements())),
-        m_positions(std::exchange(other.m_positions, table_for(other.elements())))
-    {
-    }
+    /// The moved-from set is empty.
+    IndexedSet(IndexedSet&& other) noexcept : m_parameter(other.m_parameter), m_state(other.release()) {}
     IndexedSet& operator=(IndexedSet&& other) noexcept
     {
         if (this != &other)
         {
             m_parameter = other.m_parameter;
-            m_elements = std::exchange(other.m_elements, other.fresh_elements());
-            m_positions = std::exchange(other.m_positions, table_for(other.elements()));
+            delete release();
+            detail::store(m_state, other.release());
         }
         return *this;
     }
-    ~IndexedSet() = default;
+    ~IndexedSet() { delete release(); }
 
     [[nodiscard]] iterator begin() const { return elements().cbegin(); }
     [[nodiscard]] iterator end() const { return elements().cend(); }
-    [[nodiscard]] size_type size() const { return m_elements ? m_elements->size() : 0; }
+    [[nodiscard]] size_type size() const { return elements().size(); }
     [[nodiscard]] bool empty() const { return size() == 0; }
     /// What the rows are stored by: their elements' bit width (BitCodec), or their column widths (SchemaCodec).
     [[nodiscard]] const Parameter& built_with() const noexcept
@@ -270,16 +320,23 @@ public:
     void reserve(size_type count)
         requires(!Stable)
     {
-        writable().reserve(count);
-        m_positions.reserve(count);
+        auto& held = writable_state();
+        held.elements.reserve(count);
+        held.positions.reserve(count);
     }
     // Every lookup and insert takes the element itself or a prehashed<T> (urd/elements/prehashed.hpp), which is not
     // hashed again; either way the element is hashed once, an insert included.
     [[nodiscard]] iterator find(const T& element) const { return found_at(lookup(element)); }
     [[nodiscard]] iterator find(const prehashed<T>& key) const { return found_at(lookup(key)); }
+    /// As the standard's unique sets give it: the element found, if any.
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const T& element) const
+    {
+        const auto found = lookup(element);
+        return found ? std::pair { at(*found), std::next(at(*found)) } : std::pair { end(), end() };
+    }
     /// A set of rows looks a row up by any contiguous range of its elements.
     template<typename R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
+        requires row_input<R>
     [[nodiscard]] iterator find(const R& row) const
     { return found_at(lookup(row)); }
     /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
@@ -287,43 +344,42 @@ public:
     [[nodiscard]] std::optional<size_type> position(const T& element) const { return position_from(lookup(element)); }
     [[nodiscard]] std::optional<size_type> position(const prehashed<T>& key) const { return position_from(lookup(key)); }
     template<typename R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
+        requires row_input<R>
     [[nodiscard]] std::optional<size_type> position(const R& row) const
     { return position_from(lookup(row)); }
     [[nodiscard]] size_type count(const T& element) const { return contains(element) ? 1 : 0; }
     [[nodiscard]] size_type count(const prehashed<T>& key) const { return contains(key) ? 1 : 0; }
     template<typename R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
+        requires row_input<R>
     [[nodiscard]] size_type count(const R& row) const
     { return contains(row) ? 1 : 0; }
     [[nodiscard]] bool contains(const T& element) const { return lookup(element).has_value(); }
     [[nodiscard]] bool contains(const prehashed<T>& key) const { return lookup(key).has_value(); }
     template<typename R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
+        requires row_input<R>
     [[nodiscard]] bool contains(const R& row) const
     { return lookup(row).has_value(); }
 
     /// The element's position, appending it where it is new. Thread-safe, a lookup first, without a lock; a new
     /// element is appended and indexed under the lock, looked up again there in case another thread inserted it.
-    std::pair<iterator, bool> insert(const T& element) { return inserted(element, hash_key(key_of(element))); }
+    std::pair<iterator, bool> insert(const T& element) { return inserted(element, Keys::hash(element)); }
     std::pair<iterator, bool> insert(T&& element)
     {
-        const auto hash = hash_key(key_of(element));
+        const auto hash = Keys::hash(element);
         return inserted(std::move(element), hash);
     }
     /// A copy of the key where it is new.
     std::pair<iterator, bool> insert(const prehashed<T>& key) { return inserted(key.key, key.hash); }
-    /// A set of rows inserts a row from any contiguous range of its elements, or one with its hash (urd::hash_range
-    /// of the elements), copied where it is new.
-    template<typename R>
-        requires(Rows && !std::same_as<R, T> && !std::same_as<R, prehashed<T>> && row_input<R>)
+    /// A set of rows inserts a row from any range of its elements its storage takes, or one with its hash
+    /// (urd::hash_range of the elements), copied where it is new.
+    template<detail::row_of<typename Elements::value_type> R>
+        requires row_input<R>
     std::pair<iterator, bool> insert(const R& row)
-    {
-        if constexpr (is_prehashed<R>)
-            return inserted(row.key, row.hash);
-        else
-            return inserted(row, hash_key(key_of(row)));
-    }
+    { return inserted(row, Keys::hash(row)); }
+    template<detail::row_of<typename Elements::value_type> R>
+        requires row_input<prehashed<R>>
+    std::pair<iterator, bool> insert(const prehashed<R>& key)
+    { return inserted(key.key, key.hash); }
     /// New elements go last, wherever the hint is.
     iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
     template<std::input_iterator InputIt>
@@ -332,10 +388,8 @@ public:
         std::for_each(first, last,
                       [this](const auto& element)
                       {
-                          if constexpr (Rows && row_input<std::remove_cvref_t<decltype(element)>>)
+                          if constexpr (Rows)  // a row as it is handed out (a span, decoded values): copied in
                               this->insert(element);
-                          else if constexpr (Rows)  // a stored row handed out as a range (bits): its elements
-                              this->insert(T(std::ranges::begin(element), std::ranges::end(element)));
                           else
                               this->insert(T(element));
                       });
@@ -353,19 +407,7 @@ public:
     template<std::invocable<std::size_t> Factory>
         requires(!Rows)
     std::pair<iterator, bool> insert_with(const prehashed<T>& key, Factory make)
-    {
-        // Threads: one search, under the shard's lock (intern_concurrently); else a search, then the append.
-        if constexpr (ThreadSafe)
-            return intern_concurrently(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); });
-        if (const auto found = position_of(key))
-            return { at(*found), false };
-        const auto lock = std::scoped_lock(m_writer);
-        const auto position = static_cast<Index>(size());
-        writable().push_back(make(static_cast<std::size_t>(position)));
-        assert(EqualTo<T> {}(elements()[position], key.key) && "urd::repr::IndexedSet::insert_with: the factory must give an element equal to the key");
-        place(position, key);
-        return { at(position), true };
-    }
+    { return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); }); }
 
     size_type erase(const T& element)
         requires(!Stable || (Rows && !ThreadSafe))
@@ -379,35 +421,22 @@ public:
     iterator erase(const_iterator pos)
         requires(!Stable || (Rows && !ThreadSafe))
     { return erase(pos, std::next(pos)); }
-    /// Later elements move up to keep the order, so their positions change.
-    // ponytail: O(n) per erase, reindexing what follows; an interner never erases.
+    /// Later elements move up to keep the order, so their positions change (and a row's span).
+    // ponytail: O(n) per erase, indexing again what moves; an interner never erases.
     iterator erase(const_iterator first, const_iterator last)
         requires(!Stable || (Rows && !ThreadSafe))
     {
         const auto from = static_cast<Index>(first - begin());
-        if constexpr (Rows)
-        {
-            // Rows never move, so the rest are copied into new storage and indexed again: every row's span changes.
-            const auto to = static_cast<Index>(last - begin());
-            auto kept = make_elements();
-            for (Index position = 0; position < size(); ++position)
-                if (position < from || position >= to)
-                    kept->push_back(elements()[position]);
-            m_elements = std::move(kept);
-            m_positions = table_for(*m_elements);
-            for (Index position = 0; position < size(); ++position)
-                m_positions.insert(Position { position });
-            return at(from);
-        }
-        else
-        {
-            for (auto position = from; position < size(); ++position)
-                m_positions.erase(Position { position });
-            writable().erase(first, last);
-            for (auto position = from; position < size(); ++position)
-                m_positions.insert(Position { position });
-            return at(from);
-        }
+        erase_positions(from, static_cast<Index>(last - begin()));
+        return at(from);
+    }
+    /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
+    // ponytail: O(n) per element moved (erase keeps the order); an interner never merges.
+    void merge(IndexedSet& source)
+        requires(!Stable && !Rows)
+    {
+        for (auto it = source.begin(); it != source.end();)
+            it = insert(*it).second ? source.erase(it) : std::next(it);
     }
     /// Erases the element at `position` by moving the last one into its place: O(1) expected, and only the last
     /// element's position changes (to `position`). The order is not kept.
@@ -416,190 +445,153 @@ public:
     {
         assert(position < size());
         const auto last = static_cast<Index>(size() - 1);
+        auto& [elements, positions] = writable_state();
         // Room for twice the elements before erasing, so that gtl's table cleans its erased slots in place, never growing
-        // (allocating) as rows come and go.
-        if constexpr (Rows)
-            m_positions.reserve(size() * 2);
+        // (allocating) as elements come and go.
+        positions.reserve(size() * 2);
         // The table hashes a position by the element there: each leaves the table before its element moves.
-        m_positions.erase(Position { position });
+        positions.erase(Position { position });
         if (position != last)
-            m_positions.erase(Position { last });
-        if constexpr (Rows)
-            writable().swap_erase(position);
-        else
-        {
-            if (position != last)
-                writable()[position] = std::move(writable()[last]);
-            writable().pop_back();
-        }
+            positions.erase(Position { last });
+        detail::swap_erase(elements, position);
         if (position != last)
-            m_positions.insert(Position { position });
+            positions.insert(Position { position });
     }
     /// The table of an empty set is left as it is: clearing it costs its capacity, and the thread-safe one locks each of
     /// its 2^7 shards, which a set cleared over and over while empty (a relation layer reset per state) would pay each time.
     void clear()
     {
-        if (!empty())
-            m_positions.clear();
-        if (m_elements)
-            m_elements->clear();
+        if (empty())
+            return;
+        auto& held = writable_state();
+        held.positions.clear();
+        held.elements.clear();
     }
 
     /// Equal elements in the same order.
     [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs)
-    { return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return equal_keys(a, b); }); }
+    { return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return Keys::equal(a, b); }); }
 
 private:
-    [[nodiscard]] static Table table_for(const Elements& elements) { return Table(0, PositionHash { &elements }, PositionEqual { &elements }); }
     [[nodiscard]] iterator at(Index position) const { return begin() + static_cast<difference_type>(position); }
     [[nodiscard]] iterator found_at(std::optional<Index> found) const { return found ? at(*found) : end(); }
     [[nodiscard]] static std::optional<size_type> position_from(std::optional<Index> found)
     { return found ? std::optional<size_type>(static_cast<size_type>(*found)) : std::nullopt; }
-    /// The position of `x`: an element, a prehashed<T> of one (not hashed again), or a row.
+    /// The position of `x`: an element or a row, hashed here; or one with its hash (prehashed), not hashed again.
     template<typename X>
     [[nodiscard]] std::optional<Index> lookup(const X& x) const
+    { return lookup(prehashed<X> { x, Keys::hash(x) }); }
+    template<typename K>
+    [[nodiscard]] std::optional<Index> lookup(const prehashed<K>& key) const
     {
-        if constexpr (is_prehashed<X>)
-        {
-            const auto& key = key_of(x.key);
-            return position_of(prehashed<Key> { key, x.hash });
-        }
-        else
-        {
-            const auto& key = key_of(x);
-            return position_of(prehashed<Key> { key, hash_key(key) });
-        }
+        const auto* held = state();
+        return held ? Tables::find(held->positions, key) : std::nullopt;
     }
-    [[nodiscard]] std::optional<Index> position_of(const prehashed<Key>& key) const
+    /// Erases the elements at [from, to) of a storage that erases in place (a vector), which keeps its capacity: the
+    /// elements that move leave the table before they do (it hashes a position by the element there) and go back in after.
+    void erase_positions(Index from, Index to)
+        requires requires(Elements& elements) { elements.erase(elements.begin(), elements.begin()); }
     {
-        if constexpr (ThreadSafe)
-        {
-            // The shard of the key's hash, under its shared lock, searched with that hash: what gtl's if_contains does,
-            // without hashing the key again for the shard and again for the search.
-            const auto hash = m_positions.hash(key);
-            auto found = std::optional<Index>();
-            m_positions.with_submap(m_positions.subidx(hash),
-                                    [&](const auto& shard)
-                                    {
-                                        if (const auto it = shard.find(key, hash); it != shard.end())
-                                            found = it->value;
-                                    });
-            return found;
-        }
-        else
-        {
-            const auto found = m_positions.find(key);
-            return found == m_positions.end() ? std::nullopt : std::optional<Index>(found->value);
-        }
+        auto& [elements, positions] = writable_state();
+        for (auto position = from; position < size(); ++position)
+            positions.erase(Position { position });
+        elements.erase(elements.begin() + from, elements.begin() + to);
+        for (auto position = from; position < size(); ++position)
+            positions.insert(Position { position });
     }
-    /// `element`, whose hash is `hash`, appended where it is new; the table takes the position with that hash.
+    /// Stored rows never move: the kept ones go into a new state and are indexed again.
+    void erase_positions(Index from, Index to)
+    {
+        auto& old = writable_state().elements;
+        auto kept = std::make_unique<State>(m_parameter);
+        for (Index position = 0; position < size(); ++position)
+            if (position < from || position >= to)
+                kept->elements.push_back(std::move(old[position]));
+        delete release();
+        m_state = kept.release();
+        for (Index position = 0; position < size(); ++position)
+            writable_state().positions.insert(Position { position });
+    }
+    /// `element`, whose hash is `hash`, appended where it is new. A row that does not fit its storage throws here,
+    /// before the table is touched.
     template<typename U>
     std::pair<iterator, bool> inserted(U&& element, hash_t hash)
     {
-        const auto& looked_up = key_of(element);
-        if constexpr (Rows)
-            writable().check(looked_up);  // before the table: a row that does not fit changes nothing
-        const auto key = prehashed<Key> { looked_up, hash };
-        // Most inserts find their element: looked up first, without a lock (threads: the shard's shared one).
-        if (const auto found = position_of(key))
-            return { at(*found), false };
-        if constexpr (ThreadSafe)
-            return intern_concurrently(key,
-                                       [&](Index /*position*/) -> decltype(auto)
-                                       {
-                                           if constexpr (Rows)
-                                               return looked_up;
-                                           else
-                                               return std::forward<U>(element);
-                                       });
-        const auto lock = std::scoped_lock(m_writer);
-        const auto position = static_cast<Index>(size());
-        if constexpr (Rows)
-            writable().push_back(looked_up);
-        else
-            writable().push_back(std::forward<U>(element));
-        place(position, key);  // the table takes the position with the key's hash, which is the stored element's
-        return { at(position), true };
+        if constexpr (requires(Elements& rows) { rows.check(element); })
+            writable().check(element);
+        return appended(prehashed<std::remove_cvref_t<U>> { element, hash }, [&](Index /*position*/) -> decltype(auto) { return std::forward<U>(element); });
     }
-
-    /// Where threads share the set: the key's shard locked exclusively, searched once, and where the key is missing, the
-    /// element `make(position)` gives appended and its position put in the shard: one search under the lock, as
-    /// yggdrasil's interners did; the shard's readers wait for the append, which is under the writer lock, so positions
-    /// stay 0..n-1.
-    template<typename Make>
-    std::pair<iterator, bool> intern_concurrently(const prehashed<Key>& key, Make make)
+    /// The position of `key`: where it is new, the element `make(position)` gives (equal to the key) is appended, as the
+    /// table's policy says (Tables): under the writer lock where threads share the set.
+    template<typename K, typename Make>
+    std::pair<iterator, bool> appended(const prehashed<K>& key, Make make)
     {
-        auto position = Index {};
-        auto inserted = false;
-        m_positions.lazy_emplace_l(
-            key,
-            [&position](const Position& existing) { position = existing.value; },
-            [&](const auto& construct)
-            {
-                {
-                    // ponytail: one lock for every storage (the segments take their own besides); no bound on Index
-                    const auto lock = std::scoped_lock(m_writer);
-                    position = static_cast<Index>(size());
-                    writable().push_back(make(position));
-                }
-                construct(Position { position });
-                inserted = true;
-            });
+        auto& [elements, positions] = writable_state();
+        const auto [position, inserted] = Tables::find_or_insert(positions, m_writer, key,
+                                                                 [&]
+                                                                 {
+                                                                     const auto next = static_cast<Index>(elements.size());
+                                                                     elements.push_back(make(next));
+                                                                     return next;
+                                                                 });
         return { at(position), inserted };
     }
-    /// Indexes a new position with its element's hash (`key`'s), which the table does not compute again: gtl takes
-    /// the hash as its own hash() gives it, mixed, which for a prehashed key reads only the hash it carries.
-    void place(Index position, const prehashed<Key>& key) { m_positions.emplace_with_hash(m_positions.hash(key), Position { position }); }
-    /// No element storage until the first insert where single-threaded (an empty set owns no memory): reads see an
-    /// empty one shared by all, which an empty table, hashing only keys, never reads through. Made at once where
-    /// threads share the set, as lookups without a lock cannot race its making.
-    [[nodiscard]] std::unique_ptr<Elements> fresh_elements() const
+
+    /// What the set owns, at one address (the table hashes and compares through the elements): none until the first insert,
+    /// when reads see an empty storage shared by all. Threads make it under the writer lock and find it by a pointer they load.
+    struct State
     {
-        if constexpr (ThreadSafe)
-            return make_elements();
-        else
-            return nullptr;
-    }
-    [[nodiscard]] std::unique_ptr<Elements> make_elements() const
-    {
-        if constexpr (std::same_as<Parameter, std::monostate>)
-            return std::make_unique<Elements>();
-        else
-            return std::make_unique<Elements>(m_parameter);
-    }
+        explicit State(const Parameter& parameter) : elements(make(parameter)) {}
+
+        [[nodiscard]] static Elements make([[maybe_unused]] const Parameter& parameter)
+        {
+            if constexpr (std::same_as<Parameter, std::monostate>)
+                return Elements();
+            else
+                return Elements(parameter);
+        }
+
+        Elements elements;
+        Table positions { 0, PositionHash { &elements }, PositionEqual { &elements } };
+    };
     [[nodiscard]] static const Elements& no_elements()
     {
-        if constexpr (std::same_as<Parameter, std::monostate>)
-        {
-            static const Elements empty;
-            return empty;
-        }
-        else
-        {
-            static const Elements empty { Parameter {} };
-            return empty;
-        }
+        static const Elements empty = State::make(Parameter {});
+        return empty;
     }
-    [[nodiscard]] const Elements& elements() const { return m_elements ? *m_elements : no_elements(); }
-    /// The element storage, made where there is none; a table made over no_elements() is empty, and is made again
-    /// over the storage.
-    Elements& writable()
+    [[nodiscard]] const State* state() const noexcept { return detail::load(m_state); }
+    [[nodiscard]] const Elements& elements() const { const auto* held = state(); return held ? held->elements : no_elements(); }
+    /// The state, made where there is none (threads: by the first of them, under the writer lock).
+    State& writable_state()
     {
-        if (!m_elements)
+        auto* held = detail::load(m_state);
+        if (held == nullptr)
         {
-            m_elements = make_elements();
-            m_positions = table_for(*m_elements);
+            const auto lock = std::scoped_lock(m_writer);
+            held = detail::load(m_state);
+            if (held == nullptr)
+            {
+                held = new State(m_parameter);
+                detail::store(m_state, held);
+            }
         }
-        return *m_elements;
+        return *held;
+    }
+    Elements& writable() { return writable_state().elements; }
+    /// Its state, given up: the set is empty then.
+    [[nodiscard]] State* release() noexcept
+    {
+        auto* held = detail::load(m_state);
+        detail::store(m_state, nullptr);
+        return held;
     }
 
-    /// What the rows are stored by (a bit width, a schema); before the elements, which are made with it.
+    /// What the rows are stored by (a bit width, a schema), which the state is made with.
     [[no_unique_address]] Parameter m_parameter {};
-    std::unique_ptr<Elements> m_elements = fresh_elements();
-    Table m_positions = table_for(elements());
+    detail::Pointer<ThreadSafe, State> m_state {};
     // A spin lock: the critical section is an append and a table insert, short as yggdrasil's benchmarks of its
     // interners found, where it beat std::mutex.
-    [[no_unique_address]] std::conditional_t<ThreadSafe, SpinMutex, NoLock> m_writer;
+    [[no_unique_address]] typename Tables::mutex m_writer;
 };
 
 }  // namespace urd::repr
@@ -607,18 +599,15 @@ private:
 namespace urd
 {
 
-/// Its elements (on the heap, with their storage) and the table of their positions.
+/// Its state: the elements (with their storage) and the table of their positions.
 template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, typename Storage>
 struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>>
 {
     static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>& held)
-    { return (held.m_elements ? sizeof(*held.m_elements) + memory_usage(*held.m_elements) : 0) + memory_usage(held.m_positions); }
+    { const auto* state = held.state(); return state ? sizeof(*state) + memory_usage(state->elements) + memory_usage(state->positions) : 0; }
 };
 
-template<>
-struct include<"urd/repr/values/indexed.hpp">
-{
-};
+template<> struct include<"urd/repr/values/indexed.hpp"> {};
 
 }  // namespace urd
 

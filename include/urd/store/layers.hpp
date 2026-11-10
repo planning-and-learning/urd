@@ -38,11 +38,7 @@ public:
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] std::size_t base() const
         requires chained
-    { return constant().base(); }
-    /// Whether the parent grew after the branch, which it must not.
-    [[nodiscard]] bool parent_grew() const
-        requires chained
-    { return constant().parent_grew(); }
+    { return representation().base(); }
     /// The Store along the chain that holds the element at `at`: this one, or an ancestor.
     template<typename Index>
     [[nodiscard]] const Derived& owner(Index at) const
@@ -67,23 +63,18 @@ public:
         }
         return *layer;
     }
-    /// read(value) with this layer's own value of `key` (a layered map), else `missing`: the parent's are not looked at.
-    template<typename Key, typename Read, typename Result>
-    [[nodiscard]] Result read_own(const Key& key, Read read, Result missing) const
-        requires(!chained)
-    { return constant().read_own(key, read, missing); }
     /// This layer's own value of `key` (a layered map), or nullptr: the parent's are not looked at.
     template<typename Key>
     [[nodiscard]] const auto* own_value(const Key& key) const
         requires(!chained)
-    { return constant().own_value(key); }
+    { return representation().own_value(key); }
     template<typename Key>
     [[nodiscard]] auto* own_value(const Key& key)
         requires(!chained)
     { return representation().own_value(key); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 
     const Derived* m_parent = nullptr;

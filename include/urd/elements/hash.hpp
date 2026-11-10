@@ -20,7 +20,6 @@
 #include "urd/elements/concepts.hpp"
 
 #include <boost/container_hash/hash.hpp>
-#include <boost/hash2/xxhash.hpp>
 #include <cstddef>
 #include <functional>
 #include <optional>
@@ -36,9 +35,8 @@
 namespace urd
 {
 
-// Hashes are deterministic for a fixed Boost version and platform word size. Byte-hashed ranges
-// additionally depend on their element representation. The public result is 64-bit; hash_combine
-// uses Boost.ContainerHash's native-size mixing.
+// Hashes are deterministic for a fixed Boost version and platform word size: hash_combine uses
+// Boost.ContainerHash's native-size mixing. The public result is 64-bit.
 
 /// @brief `Hash` is our custom hasher, using explicit algorithms instead of implementation-defined std::hash.
 ///
@@ -51,25 +49,6 @@ namespace urd
 template<typename T>
 struct Hash;
 
-/// Deterministic hashing primitives with fixed algorithms and constants.
-namespace hashing
-{
-
-/// xxHash64 with a fixed zero seed over a byte range.
-inline hash_t hash_bytes(const void* data, size_t size) noexcept
-{
-    auto hash = boost::hash2::xxhash_64 {};
-    hash.update(data, size);
-    return hash.result();
-}
-
-/// Byte equality must agree with value equality; custom Hash specializations retain value hashing.
-template<typename T>
-concept ByteHashable = (std::integral<T> || Enumeration<T>)
-                       && !std::same_as<T, bool> && std::has_unique_object_representations_v<T> && requires { requires Hash<T>::is_identity; };
-
-}  // namespace hashing
-
 /// Mixes the hash of `value` into `seed`.
 template<Hashable T>
 inline void hash_combine(hash_t& seed, const T& value)
@@ -79,72 +58,34 @@ inline void hash_combine(hash_t& seed, const T& value)
     seed = combined;
 }
 
-/// The hash of a range's elements, in order. Elements hashed as their bytes (integers, enums) are hashed as the bytes
-/// of their values, contiguous or not, so that decoded and segmented ranges hash as contiguous ones of the same
-/// element type; any other element is mixed in one by one.
-namespace detail
-{
-/// Whether hash_range hashes a range as one block of bytes: contiguous, sized, of byte-hashed elements.
-template<typename Range>
-inline constexpr bool hashed_as_bytes = hashing::ByteHashable<std::ranges::range_value_t<Range>> && std::ranges::sized_range<Range>
-                                        && std::ranges::contiguous_range<Range>
-                                        && !std::is_volatile_v<std::remove_reference_t<std::ranges::range_reference_t<Range>>>;
-/// Whether hash_range of such a range throws nothing: taking its data and size throws nothing.
-template<typename Range>
-consteval bool hashes_without_throwing()
-{
-    if constexpr (hashed_as_bytes<Range>)
-        return noexcept(std::ranges::data(std::declval<Range&>())) && noexcept(std::ranges::size(std::declval<Range&>()));
-    else
-        return false;
-}
-}  // namespace detail
-
-/// Hashing a block of bytes throws only where taking the range's data or size does.
+/// The hash of a range's elements, in order, each mixed in (hash_combine): alike for every range of the same values,
+/// whatever holds them (contiguous, segmented, decoded).
+///
+/// There is deliberately no faster path that hashes contiguous integers as one run of bytes (boost::hash_range over
+/// the bytes, xxHash: 6 times faster at 4096 values). It would be a second algorithm, chosen by
+/// the holder and not by the values: a key held in a span would take it, and the equal row a packed pool stores
+/// (decoded value by value on access, so not contiguous) would not. The two would hash differently, and the pool's
+/// table, which hashes a stored row as it is stored and a key as it is given, would lose the row when it rehashes.
+/// One algorithm for every holder can be the byte one only by first copying each non-contiguous range side by side.
 template<std::ranges::input_range Range>
     requires Hashable<std::ranges::range_value_t<Range>>
-inline hash_t hash_range(Range&& range) noexcept(detail::hashes_without_throwing<Range>())
+inline hash_t hash_range(Range&& range)
 {
-    using Value = std::ranges::range_value_t<Range>;
-    if constexpr (detail::hashed_as_bytes<Range>)
-    {
-        // A span of const elements also takes rvalue ranges; std::views::all would need a copy of
-        // a const view, which move-only views do not have.
-        const auto view = std::span<const Value>(std::forward<Range>(range));
-        return hashing::hash_bytes(view.data(), view.size_bytes());
-    }
-    else if constexpr (hashing::ByteHashable<Value>)
-    {
-        auto hash = boost::hash2::xxhash_64 {};
-        for (Value value : std::forward<Range>(range))
-            hash.update(&value, sizeof(value));
-        return hash.result();
-    }
-    else
-    {
-        hash_t seed = 0;
-        if constexpr (std::ranges::sized_range<Range>)
-            seed = std::ranges::size(range);
-        for (const auto& value : std::forward<Range>(range))
-            urd::hash_combine<Value>(seed, value);  // converts proxy elements
-        return seed;
-    }
+    hash_t seed = 0;
+    for (const auto& value : std::forward<Range>(range))
+        urd::hash_combine<std::ranges::range_value_t<Range>>(seed, value);  // converts proxy elements
+    return seed;
 }
 
 template<std::integral T>
 struct Hash<T>
 {
-    // Custom specializations omit this marker and retain element-wise range hashing.
-    static constexpr bool is_identity = true;
-
     hash_t operator()(const T& el) const noexcept { return static_cast<hash_t>(el); }
 };
 
 template<Enumeration T>
 struct Hash<T>
 {
-    static constexpr bool is_identity = true;
-
     hash_t operator()(const T& el) const
         requires Hashable<std::underlying_type_t<T>>
     { return Hash<std::underlying_type_t<T>> {}(static_cast<std::underlying_type_t<T>>(el)); }
@@ -164,12 +105,13 @@ struct Hash<T>
     }
 };
 
-/// Text hashes as its bytes: what hash_range gives a contiguous range of chars, so equal text hashes alike in every
-/// representation (urd::flat_string too).
+/// Text hashes as its bytes, eight at a time (boost::hash_range). Unlike a range (hash_range), text has one holder:
+/// every text type is contiguous and hashes through this one specialization (std::string, urd::flat_string), so no
+/// other algorithm ever meets it. A range of chars that is not text hashes as hash_range gives it, not as text.
 template<>
 struct Hash<std::string_view>
 {
-    hash_t operator()(std::string_view el) const noexcept { return hashing::hash_bytes(el.data(), el.size()); }
+    hash_t operator()(std::string_view el) const noexcept { return boost::hash_range(el.data(), el.data() + el.size()); }
 };
 
 template<>

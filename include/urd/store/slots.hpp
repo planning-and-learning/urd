@@ -94,59 +94,55 @@ public:
         requires unkeyed
     handle_type emplace(Args&&... args)
     { return representation().emplace(std::forward<Args>(args)...); }
-    /// A slot to use as it is: an erased element with what it held and the storage it kept, else a new one.
-    handle_type acquire()
-        requires std::default_initializable<value_type> && unkeyed
-    { return representation().acquire(); }
-
-    /// An acquired slot owned as std::unique_ptr does: it goes back when the owner goes. No allocation once the
-    /// slots in use have been so many. The Store must outlive its owners and stay where it is.
-    [[nodiscard]] std::unique_ptr<value_type, releaser> acquire_unique()
+    /// A slot to use as it is (an erased element with what it held and the storage it kept, else a new one), owned as
+    /// std::unique_ptr does: it goes back when the owner goes. No allocation once the slots in use have been so many.
+    /// The Store must outlive its owners and stay where it is.
+    [[nodiscard]] std::unique_ptr<value_type, releaser> make_unique()
         requires std::default_initializable<value_type> && unkeyed && shrinks<S>
     {
-        const auto handle = acquire();
+        const auto handle = representation().acquire();
         return std::unique_ptr<value_type, releaser>(&representation()[handle], releaser { &self(), handle });
     }
-    /// As acquire_unique(), holding `keep` while the slot is in use and dropping it once the slot is back: pass the
+    /// As make_unique(), holding `keep` while the slot is in use and dropping it once the slot is back: pass the
     /// owner of the Store (std::enable_shared_from_this) and the Store outlives the owner of its slot. A free slot
     /// holds nothing.
-    [[nodiscard]] std::unique_ptr<value_type, keeping_releaser> acquire_unique(std::shared_ptr<const void> keep)
+    [[nodiscard]] std::unique_ptr<value_type, keeping_releaser> make_unique(std::shared_ptr<const void> keep)
         requires std::default_initializable<value_type> && unkeyed && shrinks<S>
     {
-        const auto handle = acquire();
+        const auto handle = representation().acquire();
         return std::unique_ptr<value_type, keeping_releaser>(&representation()[handle], keeping_releaser { { &self(), handle }, std::move(keep) });
     }
-    /// An acquired slot owned as std::shared_ptr does: it goes back when the last owner goes. Every owner (unique or
+    /// Such a slot owned as std::shared_ptr does: it goes back when the last owner goes. Every owner (unique or
     /// shared, weak ones too) returns its slot or its control block to this Store, so all must be back before the Store
     /// is moved or destroyed, unless `keep` holds what owns it. The control block comes from a pool the Store keeps
     /// (std::pmr), so no allocation either once as many owners have lived at once. The Store must outlive the slot's
     /// owners and stay where it is.
-    [[nodiscard]] std::shared_ptr<value_type> acquire_shared()
+    [[nodiscard]] std::shared_ptr<value_type> make_shared()
         requires std::default_initializable<value_type> && unkeyed && shrinks<S>
     {
-        const auto handle = acquire();
+        const auto handle = representation().acquire();
         return std::shared_ptr<value_type>(&representation()[handle],
                                            releaser { &self(), handle },
                                            std::pmr::polymorphic_allocator<value_type>(representation().blocks()));
     }
-    /// As acquire_shared(), holding `keep` while the slot is in use and dropping it once the slot and its control block
+    /// As make_shared(), holding `keep` while the slot is in use and dropping it once the slot and its control block
     /// are back: pass the owner of the Store (std::enable_shared_from_this) and the Store outlives the slot's last owner.
     /// A free slot holds nothing.
-    [[nodiscard]] std::shared_ptr<value_type> acquire_shared(std::shared_ptr<const void> keep)
+    [[nodiscard]] std::shared_ptr<value_type> make_shared(std::shared_ptr<const void> keep)
         requires std::default_initializable<value_type> && unkeyed && shrinks<S>
     {
-        const auto handle = acquire();
+        const auto handle = representation().acquire();
         return std::shared_ptr<value_type>(&representation()[handle],
                                            releaser { &self(), handle },
                                            keeping_allocator<value_type> { representation().blocks(), std::move(keep) });
     }
 
-    /// As acquire_shared(), of a Store of keyed slots (urd::keyed<K>): a slot given back under an equal key, as it is
+    /// As make_shared(), of a Store of keyed slots (urd::keyed<K>): a slot given back under an equal key, as it is
     /// (what it held, the storage it kept), else a new value_type(key, args...). No allocation once each key has had as
     /// many owners at once.
     template<typename Key, typename... Args>
         requires(!unkeyed) && std::same_as<Key, key_type> && std::constructible_from<value_type, const Key&, Args...> && shrinks<S>
-    [[nodiscard]] std::shared_ptr<value_type> acquire_shared(const Key& key, Args&&... args)
+    [[nodiscard]] std::shared_ptr<value_type> make_shared(const Key& key, Args&&... args)
     {
         const auto handle = representation().acquire(key, std::forward<Args>(args)...);
         return std::shared_ptr<value_type>(&representation()[handle],
@@ -154,7 +150,7 @@ public:
                                            std::pmr::polymorphic_allocator<value_type>(representation().blocks()));
     }
 
-    [[nodiscard]] const value_type& operator[](handle_type handle) const { return constant()[handle]; }
+    [[nodiscard]] const value_type& operator[](handle_type handle) const { return representation()[handle]; }
     [[nodiscard]] value_type& operator[](handle_type handle) { return representation()[handle]; }
 
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
@@ -166,7 +162,7 @@ public:
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
 };

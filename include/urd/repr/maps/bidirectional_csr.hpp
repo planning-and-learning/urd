@@ -64,15 +64,7 @@ struct urd::memory_of<urd::repr::BidirectionalCsr<K, V>>
     { return memory_usage(static_cast<const repr::CsrMultiMap<K, V>&>(held)) + memory_usage(held.m_inverse); }
 };
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/bidirectional_csr.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/bidirectional_csr.hpp"> {};
 
 namespace urd::detail
 {

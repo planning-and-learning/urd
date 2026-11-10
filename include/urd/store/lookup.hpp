@@ -29,7 +29,7 @@ public:
     /// In a map, the entry found with its value changeable, as the standard's maps give it.
     [[nodiscard]] iterator_type find(const typename types::lookup_type& element)
         requires(!std::same_as<iterator_type, const_iterator_type>)
-    { return mutable_representation().find(element); }
+    { return representation().find(element); }
     [[nodiscard]] typename types::size_type count(const typename types::lookup_type& element) const { return representation().count(element); }
     [[nodiscard]] bool contains(const typename types::lookup_type& element) const { return representation().contains(element); }
     /// Lookups by anything else the representation compares with a key: what a transparent Hash and EqualTo (or Less)
@@ -42,7 +42,7 @@ public:
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && (!std::same_as<iterator_type, const_iterator_type>)
                 && requires(R& held, const K& key) { held.find(key); }
     [[nodiscard]] iterator_type find(const K& key)
-    { return mutable_representation().find(key); }
+    { return representation().find(key); }
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.count(key); }
     [[nodiscard]] typename types::size_type count(const K& key) const
@@ -51,24 +51,13 @@ public:
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && requires(const R& held, const K& key) { held.contains(key); }
     [[nodiscard]] bool contains(const K& key) const
     { return representation().contains(key); }
-    /// The elements equal to `element` (in a map, with that key), as a pair of iterators; where the representation has
-    /// no equal_range and the elements are unique, from find.
+    /// The elements equal to `element` (in a map, with that key), as a pair of iterators.
     [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const typename types::lookup_type& element) const
-        requires(requires(const R& held, const typename types::lookup_type& key) { held.equal_range(key); } || has<S, unique>)
-    {
-        if constexpr (requires(const R& held, const typename types::lookup_type& key) { held.equal_range(key); })
-            return representation().equal_range(element);
-        else
-        {
-            const const_iterator_type found = representation().find(element);
-            const const_iterator_type end = std::ranges::end(representation());
-            return { found, found == end ? end : std::next(found) };
-        }
-    }
+    { return representation().equal_range(element); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
-    [[nodiscard]] R& mutable_representation() { return store_access::of<Derived>(*this); }
+    [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

@@ -12,13 +12,13 @@ template<typename Derived, typename R, typename S>
 class entries
 {
 public:
-    [[nodiscard]] auto keys() const { return constant().keys(); }
-    [[nodiscard]] auto values() const { return constant().values(); }
+    [[nodiscard]] auto keys() const { return representation().keys(); }
+    [[nodiscard]] auto values() const { return representation().values(); }
     /// The position of the entry at `it`; size() for end(), as find gives for an absent key.
-    [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - constant().begin()); }
+    [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - representation().begin()); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 };
 
 }  // namespace urd::detail::facet

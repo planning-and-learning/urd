@@ -309,17 +309,17 @@ TYPED_TEST(Slots, KeepsElementsInPlaceAndReusesFreedSlots)
     }
 }
 
-// A scratch buffer per task: erased and acquired again, it keeps its storage, so reuse allocates nothing.
-TEST(Slots, AcquireReusesAnErasedElementAsItIs)
+// A scratch buffer per task: returned and handed out again, it keeps its storage, so reuse allocates nothing.
+TEST(Slots, AReturnedElementIsHandedOutAgainAsItIs)
 {
     auto buffers = Store<slots<std::vector<int>>>();
-    const auto first = buffers.acquire();
-    buffers[first].assign(1000, 7);
-    buffers.erase(first);
-    const auto again = buffers.acquire();
-    EXPECT_EQ(again, first);
-    EXPECT_GE(buffers[again].capacity(), 1000U);
-    buffers[again].clear();
+    auto first = buffers.make_unique();
+    first->assign(1000, 7);
+    const auto* slot = first.get();
+    first.reset();
+    const auto again = buffers.make_unique();
+    EXPECT_EQ(again.get(), slot);
+    EXPECT_GE(again->capacity(), 1000U);
     EXPECT_EQ(buffers.size(), 1U);
 }
 
@@ -340,11 +340,11 @@ TEST(Pools, ViewsLendTheStoredRows)
         auto pool = Store<urd::pool<Set>>();
         static_assert(std::same_as<decltype(pool)::representation, urd::repr::RowInterner<Set>>);
         auto handles = std::vector<decltype(pool)::handle_type>();
-        auto views = std::vector<decltype(pool.view(handles.front()))>();
+        auto views = std::vector<decltype(pool.at(handles.front()))>();
         for (int each = 0; each < 2000; ++each)
         {
             handles.push_back(pool.insert(row()).first);
-            views.push_back(pool.view(handles.back()));
+            views.push_back(pool.at(handles.back()));
         }
         for (std::size_t each = 0; each < handles.size(); ++each)
         {
@@ -434,14 +434,14 @@ TEST(Layered, RowPoolsContinueTheirParent)
     EXPECT_EQ(child.get(first), expected_first);
     EXPECT_EQ(child.get(third), expected_third);
     EXPECT_EQ(child.row_size(second), 1U);
-    EXPECT_EQ(child.view(first).size(), 3U);
+    EXPECT_EQ(child.at(first).size(), 3U);
     const auto writes = std::vector<urd::Write<int>> { { 1, 9 } };
     const auto written = child.insert(first, std::span<const urd::Write<int>>(writes)).first;
     EXPECT_EQ(written, RowIndex(3));
     const auto expected_written = Row { 1, 9, 3 };
     EXPECT_EQ(child.get(written), expected_written);
     EXPECT_EQ(parent.insert({ 1, 9, 3 }).first, RowIndex(2));  // the parent knows nothing of it
-    EXPECT_TRUE(child.parent_grew());
+    EXPECT_TRUE((child.parent() != nullptr && child.parent()->size() > child.base()));
     EXPECT_THROW((void) child.insert({ 7, 7 }), std::logic_error);  // its new indices would collide with the parent's
     EXPECT_EQ(child.parent(), &parent);
 }

@@ -28,10 +28,10 @@ list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
 if(URD_ENABLE_FMT_FORMATTERS OR URD_BUILD_TESTS OR URD_BUILD_BENCHMARKS)
     find_package(fmt CONFIG REQUIRED)
 endif()
-# Boost.Container (flat sets and maps), Boost.Mp11 (type lists) and Boost.Hash2 (xxHash for urd::Hash, in Boost since
-# 1.89); cista (serialization, for records stored flat); gtl (hash tables: the unordered sets and maps, and the sharded
-# ones for concurrent sets and maps). All header-only but for Boost.Container's small runtime library.
-find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container hash2 mp11)
+# Boost.Container (flat sets and maps), Boost.ContainerHash (hash_combine) and Boost.Mp11 (type lists); cista
+# (serialization, for records stored flat); gtl (hash tables: the unordered sets and maps, and the sharded ones for
+# concurrent sets and maps). All header-only but for Boost.Container's small runtime library.
+find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container container_hash mp11)
 find_package(cista REQUIRED CONFIG)
 find_package(gtl REQUIRED CONFIG)
 
@@ -50,7 +50,7 @@ target_include_directories(urd INTERFACE
 )
 target_compile_features(urd INTERFACE cxx_std_20)
 # Imported targets' headers are system headers, so the build's warnings cover only urd.
-target_link_libraries(urd INTERFACE Boost::container Boost::hash2 Boost::mp11 cista::cista gtl::gtl)
+target_link_libraries(urd INTERFACE Boost::container Boost::container_hash Boost::mp11 cista::cista gtl::gtl)
 if(URD_ENABLE_FMT_FORMATTERS)
     target_link_libraries(urd INTERFACE fmt::fmt)
     target_compile_definitions(urd INTERFACE URD_ENABLE_FMT_FORMATTERS=1)

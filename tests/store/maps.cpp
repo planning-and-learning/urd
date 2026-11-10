@@ -97,6 +97,13 @@ using MergeMaps = testing::Types<Store<map<int, int>>,
                                  Store<map<int, int>, urd::dense, urd::insertion_ordered>,
                                  Store<map<int, int>, urd::scoped>>;
 TYPED_TEST_SUITE(Merge, MergeMaps);
+// update and visit: the Stores whose container has them.
+template<typename S>
+class Update : public testing::Test
+{
+};
+using UpdateMaps = testing::Types<Store<map<int, int>, urd::dense>, Store<map<int, int>, urd::dense, urd::constant_clear>>;
+TYPED_TEST_SUITE(Update, UpdateMaps);
 
 }  // namespace
 
@@ -115,7 +122,7 @@ TYPED_TEST(Merge, CombinesAndReportsChange)
         const auto [found, inserted] = expected.try_emplace(key, value);
         const bool changed = inserted || value < found->second;
         found->second = std::min(found->second, value);
-        ASSERT_EQ(map.merge(key, value, lower), changed) << "step " << step;
+        ASSERT_EQ(map.insert_or_combine(key, value, lower), changed) << "step " << step;
         ASSERT_EQ(map.at(key), expected.at(key));
     }
     EXPECT_EQ(map.size(), expected.size());
@@ -125,16 +132,16 @@ TYPED_TEST(Merge, CombinesAndReportsChange)
 TEST(Merge, HullOfIntervals)
 {
     auto values = Store<map<int, Interval>, urd::dense, urd::insertion_ordered>();
-    EXPECT_TRUE(values.merge(3, Interval { 1, 2 }, hull));
-    EXPECT_FALSE(values.merge(3, Interval { 1.5, 2 }, hull));
-    EXPECT_TRUE(values.merge(3, Interval { 0, 1 }, hull));
+    EXPECT_TRUE(values.insert_or_combine(3, Interval { 1, 2 }, hull));
+    EXPECT_FALSE(values.insert_or_combine(3, Interval { 1.5, 2 }, hull));
+    EXPECT_TRUE(values.insert_or_combine(3, Interval { 0, 1 }, hull));
     EXPECT_EQ(values.at(3).lower, 0);
     EXPECT_EQ(values.at(3).upper, 2);
 }
 
 // update hands each value to a function with whether the key had one; read reads it or gives a default. Against a
-// std::map updated by hand, over the map kinds of the merge suite.
-TYPED_TEST(Merge, UpdateAndRead)
+// std::map updated by hand, over the maps whose container has both.
+TYPED_TEST(Update, UpdateAndRead)
 {
     auto random = std::mt19937(47);
     auto map = TypeParam();
@@ -152,7 +159,7 @@ TYPED_TEST(Merge, UpdateAndRead)
         ASSERT_EQ(reported, had) << "step " << step;
         expected[key] = had ? expected[key] + 1 : 1;
         const int probe = static_cast<int>(random() % 32);
-        ASSERT_EQ(map.read(probe, [](int count) { return count; }, -1), expected.contains(probe) ? expected[probe] : -1);
+        ASSERT_EQ(map.visit(probe, [](int count) { return count; }, -1), expected.contains(probe) ? expected[probe] : -1);
     }
 }
 
@@ -318,7 +325,7 @@ TEST(LayeredMaps, MonotoneSlotsAreBuiltAnew)
     }
 }
 
-// A layered map reads a key's value in one walk up the layers (read), or its own layer's only (read_own).
+// A layered map reads a key's value in one walk up the layers (visit), or its own layer's only (own_value).
 TEST(LayeredMaps, ReadsTheOwnersValueOrTheOwnLayers)
 {
     using Layers = Store<map<urd::index<LayeredPredicate>, int>, urd::dense, urd::layered>;
@@ -333,12 +340,14 @@ TEST(LayeredMaps, ReadsTheOwnersValueOrTheOwnLayers)
     leaf.insert_or_assign(key(2), 12);
     const auto value = [](int held) { return held; };
     for (std::uint32_t at = 0; at < 3; ++at)
-        EXPECT_EQ(leaf.read(key(at), value, -1), static_cast<int>(10 + at));
-    EXPECT_EQ(leaf.read(key(3), value, -1), -1);
-    EXPECT_EQ(leaf.read_own(key(0), value, -1), -1);
-    EXPECT_EQ(leaf.read_own(key(1), value, -1), -1);
-    EXPECT_EQ(leaf.read_own(key(2), value, -1), 12);
-    EXPECT_EQ(middle.read_own(key(1), value, -1), 11);
+        EXPECT_EQ(leaf.visit(key(at), value, -1), static_cast<int>(10 + at));
+    EXPECT_EQ(leaf.visit(key(3), value, -1), -1);
+    EXPECT_EQ(std::as_const(leaf).own_value(key(0)), nullptr);
+    EXPECT_EQ(std::as_const(leaf).own_value(key(1)), nullptr);
+    ASSERT_NE(std::as_const(leaf).own_value(key(2)), nullptr);
+    EXPECT_EQ(*std::as_const(leaf).own_value(key(2)), 12);
+    ASSERT_NE(std::as_const(middle).own_value(key(1)), nullptr);
+    EXPECT_EQ(*std::as_const(middle).own_value(key(1)), 11);
 }
 
 }  // namespace
@@ -389,7 +398,7 @@ TEST(LayeredMaps, ClearedSlotsReuseTheirSchemaPools)
     // The domain's row, stored in 4-bit columns, found through the state's 12-bit ones, and not stored again.
     EXPECT_EQ(rows.find(row(3, 5)).value, 0U);
     EXPECT_FALSE(state.at(predicate(0)).insert(row(3, 5)).second);
-    EXPECT_EQ(rows.view(urd::index<LayeredRow>(0)).get<urd::index<LayeredObject>>(1), urd::index<LayeredObject>(5));
+    EXPECT_EQ(rows.at(urd::index<LayeredRow>(0)).get<urd::index<LayeredObject>>(1), urd::index<LayeredObject>(5));
     // A row that does not fit the domain's columns is the state's own.
     EXPECT_EQ(rows.find(row(0, 100)).value, 1U);
     // Other widths build a new pool.

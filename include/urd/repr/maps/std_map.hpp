@@ -146,15 +146,7 @@ struct declaration_of<std::unordered_multimap<K, V, H, E, A>>
 
 }  // namespace urd
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/std_map.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/std_map.hpp"> {};
 
 namespace urd::detail
 {

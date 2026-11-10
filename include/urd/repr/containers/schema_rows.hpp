@@ -4,6 +4,7 @@
 // request promises urd::by_column_widths lays them out (urd/repr/pools/pools.hpp). A row's padding is zero; equal rows
 // are hashed and compared by their values, whatever the bits of their columns.
 
+#include "urd/config.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
@@ -13,7 +14,6 @@
 #include <algorithm>
 #include <bit>
 #include <boost/container/small_vector.hpp>
-#include <boost/container_hash/hash.hpp>
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -29,7 +29,7 @@
 namespace urd
 {
 
-/// The columns of a row, each its bit width (1 to 64), with where each starts: what a Store of urd::by_column_widths is
+/// The columns of a row, each its bit width (1 to word_bits, urd/config.hpp), with where each starts: what a Store of urd::by_column_widths is
 /// built with. A column holds an unsigned value that fits its bits; what the value means (a type, a label) is the
 /// user's. Up to 8 columns are held without allocating.
 class column_widths
@@ -54,11 +54,11 @@ public:
             push_back(bits);
     }
 
-    /// Appends a column; std::invalid_argument where its bits are not 1 to 64.
+    /// Appends a column; std::invalid_argument where its bits are not 1 to word_bits.
     void push_back(std::uint8_t bits)
     {
-        if (bits == 0 || bits > 64)
-            throw std::invalid_argument("urd::column_widths: a column takes 1 to 64 bits");
+        if (bits == 0 || bits > word_bits)
+            throw std::invalid_argument("urd::column_widths: a column takes one bit to a word's bits");
         m_fields.push_back(field { bits, static_cast<std::uint32_t>(m_bits) });
         m_bits += bits;
     }
@@ -89,31 +89,12 @@ private:
     std::size_t m_bits = 0;
 };
 
-/// The hash of a row whose columns hold these values (value(i) for i below count): alike for a stored row and for the
-/// values it was made from, whatever the bits of its columns. Each value is mixed in (boost::hash_combine).
-template<typename Value>
-[[nodiscard]] hash_t hash_columns(std::size_t count, Value value) noexcept
-{
-    auto hash = std::size_t { 0 };
-    for (std::size_t i = 0; i < count; ++i)
-        boost::hash_combine(hash, static_cast<std::uint64_t>(value(i)));
-    return hash;
-}
-/// The hash of the row made from these values, unsigned integers or indices (index_of; see hash_columns).
-template<std::ranges::sized_range R>
-[[nodiscard]] hash_t hash_columns(const R& values) noexcept
-{
-    auto it = std::ranges::begin(values);
-    return hash_columns(std::ranges::size(values),
-                        [&it](std::size_t) { return static_cast<std::uint64_t>(index_of<std::ranges::range_value_t<R>>::to_index(*it++)); });
-}
-
 /// Column widths hash by their bits, in order (equal as operator== says).
 template<>
 struct Hash<column_widths>
 {
     hash_t operator()(const column_widths& widths) const noexcept
-    { return hash_columns(widths.size(), [&widths](std::size_t i) { return widths[i]; }); }
+    { return hash_range(std::views::iota(std::size_t { 0 }, widths.size()) | std::views::transform([&widths](std::size_t i) { return widths[i]; })); }
 };
 
 }  // namespace urd
@@ -126,9 +107,6 @@ class SchemaRow;
 
 namespace detail
 {
-
-/// Whether a value fits a column of `bits` bits.
-[[nodiscard]] constexpr bool fits(std::uint8_t bits, std::uint64_t value) noexcept { return bits == 64 || (value >> bits) == 0; }
 
 /// A random-access iterator over a row's columns, each read as T (row.get<T>(i)); it holds the row, so it outlives
 /// the range it came from.
@@ -188,12 +166,15 @@ private:
 template<bool ThreadSafe>
 class SchemaRow
 {
-    using word = std::uint64_t;
+    using word = urd::word_t;
 
 public:
-    using value_type = std::uint64_t;
+    using value_type = word_t;
+    using reference = word_t;  ///< a column is decoded on access
+    using const_reference = word_t;
+    using difference_type = std::ptrdiff_t;
     using size_type = std::size_t;
-    using const_iterator = detail::column_iterator<ThreadSafe, std::uint64_t>;
+    using const_iterator = detail::column_iterator<ThreadSafe, word_t>;
     using iterator = const_iterator;
 
     SchemaRow() = default;
@@ -212,7 +193,7 @@ public:
     [[nodiscard]] std::size_t first_bit() const noexcept { return m_first_bit; }
 
     /// The value of column i.
-    [[nodiscard]] std::uint64_t get(size_type i) const noexcept
+    [[nodiscard]] word_t get(size_type i) const noexcept
     {
         const auto& field = m_widths->at(i);
         return detail::packed_words<ThreadSafe>::get(m_words, m_first_bit + field.at, field.bits);
@@ -221,7 +202,7 @@ public:
     template<typename T>
     [[nodiscard]] T get(size_type i) const noexcept
     { return index_of<T>::from_index(static_cast<std::size_t>(get(i))); }
-    [[nodiscard]] std::uint64_t operator[](size_type i) const noexcept { return get(i); }
+    [[nodiscard]] word_t operator[](size_type i) const noexcept { return get(i); }
     /// Its columns, each read as T (get<T>): a borrowed random-access range.
     template<typename T>
     [[nodiscard]] std::ranges::subrange<detail::column_iterator<ThreadSafe, T>> as() const noexcept
@@ -229,21 +210,6 @@ public:
 
     [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(*this, 0); }
     [[nodiscard]] const_iterator end() const noexcept { return const_iterator(*this, size()); }
-
-    /// Hashed by its values (urd::hash_columns).
-    [[nodiscard]] hash_t hash() const noexcept
-    { return hash_columns(size(), [this](size_type i) { return get(i); }); }
-    /// Equal values, column by column, whatever the bits of the columns.
-    template<bool OtherThreadSafe>
-    [[nodiscard]] bool equal(const SchemaRow<OtherThreadSafe>& other) const noexcept
-    {
-        if (size() != other.size())
-            return false;
-        for (size_type i = 0; i < size(); ++i)
-            if (get(i) != other.get(i))
-                return false;
-        return true;
-    }
 
 private:
     const word* m_words = nullptr;
@@ -256,7 +222,7 @@ private:
 template<bool ThreadSafe>
 class EncodedRow
 {
-    using word = std::uint64_t;
+    using word = urd::word_t;
 
 public:
     EncodedRow() = default;
@@ -266,15 +232,15 @@ public:
     void reset(const urd::column_widths& widths)
     {
         m_widths = &widths;
-        m_words.assign(bit::ceil_div<std::size_t>(widths.bits(), 64) + 1, 0);  // a word of room, as rows have
+        m_words.assign(bit::packed_blocks<word>(widths.bits()), 0);  // a word of room, as rows have
     }
     /// Column i takes `value`: false where it does not fit the column's bits.
-    bool set(std::size_t i, std::uint64_t value) noexcept
+    bool set(std::size_t i, word_t value) noexcept
     {
         const auto& field = m_widths->at(i);
-        if (!detail::fits(field.bits, value))
+        if (!bit::fits<word>(value, field.bits))
             return false;
-        bit::write_int<word>(std::span<word>(m_words.data() + (field.at / 64), 2), value, static_cast<std::uint8_t>(field.at % 64), field.bits);
+        detail::packed_words<false>::set(m_words.data(), field.at, field.bits, value);
         return true;
     }
     /// Column i takes the value of column j of `row`, whose column must be as wide.
@@ -283,17 +249,16 @@ public:
     {
         const auto& field = m_widths->at(i);
         assert(row.column_widths()[j] == field.bits && "urd::repr::EncodedRow::copy: columns alike");
-        bit::write_int<word>(std::span<word>(m_words.data() + (field.at / 64), 2), row.get(j), static_cast<std::uint8_t>(field.at % 64), field.bits);
+        detail::packed_words<false>::set(m_words.data(), field.at, field.bits, row.get(j));
     }
     /// Every column from `values` (unsigned integers or indices, index_of), in order: false where they are not one
-    /// per column or one does not fit.
+    /// per column or one does not fit. Each column's bits are overwritten, so nothing is zeroed first.
     template<std::ranges::input_range R>
     bool assign(const R& values)
     {
-        std::fill(m_words.begin(), m_words.end(), word { 0 });
         std::size_t i = 0;
         for (const auto& value : values)
-            if (i == m_widths->size() || !set(i++, static_cast<std::uint64_t>(index_of<std::ranges::range_value_t<R>>::to_index(value))))
+            if (i == m_widths->size() || !set(i++, static_cast<word_t>(index_of<std::ranges::range_value_t<R>>::to_index(value))))
                 return false;
         return i == m_widths->size();
     }
@@ -311,7 +276,7 @@ private:
 template<bool ThreadSafe>
 struct SchemaCodec
 {
-    using unit = std::uint64_t;
+    using unit = urd::word_t;
     using value_type = SchemaRow<ThreadSafe>;
     using parameter = urd::column_widths;
 
@@ -319,7 +284,7 @@ struct SchemaCodec
 
     /// The words of the rows' bits, and a word of room so that a read of the last column's bits never leaves them.
     [[nodiscard]] std::size_t units(std::size_t rows, std::size_t /*length*/) const noexcept
-    { return bit::ceil_div<std::size_t>(rows * widths.bits(), 64) + 1; }
+    { return bit::packed_blocks<unit>(rows * widths.bits()); }
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t /*length*/) const noexcept
     { return value_type(data, at * widths.bits(), widths); }
     template<bool OtherThreadSafe>

@@ -3,6 +3,7 @@
 // Rows of index-like elements stored in a few bits each: how the element storage of a pool of rows whose request
 // promises urd::bit lays them out (urd/repr/pools/pools.hpp).
 
+#include "urd/config.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/uniform_rows.hpp"
@@ -29,13 +30,13 @@ namespace detail
 template<bool ThreadSafe>
 struct packed_words
 {
-    using word = std::uint64_t;
+    using word = urd::word_t;
 
-    /// The `width` bits at bit `at` (width 1..64), which may span two words.
+    /// The `width` bits at bit `at` (width 1 to word_bits), which may span two words.
     [[nodiscard]] static word get(const word* words, std::size_t at, std::uint8_t width) noexcept
     {
-        const auto from = std::span<const word>(words + (at / 64), 2);
-        const auto offset = static_cast<std::uint8_t>(at % 64);
+        const auto from = std::span<const word>(words + (at / word_bits), 2);
+        const auto offset = static_cast<std::uint8_t>(at % word_bits);
         if constexpr (ThreadSafe)
             return bit::atomic_read_int<word>(from, offset, width);
         else
@@ -44,8 +45,8 @@ struct packed_words
     /// Writes `value` into the `width` bits at bit `at`, keeping the bits around them.
     static void set(word* words, std::size_t at, std::uint8_t width, word value) noexcept
     {
-        const auto into = std::span<word>(words + (at / 64), 2);
-        const auto offset = static_cast<std::uint8_t>(at % 64);
+        const auto into = std::span<word>(words + (at / word_bits), 2);
+        const auto offset = static_cast<std::uint8_t>(at % word_bits);
         if constexpr (ThreadSafe)
             bit::atomic_write_int<word>(into, value, offset, width);
         else
@@ -60,11 +61,13 @@ struct packed_words
 template<typename U, bool ThreadSafe>
 class PackedRow : public std::ranges::view_interface<PackedRow<U, ThreadSafe>>
 {
-    using word = std::uint64_t;
+    using word = urd::word_t;
     using words = detail::packed_words<ThreadSafe>;
 
 public:
     using value_type = U;
+    using reference = U;  ///< an element is decoded on access
+    using const_reference = U;
     using size_type = std::size_t;
 
     class const_iterator
@@ -152,16 +155,16 @@ struct BitCodec
 {
     static_assert(indexable<U>, "urd::repr::BitCodec: elements that are indices (urd::index_of)");
 
-    using unit = std::uint64_t;
+    using unit = urd::word_t;
     using value_type = PackedRow<U, ThreadSafe>;
     using parameter = urd::bit_width;
 
     explicit BitCodec(urd::bit_width built_with) : width(built_with.bits)
-    { assert(width >= 1 && width <= 64 && "urd::repr::BitCodec: a bit width of 1 to 64"); }
+    { assert(width >= 1 && width <= word_bits && "urd::repr::BitCodec: a bit width of one bit to a word's"); }
 
     /// The words of the rows' bits, and a word of room so that a read of the last element's bits never leaves them.
     [[nodiscard]] std::size_t units(std::size_t rows, std::size_t length) const noexcept
-    { return bit::ceil_div<std::size_t>(rows * length * width, 64) + 1; }
+    { return bit::packed_blocks<unit>(rows * length * width); }
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t length) const noexcept
     { return value_type(data, at * length * width, length, width); }
     template<std::ranges::sized_range Row>
@@ -180,7 +183,7 @@ struct BitCodec
     void check(const Row& row) const
     {
         for (const auto& element : row)
-            if ((static_cast<unit>(index_of<std::remove_cvref_t<decltype(element)>>::to_index(element)) & ~bit::lo_set<unit>[width]) != 0)
+            if (!bit::fits<unit>(static_cast<unit>(index_of<std::remove_cvref_t<decltype(element)>>::to_index(element)), width))
                 throw std::out_of_range("urd::bit: an element does not fit in the bit width the Store was built with");
     }
 

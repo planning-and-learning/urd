@@ -10,15 +10,7 @@
 
 #include <boost/container/flat_set.hpp>
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/values/flat_set.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/values/flat_set.hpp"> {};
 
 namespace urd::detail
 {

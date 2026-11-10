@@ -111,19 +111,13 @@ struct jagged_decl
     static constexpr std::string_view holds = "one offsets array per level";
 };
 
-struct fixed_jagged_decl
+struct fixed_jagged_decl : jagged_decl
 {
     static constexpr std::string_view id = "fixed_jagged";
-    static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
-    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::none });
     static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
-    /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
-    static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
     using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
-    static constexpr double words = 1.2;
     static constexpr std::string_view description = "jagged array of rows changed in place (fixed shape: offsets + one data array)";
-    static constexpr std::string_view holds = "one offsets array per level";
 };
 template<typename Inner>
 struct declaration_of<repr::Jagged<Inner>>
@@ -166,16 +160,10 @@ struct declaration_of<repr::RowPool<Inner>>
 namespace detail
 {
 
-struct tracked_jagged_decl
+struct tracked_jagged_decl : fixed_jagged_decl
 {
     static constexpr std::string_view id = "tracked_jagged";
-    static constexpr auto headers = header_list<1> { "urd/repr/sequences/jagged.hpp" };
-    using kind = sequence_kind;
     static constexpr property_set provides = property_set::of({ position::positional, shape::fixed_shape, memory::retains, clearing::proportional_clear });
-    static constexpr property_set relies_on = relies(stated({ shape::fixed_shape }), traits<role::rows, trait::rows_in_place>());
-    /// Rows move with the data array and keep its memory; laid out contiguously where they are sequences of elements.
-    static constexpr std::array<tag, 3> gives_elements { layout::none, referencing::none, memory::retains };
-    using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
     static constexpr double words = 1.3;
     static constexpr std::string_view description = "jagged rows that track the rows handed out to change";
     static constexpr std::string_view holds = "one array, + the rows handed out to change";

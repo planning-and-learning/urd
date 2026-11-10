@@ -144,7 +144,7 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
     const auto failed = [&](int step, const std::string& what) { return std::optional<std::string>("step " + std::to_string(step) + ": " + what); };
     if (leaf.base() != base || middle.base() != root.size() || root.base() != 0)
         return failed(-1, "a layer's indices do not start at its parent's size");
-    if (leaf.size() != base || leaf.parent_grew())
+    if (leaf.size() != base || (leaf.parent() != nullptr && leaf.parent()->size() > leaf.base()))
         return failed(-1, "a fresh layer is not its chain");
     auto random = std::mt19937(seed);
     auto pick = std::uniform_int_distribution<int>(0, 23);
@@ -206,7 +206,7 @@ std::optional<std::string> run_layered_records(P& fresh, unsigned seed, int step
             if (has<Traits, stable_refs> && std::addressof(leaf[at]) != placed[each])
                 return failed(step, "stable_refs: the record at " + std::to_string(each) + " moved");
         }
-        if (root.size() != 8 || middle.size() != base || leaf.parent_grew())
+        if (root.size() != 8 || middle.size() != base || (leaf.parent() != nullptr && leaf.parent()->size() > leaf.base()))
             return failed(step, "a parent changed");
     }
     return std::nullopt;

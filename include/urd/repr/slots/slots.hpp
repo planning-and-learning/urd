@@ -7,6 +7,7 @@
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
+#include "urd/repr/containers/spin_mutex.hpp"
 #include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -50,12 +51,7 @@ class SlotVector
     using Keys = std::conditional_t<keyed, std::vector<Key>, NoKeys>;
     using FreeByKey = std::conditional_t<keyed, gtl::flat_hash_map<Key, std::vector<std::uint32_t>, urd::Hash<Key>, urd::EqualTo<Key>>, NoKeys>;
 
-    struct NoMutex
-    {
-        static void lock() noexcept {}
-        static void unlock() noexcept {}
-    };
-    using Mutex = std::conditional_t<ThreadSafe, std::mutex, NoMutex>;
+    using Mutex = std::conditional_t<ThreadSafe, std::mutex, NoLock>;
     using Count = std::conditional_t<ThreadSafe, std::atomic<std::size_t>, std::size_t>;
     using Blocks = std::conditional_t<ThreadSafe, std::pmr::synchronized_pool_resource, std::pmr::unsynchronized_pool_resource>;
 
@@ -129,7 +125,7 @@ public:
         return m_slots[handle.value];
     }
 
-    /// Where shared owners of its elements (urd/store/slots.hpp, acquire_shared) take their control blocks from: made on
+    /// Where shared owners of its elements (urd/store/slots.hpp, make_shared) take their control blocks from: made on
     /// first use, so a SlotVector that shares nothing allocates none, and a moved-from one makes a new one.
     [[nodiscard]] std::pmr::memory_resource* blocks()
     {
@@ -193,15 +189,7 @@ private:
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/slots/slots.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/slots/slots.hpp"> {};
 
 namespace urd::detail
 {

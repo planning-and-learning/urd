@@ -42,16 +42,15 @@ Member functions
 
    Whether ``element`` is an element: its index is below ``size()``. O(1).
 
-.. cpp:function:: bool same(const key_type& lhs, const key_type& rhs) const
-.. cpp:function:: std::size_t class_size(const key_type& element) const
-.. cpp:function:: std::size_t classes() const
+   Two elements are in one class where ``find`` names the same element for both.
+
 .. cpp:function:: std::size_t size() const
 .. cpp:function:: void clear()
 
 Complexity
 ----------
 
-``insert`` O(1)\*; ``find``, ``same``, ``merge`` O(α(n))\* with path compression and union by size; ``clear`` O(1);
+``insert`` O(1)\*; ``find``, ``merge`` O(α(n))\* with path compression and union by size; ``clear`` O(1);
 memory n parents + n sizes.
 
 .. urd-complexity:: partitions

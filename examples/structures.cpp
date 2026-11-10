@@ -30,7 +30,7 @@ void run()
     terms.insert(4);  // terms 0..4, each in a class of its own
     terms.merge(0, 3);
     terms.merge(3, 4);
-    std::cout << "classes: " << terms.classes() << ", 0 and 4 equal: " << std::boolalpha << terms.same(0, 4) << '\n';
+    std::cout << "0 and 4 equal: " << std::boolalpha << (terms.find(0) == terms.find(4)) << ", 1 and 2 equal: " << (terms.find(1) == terms.find(2)) << '\n';
 }
 
 }  // namespace

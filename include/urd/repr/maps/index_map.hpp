@@ -49,11 +49,13 @@ class IndexMap
     static_assert(!ThreadSafe || Generations, "urd::repr::IndexMap: thread-safe only with generations");
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexMap: threads share slots that never move (Stable)");
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
+    /// What counts the clears: a slot is present where its generation is the map's.
+    using generation_type = std::uint64_t;
 
     struct generation_slot
     {
         /// mutable for std::atomic_ref, which C++20 has only of non-const objects.
-        mutable std::uint64_t generation = 0;
+        mutable generation_type generation = 0;
         V value {};
         [[no_unique_address]] mutable std::conditional_t<ThreadSafe, SpinMutex, NoLock> lock;
     };
@@ -101,6 +103,8 @@ public:
     using mapped_type = V;
     /// What iterating gives: a key and a view of its value.
     using value_type = std::pair<const K, const V&>;
+    using reference = value_type;  ///< an entry is handed out by value: its key and a reference to its value
+    using const_reference = value_type;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
@@ -141,13 +145,13 @@ public:
                           return update(value_of(entry), held);
                       });
     }
-    /// read(value) where `key` has a value, else `missing`.
-    template<typename Read, typename Result>
-        requires std::invocable<Read&, const V&>
-    [[nodiscard]] Result read(const K& key, Read read, Result missing) const
+    /// f(value) where `key` has a value, else `missing`: as the visit of Boost's concurrent maps.
+    template<typename F, typename Result>
+        requires std::invocable<F&, const V&>
+    [[nodiscard]] Result visit(const K& key, F f, Result missing) const
     {
         const auto* entry = held_slot(key);
-        return entry == nullptr ? missing : Result(read(value_of(*entry)));
+        return entry == nullptr ? missing : Result(f(value_of(*entry)));
     }
     /// The value of `key`, or nullptr where it has none.
     [[nodiscard]] const V* get_if(const K& key) const
@@ -392,18 +396,15 @@ private:
     /// growing at once may append more than asked, never fewer.
     slot& slot_at(std::size_t index)
     {
-        if constexpr (ThreadSafe)
-            while (m_slots.size() <= index)
-                m_slots.emplace_back();
-        else if (index >= m_slots.size())
-            m_slots.resize(index + 1);
+        while (m_slots.size() <= index)
+            m_slots.emplace_back();
         return m_slots[index];
     }
     /// Runs `body` holding the slot's lock, where slots have locks.
     template<typename Body>
     static decltype(auto) locked(const slot& entry, Body body)
     {
-        if constexpr (ThreadSafe)
+        if constexpr (ThreadSafe)  // only slots threads share have a lock (generation_slot)
         {
             const auto guard = std::scoped_lock(entry.lock);
             return body();
@@ -412,21 +413,11 @@ private:
             return body();
     }
     /// A slot's generation, as published: loaded with acquire where threads share slots.
-    [[nodiscard]] static std::uint64_t generation_of(const generation_slot& entry) noexcept
-    {
-        if constexpr (ThreadSafe)
-            return std::atomic_ref(entry.generation).load(std::memory_order_acquire);
-        else
-            return entry.generation;
-    }
+    [[nodiscard]] static generation_type generation_of(const generation_slot& entry) noexcept
+    { return detail::load<ThreadSafe>(entry.generation); }
     /// Stores a slot's generation: with release where threads share slots, after its value.
-    static void store_generation(generation_slot& entry, std::uint64_t generation) noexcept
-    {
-        if constexpr (ThreadSafe)
-            std::atomic_ref(entry.generation).store(generation, std::memory_order_release);
-        else
-            entry.generation = generation;
-    }
+    static void store_generation(generation_slot& entry, generation_type generation) noexcept
+    { detail::store<ThreadSafe>(entry.generation, generation); }
     void remove(std::size_t index)
     {
         vacate(m_slots[index]);
@@ -453,7 +444,7 @@ private:
 
     Slots m_slots;
     Count m_count { 0 };
-    std::uint64_t m_generation = 1;  // slots start at 0, so a new slot is absent
+    generation_type m_generation = 1;  // slots start at 0, so a new slot is absent
 };
 
 }  // namespace urd::repr
@@ -473,15 +464,7 @@ struct urd::memory_of<urd::repr::IndexMap<K, V, Generations, ThreadSafe, Stable>
     }
 };
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/index_map.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/index_map.hpp"> {};
 
 namespace urd::detail
 {

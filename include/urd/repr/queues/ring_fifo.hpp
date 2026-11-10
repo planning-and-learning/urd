@@ -56,6 +56,9 @@ public:
         assert(!empty() && "urd::repr::RingFifo::back: the queue is empty");
         return at_position(m_count - 1);
     }
+    /// As std::queue's: the ends changed in place.
+    [[nodiscard]] T& front() { return const_cast<T&>(std::as_const(*this).front()); }  // NOLINT(cppcoreguidelines-pro-type-const-cast)
+    [[nodiscard]] T& back() { return const_cast<T&>(std::as_const(*this).back()); }  // NOLINT(cppcoreguidelines-pro-type-const-cast)
     /// The elements in the order pushed.
     [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> begin() const { return { this, 0 }; }
     [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> end() const { return { this, m_count }; }
@@ -121,15 +124,7 @@ private:
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/queues/ring_fifo.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/queues/ring_fifo.hpp"> {};
 
 namespace urd::detail
 {

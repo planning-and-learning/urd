@@ -75,6 +75,11 @@ public:
         const auto found = m_keys.find(key);
         return found == m_keys.end() ? end() : iterator(this, static_cast<size_type>(found - m_keys.begin()));
     }
+    [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
+    {
+        const auto found = find(key);
+        return { found, found == end() ? found : std::next(found) };
+    }
     [[nodiscard]] size_type count(const K& key) const { return m_keys.count(key); }
     [[nodiscard]] bool contains(const K& key) const { return m_keys.contains(key); }
     [[nodiscard]] const V& at(const K& key) const { return m_values[position_of(key)]; }
@@ -158,30 +163,18 @@ private:
         return static_cast<size_type>(found - m_keys.begin());
     }
 
-    friend struct urd::memory_of<OrderedMap>;
 
     Keys m_keys;
     std::vector<V> m_values;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&OrderedMap::m_keys, &OrderedMap::m_values> {}; }
 };
 
 }  // namespace urd::repr
 
-/// Its set of keys, and the vector of values beside it.
-template<typename Keys, typename V>
-struct urd::memory_of<urd::repr::OrderedMap<Keys, V>>
-{
-    static std::size_t bytes(const repr::OrderedMap<Keys, V>& held) { return memory_usage(held.m_keys) + memory_usage(held.m_values); }
-};
-
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/ordered_map.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/ordered_map.hpp"> {};
 
 namespace urd::detail
 {

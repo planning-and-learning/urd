@@ -222,6 +222,13 @@ using Sets = testing::Types<Store<set<int>>,
                             Store<set<int>, urd::insertion_ordered>,
                             Store<set<int>, urd::dense, urd::proportional_clear>>;
 TYPED_TEST_SUITE(SetAlgebra, Sets);
+// Inclusion, overlap, union, intersection and difference: the Stores whose container has them (a bitset's words).
+template<typename S>
+class DenseSetAlgebra : public testing::Test
+{
+};
+using DenseSets = testing::Types<Store<set<int>, urd::dense>, Store<set<int>, urd::dense, urd::proportional_clear>>;
+TYPED_TEST_SUITE(DenseSetAlgebra, DenseSets);
 
 std::vector<int> sorted_copy(const auto& set)
 {
@@ -233,7 +240,7 @@ std::vector<int> sorted_copy(const auto& set)
 }  // namespace
 
 // Union, intersection, difference, inclusion and overlap give what std::set_* give on sorted copies.
-TYPED_TEST(SetAlgebra, AgreesWithTheStandardAlgorithms)
+TYPED_TEST(DenseSetAlgebra, AgreesWithTheStandardAlgorithms)
 {
     auto random = std::mt19937(5);
     auto pick = std::uniform_int_distribution<int>(0, 40);
@@ -316,7 +323,7 @@ TEST(Entries, KeysAndValuesInInsertionOrder)
 }
 
 // unite says whether the union added anything.
-TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
+TYPED_TEST(DenseSetAlgebra, UniteReportsWhetherItAdded)
 {
     auto random = std::mt19937(43);
     for (int round = 0; round < 200; ++round)
@@ -328,9 +335,13 @@ TYPED_TEST(SetAlgebra, UniteReportsWhetherItAdded)
         for (int count = static_cast<int>(random() % 8); count > 0; --count)
             rhs.insert(static_cast<int>(random() % 20));
         const bool adds = !lhs.includes(rhs);
-        EXPECT_EQ(lhs.unite(rhs), adds);
+        const auto before = lhs.size();
+        lhs |= rhs;
+        EXPECT_EQ(lhs.size() != before, adds);  // a union only adds, so the size says whether it did
         EXPECT_TRUE(lhs.includes(rhs));
-        EXPECT_FALSE(lhs.unite(rhs));
+        const auto united = lhs.size();
+        lhs |= rhs;
+        EXPECT_EQ(lhs.size(), united);
     }
 }
 

@@ -45,16 +45,15 @@ public:
     /// the layer that owns it.
     [[nodiscard]] const_iterator begin() const
         requires(!has<S, layered>)
-    { return { &constant(), 0 }; }
+    { return { &representation(), 0 }; }
     [[nodiscard]] const_iterator end() const
         requires(!has<S, layered>)
-    { return { &constant(), static_cast<std::uint32_t>(constant().size()) }; }
+    { return { &representation(), static_cast<std::uint32_t>(representation().size()) }; }
 
     /// The record's index, and whether it was new: an equal record already held gives its index.
     std::pair<handle_type, bool> insert(const T& record) { return representation().insert(record); }
     /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
     std::pair<handle_type, bool> insert(const prehashed<T>& key)
-        requires requires(R& held) { held.insert(key); }
     { return representation().insert(key); }
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
@@ -65,21 +64,19 @@ public:
     std::pair<handle_type, bool> insert(const T& key, Factory make)
     { return representation().insert(key, make); }
     template<std::invocable<handle_type> Factory>
-        requires makes_record<Factory> && requires(R& held, const prehashed<T>& key, Factory make) { held.insert(key, make); }
+        requires makes_record<Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     { return representation().insert(key, make); }
     /// The index of an equal record, or none.
-    [[nodiscard]] handle_type find(const T& record) const { return constant().find(record); }
-    [[nodiscard]] bool contains(const T& record) const { return constant().contains(record); }
+    [[nodiscard]] handle_type find(const T& record) const { return representation().find(record); }
+    [[nodiscard]] bool contains(const T& record) const { return representation().contains(record); }
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
-        requires requires(const R& held) { held.find(key); }
-    { return constant().find(key); }
+    { return representation().find(key); }
     [[nodiscard]] bool contains(const prehashed<T>& key) const
-        requires requires(const R& held) { held.contains(key); }
-    { return constant().contains(key); }
+    { return representation().contains(key); }
     [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
-    [[nodiscard]] bool contains(handle_type at) const { return !at.is_none() && (at.value) < constant().size(); }
-    [[nodiscard]] const T& operator[](handle_type at) const { return constant()[at]; }
+    [[nodiscard]] bool contains(handle_type at) const { return !at.is_none() && (at.value) < representation().size(); }
+    [[nodiscard]] const T& operator[](handle_type at) const { return representation()[at]; }
     [[nodiscard]] const T& at(handle_type at) const
     {
         if (!contains(at))
@@ -98,13 +95,13 @@ public:
             return view_type(at, &static_cast<const Derived&>(*this));
     }
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
-    [[nodiscard]] std::size_t layer() const { return constant().layer(); }
+    [[nodiscard]] std::size_t layer() const { return representation().layer(); }
     void clear()
         requires clears<S>
     { representation().clear(); }
 
 private:
-    [[nodiscard]] const R& constant() const { return store_access::of<Derived>(*this); }
+    [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
     R& representation() { return store_access::of<Derived>(*this); }
 };
 

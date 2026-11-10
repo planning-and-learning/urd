@@ -23,7 +23,6 @@ namespace urd::repr
 template<typename K>
 class DisjointSets
 {
-    friend struct urd::memory_of<DisjointSets>;
 
 public:
     using value_type = K;
@@ -48,18 +47,14 @@ public:
         m_parent.resize(index + 1);
         std::iota(m_parent.begin() + static_cast<std::ptrdiff_t>(old_size), m_parent.end(), old_size);
         m_sizes.resize(index + 1, 1);
-        m_classes += index + 1 - old_size;
     }
 
     [[nodiscard]] size_type size() const { return m_parent.size(); }
     /// Whether `element` is an element: its index is below size().
     [[nodiscard]] bool contains(const K& element) const { return index_of<K>::to_index(element) < m_parent.size(); }
-    /// How many classes there are.
-    [[nodiscard]] size_type classes() const { return m_classes; }
 
     /// The element that names the class of `element`; it changes only when the class is merged.
     [[nodiscard]] K find(const K& element) const { return index_of<K>::from_index(root(index_of<K>::to_index(element))); }
-    [[nodiscard]] bool same(const K& lhs, const K& rhs) const { return root(index_of<K>::to_index(lhs)) == root(index_of<K>::to_index(rhs)); }
     /// Joins the classes of `lhs` and `rhs`; false where they were one already.
     bool merge(const K& lhs, const K& rhs)
     {
@@ -71,17 +66,13 @@ public:
             std::swap(first, second);
         m_parent[second] = first;
         m_sizes[first] += m_sizes[second];
-        --m_classes;
         return true;
     }
-    /// How many elements share the class of `element`.
-    [[nodiscard]] size_type class_size(const K& element) const { return m_sizes[root(index_of<K>::to_index(element))]; }
 
     void clear()
     {
         m_parent.clear();
         m_sizes.clear();
-        m_classes = 0;
     }
 
 private:
@@ -98,21 +89,17 @@ private:
 
     // Path halving changes the trees, not the classes, so lookups stay const.
     mutable std::vector<std::size_t> m_parent;
+    /// The sizes of the classes, at their roots: the smaller class joins the larger.
     std::vector<std::size_t> m_sizes;
-    std::size_t m_classes = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&DisjointSets::m_parent, &DisjointSets::m_sizes> {}; }
 };
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/partitions/disjoint_sets.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/partitions/disjoint_sets.hpp"> {};
 
 namespace urd::detail
 {
@@ -125,9 +112,3 @@ struct representation_of<disjoint_sets_decl, S>
 
 }  // namespace urd::detail
 
-/// A parent and a class size per key.
-template<typename K>
-struct urd::memory_of<urd::repr::DisjointSets<K>>
-{
-    static std::size_t bytes(const repr::DisjointSets<K>& held) { return memory_usage(held.m_parent) + memory_usage(held.m_sizes); }
-};

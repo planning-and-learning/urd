@@ -189,7 +189,7 @@ TYPED_TEST(ConcurrentMaps, InsertsFromThreadsAgree)
         });
     EXPECT_EQ(map.size(), static_cast<std::size_t>(count));
     for (int k = 0; k < count; ++k)
-        EXPECT_EQ(map.read(k, [](const int& v) { return v; }, 1), -k);
+        EXPECT_EQ(map.visit(k, [](const int& v) { return v; }, 1), -k);
 }
 
 TYPED_TEST(ConcurrentMaps, LookupsOfPublishedKeysBesideInserts)
@@ -213,7 +213,7 @@ TYPED_TEST(ConcurrentMaps, LookupsOfPublishedKeysBesideInserts)
                 for (int step = 0; step < count; ++step)
                 {
                     const int k = step % published;
-                    if (!map.contains(k) || map.read(k, [](const int& v) { return v; }, 1) != -k)
+                    if (!map.contains(k) || map.visit(k, [](const int& v) { return v; }, 1) != -k)
                         ++misses[static_cast<std::size_t>(thread)];
                 }
         });
@@ -234,7 +234,7 @@ TYPED_TEST(ConcurrentMaps, UpdatesOfTheSameKeysSum)
         });
     EXPECT_EQ(map.size(), static_cast<std::size_t>(keys));
     for (int k = 0; k < keys; ++k)
-        EXPECT_EQ(map.read(k, [](const int& v) { return v; }, -1), threads * rounds / keys) << k;
+        EXPECT_EQ(map.visit(k, [](const int& v) { return v; }, -1), threads * rounds / keys) << k;
 }
 
 TYPED_TEST(ConcurrentMaps, ReadsOfTheSameKeysBesideUpdatesNeverGoBack)
@@ -257,7 +257,7 @@ TYPED_TEST(ConcurrentMaps, ReadsOfTheSameKeysBesideUpdatesNeverGoBack)
                 for (int round = 0; round < rounds; ++round)
                 {
                     const int k = round % keys;
-                    const int now = map.read(k, [](const int& v) { return v; }, -1);
+                    const int now = map.visit(k, [](const int& v) { return v; }, -1);
                     if (now < seen[static_cast<std::size_t>(k)])
                         ++regressions[static_cast<std::size_t>(thread)];
                     seen[static_cast<std::size_t>(k)] = now;
@@ -427,7 +427,7 @@ TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
         for (int drawn = 0; drawn < rooted; ++drawn)
             EXPECT_EQ(pool.find(T(drawn)), Index(static_cast<std::uint32_t>(drawn)));
         EXPECT_EQ(root.size(), static_cast<std::size_t>(rooted));
-        EXPECT_FALSE(pool.parent_grew());
+        EXPECT_FALSE((pool.parent() != nullptr && pool.parent()->size() > pool.base()));
     }
 }
 
@@ -446,7 +446,7 @@ TEST(ConcurrentSlots, ThreadsWorkOnTheirOwnHandlesAtOnce)
             {
                 if (round % 4 == 3)
                 {
-                    const auto handle = pool.acquire();
+                    const auto handle = pool.emplace();
                     pool[handle] = thread * rounds + round;
                     mine.push_back(handle);
                 }
@@ -514,7 +514,7 @@ TEST(ConcurrentLayered, EachLayersValueIsMadeOnceAcrossThreads)
         EXPECT_EQ(rows.base(), base);
         EXPECT_EQ(rows.size(), base + per_predicate);
         EXPECT_EQ(&task.owner(predicate_of(drawn)), &task);
-        EXPECT_FALSE(rows.parent_grew());
+        EXPECT_FALSE((rows.parent() != nullptr && rows.parent()->size() > rows.base()));
     }
     for (int drawn = 0; drawn < predicates; drawn += 2)
         EXPECT_EQ(std::as_const(domain).at(predicate_of(drawn)).size(), 1U);
@@ -542,12 +542,12 @@ TEST(ConcurrentLayered, ReadsFindMadeValuesWhole)
                 for (int round = 0; round < 20; ++round)
                     for (std::uint32_t at = 0; at < predicates; ++at)
                     {
-                        const auto base = std::as_const(task).read_own(
-                            predicate_of(at), [](const ConcurrentRows& rows) { return static_cast<int>(rows.base()); }, -1);
+                        const auto* own = std::as_const(task).own_value(predicate_of(at));
+                        const auto base = own == nullptr ? -1 : static_cast<int>(own->base());
                         if (base != -1 && base != (at % 2 == 0 ? 1 : 0))
                             ++wrong[static_cast<std::size_t>(thread)];
                         // The domain's row, read through whichever layer holds the predicate.
-                        if (at % 2 == 0 && !std::as_const(task).read(predicate_of(at), [](const ConcurrentRows& rows) { return rows.size() > 0; }, false))
+                        if (at % 2 == 0 && !std::as_const(task).visit(predicate_of(at), [](const ConcurrentRows& rows) { return rows.size() > 0; }, false))
                             ++wrong[static_cast<std::size_t>(thread)];
                     }
         });

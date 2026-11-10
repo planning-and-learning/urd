@@ -56,6 +56,17 @@ consteval auto make_lo_set()
 template<std::unsigned_integral Block>
 inline constexpr auto lo_set = make_lo_set<Block>();
 
+/// Whether x fits in len bits.
+template<std::unsigned_integral Block>
+constexpr bool fits(Block x, uint8_t len) noexcept
+{ return (x & ~lo_set<Block>[len]) == 0; }
+
+/// The Blocks that `bits` bits of packed integers take: those they fill and one of room, as a packed integer is read and
+/// written through the Block it starts in and the next.
+template<std::unsigned_integral Block>
+constexpr std::size_t packed_blocks(std::size_t bits) noexcept
+{ return ceil_div<std::size_t>(bits, bits_per_block_v<Block>) + 1; }
+
 /// Calls callback(i) for each set bit i of the word, in ascending order.
 template<std::unsigned_integral Block, typename Callback>
 constexpr void for_each_set_bit(Block word, Callback callback)

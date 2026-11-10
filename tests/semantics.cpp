@@ -247,28 +247,6 @@ struct ThrowingLess
     friend bool operator<(const ThrowingLess&, const ThrowingLess&) { throw std::runtime_error("comparison"); }
 };
 
-/// A contiguous range whose size() or data() throws.
-struct ThrowingDataRange
-{
-    std::span<const unsigned> values;
-    bool throw_on_size;
-
-    [[nodiscard]] auto begin() const noexcept { return values.begin(); }
-    [[nodiscard]] auto end() const noexcept { return values.end(); }
-    [[nodiscard]] std::size_t size() const
-    {
-        if (throw_on_size)
-            throw std::runtime_error("range size");
-        return values.size();
-    }
-    [[nodiscard]] const unsigned* data() const
-    {
-        if (!throw_on_size)
-            throw std::runtime_error("range data");
-        return values.data();
-    }
-};
-
 struct ValidHash
 {
     urd::hash_t operator()(int) const { return 0; }
@@ -340,7 +318,7 @@ TEST(Predicates, CapabilitiesCoverTheVocabularyAndRejectUnsupportedValues)
                   && !urd::Hashable<std::weak_ptr<int>> && !urd::Hashable<long double>);
 }
 
-// Golden values: scalars hash to themselves, bytes to seed-zero xxHash64, the same with every library and compiler.
+// Golden values: scalars hash to themselves; text hashes as its bytes.
 TEST(Hashing, ValuesMatchTheDefinedAlgorithms)
 {
     static_assert(std::same_as<decltype(urd::Hash<int> {}(42)), urd::hash_t> && sizeof(urd::hash_t) == 8);
@@ -351,31 +329,16 @@ TEST(Hashing, ValuesMatchTheDefinedAlgorithms)
     EXPECT_EQ(urd::Hash<double> {}(-0.0), urd::Hash<double> {}(0.0));
     EXPECT_EQ(urd::Hash<double> {}(std::numeric_limits<double>::quiet_NaN()), urd::Hash<double> {}(std::numeric_limits<double>::signaling_NaN()));
     EXPECT_NE(urd::Hash<double> {}(std::numeric_limits<double>::quiet_NaN()), urd::Hash<double> {}(0.0));
-    EXPECT_EQ(urd::Hash<std::string> {}("yggdrasil"), 0x79adda5dd5464cb6ULL);
     EXPECT_EQ(urd::Hash<std::string> {}("yggdrasil"), urd::Hash<std::string_view> {}("yggdrasil"));
-    EXPECT_EQ(urd::Hash<std::string> {}(""), 0xef46db3751d8e999ULL);
-
-    alignas(std::uint64_t) constexpr std::array<char, 17> text { '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    EXPECT_EQ(urd::Hash<std::string_view> {}(std::string_view(text.data() + 1, 16)), 0x5c5b90c34e376d0bULL);  // unaligned
-
-    auto bytes = std::array<unsigned char, 66> {};
-    for (std::size_t i = 0; i < bytes.size(); ++i)
-        bytes[i] = static_cast<unsigned char>(i * 37);
-    const auto cases = std::array<std::pair<std::size_t, urd::hash_t>, 15> { {
-        { 0, 0xef46db3751d8e999ULL },  { 1, 0x89ac406afd6cd3b7ULL },  { 3, 0x614123b469e8f204ULL },  { 4, 0x0b0552d04906db7bULL },
-        { 7, 0x547bf259c8d24ca9ULL },  { 8, 0xfd161ba5079f032fULL },  { 15, 0x280ecabe993ce430ULL }, { 16, 0x1bb38a0220bb17b3ULL },
-        { 17, 0xb4ff4a6c0661ca93ULL }, { 31, 0xbd93c8cc6c5f4d8eULL }, { 32, 0x7fd19ac913684e8aULL }, { 33, 0xfb548bf9f10abcd1ULL },
-        { 63, 0x70781206707beec8ULL }, { 64, 0x6892b7f3d78396eeULL }, { 65, 0x4948c637675f5150ULL },
-    } };
-    EXPECT_EQ(urd::hashing::hash_bytes(nullptr, 0), 0xef46db3751d8e999ULL);
-    for (const auto& [size, expected] : cases)
-    {
-        SCOPED_TRACE(size);
-        EXPECT_EQ(urd::hashing::hash_bytes(bytes.data() + 1, size), expected);
-    }
+    // Text is hashed as its bytes (boost::hash_range), alike for every text type; a range of chars is not text.
+    constexpr auto text = std::string_view("yggdrasil");
+    EXPECT_EQ(urd::Hash<std::string> {}("yggdrasil"), boost::hash_range(text.data(), text.data() + text.size()));
+    EXPECT_NE(urd::Hash<std::string> {}("yggdrasil"), urd::Hash<std::string> {}("yggdrasiL"));
+    EXPECT_NE(urd::Hash<std::string> {}("yggdrasil"), urd::hash_range(text));
+    EXPECT_EQ(urd::Hash<std::string> {}(""), urd::Hash<std::string_view> {}(std::string_view()));
 }
 
-// A range of byte-hashed values hashes as its bytes, whatever holds them; other values hash element by element.
+// A range hashes as its values, element by element, whatever holds them.
 TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
 {
     const auto check = []<typename T>()
@@ -393,9 +356,8 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
                 cista_values.emplace_back(value);
                 segmented.push_back(value);
             }
-            const auto expected = urd::hashing::hash_bytes(values.data(), values.size() * sizeof(T));
+            const auto expected = urd::hash_range(std::span<const T>(values));
             EXPECT_EQ(urd::Hash<> {}(values), expected);
-            EXPECT_EQ(urd::Hash<> {}(std::span<const T>(values)), expected);
             EXPECT_EQ(urd::Hash<> {}(cista_values), expected);
             EXPECT_EQ(urd::Hash<> {}(segmented), expected);
             EXPECT_EQ(urd::hash_range(values | std::views::transform([](T value) { return value; })), expected);
@@ -417,7 +379,7 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
     check.operator()<Code>();
 
     auto fixed = std::array<std::uint8_t, 4> { 0, 1, 127, 255 };
-    EXPECT_EQ(urd::Hash<> {}(std::span<std::uint8_t, 4>(fixed)), urd::hashing::hash_bytes(fixed.data(), fixed.size()));
+    EXPECT_EQ(urd::Hash<> {}(std::span<std::uint8_t, 4>(fixed)), urd::hash_range(fixed));
     const auto ints = urd::Store<urd::sequence<int>> { 1, 2, 3, 4 };
     auto even_squares = ints | std::views::filter([](int value) { return value % 2 == 0; }) | std::views::transform([](int value) { return value * value; });
     EXPECT_EQ(urd::hash_range(even_squares), urd::hash_range(urd::Store<urd::sequence<int>> { 4, 16 }));  // not sized
@@ -427,10 +389,10 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
     const auto map = SortedMap { { 1, 2 } };
     EXPECT_EQ(urd::hash_range(map), urd::Hash<SortedMap> {}(map));
 
-    // Floats, booleans (packed or not) and records hash by their Hash, not by their bytes.
+    // Floats, booleans (packed or not) and records hash by their Hash, mixed in one by one from zero.
     const auto elementwise = [](const auto& values)
     {
-        auto seed = urd::hash_t { values.size() };
+        auto seed = urd::hash_t { 0 };
         for (const auto& value : values)
             urd::hash_combine(seed, value);
         return seed;
@@ -596,14 +558,6 @@ TEST(Predicates, FailuresOfUserOperationsPropagate)
     EXPECT_THROW(urd::hash_range(decoded), std::runtime_error);
     EXPECT_THROW(urd::hash_range(values | std::views::filter([](unsigned) -> bool { throw std::runtime_error("begin"); })), std::runtime_error);
     EXPECT_THROW(urd::hash_range(values | std::views::transform([](unsigned) -> double { throw std::runtime_error("value"); })), std::runtime_error);
-    static_assert(std::ranges::contiguous_range<ThrowingDataRange>);
-    for (const bool throw_on_size : { false, true })
-    {
-        const auto range = ThrowingDataRange { values, throw_on_size };
-        static_assert(!noexcept(urd::hash_range(range)));
-        EXPECT_THROW(urd::hash_range(range), std::runtime_error);
-    }
-    static_assert(noexcept(urd::hash_range(std::span<const unsigned>(values))));
 }
 
 // Moved from yggdrasil's tests/unit/semantics/comparison.cpp: the comparison mixin and identifying member lists.

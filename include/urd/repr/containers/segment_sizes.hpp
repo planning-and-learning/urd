@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <bit>
 #include <cstddef>
 
 namespace urd::repr
@@ -24,6 +26,10 @@ namespace urd::repr
 
 /// Elements in the first segment of a segmented container; later segments grow geometrically.
 inline constexpr std::size_t default_first_segment_size = 32;
+
+/// The same for a sequence of T: fewer (one at least) where T is large, so that the first segment takes about a page.
+template<typename T>
+inline constexpr std::size_t first_segment_size_of = std::bit_floor(std::clamp<std::size_t>(4096 / sizeof(T), 1, default_first_segment_size));
 
 /// Arrays in the first segment of the bit-packed and block array pools.
 inline constexpr std::size_t default_first_array_segment_size = 16;

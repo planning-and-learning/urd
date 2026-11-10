@@ -97,8 +97,9 @@ Construction and assignment
 
 .. cpp:function:: template<std::input_iterator InputIt> void assign(InputIt first, InputIt last)
 
-   Replaces the contents by what a Store built from these elements would hold: the one way a ``frozen`` Store
-   changes. A representation that rebuilds in place keeps its storage.
+   Replaces the contents by what a Store built from these elements would hold, in place, its storage kept: the
+   one way a ``frozen`` Store changes. Only where the representation has ``assign``; any other Store is assigned
+   a new one (``s = Set(first, last)``).
 
 .. cpp:function:: void swap(Set& other) noexcept
 
@@ -109,8 +110,8 @@ Capacity
 .. cpp:function:: bool empty() const
 .. cpp:function:: void reserve(std::size_t count)
 
-   Hints how many elements will be inserted; does nothing where the representation cannot reserve. Growable
-   Stores only (not ``frozen``).
+   Hints how many elements will be inserted. Only where the representation can reserve; growable Stores only
+   (not ``frozen``).
 
 Iterators
 ^^^^^^^^^
@@ -180,29 +181,28 @@ Set algebra
 
    Whether the two share an element.
 
-.. cpp:function:: bool unite(const Set& other)
-
-   Inserts every element of ``other``; whether that added any, as fixpoints ask. Two bitsets do all three by
-   words.
+   Both, and ``|=``, ``&=`` and ``-=``, are done by whole words: a set has them where its representation is
+   ``dense`` and ``canonical`` (a bitset), and no other set has them. ``merge``, as ``std::set::merge``, every set
+   has.
 
 Words (``dense``, a bitset)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Where the set is a bitset (``DenseSet``), its words: 64 bits each, key ``k`` at bit ``k % 64`` of word ``k / 64``.
+Where the set is a bitset (``DenseSet``), its words (``urd::word_t``, ``urd::word_bits`` bits each, ``urd/config.hpp``): key ``k`` at bit ``k % word_bits`` of word ``k / word_bits``.
 A pool of such sets as trees of blocks (:doc:`pools`) takes and gives rows by them.
 
-.. cpp:function:: std::span<const std::uint64_t> significant_words() const noexcept
+.. cpp:function:: std::span<const urd::word_t> significant_words() const noexcept
 
    The words up to the last one with a bit set: equal sets give equal words, however many each keeps.
 
-.. cpp:function:: void assign_words(std::span<const std::uint64_t> words)
+.. cpp:function:: void assign_words(std::span<const urd::word_t> words)
 
    Makes this the set whose bits ``words`` set, its storage reused: a whole assignment, as ``operator=`` is, so a
    ``frozen`` set takes it too.
 
 .. cpp:function:: template<typename Fill> void assign_words(std::size_t count, Fill fill)
 
-   The same, written in place: ``count`` words, zeroed, then ``fill(std::span<std::uint64_t>)`` sets their bits.
+   The same, written in place: ``count`` words, zeroed, then ``fill(std::span<urd::word_t>)`` sets their bits.
    Nothing is copied; nothing is allocated where the set holds ``count`` words already.
 
 Positions (``positional``, and ``insertion_ordered``)

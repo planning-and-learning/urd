@@ -104,17 +104,14 @@ public:
     { return lhs.m_offsets == rhs.m_offsets && std::ranges::equal(lhs.m_values, rhs.m_values, EqualTo<V> {}); }
 
 private:
-    friend struct urd::memory_of<IndexGroups>;
 
     std::vector<std::size_t> m_offsets { 0 };
     std::vector<V> m_values;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&IndexGroups::m_offsets, &IndexGroups::m_values> {}; }
 };
 
 }  // namespace urd::repr
 
-/// Compressed sparse rows: the offsets per key and the values.
-template<typename K, typename V>
-struct urd::memory_of<urd::repr::IndexGroups<K, V>>
-{
-    static std::size_t bytes(const repr::IndexGroups<K, V>& held) { return memory_usage(held.m_offsets) + memory_usage(held.m_values); }
-};

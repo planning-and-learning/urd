@@ -41,7 +41,6 @@ template<typename T, typename Compare>
 template<typename T, typename Compare>
 class BucketQueue
 {
-    friend struct urd::memory_of<BucketQueue>;
 
 public:
     using value_type = T;
@@ -91,19 +90,15 @@ private:
     std::vector<std::vector<T>> m_buckets;
     size_type m_size = 0;
     size_type m_least = 0;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&BucketQueue::m_buckets> {}; }
 };
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/queues/bucket_queue.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/queues/bucket_queue.hpp"> {};
 
 namespace urd::detail
 {
@@ -116,9 +111,3 @@ struct representation_of<bucket_queue_decl, S>
 
 }  // namespace urd::detail
 
-/// A vector per priority up to the greatest pushed, each keeping its storage.
-template<typename T, typename Compare>
-struct urd::memory_of<urd::repr::BucketQueue<T, Compare>>
-{
-    static std::size_t bytes(const repr::BucketQueue<T, Compare>& held) { return memory_usage(held.m_buckets); }
-};

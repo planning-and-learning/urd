@@ -30,9 +30,13 @@ namespace urd::repr::detail
 template<bool ThreadSafe>
 class Mutex;
 
+/// No lock: where one thread uses the container.
 template<>
 class Mutex<false>
 {
+public:
+    void lock() noexcept {}
+    void unlock() noexcept {}
 };
 
 template<>
@@ -56,60 +60,53 @@ private:
 };
 
 template<bool ThreadSafe, typename Fn>
-decltype(auto) with_lock([[maybe_unused]] Mutex<ThreadSafe>& mutex, Fn&& fn)
+decltype(auto) with_lock(Mutex<ThreadSafe>& mutex, Fn&& fn)
 {
-    if constexpr (ThreadSafe)
-    {
-        std::lock_guard lock(mutex);
-        return std::forward<Fn>(fn)();
-    }
-    else
-    {
-        return std::forward<Fn>(fn)();
-    }
+    const std::lock_guard lock(mutex);
+    return std::forward<Fn>(fn)();
 }
 
 template<bool ThreadSafe>
 using Size = std::conditional_t<ThreadSafe, std::atomic_size_t, size_t>;
 
-template<bool ThreadSafe>
-size_t load_size(const Size<ThreadSafe>& value) noexcept
+/// What a Size or a Pointer holds, by how it is held: an atomic is loaded with acquire, anything else read as it is.
+template<typename T>
+T load(const std::atomic<T>& value) noexcept
+{ return value.load(std::memory_order_acquire); }
+template<typename T>
+T load(const T& value) noexcept
+{ return value; }
+
+/// Written likewise: an atomic stored with release, after what it publishes.
+template<typename T>
+void store(std::atomic<T>& target, std::type_identity_t<T> value) noexcept
+{ target.store(value, std::memory_order_release); }
+template<typename T>
+void store(T& target, std::type_identity_t<T> value) noexcept
+{ target = value; }
+
+/// A plain object read where threads may write it: loaded with acquire through std::atomic_ref, else as it is.
+template<bool ThreadSafe, typename T>
+T load(const T& value) noexcept
 {
     if constexpr (ThreadSafe)
-        return value.load(std::memory_order_acquire);
+        return std::atomic_ref(const_cast<T&>(value)).load(std::memory_order_acquire);  // NOLINT(cppcoreguidelines-pro-type-const-cast): C++20 has atomic_ref of non-const objects only
     else
         return value;
 }
 
-template<bool ThreadSafe>
-void store_size(Size<ThreadSafe>& target, size_t value) noexcept
+/// Written where threads may read it: stored with release, after what it publishes.
+template<bool ThreadSafe, typename T>
+void store(T& target, std::type_identity_t<T> value) noexcept
 {
     if constexpr (ThreadSafe)
-        target.store(value, std::memory_order_release);
+        std::atomic_ref(target).store(value, std::memory_order_release);
     else
         target = value;
 }
 
 template<bool ThreadSafe, typename T>
 using Pointer = std::conditional_t<ThreadSafe, std::atomic<T*>, T*>;
-
-template<bool ThreadSafe, typename T>
-T* load_pointer(const Pointer<ThreadSafe, T>& value) noexcept
-{
-    if constexpr (ThreadSafe)
-        return value.load(std::memory_order_acquire);
-    else
-        return value;
-}
-
-template<bool ThreadSafe, typename T>
-void store_pointer(Pointer<ThreadSafe, T>& target, T* value) noexcept
-{
-    if constexpr (ThreadSafe)
-        target.store(value, std::memory_order_release);
-    else
-        target = value;
-}
 
 }  // namespace urd::repr::detail
 

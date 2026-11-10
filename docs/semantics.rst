@@ -7,7 +7,7 @@ What a container needs of its elements comes from three function objects, with n
 
 .. cpp:struct:: template<typename T> Hash
 
-   ``hash_t operator()(const T&) const``: a deterministic 64-bit hash (xxHash64 over bytes, Boost.ContainerHash
+   ``hash_t operator()(const T&) const``: a deterministic 64-bit hash (scalars as themselves, Boost.ContainerHash
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
    :cpp:concept:`Identifiable` type, :cpp:struct:`urd::index`,

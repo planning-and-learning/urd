@@ -31,7 +31,6 @@ namespace urd::repr
 template<typename T, leaving Order, typename Compare>
 class Queue
 {
-    friend struct urd::memory_of<Queue>;
 
     static constexpr bool fifo = Order == leaving::first_in;
     using Elements = std::conditional_t<fifo, std::deque<T>, std::vector<T>>;
@@ -96,19 +95,15 @@ private:
     static constexpr auto greater = [](const auto& lhs, const auto& rhs) { return Compare {}(rhs, lhs); };
 
     Elements m_elements;
+
+public:
+    /// The members it owns memory through (urd::memory_of).
+    static constexpr auto memory_members() noexcept { return Members<&Queue::m_elements> {}; }
 };
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/queues/queue.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/queues/queue.hpp"> {};
 
 namespace urd::detail
 {
@@ -131,9 +126,3 @@ struct representation_of<heap_decl, S>
 
 }  // namespace urd::detail
 
-/// Its elements: a deque for first in, first out, else a vector.
-template<typename T, urd::repr::leaving Order, typename Compare>
-struct urd::memory_of<urd::repr::Queue<T, Order, Compare>>
-{
-    static std::size_t bytes(const repr::Queue<T, Order, Compare>& held) { return memory_usage(held.m_elements); }
-};

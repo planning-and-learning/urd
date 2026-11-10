@@ -5,6 +5,8 @@
 // per key of its range, or slot of its capacity: words_per, urd/registry/declaration.hpp), which the benchmarks judge
 // against what is allocated (benchmarks/record.py). Its declared words are urd/cost.hpp's.
 
+#include "urd/elements/concepts.hpp"
+
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -32,6 +34,16 @@ struct memory_of
 template<typename T>
 [[nodiscard]] std::size_t memory_usage(const T& held)
 { return memory_of<std::remove_cv_t<T>>::bytes(held); }
+
+/// A type that names the members it owns memory through, as a urd::Members list
+/// (`static constexpr auto memory_members() noexcept { return Members<&C::m_a, &C::m_b> {}; }`), owns what they own.
+template<typename T>
+    requires requires { T::memory_members(); }
+struct memory_of<T>
+{
+    static std::size_t bytes(const T& held)
+    { return [&held]<auto... Ms>(Members<Ms...> /*members*/) { return (std::size_t { 0 } + ... + memory_usage(held.*Ms)); }(T::memory_members()); }
+};
 
 template<typename A, typename B>
 struct memory_of<std::pair<A, B>>

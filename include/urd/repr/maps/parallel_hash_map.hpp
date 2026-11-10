@@ -17,15 +17,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace urd
-{
-
-template<>
-struct include<"urd/repr/maps/parallel_hash_map.hpp">
-{
-};
-
-}  // namespace urd
+template<> struct urd::include<"urd/repr/maps/parallel_hash_map.hpp"> {};
 
 namespace urd::repr
 {
@@ -72,12 +64,12 @@ public:
             return std::move(*result);
         }
     }
-    /// read(value) where `key` has a value, else `missing`, under the key's lock.
-    template<typename Read, typename Result>
-    [[nodiscard]] Result read(const key_type& key, Read& read, Result missing) const
+    /// f(value) where `key` has a value, else `missing`, under the key's lock.
+    template<typename F, typename Result>
+    [[nodiscard]] Result visit(const key_type& key, F& f, Result missing) const
     {
         auto result = std::move(missing);
-        this->if_contains(key, [&read, &result](const auto& entry) { result = Result(read(entry.second)); });
+        this->if_contains(key, [&f, &result](const auto& entry) { result = Result(f(entry.second)); });
         return result;
     }
 };

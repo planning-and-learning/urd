@@ -1,6 +1,21 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+
+namespace urd
+{
+
+/// urd's word: the unsigned integer that bit-packed storage is made of (rows of a bit width or of column widths, sets
+/// kept as bits), and that a packed value is read and written as.
+using word_t = std::uint64_t;
+
+/// Its bits, derived from it: the most a packed value takes. No code spells them as a number.
+inline constexpr std::size_t word_bits = std::numeric_limits<word_t>::digits;
+
+}  // namespace urd
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage): each must expand at its call site
 /// States an invariant of side-effect free `condition`: asserted in Debug, assumed in Release (undefined
