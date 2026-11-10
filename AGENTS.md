@@ -51,6 +51,10 @@ that gives a Store its members. The **request** is the spec `S` a Store is asked
   (`requires`) to them. A generic member that is silently wrong for some instantiation MUST NOT exist.
 - **I4 Constrained templates** (*open*). A public class or function template MUST state what it needs of each type
   parameter with a concept or a `requires` clause. For a Store parameter that is `store_of<X, Kind, Tags...>`.
+- **I5 Incomplete elements.** A `Store<sequence<T>>` whose container is a `std::vector` MUST be holdable where `T` is
+  incomplete, as `std::vector<T>` is (a recursive type holds a sequence of itself): choosing a container asks a type
+  only the traits some container of the request's kind relies on, and a facet's condition asks the element type
+  nothing. **Check:** `tests/store/incomplete.cpp`.
 
 ## Containers
 

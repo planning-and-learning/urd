@@ -16,6 +16,12 @@ nor does a request its kind's rules call contradictory (a queue reached neither 
 ``by_priority``). Answer the questions below first: every other answer is read against them. A kind added outside urd
 is a kind like these (:doc:`/extending`).
 
+A plain ``sequence<V>`` may be held where ``V`` is still incomplete, as ``std::vector<V>`` may, so a recursive type
+holds a sequence of itself (``struct Node { urd::Store<urd::sequence<Node>> children; };``). Such a type writes its
+``==`` and ``<=>`` out: defaulted in the class, they would ask the Store's, which ask the element's. Every other kind,
+and a sequence with ``stable_refs`` or ``concurrent``, needs its element types complete, because choosing or building
+their containers asks what the elements are.
+
 .. urd-group:: kind
 
 .. urd-category:: any_access

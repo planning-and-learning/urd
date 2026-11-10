@@ -12,6 +12,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -74,14 +75,17 @@ struct store_types
 
 /// The types of an iterable Store's iterators and references, which come from the representation's. Only the
 /// facets of iterable Stores form them, so a representation without iterators never has to name any.
+/// Read from the representation's begin() and its iterators' own types (std::iterator_traits), not through std::ranges:
+/// its concepts look functions up by the element type, which completes it, and a Store may be held while its element
+/// type is incomplete (rule I5).
 template<typename R, typename S>
 struct iterator_types
 {
+    using const_iterator = decltype(std::declval<const R&>().begin());
+    using iterator = std::conditional_t<store_types<S>::values_writable, decltype(std::declval<R&>().begin()), const_iterator>;
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
-    using const_reference = std::ranges::range_reference_t<const R>;
-    using reference = std::conditional_t<store_types<S>::values_writable, std::ranges::range_reference_t<R>, const_reference>;
-    using const_iterator = std::ranges::iterator_t<const R>;
-    using iterator = std::conditional_t<store_types<S>::values_writable, std::ranges::iterator_t<R>, const_iterator>;
+    using const_reference = typename std::iterator_traits<const_iterator>::reference;
+    using reference = typename std::iterator_traits<iterator>::reference;
 };
 
 /// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet

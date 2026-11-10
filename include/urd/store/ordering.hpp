@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <compare>
+#include <concepts>
+#include <ranges>
 #include <type_traits>
 
 namespace urd::detail::facet
@@ -16,7 +18,11 @@ template<typename Derived, typename R, typename S>
 class ordering
 {
 public:
-    [[nodiscard]] friend auto operator<=>(const Derived& lhs, const Derived& rhs)
+    /// Where the elements its representation yields order by urd::Less (a flattened Store's rows are slices, which do
+    /// not): asked where two Stores are compared, not where the Store is built (urd/store/equality.hpp).
+    template<std::same_as<Derived> Self>
+        requires OrderedByLess<std::ranges::range_value_t<Self>>
+    [[nodiscard]] friend auto operator<=>(const Self& lhs, const Self& rhs)
     { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), ThreeWayCompare<> {}); }
 };
 
@@ -31,15 +37,7 @@ struct facet_condition<facet::ordering> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    {
-        // Ordered, and the elements its representation yields order by urd::Less (a flattened Store's rows are slices,
-        // which do not).
-        // Never asked from the spec alone (R void), before a container is chosen.
-        if constexpr (!std::is_void_v<R> && store_types<S>::ordered)
-            return OrderedByLess<std::ranges::range_value_t<R>>;
-        else
-            return false;
-    }
+    { return !std::is_void_v<R> && store_types<S>::ordered; }  // R void: never asked from the spec alone
 };
 
 }  // namespace urd::detail

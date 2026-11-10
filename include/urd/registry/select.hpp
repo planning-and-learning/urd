@@ -24,12 +24,32 @@
 namespace urd::detail
 {
 
+/// The facts about roles that some container of Kind relies on: all that choosing among them reads of a request's
+/// data.
+template<typename Kind>
+inline constexpr property_set relied_on_v = []
+{
+    auto result = property_set::roots();
+    for (const auto& each : table_of<Kind>)
+        result = with(result, facts_where(each.relies_on, true));
+    return result;
+}();
+/// Asks the traits a container of Kind relies on, and no other: what a request's data is asked. A sequence's
+/// containers rely on none of their elements', so a sequence may be held of an incomplete type.
+template<typename Kind>
+struct traits_relied_on_by
+{
+    template<typename Role, typename Trait>
+    static consteval bool asks()
+    { return relied_on_v<Kind>.has(trait_tag<Trait>.about(role_v<Role>)); }
+};
+
 /// What spec S is, as the scan reads it: what it requires, its roles, and the elements it holds; computed once.
 template<typename S>
 inline constexpr request_shape shape_of = []
 {
     using held = held_as<typename S::held_type>;
-    return request_shape { S::required, request_roles<S>(), held::properties, held::required };
+    return request_shape { S::required, request_roles<S, traits_relied_on_by<typename S::kind>>(), held::properties, held::required };
 }();
 
 /// Every entry serving spec S, in the order they are preferred: what the tables and tests read of a request.

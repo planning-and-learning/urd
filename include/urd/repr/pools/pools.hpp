@@ -234,13 +234,13 @@ public:
     }
     /// With by_column_widths, no columns: what a slot holds before its value is built with its widths.
     RowInterner()
-        requires by_column_widths
+        requires(by_column_widths)
         : RowInterner(urd::column_widths())
     {
     }
     /// Rows of these columns (urd::by_column_widths).
     explicit RowInterner(const urd::column_widths& columns)
-        requires by_column_widths
+        requires(by_column_widths)
         : m_rows(columns)
     {
     }

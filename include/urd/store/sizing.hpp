@@ -15,7 +15,7 @@ class sizing
 public:
     using size_type = typename store_types<S>::size_type;
 
-    [[nodiscard]] size_type size() const { return std::ranges::size(store_access::of<Derived>(*this)); }
+    [[nodiscard]] size_type size() const { return store_access::of<Derived>(*this).size(); }
     [[nodiscard]] bool empty() const { return size() == 0; }
 
     // Of contiguous storage (urd::contiguous), as std::vector's.
@@ -39,7 +39,8 @@ namespace urd::detail
 {
 
 /// When a Store has this facet: where its container counts its elements (a pool that shares parts of its rows keeps
-/// no count); asked from the spec alone (R void), never.
+/// no count); asked from the spec alone (R void), never. Its member is asked, not std::ranges::size, which would have
+/// the compiler build the count of a std::vector whose element type is still incomplete.
 template<>
 struct facet_condition<facet::sizing> : facet_defaults
 {
@@ -49,7 +50,7 @@ struct facet_condition<facet::sizing> : facet_defaults
         if constexpr (std::is_void_v<R>)
             return false;
         else
-            return requires(const R& range) { std::ranges::size(range); };
+            return requires(const R& range) { range.size(); };
     }
 };
 

@@ -63,17 +63,48 @@ struct held_as;
 template<typename Traits, typename... Args>
 struct store_facts;
 
+/// Which traits are asked of the types that play a role: every one. What a container's template arguments make
+/// (declaration_of::roles); a request asks only what a container of its kind relies on (urd/registry/select.hpp).
+struct every_trait
+{
+    template<typename Role, typename Trait>
+    static consteval bool asks()
+    { return true; }
+};
+/// Whether Asked asks any of Traits of role Role.
+template<typename Asked, typename Role, typename... Traits>
+consteval bool asks_any(boost::mp11::mp_list<Traits...> /*traits*/)
+{ return (Asked::template asks<Role, Traits>() || ...); }
+
+/// Whether Trait holds of Args, where it is asked; where it is not, no, and Trait is never instantiated for them: a
+/// type no trait is asked of may be incomplete (a recursive type that holds a sequence of itself).
+template<bool Asked>
+struct trait_where
+{
+    template<typename Trait, typename... Args>
+    static consteval bool holds()
+    { return Trait::template holds<Args...>(); }
+};
+template<>
+struct trait_where<false>
+{
+    template<typename Trait, typename... Args>
+    static consteval bool holds()
+    { return false; }
+};
+
 /// The facts of role Role for the types that play it (Args), about no role: none where an argument is void (a kind
-/// without values has no value type); a Store's own facts where it answers for itself (store_facts); else the role's
-/// traits that hold (Trait::holds<Args…>()). A role whose facts are something else (a row's own tags) specializes it.
-template<typename Role>
+/// without values has no value type) or Asked asks none of the role's traits; a Store's own facts where it answers
+/// for itself (store_facts); else the role's traits that are asked and hold (Trait::holds<Args…>()). A role whose
+/// facts are something else (a row's own tags) specializes it.
+template<typename Role, typename Asked = every_trait>
 struct role_facts
 {
     template<typename... Args>
     static consteval property_set of()
     {
         using traits = typename traits_of_role<Role>::type;
-        if constexpr ((std::is_void_v<Args> || ...))
+        if constexpr ((std::is_void_v<Args> || ...) || !asks_any<Asked, Role>(traits {}))
             return property_set::roots();
         else if constexpr (requires { store_facts<traits, Args...>::value; })
             return store_facts<traits, Args...>::value;
@@ -81,7 +112,7 @@ struct role_facts
             return []<typename... Traits>(boost::mp11::mp_list<Traits...> /*traits*/)
             {
                 auto result = property_set::roots();
-                (put_trait<Traits>(result, Traits::template holds<Args...>()), ...);
+                (put_trait<Traits>(result, trait_where<Asked::template asks<Role, Traits>()>::template holds<Traits, Args...>()), ...);
                 return result;
             }(traits {});
     }

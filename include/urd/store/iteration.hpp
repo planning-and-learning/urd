@@ -3,7 +3,9 @@
 #include "urd/cost.hpp"
 #include "urd/store/types.hpp"
 
+#include <concepts>
 #include <iterator>
+#include <ranges>
 
 namespace urd::detail::facet
 {
@@ -22,7 +24,14 @@ public:
     using const_reference = typename iterator_types<R, S>::const_reference;
     using difference_type = typename store_types<S>::difference_type;
 
-    [[nodiscard]] const_iterator begin() const { return representation().begin(); }
+    [[nodiscard]] const_iterator begin() const
+    {
+        // Checked where it is iterated, not where its types are formed (iterator_types): asking would complete its
+        // element type.
+        static_assert(std::same_as<const_reference, std::ranges::range_reference_t<const R>>,
+                      "urd::Store: its container's iterator names a reference (std::iterator_traits) that iterating it does not give");
+        return representation().begin();
+    }
     [[nodiscard]] const_iterator end() const { return representation().end(); }
     /// Where what it iterates may change in place (a sequence's elements, a map's values).
     [[nodiscard]] iterator begin()

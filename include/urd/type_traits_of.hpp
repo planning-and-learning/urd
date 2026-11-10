@@ -169,9 +169,9 @@ struct urd::traits_of_role<urd::role::order>
 namespace urd::detail
 {
 
-/// A row's facts are its own tags (where it is a Store or a registered container).
-template<>
-struct role_facts<role::row>
+/// A row's facts are its own tags (where it is a Store or a registered container), whatever is asked.
+template<typename Asked>
+struct role_facts<role::row, Asked>
 {
     template<typename T>
     static consteval property_set of()
@@ -179,21 +179,21 @@ struct role_facts<role::row>
 };
 
 /// The facts by role of Data, a kind with its element types (urd::set<K>, …) or a request's spec, ordered by Order:
-/// each role its played types (Data::played<Order>: plays<Role, Args…>) have, about that role. What a container's
-/// template arguments make (declaration_of::roles) and what a request's data is.
-template<typename Data, typename Order = Less<typename Data::ordered_type>>
+/// each role its played types (Data::played<Order>: plays<Role, Args…>) have, about that role, of the traits Asked
+/// asks. What a container's template arguments make (declaration_of::roles: every trait) and what a request's data is.
+template<typename Data, typename Order = Less<typename Data::ordered_type>, typename Asked = every_trait>
 consteval property_set roles_of()
 {
     auto result = property_set::roots();
     const auto add = [&result]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
-    { result = with(result, about(role_v<Role>, role_facts<Role>::template of<Args...>())); };
+    { result = with(result, about(role_v<Role>, role_facts<Role, Asked>::template of<Args...>())); };
     []<typename... Plays>(boost::mp11::mp_list<Plays...> /*played*/, const auto& each) { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
     return result;
 }
 
-/// The facts of spec S: what it promises, and its data's facts by role.
-template<typename S>
+/// The facts of spec S: what it promises, and its data's facts by role, of the traits Asked asks.
+template<typename S, typename Asked>
 consteval property_set request_roles()
-{ return with(S::promised, roles_of<S, typename S::order_type>()); }
+{ return with(S::promised, roles_of<S, typename S::order_type, Asked>()); }
 
 }  // namespace urd::detail

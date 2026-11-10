@@ -3,17 +3,22 @@
 #include "urd/store/store_facts.hpp"
 #include "urd/store/types.hpp"
 
+#include <concepts>
 #include <type_traits>
 
 namespace urd::detail::facet
 {
 
-/// Comparable for equal contents, as its container compares them (urd::EqualTo).
+/// Comparable for equal contents, as its container compares them (urd::EqualTo), where it does: asked where two
+/// Stores are compared, not where the Store is built, when its element type may still be incomplete. A template over
+/// the Store itself, so that a lookup that only finds it (an iterator over Stores compared) never asks.
 template<typename Derived, typename R, typename S>
 class equality
 {
 public:
-    [[nodiscard]] friend bool operator==(const Derived& lhs, const Derived& rhs)
+    template<std::same_as<Derived> Self>
+        requires EqualityComparableByEqualTo<R>
+    [[nodiscard]] friend bool operator==(const Self& lhs, const Self& rhs)
     { return EqualTo<R> {}(store_access::representation(lhs), store_access::representation(rhs)); }
 };
 
@@ -29,12 +34,7 @@ struct facet_condition<facet::equality> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    {
-        if constexpr (std::is_void_v<R>)  // asked from the spec alone, before a container is chosen
-            return false;
-        else
-            return EqualityComparableByEqualTo<R> && !has<S, layered>;
-    }
+    { return !std::is_void_v<R> && !has<S, layered>; }  // R void: asked from the spec alone, before a container is chosen
 };
 
 }  // namespace urd::detail
