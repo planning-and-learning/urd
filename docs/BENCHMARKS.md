@@ -202,47 +202,35 @@ Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core
 
 ### Choices that fail
 
-- set > recycling_tree_set / ordered_lookup,iterate,lookup,insert,erase,clear / std::string;- / small: at 64, 246.3 against 204.8 ns per element (Store<set<std::string>, small, sorted, stable_refs>)
-- set > recycling_tree_set / ordered_lookup,iterate,lookup,insert,erase,clear / Id;-: at 100000, 740.1 against 649.6 ns per element (Store<set<Id>, sorted>)
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 26.7 against 20.6 ns per element (Store<set<Id>, small>)
-- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83100.9 against 62594.3 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 79604.1 against 48331.7 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- unordered_map > recycling_hash_map / iterate,lookup,insert,erase,clear / int;int: at 100000, 120.8 against 97.3 ns per element (Store<map<int, int>, stable_refs>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 64, 26.6 against 21.4 ns per element (Store<map<Id, Id>, small>)
+- set > recycling_tree_set / ordered_lookup,iterate,lookup,insert,erase,clear / std::string;- / small: at 64, 249.0 against 213.2 ns per element (Store<set<std::string>, small, sorted, stable_refs>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 64, 27.0 against 21.1 ns per element (Store<set<Id>, small>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 64, 26.8 against 20.4 ns per element (Store<map<Id, Id>, small>)
 
 ### Slower at a smaller size only
 
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.2 against 27.0 ns per element (Store<set<int>, small>)
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / std::string;- / small: at 8, 114.1 against 102.4 ns per element (Store<set<std::string>, small>)
-- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 8, 51.7 against 25.5 ns per element (Store<set<Id>, small>)
-- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 285.0 against 233.3 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
-- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4095.6 against 3562.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 312.5 against 201.6 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4216.9 against 2632.0 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / int;int / small: at 8, 58.9 against 26.1 ns per element (Store<map<int, int>, small>)
-- flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 56.8 against 46.2 ns per element (Store<map<int, int>, sorted, frozen>)
-- flat_map > recycling_map / ordered_lookup,iterate,lookup / int;int: at 1000, 56.8 against 51.5 ns per element (Store<map<int, int>, sorted, frozen>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 1000, 41.4 against 24.3 ns per element (Store<map<int, int>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 10000, 61.1 against 34.1 ns per element (Store<map<int, int>, multi>)
-- flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 10000, 328.9 against 255.9 ns per element (Store<map<std::string, double>, sorted, frozen>)
-- flat_map > recycling_map / ordered_lookup,iterate,lookup / std::string;double: at 10000, 328.9 against 241.4 ns per element (Store<map<std::string, double>, sorted, frozen>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / std::string;double: at 1000, 173.0 against 144.6 ns per element (Store<map<std::string, double>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / std::string;double: at 10000, 308.8 against 187.8 ns per element (Store<map<std::string, double>, multi>)
-- posting_map > chained_posting_map / iterate,lookup / std::string;double: at 10000, 68.8 against 48.2 ns per element (Store<map<std::string, double>, multi, frozen>)
-- posting_map > unordered_multimap / iterate,lookup / std::string;double: at 10000, 68.8 against 60.2 ns per element (Store<map<std::string, double>, multi, frozen>)
-- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 8, 47.5 against 24.3 ns per element (Store<map<Id, Id>, small>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 1000, 47.2 against 27.7 ns per element (Store<map<Id, Id>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 10000, 69.0 against 40.9 ns per element (Store<map<Id, Id>, multi>)
-- stable_value_interner > arena_interner / access,insert_row,find_row / -;Text: at 16, 90.0 against 53.5 ns per element (Store<pool<Text>, stable_refs>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.4 against 27.0 ns per element (Store<set<int>, small>)
+- unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 8, 51.7 against 25.3 ns per element (Store<set<Id>, small>)
+- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 286.0 against 233.0 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
+- layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4091.4 against 3570.5 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 363.5 against 208.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4637.5 against 2652.6 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- map > recycling_map / ordered_lookup,iterate,lookup,insert,erase,clear / int;int: at 10000, 384.0 against 330.3 ns per element (Store<map<int, int>, sorted>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / int;int / small: at 8, 44.3 against 25.8 ns per element (Store<map<int, int>, small>)
+- flat_map > map / ordered_lookup,iterate,lookup / int;int: at 1000, 53.4 against 46.6 ns per element (Store<map<int, int>, sorted, frozen>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 1000, 41.3 against 24.8 ns per element (Store<map<int, int>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 10000, 62.7 against 34.2 ns per element (Store<map<int, int>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / std::string;double: at 1000, 172.7 against 146.0 ns per element (Store<map<std::string, double>, multi>)
+- unordered_flat_map > flat_map / iterate,lookup,insert,erase,clear / Id;Id / small: at 8, 47.7 against 26.7 ns per element (Store<map<Id, Id>, small>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 1000, 44.9 against 27.2 ns per element (Store<map<Id, Id>, multi>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 10000, 69.4 against 42.5 ns per element (Store<map<Id, Id>, multi>)
 
 ### Slower for less memory
 
-- unordered_set > set / iterate,lookup,insert,erase,clear / int;- / small: at 64, 48.5 against 42.3 ns per element (Store<set<int>, small, stable_refs>)
-- unordered_set > recycling_tree_set / iterate,lookup,insert,erase,clear / int;- / small: at 64, 48.5 against 38.7 ns per element (Store<set<int>, small, stable_refs>)
-- flat_set > recycling_tree_set / ordered_lookup,iterate,lookup / std::string;-: at 100000, 575.7 against 502.0 ns per element (Store<set<std::string>, sorted, frozen>)
-- unordered_flat_set > stable_indexed_set / iterate,lookup / std::string;-: at 100000, 92.1 against 82.8 ns per element (Store<set<std::string>, frozen>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 100000, 90.9 against 51.4 ns per element (Store<map<int, int>, multi>)
-- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 100000, 95.2 against 61.6 ns per element (Store<map<Id, Id>, multi>)
+- unordered_flat_set > stable_indexed_set / iterate,lookup / std::string;-: at 100000, 86.7 against 70.2 ns per element (Store<set<std::string>, frozen>)
+- layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83539.3 against 47775.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / int;int: at 100000, 95.5 against 51.4 ns per element (Store<map<int, int>, multi>)
+- flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 100000, 576.4 against 484.6 ns per element (Store<map<std::string, double>, sorted, frozen>)
+- posting_map > chained_posting_map / iterate,lookup,insert,erase,clear / Id;Id: at 100000, 102.8 against 58.4 ns per element (Store<map<Id, Id>, multi>)
 
 ## Memory, measured
 
@@ -251,7 +239,7 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | Container | Declared | Measured words | memory_usage off by |
 |---|---|---|---|
 | `addressable_heap` | O(n), 3 words | 4.92 | 0.0% |
-| `arena_interner` | O(n), 2.5 words | 0.90 | 0.1% |
+| `arena_interner` | O(n), 2.5 words | 0.90 | 0.0% |
 | `bidirectional_csr` | O(U), 2.4 words | 4.75 | 0.0% |
 | `bucket_queue` | O(U), 2 words | 6.13 | 0.0% |
 | `chained_posting_map` | O(capacity), 8.5 words | 8.45 | 0.0% |
@@ -265,55 +253,55 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `disjoint_sets` | O(n), 2 words | 3.75 | 0.0% |
 | `fifo` | O(n), 1.2 words | 0.53 | 1.5% |
 | `fixed_jagged` | O(n), 1.2 words | — | 0.0% |
-| `flat_map` | O(n), 1.5 words | 1.56 | 21.0% |
+| `flat_map` | O(n), 1.5 words | 1.56 | 0.0% |
 | `flat_multimap` | O(n), 1.5 words | 1.56 | 0.0% |
 | `flat_multiset` | O(n), 1.5 words | 0.78 | 0.0% |
 | `flat_set` | O(n), 1.5 words | 0.78 | 0.0% |
 | `generation_map` | O(U), 1.6 words | 3.28 | 0.0% |
 | `heap` | O(n), 1.5 words | 0.82 | 0.0% |
-| `indexed_set` | O(capacity), 2.5 words | 1.84 | 0.1% |
+| `indexed_set` | O(capacity), 2.5 words | 1.84 | 0.0% |
 | `jagged` | O(n), 1.2 words | — | 0.0% |
-| `layered_arena_interner` | O(n), 2.5 words | 0.90 | 0.1% |
-| `layered_bit_row_interner` | O(n), 0.5 words | 2.05 | 0.0% |
+| `layered_arena_interner` | O(n), 2.5 words | 0.90 | 0.0% |
+| `layered_bit_row_interner` | O(n), 0.5 words | 0.61 | 0.0% |
 | `layered_dense_map` | O(U), 2 words | 1.64 | 0.0% |
 | `layered_generation_map` | O(U), 1.6 words | 3.28 | 0.0% |
 | `layered_row_interner` | O(n), 4.5 words | 4.01 | 0.0% |
-| `layered_stable_record_interner` | O(n), 2.6 words | 0.15 | 0.3% |
+| `layered_stable_record_interner` | O(n), 2.6 words | 0.15 | 0.0% |
 | `layered_thread_safe_arena_interner` | O(n), 2.7 words | 1.49 | 0.0% |
-| `layered_thread_safe_bit_row_interner` | O(n), 0.5 words | 2.58 | 0.0% |
+| `layered_thread_safe_bit_row_interner` | O(n), 0.5 words | 1.01 | 0.0% |
 | `layered_thread_safe_generation_map` | O(U), 1.8 words | 4.03 | 0.0% |
 | `layered_thread_safe_record_interner` | O(n), 2.7 words | 0.69 | 0.0% |
 | `layered_thread_safe_row_interner` | O(n), 2.6 words | 4.05 | 0.0% |
 | `lifo` | O(n), 1.5 words | 0.82 | 0.0% |
-| `map` | O(n), 5 words | 5.00 | 15.2% |
+| `map` | O(n), 5 words | 5.00 | 0.0% |
 | `multimap` | O(n), 5 words | 5.00 | 0.0% |
-| `ordered_map` | O(capacity), 3.5 words | 2.66 | 19.5% |
+| `ordered_map` | O(capacity), 3.5 words | 2.66 | 0.0% |
 | `ordered_sparse_set` | O(U), 2 words | 2.69 | 0.0% |
-| `parallel_hash_map` | O(capacity), 1.3 words | 2.10 | 17.7% |
+| `parallel_hash_map` | O(capacity), 1.3 words | 2.10 | 0.0% |
 | `parallel_hash_set` | O(capacity), 1.3 words | 1.18 | 0.0% |
-| `parallel_node_hash_map` | O(n), 3 words | 3.10 | 18.5% |
+| `parallel_node_hash_map` | O(n), 3 words | 3.10 | 0.0% |
 | `parallel_node_hash_set` | O(n), 3 words | 2.60 | 0.0% |
 | `posting_map` | O(capacity), 4 words | 8.95 | 0.0% |
-| `record_interner` | O(n), 2.5 words | 0.11 | 0.5% |
-| `recycling_hash_map` | O(n), 4.5 words | 4.73 | 17.7% |
+| `record_interner` | O(n), 2.5 words | 0.11 | 0.0% |
+| `recycling_hash_map` | O(n), 4.5 words | 4.73 | 0.0% |
 | `recycling_hash_set` | O(n), 4.5 words | 4.73 | 0.0% |
-| `recycling_map` | O(n), 5.5 words | 5.00 | 15.2% |
+| `recycling_map` | O(n), 5.5 words | 5.00 | 0.0% |
 | `recycling_tree_set` | O(n), 5.5 words | 5.00 | 0.0% |
 | `ring_fifo` | O(n), 1.5 words | 1.64 | 0.0% |
 | `row_interner` | O(n), 4.5 words | 4.01 | 0.0% |
 | `row_pool` | O(n), 4 words | — | 0.0% |
 | `scoped_dense_map` | O(U), 2.2 words | 1.64 | 0.0% |
-| `scoped_map` | O(capacity), 2.3 words | 2.31 | 17.7% |
-| `scoped_tree_map` | O(n), 6 words | 5.00 | 15.2% |
+| `scoped_map` | O(capacity), 2.3 words | 2.31 | 0.0% |
+| `scoped_tree_map` | O(n), 6 words | 5.00 | 0.0% |
 | `segmented_vector` | O(n), 1.5 words | 1.01 | 0.0% |
 | `set` | O(n), 5 words | 5.00 | 0.0% |
 | `slot_vector` | O(n), 1.5 words | 0.45 | 0.0% |
 | `sparse_set` | O(U), 2 words | 2.69 | 0.0% |
 | `stable_dense_map` | O(U), 1.3 words | 2.02 | 0.0% |
 | `stable_generation_map` | O(U), 1.7 words | 4.03 | 0.0% |
-| `stable_indexed_set` | O(capacity), 2.5 words | 2.36 | 0.1% |
-| `stable_record_interner` | O(n), 2.6 words | 0.15 | 0.3% |
-| `stable_value_interner` | O(n), 2.6 words | 0.80 | 0.3% |
+| `stable_indexed_set` | O(capacity), 2.5 words | 2.36 | 0.0% |
+| `stable_record_interner` | O(n), 2.6 words | 0.15 | 0.0% |
+| `stable_value_interner` | O(n), 2.6 words | 0.80 | 0.0% |
 | `thread_safe_arena_interner` | O(n), 2.7 words | 1.49 | 0.0% |
 | `thread_safe_generation_map` | O(U), 1.8 words | 4.03 | 0.0% |
 | `thread_safe_record_interner` | O(n), 2.7 words | 0.69 | 0.0% |
@@ -324,14 +312,14 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `thread_safe_value_interner` | O(n), 2.7 words | 1.33 | 0.0% |
 | `tracked_dense_set` | O(U), 0.03 words | 0.08 | 0.0% |
 | `tracked_jagged` | O(n), 1.3 words | — | 0.0% |
-| `tree_bitset_set` | O(n), 0.05 words | 0.17 | 0.3% |
-| `tree_vector_set` | O(n), 1 words | 0.82 | 0.1% |
-| `unordered_flat_map` | O(capacity), 1.3 words | 2.31 | 17.7% |
-| `unordered_flat_set` | O(capacity), 1.3 words | 1.28 | 0.2% |
-| `unordered_map` | O(n), 5 words | 4.73 | 17.7% |
+| `tree_bitset_set` | O(n), 0.05 words | 0.17 | 0.0% |
+| `tree_vector_set` | O(n), 1 words | 0.82 | 0.0% |
+| `unordered_flat_map` | O(capacity), 1.3 words | 2.31 | 0.0% |
+| `unordered_flat_set` | O(capacity), 1.3 words | 1.28 | 0.0% |
+| `unordered_map` | O(n), 5 words | 4.73 | 0.0% |
 | `unordered_multimap` | O(n), 4 words | 4.73 | 0.0% |
 | `unordered_set` | O(n), 4 words | 4.73 | 0.0% |
-| `value_interner` | O(n), 2.5 words | 0.56 | 0.5% |
+| `value_interner` | O(n), 2.5 words | 0.56 | 0.0% |
 | `vector` | O(n), 1.5 words | 0.82 | 0.0% |
 
 ### Memory that fails
@@ -365,33 +353,21 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 - disjoint_sets/Id;-/100000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - disjoint_sets/int;-/10000: 30.0 bytes per element, declared 2.0 words (16.0 bytes)
 - disjoint_sets/int;-/100000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
-- flat_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 86232 bytes, 103232 counted
-- flat_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 896544 bytes, 1066544 counted
-- flat_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 6392304 bytes, 8092304 counted
-- flat_map/int;Store<set<int>, unique>/1000: memory_usage tells 86232 bytes, 103232 counted
-- flat_map/int;Store<set<int>, unique>/10000: memory_usage tells 896544 bytes, 1066544 counted
-- flat_map/int;Store<set<int>, unique>/100000: memory_usage tells 6392304 bytes, 8092304 counted
-- flat_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 164848 bytes, 185848 counted
-- flat_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1699816 bytes, 1909816 counted
-- flat_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 13228456 bytes, 15328456 counted
 - generation_map/index<Id>;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
 - generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
 - generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
 - generation_map/int;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
 - generation_map/int;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
 - generation_map/int;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/16: 16.4 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/256: 15.6 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 15.5 bytes per element, declared 0.5 words (4.0 bytes)
+- layered_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 4.8 bytes per element, declared 0.5 words (4.0 bytes)
 - layered_generation_map/index<Id>;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
 - layered_generation_map/index<Id>;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
 - layered_generation_map/index<Id>;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
 - layered_generation_map/int;int/1000: 16.4 bytes per element, declared 1.6 words (12.8 bytes)
 - layered_generation_map/int;int/10000: 26.2 bytes per element, declared 1.6 words (12.8 bytes)
 - layered_generation_map/int;int/100000: 21.0 bytes per element, declared 1.6 words (12.8 bytes)
-- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/16: 20.7 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/256: 15.8 bytes per element, declared 0.5 words (4.0 bytes)
-- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 15.5 bytes per element, declared 0.5 words (4.0 bytes)
+- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/16: 8.1 bytes per element, declared 0.5 words (4.0 bytes)
+- layered_thread_safe_bit_row_interner/-;Store<sequence<index<Id>>, stable_refs, frozen, positional>/4096: 4.9 bytes per element, declared 0.5 words (4.0 bytes)
 - layered_thread_safe_generation_map/Id;double/1000: 48.4 bytes per element, declared 1.8 words (28.8 bytes)
 - layered_thread_safe_generation_map/Id;double/10000: 39.2 bytes per element, declared 1.8 words (28.8 bytes)
 - layered_thread_safe_generation_map/index<Id>;int/1000: 32.3 bytes per element, declared 1.8 words (14.4 bytes)
@@ -403,91 +379,21 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 - layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/16: 24.1 bytes per element, declared 2.6 words (20.8 bytes)
 - layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/256: 32.4 bytes per element, declared 2.6 words (20.8 bytes)
 - layered_thread_safe_row_interner/-;Store<set<int>, unique, dense, stable_refs, frozen>/4096: 31.9 bytes per element, declared 2.6 words (20.8 bytes)
-- map/Id;Store<set<Id>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- map/Id;Store<set<Id>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- map/Id;Store<set<Id>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- map/int;Store<set<int>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- map/int;Store<set<int>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- map/int;Store<set<int>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- map/std::string;Store<set<double>, unique>/1000: memory_usage tells 162000 bytes, 183000 counted
-- map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1620000 bytes, 1830000 counted
-- map/std::string;Store<set<double>, unique>/100000: memory_usage tells 16290000 bytes, 18390000 counted
-- ordered_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 70371 bytes, 87388 counted
-- ordered_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 952891 bytes, 1122908 counted
-- ordered_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 7922603 bytes, 9622620 counted
-- ordered_map/int;Store<set<int>, unique>/1000: memory_usage tells 70371 bytes, 87388 counted
-- ordered_map/int;Store<set<int>, unique>/10000: memory_usage tells 952891 bytes, 1122908 counted
-- ordered_map/int;Store<set<int>, unique>/100000: memory_usage tells 7922603 bytes, 9622620 counted
-- ordered_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 140933 bytes, 161950 counted
-- ordered_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1840533 bytes, 2050550 counted
-- ordered_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15981509 bytes, 18081526 counted
 - ordered_sparse_set/Id;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - ordered_sparse_set/index<Id>;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - ordered_sparse_set/int;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - parallel_hash_map/Id;Id/1000: 16.8 bytes per element, declared 1.3 words (10.4 bytes)
 - parallel_hash_map/Id;Id/10000: 14.8 bytes per element, declared 1.3 words (10.4 bytes)
 - parallel_hash_map/Id;Id/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 105432 bytes, 122432 counted
-- parallel_hash_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 952304 bytes, 1122304 counted
-- parallel_hash_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 7922016 bytes, 9622016 counted
-- parallel_hash_map/int;Store<set<int>, unique>/1000: memory_usage tells 96024 bytes, 113024 counted
-- parallel_hash_map/int;Store<set<int>, unique>/10000: memory_usage tells 952304 bytes, 1122304 counted
-- parallel_hash_map/int;Store<set<int>, unique>/100000: memory_usage tells 7922016 bytes, 9622016 counted
 - parallel_hash_map/int;int/1000: 15.1 bytes per element, declared 1.3 words (10.4 bytes)
 - parallel_hash_map/int;int/10000: 14.8 bytes per element, declared 1.3 words (10.4 bytes)
 - parallel_hash_map/int;int/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- parallel_hash_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1775136 bytes, 1985136 counted
-- parallel_hash_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15457360 bytes, 17557360 counted
-- parallel_node_hash_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 79832 bytes, 96832 counted
-- parallel_node_hash_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 777584 bytes, 947584 counted
-- parallel_node_hash_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 7479776 bytes, 9179776 counted
-- parallel_node_hash_map/int;Store<set<int>, unique>/1000: memory_usage tells 78104 bytes, 95104 counted
-- parallel_node_hash_map/int;Store<set<int>, unique>/10000: memory_usage tells 777584 bytes, 947584 counted
-- parallel_node_hash_map/int;Store<set<int>, unique>/100000: memory_usage tells 7479776 bytes, 9179776 counted
-- parallel_node_hash_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 147408 bytes, 168408 counted
-- parallel_node_hash_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1447584 bytes, 1657584 counted
-- parallel_node_hash_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 14269776 bytes, 16369776 counted
 - posting_map/Id;Id/1000: 71.6 bytes per element, declared 4.0 words (32.0 bytes)
 - posting_map/Id;Id/10000: 58.1 bytes per element, declared 4.0 words (32.0 bytes)
 - posting_map/Id;Id/100000: 47.3 bytes per element, declared 4.0 words (32.0 bytes)
 - posting_map/int;int/1000: 71.6 bytes per element, declared 4.0 words (32.0 bytes)
 - posting_map/int;int/10000: 58.1 bytes per element, declared 4.0 words (32.0 bytes)
 - posting_map/int;int/100000: 47.3 bytes per element, declared 4.0 words (32.0 bytes)
-- recycling_hash_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 87872 bytes, 104872 counted
-- recycling_hash_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 872184 bytes, 1042184 counted
-- recycling_hash_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 9283464 bytes, 10983464 counted
-- recycling_hash_map/int;Store<set<int>, unique>/1000: memory_usage tells 79872 bytes, 96872 counted
-- recycling_hash_map/int;Store<set<int>, unique>/10000: memory_usage tells 792184 bytes, 962184 counted
-- recycling_hash_map/int;Store<set<int>, unique>/100000: memory_usage tells 8483464 bytes, 10183464 counted
-- recycling_hash_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 145762 bytes, 166762 counted
-- recycling_hash_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1461074 bytes, 1671074 counted
-- recycling_hash_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15272354 bytes, 17372354 counted
-- recycling_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- recycling_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- recycling_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- recycling_map/int;Store<set<int>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- recycling_map/int;Store<set<int>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- recycling_map/int;Store<set<int>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- recycling_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 160890 bytes, 181890 counted
-- recycling_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1618890 bytes, 1828890 counted
-- recycling_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 16288890 bytes, 18388890 counted
-- scoped_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 115303 bytes, 132320 counted
-- scoped_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 952767 bytes, 1122784 counted
-- scoped_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 7922479 bytes, 9622496 counted
-- scoped_map/int;Store<set<int>, unique>/1000: memory_usage tells 115303 bytes, 132320 counted
-- scoped_map/int;Store<set<int>, unique>/10000: memory_usage tells 952767 bytes, 1122784 counted
-- scoped_map/int;Store<set<int>, unique>/100000: memory_usage tells 7922479 bytes, 9622496 counted
-- scoped_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1774849 bytes, 1984866 counted
-- scoped_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15457073 bytes, 17557090 counted
-- scoped_tree_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- scoped_tree_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- scoped_tree_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- scoped_tree_map/int;Store<set<int>, unique>/1000: memory_usage tells 95000 bytes, 112000 counted
-- scoped_tree_map/int;Store<set<int>, unique>/10000: memory_usage tells 950000 bytes, 1120000 counted
-- scoped_tree_map/int;Store<set<int>, unique>/100000: memory_usage tells 9500000 bytes, 11200000 counted
-- scoped_tree_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 160890 bytes, 181890 counted
-- scoped_tree_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1618890 bytes, 1828890 counted
-- scoped_tree_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 16288890 bytes, 18388890 counted
 - sparse_set/Id;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - sparse_set/index<Id>;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
 - sparse_set/int;-/10000: 21.6 bytes per element, declared 2.0 words (16.0 bytes)
@@ -538,26 +444,9 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 - unordered_flat_map/Id;Id/1000: 18.4 bytes per element, declared 1.3 words (10.4 bytes)
 - unordered_flat_map/Id;Id/10000: 14.7 bytes per element, declared 1.3 words (10.4 bytes)
 - unordered_flat_map/Id;Id/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 115303 bytes, 132320 counted
-- unordered_flat_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 952767 bytes, 1122784 counted
-- unordered_flat_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 7922479 bytes, 9622496 counted
-- unordered_flat_map/int;Store<set<int>, unique>/1000: memory_usage tells 115303 bytes, 132320 counted
-- unordered_flat_map/int;Store<set<int>, unique>/10000: memory_usage tells 952767 bytes, 1122784 counted
-- unordered_flat_map/int;Store<set<int>, unique>/100000: memory_usage tells 7922479 bytes, 9622496 counted
 - unordered_flat_map/int;int/1000: 18.4 bytes per element, declared 1.3 words (10.4 bytes)
 - unordered_flat_map/int;int/10000: 14.7 bytes per element, declared 1.3 words (10.4 bytes)
 - unordered_flat_map/int;int/100000: 11.8 bytes per element, declared 1.3 words (10.4 bytes)
-- unordered_flat_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1775959 bytes, 1985976 counted
-- unordered_flat_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15458183 bytes, 17558200 counted
-- unordered_map/Id;Store<set<Id>, unique>/1000: memory_usage tells 87872 bytes, 104872 counted
-- unordered_map/Id;Store<set<Id>, unique>/10000: memory_usage tells 872184 bytes, 1042184 counted
-- unordered_map/Id;Store<set<Id>, unique>/100000: memory_usage tells 9283464 bytes, 10983464 counted
-- unordered_map/int;Store<set<int>, unique>/1000: memory_usage tells 79872 bytes, 96872 counted
-- unordered_map/int;Store<set<int>, unique>/10000: memory_usage tells 792184 bytes, 962184 counted
-- unordered_map/int;Store<set<int>, unique>/100000: memory_usage tells 8483464 bytes, 10183464 counted
-- unordered_map/std::string;Store<set<double>, unique>/1000: memory_usage tells 146872 bytes, 167872 counted
-- unordered_map/std::string;Store<set<double>, unique>/10000: memory_usage tells 1462184 bytes, 1672184 counted
-- unordered_map/std::string;Store<set<double>, unique>/100000: memory_usage tells 15273464 bytes, 17373464 counted
 - unordered_multimap/Id;Id/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)
 - unordered_set/Id;-/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)
 - unordered_set/index<Id>;-/100000: 37.8 bytes per element, declared 4.0 words (32.0 bytes)

@@ -415,6 +415,18 @@ struct row_workload
             return store.emplace(row);
     }
 
+    /// The pool, built with the bit width its values (below `bound`) need where it is built with one (urd::bit): built
+    /// without, it keeps every element in a whole word and measures nothing of packing.
+    static std::unique_ptr<Store> built(std::size_t bound)
+    {
+        if constexpr (std::constructible_from<Store, urd::bit_width>)
+            return std::make_unique<Store>(urd::bit_width::for_bound(bound));
+        else if constexpr (std::constructible_from<Store, urd::layer, urd::bit_width>)
+            return std::make_unique<Store>(urd::layer { 0 }, urd::bit_width::for_bound(bound));
+        else
+            return std::make_unique<Store>();
+    }
+
     /// Inserting the rows, finding them, reading them by handle, each timed in turn.
     static void lifecycle(const urd::test::cell& at, timing& into)
     {
@@ -422,7 +434,7 @@ struct row_workload
         auto all = std::vector<decltype(row(0, 0))>();
         for (std::size_t each = 0; each < rows; ++each)
             all.push_back(row(each, at.size));
-        auto store = std::make_unique<Store>();
+        auto store = built(rows * at.size);
         auto handles = std::vector<decltype(insert(*store, all.front()))>();
         handles.reserve(rows);
         into.start();
@@ -467,7 +479,7 @@ struct row_workload
         for (std::size_t each = 0; each < rows; ++each)
             all.push_back(row(each, at.size));
         const auto before = live_bytes().value_or(0);
-        auto store = std::make_unique<Store>();
+        auto store = built(rows * at.size);
         for (const auto& each : all)
             use(insert(*store, each));
         return { live_bytes().value_or(0) - before - sizeof(Store), urd::memory_usage(*store), rows * at.size, sizeof(Element), owns_nothing<Element> };

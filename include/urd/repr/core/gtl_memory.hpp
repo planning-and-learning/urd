@@ -24,6 +24,12 @@ std::size_t sharded_table_bytes(const Table& held)
     return result + held_bytes(held);
 }
 
+/// A gtl single table's memory: its one buffer of control bytes and slots, as gtl counts it (AllocatedByteSize: the
+/// control bytes past the last bucket and the padding are part of it), and what the elements own.
+template<typename Table>
+std::size_t single_table_bytes(const Table& held)
+{ return gtl::priv::hashtable_debug_internal::HashtableDebugAccess<typename Table::raw_hash_set>::AllocatedByteSize(held) + held_bytes(held); }
+
 }  // namespace urd::detail
 
 namespace urd
@@ -35,18 +41,16 @@ struct memory_of<gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>>
 {
     static std::size_t bytes(const gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>& held) { return detail::sharded_table_bytes(held); }
 };
-/// gtl's single table: a control byte and a slot per bucket, and what the elements own.
+/// gtl's single table: its buffer as gtl counts it, and what the elements own.
 template<typename T, typename H, typename E, typename A>
 struct memory_of<gtl::flat_hash_set<T, H, E, A>>
 {
-    static std::size_t bytes(const gtl::flat_hash_set<T, H, E, A>& held)
-    { return (held.capacity() == 0 ? 0 : held.capacity() * (sizeof(T) + 1)) + detail::held_bytes(held); }
+    static std::size_t bytes(const gtl::flat_hash_set<T, H, E, A>& held) { return detail::single_table_bytes(held); }
 };
 template<typename K, typename V, typename H, typename E, typename A>
 struct memory_of<gtl::flat_hash_map<K, V, H, E, A>>
 {
-    static std::size_t bytes(const gtl::flat_hash_map<K, V, H, E, A>& held)
-    { return (held.capacity() == 0 ? 0 : held.capacity() * (sizeof(typename gtl::flat_hash_map<K, V, H, E, A>::value_type) + 1)) + detail::held_bytes(held); }
+    static std::size_t bytes(const gtl::flat_hash_map<K, V, H, E, A>& held) { return detail::single_table_bytes(held); }
 };
 template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename C>
 struct memory_of<gtl::parallel_node_hash_set<T, H, E, A, N, M, C>>
