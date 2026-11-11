@@ -145,13 +145,16 @@ public:
                           return update(value_of(entry), held);
                       });
     }
-    /// f(value) where `key` has a value, else `missing`: as the visit of Boost's concurrent maps.
+    /// f(value) where `key` has a value, else `missing`: as the visit of Boost's concurrent maps. Where threads share
+    /// the map, f runs holding the slot's lock, as update does, so that it reads no value half written.
     template<typename F, typename Result>
         requires std::invocable<F&, const V&>
     [[nodiscard]] Result visit(const K& key, F f, Result missing) const
     {
         const auto* entry = held_slot(key);
-        return entry == nullptr ? missing : Result(f(value_of(*entry)));
+        if (entry == nullptr)
+            return missing;
+        return locked(*entry, [&]() -> Result { return Result(f(value_of(*entry))); });
     }
     /// The value of `key`, or nullptr where it has none.
     [[nodiscard]] const V* get_if(const K& key) const
