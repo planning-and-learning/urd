@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "scikit-build-core>=1.0.3,<2",
-    "pybrokkr>=0.1.1,<0.2",
+    "pybrokkr>=0.1.2,<0.2",
 ]
 build-backend = "pyurd_native_build_backend"
 backend-path = ["."]

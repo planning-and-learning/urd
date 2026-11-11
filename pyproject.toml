@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "scikit-build-core>=1.0.3,<2",
-    "pybrokkr>=0.1.1,<0.2",
+    "pybrokkr>=0.1.2,<0.2",
     "pyurd-native==0.1.0",
 ]
 build-backend = "pyurd_build_backend"
@@ -29,7 +29,7 @@ test = [
     "pytest",
     # The build backend wraps pybrokkr; installed here so type checkers
     # resolve it (it is otherwise only a build-system requirement).
-    "pybrokkr>=0.1.1,<0.2",
+    "pybrokkr>=0.1.2,<0.2",
 ]
 
 [tool.pytest.ini_options]
