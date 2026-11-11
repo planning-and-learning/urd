@@ -9,7 +9,7 @@ backend-path = ["python"]
 
 [project]
 name = "pyurd"
-version = "0.1.1"
+version = "0.1.2"
 description = "urd: containers described by what the data is, as headers and a CMake package"
 readme = "README.md"
 license = "GPL-3.0-or-later"

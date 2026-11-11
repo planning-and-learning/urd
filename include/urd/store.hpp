@@ -149,9 +149,12 @@ public:
     Store(InputIt first, InputIt last) : m_representation(first, last)
     { check_holds_one(); }
 
-    Store(std::initializer_list<value_type> elements)
+    /// A template, so that its constraint is asked only of a list of elements: asked of a Store to copy or move, it
+    /// would ask whether the element is constructible while the element's own constructors are being declared (a type
+    /// that holds a Store of itself, rule I5).
+    template<typename Deferred = void>
         requires std::constructible_from<R, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
-        : Store(elements.begin(), elements.end())
+    Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end())
     {
     }
 
