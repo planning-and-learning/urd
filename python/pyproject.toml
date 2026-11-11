@@ -8,7 +8,7 @@ backend-path = ["."]
 
 [project]
 name = "pyurd-native"
-version = "0.1.0"
+version = "0.1.1"
 description = "The native dependencies of urd and of Dominik Drexler's planning projects, as one prefix"
 readme = "native/README.md"
 license = "GPL-3.0-or-later"
