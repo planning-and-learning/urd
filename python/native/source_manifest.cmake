@@ -1,4 +1,4 @@
-file(READ "${CMAKE_CURRENT_LIST_DIR}/../docs/SOURCES.json" URD_SOURCE_MANIFEST)
+file(READ "${CMAKE_CURRENT_LIST_DIR}/SOURCES.json" URD_SOURCE_MANIFEST)
 
 function(urd_sources out)
     string(JSON source_count LENGTH "${URD_SOURCE_MANIFEST}" sources)

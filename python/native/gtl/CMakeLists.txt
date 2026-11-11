@@ -40,6 +40,7 @@ ExternalProject_Add(
         ${GIT_EXECUTABLE} -C <SOURCE_DIR> apply
         ${CMAKE_CURRENT_LIST_DIR}/clear-empty-node.patch
         ${CMAKE_CURRENT_LIST_DIR}/settings-struct.patch
+        ${CMAKE_CURRENT_LIST_DIR}/debug-access-trait.patch
     CMAKE_ARGS ${CMAKE_ARGS}
 )
 ExternalProject_Add_Step(

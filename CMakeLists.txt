@@ -10,8 +10,8 @@ option(URD_BUILD_TESTS "Build urd's tests." ${PROJECT_IS_TOP_LEVEL})
 option(URD_BUILD_EXAMPLES "Build urd's examples." ${PROJECT_IS_TOP_LEVEL})
 option(URD_BUILD_BENCHMARKS "Build urd's benchmarks (Google Benchmark; run them in a Release build)." OFF)
 option(URD_STDLIB_ASSERTIONS "Check bounds and preconditions of the standard library in Debug builds." ON)
-# The dependencies of docs/SOURCES.json, installed by the build of src/.
-set(URD_NATIVE_PREFIX "${PROJECT_SOURCE_DIR}/dependencies-install" CACHE PATH "Where src/ installed the dependencies.")
+# The dependencies of python/native/SOURCES.json, installed by the build of python/native/.
+set(URD_NATIVE_PREFIX "${PROJECT_SOURCE_DIR}/dependencies-install" CACHE PATH "Where the build of python/native/ installed the dependencies.")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Debug checks the properties urd's types claim." FORCE)
@@ -76,7 +76,8 @@ export(EXPORT urdTargets NAMESPACE urd:: FILE "${CMAKE_BINARY_DIR}/urdTargets.cm
 configure_package_config_file(cmake/urdConfig.cmake.in "${CMAKE_BINARY_DIR}/urdConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd"
 )
-write_basic_package_version_file("${CMAKE_BINARY_DIR}/urdConfigVersion.cmake" COMPATIBILITY SameMajorVersion)
+# Headers only: the same package serves every architecture (pyurd is one wheel for all of them).
+write_basic_package_version_file("${CMAKE_BINARY_DIR}/urdConfigVersion.cmake" COMPATIBILITY SameMajorVersion ARCH_INDEPENDENT)
 install(FILES "${CMAKE_BINARY_DIR}/urdConfig.cmake" "${CMAKE_BINARY_DIR}/urdConfigVersion.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd"
 )
@@ -122,7 +123,7 @@ endif()
 if(URD_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
-# The pyurd wheel (pyproject.toml, scikit-build-core): urd and the native prefix, under pyurd/.
+# The pyurd wheel (pyproject.toml, scikit-build-core): urd, under pyurd/. The native prefix is pyurd-native's (python/).
 if(SKBUILD)
     add_subdirectory(python)
 endif()

@@ -10,11 +10,11 @@ import textwrap
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 
-import pyurd
+import pyurd_native
 
 
 def _check_distribution_compliance() -> None:
-    prefix = pyurd.native_prefix()
+    prefix = pyurd_native.native_prefix()
     license_dir = prefix / "share" / "licenses"
     expected_license_files = {
         "argparse/LICENSE",
@@ -40,24 +40,29 @@ def _check_distribution_compliance() -> None:
         "tomlplusplus/LICENSE",
     }
     actual_license_files = {
-        path.relative_to(license_dir).as_posix() for path in license_dir.rglob("*") if path.is_file()
+        path.relative_to(license_dir).as_posix()
+        for path in license_dir.rglob("*")
+        if path.is_file()
     }
     assert actual_license_files == expected_license_files
     assert (prefix / "share" / "CORRESPONDING_SOURCE.md").is_file()
     assert (prefix / "share" / "SOURCES.json").is_file()
-    assert "Modified by the Yggdrasil project on 2026-08-13" in (prefix / "include" / "gtl" / "btree.hpp").read_text(
-        encoding="utf-8"
-    )
+    assert "Modified by the Yggdrasil project on 2026-08-13" in (
+        prefix / "include" / "gtl" / "btree.hpp"
+    ).read_text(encoding="utf-8")
 
-    distribution = importlib_metadata.distribution("pyurd")
+    distribution = importlib_metadata.distribution("pyurd-native")
     assert distribution.metadata["License-Expression"] == "GPL-3.0-or-later"
-    assert distribution.metadata.get_all("License-File") == ["LICENSE"]
-    assert any(str(path).endswith(".dist-info/licenses/LICENSE") for path in distribution.files or ())
+    assert distribution.metadata.get_all("License-File") == ["native/LICENSE"]
+    assert any(
+        str(path).endswith(".dist-info/licenses/native/LICENSE")
+        for path in distribution.files or ()
+    )
 
 
 def _run_smoke_test(root: Path) -> None:
     _check_distribution_compliance()
-    prefix = pyurd.native_prefix()
+    prefix = pyurd_native.native_prefix()
     mpicxx = prefix / "bin" / "mpicxx"
     mpiexec = prefix / "bin" / "mpiexec"
     for tool in (
@@ -71,9 +76,10 @@ def _run_smoke_test(root: Path) -> None:
 
     assert not list(prefix.glob("lib*/libtbbbind*"))
     if platform.system() == "Linux":
-        repaired_libraries = prefix.parent / "pyurd.libs"
+        repaired_libraries = prefix.parent / "pyurd_native.libs"
         assert not any(
-            path.name.startswith(("libcap-", "libhwloc-", "libudev-")) for path in repaired_libraries.glob("*")
+            path.name.startswith(("libcap-", "libhwloc-", "libudev-"))
+            for path in repaired_libraries.glob("*")
         )
 
     source_dir = root / "src"
@@ -232,5 +238,5 @@ def test_distribution_compliance() -> None:
 
 
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory(prefix="pyurd-mpi-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="pyurd-native-") as tmp:
         _run_smoke_test(Path(tmp))

@@ -1,7 +1,8 @@
 # Copyright (C) 2026 Dominik Drexler
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""urd's headers and the native dependencies of the planning projects: the paths of the bundled prefix."""
+"""urd's headers and CMake package: the paths of the bundled prefix. The libraries urd's headers include are
+pyurd-native's (``pyurd_native.native_prefix()``)."""
 
 import tomllib as _tomllib
 from importlib.metadata import PackageNotFoundError, version
@@ -32,7 +33,7 @@ except PackageNotFoundError:
 
 
 def native_prefix() -> Path:
-    """Return the directory containing bundled native headers and libraries."""
+    """Return the directory containing urd's headers and CMake package."""
     package_dir = Path(__file__).resolve().parent
     if _has_urd_headers(package_dir):
         return package_dir
@@ -62,7 +63,8 @@ def cmake_dirs() -> tuple[Path, ...]:
 def cmake_prefix() -> Path:
     """Return the prefix to put on CMAKE_PREFIX_PATH.
 
-    find_package then finds urd and its bundled dependencies there.
+    find_package then finds urd there; its dependencies are under pyurd-native's prefix, which goes on
+    CMAKE_PREFIX_PATH too.
     """
     return native_prefix()
 

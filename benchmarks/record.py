@@ -105,7 +105,7 @@ def fingerprints() -> dict[str, str]:
     """For each container, the hash of the sources its cells measure: its headers, the Store, the benchmark."""
     common = [*sorted((ROOT / "include" / "urd" / "store").glob("*.hpp")), ROOT / "include" / "urd" / "store.hpp",
               *(ROOT / "benchmarks" / name for name in ("experiment.cpp", "lifecycle.hpp", "cells.hpp", "experiments_main.cpp.in")),
-              ROOT / "docs" / "SOURCES.json"]
+              ROOT / "python" / "native" / "SOURCES.json"]
     result = {}
     for container, headers in requests()["headers"].items():
         digest = hashlib.sha256()

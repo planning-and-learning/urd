@@ -2,15 +2,28 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+
+# URD_NATIVE_PREFIX: the prefix that holds urd's dependencies, unless the caller sets it. For the pyurd wheel that is
+# pyurd-native's, installed beside it (pyurd requires it); for an install of urd, the prefix urd is installed in.
+if(NOT URD_NATIVE_PREFIX)
+    foreach(_urd_candidate IN ITEMS "${PACKAGE_PREFIX_DIR}/../pyurd_native" "${PACKAGE_PREFIX_DIR}")
+        if(EXISTS "${_urd_candidate}/include/boost")
+            cmake_path(ABSOLUTE_PATH _urd_candidate NORMALIZE OUTPUT_VARIABLE URD_NATIVE_PREFIX)
+            break()
+        endif()
+    endforeach()
+    unset(_urd_candidate)
+endif()
+
 # Boost.Container (flat sets and maps), Boost.ContainerHash (hash_combine), Boost.Mp11 (type lists).
-find_dependency(Boost 1.89 CONFIG COMPONENTS container container_hash mp11)
+find_dependency(Boost 1.89 CONFIG COMPONENTS container container_hash mp11 HINTS "${URD_NATIVE_PREFIX}")
 # cista: serialization, for records stored flat.
-find_dependency(cista CONFIG)
+find_dependency(cista CONFIG HINTS "${URD_NATIVE_PREFIX}")
 # gtl: the hash tables behind unordered sets and maps, and the sharded ones behind concurrent sets and maps.
-find_dependency(gtl CONFIG)
+find_dependency(gtl CONFIG HINTS "${URD_NATIVE_PREFIX}")
 if(@URD_ENABLE_FMT_FORMATTERS@)
     # fmt: how urd's types are written (urd/format.hpp).
-    find_dependency(fmt CONFIG)
+    find_dependency(fmt CONFIG HINTS "${URD_NATIVE_PREFIX}")
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/urdTargets.cmake")

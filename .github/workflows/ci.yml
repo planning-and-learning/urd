@@ -27,12 +27,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dependencies-install
-          key: dependencies-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+          key: dependencies-${{ runner.os }}-${{ hashFiles('python/native/**') }}
 
       - name: Build dependencies
         if: steps.dependencies.outputs.cache-hit != 'true'
         run: |
-          cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake -S python/native -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
           cmake --build dependencies-build
           cmake --install dependencies-build
 
@@ -59,12 +59,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dependencies-install
-          key: dependencies-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+          key: dependencies-${{ runner.os }}-${{ hashFiles('python/native/**') }}
 
       - name: Build dependencies
         if: steps.dependencies.outputs.cache-hit != 'true'
         run: |
-          cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake -S python/native -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
           cmake --build dependencies-build
           cmake --install dependencies-build
 

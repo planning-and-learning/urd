@@ -1,0 +1,62 @@
+[build-system]
+requires = [
+    "scikit-build-core>=1.0.3,<2",
+    "pybrokkr>=0.1.1,<0.2",
+]
+build-backend = "pyurd_native_build_backend"
+backend-path = ["."]
+
+[project]
+name = "pyurd-native"
+version = "0.1.0"
+description = "The native dependencies of urd and of Dominik Drexler's planning projects, as one prefix"
+readme = "native/README.md"
+license = "GPL-3.0-or-later"
+license-files = ["native/LICENSE"]
+requires-python = ">=3.11"
+authors = [
+    {name = "Dominik Drexler", email = "dominik.drexler@liu.se"},
+]
+
+[project.urls]
+Homepage = "https://github.com/planning-and-learning/urd"
+
+[tool.scikit-build]
+# The wheel's CMake project; native/ itself is the dependencies' build, which the backend runs first.
+cmake.source-dir = "native/wheel"
+build.targets = ["pyurd_native_wheel"]
+cmake.build-type = "Release"
+install.components = ["pyurd_native"]
+wheel.packages = []
+# The wheel ships native libraries but no extension module: tag it for the platform, for any CPython 3.
+wheel.platlib = true
+wheel.py-api = "py3"
+
+# pyurd's files in this directory (python/CMakeLists.txt, its backend and package) belong to the repository's own
+# pyproject.toml.
+[tool.scikit-build.sdist]
+exclude = [
+    "/CMakeLists.txt",
+    "/pyurd_build_backend.py",
+    "/src/pyurd/**",
+    "/tests/**",
+    "/dependencies-build/**",
+    "/dependencies-install/**",
+    "*.egg-info/**",
+]
+
+[tool.scikit-build.cmake.define]
+CMAKE_INSTALL_LIBDIR = "lib"
+
+[tool.cibuildwheel]
+build = "cp311-*"
+container-engine = "docker"
+test-requires = ["cmake>=3.21"]
+test-command = "python {project}/python/tests/test_native.py"
+
+# Run from the repository (cibuildwheel python): python/dependencies-install is where the backend built the prefix.
+[tool.cibuildwheel.linux]
+repair-wheel-command = "LD_LIBRARY_PATH=$(python -c 'import os, pathlib; prefix = pathlib.Path(\"python/dependencies-install\"); print(os.pathsep.join(str(path) for path in sorted(prefix.glob(\"lib*\")) if path.is_dir()))') auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.macos]
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

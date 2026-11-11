@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Dominik Drexler
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Bundle urd's source distribution with the exact upstream sources of the native dependencies pyurd ships."""
+"""Bundle an archive of urd's sources with the exact upstream sources of the dependencies pyurd-native ships."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def _extract_sdist(archive: tarfile.TarFile, destination: Path) -> None:
 
 
 def build_bundle(*, manifest: Path, sdist: Path, sources: Path, output: Path) -> None:
-    """Write ``output``: the sdist together with the exact upstream sources ``manifest`` lists."""
+    """Write ``output``: the source archive ``sdist`` together with the exact upstream sources ``manifest`` lists."""
     with tempfile.TemporaryDirectory(prefix="pyurd-sources-") as temporary_directory:
         temporary = Path(temporary_directory)
         with tarfile.open(sdist) as archive:
@@ -86,7 +86,7 @@ def build_bundle(*, manifest: Path, sdist: Path, sources: Path, output: Path) ->
 
 def main() -> None:
     """Bundle the sources the command line names."""
-    parser = argparse.ArgumentParser(description="Bundle urd and the exact upstream sources pyurd ships.")
+    parser = argparse.ArgumentParser(description="Bundle urd and the exact upstream sources pyurd-native ships.")
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--sdist", type=Path, required=True)
     parser.add_argument("--sources", type=Path, required=True)

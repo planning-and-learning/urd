@@ -16,7 +16,7 @@ extensions = ["myst_parser", "sphinx.ext.githubpages", "sphinx.ext.graphviz", "u
 # The category diagrams; Graphviz's `dot` must be on the path.
 graphviz_output_format = "svg"
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
-exclude_patterns = ["_build", "_ext", "SOURCES.json"]
+exclude_patterns = ["_build", "_ext"]
 myst_heading_anchors = 3
 
 primary_domain = "cpp"

@@ -1,0 +1,23 @@
+diff --git a/include/gtl/phmap.hpp b/include/gtl/phmap.hpp
+--- a/include/gtl/phmap.hpp
++++ b/include/gtl/phmap.hpp
+@@ -36,6 +36,10 @@
+ // Modified by the Yggdrasil project on 2026-10-21:
+ // raw_hash_set stores growth_left, hasher, key_equal and allocator in a struct with [[no_unique_address]]
+ // members instead of a std::tuple, which every distinct hasher and key_equal instantiated anew.
++//
++// Modified by the urd project on 2026-11-11:
++// has_member_type_raw_hash_set names the member with a class-key. In raw_hash_set itself `typename T::raw_hash_set`
++// names its constructor, not a type, so Clang selected no HashtableDebugAccess for a raw_hash_set (GCC accepted it).
+ // ---------------------------------------------------------------------------
+ 
+ // ---------------------------------------------------------------------------
+@@ -5033,7 +5037,7 @@
+ template<typename, typename = void>
+ struct has_member_type_raw_hash_set : std::false_type {};
+ template<typename T>
+-struct has_member_type_raw_hash_set<T, std::void_t<typename T::raw_hash_set>> : std::true_type {};
++struct has_member_type_raw_hash_set<T, std::void_t<class T::raw_hash_set>> : std::true_type {};
+ 
+ template<typename Set>
+ struct HashtableDebugAccess<Set, std::enable_if_t<has_member_type_raw_hash_set<Set>::value>> {

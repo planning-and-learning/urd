@@ -4,7 +4,7 @@
 from pathlib import Path
 
 import pytest
-from python import pyurd_build_backend as backend
+from python import pyurd_native_build_backend as backend
 
 
 def test_native_build_cleans_generated_prefix_and_rejects_dirty_custom_prefix(

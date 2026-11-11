@@ -145,7 +145,7 @@ Building and using
 
 .. code-block:: sh
 
-   cmake -S src -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
+   cmake -S python/native -B dependencies-build -DCMAKE_INSTALL_PREFIX="$PWD/dependencies-install" -DCMAKE_INSTALL_LIBDIR=lib
    cmake --build dependencies-build && cmake --install dependencies-build    # Boost, cista, gtl, GoogleTest, Google Benchmark
    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
    cmake --build build -j8 && ctest --test-dir build -j8

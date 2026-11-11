@@ -17,10 +17,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-
 @runtime_checkable
 class Backend(Protocol):
-    """What these tests call: pyurd's own parts of its build backend (the rest is pybrokkr's, tested there)."""
+    """What these tests call: pyurd-native's own parts of its build backend (the rest is pybrokkr's, tested there)."""
 
     BACKEND: Any
 
@@ -33,7 +32,8 @@ def load_backend() -> Backend:
     sys.modules["scikit_build_core"] = fake_scikit_build_core
 
     spec = importlib.util.spec_from_file_location(
-        "pyurd_build_backend", ROOT / "python" / "pyurd_build_backend.py"
+        "pyurd_native_build_backend",
+        ROOT / "python" / "pyurd_native_build_backend.py",
     )
     assert spec is not None
     assert spec.loader is not None

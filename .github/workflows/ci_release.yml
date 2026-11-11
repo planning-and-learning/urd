@@ -1,5 +1,8 @@
 name: CI Release
 
+# Builds what the two releases publish, without publishing: pyurd-native's wheels and source distribution
+# (release-native.yml) and, against the Linux wheel, pyurd's wheel and source distribution (release.yml).
+
 on:
   push:
     branches:
@@ -13,7 +16,7 @@ env:
   URD_JOBS: "2"
 
 jobs:
-  build_sdist:
+  build_native_sdist:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,16 +34,16 @@ jobs:
           python -m pip install build
 
       - name: Build source distribution
-        run: python -m build --sdist
+        run: python -m build --sdist python --outdir native-dist
 
       - name: Upload sdist artifact
         uses: actions/upload-artifact@v5
         with:
-          name: sdist
-          path: dist/*.tar.gz
+          name: native-sdist
+          path: native-dist/*.tar.gz
 
   build_corresponding_source:
-    needs: build_sdist
+    needs: build_native_sdist
     runs-on: ubuntu-latest
 
     steps:
@@ -55,12 +58,12 @@ jobs:
       - name: Download source distribution
         uses: actions/download-artifact@v5
         with:
-          name: sdist
-          path: dist
+          name: native-sdist
+          path: native-dist
 
       - name: Download upstream sources
         run: |
-          cmake -S src -B source-build \
+          cmake -S python/native -B source-build \
                 -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/urd-source-prefix" \
                 -DCMAKE_INSTALL_LIBDIR=lib \
                 -DPython_EXECUTABLE="$(python -c 'import sys; print(sys.executable)')"
@@ -68,14 +71,14 @@ jobs:
 
       - name: Build corresponding-source bundle
         run: |
-          SDISTS=(dist/*.tar.gz)
+          SDISTS=(native-dist/*.tar.gz)
           test "${#SDISTS[@]}" -eq 1
           test -f "${SDISTS[0]}"
-          SOURCE_ARCHIVE=${SDISTS[0]#dist/}
+          SOURCE_ARCHIVE=${SDISTS[0]#native-dist/}
           SOURCE_ARCHIVE=${SOURCE_ARCHIVE%.tar.gz}-corresponding-source.tar.gz
           mkdir -p release-assets
           python cmake/build_corresponding_source.py \
-            --manifest docs/SOURCES.json \
+            --manifest python/native/SOURCES.json \
             --sdist "${SDISTS[0]}" \
             --sources source-build \
             --output "release-assets/${SOURCE_ARCHIVE}"
@@ -86,7 +89,7 @@ jobs:
           name: corresponding-source
           path: release-assets/*.tar.gz
 
-  build_wheels_linux:
+  build_native_wheels_linux:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,8 +111,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install cibuildwheel
 
+      # python/ is pyurd-native's project; cibuildwheel copies the repository, from whose root it runs, into the container.
       - name: Build Linux wheels
-        run: cibuildwheel --output-dir wheelhouse
+        run: cibuildwheel python --output-dir wheelhouse
         env:
           CIBW_ENVIRONMENT: "URD_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2"
           CIBW_PLATFORM: linux
@@ -121,14 +125,15 @@ jobs:
       - name: Upload Linux wheels artifact
         uses: actions/upload-artifact@v5
         with:
-          name: wheels-linux-${{ matrix.python-version }}-${{ matrix.architecture }}
+          name: native-wheels-linux-${{ matrix.python-version }}-${{ matrix.architecture }}
           path: wheelhouse/*.whl
 
-  build_wheels_macos:
+  build_native_wheels_macos:
     runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
+        architecture: ["arm64"]
         python-version: ["cp311"]
 
     steps:
@@ -146,40 +151,91 @@ jobs:
           python -m pip install cibuildwheel
 
       - name: Build macOS wheels
-        run: cibuildwheel --output-dir wheelhouse
+        run: cibuildwheel python --output-dir wheelhouse
         env:
           CIBW_ENVIRONMENT: "URD_JOBS=2 CMAKE_BUILD_PARALLEL_LEVEL=2"
           CIBW_PLATFORM: macos
           CIBW_BUILD: "${{ matrix.python-version }}-*"
-          CIBW_ARCHS: arm64
+          CIBW_ARCHS: "${{ matrix.architecture }}"
           CIBW_BUILD_VERBOSITY: "1"
 
       - name: Upload macOS wheels artifact
         uses: actions/upload-artifact@v5
         with:
-          name: wheels-macos-${{ matrix.python-version }}-arm64
+          name: native-wheels-macos-${{ matrix.python-version }}-${{ matrix.architecture }}
           path: wheelhouse/*.whl
 
-  validate_release:
-    needs:
-      - build_sdist
-      - build_corresponding_source
-      - build_wheels_linux
-      - build_wheels_macos
+  # pyurd pins pyurd-native exactly; the wheel built above stands in for the one on PyPI.
+  build_pyurd:
+    needs: build_native_wheels_linux
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download wheels
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Download the Linux pyurd-native wheel
         uses: actions/download-artifact@v5
         with:
-          pattern: wheels-*
-          path: dist
+          name: native-wheels-linux-cp311-x86_64
+          path: native-wheels
+
+      - name: Install build frontend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build source distribution and wheel
+        run: python -m build
+        env:
+          PIP_FIND_LINKS: ${{ github.workspace }}/native-wheels
+
+      - name: Install the wheel and find urd through it
+        run: |
+          python -m pip install --find-links native-wheels dist/*.whl "cmake>=3.21"
+          mkdir -p "$RUNNER_TEMP/consumer"
+          printf '%s\n' 'cmake_minimum_required(VERSION 3.21)' 'project(consumer CXX)' 'find_package(urd CONFIG REQUIRED)' \
+            'add_library(consumer INTERFACE)' 'target_link_libraries(consumer INTERFACE urd::urd)' > "$RUNNER_TEMP/consumer/CMakeLists.txt"
+          cmake -S "$RUNNER_TEMP/consumer" -B "$RUNNER_TEMP/consumer/build" \
+                -DCMAKE_PREFIX_PATH="$(python -m pyurd --prefix);$(python -m pyurd_native --prefix)"
+
+      - name: Upload pyurd artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: pyurd
+          path: dist/*
+
+  validate_release:
+    needs:
+      - build_corresponding_source
+      - build_native_wheels_linux
+      - build_native_wheels_macos
+      - build_pyurd
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download pyurd-native wheels
+        uses: actions/download-artifact@v5
+        with:
+          pattern: native-wheels-*
+          path: native-dist
           merge-multiple: true
 
-      - name: Download source distribution
+      - name: Download pyurd-native source distribution
         uses: actions/download-artifact@v5
         with:
-          name: sdist
+          name: native-sdist
+          path: native-dist
+
+      - name: Download pyurd
+        uses: actions/download-artifact@v5
+        with:
+          name: pyurd
           path: dist
 
       - name: Download corresponding-source bundle
@@ -190,7 +246,9 @@ jobs:
 
       - name: Validate release assets
         run: |
-          test "$(find dist -maxdepth 1 -type f -name '*.tar.gz' | wc -l)" -eq 1
-          test "$(find dist -maxdepth 1 -type f -name '*.whl' | wc -l)" -eq 2
+          test "$(find native-dist -maxdepth 1 -type f -name 'pyurd_native-*.whl' | wc -l)" -eq 2
+          test "$(find native-dist -maxdepth 1 -type f -name 'pyurd_native-*.tar.gz' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*.tar.gz' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*-py3-none-any.whl' | wc -l)" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*-corresponding-source.tar.gz' | wc -l)" -eq 1
           tar -tzf release-assets/*-corresponding-source.tar.gz >/dev/null

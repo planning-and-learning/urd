@@ -1,4 +1,4 @@
-# Builds and installs the dependencies listed in docs/SOURCES.json into CMAKE_INSTALL_PREFIX: what pyurd ships, and
+# Builds and installs the dependencies listed in SOURCES.json into CMAKE_INSTALL_PREFIX: what pyurd-native ships, and
 # what urd, yggdrasil and the libraries above it build against (URD_NATIVE_PREFIX).
 
 cmake_minimum_required(VERSION 3.21)

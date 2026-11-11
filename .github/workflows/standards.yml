@@ -24,11 +24,11 @@ jobs:
         id: deps
         with:
           path: ~/urd-deps
-          key: deps-${{ runner.os }}-${{ hashFiles('docs/SOURCES.json', 'src/**') }}
+          key: deps-${{ runner.os }}-${{ hashFiles('python/native/**') }}
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         run: |
-          cmake -S src -B "$RUNNER_TEMP/deps-build" -DCMAKE_INSTALL_PREFIX="$HOME/urd-deps" -DCMAKE_INSTALL_LIBDIR=lib
+          cmake -S python/native -B "$RUNNER_TEMP/deps-build" -DCMAKE_INSTALL_PREFIX="$HOME/urd-deps" -DCMAKE_INSTALL_LIBDIR=lib
           cmake --build "$RUNNER_TEMP/deps-build" --parallel 4
           cmake --install "$RUNNER_TEMP/deps-build"
       - uses: actions/cache/save@v4

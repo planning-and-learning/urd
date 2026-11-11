@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Dominik Drexler
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""``python -m pyurd``: print where the bundled native dependencies are."""
+"""``python -m pyurd``: print where urd's headers and CMake package are."""
 
 import argparse
 
@@ -12,13 +12,13 @@ def main() -> None:
     """Print the requested path or version."""
     parser = argparse.ArgumentParser(
         prog="python -m pyurd",
-        description="Print discovery paths for the bundled native dependencies.",
+        description="Print discovery paths for urd's headers and CMake package.",
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--prefix",
         action="store_true",
-        help="Print the native prefix to put on CMAKE_PREFIX_PATH.",
+        help="Print the prefix to put on CMAKE_PREFIX_PATH.",
     )
     group.add_argument(
         "--include-dir",
