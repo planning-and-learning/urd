@@ -8,6 +8,15 @@ Terms: a **container** is a class under `include/urd/repr/`. Its **declaration**
 provides, operations with their costs). A **facet** is a class template `F<Derived, R, S>` under `include/urd/store/`
 that gives a Store its members. The **request** is the spec `S` a Store is asked for (kind and tags).
 
+## Shared rules
+
+The rules that the planning-and-learning libraries share are maintained in brokkr and published at
+<https://planning-and-learning.github.io/brokkr/>. Follow them; the rules in this file add to them.
+
+- [Release cycle](https://planning-and-learning.github.io/brokkr/release_cycle.html)
+- [Template and include rules](https://planning-and-learning.github.io/brokkr/template_rules.html)
+- [Coding rules](https://planning-and-learning.github.io/brokkr/coding_rules.html)
+
 ## Facets
 
 - **F1 Forward only.** A facet member MUST forward to one member of the container. It MUST NOT compute a result the
