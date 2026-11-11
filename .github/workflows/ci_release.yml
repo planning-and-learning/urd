@@ -1,7 +1,8 @@
 name: CI Release
 
 # Builds what the two releases publish, without publishing: pyurd-native's wheels and source distribution
-# (release-native.yml) and, against the Linux wheel, pyurd's wheel and source distribution (release.yml).
+# (release-native.yml) where the push changes what they are built from, and pyurd's wheel and source distribution
+# (release.yml), against the Linux wheel built here or else against pyurd-native on PyPI.
 
 on:
   push:
@@ -16,7 +17,33 @@ env:
   URD_JOBS: "2"
 
 jobs:
+  # Whether the push changes what pyurd-native is built from. Where the commit before the push is not known (a new
+  # branch, a manual run), it counts as changed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ steps.native.outputs.changed }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compare pyurd-native's files with the commit before the push
+        id: native
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git diff --quiet "$BASE" HEAD -- python cmake/build_corresponding_source.py .github/workflows/ci_release.yml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build_native_sdist:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -90,6 +117,8 @@ jobs:
           path: release-assets/*.tar.gz
 
   build_native_wheels_linux:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -129,6 +158,8 @@ jobs:
           path: wheelhouse/*.whl
 
   build_native_wheels_macos:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -165,9 +196,12 @@ jobs:
           name: native-wheels-macos-${{ matrix.python-version }}-${{ matrix.architecture }}
           path: wheelhouse/*.whl
 
-  # pyurd pins pyurd-native exactly; the wheel built above stands in for the one on PyPI.
+  # pyurd pins pyurd-native exactly; a wheel built above stands in for the one on PyPI.
   build_pyurd:
-    needs: build_native_wheels_linux
+    needs:
+      - changes
+      - build_native_wheels_linux
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -180,6 +214,7 @@ jobs:
           python-version: "3.13"
 
       - name: Download the Linux pyurd-native wheel
+        if: needs.changes.outputs.native == 'true'
         uses: actions/download-artifact@v5
         with:
           name: native-wheels-linux-cp311-x86_64
@@ -189,6 +224,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
+          mkdir -p native-wheels
 
       - name: Build source distribution and wheel
         run: python -m build
@@ -212,14 +248,17 @@ jobs:
 
   validate_release:
     needs:
+      - changes
       - build_corresponding_source
       - build_native_wheels_linux
       - build_native_wheels_macos
       - build_pyurd
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Download pyurd-native wheels
+        if: needs.changes.outputs.native == 'true'
         uses: actions/download-artifact@v5
         with:
           pattern: native-wheels-*
@@ -227,6 +266,7 @@ jobs:
           merge-multiple: true
 
       - name: Download pyurd-native source distribution
+        if: needs.changes.outputs.native == 'true'
         uses: actions/download-artifact@v5
         with:
           name: native-sdist
@@ -239,16 +279,21 @@ jobs:
           path: dist
 
       - name: Download corresponding-source bundle
+        if: needs.changes.outputs.native == 'true'
         uses: actions/download-artifact@v5
         with:
           name: corresponding-source
           path: release-assets
 
-      - name: Validate release assets
+      - name: Validate pyurd-native's release assets
+        if: needs.changes.outputs.native == 'true'
         run: |
           test "$(find native-dist -maxdepth 1 -type f -name 'pyurd_native-*.whl' | wc -l)" -eq 2
           test "$(find native-dist -maxdepth 1 -type f -name 'pyurd_native-*.tar.gz' | wc -l)" -eq 1
-          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*.tar.gz' | wc -l)" -eq 1
-          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*-py3-none-any.whl' | wc -l)" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*-corresponding-source.tar.gz' | wc -l)" -eq 1
           tar -tzf release-assets/*-corresponding-source.tar.gz >/dev/null
+
+      - name: Validate pyurd's release assets
+        run: |
+          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*.tar.gz' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -type f -name 'pyurd-*-py3-none-any.whl' | wc -l)" -eq 1
