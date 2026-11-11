@@ -1,8 +1,8 @@
 #pragma once
 
 #include "urd/cost.hpp"
-#include "urd/elements/prehashed.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/store/types.hpp"
 
 #include <algorithm>

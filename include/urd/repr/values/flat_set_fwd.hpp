@@ -42,7 +42,8 @@ struct flat_set_decl
                                                                 layout::contiguous,
                                                                 representation::canonical,
                                                                 memory::retains,
-                                                                clearing::proportional_clear, room::reservable });
+                                                                clearing::proportional_clear,
+                                                                room::reservable });
     static constexpr property_set relies_on = relies(traits<role::order, trait::natural_ordered>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::lin_n>,
@@ -72,8 +73,13 @@ struct flat_multiset_decl : flat_set_decl
 {
     static constexpr std::string_view id = "flat_multiset";
     using kind = multiset_kind;
-    static constexpr property_set provides =
-        property_set::of({ order::sorted, position::positional, layout::contiguous, representation::canonical, memory::retains, clearing::proportional_clear, room::reservable });
+    static constexpr property_set provides = property_set::of({ order::sorted,
+                                                                position::positional,
+                                                                layout::contiguous,
+                                                                representation::canonical,
+                                                                memory::retains,
+                                                                clearing::proportional_clear,
+                                                                room::reservable });
     static constexpr std::string_view description = "boost::container::flat_multiset (sorted vector)";
 };
 template<typename T, typename C, typename A>

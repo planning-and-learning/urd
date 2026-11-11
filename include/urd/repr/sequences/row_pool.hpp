@@ -31,7 +31,6 @@ namespace urd::repr
 template<typename Inner>
 class RowPool
 {
-
 public:
     using value_type = Inner;
     using iterator = typename std::vector<Inner>::iterator;
@@ -157,7 +156,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/sequences/row_pool.hpp"> {};
+template<>
+struct urd::include<"urd/repr/sequences/row_pool.hpp">
+{
+};
 
 namespace urd::detail
 {
@@ -169,4 +171,3 @@ struct representation_of<row_pool_decl, S>
 };
 
 }  // namespace urd::detail
-

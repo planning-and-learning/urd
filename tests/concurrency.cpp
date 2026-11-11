@@ -473,8 +473,8 @@ struct ConcurrentPredicate;
 using ConcurrentRow = Store<sequence<std::uint32_t>, urd::frozen>;
 using ConcurrentRows = Store<pool<ConcurrentRow>, urd::monotone, urd::layered, urd::concurrent>;
 using ConcurrentRelations = Store<map<urd::index<ConcurrentPredicate>, ConcurrentRows>, urd::dense, urd::layered, urd::concurrent>;
-static_assert(std::same_as<ConcurrentRelations::representation,
-                           urd::repr::Layered<urd::repr::IndexMap<urd::index<ConcurrentPredicate>, ConcurrentRows, true, true>>>);
+static_assert(
+    std::same_as<ConcurrentRelations::representation, urd::repr::Layered<urd::repr::IndexMap<urd::index<ConcurrentPredicate>, ConcurrentRows, true, true>>>);
 
 TEST(ConcurrentLayered, EachLayersValueIsMadeOnceAcrossThreads)
 {

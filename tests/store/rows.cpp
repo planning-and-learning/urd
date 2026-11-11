@@ -1,6 +1,5 @@
 // Rows of a fixed shape: bits and elements changed in place, nested and tracked. Each header a Store here needs is included.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -14,6 +13,7 @@
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>

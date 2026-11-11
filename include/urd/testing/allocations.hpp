@@ -67,6 +67,7 @@ struct Counted
 /// What this thread's last (or current) Counted counted.
 inline Counts counts() noexcept { return detail::counters().counts; }
 
+// NOLINTBEGIN(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory): what operator new and delete are replaced with, over malloc and free
 inline void* allocate(std::size_t size, std::size_t alignment)
 {
     if (detail::counters().on)
@@ -85,5 +86,6 @@ inline void deallocate(void* memory) noexcept
         ++detail::counters().counts.deallocations;
     std::free(memory);
 }
+// NOLINTEND(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
 
 }  // namespace urd::testing

@@ -325,13 +325,17 @@ struct tag_of
 {
     using type = boost::mp11::mp_at_c<typename urd::tags_of<decltype(A)>::type, static_cast<std::size_t>(A)>;
 };
-template<typename Compare, typename Key>
-struct tag_of<Compare, Key, urd::comparison::given>
+// Specialized by the answer's type and a requirement on its value, not by the value alone: Clang 18 matches an answer
+// of another enumeration that has the same underlying value against a value written here.
+template<typename Compare, typename Key, urd::comparison A>
+    requires(A == urd::comparison::given)
+struct tag_of<Compare, Key, A>
 {
     using type = urd::order_by<Compare>;
 };
-template<typename Compare, typename Key>
-struct tag_of<Compare, Key, urd::keying::keyed>
+template<typename Compare, typename Key, urd::keying A>
+    requires(A == urd::keying::keyed)
+struct tag_of<Compare, Key, A>
 {
     using type = urd::keyed<Key>;
 };

@@ -4,12 +4,12 @@
 // states, and what its data is (urd/type_traits_of.hpp), its elements, order, values and rows. Type traits and roles
 // are open, as categories are: each is a struct with its words.
 
-#include <boost/mp11.hpp>
 #include "urd/property_set.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
 #include <array>
+#include <boost/mp11.hpp>
 #include <concepts>
 #include <cstdint>
 #include <initializer_list>

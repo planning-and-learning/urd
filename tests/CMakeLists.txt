@@ -45,13 +45,15 @@ set_tests_properties(store_rules PROPERTIES PASS_REGULAR_EXPRESSION "Running 0 t
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module)
 find_package(nanobind CONFIG QUIET)
 if(nanobind_FOUND AND Python_FOUND)
-    nanobind_add_module(urd_casters_test NB_SUPPRESS_WARNINGS python/casters_module.cpp)
+    nanobind_add_module(urd_casters_test NB_SUPPRESS_WARNINGS python/casters_module.cpp python/caster_headers.cpp)
     target_link_libraries(urd_casters_test PRIVATE urd::urd)
     add_test(NAME python_casters COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/python/casters.py $<TARGET_FILE:urd_casters_test>)
     nanobind_add_module(urd_views_test NB_SUPPRESS_WARNINGS python/views_module.cpp)
     target_link_libraries(urd_views_test PRIVATE urd::urd)
     add_test(NAME python_views COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/python/views.py $<TARGET_FILE:urd_views_test>)
     set_tests_properties(python_views PROPERTIES PASS_REGULAR_EXPRESSION "PASSED")
+    # nanobind's own sources are compiled into this build: they are not held to urd's warnings.
+    set_target_properties(nanobind-static PROPERTIES COMPILE_WARNING_AS_ERROR OFF)
 else()
     message(STATUS "urd: nanobind not found; the caster test (tests/python/casters.py) is not built")
 endif()
@@ -227,19 +229,21 @@ urd_compile_fail_expects(compile_fail_store 38 "a tree pool hands out its own ha
 # A Store whose container's header is missing names it, with its part's for a wrapper, the part first (urd/registry/select.hpp,
 # chosen_type, missing_headers_for).
 urd_compile_fail_cases(compile_fail_include compile_fail_include.cpp 13)
-urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/repr/values/parallel_hash_set[.]hpp\"")
+# Clang prints at most 32 characters of a string in a diagnostic, so the longer header names are matched by their
+# first 32.
+urd_compile_fail_expects(compile_fail_include 5 "include<.*\"urd/repr/values/parallel_hash_s")
 urd_compile_fail_expects(compile_fail_include 1 "include<.*\"urd/repr/records/arena[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 2 "include<.*\"urd/repr/values/dense_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 3 "include<.*\"urd/repr/values/unordered_flat_s")
 urd_compile_fail_expects(compile_fail_include 4 "include<.*\"urd/repr/values/flat_set[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 6 "include<.*\"urd/repr/queues/queue[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 7 "include<.*\"urd/repr/pools/pools[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 8 "include<.*\"urd/repr/maps/index_map[.]hpp\".*include<.*\"urd/repr/wrappers/layer[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 9 "include<.*\"urd/repr/wrappers/layer[.]hpp\"")
 urd_compile_fail_expects(compile_fail_include 10 "include<.*\"urd/repr/wrappers/scoped[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
-urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/repr/values/unordered_flat_set[.]hpp\"")
+urd_compile_fail_expects(compile_fail_include 11 "include<.*\"urd/repr/values/unordered_flat_s")
+urd_compile_fail_expects(compile_fail_include 12 "include<.*\"urd/repr/values/unordered_flat_s")
+urd_compile_fail_expects(compile_fail_include 13 "include<.*\"urd/repr/values/unordered_flat_s")
 
 # A consumer: find_package(urd) against this build tree's export, then its build. What a user of the package sees.
 add_test(

@@ -245,7 +245,6 @@ public:
     };
 
 private:
-
     Groups m_groups;
 
 public:
@@ -254,4 +253,3 @@ public:
 };
 
 }  // namespace urd::repr
-

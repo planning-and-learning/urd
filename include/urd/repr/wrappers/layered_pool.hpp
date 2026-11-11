@@ -102,6 +102,7 @@ public:
     /// Whether the parent grew after the branch, which it must not (an insert of a new element throws std::logic_error).
     [[nodiscard]] bool parent_grew() const noexcept { return m_parent != nullptr && m_parent->size() > m_base; }
 
+    // NOLINTNEXTLINE(bugprone-exception-escape): the own pool counts an indexed set's elements; an empty set's shared storage is made without allocating
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
     /// The bit width its own pool was built with (urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
@@ -120,7 +121,9 @@ public:
     { return insert(prehash(record)); }
     std::pair<handle_type, bool> insert(const prehashed<T>& key)
         requires(!row_pool)
-    { return insert(key, [&key](handle_type) -> const T& { return key.key; }); }
+    {
+        return insert(key, [&key](handle_type) -> const T& { return key.key; });
+    }
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
         requires(!row_pool)
@@ -274,7 +277,6 @@ private:
         return out;
     }
 
-
     R m_own;
     const LayeredPool* m_parent = nullptr;
     std::uint32_t m_base = 0;
@@ -289,7 +291,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/wrappers/layered_pool.hpp"> {};
+template<>
+struct include<"urd/repr/wrappers/layered_pool.hpp">
+{
+};
 
 }  // namespace urd
 

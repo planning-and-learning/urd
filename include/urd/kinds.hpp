@@ -7,7 +7,6 @@
 // is a struct and a template like these; its containers are added by specializing urd::detail::declarations_of
 // (urd/registry/declarations.hpp).
 
-#include <boost/mp11.hpp>
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/property_set.hpp"
@@ -15,6 +14,7 @@
 #include "urd/tags.hpp"
 
 #include <array>
+#include <boost/mp11.hpp>
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
@@ -327,7 +327,8 @@ struct sequence_kind : detail::any_kind
     static constexpr std::string_view name = "sequence";
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
     using format = detail::request_format<order, keys, shape>;
-    using facets = detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::assigning, detail::facet::removal>;
+    using facets =
+        detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::assigning, detail::facet::removal>;
     /// Its elements have positions; appended from several threads, they never move (what another thread reads stays
     /// where it is).
     static constexpr property_set meaning(property_set stated)
@@ -369,11 +370,11 @@ struct data_of : Kind
     /// holds no rows) are its row elements.
     template<typename Order>
     using played = boost::mp11::mp_list<plays<role::element, Element>,
-                             plays<role::mapped, Mapped>,
-                             plays<role::order, Element, Order>,
-                             plays<role::row, held_type>,
-                             plays<role::rows, held_type>,
-                             plays<role::row_element, typename held_as<held_type>::elements>>;
+                                        plays<role::mapped, Mapped>,
+                                        plays<role::order, Element, Order>,
+                                        plays<role::row, held_type>,
+                                        plays<role::rows, held_type>,
+                                        plays<role::row_element, typename held_as<held_type>::elements>>;
 };
 
 }  // namespace detail

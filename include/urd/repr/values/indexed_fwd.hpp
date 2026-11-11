@@ -142,5 +142,4 @@ struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 
 }  // namespace detail
 
-
 }  // namespace urd

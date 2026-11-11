@@ -191,18 +191,18 @@ class RowInterner
     static constexpr bool flat = Bits || by_column_widths || (!words && std::is_trivially_copyable_v<element> && Hashable<element>);
     /// A sequence stored flat keeps its elements as given: the given elements are the row.
     static constexpr bool as_given = flat && detail::sequence_store<Row>;
-    using Table = std::conditional_t<
-        by_column_widths,
-        SchemaInterningTable<stored_row, ThreadSafe>,
-        std::conditional_t<Bits,
-                           BitInterningTable<stored_row, ThreadSafe>,
-                           std::conditional_t<flat, FlatInterningTable<stored_row, ThreadSafe>, InterningTable<stored_row, ThreadSafe>>>>;
+    using Table =
+        std::conditional_t<by_column_widths,
+                           SchemaInterningTable<stored_row, ThreadSafe>,
+                           std::conditional_t<Bits,
+                                              BitInterningTable<stored_row, ThreadSafe>,
+                                              std::conditional_t<flat, FlatInterningTable<stored_row, ThreadSafe>, InterningTable<stored_row, ThreadSafe>>>>;
     /// A row of the widths, as a lookup takes it.
     using SchemaKey = SchemaRow<ThreadSafe>;
     /// Contiguous elements of a row, taken as they are.
     template<typename Elements>
-    static constexpr bool contiguous_of = std::ranges::contiguous_range<Elements> && std::ranges::sized_range<Elements>
-                                          && std::same_as<std::ranges::range_value_t<Elements>, element>;
+    static constexpr bool contiguous_of =
+        std::ranges::contiguous_range<Elements> && std::ranges::sized_range<Elements> && std::same_as<std::ranges::range_value_t<Elements>, element>;
     /// Elements a row is made of as they are given: a sequence's, contiguous.
     template<typename Elements>
     static constexpr bool given = as_given && contiguous_of<Elements>;
@@ -391,7 +391,10 @@ private:
     /// Values (unsigned integers or indices, index_of) as the unsigned values a stored row holds: what a row is looked up by.
     template<typename Values>
     [[nodiscard]] static auto unsigned_values(const Values& values)
-    { return values | std::views::transform([](const auto& value) { return static_cast<word_t>(index_of<std::ranges::range_value_t<Values>>::to_index(value)); }); }
+    {
+        return values
+               | std::views::transform([](const auto& value) { return static_cast<word_t>(index_of<std::ranges::range_value_t<Values>>::to_index(value)); });
+    }
     [[nodiscard]] static handle_type handle_of(std::optional<std::size_t> found)
     { return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type(); }
     /// The values into `key`, by its widths: std::invalid_argument where they are not one per column, std::out_of_range
@@ -423,7 +426,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/pools/pools.hpp"> {};
+template<>
+struct include<"urd/repr/pools/pools.hpp">
+{
+};
 
 }  // namespace urd
 

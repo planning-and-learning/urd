@@ -1,6 +1,5 @@
 // Interners, partitions and pools of records. Each header a Store here needs is included.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -17,6 +16,7 @@
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>

@@ -120,11 +120,12 @@ struct store_parts
 /// Everything else is in its facets (include/urd/store/), which its kind lists (urd/kinds.hpp) and its properties
 /// switch on: size, iteration, comparison, lookup, positions, inserting, removing.
 template<typename Kind, typename... Tags>
-class Store : public detail::complete_representation<typename detail::store_parts<Kind, Tags...>::representation>,
-              public detail::facet_bases<Store<Kind, Tags...>,
-                                         typename detail::store_parts<Kind, Tags...>::representation,
-                                         typename detail::store_parts<Kind, Tags...>::spec,
-                                         detail::facets_of<typename detail::store_parts<Kind, Tags...>::spec::kind>>
+class Store :
+    public detail::complete_representation<typename detail::store_parts<Kind, Tags...>::representation>,
+    public detail::facet_bases<Store<Kind, Tags...>,
+                               typename detail::store_parts<Kind, Tags...>::representation,
+                               typename detail::store_parts<Kind, Tags...>::spec,
+                               detail::facets_of<typename detail::store_parts<Kind, Tags...>::spec::kind>>
 {
     using S = typename detail::store_parts<Kind, Tags...>::spec;
     using R = typename detail::store_parts<Kind, Tags...>::representation;
@@ -242,8 +243,8 @@ inline constexpr bool value_range<Store<Kind, Tags...>> = true;
 /// canonical, or a sequence (positions are contents). An unordered Store iterates in an order its contents do not
 /// determine, so it has no Hash and cannot be a hashed key: ask for sorted (or canonical) on the inner Store.
 template<typename Kind, typename... Tags>
-    requires(detail::store_types<typename detail::store_parts<Kind, Tags...>::spec>::hashed_in_order &&
-             Hashable<typename detail::store_parts<Kind, Tags...>::representation>)
+    requires(detail::store_types<typename detail::store_parts<Kind, Tags...>::spec>::hashed_in_order
+             && Hashable<typename detail::store_parts<Kind, Tags...>::representation>)
 struct Hash<Store<Kind, Tags...>>
 {
     hash_t operator()(const Store<Kind, Tags...>& store) const

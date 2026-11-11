@@ -15,7 +15,8 @@ public:
     [[nodiscard]] auto keys() const { return representation().keys(); }
     [[nodiscard]] auto values() const { return representation().values(); }
     /// The position of the entry at `it`; size() for end(), as find gives for an absent key.
-    [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const { return static_cast<std::size_t>(it - representation().begin()); }
+    [[nodiscard]] std::size_t position(typename iterator_types<R, S>::const_iterator it) const
+    { return static_cast<std::size_t>(it - representation().begin()); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }

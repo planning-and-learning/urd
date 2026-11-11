@@ -39,12 +39,11 @@ struct segmented_vector_decl
         property_set::of({ position::positional, referencing::stable_refs, memory::retains, clearing::proportional_clear, threading::none });
     static constexpr property_set relies_on = relies(stated({ referencing::stable_refs }));
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
-    using operation_costs =
-        cost_table<cost_entry<operation::insert, costs::one_a>,
-                   cost_entry<operation::iterate, costs::lin_n>,
-                   cost_entry<operation::access, costs::one>,
-                   cost_entry<operation::erase, costs::one>,
-                   cost_entry<operation::clear, costs::lin_n>>;
+    using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
+                                       cost_entry<operation::iterate, costs::lin_n>,
+                                       cost_entry<operation::access, costs::one>,
+                                       cost_entry<operation::erase, costs::one>,
+                                       cost_entry<operation::clear, costs::lin_n>>;
     static constexpr double words = 1.5;
     static constexpr std::string_view description = "segmented vector (elements never move)";
     static constexpr std::string_view holds = "doubling segments; stable references";

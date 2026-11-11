@@ -25,7 +25,7 @@ NAMESPACE_BEGIN(detail)
 template<typename Caster, typename T>
 handle sequence_view_from_cpp(T&& src, rv_policy policy, cleanup_list* cleanup)
 {
-    object ret = steal(PyList_New(src.size()));
+    object ret = steal(PyList_New(static_cast<Py_ssize_t>(src.size())));
 
     if (ret.is_valid())
     {

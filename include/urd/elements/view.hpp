@@ -30,8 +30,7 @@ namespace urd
 /// made of several Stores writes one per type.
 template<typename C, typename T>
 concept resolves = requires(const C& context, index<T> at) {
-    requires(std::same_as<std::remove_cvref_t<decltype(context[at])>, data<T>> && stored_record<T>)
-                || std::convertible_to<decltype(context[at]), const T&>;
+    requires(std::same_as<std::remove_cvref_t<decltype(context[at])>, data<T>> && stored_record<T>) || std::convertible_to<decltype(context[at]), const T&>;
     { context.layer() } -> std::same_as<std::size_t>;
     { context.view(at) } -> std::same_as<index_view<T, C>>;
 };
@@ -59,7 +58,6 @@ struct view_mixin<builder<T>, V> : view_mixin<T, V>
 /// The record a view V reads (its data()).
 template<typename V>
 using record_of = std::remove_cvref_t<decltype(std::declval<const V&>().data())>;
-
 
 /// How a view resolves a member of type M through its context (urd::resolve): `resolution<M>::of(member, context)`.
 /// As it is, unless a specialization for M says otherwise: given below for indices, ranges, pairs, variants and
@@ -177,6 +175,7 @@ public:
     }
     ~function_box() = default;
 
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access): only a singular iterator's box (default-constructed) is empty
     [[nodiscard]] const F& operator*() const noexcept { return *m_function; }
 };
 }  // namespace detail
@@ -211,13 +210,12 @@ public:
         using reference = std::invoke_result_t<const F&, std::iter_reference_t<base_iterator>>;
         using difference_type = std::iter_difference_t<base_iterator>;
         using value_type = std::remove_cvref_t<reference>;
-        using iterator_concept = std::conditional_t<std::random_access_iterator<base_iterator>,
-                                                    std::random_access_iterator_tag,
-                                                    std::conditional_t<std::bidirectional_iterator<base_iterator>,
-                                                                       std::bidirectional_iterator_tag,
-                                                                       std::conditional_t<std::forward_iterator<base_iterator>,
-                                                                                          std::forward_iterator_tag,
-                                                                                          std::input_iterator_tag>>>;
+        using iterator_concept = std::conditional_t<
+            std::random_access_iterator<base_iterator>,
+            std::random_access_iterator_tag,
+            std::conditional_t<std::bidirectional_iterator<base_iterator>,
+                               std::bidirectional_iterator_tag,
+                               std::conditional_t<std::forward_iterator<base_iterator>, std::forward_iterator_tag, std::input_iterator_tag>>>;
 
         iterator() = default;
         iterator(base_iterator it, const detail::function_box<F>& function) : m_it(std::move(it)), m_function(function) {}
@@ -253,7 +251,7 @@ public:
         iterator& operator+=(difference_type n)
             requires std::random_access_iterator<base_iterator>
         {
-            m_it += n;
+            m_it += n;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic): the base iterator, a pointer where the range read is a flat_vector
             return *this;
         }
         iterator& operator-=(difference_type n)
@@ -318,7 +316,7 @@ public:
 template<std::ranges::input_range R, typename F>
     requires std::ranges::borrowed_range<R> && std::copy_constructible<std::decay_t<F>>
 [[nodiscard]] transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)
-{ return { range, std::forward<F>(function) }; }
+{ return { std::forward<R>(range), std::forward<F>(function) }; }
 
 /// What a resolved_range reads its elements through: urd::resolve with the context, each element passed on as the
 /// range gives it (so that a stored record, which its view borrows, is refused as a temporary).
@@ -376,8 +374,7 @@ public:
     static constexpr auto identifying_members() noexcept
         requires requires(const C& context) { context.layer(); }
     {
-        return Members<[](const V& v) -> decltype(auto) { return v.identity(); },
-                       [](const V& v) { return v.context().layer(); }> {};
+        return Members<[](const V& v) -> decltype(auto) { return v.identity(); }, [](const V& v) { return v.context().layer(); }> {};
     }
 
 protected:
@@ -417,11 +414,7 @@ class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
     friend detail::view_base<borrowed_view, T, C, R>;
 
 public:
-    borrowed_view(const R* record, const C* context) noexcept :
-        detail::view_base<borrowed_view, T, C, R>(context),
-        m_record(record)
-    {
-    }
+    borrowed_view(const R* record, const C* context) noexcept : detail::view_base<borrowed_view, T, C, R>(context), m_record(record) {}
 
     [[nodiscard]] const R& data() const noexcept { return *m_record; }
 
@@ -461,11 +454,7 @@ class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
     friend detail::view_base<shared_view, T, C, R>;
 
 public:
-    shared_view(std::shared_ptr<const R> record, const C* context) noexcept :
-        detail::view_base<shared_view, T, C, R>(context),
-        m_record(std::move(record))
-    {
-    }
+    shared_view(std::shared_ptr<const R> record, const C* context) noexcept : detail::view_base<shared_view, T, C, R>(context), m_record(std::move(record)) {}
 
     [[nodiscard]] const R& data() const noexcept { return *m_record; }
 

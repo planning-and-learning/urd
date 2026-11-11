@@ -7,7 +7,10 @@
 #include "urd/repr/sequences/segmented_fwd.hpp"
 #include "urd/traits.hpp"
 
-template<> struct urd::include<"urd/repr/sequences/segmented.hpp"> {};
+template<>
+struct urd::include<"urd/repr/sequences/segmented.hpp">
+{
+};
 
 namespace urd::detail
 {

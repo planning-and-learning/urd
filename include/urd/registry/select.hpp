@@ -56,7 +56,8 @@ inline constexpr request_shape shape_of = []
 template<typename S>
 inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
 template<typename S, std::size_t... I>
-auto serving_declarations_of(std::index_sequence<I...> /*serving*/) -> boost::mp11::mp_list<boost::mp11::mp_at_c<declarations_t<typename S::kind>, serving_v<S>.held[I]>...>;
+auto serving_declarations_of(std::index_sequence<I...> /*serving*/)
+    -> boost::mp11::mp_list<boost::mp11::mp_at_c<declarations_t<typename S::kind>, serving_v<S>.held[I]>...>;
 template<typename S>
 using serving_declarations = decltype(serving_declarations_of<S>(std::make_index_sequence<serving_v<S>.count> {}));
 

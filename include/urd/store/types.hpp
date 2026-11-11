@@ -39,8 +39,7 @@ inline constexpr bool clears = grows<S> && !traits_t<S>::urd_properties.template
 /// request says it changes at its ends only (urd::answer_says) removes at its end only: pop_back, clear, resize.
 template<typename S>
 inline constexpr bool changes_in_the_middle =
-    shrinks<S>
-    && !(std::same_as<typename S::kind, sequence_kind> && traits_t<S>::urd_properties.template any_says<&answer_says::changes_at_ends>());
+    shrinks<S> && !(std::same_as<typename S::kind, sequence_kind> && traits_t<S>::urd_properties.template any_says<&answer_says::changes_at_ends>());
 
 /// What a Store and its facets share, whatever its kind: the facts its request decides, and its member types. They come
 /// from the spec S alone, not from the Store, which is still incomplete while its facets are built.

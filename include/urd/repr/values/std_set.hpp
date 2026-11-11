@@ -87,7 +87,10 @@ struct declaration_of<std::unordered_set<T, H, E, A>>
 
 }  // namespace urd
 
-template<> struct urd::include<"urd/repr/values/std_set.hpp"> {};
+template<>
+struct urd::include<"urd/repr/values/std_set.hpp">
+{
+};
 
 namespace urd::detail
 {

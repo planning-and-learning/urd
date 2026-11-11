@@ -184,7 +184,6 @@ private:
         m_log.emplace_back(key, found == m_table.end() ? std::nullopt : std::optional<V>(found->second));
     }
 
-
     Table m_table;
     std::vector<std::pair<K, std::optional<V>>> m_log;
     std::vector<std::size_t> m_scopes;
@@ -199,7 +198,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/wrappers/scoped.hpp"> {};
+template<>
+struct include<"urd/repr/wrappers/scoped.hpp">
+{
+};
 
 }  // namespace urd
 

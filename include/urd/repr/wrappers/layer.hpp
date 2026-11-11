@@ -69,7 +69,9 @@ public:
 
     /// Whether this layer's own values hold `key`.
     [[nodiscard]] bool owns(const key_type& key) const
-    { return read_own(key, [](const mapped_type& /*value*/) { return true; }, false); }
+    {
+        return read_own(key, [](const mapped_type& /*value*/) { return true; }, false);
+    }
     /// The nearest layer, this one or a parent, whose own values hold `key`; nullptr where none does.
     [[nodiscard]] const Layered* owner(const key_type& key) const
     {
@@ -130,7 +132,9 @@ public:
     }
     /// The own value, made where there is none.
     [[nodiscard]] mapped_type& at(const key_type& key)
-    { return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; }); }
+    {
+        return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; });
+    }
     /// f(value) with the owner's value of `key`, else `missing`: one walk up the layers.
     template<typename F, typename Result>
         requires std::invocable<F&, const mapped_type&>
@@ -202,6 +206,7 @@ private:
         else if (above != nullptr && sizeof...(Args) == 0)
             value = *above;
         else
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal argument decays where mapped_type takes it
             value = mapped_type(std::forward<Args>(args)...);
     }
     /// Whether `value` was cleared for reuse: where its Store offers clear() (monotone_until_clear, or one that
@@ -237,7 +242,6 @@ private:
     static bool built_alike(const mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }
 
-
     R m_own;
     const Layered* m_parent = nullptr;
 
@@ -251,7 +255,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/wrappers/layer.hpp"> {};
+template<>
+struct include<"urd/repr/wrappers/layer.hpp">
+{
+};
 
 }  // namespace urd
 

@@ -2,8 +2,9 @@
 // to pass a precomputed hash (heterogeneous lookup); an element is hashed once, an insert included. Each family header
 // a Store here needs is included, and no other.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/elements/prehashed.hpp"
+
+#include "urd/elements/flat.hpp"
 #include "urd/memory.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/records/arena.hpp"
@@ -11,8 +12,8 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
-#include "urd/elements/flat.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <array>
 #include <cstddef>

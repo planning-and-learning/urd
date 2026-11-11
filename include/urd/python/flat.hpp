@@ -107,7 +107,7 @@ struct type_caster<urd::flat_variant<Ts...>>
             return none().release();
 
         // The static apply has no empty case, which valid() above has handled.
-        const auto index = value.index();
+        const auto index = static_cast<typename std::remove_cvref_t<T>::index_t>(value.index());
         return std::remove_cvref_t<T>::apply([&]<typename V>(V&& v) { return make_caster<V>::from_cpp(std::forward<V>(v), policy, cleanup); },
                                              index,
                                              std::forward<T>(value));

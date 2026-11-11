@@ -82,10 +82,14 @@ public:
 
     /// The same widths, in the same order.
     friend bool operator==(const column_widths& lhs, const column_widths& rhs) noexcept
-    { return std::ranges::equal(lhs.m_fields, rhs.m_fields, [](const field& a, const field& b) { return a.bits == b.bits; }); }
+    {
+        return std::ranges::equal(lhs.m_fields, rhs.m_fields, [](const field& a, const field& b) { return a.bits == b.bits; });
+    }
 
 private:
-    boost::container::small_vector<field, 8> m_fields;
+    static constexpr std::size_t inline_columns = 8;  ///< the columns held without allocating
+
+    boost::container::small_vector<field, inline_columns> m_fields;
     std::size_t m_bits = 0;
 };
 
@@ -94,7 +98,9 @@ template<>
 struct Hash<column_widths>
 {
     hash_t operator()(const column_widths& widths) const noexcept
-    { return hash_range(std::views::iota(std::size_t { 0 }, widths.size()) | std::views::transform([&widths](std::size_t i) { return widths[i]; })); }
+    {
+        return hash_range(std::views::iota(std::size_t { 0 }, widths.size()) | std::views::transform([&widths](std::size_t i) { return widths[i]; }));
+    }
 };
 
 }  // namespace urd
@@ -178,10 +184,7 @@ public:
     using iterator = const_iterator;
 
     SchemaRow() = default;
-    SchemaRow(const word* words, std::size_t first_bit, const urd::column_widths& widths) noexcept :
-        m_words(words),
-        m_first_bit(first_bit),
-        m_widths(&widths)
+    SchemaRow(const word* words, std::size_t first_bit, const urd::column_widths& widths) noexcept : m_words(words), m_first_bit(first_bit), m_widths(&widths)
     {
     }
 
@@ -258,15 +261,20 @@ public:
     {
         std::size_t i = 0;
         for (const auto& value : values)
-            if (i == m_widths->size() || !set(i++, static_cast<word_t>(index_of<std::ranges::range_value_t<R>>::to_index(value))))
+        {
+            if (i == m_widths->size() || !set(i, static_cast<word_t>(index_of<std::ranges::range_value_t<R>>::to_index(value))))
                 return false;
+            ++i;
+        }
         return i == m_widths->size();
     }
 
     [[nodiscard]] SchemaRow<ThreadSafe> row() const noexcept { return SchemaRow<ThreadSafe>(m_words.data(), 0, *m_widths); }
 
 private:
-    boost::container::small_vector<word, 9> m_words;
+    static constexpr std::size_t inline_words = 9;  ///< the words held without allocating: 512 bits and a word of room
+
+    boost::container::small_vector<word, inline_words> m_words;
     const urd::column_widths* m_widths = nullptr;
 };
 
@@ -283,8 +291,7 @@ struct SchemaCodec
     explicit SchemaCodec(const urd::column_widths& built_with) : widths(built_with) {}
 
     /// The words of the rows' bits, and a word of room so that a read of the last column's bits never leaves them.
-    [[nodiscard]] std::size_t units(std::size_t rows, std::size_t /*length*/) const noexcept
-    { return bit::packed_blocks<unit>(rows * widths.bits()); }
+    [[nodiscard]] std::size_t units(std::size_t rows, std::size_t /*length*/) const noexcept { return bit::packed_blocks<unit>(rows * widths.bits()); }
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t /*length*/) const noexcept
     { return value_type(data, at * widths.bits(), widths); }
     template<bool OtherThreadSafe>

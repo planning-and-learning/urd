@@ -19,6 +19,7 @@ namespace urd
 template<typename T>
 struct prehashed
 {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members): it refers to the caller's key instead of copying it
     const T& key;
     hash_t hash;
 };

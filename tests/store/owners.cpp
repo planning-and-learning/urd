@@ -2,10 +2,10 @@
 // back when the (last) owner goes, the element kept with its storage for the next acquire, and none of it allocates
 // once as many owners have lived at once as will.
 
-#include "urd/testing/allocations.hpp"
-#include "urd/repr/slots/slots.hpp"
 #include "urd/repr/containers/schema_rows.hpp"
+#include "urd/repr/slots/slots.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -123,7 +123,7 @@ TEST(Owners, ConcurrentSharedOwners)
                 for (int each = 0; each < 2000; ++each)
                 {
                     auto owner = pool.make_shared();
-                    auto copy = owner;
+                    auto copy = owner;  // NOLINT(performance-unnecessary-copy-initialization): a second owner of the slot is under test
                     copy->buffer.push_back(each);
                 }
             });
@@ -144,10 +144,12 @@ struct PoolOwner : std::enable_shared_from_this<PoolOwner>
     explicit PoolOwner(std::size_t* in_use) : in_use_at_destruction(in_use) {}
     PoolOwner(const PoolOwner&) = delete;
     PoolOwner& operator=(const PoolOwner&) = delete;
+    PoolOwner(PoolOwner&&) = delete;
+    PoolOwner& operator=(PoolOwner&&) = delete;
     ~PoolOwner() { *in_use_at_destruction = pool.size(); }
 };
 
-constexpr auto alive = std::size_t(-1);
+constexpr auto alive = static_cast<std::size_t>(-1);
 
 }  // namespace
 

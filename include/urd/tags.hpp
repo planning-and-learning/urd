@@ -10,10 +10,9 @@
 
 #include "urd/config.hpp"
 
-#include <boost/mp11.hpp>
-
 #include <array>
 #include <bit>
+#include <boost/mp11.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -45,7 +44,7 @@ struct answer_says
     bool stops_changes = false;
     bool changes_at_ends = false;
     bool needs_an_element = false;
-    bool built_with_width = false;  ///< Built with the bit width its elements fit in (urd::bit_width).
+    bool built_with_width = false;          ///< Built with the bit width its elements fit in (urd::bit_width).
     bool built_with_column_widths = false;  ///< Built with the column widths its rows are stored by (urd::column_widths).
     bool fixes_iteration_order = false;
     bool fixes_hash_order = false;

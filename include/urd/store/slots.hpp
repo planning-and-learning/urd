@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/cost.hpp"
+#include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/store/types.hpp"
 
 #include <concepts>
@@ -33,6 +34,7 @@ public:
         Derived* store = nullptr;
         handle_type handle;
 
+        // NOLINTNEXTLINE(bugprone-exception-escape): erase can throw where its free list must grow and memory is out; a deleter cannot report that
         void operator()(value_type* element) const noexcept
         {
             static_assert(noexcept(slot_release<value_type>::release(*element)), "urd::slot_release: release(T&) must be noexcept");

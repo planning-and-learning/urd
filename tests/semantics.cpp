@@ -265,11 +265,11 @@ struct InvalidPredicate
 };
 
 template<typename T>
-concept OrderedByAllPredicates = urd::LessFor<urd::Less<T>, T> && urd::LessFor<urd::LessEqual<T>, T> && urd::LessFor<urd::Greater<T>, T>
-                                 && urd::LessFor<urd::GreaterEqual<T>, T> && urd::Hashable<T> && urd::EqualityComparableByEqualTo<T>
-                                 && requires(const T& lhs, const T& rhs) {
-                                        { urd::ThreeWayCompare<T> {}(lhs, rhs) } -> std::same_as<std::strong_ordering>;
-                                    };
+concept OrderedByAllPredicates =
+    urd::LessFor<urd::Less<T>, T> && urd::LessFor<urd::LessEqual<T>, T> && urd::LessFor<urd::Greater<T>, T> && urd::LessFor<urd::GreaterEqual<T>, T>
+    && urd::Hashable<T> && urd::EqualityComparableByEqualTo<T> && requires(const T& lhs, const T& rhs) {
+           { urd::ThreeWayCompare<T> {}(lhs, rhs) } -> std::same_as<std::strong_ordering>;
+       };
 
 using Segmented = urd::Store<urd::sequence<int>, urd::stable_refs>;
 using SortedSet = urd::Store<urd::set<int>, urd::sorted>;
@@ -314,8 +314,8 @@ TEST(Predicates, CapabilitiesCoverTheVocabularyAndRejectUnsupportedValues)
     static_assert(!urd::LessFor<urd::LessEqual<Unsupported>, Unsupported> && !urd::LessFor<urd::Greater<Unsupported>, Unsupported>
                   && !urd::LessFor<urd::GreaterEqual<Unsupported>, Unsupported>);
     // Addresses and long double have no portable hash.
-    static_assert(!urd::Hashable<int*> && !urd::Hashable<std::shared_ptr<int>> && !urd::Hashable<std::unique_ptr<int>>
-                  && !urd::Hashable<std::weak_ptr<int>> && !urd::Hashable<long double>);
+    static_assert(!urd::Hashable<int*> && !urd::Hashable<std::shared_ptr<int>> && !urd::Hashable<std::unique_ptr<int>> && !urd::Hashable<std::weak_ptr<int>>
+                  && !urd::Hashable<long double>);
 }
 
 // Golden values: scalars hash to themselves; text hashes as its bytes.
@@ -332,6 +332,7 @@ TEST(Hashing, ValuesMatchTheDefinedAlgorithms)
     EXPECT_EQ(urd::Hash<std::string> {}("yggdrasil"), urd::Hash<std::string_view> {}("yggdrasil"));
     // Text is hashed as its bytes (boost::hash_range), alike for every text type; a range of chars is not text.
     constexpr auto text = std::string_view("yggdrasil");
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): the end of the text's bytes, as the algorithm is defined
     EXPECT_EQ(urd::Hash<std::string> {}("yggdrasil"), boost::hash_range(text.data(), text.data() + text.size()));
     EXPECT_NE(urd::Hash<std::string> {}("yggdrasil"), urd::Hash<std::string> {}("yggdrasiL"));
     EXPECT_NE(urd::Hash<std::string> {}("yggdrasil"), urd::hash_range(text));
@@ -363,7 +364,8 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
             EXPECT_EQ(urd::hash_range(values | std::views::transform([](T value) { return value; })), expected);
             if constexpr (std::unsigned_integral<T>)
             {
-                auto rows = urd::repr::UniformRows<urd::repr::BitCodec<T, false>, false>(urd::bit_width { static_cast<std::uint8_t>(std::numeric_limits<T>::digits) });
+                auto rows =
+                    urd::repr::UniformRows<urd::repr::BitCodec<T, false>, false>(urd::bit_width { static_cast<std::uint8_t>(std::numeric_limits<T>::digits) });
                 rows.push_back(std::span<const T>(values));
                 EXPECT_EQ(urd::hash_range(rows[0]), expected);
             }
@@ -550,7 +552,8 @@ TEST(Predicates, FailuresOfUserOperationsPropagate)
     EXPECT_THROW(urd::Less<std::reference_wrapper<const ThrowingLess>> {}(std::cref(value), std::cref(value)), std::runtime_error);
 
     const auto values = std::array { 1U, 2U, 3U };
-    auto decoded = values | std::views::transform([](unsigned element) -> unsigned { return element == 2 ? throw std::runtime_error("dereference") : element; });
+    auto decoded =
+        values | std::views::transform([](unsigned element) -> unsigned { return element == 2 ? throw std::runtime_error("dereference") : element; });
     static_assert(!noexcept(urd::less_range(decoded, values)));
     EXPECT_THROW(urd::less_range(decoded, values), std::runtime_error);
     EXPECT_THROW(urd::equal_elements(decoded, values), std::runtime_error);
@@ -630,8 +633,10 @@ TEST(Predicates, MemberListsIdentifyLikeTiedMembers)
 {
     using Listed = ListedRecord<struct ListedTag>;
     static_assert(urd::Identifiable<Listed> && urd::Identifiable<TiedRecord>);
-    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<TiedRecord>>>, int> && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<TiedRecord>>>, double>);
-    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<Listed>>>, int> && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<Listed>>>, double>);
+    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<TiedRecord>>>, int>
+                  && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<TiedRecord>>>, double>);
+    static_assert(std::same_as<std::remove_cvref_t<std::tuple_element_t<0, urd::detail::identity_t<Listed>>>, int>
+                  && std::same_as<std::remove_cvref_t<std::tuple_element_t<1, urd::detail::identity_t<Listed>>>, double>);
 
     // The index is not an identifying member.
     const auto a = Listed { 0, 1, 2.5 };

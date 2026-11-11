@@ -17,7 +17,10 @@
 #include <type_traits>
 #include <utility>
 
-template<> struct urd::include<"urd/repr/maps/parallel_hash_map.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/parallel_hash_map.hpp">
+{
+};
 
 namespace urd::repr
 {
@@ -76,7 +79,13 @@ public:
 
 template<typename K, typename V>
 class ParallelHashMap :
-    public LockedByKey<gtl::parallel_flat_hash_map<K, V, urd::detail::prehash_hash<K>, urd::detail::prehash_equal<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>>
+    public LockedByKey<gtl::parallel_flat_hash_map<K,
+                                                   V,
+                                                   urd::detail::prehash_hash<K>,
+                                                   urd::detail::prehash_equal<K>,
+                                                   std::allocator<std::pair<const K, V>>,
+                                                   shard_bits,
+                                                   std::mutex>>
 {
 public:
     using ParallelHashMap::LockedByKey::LockedByKey;
@@ -84,7 +93,13 @@ public:
 
 template<typename K, typename V>
 class ParallelNodeHashMap :
-    public LockedByKey<gtl::parallel_node_hash_map<K, V, urd::detail::prehash_hash<K>, urd::detail::prehash_equal<K>, std::allocator<std::pair<const K, V>>, shard_bits, std::mutex>>
+    public LockedByKey<gtl::parallel_node_hash_map<K,
+                                                   V,
+                                                   urd::detail::prehash_hash<K>,
+                                                   urd::detail::prehash_equal<K>,
+                                                   std::allocator<std::pair<const K, V>>,
+                                                   shard_bits,
+                                                   std::mutex>>
 {
 public:
     using ParallelNodeHashMap::LockedByKey::LockedByKey;

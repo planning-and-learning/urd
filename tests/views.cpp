@@ -48,13 +48,13 @@
 namespace
 {
 
+using urd::index_view;
 using urd::map;
 using urd::pool;
 using urd::sequence;
 using urd::set;
 using urd::slots;
 using urd::Store;
-using urd::index_view;
 
 struct Owner
 {
@@ -100,7 +100,7 @@ struct Both
     [[nodiscard]] urd::index_view<Owner, Both> view(urd::index<Owner> at) const { return { at, this }; }
     [[nodiscard]] urd::index_view<Rec, Both> view(urd::index<Rec> at) const { return { at, this }; }
     [[nodiscard]] urd::borrowed_view<Rec, Both, Rec> view(const Rec& record) const { return { &record, this }; }
-    urd::borrowed_view<Rec, Both, Rec> view(const Rec&& record) const = delete;
+    [[nodiscard]] urd::borrowed_view<Rec, Both, Rec> view(const Rec&& record) const = delete;
 };
 
 }  // namespace
@@ -141,6 +141,7 @@ static_assert(std::ranges::random_access_range<urd::resolved_t<std::vector<urd::
 static_assert(std::same_as<urd::resolved_t<std::variant<urd::index<Owner>, int>, Both>, std::variant<index_view<Owner, Both>, int>>);
 // A range's readout is a named type: it can be spelled with a context that is not complete yet.
 struct Later;
+// NOLINTNEXTLINE(bugprone-sizeof-expression): sizeof needs the type complete, which is what is asserted
 static_assert(sizeof(urd::resolved_range<std::vector<urd::index<Owner>>, Later>) > 0);
 // A readout is a borrowed range (its iterators outlive it), random access where what it reads is.
 static_assert(std::ranges::borrowed_range<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>);
@@ -151,8 +152,8 @@ static_assert(std::ranges::borrowed_range<urd::transformed_range<std::vector<int
 // Compositions resolve at any depth: ranges of ranges, of optionals, of pairs; ranges of plain values stay as they are.
 static_assert(std::same_as<std::ranges::range_value_t<std::ranges::range_value_t<urd::resolved_t<std::vector<std::vector<urd::index<Owner>>>, Both>>>,
                            index_view<Owner, Both>>);
-static_assert(std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<std::optional<urd::index<Owner>>>, Both>>,
-                           std::optional<index_view<Owner, Both>>>);
+static_assert(
+    std::same_as<std::ranges::range_value_t<urd::resolved_t<std::vector<std::optional<urd::index<Owner>>>, Both>>, std::optional<index_view<Owner, Both>>>);
 static_assert(std::same_as<urd::resolved_t<std::pair<urd::index<Owner>, std::vector<urd::index<Rec>>>, Both>::first_type, index_view<Owner, Both>>);
 static_assert(std::same_as<urd::resolved_t<std::vector<int>, Both>, std::vector<int>>);
 static_assert(urd::Hashable<urd::resolved_t<std::vector<urd::index<Owner>>, Both>> && urd::orderable<urd::resolved_t<std::vector<urd::index<Owner>>, Both>>);
@@ -308,7 +309,7 @@ TEST(View, BorrowsARecordNotInserted)
         names.push_back(part.member<&Owner::name>());
     EXPECT_EQ(names, (std::vector<std::string_view> { "b", "a" }));
     // Equal records borrowed through the same context are equal; an inserted one is a view, of another type.
-    const auto copy = record;
+    const auto copy = record;  // NOLINT(performance-unnecessary-copy-initialization): an equal record at another address is under test
     using Borrowed = urd::borrowed_view<Rec, Both, Rec>;
     EXPECT_TRUE(urd::EqualTo<Borrowed> {}(offered, both.view(copy)));
     EXPECT_EQ(urd::Hash<Borrowed> {}(offered), urd::Hash<Borrowed> {}(both.view(copy)));
@@ -416,7 +417,7 @@ TEST(View, ComparesWithItsOperators)
 
     // Borrowed views compare by the record and the layer.
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
-    const auto copy = record;
+    const auto copy = record;  // NOLINT(performance-unnecessary-copy-initialization): an equal record at another address is under test
     EXPECT_EQ(both.view(record), both.view(copy));
     EXPECT_NE(both.view(record), other.view(copy));
     EXPECT_EQ(both.view(record) <=> other.view(copy), std::strong_ordering::less);
@@ -512,7 +513,7 @@ TEST(TransformedRange, TakesACapturingLambda)
     // A capturing lambda is neither default-constructible nor assignable; its iterators still outlive the range
     // expression, holding their own copy of it.
     const auto values = std::vector<int> { 1, 2, 3 };
-    const auto offset = 10;
+    auto offset = 10;  // not a constant, so that the lambdas must capture it
     const auto shifted = [&values, offset] { return urd::transform(values, [offset](int value) { return value + offset; }); };
     static_assert(!std::default_initializable<decltype([offset](int value) { return value + offset; })>);
     auto begin = shifted().begin();

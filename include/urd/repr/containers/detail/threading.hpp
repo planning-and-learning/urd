@@ -90,7 +90,8 @@ template<bool ThreadSafe, typename T>
 T load(const T& value) noexcept
 {
     if constexpr (ThreadSafe)
-        return std::atomic_ref(const_cast<T&>(value)).load(std::memory_order_acquire);  // NOLINT(cppcoreguidelines-pro-type-const-cast): C++20 has atomic_ref of non-const objects only
+        return std::atomic_ref(const_cast<T&>(value))
+            .load(std::memory_order_acquire);  // NOLINT(cppcoreguidelines-pro-type-const-cast): C++20 has atomic_ref of non-const objects only
     else
         return value;
 }

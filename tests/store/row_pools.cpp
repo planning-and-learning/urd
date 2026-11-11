@@ -10,11 +10,11 @@
 
 #include <algorithm>
 #include <array>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <gtest/gtest.h>
+#include <limits>
 #include <random>
 #include <set>
 #include <span>
@@ -164,11 +164,11 @@ TEST(RowPools, PrehashedRowsAreHashedOnce)
 // A layered pool passes a prehashed row through its chain: found in the parent without hashing again.
 TEST(RowPools, LayeredPrehashedRowsAreHashedOnce)
 {
-    using Rows = urd::Store<urd::pool<urd::Store<urd::sequence<Counted>, urd::frozen>>, urd::monotone, urd::layered>;
+    using CountedRows = urd::Store<urd::pool<urd::Store<urd::sequence<Counted>, urd::frozen>>, urd::monotone, urd::layered>;
     const auto row = std::array<Counted, 3> { Counted { 1 }, Counted { 2 }, Counted { 3 } };
-    auto parent = Rows();
+    auto parent = CountedRows();
     const auto handle = parent.insert(row).first;
-    auto child = Rows();
+    auto child = CountedRows();
     child.layer_over(&parent);
     hashes = 0;
     const auto key = urd::prehashed<std::array<Counted, 3>> { row, urd::hash_range(row) };
@@ -209,7 +209,7 @@ TEST(RowPools, BitRowsPackElements)
             std::ranges::generate(values, [&] { return static_cast<std::uint32_t>(random() % 1000); });
             auto row = std::vector<Index>();
             for (const auto value : values)
-                row.push_back(Index(value));
+                row.emplace_back(value);
             const auto [handle, inserted] = rows.insert(row);
             EXPECT_EQ(inserted, expected.insert(values).second);
             if (inserted)
@@ -224,7 +224,7 @@ TEST(RowPools, BitRowsPackElements)
                 EXPECT_EQ(row[at].value, values[at]);
             auto lookup = std::vector<Index>();
             for (const auto value : values)
-                lookup.push_back(Index(value));
+                lookup.emplace_back(value);
             EXPECT_EQ(rows.find(lookup), handle);
         }
     };
@@ -250,7 +250,7 @@ TEST(RowPools, BitRowsPackElements)
         packed.insert(elements);
         words.insert(elements);
     }
-    EXPECT_GT(urd::memory_usage(words), urd::memory_usage(packed) + (100000 * 7));
+    EXPECT_GT(urd::memory_usage(words), urd::memory_usage(packed) + std::size_t { 700000 });
 }
 
 // A pool of rows whose request promises urd::by_column_widths stores rows of unsigned columns, each column in the bits
@@ -258,11 +258,11 @@ TEST(RowPools, BitRowsPackElements)
 TEST(RowPools, SchemaRowsMixColumns)
 {
     using Values = urd::Store<urd::sequence<std::uint64_t>, urd::frozen>;
-    using Rows = urd::Store<urd::pool<Values>, urd::by_column_widths>;
+    using ColumnRows = urd::Store<urd::pool<Values>, urd::by_column_widths>;
     using ConcurrentRows = urd::Store<urd::pool<Values>, urd::by_column_widths, urd::concurrent>;
-    static_assert(std::same_as<Rows::representation, urd::repr::RowInterner<Values, false, urd::width::by_column_widths>>);
-    static_assert(std::same_as<Rows::row_type, urd::repr::SchemaRow<false>>);
-    static_assert(std::same_as<Rows::row_builder_type, urd::repr::EncodedRow<false>>);
+    static_assert(std::same_as<ColumnRows::representation, urd::repr::RowInterner<Values, false, urd::width::by_column_widths>>);
+    static_assert(std::same_as<ColumnRows::row_type, urd::repr::SchemaRow<false>>);
+    static_assert(std::same_as<ColumnRows::row_builder_type, urd::repr::EncodedRow<false>>);
     const auto columns = urd::column_widths { 10, 32, 7, 64, 1, 32, 64 };
     EXPECT_EQ(columns.bits(), 10U + 32 + 7 + 64 + 1 + 32 + 64);
 
@@ -294,12 +294,12 @@ TEST(RowPools, SchemaRowsMixColumns)
         }
         EXPECT_EQ(rows.size(), 2000U);
     };
-    check.template operator()<Rows>();
+    check.template operator()<ColumnRows>();
     check.template operator()<ConcurrentRows>();
 
     // A row built column by column is found; a value that does not fit is refused.
-    auto rows = Rows(columns);
-    auto built = Rows::row_builder_type(rows.column_widths());
+    auto rows = ColumnRows(columns);
+    auto built = ColumnRows::row_builder_type(rows.column_widths());
     for (std::size_t i = 0; i < columns.size(); ++i)
         EXPECT_TRUE(built.set(i, 1));
     EXPECT_FALSE(built.set(4, 2));
@@ -307,7 +307,7 @@ TEST(RowPools, SchemaRowsMixColumns)
     EXPECT_EQ(rows.find(std::array<std::uint64_t, 7> { 1, 1, 1, 1, 1, 1, 1 }), handle);
 
     // A value that does not fit its column throws and stores nothing; a row of another arity is rejected.
-    auto narrow = Rows(urd::column_widths { 4, 4 });
+    auto narrow = ColumnRows(urd::column_widths { 4, 4 });
     narrow.insert(std::array<std::uint64_t, 2> { 15, 8 });
     EXPECT_THROW(narrow.insert(std::array<std::uint64_t, 2> { 16, 0 }), std::out_of_range);
     EXPECT_THROW(narrow.insert(std::array<std::uint64_t, 1> { 1 }), std::invalid_argument);
@@ -341,13 +341,13 @@ TEST(RowPools, SchemaRowsOfIndices)
 TEST(RowPools, SubsetViewsReadAndFindTheirRows)
 {
     using Values = urd::Store<urd::sequence<std::uint64_t>, urd::frozen>;
-    using Rows = urd::Store<urd::pool<Values>, urd::by_column_widths>;
-    auto rows = Rows(urd::column_widths { 8, 16 });
-    auto handles = std::vector<Rows::handle_type>();
+    using ColumnRows = urd::Store<urd::pool<Values>, urd::by_column_widths>;
+    auto rows = ColumnRows(urd::column_widths { 8, 16 });
+    auto handles = std::vector<ColumnRows::handle_type>();
     for (std::uint64_t at = 0; at < 10; ++at)
         handles.push_back(rows.insert(std::array<std::uint64_t, 2> { at, at * 100 }).first);
-    const auto odd = std::vector<Rows::handle_type> { handles[1], handles[3], handles[5] };
-    const auto subset = urd::subset_view(rows, std::span<const Rows::handle_type>(odd));
+    const auto odd = std::vector<ColumnRows::handle_type> { handles[1], handles[3], handles[5] };
+    const auto subset = urd::subset_view(rows, std::span<const ColumnRows::handle_type>(odd));
     static_assert(std::ranges::borrowed_range<decltype(subset)> && std::ranges::random_access_range<decltype(subset)>);
     EXPECT_EQ(subset.size(), 3U);
     EXPECT_FALSE(subset.empty());
@@ -360,7 +360,7 @@ TEST(RowPools, SubsetViewsReadAndFindTheirRows)
     EXPECT_FALSE(subset.contains(std::array<std::uint64_t, 2> { 2, 200 }));  // in the pool, not in the subset
     EXPECT_FALSE(subset.contains(std::array<std::uint64_t, 2> { 3, 301 }));  // in neither
     EXPECT_TRUE(subset.contains(rows.at(handles[5])));
-    EXPECT_TRUE(urd::subset_view(rows, std::span<const Rows::handle_type>()).empty());
+    EXPECT_TRUE(urd::subset_view(rows, std::span<const ColumnRows::handle_type>()).empty());
 
     using Layered = urd::Store<urd::pool<urd::Store<urd::sequence<std::uint32_t>, urd::frozen>>, urd::monotone, urd::layered>;
     auto parent = Layered();

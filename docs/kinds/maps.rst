@@ -135,10 +135,8 @@ Values by key (one value per key)
 Values by key (a multimap)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. cpp:function:: auto values(const key_type& key) const
-
-   The values of ``key``: a span for a posting map or a CSR. The standard's multimaps (``sorted``,
-   ``stable_refs``) have none: their entries of a key are its ``equal_range``.
+The entries of a key are its ``equal_range`` (above), as ``std::multimap``'s: its values are
+``std::ranges::subrange(first, last) | std::views::values``.
 
 Entries in order (``insertion_ordered``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

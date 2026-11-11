@@ -26,7 +26,9 @@ namespace detail
 /// Calls f with each member of a record whose cista_members() is a Members list.
 template<typename R, typename F>
 void for_each_cista_member(R& record, F f)
-{ [&]<auto... Ms>(Members<Ms...>) { (f(record.*Ms), ...); }(std::remove_const_t<R>::cista_members()); }
+{
+    [&]<auto... Ms>(Members<Ms...>) { (f(record.*Ms), ...); }(std::remove_const_t<R>::cista_members());
+}
 
 /// A slot of type S that is a child: an index of a type in the list Types.
 template<typename S, typename Types>
@@ -39,7 +41,7 @@ inline constexpr bool is_child = child_of<S, Types>;
 /// holds (flat_vector, flat_variant, flat_optional, flat_pair) or a nested record, else skipped. An index f does not
 /// take is skipped too (its own cista member, value, is no slot).
 template<typename M, typename F>
-void walk(M& member, F&& f)
+void walk(M& member, F& f)
 {
     using V = std::remove_const_t<M>;
     if constexpr (std::invocable<F&, M&>)
@@ -67,7 +69,7 @@ void walk(M& member, F&& f)
 
 /// walk over record's members, but for its own handle: a direct member of type index<T>.
 template<typename T, typename R, typename F>
-void walk_members(R& record, F&& f)
+void walk_members(R& record, F f)
 {
     for_each_cista_member(record,
                           [&]<typename M>(M& member)
@@ -84,8 +86,7 @@ void for_each_child(const R& record, const C& context, F f)
 {
     detail::walk_members<T>(record,
                             [&]<typename S>(S& child)
-                                requires detail::is_child<Types, S>
-                            { f(context.view(child)); });
+                                requires detail::is_child<Types, S> { f(context.view(child)); });
 }
 
 /// record with every child c replaced by urd::to_stored(f(context.view(c))), in member order: f returns an index of
@@ -95,8 +96,7 @@ R map_children(R record, const C& context, F f)
 {
     detail::walk_members<T>(record,
                             [&]<typename S>(S& child)
-                                requires detail::is_child<Types, S>
-                            { child = urd::to_stored(f(context.view(child))); });
+                                requires detail::is_child<Types, S> { child = urd::to_stored(f(context.view(child))); });
     return record;
 }
 

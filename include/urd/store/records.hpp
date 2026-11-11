@@ -53,8 +53,7 @@ public:
     /// The record's index, and whether it was new: an equal record already held gives its index.
     std::pair<handle_type, bool> insert(const T& record) { return representation().insert(record); }
     /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
-    std::pair<handle_type, bool> insert(const prehashed<T>& key)
-    { return representation().insert(key); }
+    std::pair<handle_type, bool> insert(const prehashed<T>& key) { return representation().insert(key); }
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
     /// must not touch this Store.
@@ -70,10 +69,8 @@ public:
     /// The index of an equal record, or none.
     [[nodiscard]] handle_type find(const T& record) const { return representation().find(record); }
     [[nodiscard]] bool contains(const T& record) const { return representation().contains(record); }
-    [[nodiscard]] handle_type find(const prehashed<T>& key) const
-    { return representation().find(key); }
-    [[nodiscard]] bool contains(const prehashed<T>& key) const
-    { return representation().contains(key); }
+    [[nodiscard]] handle_type find(const prehashed<T>& key) const { return representation().find(key); }
+    [[nodiscard]] bool contains(const prehashed<T>& key) const { return representation().contains(key); }
     [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
     [[nodiscard]] bool contains(handle_type at) const { return !at.is_none() && (at.value) < representation().size(); }
     [[nodiscard]] const T& operator[](handle_type at) const { return representation()[at]; }

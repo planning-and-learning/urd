@@ -31,7 +31,6 @@ namespace urd::repr
 template<typename T, leaving Order, typename Compare>
 class Queue
 {
-
     static constexpr bool fifo = Order == leaving::first_in;
     using Elements = std::conditional_t<fifo, std::deque<T>, std::vector<T>>;
 
@@ -103,7 +102,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/queues/queue.hpp"> {};
+template<>
+struct urd::include<"urd/repr/queues/queue.hpp">
+{
+};
 
 namespace urd::detail
 {
@@ -125,4 +127,3 @@ struct representation_of<heap_decl, S>
 };
 
 }  // namespace urd::detail
-

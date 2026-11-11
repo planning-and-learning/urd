@@ -42,7 +42,9 @@ template<typename T>
 struct memory_of<T>
 {
     static std::size_t bytes(const T& held)
-    { return [&held]<auto... Ms>(Members<Ms...> /*members*/) { return (std::size_t { 0 } + ... + memory_usage(held.*Ms)); }(T::memory_members()); }
+    {
+        return [&held]<auto... Ms>(Members<Ms...> /*members*/) { return (std::size_t { 0 } + ... + memory_usage(held.*Ms)); }(T::memory_members());
+    }
 };
 
 template<typename A, typename B>

@@ -19,9 +19,9 @@
 
 #include <array>
 #include <concepts>
-#include <functional>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <map>
 #include <set>
@@ -109,7 +109,6 @@ constexpr auto identity(const T& x)
 }
 template<Identifiable T>
 using identity_t = decltype(identity(std::declval<const T&>()));
-
 
 }  // namespace detail
 

@@ -55,6 +55,7 @@ public:
     void merge(Derived& source)
         requires grows<S> && shrinks<S>
     { representation().merge(store_access::representation(source)); }
+    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): as std::set::merge(set&&), it moves elements out of the set, not the set
     void merge(Derived&& source)
         requires grows<S> && shrinks<S>
     { merge(source); }

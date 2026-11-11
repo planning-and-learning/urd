@@ -21,8 +21,6 @@
 #include <ranges>
 #include <string>
 
-namespace nb = nanobind;
-
 namespace
 {
 
@@ -37,9 +35,8 @@ using Nested = urd::Store<urd::sequence<urd::Store<urd::sequence<int>>>>;
 using Positional = urd::Store<urd::set<int>, urd::positional, urd::monotone>;
 static_assert(requires(const Positional::representation& numbered) { numbered.container(); });
 
-static_assert(urd::python::castable<Sequence> && urd::python::castable<StableSequence> && urd::python::castable<Set>
-              && urd::python::castable<SortedSet> && urd::python::castable<Map> && urd::python::castable<SortedMap>
-              && urd::python::castable<Positional>);
+static_assert(urd::python::castable<Sequence> && urd::python::castable<StableSequence> && urd::python::castable<Set> && urd::python::castable<SortedSet>
+              && urd::python::castable<Map> && urd::python::castable<SortedMap> && urd::python::castable<Positional>);
 static_assert(!urd::python::castable<urd::Store<urd::map<int, int>, urd::multi>>, "a multimap has no caster: a dict keeps one value per key");
 
 }  // namespace
@@ -53,34 +50,44 @@ NB_MODULE(urd_casters_test, m)
     m.def("map", [](Map values) { return values; });
     m.def("sorted_map", [](SortedMap values) { return values; });
     m.def("nested", [](Nested values) { return values; });
-    m.def("positional_set", [](const Sequence& values) {
-        auto positions = Positional(urd::layer { 0 });
-        for (const int value : values)
-            positions.insert(value);
-        return positions;
-    });
-    m.def("sizes", [](const Nested& values) {
-        auto sizes = Sequence();
-        for (const auto& row : values)
-            sizes.push_back(static_cast<int>(row.size()));
-        return sizes;
-    });
-    m.def("array_view", [] {
-        using Array = ::cista::array<int, 3>;
-        static constexpr auto data = Array { 1, 2, 3 };
-        return std::views::all(data);
-    });
-    m.def("pair_view", [] {
-        using Pair = urd::flat_pair<int, int>;
-        static constexpr auto data = Pair { 4, 5 };
-        return data;
-    });
-    m.def("nested_view", [] {
-        using Pair = urd::flat_pair<int, int>;
-        using Array = ::cista::array<Pair, 2>;
-        static constexpr auto data = Array { Pair { 6, 7 }, Pair { 8, 9 } };
-        return std::views::all(data);
-    });
+    m.def("positional_set",
+          [](const Sequence& values)
+          {
+              auto positions = Positional(urd::layer { 0 });
+              for (const int value : values)
+                  positions.insert(value);
+              return positions;
+          });
+    m.def("sizes",
+          [](const Nested& values)
+          {
+              auto sizes = Sequence();
+              for (const auto& row : values)
+                  sizes.push_back(static_cast<int>(row.size()));
+              return sizes;
+          });
+    m.def("array_view",
+          []
+          {
+              using Array = ::cista::array<int, 3>;
+              static constexpr auto data = Array { 1, 2, 3 };
+              return std::views::all(data);
+          });
+    m.def("pair_view",
+          []
+          {
+              using Pair = urd::flat_pair<int, int>;
+              static constexpr auto data = Pair { 4, 5 };
+              return data;
+          });
+    m.def("nested_view",
+          []
+          {
+              using Pair = urd::flat_pair<int, int>;
+              using Array = ::cista::array<Pair, 2>;
+              static constexpr auto data = Array { Pair { 6, 7 }, Pair { 8, 9 } };
+              return std::views::all(data);
+          });
     m.def("roundtrip_pair", [](urd::flat_pair<int, int> value) { return value; });
     m.def("roundtrip_optional_pairs", [](urd::flat_vector<urd::flat_optional<urd::flat_pair<int, int>>> values) { return values; });
     m.def("roundtrip_variant", [](urd::flat_variant<int, double> value) { return value; });

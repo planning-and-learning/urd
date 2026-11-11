@@ -72,7 +72,7 @@ class SlotVector
             bytes -= size;
             std::pmr::new_delete_resource()->deallocate(at, size, alignment);
         }
-        bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
+        [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
     };
 
 public:
@@ -115,8 +115,8 @@ public:
             ++m_count;
             return handle_type { slot };
         }
-        const auto index = m_slots.emplace_back_with_index([&](std::size_t) { return T(key, std::forward<Args>(args)...); },
-                                                           std::numeric_limits<std::uint32_t>::max() - 1);
+        const auto index =
+            m_slots.emplace_back_with_index([&](std::size_t) { return T(key, std::forward<Args>(args)...); }, std::numeric_limits<std::uint32_t>::max() - 1);
         m_keys.push_back(key);
         ++m_count;
         return handle_type { static_cast<std::uint32_t>(index) };
@@ -209,7 +209,10 @@ private:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/slots/slots.hpp"> {};
+template<>
+struct urd::include<"urd/repr/slots/slots.hpp">
+{
+};
 
 namespace urd::detail
 {

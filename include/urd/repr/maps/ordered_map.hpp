@@ -177,7 +177,6 @@ private:
         return static_cast<size_type>(found - m_keys.begin());
     }
 
-
     Keys m_keys;
     std::vector<V> m_values;
 
@@ -188,7 +187,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/maps/ordered_map.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/ordered_map.hpp">
+{
+};
 
 namespace urd::detail
 {

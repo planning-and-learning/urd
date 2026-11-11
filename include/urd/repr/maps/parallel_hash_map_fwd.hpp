@@ -73,7 +73,8 @@ struct parallel_node_hash_map_decl
     static constexpr std::string_view id = "parallel_node_hash_map";
     static constexpr auto headers = header_list<1> { "urd/repr/maps/parallel_hash_map.hpp" };
     using kind = map_kind;
-    static constexpr property_set provides = property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs, room::reservable });
+    static constexpr property_set provides =
+        property_set::of({ uniqueness::unique, keys::sparse, threading::concurrent, referencing::stable_refs, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::can_hash>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_ae>,

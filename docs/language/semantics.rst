@@ -123,3 +123,9 @@ How it hands out memory
 
    Each record of an interning pool is one self-contained block of bytes (trivially copyable, or serialized by
    cista), frozen once stored and read by :cpp:struct:`urd::index`.
+
+.. urd-category:: word
+
+   Unsigned elements may take fewer bits than their type: with ``bit``, each in the bit width the Store is built
+   with (``urd::bit_width``); with ``by_column_widths``, each row by the widths of its columns
+   (``urd::column_widths``). Such a Store hands out values, not references to its elements.

@@ -23,7 +23,6 @@ namespace urd::repr
 template<typename K>
 class DisjointSets
 {
-
 public:
     using value_type = K;
     using key_type = K;
@@ -99,7 +98,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/partitions/disjoint_sets.hpp"> {};
+template<>
+struct urd::include<"urd/repr/partitions/disjoint_sets.hpp">
+{
+};
 
 namespace urd::detail
 {
@@ -111,4 +113,3 @@ struct representation_of<disjoint_sets_decl, S>
 };
 
 }  // namespace urd::detail
-

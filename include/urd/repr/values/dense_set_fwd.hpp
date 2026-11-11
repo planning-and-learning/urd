@@ -70,8 +70,8 @@ namespace detail
 struct tracked_dense_set_decl : dense_set_decl
 {
     static constexpr std::string_view id = "tracked_dense_set";
-    static constexpr property_set provides =
-        property_set::of({ order::sorted, uniqueness::unique, keys::dense, representation::canonical, memory::retains, clearing::proportional_clear, room::reservable });
+    static constexpr property_set provides = property_set::of(
+        { order::sorted, uniqueness::unique, keys::dense, representation::canonical, memory::retains, clearing::proportional_clear, room::reservable });
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
                                        cost_entry<operation::lookup, costs::one>,
                                        cost_entry<operation::ordered_lookup, costs::lin_keys>,
@@ -99,8 +99,8 @@ struct sparse_set_decl
     static constexpr std::string_view id = "sparse_set";
     static constexpr auto headers = header_list<1> { "urd/repr/values/sparse_set.hpp" };
     using kind = set_kind;
-    static constexpr property_set provides =
-        property_set::of({ uniqueness::unique, keys::dense, position::positional, layout::contiguous, memory::retains, clearing::constant_clear, room::reservable });
+    static constexpr property_set provides = property_set::of(
+        { uniqueness::unique, keys::dense, position::positional, layout::contiguous, memory::retains, clearing::constant_clear, room::reservable });
     static constexpr property_set relies_on = relies(traits<role::element, trait::an_index, trait::destroys_trivially>());
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
@@ -128,8 +128,14 @@ namespace detail
 struct ordered_sparse_set_decl : sparse_set_decl
 {
     static constexpr std::string_view id = "ordered_sparse_set";
-    static constexpr property_set provides = property_set::of(
-        { uniqueness::unique, keys::dense, position::positional, layout::contiguous, memory::retains, clearing::constant_clear, order::insertion_ordered, room::reservable });
+    static constexpr property_set provides = property_set::of({ uniqueness::unique,
+                                                                keys::dense,
+                                                                position::positional,
+                                                                layout::contiguous,
+                                                                memory::retains,
+                                                                clearing::constant_clear,
+                                                                order::insertion_ordered,
+                                                                room::reservable });
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
                                        cost_entry<operation::lookup, costs::one>,
                                        cost_entry<operation::erase, costs::lin_n>,

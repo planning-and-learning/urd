@@ -95,7 +95,8 @@ struct single_table
 template<typename Position, typename Hash, typename Equal>
 struct shared_table
 {
-    using type = gtl::parallel_flat_hash_set<Position, Hash, Equal, std::allocator<Position>, 7, SpinSharedMutex>;
+    static constexpr std::size_t shard_bits = 7;  ///< 2^7 shards
+    using type = gtl::parallel_flat_hash_set<Position, Hash, Equal, std::allocator<Position>, shard_bits, SpinSharedMutex>;
     using mutex = SpinMutex;
     using index = decltype(Position::value);
 
@@ -167,7 +168,8 @@ struct parameter_of<Storage>
 /// A row a set of rows takes besides a T: any range of what its stored rows (Stored) hold (a span, a stored row, decoded
 /// values).
 template<typename R, typename Stored>
-concept row_of = std::ranges::input_range<R> && std::ranges::input_range<Stored> && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<Stored>>;
+concept row_of =
+    std::ranges::input_range<R> && std::ranges::input_range<Stored> && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<Stored>>;
 
 /// A row, or a row with its hash (prehashed<R>): what a set of rows is looked up by besides a T.
 template<typename X, typename Stored>
@@ -207,8 +209,8 @@ class IndexedSet
     static_assert(!ThreadSafe || Stable, "urd::repr::IndexedSet: threads share elements that never move (Stable)");
     static_assert(!Rows || Stable, "urd::repr::IndexedSet: rows lie in segments that never move (Stable)");
     friend struct urd::memory_of<IndexedSet>;
-    using Elements =
-        std::conditional_t<std::is_void_v<Storage>, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>, Storage>;
+    using Elements = std::
+        conditional_t<std::is_void_v<Storage>, std::conditional_t<Stable, SegmentedVector<T, default_first_segment_size, ThreadSafe>, std::vector<T>>, Storage>;
     /// What the storage is built with (std::monostate: nothing).
     using Parameter = typename detail::parameter_of<Elements>::type;
     /// How keys hash and compare with the stored elements.
@@ -251,9 +253,8 @@ class IndexedSet
         { return Keys::equal((*elements)[lhs.value], rhs.key); }
     };
     /// How the table is held and searched: by one thread, or shared by threads.
-    using Tables = std::conditional_t<ThreadSafe,
-                                      detail::shared_table<Position, PositionHash, PositionEqual>,
-                                      detail::single_table<Position, PositionHash, PositionEqual>>;
+    using Tables = std::
+        conditional_t<ThreadSafe, detail::shared_table<Position, PositionHash, PositionEqual>, detail::single_table<Position, PositionHash, PositionEqual>>;
     using Table = typename Tables::type;
 
 public:
@@ -291,6 +292,7 @@ public:
     }
     /// The moved-from set is empty.
     IndexedSet(IndexedSet&& other) noexcept : m_parameter(other.m_parameter), m_state(other.release()) {}
+    // NOLINTNEXTLINE(bugprone-exception-escape): copying the parameter can throw only std::bad_alloc (column widths past their inline room)
     IndexedSet& operator=(IndexedSet&& other) noexcept
     {
         if (this != &other)
@@ -395,7 +397,8 @@ public:
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
-        std::for_each(first, last,
+        std::for_each(first,
+                      last,
                       [this](const auto& element)
                       {
                           if constexpr (Rows)  // a row as it is handed out (a span, decoded values): copied in
@@ -417,7 +420,9 @@ public:
     template<std::invocable<std::size_t> Factory>
         requires(!Rows)
     std::pair<iterator, bool> insert_with(const prehashed<T>& key, Factory make)
-    { return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); }); }
+    {
+        return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); });
+    }
 
     size_type erase(const T& element)
         requires(!Stable || (Rows && !ThreadSafe))
@@ -480,7 +485,9 @@ public:
 
     /// Equal elements in the same order.
     [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs)
-    { return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return Keys::equal(a, b); }); }
+    {
+        return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return Keys::equal(a, b); });
+    }
 
 private:
     [[nodiscard]] iterator at(Index position) const { return begin() + static_cast<difference_type>(position); }
@@ -537,7 +544,9 @@ private:
     std::pair<iterator, bool> appended(const prehashed<K>& key, Make make)
     {
         auto& [elements, positions] = writable_state();
-        const auto [position, inserted] = Tables::find_or_insert(positions, m_writer, key,
+        const auto [position, inserted] = Tables::find_or_insert(positions,
+                                                                 m_writer,
+                                                                 key,
                                                                  [&]
                                                                  {
                                                                      const auto next = static_cast<Index>(elements.size());
@@ -570,7 +579,11 @@ private:
         return empty;
     }
     [[nodiscard]] const State* state() const noexcept { return detail::load(m_state); }
-    [[nodiscard]] const Elements& elements() const { const auto* held = state(); return held ? held->elements : no_elements(); }
+    [[nodiscard]] const Elements& elements() const
+    {
+        const auto* held = state();
+        return held ? held->elements : no_elements();
+    }
     /// The state, made where there is none (threads: by the first of them, under the writer lock).
     State& writable_state()
     {
@@ -581,6 +594,7 @@ private:
             held = detail::load(m_state);
             if (held == nullptr)
             {
+                // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): m_state takes it right after and owns it until release()
                 held = new State(m_parameter);
                 detail::store(m_state, held);
             }
@@ -614,10 +628,16 @@ template<typename T, typename Index, bool ThreadSafe, bool Stable, bool Rows, ty
 struct memory_of<repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>>
 {
     static std::size_t bytes(const repr::IndexedSet<T, Index, ThreadSafe, Stable, Rows, Storage>& held)
-    { const auto* state = held.state(); return state ? sizeof(*state) + memory_usage(state->elements) + memory_usage(state->positions) : 0; }
+    {
+        const auto* state = held.state();
+        return state ? sizeof(*state) + memory_usage(state->elements) + memory_usage(state->positions) : 0;
+    }
 };
 
-template<> struct include<"urd/repr/values/indexed.hpp"> {};
+template<>
+struct include<"urd/repr/values/indexed.hpp">
+{
+};
 
 }  // namespace urd
 

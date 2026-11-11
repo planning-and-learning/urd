@@ -141,7 +141,8 @@ struct Less<V<Ts...>>
     {
         if (lhs.index() != rhs.index())
             return lhs.index() < rhs.index();
-        return lhs.index() < sizeof...(Ts) && visit(
+        return lhs.index() < sizeof...(Ts)
+               && visit(
                    []<typename L, typename R>(const L& l, const R& r)
                    {
                        if constexpr (std::is_same_v<L, R>)
@@ -251,7 +252,7 @@ template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
 constexpr bool less_range(LhsRange&& lhs, RhsRange&& rhs)
 {
     using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
-    return std::ranges::lexicographical_compare(lhs, rhs, Less<Value> {});
+    return std::ranges::lexicographical_compare(std::forward<LhsRange>(lhs), std::forward<RhsRange>(rhs), Less<Value> {});
 }
 
 /// Gives Derived `==` and `<=>` by what identifies it (its identifying_members(), through EqualTo and ThreeWayCompare):

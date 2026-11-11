@@ -44,8 +44,8 @@ public:
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
-        return inserted(m_records.insert_with(
-            key, [&make](std::size_t position) -> decltype(auto) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
+        return inserted(
+            m_records.insert_with(key, [&make](std::size_t position) -> decltype(auto) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
     }
     [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
@@ -61,7 +61,6 @@ public:
     void clear() { m_records.clear(); }
 
 private:
-
     [[nodiscard]] std::pair<handle_type, bool> inserted(std::pair<typename Records::iterator, bool> result) const
     { return { handle_type(static_cast<std::uint32_t>(result.first - m_records.begin())), result.second }; }
 
@@ -91,7 +90,10 @@ class ValueInterner : public detail::Interner<IndexedSet<T, std::uint32_t, Threa
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/records/records.hpp"> {};
+template<>
+struct urd::include<"urd/repr/records/records.hpp">
+{
+};
 
 namespace urd::detail
 {

@@ -1,7 +1,6 @@
 // Sets and maps: random use against the standard's containers, set algebra, positions, ends, entries, Stores as keys, and orders by a projection. Each family
 // header a Store here needs is included, and no other.
 
-#include "urd/testing/allocations.hpp"
 #include "../names.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -29,6 +28,7 @@
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -141,6 +141,12 @@ struct Fact
 
 }  // namespace
 
+// GCC 13 at -O3 follows the first lookup into the map it has just seen built empty, and reports the key comparison
+// that lookup never reaches (the table has no slot yet) as reading out of bounds.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 TEST(Store, KeysThatNameTheirIdentity)
 {
     const auto facts = std::vector<Fact> { { 3, {} }, { 1, { 2 } }, { 1, { 2 } }, { 1, { 1 } } };
@@ -159,6 +165,9 @@ TEST(Store, KeysThatNameTheirIdentity)
     counts[Fact { 1, {} }] += 2;
     EXPECT_EQ(counts.at(Fact { 1, {} }), 2);
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 TEST(Store, BehavesLikeTheStandardContainers)
 {

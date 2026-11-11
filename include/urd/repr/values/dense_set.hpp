@@ -131,9 +131,10 @@ public:
     }
     void clear()
     {
-        m_touched.reset(m_words.size(),
-                        [this](std::size_t first, std::size_t last)
-                        { std::fill(m_words.begin() + static_cast<difference_type>(first), m_words.begin() + static_cast<difference_type>(last), word { 0 }); });
+        m_touched.reset(
+            m_words.size(),
+            [this](std::size_t first, std::size_t last)
+            { std::fill(m_words.begin() + static_cast<difference_type>(first), m_words.begin() + static_cast<difference_type>(last), word { 0 }); });
         m_count = 0;
     }
 
@@ -322,7 +323,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/values/dense_set.hpp"> {};
+template<>
+struct include<"urd/repr/values/dense_set.hpp">
+{
+};
 
 }  // namespace urd
 

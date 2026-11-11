@@ -174,7 +174,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/values/sparse_set.hpp"> {};
+template<>
+struct include<"urd/repr/values/sparse_set.hpp">
+{
+};
 
 }  // namespace urd
 

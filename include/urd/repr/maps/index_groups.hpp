@@ -104,7 +104,6 @@ public:
     { return lhs.m_offsets == rhs.m_offsets && std::ranges::equal(lhs.m_values, rhs.m_values, EqualTo<V> {}); }
 
 private:
-
     std::vector<std::size_t> m_offsets { 0 };
     std::vector<V> m_values;
 
@@ -114,4 +113,3 @@ public:
 };
 
 }  // namespace urd::repr
-

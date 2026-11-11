@@ -32,10 +32,7 @@ class ArenaInterner;
 
 }  // namespace urd::repr
 
-namespace urd
-{
-
-namespace detail
+namespace urd::detail
 {
 
 // The interners' declarations. A variant derives from the one it varies and says only what differs: what it provides
@@ -163,6 +160,4 @@ struct declaration_of<repr::ArenaInterner<T, true, H>> : declaration_of<repr::Re
     using declaration = thread_safe_arena_interner_decl;
 };
 
-}  // namespace detail
-
-}  // namespace urd
+}  // namespace urd::detail

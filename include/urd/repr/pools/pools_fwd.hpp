@@ -74,8 +74,8 @@ template<bool ThreadSafe>
 struct bit_row_interner_decl : row_interner_decl
 {
     static constexpr std::string_view id = ThreadSafe ? "thread_safe_bit_row_interner" : "bit_row_interner";
-    static constexpr property_set provides =
-        property_set::of({ handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none), room::reservable });
+    static constexpr property_set provides = property_set::of(
+        { handling::handles, uniqueness::unique, memory::retains, ThreadSafe ? tag(threading::concurrent) : tag(threading::none), room::reservable });
     static constexpr property_set relies_on = relies(stated({ width::bit }),
                                                      tags<role::row>({ position::positional }),
                                                      traits<role::row_element, trait::an_index>(),
@@ -98,7 +98,8 @@ struct schema_row_interner_decl : bit_row_interner_decl<ThreadSafe>
 {
     static constexpr std::string_view id = ThreadSafe ? "thread_safe_schema_row_interner" : "schema_row_interner";
     static constexpr property_set relies_on = relies(stated({ width::by_column_widths }), tags<role::row>({ position::positional }));
-    static constexpr std::string_view description = "schema row interner (rows of unsigned columns, each column in the bits the widths given at construction give it)";
+    static constexpr std::string_view description =
+        "schema row interner (rows of unsigned columns, each column in the bits the widths given at construction give it)";
     static constexpr std::string_view holds = "each distinct row once, its columns in their widths' bits, rows back to back";
 };
 template<typename Row, bool ThreadSafe, typename H>
@@ -162,7 +163,8 @@ namespace detail
 struct thread_safe_row_interner_decl : row_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_row_interner";
-    static constexpr property_set provides = property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent, room::reservable });
+    static constexpr property_set provides =
+        property_set::of({ handling::handles, uniqueness::unique, memory::retains, threading::concurrent, room::reservable });
     static constexpr double words = 4.1;
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";

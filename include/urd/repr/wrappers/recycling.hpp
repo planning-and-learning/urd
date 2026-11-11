@@ -78,8 +78,10 @@ protected:
     }
     template<typename Node>
     static void reset(Node& /*a set's node: nothing to clear*/)
-    {}
+    {
+    }
 
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): the derived map and set take their nodes from it
     std::vector<typename Container::node_type> m_free;
 };
 
@@ -245,7 +247,10 @@ struct memory_of<repr::RecyclingSet<Set>>
     static std::size_t bytes(const repr::RecyclingSet<Set>& held) { return memory_usage(static_cast<const Set&>(held)) + detail::kept_bytes(held.m_free); }
 };
 
-template<> struct include<"urd/repr/wrappers/recycling.hpp"> {};
+template<>
+struct include<"urd/repr/wrappers/recycling.hpp">
+{
+};
 
 }  // namespace urd
 

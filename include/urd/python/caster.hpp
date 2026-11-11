@@ -58,8 +58,8 @@ struct type_caster<urd::Store<Kind, Tags...>> : set_caster<urd::Store<Kind, Tags
 template<typename Kind, typename... Tags>
     requires urd::python::castable<urd::Store<Kind, Tags...>> && std::same_as<typename urd::traits_t<urd::Store<Kind, Tags...>>::kind, urd::map_kind>
              && urd::has<urd::traits_t<urd::Store<Kind, Tags...>>, urd::unique>
-struct type_caster<urd::Store<Kind, Tags...>>
-    : dict_caster<urd::Store<Kind, Tags...>, typename urd::Store<Kind, Tags...>::key_type, typename urd::Store<Kind, Tags...>::mapped_type>
+struct type_caster<urd::Store<Kind, Tags...>> :
+    dict_caster<urd::Store<Kind, Tags...>, typename urd::Store<Kind, Tags...>::key_type, typename urd::Store<Kind, Tags...>::mapped_type>
 {
 };
 

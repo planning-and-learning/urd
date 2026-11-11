@@ -2,13 +2,13 @@
 
 // A map from indices to values, a slot per index, for dense keys: stored by position, not hashed.
 
+#include "urd/config.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/containers/segmented_vector.hpp"
 #include "urd/repr/containers/spin_mutex.hpp"
-#include "urd/config.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/traits.hpp"
 
@@ -229,9 +229,11 @@ public:
                                      {
                                          if (present(index))
                                          {
+                                             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal decays where V takes it
                                              value(index) = std::forward<M>(mapped);
                                              return false;
                                          }
+                                         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal decays where V takes it
                                          place(entry, V(std::forward<M>(mapped)));
                                          return true;
                                      });
@@ -322,10 +324,7 @@ public:
     };
 
 private:
-    [[nodiscard]] bool present(std::size_t index) const
-    {
-        return index < m_slots.size() && holds(m_slots[index]);
-    }
+    [[nodiscard]] bool present(std::size_t index) const { return index < m_slots.size() && holds(m_slots[index]); }
     /// The slot of `key` where it holds a value, else nullptr: the slot is looked up once.
     [[nodiscard]] const slot* held_slot(const K& key) const
     {
@@ -374,6 +373,11 @@ private:
         const IndexMap* map;
         slot* entry;
 
+        publish_on_exit(const IndexMap* map_, slot* entry_) noexcept : map(map_), entry(entry_) {}
+        publish_on_exit(const publish_on_exit&) = delete;
+        publish_on_exit& operator=(const publish_on_exit&) = delete;
+        publish_on_exit(publish_on_exit&&) = delete;
+        publish_on_exit& operator=(publish_on_exit&&) = delete;
         ~publish_on_exit()
         {
             if (entry != nullptr)
@@ -413,11 +417,9 @@ private:
             return body();
     }
     /// A slot's generation, as published: loaded with acquire where threads share slots.
-    [[nodiscard]] static generation_type generation_of(const generation_slot& entry) noexcept
-    { return detail::load<ThreadSafe>(entry.generation); }
+    [[nodiscard]] static generation_type generation_of(const generation_slot& entry) noexcept { return detail::load<ThreadSafe>(entry.generation); }
     /// Stores a slot's generation: with release where threads share slots, after its value.
-    static void store_generation(generation_slot& entry, generation_type generation) noexcept
-    { detail::store<ThreadSafe>(entry.generation, generation); }
+    static void store_generation(generation_slot& entry, generation_type generation) noexcept { detail::store<ThreadSafe>(entry.generation, generation); }
     void remove(std::size_t index)
     {
         vacate(m_slots[index]);
@@ -464,7 +466,10 @@ struct urd::memory_of<urd::repr::IndexMap<K, V, Generations, ThreadSafe, Stable>
     }
 };
 
-template<> struct urd::include<"urd/repr/maps/index_map.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/index_map.hpp">
+{
+};
 
 namespace urd::detail
 {

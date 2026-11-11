@@ -6,9 +6,9 @@
 // (tests/container.cpp, compiled once per container) instantiates it for that container and the Stores over it, so
 // adding a container adds its own tests. The headers a container needs are included before this header.
 
-#include "urd/testing/allocations.hpp"
 #include "names.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 #include "verify.hpp"
 
 #include <algorithm>

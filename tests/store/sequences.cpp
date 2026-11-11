@@ -38,8 +38,8 @@ TEST(IndexedSequence, IsAddressedByItsIndex)
     EXPECT_EQ(levels[Id(2)], 9);
     EXPECT_EQ(levels.position(levels.begin() + 1), Id(1));
     EXPECT_EQ(levels.position(levels.end()), Id(3));
-    EXPECT_THROW((void)levels.at(Id(3)), std::out_of_range);
-    EXPECT_THROW((void)levels.at(Id()), std::out_of_range);
+    EXPECT_THROW((void) levels.at(Id(3)), std::out_of_range);
+    EXPECT_THROW((void) levels.at(Id()), std::out_of_range);
     levels.clear();
     EXPECT_TRUE(levels.empty());
 }

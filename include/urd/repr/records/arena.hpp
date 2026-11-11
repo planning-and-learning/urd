@@ -105,7 +105,10 @@ struct memory_of<repr::ArenaRecords<T, ThreadSafe>>
     { return memory_usage(held.m_records) + memory_usage(held.m_arena) + held.m_scratch.buf_.capacity(); }
 };
 
-template<> struct include<"urd/repr/records/arena.hpp"> {};
+template<>
+struct include<"urd/repr/records/arena.hpp">
+{
+};
 
 }  // namespace urd
 

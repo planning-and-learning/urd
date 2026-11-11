@@ -65,9 +65,12 @@ public:
     }
     UniformRows(const UniformRows&) = delete;
     UniformRows& operator=(const UniformRows&) = delete;
+    UniformRows(UniformRows&&) = delete;
+    UniformRows& operator=(UniformRows&&) = delete;
     ~UniformRows()
     {
         for (auto& segment : m_segments)
+            // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): m_segments owns its arrays, by pointers that are atomic where threads read
             delete[] detail::load(segment);
     }
 
@@ -124,6 +127,7 @@ public:
             if (!data)
             {
                 // ponytail: zeroed for every codec (packed words are read before they are written; plain rows pay a pass)
+                // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): m_segments takes it right after and owns it until the destructor
                 data = new unit[m_codec.units(Layout::segment_capacity(segment), length)]();
                 detail::store(m_segments[segment], data);
             }
@@ -177,10 +181,12 @@ struct PlainCodec
     using parameter = std::monostate;
 
     [[nodiscard]] static std::size_t units(std::size_t rows, std::size_t length) noexcept { return rows * length; }
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): row `at` of the rows of `length` units each that lie at data
     [[nodiscard]] static value_type read(const U* data, std::size_t at, std::size_t length) noexcept { return value_type(data + (at * length), length); }
     static void write(U* data, std::size_t at, value_type row) noexcept
     {
         if (!row.empty())  // an empty span may have no data, which memcpy does not take
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): row `at` of the rows of row.size() units each that lie at data
             std::memcpy(data + (at * row.size()), row.data(), row.size_bytes());
     }
     static void check(value_type /*row*/) noexcept {}

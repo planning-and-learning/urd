@@ -47,8 +47,7 @@ struct slot_vector_decl
     static constexpr std::string_view id = "slot_vector";
     static constexpr auto headers = header_list<1> { "urd/repr/slots/slots.hpp" };
     using kind = slots_kind;
-    static constexpr property_set provides =
-        property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::none, keying::keyed });
+    static constexpr property_set provides = property_set::of({ handling::handles, referencing::stable_refs, memory::retains, threading::none, keying::keyed });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert_row, costs::one_a>, cost_entry<operation::access, costs::one>>;

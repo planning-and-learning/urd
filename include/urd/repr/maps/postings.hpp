@@ -92,7 +92,6 @@ public:
     }
 
 private:
-
     Table m_table;
     std::size_t m_count = 0;
 
@@ -100,7 +99,6 @@ public:
     /// The members it owns memory through (urd::memory_of).
     static constexpr auto memory_members() noexcept { return Members<&HashGroups::m_table> {}; }
 };
-
 
 /// A multimap as chained postings: a flat hash table from each key to the chain of its values, the values in one pool of
 /// slots. Erasing a value links its slot into a free list, which inserting takes from before the pool grows, whatever
@@ -174,9 +172,7 @@ public:
     /// From pairs in any order (std::pair<const K, V>, or what iterating another map gives).
     template<std::input_iterator InputIt>
     ChainedPostingMap(InputIt first, InputIt last)
-    {
-        insert(first, last);
-    }
+    { insert(first, last); }
 
     [[nodiscard]] iterator begin() const { return iterator(this, m_table.begin()); }
     [[nodiscard]] iterator end() const { return iterator(this, m_table.end()); }
@@ -329,6 +325,7 @@ public:
 
         iterator() = default;
 
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access): a slot in a key's chain holds a value (Slot: empty only while free)
         reference operator*() const { return { m_entry->first, *m_map->m_slots[m_slot].value }; }
         arrow operator->() const { return { **this }; }
         iterator& operator++()
@@ -350,17 +347,8 @@ public:
     private:
         friend class ChainedPostingMap;
         /// The first value of an entry, or the end.
-        iterator(const ChainedPostingMap* map, entry at) :
-            m_map(map),
-            m_entry(at),
-            m_slot(at == map->m_table.end() ? npos : at->second.first)
-        {
-        }
-        iterator(const ChainedPostingMap* map, entry at, std::size_t slot, std::size_t previous) :
-            m_map(map),
-            m_entry(at),
-            m_slot(slot),
-            m_previous(previous)
+        iterator(const ChainedPostingMap* map, entry at) : m_map(map), m_entry(at), m_slot(at == map->m_table.end() ? npos : at->second.first) {}
+        iterator(const ChainedPostingMap* map, entry at, std::size_t slot, std::size_t previous) : m_map(map), m_entry(at), m_slot(slot), m_previous(previous)
         {
         }
 
@@ -371,7 +359,6 @@ public:
     };
 
 private:
-
     /// Frees a slot; the slot after it in its chain.
     std::size_t release(std::size_t slot)
     {
@@ -394,7 +381,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/maps/postings.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/postings.hpp">
+{
+};
 
 namespace urd::detail
 {

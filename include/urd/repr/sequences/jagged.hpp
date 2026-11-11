@@ -57,7 +57,6 @@ struct shape_below<Jagged<Inner, TrackRows>>
 template<typename Inner, bool TrackRows>
 class Jagged
 {
-
     using Si = container_traits<Inner>;
     using T = typename Si::element_type;
     static constexpr bool leaf = !is_store<T>;
@@ -127,7 +126,9 @@ public:
     /// last reset only.
     void reset()
         requires writable
-    { m_touched.reset(size(), [this](size_type from, size_type to) { reset_rows(from, to); }); }
+    {
+        m_touched.reset(size(), [this](size_type from, size_type to) { reset_rows(from, to); });
+    }
     /// Rows [from, to) back to their defaults.
     void reset_rows(size_type from, size_type to)
         requires writable
@@ -295,7 +296,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/sequences/jagged.hpp"> {};
+template<>
+struct urd::include<"urd/repr/sequences/jagged.hpp">
+{
+};
 
 namespace urd::detail
 {
@@ -317,4 +321,3 @@ struct representation_of<tracked_jagged_decl, S>
 };
 
 }  // namespace urd::detail
-

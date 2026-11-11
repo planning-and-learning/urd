@@ -11,8 +11,8 @@
 #include <array>
 #include <bit>
 #include <cassert>
-#include <cstddef>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -275,7 +275,6 @@ private:
             read_recursive(node[k], values.subspan(offset, std::min(step, size - offset)));
     }
 
-
     [[no_unique_address]] Leaves m_leaves;
     InterningTable<Children, ThreadSafe> m_nodes;
 
@@ -289,7 +288,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/pools/tree_vector.hpp"> {};
+template<>
+struct include<"urd/repr/pools/tree_vector.hpp">
+{
+};
 
 }  // namespace urd
 

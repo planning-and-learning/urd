@@ -150,7 +150,10 @@ private:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/queues/addressable_heap.hpp"> {};
+template<>
+struct urd::include<"urd/repr/queues/addressable_heap.hpp">
+{
+};
 
 namespace urd::detail
 {

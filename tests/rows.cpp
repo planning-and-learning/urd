@@ -2,7 +2,6 @@
 // inserts and erases of rows, sorted rows answer lookups by position, and a Store that retains at every level
 // allocates nothing when refilled. One typed test per behavior, for every nested Store in the list.
 
-#include "urd/testing/allocations.hpp"
 #include "names.hpp"
 #include "urd/repr/maps/flat_map.hpp"
 #include "urd/repr/sequences/jagged.hpp"
@@ -11,6 +10,7 @@
 #include "urd/repr/sequences/sequence.hpp"
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <cstddef>
 #include <gtest/gtest.h>

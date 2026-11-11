@@ -41,7 +41,6 @@ template<typename T, typename Compare>
 template<typename T, typename Compare>
 class BucketQueue
 {
-
 public:
     using value_type = T;
     using size_type = std::size_t;
@@ -98,7 +97,10 @@ public:
 
 }  // namespace urd::repr
 
-template<> struct urd::include<"urd/repr/queues/bucket_queue.hpp"> {};
+template<>
+struct urd::include<"urd/repr/queues/bucket_queue.hpp">
+{
+};
 
 namespace urd::detail
 {
@@ -110,4 +112,3 @@ struct representation_of<bucket_queue_decl, S>
 };
 
 }  // namespace urd::detail
-

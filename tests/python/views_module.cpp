@@ -25,14 +25,13 @@ struct Numbers
     std::vector<Number> records;
 
     const Number& operator[](urd::index<Number> at) const { return records[at.value]; }
-    std::size_t layer() const noexcept { return 0; }
-    urd::index_view<Number, Numbers> view(urd::index<Number> at) const { return { at, this }; }
+    [[nodiscard]] std::size_t layer() const noexcept { return 0; }
+    [[nodiscard]] urd::index_view<Number, Numbers> view(urd::index<Number> at) const { return { at, this }; }
 };
 
 using NumberView = urd::index_view<Number, Numbers>;
 using ComputedNumber = urd::owning_view<Number, Numbers, Number>;
 static_assert(urd::resolves<Numbers, Number>);
-
 
 }  // namespace
 

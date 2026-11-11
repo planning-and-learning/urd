@@ -106,7 +106,6 @@ public:
     }
 
 private:
-
     std::vector<std::vector<V>> m_rows;
     std::size_t m_count = 0;
 
@@ -116,4 +115,3 @@ public:
 };
 
 }  // namespace urd::repr
-

@@ -35,6 +35,7 @@ struct packed_words
     /// The `width` bits at bit `at` (width 1 to word_bits), which may span two words.
     [[nodiscard]] static word get(const word* words, std::size_t at, std::uint8_t width) noexcept
     {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): the word of bit `at`; the words end with a word of room (bit::packed_blocks)
         const auto from = std::span<const word>(words + (at / word_bits), 2);
         const auto offset = static_cast<std::uint8_t>(at % word_bits);
         if constexpr (ThreadSafe)
@@ -45,6 +46,7 @@ struct packed_words
     /// Writes `value` into the `width` bits at bit `at`, keeping the bits around them.
     static void set(word* words, std::size_t at, std::uint8_t width, word value) noexcept
     {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): the word of bit `at`; the words end with a word of room (bit::packed_blocks)
         const auto into = std::span<word>(words + (at / word_bits), 2);
         const auto offset = static_cast<std::uint8_t>(at % word_bits);
         if constexpr (ThreadSafe)
@@ -82,8 +84,7 @@ public:
         const_iterator() = default;
         const_iterator(const PackedRow& row, size_type pos) : m_words(row.m_words), m_first_bit(row.m_first_bit), m_width(row.m_width), m_pos(pos) {}
 
-        reference operator*() const
-        { return index_of<U>::from_index(static_cast<std::size_t>(words::get(m_words, m_first_bit + (m_pos * m_width), m_width))); }
+        reference operator*() const { return index_of<U>::from_index(static_cast<std::size_t>(words::get(m_words, m_first_bit + (m_pos * m_width), m_width))); }
         reference operator[](difference_type n) const { return *(*this + n); }
         const_iterator& operator++() { return *this += 1; }
         const_iterator operator++(int)
@@ -163,8 +164,7 @@ struct BitCodec
     { assert(width >= 1 && width <= word_bits && "urd::repr::BitCodec: a bit width of one bit to a word's"); }
 
     /// The words of the rows' bits, and a word of room so that a read of the last element's bits never leaves them.
-    [[nodiscard]] std::size_t units(std::size_t rows, std::size_t length) const noexcept
-    { return bit::packed_blocks<unit>(rows * length * width); }
+    [[nodiscard]] std::size_t units(std::size_t rows, std::size_t length) const noexcept { return bit::packed_blocks<unit>(rows * length * width); }
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t length) const noexcept
     { return value_type(data, at * length * width, length, width); }
     template<std::ranges::sized_range Row>

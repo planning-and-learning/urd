@@ -1,6 +1,5 @@
 // Scopes, change logs, layers and families of Stores. Each header a Store here needs is included.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -25,6 +24,7 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/scoped.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -189,7 +189,12 @@ TEST(Layered, AnswersFromItselfThenItsParent)
     EXPECT_EQ(child.size(), 3U);
     EXPECT_EQ(parent.at(clear), 1);
     // update() too, where neither holds the key: held is false, the value a default one.
-    EXPECT_FALSE(child.update(empty, [](int& value, bool held) { value = 4; return held; }));
+    EXPECT_FALSE(child.update(empty,
+                              [](int& value, bool held)
+                              {
+                                  value = 4;
+                                  return held;
+                              }));
     EXPECT_EQ(std::as_const(child).at(empty), 4);
     child.layer_over(nullptr);
     EXPECT_FALSE(child.contains(Name(9)));
@@ -288,7 +293,7 @@ TEST(Layered, RelationsBuildEachLayersPoolFromItsArguments)
     EXPECT_FALSE(task.try_emplace(on, urd::bit_width::for_bound(1000)).second);
     EXPECT_EQ(task[on].base(), 1U);
     EXPECT_EQ(task[on].insert({ Object(1), Object(2) }), std::pair(on_12, false));  // found in the domain's pool
-    const auto wide = task[on].insert({ Object(999), Object(3) }).first;             // too wide for the domain's
+    const auto wide = task[on].insert({ Object(999), Object(3) }).first;            // too wide for the domain's
     EXPECT_EQ(wide, urd::index<Row>(1));
     EXPECT_EQ(task[on].get(wide), (Row { Object(999), Object(3) }));
 }

@@ -5,8 +5,8 @@
 
 #include <concepts>
 #include <iterator>
-#include <type_traits>
 #include <ranges>
+#include <type_traits>
 #include <utility>
 
 namespace urd::detail::facet
@@ -38,6 +38,7 @@ public:
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] const_iterator_type find(const K& key) const
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal key decays to the pointer the lookup takes
     { return representation().find(key); }
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && (!std::same_as<iterator_type, const_iterator_type>)
@@ -46,10 +47,12 @@ public:
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] typename types::size_type count(const K& key) const
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal key decays to the pointer the lookup takes
     { return representation().count(key); }
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>)
     [[nodiscard]] bool contains(const K& key) const
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal key decays to the pointer the lookup takes
     { return representation().contains(key); }
     /// The elements equal to `element` (in a map, with that key), as a pair of iterators.
     [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const typename types::lookup_type& element) const

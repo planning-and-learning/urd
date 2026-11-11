@@ -110,7 +110,8 @@ struct EqualTo<V<Ts...>>
     {
         if (lhs.index() != rhs.index())
             return false;
-        return lhs.index() >= sizeof...(Ts) || visit(
+        return lhs.index() >= sizeof...(Ts)
+               || visit(
                    []<typename L, typename R>(const L& l, const R& r)
                    {
                        if constexpr (std::is_same_v<L, R>)
@@ -176,7 +177,7 @@ template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
 constexpr bool equal_elements(LhsRange&& lhs, RhsRange&& rhs)
 {
     using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
-    return std::ranges::equal(lhs, rhs, EqualTo<Value> {});
+    return std::ranges::equal(std::forward<LhsRange>(lhs), std::forward<RhsRange>(rhs), EqualTo<Value> {});
 }
 
 }  // namespace urd

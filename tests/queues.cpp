@@ -2,12 +2,12 @@
 // by_priority) is checked against a model through random pushes and pops, as tests/properties.cpp checks sets and
 // sequences.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/queues/addressable_heap.hpp"
 #include "urd/repr/queues/bucket_queue.hpp"
 #include "urd/repr/queues/queue.hpp"
 #include "urd/repr/queues/ring_fifo.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 #include "verify.hpp"
 
 #include <algorithm>

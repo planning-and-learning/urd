@@ -1,6 +1,5 @@
 // Queues: handles, iteration, and reading by handle. Each header a Store here needs is included.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/index_map.hpp"
 #include "urd/repr/maps/ordered_map.hpp"
 #include "urd/repr/maps/postings.hpp"
@@ -14,6 +13,7 @@
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>

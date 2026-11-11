@@ -88,7 +88,9 @@ template<Serializable T>
 struct memory_of<T>
 {
     static std::size_t bytes(const T& record)
-    { return []<auto... Ms>(Members<Ms...> /*members*/, const T& of) { return (std::size_t { 0 } + ... + memory_usage(of.*Ms)); }(T::cista_members(), record); }
+    {
+        return []<auto... Ms>(Members<Ms...> /*members*/, const T& of) { return (std::size_t { 0 } + ... + memory_usage(of.*Ms)); }(T::cista_members(), record);
+    }
 };
 
 /// A flat vector is a value range: hashed, compared and ordered as its elements.
@@ -124,7 +126,7 @@ template<typename R>
     }
     else if constexpr (pair_value<R>)
         return flat_pair<decltype(urd::to_stored(readout.first)), decltype(urd::to_stored(readout.second))> { urd::to_stored(readout.first),
-                                                                                                                urd::to_stored(readout.second) };
+                                                                                                              urd::to_stored(readout.second) };
     else if constexpr (requires { readout.index(); })
         return readout.index();
     else if constexpr (requires { requires std::is_class_v<std::remove_cvref_t<decltype(readout.data())>>; })

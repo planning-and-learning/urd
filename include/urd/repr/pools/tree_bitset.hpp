@@ -14,8 +14,8 @@
 #include <array>
 #include <bit>
 #include <cassert>
-#include <cstddef>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -583,7 +583,6 @@ private:
             read_recursive(node[k], blocks.subspan(offset, child_size(size, k)));
     }
 
-
     Nodes m_nodes;
 
 public:
@@ -596,7 +595,10 @@ public:
 namespace urd
 {
 
-template<> struct include<"urd/repr/pools/tree_bitset.hpp"> {};
+template<>
+struct include<"urd/repr/pools/tree_bitset.hpp">
+{
+};
 
 }  // namespace urd
 

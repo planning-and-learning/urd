@@ -120,7 +120,7 @@ constexpr Block read_int(std::type_identity_t<std::span<const Block>> words, uin
     const Block w1 = words[0] >> offset;
 
     if (offset + len > digits)
-        return w1 | ((words[1] & lo_set<Block>[(offset + len) & (digits - 1)]) << (digits - offset));
+        return static_cast<Block>(w1 | ((words[1] & lo_set<Block>[(offset + len) & (digits - 1)]) << (digits - offset)));
     else
         return w1 & lo_set<Block>[len];
 }
@@ -154,7 +154,7 @@ Block atomic_read_int(std::type_identity_t<std::span<const Block>> words, uint8_
     assert(offset < digits && "Offset must lie within one block.");
     const Block first = atomic_load(&words[0]) >> offset;
     if (offset + len > digits)
-        return first | ((atomic_load(&words[1]) & lo_set<Block>[(offset + len) & (digits - 1)]) << (digits - offset));
+        return static_cast<Block>(first | ((atomic_load(&words[1]) & lo_set<Block>[(offset + len) & (digits - 1)]) << (digits - offset)));
     return first & lo_set<Block>[len];
 }
 

@@ -2,6 +2,7 @@
 // as the views their context makes.
 
 #include "urd/elements/children.hpp"
+
 #include "urd/elements/view.hpp"
 
 #include <boost/mp11/list.hpp>
@@ -104,10 +105,10 @@ TEST(Children, VisitsEveryNestedShapeInMemberOrder)
 TEST(Children, MapsEveryNestedShapeAndKeepsTheRest)
 {
     const auto context = Context();
-    const auto mapped = urd::map_children<Children, Node>(make_node(),
-                                                          context,
-                                                          []<typename U>(urd::index_view<U, Context> child)
-                                                          { return urd::index<U>(child.index().value + 100); });
+    const auto mapped =
+        urd::map_children<Children, Node>(make_node(),
+                                          context,
+                                          []<typename U>(urd::index_view<U, Context> child) { return urd::index<U>(child.index().value + 100); });
     EXPECT_EQ(mapped.single.value, 101U);
     EXPECT_EQ(mapped.matrix[0][0].value, 102U);
     EXPECT_EQ(mapped.matrix[0][1].value, 103U);
@@ -142,25 +143,25 @@ TEST(Children, MapsWholeVariantSlots)
 {
     const auto context = Context();
     auto slots = std::vector<std::size_t>();
-    const auto mapped = urd::map_variant_children<Children, Node>(
-        make_node(),
-        context,
-        [&]<typename A>(const A& child)
-        {
-            if constexpr (std::same_as<A, Operand>)
-            {
-                slots.push_back(child.index());
-                // Every operand becomes a Node.
-                return std::visit([](auto operand) { return urd::index<Node>(operand.index().value + 200); }, child);
-            }
-            else if constexpr (urd::variant_value<A>)
-            {
-                slots.push_back(child.index());
-                return child;
-            }
-            else
-                return decltype(child.index())(child.index().value + 100);
-        });
+    const auto mapped =
+        urd::map_variant_children<Children, Node>(make_node(),
+                                                  context,
+                                                  [&]<typename A>(const A& child)
+                                                  {
+                                                      if constexpr (std::same_as<A, Operand>)
+                                                      {
+                                                          slots.push_back(child.index());
+                                                          // Every operand becomes a Node.
+                                                          return std::visit([](auto operand) { return urd::index<Node>(operand.index().value + 200); }, child);
+                                                      }
+                                                      else if constexpr (urd::variant_value<A>)
+                                                      {
+                                                          slots.push_back(child.index());
+                                                          return child;
+                                                      }
+                                                      else
+                                                          return decltype(child.index())(child.index().value + 100);
+                                                  });
     EXPECT_EQ(slots, (std::vector<std::size_t> { 0, 1, 0, 1 }));
     EXPECT_EQ(mapped.single.value, 101U);
     EXPECT_EQ(mapped.matrix[0][1].value, 103U);

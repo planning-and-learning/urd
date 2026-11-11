@@ -95,11 +95,6 @@ Construction and assignment
    The same, numbered (:cpp:struct:`urd::layer`): a set that hands out positions (``positional``,
    ``insertion_ordered``) is built only so, and its views are identified by index and number.
 
-.. cpp:function:: template<std::input_iterator InputIt> void assign(InputIt first, InputIt last)
-
-   Replaces the contents by what a Store built from these elements would hold, in place, its storage kept: the
-   one way a ``frozen`` Store changes. Only where the representation has ``assign``; any other Store is assigned
-   a new one (``s = Set(first, last)``).
 
 .. cpp:function:: void swap(Set& other) noexcept
 

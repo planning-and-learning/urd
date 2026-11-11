@@ -187,7 +187,8 @@ consteval property_set roles_of()
     auto result = property_set::roots();
     const auto add = [&result]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
     { result = with(result, about(role_v<Role>, role_facts<Role, Asked>::template of<Args...>())); };
-    []<typename... Plays>(boost::mp11::mp_list<Plays...> /*played*/, const auto& each) { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
+    []<typename... Plays>(boost::mp11::mp_list<Plays...> /*played*/, const auto& each)
+    { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
     return result;
 }
 

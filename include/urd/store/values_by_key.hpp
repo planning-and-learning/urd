@@ -56,7 +56,7 @@ public:
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const map_key& key, Update update)
-        requires(grows<S> && std::default_initializable<mapped_type> && (has<R, urd::dense> || has<R, urd::concurrent>))
+        requires(grows<S> && std::default_initializable<mapped_type> && (has<R, urd::dense> || has<R, urd::concurrent>) )
     { return representation().update(key, update); }
     /// f(value) where `key` has a value, else `missing`: the visit of Boost's concurrent maps, giving what f gives. With
     /// concurrent, safe while others update.

@@ -7,7 +7,10 @@
 #include "urd/repr/maps/grouped_multimap.hpp"
 #include "urd/traits.hpp"
 
-template<> struct urd::include<"urd/repr/maps/dense_multimap.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/dense_multimap.hpp">
+{
+};
 
 namespace urd::detail
 {

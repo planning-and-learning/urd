@@ -8,7 +8,10 @@
 #include "urd/repr/maps/unordered_flat_map_fwd.hpp"
 #include "urd/traits.hpp"
 
-template<> struct urd::include<"urd/repr/maps/unordered_flat_map.hpp"> {};
+template<>
+struct urd::include<"urd/repr/maps/unordered_flat_map.hpp">
+{
+};
 
 namespace urd::detail
 {

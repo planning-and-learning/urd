@@ -82,9 +82,9 @@ consteval bool compares()
 
 /// A Store's request in canonical form: its kind with its element types (set<K>, map<K, V>, …), the comparator that
 /// orders it (its order_by<C>'s, else urd::Less), the key its slots are kept by (its keyed<K>'s, else void), and its
-/// answers, one per category that says more than none, each in its category's enum, in the order of its kind's request format. Whatever order the tags were listed in, equal requests give equal specs, and
-/// so equal Store types; compilers print the kind and the answers by name (urd::order::sorted). Its types are its
-/// kind's: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
+/// answers, one per category that says more than none, each in its category's enum, in the order of its kind's request format. Whatever order the tags were
+/// listed in, equal requests give equal specs, and so equal Store types; compilers print the kind and the answers by name (urd::order::sorted). Its types are
+/// its kind's: a set has keys, a map keys and mapped values, a sequence values; nothing it lacks.
 template<typename Kind, typename Compare, typename Key, auto... Answers>
 struct spec : Kind
 {
@@ -226,7 +226,6 @@ struct to_spec<Kind, Tags...> : boost::mp11::mp_apply<to_spec, boost::mp11::mp_r
 /// sorted> auto&` accepts every such Store, whatever else its request states and in whatever order; only definitions
 /// spell a Store's whole request.
 template<typename X, typename Kind, typename... Tags>
-concept store_of = is_store<std::remove_cvref_t<X>> && std::derived_from<traits_t<std::remove_cvref_t<X>>, Kind>
-                   && has<std::remove_cvref_t<X>, Tags...>;
+concept store_of = is_store<std::remove_cvref_t<X>> && std::derived_from<traits_t<std::remove_cvref_t<X>>, Kind> && has<std::remove_cvref_t<X>, Tags...>;
 
 }  // namespace urd

@@ -1,9 +1,10 @@
 // The tests of BitsetSpan, SetBitIndices, for_each_bit and their urd::Hash (moved from yggdrasil's
 // tests/unit/containers/dynamic_bitset.cpp), and of urd::Hash for boost::dynamic_bitset where Boost has it.
 
+#include "urd/repr/containers/bitset_span.hpp"
+
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
-#include "urd/repr/containers/bitset_span.hpp"
 
 #include <algorithm>
 #include <array>
@@ -236,7 +237,8 @@ TEST(BitsetSpan, SetIndicesBorrowStorageNotWrappers)
     EXPECT_TRUE(urd::repr::SetBitIndices<std::uint64_t>().empty());
     EXPECT_TRUE(urd::repr::set_bit_indices(urd::repr::BitsetSpan<const std::uint64_t>(nullptr, 0)).empty());
     auto other_blocks = blocks;
-    EXPECT_NE(urd::repr::set_bit_indices(bits).begin(), urd::repr::set_bit_indices(urd::repr::BitsetSpan<const std::uint64_t>(other_blocks.data(), 130)).begin());
+    EXPECT_NE(urd::repr::set_bit_indices(bits).begin(),
+              urd::repr::set_bit_indices(urd::repr::BitsetSpan<const std::uint64_t>(other_blocks.data(), 130)).begin());
 }
 
 TEST(BitsetSpan, SetIndicesSkipEmptyWordsAndPreserveEndIdentity)

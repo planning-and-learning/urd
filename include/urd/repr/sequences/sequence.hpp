@@ -16,7 +16,8 @@ struct vector_decl
     static constexpr std::string_view id = "vector";
     static constexpr auto headers = header_list<1> { "urd/repr/sequences/sequence.hpp" };
     using kind = sequence_kind;
-    static constexpr property_set provides = property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear, room::reservable });
+    static constexpr property_set provides =
+        property_set::of({ position::positional, layout::contiguous, memory::retains, clearing::proportional_clear, room::reservable });
     static constexpr property_set relies_on {};
     static constexpr std::array<tag, 1> gives_elements { memory::reclaims };
     using operation_costs = cost_table<cost_entry<operation::insert, costs::one_a>,
@@ -37,7 +38,10 @@ struct declaration_of<std::vector<T, A>>
 
 }  // namespace urd::detail
 
-template<> struct urd::include<"urd/repr/sequences/sequence.hpp"> {};
+template<>
+struct urd::include<"urd/repr/sequences/sequence.hpp">
+{
+};
 
 namespace urd::detail
 {

@@ -1,7 +1,6 @@
 // Multimaps: the values of a key in order, compressed sparse rows, graphs that answer by value too, and rebuilding. Each family header a Store here
 // needs is included, and no other.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -24,6 +23,7 @@
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <chrono>

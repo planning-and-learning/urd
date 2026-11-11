@@ -1,6 +1,5 @@
 // Maps whose values merge, nested dense maps, and maps that recycle their nodes. Each header a Store here needs is included.
 
-#include "urd/testing/allocations.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -24,6 +23,7 @@
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/repr/wrappers/scoped.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/allocations.hpp"
 
 #include <algorithm>
 #include <array>
@@ -226,7 +226,8 @@ TEST(Recycling, BucketsRefillWithoutAllocating)
 static_assert(std::same_as<Store<set<int>, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingHashSet<int>>);
 static_assert(std::same_as<Store<set<int>, urd::sorted, urd::stable_refs, urd::retains>::representation, urd::repr::RecyclingTreeSet<int>>);
 // Without stable_refs, retains is the flat containers' already.
-static_assert(std::same_as<Store<set<int>, urd::retains>::representation, gtl::flat_hash_set<int, urd::detail::prehash_hash<int>, urd::detail::prehash_equal<int>>>);
+static_assert(
+    std::same_as<Store<set<int>, urd::retains>::representation, gtl::flat_hash_set<int, urd::detail::prehash_hash<int>, urd::detail::prehash_equal<int>>>);
 
 TEST(Recycling, UnorderedMapsRecycleToo)
 {

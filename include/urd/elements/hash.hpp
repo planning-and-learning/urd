@@ -111,6 +111,7 @@ struct Hash<T>
 template<>
 struct Hash<std::string_view>
 {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): the end of the text's el.size() bytes at el.data()
     hash_t operator()(std::string_view el) const noexcept { return boost::hash_range(el.data(), el.data() + el.size()); }
 };
 
@@ -145,7 +146,7 @@ struct Hash<std::tuple<Ts...>>
         requires(Hashable<Ts> && ...)
     {
         hash_t aggregated_hash = sizeof...(Ts);
-        std::apply([&aggregated_hash](const Ts&... args) { (urd::hash_combine(aggregated_hash, args), ...); }, tuple);
+        std::apply([&](const Ts&... args) { (urd::hash_combine(aggregated_hash, args), ...); }, tuple);
         return aggregated_hash;
     }
 };
