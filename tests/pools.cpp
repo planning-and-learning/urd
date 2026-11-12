@@ -27,6 +27,7 @@
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/wrappers/multi_index_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
 #include "verify.hpp"
@@ -520,4 +521,94 @@ TEST(Pools, NameTheHandleTheyHandOut)
     EXPECT_EQ(child[two].id, 2);
     EXPECT_EQ(child[one].id, 1);
     EXPECT_EQ(&child.owner(one), &root);
+}
+
+namespace
+{
+using IndexedRows = Store<pool<Store<sequence<int>, urd::frozen>>, urd::multi_indexed>;
+using IndexedColumns = Store<pool<Store<sequence<std::uint32_t>, urd::frozen>>, urd::by_column_widths, urd::multi_indexed>;
+static_assert(std::same_as<IndexedRows::representation, urd::repr::MultiIndexPool<Store<pool<Store<sequence<int>, urd::frozen>>>::representation>>);
+static_assert(iterable<IndexedRows> && erasable<IndexedRows> && erasable<IndexedColumns>);
+
+/// The handles of the rows of `rows` whose `columns` hold `key`, by brute force, sorted.
+template<typename P>
+std::vector<typename P::handle_type>
+matching(const P& rows, const std::vector<std::size_t>& columns, const std::vector<typename P::value_type::value_type>& key)
+{
+    auto result = std::vector<typename P::handle_type>();
+    for (const auto handle : rows)
+    {
+        const auto row = rows.get(handle);
+        if (std::ranges::equal(columns | std::views::transform([&](std::size_t c) { return row[c]; }), key))
+            result.push_back(handle);
+    }
+    return result;
+}
+template<typename P>
+std::vector<typename P::handle_type> sorted(std::pair<typename P::const_iterator, typename P::const_iterator> range)
+{
+    auto result = std::vector<typename P::handle_type>(range.first, range.second);
+    std::ranges::sort(result);
+    return result;
+}
+
+/// Random inserts and erases, with indexes added before and in between; every index answers as a scan does.
+template<typename P>
+void check_indexes(P rows)
+{
+    using E = typename P::value_type::value_type;
+    auto random = std::mt19937(7);  // NOLINT(cert-msc32-c,cert-msc51-cpp): a fixed seed, for a reproducible test
+    const auto columns = std::vector<std::vector<std::size_t>> { { 0 }, { 2, 0 }, {}, { 1, 2 } };
+    auto numbers = std::vector<std::size_t>();
+    numbers.push_back(rows.add_index(columns[0]));
+    numbers.push_back(rows.add_index(columns[1]));
+    EXPECT_EQ(rows.add_index(columns[0]), numbers[0]);  // the same columns: the same index
+    for (int step = 0; step < 2000; ++step)
+    {
+        if (step == 500)
+        {
+            numbers.push_back(rows.add_index(columns[2]));
+            numbers.push_back(rows.add_index(columns[3]));
+        }
+        if (step == 1500)
+            rows.clear();
+        const auto row = std::vector<E> { E(random() % 5), E(random() % 3), E(random() % 4) };
+        if (random() % 3 == 0 && !rows.empty())
+            rows.erase(typename P::handle_type(static_cast<std::uint32_t>(random() % rows.size())));
+        else
+            rows.insert(row);
+        for (std::size_t i = 0; i < numbers.size(); ++i)
+        {
+            auto key = std::vector<E>();
+            for (const auto c : columns[i])
+                key.push_back(row[c]);
+            const auto index = rows.index(numbers[i]);
+            const auto expected = matching(rows, columns[i], key);
+            ASSERT_EQ(index.count(key), expected.size());
+            ASSERT_EQ(index.contains(key), !expected.empty());
+            ASSERT_EQ(sorted<P>(index.equal_range(key)), expected);
+        }
+    }
+}
+}  // namespace
+
+// A multi-index pool keeps its indexes as rows come and go, the last row moving into an erased one's handle.
+TEST(MultiIndexed, IndexesAnswerAsAScan)
+{
+    check_indexes(IndexedRows());
+    check_indexes(IndexedColumns(urd::column_widths(3, 8)));
+}
+
+TEST(MultiIndexed, IteratesItsHandles)
+{
+    auto rows = IndexedRows();
+    const auto a = rows.insert({ 1, 2 }).first;
+    const auto b = rows.insert({ 1, 3 }).first;
+    EXPECT_EQ(std::vector(rows.begin(), rows.end()), (std::vector { a, b }));
+    const auto by_first = rows.add_index(std::vector<std::size_t> { 0 });
+    EXPECT_EQ(rows.index(by_first).count(std::vector { 1 }), 2U);
+    rows.erase(a);  // b moves into a's handle
+    EXPECT_EQ(std::vector(rows.begin(), rows.end()), std::vector { a });
+    EXPECT_EQ(*rows.index(by_first).find(std::vector { 1 }), a);
+    EXPECT_EQ(rows.index(by_first).find(std::vector { 2 }), rows.index(by_first).end());
 }

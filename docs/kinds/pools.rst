@@ -48,6 +48,9 @@ no row to name, as a pool of records does.
    * - ``Store<pool<Row>, by_column_widths>``
      - the schema row interner: rows of unsigned columns stored by the ``urd::column_widths`` the pool is built with
        (below)
+   * - ``Store<pool<Row>, multi_indexed>``
+     - ``MultiIndexPool`` over the row interner; with ``bit`` or ``by_column_widths``, over the bit or schema row
+       interner: hashed non-unique indexes on sets of columns, added at run time (below)
    * - ``Store<pool<Row>, layered>``
      - ``LayeredPool`` over the row interner (:doc:`records`); with ``bit`` or ``by_column_widths``, over the bit or
        schema row interner, built with its width or column widths
@@ -231,6 +234,38 @@ columns' ``std::invalid_argument``, before anything is stored. ``view(h)`` hands
 A row's padding is zero. A row hashes and compares by its values (``urd::hash_range``), whatever the bits of its
 columns, so a layered pool finds a parent's row through wider columns, and a key hashed once (``prehashed``, with
 ``hash_range`` of the values) serves the whole chain.
+
+Rows by some of their columns
+-----------------------------
+
+With ``multi_indexed`` a pool of rows is a multi-index container (Boost.MultiIndex): the pool is its unique index on
+whole rows, and ``add_index(columns)`` adds a hashed non-unique index (``hashed_non_unique``) whose key is those
+columns' values, in the order given. Unlike Boost.MultiIndex, the indexes are added at run time, by number, not fixed
+by the type. Every index is kept as rows are inserted and erased (erase still moves the last row into the erased
+row's handle); inserting and erasing cost O(1) expected per index, however many rows share a key.
+
+.. cpp:function:: template<typename Columns> std::size_t add_index(const Columns& columns)
+
+   The number of the index on ``columns``, added where no index has these columns: the rows held are indexed now.
+
+.. cpp:function:: auto index(std::size_t n) const
+
+   The index of number ``n``: ``count(key)`` (exact), ``contains(key)``, ``find(key)``, ``equal_range(key)`` and
+   ``end()``, whose iterators give the handles of the rows with that key. A key is a range of the rows' elements.
+
+.. cpp:function:: const_iterator begin() const
+.. cpp:function:: const_iterator end() const
+
+   The handles of the rows, 0..size()-1.
+
+.. code-block:: cpp
+
+   using Facts = Store<pool<Store<sequence<std::uint32_t>, frozen>>, by_column_widths, multi_indexed>;
+   auto facts = Facts(column_widths(3, 16));
+   const auto by_first = facts.add_index(std::array<std::size_t, 1> { 0 });
+   facts.insert(std::array<std::uint32_t, 3> { 1, 2, 3 });
+   const auto [first, last] = facts.index(by_first).equal_range(std::array<std::uint32_t, 1> { 1 });
+   const auto rows = std::vector(first, last);   // the handles of the rows whose column 0 holds 1
 
 Some rows of a pool
 -------------------

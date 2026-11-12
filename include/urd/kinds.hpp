@@ -95,6 +95,8 @@ class scopes;
 template<typename Derived, typename R, typename S>
 class layers;
 template<typename Derived, typename R, typename S>
+class indexes;
+template<typename Derived, typename R, typename S>
 class changes;
 template<typename Derived, typename R, typename S>
 class pool;
@@ -238,8 +240,8 @@ struct pool_kind : detail::any_kind
     static constexpr std::string_view name = "pool";
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
-    using format = detail::request_format<order, uniqueness, keys, handling, packing>;
-    using facets = detail::facet_list<detail::facet::records, detail::facet::pool>;
+    using format = detail::request_format<order, uniqueness, keys, handling, packing, indexing>;
+    using facets = detail::facet_list<detail::facet::records, detail::facet::pool, detail::facet::indexes>;
     /// Each distinct value once, by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles).put(uniqueness::unique)); }
 };

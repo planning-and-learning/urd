@@ -38,5 +38,6 @@
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
+#include "urd/repr/wrappers/multi_index_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/repr/wrappers/scoped.hpp"

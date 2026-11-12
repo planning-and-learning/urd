@@ -619,6 +619,40 @@ struct tags_of<layering>
     using type = boost::mp11::mp_list<any_layering, layered>;
 };
 
+enum class indexing : std::uint8_t
+{
+    none,
+    multi_indexed,
+};
+
+struct any_indexing : tag_defaults
+{
+    using root = any_indexing;
+    static constexpr auto value = indexing::none;
+    static constexpr std::string_view name = "any_indexing";
+    using group = semantics_group;
+    using heading = more_heading;
+    static constexpr std::string_view question = "Rows also found by some of their columns?";
+};
+/// A multi-index container (Boost.MultiIndex) of rows: besides the pool's own index on whole rows, hashed non-unique
+/// indexes on sets of columns, added at run time (add_index), kept as rows are inserted and erased; iterated.
+struct multi_indexed : any_indexing
+{
+    static constexpr auto value = indexing::multi_indexed;
+    static constexpr std::string_view name = "multi_indexed";
+    static constexpr std::string_view promise = "guaranteed";
+    static constexpr std::string_view description =
+        "add_index(columns), index(n): hashed non-unique indexes on sets of columns, kept on insert and erase; begin(), end() over the handles.";
+    static constexpr std::array<std::string_view, 3> phrases { "multi index", "secondary index", "rows by key columns" };
+    static constexpr answer_says says { .costly = true };
+};
+
+template<>
+struct tags_of<indexing>
+{
+    using type = boost::mp11::mp_list<any_indexing, multi_indexed>;
+};
+
 enum class handling : std::uint8_t
 {
     none,

@@ -34,6 +34,7 @@
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set_fwd.hpp"
 #include "urd/repr/wrappers/layered_fwd.hpp"
+#include "urd/repr/wrappers/multi_index_fwd.hpp"
 #include "urd/repr/wrappers/recycling_fwd.hpp"
 #include "urd/repr/wrappers/scoped_fwd.hpp"
 
@@ -148,6 +149,9 @@ struct declarations_of<pool_kind>
                                       layered_decl<schema_row_interner_decl<true>, true>,
                                       layered_decl<bit_row_interner_decl<true>, true>,
                                       layered_decl<thread_safe_row_interner_decl, true>,
+                                      multi_indexed_decl<schema_row_interner_decl<false>>,
+                                      multi_indexed_decl<bit_row_interner_decl<false>>,
+                                      multi_indexed_decl<row_interner_decl>,
                                       value_interner_decl,
                                       stable_value_interner_decl,
                                       thread_safe_value_interner_decl,
