@@ -59,7 +59,8 @@ struct multi_index_row_builder_of<R>
 /// values in the order given. Indexes are added at run time, not fixed by the type. Rows with equal keys form a group,
 /// linked through the rows, so inserting and erasing a row is O(1) expected per index, however many rows share its
 /// key; count(key) is exact. Erasing moves the pool's last row into the erased row's handle; the indexes follow.
-/// Iterating gives the handles 0..size()-1; an index's equal_range gives the handles of the rows with a key.
+/// Iterating gives the handles 0..size()-1; an index's equal_range gives the handles of the rows with a key. Rows are
+/// sequences, whose columns are read in place.
 template<typename R>
 class MultiIndexPool
 {
@@ -287,13 +288,8 @@ private:
                 link(index, static_cast<handle_value>(inserted.first.value));
         return inserted;
     }
-    /// The row's elements (into m_row).
-    std::span<const element> elements_of(handle_value at) const
-    {
-        m_row.resize(m_rows.row_size(handle_type(at)));
-        m_rows.copy(handle_type(at), m_row);
-        return m_row;
-    }
+    /// The value of column `column` of the row `at`, read in place.
+    [[nodiscard]] element column_of(handle_value at, std::size_t column) const { return std::ranges::begin(m_rows.at(handle_type(at)))[column]; }
     /// The group of index whose key is `key`, else none.
     template<typename Key>
     handle_value find_group(const Index& index, const Key& key) const
@@ -304,8 +300,8 @@ private:
             return none;
         for (auto group = found->second; group != none; group = index.groups[group].next_alike)
         {
-            const auto row = elements_of(index.groups[group].first);
-            if (std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return row[column]; }), key))
+            const auto first = index.groups[group].first;
+            if (std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return column_of(first, column); }), key))
                 return group;
         }
         return none;
@@ -313,10 +309,9 @@ private:
     /// Links the row `at`, the last one, into its key's group (made where new).
     void link(Index& index, handle_value at)
     {
-        const auto row = elements_of(at);
         m_key.clear();
         for (const auto column : index.columns)
-            m_key.push_back(row[column]);
+            m_key.push_back(column_of(at, column));
         auto group = find_group(index, m_key);
         if (group == none)
         {
@@ -394,8 +389,7 @@ private:
 
     R m_rows;
     std::vector<Index> m_indexes;
-    mutable std::vector<element> m_row;  ///< A row's elements, read to compare keys.
-    std::vector<element> m_key;          ///< The key of a row being linked.
+    std::vector<element> m_key;  ///< The key of a row being linked.
 
 public:
     /// The members it owns memory through (urd::memory_of).

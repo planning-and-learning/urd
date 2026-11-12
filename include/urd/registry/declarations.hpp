@@ -150,7 +150,6 @@ struct declarations_of<pool_kind>
                                       layered_decl<bit_row_interner_decl<true>, true>,
                                       layered_decl<thread_safe_row_interner_decl, true>,
                                       multi_indexed_decl<schema_row_interner_decl<false>>,
-                                      multi_indexed_decl<bit_row_interner_decl<false>>,
                                       multi_indexed_decl<row_interner_decl>,
                                       value_interner_decl,
                                       stable_value_interner_decl,

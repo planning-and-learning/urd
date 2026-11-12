@@ -29,7 +29,7 @@ inline constexpr std::string_view multi_indexed_prefix = "multi_indexed_";
 inline constexpr std::string_view multi_indexed_description = "multi-index pool (hashed non-unique indexes on sets of columns) of a ";
 
 /// Part's declaration with indexes on sets of columns: its id and words the part's, prefixed; its offer the part's
-/// with multi_indexed. Over a pool of rows that keeps them whole and numbers them (erase moves the last row).
+/// with multi_indexed. Over a pool of sequence rows that keeps them whole and numbers them (erase moves the last row).
 template<typename Part>
 struct multi_indexed_decl
 {
@@ -38,7 +38,8 @@ struct multi_indexed_decl
     static_assert(Part::provides.has(uniqueness::unique) && Part::provides.has(handling::handles), "multi_indexed_decl: over a pool");
     using kind = typename Part::kind;
     static constexpr property_set provides = with(Part::provides, { indexing::multi_indexed, room::none });
-    static constexpr property_set relies_on = Part::relies_on;
+    /// Its rows are sequences, whose columns it reads.
+    static constexpr property_set relies_on = with(Part::relies_on, relies(tags<role::row>({ position::positional })));
     static constexpr auto gives_elements = Part::gives_elements;
     using operation_costs = costs_over<Part>;
     static constexpr double words = Part::words;

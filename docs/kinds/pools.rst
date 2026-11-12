@@ -49,7 +49,7 @@ no row to name, as a pool of records does.
      - the schema row interner: rows of unsigned columns stored by the ``urd::column_widths`` the pool is built with
        (below)
    * - ``Store<pool<Row>, multi_indexed>``
-     - ``MultiIndexPool`` over the row interner; with ``bit`` or ``by_column_widths``, over the bit or schema row
+     - ``MultiIndexPool`` over the row interner of sequence rows; with ``by_column_widths``, over the schema row
        interner: hashed non-unique indexes on sets of columns, added at run time (below)
    * - ``Store<pool<Row>, layered>``
      - ``LayeredPool`` over the row interner (:doc:`records`); with ``bit`` or ``by_column_widths``, over the bit or
