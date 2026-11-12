@@ -51,12 +51,6 @@ public:
     {
     }
 
-    /// Rebuilds from pairs, in the storage held, where the groups can.
-    template<std::input_iterator InputIt>
-        requires requires(Groups& groups, InputIt first) { groups.assign(first, first); }
-    void assign(InputIt first, InputIt last)
-    { m_groups.assign(first, last); }
-
     [[nodiscard]] iterator begin() const { return iterator(&m_groups, m_groups.begin(), 0).normalized(); }
     [[nodiscard]] iterator end() const { return iterator(&m_groups, m_groups.end(), 0); }
     [[nodiscard]] size_type size() const { return m_groups.count(); }

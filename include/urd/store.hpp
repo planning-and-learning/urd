@@ -15,6 +15,7 @@
 #include "urd/store/ends.hpp"
 #include "urd/store/entries.hpp"
 #include "urd/store/equality.hpp"
+#include "urd/store/graph.hpp"
 #include "urd/store/grouping.hpp"
 #include "urd/store/insertion.hpp"
 #include "urd/store/inverse.hpp"

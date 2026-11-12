@@ -30,6 +30,11 @@
 // fixed at the width of a child slot (stored inline); a row goes in as its elements, a delta as the elements added and
 // removed.
 
+namespace urd::testing
+{
+struct inspect;
+}  // namespace urd::testing
+
 namespace urd::repr
 {
 
@@ -156,7 +161,7 @@ public:
                 return false;
             const auto step = tree::chunk<Arity>(size);
             const auto k = position / step;
-            block = m_nodes[block][k];
+            block = urd::detail::indexed_access::element(m_nodes, block)[k];
             position -= k * step;
             size = child_size(size, k);
         }
@@ -218,6 +223,8 @@ public:
             read_recursive(handle.root, blocks);
     }
 
+private:
+    // Read by its own inserts of flips.
     /// Sorts flips by position and combines those of one block, dropping those that cancel out.
     static void normalize(std::vector<BlockFlip>& flips)
     {
@@ -234,7 +241,13 @@ public:
         std::erase_if(flips, [](const BlockFlip& flip) { return flip.mask == 0; });
     }
 
+public:
+private:
+    // Read by tests (urd::testing::inspect), not by a Store.
+    friend struct urd::testing::inspect;
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
+
+public:
     [[nodiscard]] bool empty() const { return m_nodes.empty(); }
     void clear() { m_nodes.clear(); }
 
@@ -300,7 +313,7 @@ private:
         }
         if (root == zero_subtree)
             return;
-        const auto& node = m_nodes[root];
+        const auto& node = urd::detail::indexed_access::element(m_nodes, root);
         for (std::uint32_t k = 0, at = 0; at < size; ++k, at += tree::chunk<Arity>(size))
             for_each_block(node[k], offset + at, child_size(size, k), f);
     }
@@ -406,7 +419,7 @@ private:
         for (std::uint32_t k = 0; k < count; ++k)
             if (children[k] != zero(child_size(size, k)))
             {
-                const auto found = m_nodes.position(children);
+                const auto found = urd::detail::indexed_access::position(m_nodes, children);
                 return found ? std::optional(static_cast<std::uint32_t>(*found)) : std::nullopt;
             }
         return zero_subtree;
@@ -449,7 +462,7 @@ private:
                     return frame.root;
                 if (frame.root == zero_subtree)
                     return zero(size);
-                const auto& node = (*m_nodes)[frame.root];
+                const auto& node = urd::detail::indexed_access::element(*m_nodes, frame.root);
                 const auto k = (offset - frame.offset) / tree::chunk<Arity>(frame.size);
                 const auto child_offset = frame.offset + k * tree::chunk<Arity>(frame.size);
                 const auto child_blocks = child_size(frame.size, k);
@@ -523,7 +536,7 @@ private:
         const auto count = tree::num_children<Arity>(size);
         auto children = unused_children();
         if (base_known && base_root != zero_subtree)
-            children = m_nodes[base_root];
+            children = urd::detail::indexed_access::element(m_nodes, base_root);
         else
             for (std::uint32_t k = 0; k < count; ++k)
                 children[k] = zero(child_size(size, k));
@@ -553,7 +566,7 @@ private:
             if (size == 1)
                 return offset + 1;
             // The last nonzero child, which exists since insert_node never stores all-zero children.
-            const auto& node = m_nodes[root];
+            const auto& node = urd::detail::indexed_access::element(m_nodes, root);
             auto k = tree::num_children<Arity>(size) - 1;
             while (node[k] == zero(child_size(size, k)))
                 --k;
@@ -577,7 +590,7 @@ private:
             std::ranges::fill(blocks, Block { 0 });
             return;
         }
-        const auto& node = m_nodes[root];
+        const auto& node = urd::detail::indexed_access::element(m_nodes, root);
         const auto size = static_cast<std::uint32_t>(blocks.size());
         for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += tree::chunk<Arity>(size))
             read_recursive(node[k], blocks.subspan(offset, child_size(size, k)));

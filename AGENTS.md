@@ -19,8 +19,10 @@ The rules that the planning-and-learning libraries share are maintained in brokk
 
 ## Facets
 
-- **F1 Forward only.** A facet member MUST forward to one member of the container. It MUST NOT compute a result the
-  container does not provide.
+- **F1 Forward only.** A facet member MUST forward to one member of the container, or be derived from the Store's own
+  members at the same cost (`front()` and `back()` from `begin()` and `end()`, `operator[]` and `at` from `begin()` and
+  `size()`): a derived operation in the sense of the shared coding rules, which no container would do better by a
+  complexity class. It MUST NOT compute a result the container does not provide otherwise.
 - **F2 No fallbacks.** A facet MUST NOT test whether the container has a member and do the work another way when it
   has not (`if constexpr (requires { representation().x(...); }) ... else ...`). A container that lacks the operation
   does not offer it: calling it MUST be a compile-time error.
@@ -47,6 +49,21 @@ The rules that the planning-and-learning libraries share are maintained in brokk
 - **F5 One accessor rule.** A facet reaches its container through `representation()` and its Store through `self()`,
   each overloaded on const. No other accessor names.
   **Check**: `grep -rn "constant()\|mutable_representation\|mutable_self" include/urd/store`
+
+- **F7 Only facets expose.** A container MUST NOT have a public member function that is neither forwarded by a facet
+  of its kind nor a member of its kind's standard counterpart (rule I1: `std::vector`, `std::set`/`std::map` and their
+  unordered forms, `std::queue`/`std::priority_queue`; a pool, slots, a partition and a graph have none), nor a public
+  base outside urd (a standard or third-party table, or a template parameter), whose interface it would expose.
+  What urd's own code needs beyond the facets MUST go through a friend of the container: an accessor in `urd::detail`
+  (`dense_words`, `graph_rows`, `indexed_access`) or the one component that uses it; what tests need, through
+  `urd::testing::inspect`. Construction, assignment, comparison and the protocols urd reads of a type
+  (`memory_members`, `identifying_members`) every container has.
+  **Check**: `python3 tests/exposure.py --compile-commands build/compile_commands.json` (the `exposure` test; needs
+  `libclang` from PyPI, in the `test` extra)
+- **F8 No representation in a facet's signature** (*open*, 3 sites: `set_algebra`'s `significant_words` and
+  `assign_words`, which tyr's state storage reads). A facet's public member MUST NOT take or return words or bitsets
+  (`word_t`, `bitset_span`, `BitsetSpan`).
+  **Check**: the same as F7.
 
 ## Interfaces
 

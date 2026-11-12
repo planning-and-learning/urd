@@ -64,7 +64,7 @@ public:
     // k / word_bits.
 
     /// The words up to the last one with a bit set: equal sets give equal words, however many each keeps.
-    [[nodiscard]] std::span<const word_t> significant_words() const noexcept
+    [[nodiscard]] std::span<const word_t> significant_words() const
         requires by_words
     { return representation().significant_words(); }
     /// Makes this the set whose bits `words` set, its storage reused: a whole assignment, as operator= is (a frozen

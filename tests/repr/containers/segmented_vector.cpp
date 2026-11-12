@@ -2,6 +2,8 @@
 
 #include "urd/repr/containers/segmented_vector.hpp"
 
+#include "urd/testing/inspect.hpp"
+
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -84,8 +86,7 @@ TEST(CommonSegmentedVectorTest, SupportsIndexedAccessAcrossSegments)
     EXPECT_EQ(vector.end() - vector.begin(), 7);
     EXPECT_EQ(vector.begin()[4], 40);
     EXPECT_EQ(*(3 + vector.begin()), 30);
-    EXPECT_EQ(*vector.cbegin(), 0);
-    EXPECT_EQ(vector.cend(), std::as_const(vector).end());
+    EXPECT_EQ(*std::as_const(vector).begin(), 0);
 }
 
 TEST(CommonSegmentedVectorTest, MutableAccessUpdatesStoredElements)
@@ -222,29 +223,24 @@ TEST(CommonSegmentedVectorTest, RejectsAnUnrepresentableFirstSegmentWithoutAlloc
     EXPECT_TRUE(vector.empty());
 }
 
-TEST(CommonSegmentedVectorTest, BoundedAppendChecksTheIndexBeforePublishing)
-{
-    auto vector = urd::repr::SegmentedVector<int, 2, true> {};
-
-    EXPECT_EQ(vector.push_back_bounded(1, 0), 0);
-    EXPECT_THROW(vector.push_back_bounded(2, 0), std::length_error);
-    EXPECT_EQ(vector.size(), 1);
-    EXPECT_EQ(vector.front(), 1);
-}
-
 TEST(CommonSegmentedVectorTest, IndexAwareAppendUsesReservedIndexAndPublishesLast)
 {
     auto vector = urd::repr::SegmentedVector<int, 2, true> {};
 
-    EXPECT_EQ(vector.emplace_back_with_index([](size_t index) { return static_cast<int>(index + 7); }, 1), 0);
+    EXPECT_EQ(urd::testing::inspect::emplace_back_with_index(vector, [](size_t index) { return static_cast<int>(index + 7); }, 1), 0);
     EXPECT_EQ(vector.front(), 7);
-    EXPECT_THROW(vector.emplace_back_with_index([](size_t) -> int { throw std::runtime_error("factory failed"); }, 1), std::runtime_error);
+    EXPECT_THROW(urd::testing::inspect::emplace_back_with_index(
+                     vector,
+                     [](size_t) -> int { throw std::runtime_error("factory failed"); },
+                     1),
+                 std::runtime_error);
     EXPECT_EQ(vector.size(), 1);
-    EXPECT_EQ(vector.emplace_back_with_index([](size_t index) { return static_cast<int>(index + 7); }, 1), 1);
+    EXPECT_EQ(urd::testing::inspect::emplace_back_with_index(vector, [](size_t index) { return static_cast<int>(index + 7); }, 1), 1);
     EXPECT_EQ(vector.back(), 8);
 
     auto factory_called = false;
-    EXPECT_THROW(vector.emplace_back_with_index(
+    EXPECT_THROW(urd::testing::inspect::emplace_back_with_index(
+                     vector,
                      [&](size_t)
                      {
                          factory_called = true;

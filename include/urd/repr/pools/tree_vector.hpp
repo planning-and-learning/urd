@@ -27,6 +27,11 @@
 // from yggdrasil's TreeVectorSet (containers/tree_vector_set.hpp) and changed to fit urd's pools: nodes and leaves
 // are interned in IndexedSets, rows go in as any range and come back as the pool's row type.
 
+namespace urd::testing
+{
+struct inspect;
+}  // namespace urd::testing
+
 namespace urd::repr
 {
 
@@ -160,8 +165,13 @@ public:
             read_recursive(handle.root, out);
     }
 
+private:
+    // Read by tests (urd::testing::inspect), not by a Store.
+    friend struct urd::testing::inspect;
     [[nodiscard]] size_type num_leaves() const { return m_leaves.size(); }
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
+
+public:
     [[nodiscard]] bool empty() const { return m_leaves.size() == 0 && m_nodes.empty(); }
     void clear()
     {
@@ -190,7 +200,7 @@ private:
         if constexpr (inline_leaves)
             return std::bit_cast<std::uint32_t>(value);
         else
-            return narrow(m_leaves.position(value));
+            return narrow(urd::detail::indexed_access::position(m_leaves, value));
     }
     [[nodiscard]] static std::optional<std::uint32_t> narrow(std::optional<std::size_t> position)
     { return position ? std::optional(static_cast<std::uint32_t>(*position)) : std::nullopt; }
@@ -232,7 +242,7 @@ private:
                 return std::nullopt;
             children[k] = *child;
         }
-        return narrow(m_nodes.position(children));
+        return narrow(urd::detail::indexed_access::position(m_nodes, children));
     }
 
     /// Rebuilds the subtree `base_root` covering [offset, offset + size) with `writes` applied.
@@ -244,7 +254,7 @@ private:
         if (size == 1)
             return insert_leaf(writes.front().value, stored);
 
-        auto children = m_nodes[base_root];
+        auto children = urd::detail::indexed_access::element(m_nodes, base_root);
         const auto step = tree::chunk<Arity>(size);
         for (std::uint32_t k = 0, child_offset = offset; child_offset < offset + size; ++k, child_offset += step)
         {
@@ -264,11 +274,11 @@ private:
             if constexpr (inline_leaves)
                 values.front() = std::bit_cast<T>(root);
             else
-                values.front() = m_leaves[root];
+                values.front() = urd::detail::indexed_access::element(m_leaves, root);
             return;
         }
 
-        const auto& node = m_nodes[root];
+        const auto& node = urd::detail::indexed_access::element(m_nodes, root);
         const auto size = static_cast<std::uint32_t>(values.size());
         const auto step = tree::chunk<Arity>(size);
         for (std::uint32_t k = 0, offset = 0; offset < size; ++k, offset += step)

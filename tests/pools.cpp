@@ -29,6 +29,7 @@
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/repr/wrappers/recycling.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/inspect.hpp"
 #include "verify.hpp"
 
 #include <algorithm>
@@ -272,9 +273,9 @@ TEST(Pools, WritesShareAllButTheirPaths)
             for (std::uint32_t position = 0; position < size; ++position)
                 if (random() % 50 == 0)
                     writes.push_back({ position, static_cast<std::uint32_t>(random()) });
-            const auto before = pool.num_nodes();
+            const auto before = urd::testing::inspect::num_nodes(pool);
             const auto written = pool.insert(base, writes).first;
-            EXPECT_LE(pool.num_nodes() - before, writes.size() * levels);
+            EXPECT_LE(urd::testing::inspect::num_nodes(pool) - before, writes.size() * levels);
             auto expected = values;
             for (const auto& write : writes)
                 expected[write.position] = write.value;
@@ -441,9 +442,9 @@ TEST(Layered, RowPoolsContinueTheirParent)
     const auto expected_written = Row { 1, 9, 3 };
     EXPECT_EQ(child.get(written), expected_written);
     EXPECT_EQ(parent.insert({ 1, 9, 3 }).first, RowIndex(2));  // the parent knows nothing of it
-    EXPECT_TRUE((child.parent() != nullptr && child.parent()->size() > child.base()));
+    EXPECT_TRUE((urd::testing::inspect::parent(child) != nullptr && urd::testing::inspect::parent(child)->size() > child.base()));
     EXPECT_THROW((void) child.insert({ 7, 7 }), std::logic_error);  // its new indices would collide with the parent's
-    EXPECT_EQ(child.parent(), &parent);
+    EXPECT_EQ(urd::testing::inspect::parent(child), &parent);
 }
 
 TEST(Layered, ViewsPointAtTheOwningLayer)

@@ -88,6 +88,12 @@ Construction and assignment
 
    From any elements, each kept once. With ``nonempty``, asserts one.
 
+.. cpp:function:: explicit Set(const key_range<K>& window)
+
+   A ``dense`` set whose keys lie in a window: its words begin at ``window.first``, so a set of keys in a window costs
+   the window's words. A key below ``first`` throws ``std::out_of_range``; one past ``last`` grows it. Sets over
+   different windows combine word by word, shifted.
+
 .. cpp:function:: explicit Set(layer number)
 .. cpp:function:: template<std::input_iterator InputIt> Set(layer number, InputIt first, InputIt last)
 .. cpp:function:: Set(layer number, std::initializer_list<value_type> elements)

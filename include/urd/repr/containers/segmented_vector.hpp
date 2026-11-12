@@ -20,7 +20,6 @@
 
 #include "urd/memory.hpp"
 #include "urd/repr/containers/detail/geometric_segment_layout.hpp"
-#include "urd/repr/containers/detail/segmented_rows.hpp"
 #include "urd/repr/containers/detail/threading.hpp"
 #include "urd/repr/containers/segment_sizes.hpp"
 #include "urd/repr/core/position_iterator.hpp"
@@ -42,8 +41,16 @@
 #include <type_traits>
 #include <utility>
 
+namespace urd::testing
+{
+struct inspect;
+}  // namespace urd::testing
+
 namespace urd::repr
 {
+
+template<typename T, bool ThreadSafe, typename K>
+class SlotVector;
 /// ThreadSafe permits concurrent appends, resize growth, size queries, and reads
 /// after publication was observed through size() or external synchronization.
 /// Clear, resize shrink, pop_back, iteration, memory inspection, move,
@@ -103,15 +110,6 @@ private:
     template<typename... Args>
     T& emplace_back_unlocked(Args&&... args)
     { return emplace_back_at_unlocked(detail::load(m_size), std::forward<Args>(args)...); }
-
-    size_t push_back_bounded_unlocked(const T& element, size_t max_index)
-    {
-        const auto index = detail::load(m_size);
-        if (index > max_index)
-            throw std::length_error("SegmentedVector: index is too large.");
-        emplace_back_at_unlocked(index, element);
-        return index;
-    }
 
     void pop_back_unlocked()
     {
@@ -260,12 +258,11 @@ public:
             emplace_back(*first);
     }
 
-    /// Appends only if the returned index is at most max_index.
-    size_t push_back_bounded(const T& element, size_t max_index)
-    {
-        return detail::with_lock<ThreadSafe>(m_writer_mutex, [&] { return push_back_bounded_unlocked(element, max_index); });
-    }
-
+private:
+    // Reached by the slots that number their elements by index (SlotVector), not by a Store.
+    template<typename, bool, typename>
+    friend class SlotVector;
+    friend struct urd::testing::inspect;
     /// Checks the bound and prepares storage, then runs the factory inside the append transaction with the reserved index and publishes.
     /// ThreadSafe holds the writer lock; the factory must not access this vector.
     template<typename Factory>
@@ -286,6 +283,7 @@ public:
                                              });
     }
 
+public:
     void pop_back()
     {
         detail::with_lock<ThreadSafe>(m_writer_mutex, [&] { pop_back_unlocked(); });
@@ -345,11 +343,6 @@ public:
     iterator end() noexcept { return iterator(this, size()); }
     [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(this, 0); }
     [[nodiscard]] const_iterator end() const noexcept { return const_iterator(this, size()); }
-    [[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(this, 0); }
-    [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(this, size()); }
-
-    /// Reads the elements in place; valid while this vector neither moves nor is destroyed.
-    [[nodiscard]] detail::SegmentedRows<T, FirstSegmentSize, ThreadSafe, Index> rows() const noexcept { return { m_segments.data(), &m_size }; }
 
     [[nodiscard]] size_t capacity() const noexcept { return detail::load(m_capacity); }
     [[nodiscard]] size_t size() const noexcept { return detail::load(m_size); }

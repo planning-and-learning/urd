@@ -153,11 +153,12 @@ std::string generate()
             if (std::ranges::find(headers, header) == headers.end())
                 headers.push_back(header);
         // The property suite (tests/properties.hpp) builds a container from ints: a set or sequence of them, or a map
-        // of them; not a queue, a pool or a partition.
+        // of them; not a queue, a pool, a partition or a graph.
         const auto& offers = each.row->operations;
         const auto of = [&](op what) { return offers[static_cast<std::size_t>(what)]; };
         const bool ints = each.row->shape == "int;-" || each.row->shape == "-;int" || each.row->shape == "int;int";
-        if (ints && !of(op_v<urd::operation::push>) && !of(op_v<urd::operation::insert_row>) && !of(op_v<urd::operation::merge>))
+        if (ints && !of(op_v<urd::operation::push>) && !of(op_v<urd::operation::insert_row>) && !of(op_v<urd::operation::merge>)
+            && !of(op_v<urd::operation::adjacency>))
         {
             auto& listed = tested[each.container];
             listed += (listed.empty() ? "" : ", ") + std::to_string(each.group) + ", " + std::to_string(each.row->position);

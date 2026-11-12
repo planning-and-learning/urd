@@ -107,6 +107,13 @@ struct word_rows
             set(bits, index_of<element>::to_index(each));
         return bits;
     }
+    /// A row given as a dense set: its words as they are, a word at a time, not a key at a time.
+    [[nodiscard]] static stored_row canonical(const Row& row)
+        requires requires { row.significant_words(); }
+    {
+        const auto words = row.significant_words();
+        return stored_row(words.begin(), words.end());
+    }
     [[nodiscard]] static bits_view view(const stored_row& row) noexcept { return bits_view(row.data(), row.size() * bits_view::Digits); }
 
     [[nodiscard]] static stored_row changed(stored_row bits, std::span<const element> added, std::span<const element> removed)
@@ -271,19 +278,19 @@ public:
     [[nodiscard]] handle_type find(const Values& values) const
     {
         const auto key = unsigned_values(values);
-        return handle_of(m_rows.position(prehashed<decltype(key)> { key, hash_range(key) }));
+        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, hash_range(key) }));
     }
     template<std::ranges::input_range Values>
         requires by_column_widths
     [[nodiscard]] handle_type find(const prehashed<Values>& values) const
     {
         const auto key = unsigned_values(values.key);
-        return handle_of(m_rows.position(prehashed<decltype(key)> { key, values.hash }));
+        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, values.hash }));
     }
     /// The column widths its rows are stored by (urd::by_column_widths).
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
         requires by_column_widths
-    { return m_rows.built_with(); }
+    { return urd::detail::indexed_access::built_with(m_rows); }
 
     /// The handle of the row with these elements, and whether it was stored now (no equal row was held): the elements
     /// in the row's stored form (canonical), or as they are where the row keeps them as given (given<Elements>).
@@ -299,11 +306,11 @@ public:
     template<std::ranges::input_range Elements>
         requires(!by_column_widths && !given<Elements>)
     [[nodiscard]] handle_type find(const Elements& elements) const
-    { return handle_of(m_rows.position(canonical(elements))); }
+    { return handle_of(urd::detail::indexed_access::position(m_rows, canonical(elements))); }
     template<std::ranges::input_range Elements>
         requires(!by_column_widths && given<Elements>)
     [[nodiscard]] handle_type find(const Elements& elements) const
-    { return handle_of(m_rows.position(elements)); }
+    { return handle_of(urd::detail::indexed_access::position(m_rows, elements)); }
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), which is not hashed
     /// again: a row of a sequence, stored flat, as its contiguous elements.
     template<typename Elements>
@@ -314,13 +321,13 @@ public:
         requires(!by_column_widths && given<Elements>)
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
     {
-        const auto found = m_rows.position(key);
+        const auto found = urd::detail::indexed_access::position(m_rows, key);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
     /// The bit width of the rows' elements (Bits: urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
         requires Bits
-    { return m_rows.built_with(); }
+    { return urd::detail::indexed_access::built_with(m_rows); }
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
 
@@ -366,7 +373,7 @@ public:
     {
         assert((handle.value) < m_rows.size());
         const auto last = handle_type(static_cast<std::uint32_t>(m_rows.size() - 1));
-        m_rows.swap_erase(handle.value);
+        urd::detail::indexed_access::swap_erase(m_rows, handle.value);
         return handle == last ? handle_type() : last;
     }
 
@@ -386,7 +393,7 @@ private:
     [[nodiscard]] decltype(auto) stored(handle_type handle) const
     {
         assert((handle.value) < m_rows.size());
-        return m_rows[handle.value];
+        return urd::detail::indexed_access::element(m_rows, handle.value);
     }
     /// Values (unsigned integers or indices, index_of) as the unsigned values a stored row holds: what a row is looked up by.
     template<typename Values>

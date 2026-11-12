@@ -55,6 +55,7 @@ complexity of each operation per representation.
    kinds/pools
    kinds/records
    kinds/partitions
+   kinds/graphs
 
 .. toctree::
    :maxdepth: 1

@@ -16,7 +16,7 @@ public:
     using size_type = typename store_types<S>::size_type;
 
     [[nodiscard]] size_type size() const { return store_access::of<Derived>(*this).size(); }
-    [[nodiscard]] bool empty() const { return size() == 0; }
+    [[nodiscard]] bool empty() const { return store_access::of<Derived>(*this).empty(); }
 
     // Of contiguous storage (urd::contiguous), as std::vector's.
     /// The most elements the representation can hold.

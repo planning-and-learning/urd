@@ -450,6 +450,35 @@ indexable).
 |---|---|---|---|
 | `Store<partition<std::string>>` | partition | `none` — missing: a partition over hashed keys (a map from key to position plus the forest); no site asks |  |
 
+## Graphs
+
+| Request | Spec | Representation | Include |
+|---|---|---|---|
+| `Store<graph<int>>` |  | `adjacency_lists` | adjacency_lists.hpp |
+| `Store<graph<int>, monotone>` | monotone | `adjacency_lists` | adjacency_lists.hpp |
+| `Store<graph<int>, bidirectional>` | bidirectional | `adjacency_lists` | adjacency_lists.hpp |
+| `Store<graph<int, int>>` |  | `adjacency_lists` | adjacency_lists.hpp |
+| `Store<graph<int>, frozen>` | stable_refs, frozen | `csr_graph` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional>` | stable_refs, frozen, positional | `csr_graph` | csr_graph.hpp |
+| `Store<graph<int, int>, frozen, multi>` | multi, stable_refs, frozen | `csr_graph` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional, bidirectional>` | bidirectional, stable_refs, frozen, positional | `bidirectional_csr_graph` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional, constant_endpoints>` | constant_endpoints, stable_refs, frozen, positional | `csr_graph_with_sources` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional, bidirectional, constant_endpoints>` | bidirectional, constant_endpoints, stable_refs, frozen, positional | `bidirectional_csr_graph_with_sources` | csr_graph.hpp |
+| `Store<graph<int>, frozen, constant_adjacency>` | constant_adjacency, stable_refs, frozen | `bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, frozen, bidirectional, constant_adjacency>` | bidirectional, constant_adjacency, stable_refs, frozen | `bidirectional_bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, frozen, undirected, constant_adjacency>` | undirected, constant_adjacency, stable_refs, frozen | `undirected_bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, frozen, partition, constant_adjacency>` | partition, constant_adjacency, stable_refs, frozen | `partitioned_bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, frozen, partition, bidirectional, constant_adjacency>` | bidirectional, partition, constant_adjacency, stable_refs, frozen | `partitioned_bidirectional_bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, frozen, partition, undirected, constant_adjacency>` | partition, undirected, constant_adjacency, stable_refs, frozen | `partitioned_undirected_bit_rows` | bit_rows.hpp |
+| `Store<graph<int>, monotone, constant_adjacency>` | constant_adjacency, monotone | `bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, monotone, bidirectional, constant_adjacency>` | bidirectional, constant_adjacency, monotone | `bidirectional_bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, monotone, undirected, constant_adjacency>` | undirected, constant_adjacency, monotone | `undirected_bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, monotone, partition, constant_adjacency>` | partition, constant_adjacency, monotone | `partitioned_bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, monotone, partition, bidirectional, constant_adjacency>` | bidirectional, partition, constant_adjacency, monotone | `partitioned_bidirectional_bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, monotone, partition, undirected, constant_adjacency>` | partition, undirected, constant_adjacency, monotone | `partitioned_undirected_bit_matrix` | bit_matrix.hpp |
+| `Store<graph<int>, frozen, partition, undirected, constant_adjacency, positional>` | partition, undirected, constant_adjacency, stable_refs, frozen, positional | `none` — missing: edge numbers in bit rows (a prefix count per row, an edge's number its rank); no site asks |  |
+| `Store<graph<int>, undirected>` | undirected | `none` — missing: undirected lists or compressed rows (rows of bits serve undirected graphs that state constant_adjacency); runir adds an edge each way |  |
+
 ## Records and values interned
 
 | Request | Spec | Representation | Include |

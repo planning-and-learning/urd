@@ -486,6 +486,165 @@ struct row_workload
     }
 };
 
+/// A graph's lifecycle: `size` vertices with three edges each, to vertices a stride on (in other parts where it is
+/// partitioned); added one by one where it grows, else built at once; then every vertex's neighbours read, adjacency
+/// probed, edges read by number, edges removed, and the graph cleared, each where it offers it.
+template<typename R, typename S>
+struct graph_workload
+{
+    using Store = urd::test::store_over<S, R>;
+    using Vertex = typename S::vertex_type;
+    using Value = typename S::edge_value_type;
+    using Input = typename S::edge_input_type;
+    static constexpr auto offers = urd::test::offered<R, S>();
+    static constexpr std::size_t parts = 4;
+    static constexpr std::size_t degree = 3;
+
+    static Vertex vertex(std::size_t at) { return urd::index_of<Vertex>::from_index(at); }
+    /// The target of the k-th edge of u: in the part after u's (cycling) where partitioned, else anywhere.
+    static std::size_t target(std::size_t size, std::size_t u, std::size_t k)
+    {
+        if constexpr (urd::has<S, urd::partitioned>)
+        {
+            const auto part = size / parts;
+            return ((((u / part) + 1 + (k % (parts - 1))) % parts) * part) + (((u * stride) + k) % part);
+        }
+        else
+            return ((u * stride) + k + 1) % size;
+    }
+    static Input input(std::size_t u, std::size_t v)
+    {
+        if constexpr (std::is_void_v<Value>)
+            return Input(vertex(u), vertex(v));
+        else
+            return Input(vertex(u), vertex(v), make<Value>(u));
+    }
+
+    /// The graph of a cell's size: built at once where it does not grow, else added to vertex by vertex, edge by edge
+    /// (timed as insert into `into`, where given).
+    static std::unique_ptr<Store> filled(std::size_t size, timing* into)
+    {
+        const auto part_sizes = std::vector<std::size_t>(urd::has<S, urd::partitioned> ? parts : 0, size / parts);
+        if constexpr (offers[static_cast<std::size_t>(op_v<urd::operation::insert>)])
+        {
+            auto store = std::unique_ptr<Store>();
+            if constexpr (urd::has<S, urd::constant_adjacency>)
+                store = std::make_unique<Store>(urd::graph_data<Input> { size, {}, part_sizes });  // rows of bits: its vertices fixed
+            else
+            {
+                store = std::make_unique<Store>();
+                for (std::size_t u = 0; u < size; ++u)
+                    store->add_vertex();
+            }
+            if (into != nullptr)
+                into->start();
+            for (std::size_t u = 0; u < size; ++u)
+                for (std::size_t k = 0; k < degree; ++k)
+                {
+                    if constexpr (std::is_void_v<Value>)
+                        use(store->add_edge(vertex(u), vertex(target(size, u, k))));
+                    else
+                        use(store->add_edge(vertex(u), vertex(target(size, u, k)), make<Value>(u)));
+                }
+            if (into != nullptr)
+                into->stop(op_v<urd::operation::insert>, size * degree);
+            return store;
+        }
+        else
+        {
+            auto edges = std::vector<Input>();
+            for (std::size_t u = 0; u < size; ++u)
+                for (std::size_t k = 0; k < degree; ++k)
+                    edges.push_back(input(u, target(size, u, k)));
+            return std::make_unique<Store>(urd::graph_data<Input> { size, edges, part_sizes });
+        }
+    }
+
+    static void lifecycle(const urd::test::cell& at, timing& into)
+    {
+        const auto size = at.size;
+        const auto has = [&](op what) { return at.operations[static_cast<std::size_t>(what)]; };
+        auto store = filled(size, &into);
+        auto& held = *store;
+        if (has(op_v<urd::operation::iterate>))
+        {
+            std::size_t read = 0;
+            into.start();
+            for (std::size_t u = 0; u < size; ++u)
+                for (const auto w : std::as_const(held).neighbours(vertex(u)))
+                {
+                    use(w);
+                    ++read;
+                }
+            into.stop(op_v<urd::operation::iterate>, read);
+        }
+        if (has(op_v<urd::operation::adjacency>))
+        {
+            into.start();
+            for (std::size_t each = 0; each < probes; ++each)
+            {
+                const auto u = (each * stride) % size;
+                use(std::as_const(held).adjacent(vertex(u), vertex(target(size, u, each % (degree + 1)))));
+            }
+            into.stop(op_v<urd::operation::adjacency>, probes);
+        }
+        if constexpr (requires { std::as_const(held).source(std::size_t {}); })
+        {
+            const auto edges = std::as_const(held).num_edges();
+            if (has(op_v<urd::operation::access>))
+            {
+                into.start();
+                for (std::size_t each = 0; each < probes; ++each)
+                {
+                    if constexpr (std::is_void_v<Value>)
+                        use(std::as_const(held).target((each * stride) % edges));
+                    else
+                        use(std::as_const(held)[(each * stride) % edges]);
+                }
+                into.stop(op_v<urd::operation::access>, probes);
+            }
+            if (has(op_v<urd::operation::endpoints>))
+            {
+                into.start();
+                for (std::size_t each = 0; each < probes; ++each)
+                    use(std::as_const(held).source((each * stride) % edges));
+                into.stop(op_v<urd::operation::endpoints>, probes);
+            }
+        }
+        if constexpr (requires { held.remove_edge(std::size_t {}); })
+            if (has(op_v<urd::operation::erase>))
+            {
+                const auto removed = std::min(probes, size * degree);
+                into.start();
+                for (std::size_t e = 0; e < removed; ++e)
+                    held.remove_edge(e);
+                into.stop(op_v<urd::operation::erase>, removed);
+            }
+        if constexpr (requires { held.clear(); })
+            if (has(op_v<urd::operation::clear>))
+            {
+                into.start();
+                held.clear();
+                into.stop(op_v<urd::operation::clear>, size);
+            }
+        store.reset();
+    }
+
+    /// The memory of the graph a cell's lifecycle fills, per vertex.
+    static held_memory memory(const urd::test::cell& at)
+    {
+        const auto before = live_bytes().value_or(0);
+        const auto store = filled(at.size, nullptr);
+        return { live_bytes().value_or(0) - before - sizeof(Store), urd::memory_usage(*store), at.size, sizeof(Vertex), owns_nothing<Vertex> };
+    }
+};
+
+/// The workload of a cell: a pool's rows, a graph's vertices and edges, or elements.
+template<typename R, typename S>
+using workload_of = std::conditional_t<urd::test::by_handle<S>,
+                                       row_workload<R, S>,
+                                       std::conditional_t<std::same_as<typename S::kind, urd::graph_kind>, graph_workload<R, S>, workload<R, S>>>;
+
 /// Registers the cells of container R's experiment for the request spec S, one per size. Where the heap is counted
 /// (benchmark_memory), each reports, once, the memory of the Store it fills (held_memory), as counters named memory_*;
 /// else each runs the lifecycle (enough times for small sizes to take measurable time) and reports the time per
@@ -505,10 +664,7 @@ void register_experiment(std::size_t ordinal)
                                              held_memory held {};
                                              for (auto _ : state)
                                              {
-                                                 if constexpr (urd::test::by_handle<S>)
-                                                     held = row_workload<R, S>::memory(at);
-                                                 else
-                                                     held = workload<R, S>::memory(at);
+                                                 held = workload_of<R, S>::memory(at);
                                              }
                                              state.counters["memory_counted"] = static_cast<double>(held.counted);
                                              state.counters["memory_told"] = static_cast<double>(held.told);
@@ -523,10 +679,7 @@ void register_experiment(std::size_t ordinal)
                                          for (auto _ : state)
                                              for (std::size_t round = 0; round < rounds; ++round)
                                              {
-                                                 if constexpr (urd::test::by_handle<S>)
-                                                     row_workload<R, S>::lifecycle(at, into);
-                                                 else
-                                                     workload<R, S>::lifecycle(at, into);
+                                                 workload_of<R, S>::lifecycle(at, into);
                                              }
                                          for (std::size_t what = 0; what < into.operations.size(); ++what)
                                              if (into.operations[what] > 0)

@@ -33,6 +33,7 @@
 #include "urd/repr/wrappers/layer.hpp"
 #include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
+#include "urd/testing/inspect.hpp"
 
 #include <algorithm>
 #include <array>
@@ -427,7 +428,7 @@ TYPED_TEST(ConcurrentRecordPools, EqualRecordsGetEqualIndicesAcrossThreads)
         for (int drawn = 0; drawn < rooted; ++drawn)
             EXPECT_EQ(pool.find(T(drawn)), Index(static_cast<std::uint32_t>(drawn)));
         EXPECT_EQ(root.size(), static_cast<std::size_t>(rooted));
-        EXPECT_FALSE((pool.parent() != nullptr && pool.parent()->size() > pool.base()));
+        EXPECT_FALSE((urd::testing::inspect::parent(pool) != nullptr && urd::testing::inspect::parent(pool)->size() > pool.base()));
     }
 }
 
@@ -514,7 +515,7 @@ TEST(ConcurrentLayered, EachLayersValueIsMadeOnceAcrossThreads)
         EXPECT_EQ(rows.base(), base);
         EXPECT_EQ(rows.size(), base + per_predicate);
         EXPECT_EQ(&task.owner(predicate_of(drawn)), &task);
-        EXPECT_FALSE((rows.parent() != nullptr && rows.parent()->size() > rows.base()));
+        EXPECT_FALSE((urd::testing::inspect::parent(rows) != nullptr && urd::testing::inspect::parent(rows)->size() > rows.base()));
     }
     for (int drawn = 0; drawn < predicates; drawn += 2)
         EXPECT_EQ(std::as_const(domain).at(predicate_of(drawn)).size(), 1U);

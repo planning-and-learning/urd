@@ -30,6 +30,11 @@
 #include <utility>
 #include <vector>
 
+namespace urd::detail
+{
+struct indexed_access;
+}  // namespace urd::detail
+
 namespace urd::repr
 {
 
@@ -305,16 +310,10 @@ public:
     }
     ~IndexedSet() { delete release(); }
 
-    [[nodiscard]] iterator begin() const { return elements().cbegin(); }
-    [[nodiscard]] iterator end() const { return elements().cend(); }
+    [[nodiscard]] iterator begin() const { return elements().begin(); }
+    [[nodiscard]] iterator end() const { return elements().end(); }
     [[nodiscard]] size_type size() const { return elements().size(); }
     [[nodiscard]] bool empty() const { return size() == 0; }
-    /// What the rows are stored by: their elements' bit width (BitCodec), or their column widths (SchemaCodec).
-    [[nodiscard]] const Parameter& built_with() const noexcept
-        requires(!std::same_as<Parameter, std::monostate>)
-    { return m_parameter; }
-    /// The element, or a row's span.
-    [[nodiscard]] decltype(auto) operator[](size_type position) const { return elements()[position]; }
     [[nodiscard]] const T* data() const
         requires(!Stable)
     { return elements().data(); }
@@ -351,14 +350,6 @@ public:
         requires row_input<R>
     [[nodiscard]] iterator find(const R& row) const
     { return found_at(lookup(row)); }
-    /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
-    /// with end() races with the size, which another thread's insert moves between the two calls.
-    [[nodiscard]] std::optional<size_type> position(const T& element) const { return position_from(lookup(element)); }
-    [[nodiscard]] std::optional<size_type> position(const prehashed<T>& key) const { return position_from(lookup(key)); }
-    template<typename R>
-        requires row_input<R>
-    [[nodiscard]] std::optional<size_type> position(const R& row) const
-    { return position_from(lookup(row)); }
     [[nodiscard]] size_type count(const T& element) const { return contains(element) ? 1 : 0; }
     [[nodiscard]] size_type count(const prehashed<T>& key) const { return contains(key) ? 1 : 0; }
     template<typename R>
@@ -410,19 +401,6 @@ public:
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(T(std::forward<Args>(args)...)); }
-    /// The position of `key`, appending what `make(position)` gives where it is new: the factory runs under the
-    /// writer lock with the position reserved, for an element that holds its own position, and must give an element
-    /// equal to `key`. It must not touch this set.
-    template<std::invocable<std::size_t> Factory>
-        requires(!Rows)
-    std::pair<iterator, bool> insert_with(const T& key, Factory make)
-    { return insert_with(prehash(key), std::move(make)); }
-    template<std::invocable<std::size_t> Factory>
-        requires(!Rows)
-    std::pair<iterator, bool> insert_with(const prehashed<T>& key, Factory make)
-    {
-        return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); });
-    }
 
     size_type erase(const T& element)
         requires(!Stable || (Rows && !ThreadSafe))
@@ -453,6 +431,53 @@ public:
         for (auto it = source.begin(); it != source.end();)
             it = insert(*it).second ? source.erase(it) : std::next(it);
     }
+    /// The table of an empty set is left as it is: clearing it costs its capacity, and the thread-safe one locks each of
+    /// its 2^7 shards, which a set cleared over and over while empty (a relation layer reset per state) would pay each time.
+    void clear()
+    {
+        if (empty())
+            return;
+        auto& held = writable_state();
+        held.positions.clear();
+        held.elements.clear();
+    }
+
+    /// Equal elements in the same order.
+    [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs)
+    {
+        return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return Keys::equal(a, b); });
+    }
+
+private:
+    friend struct urd::detail::indexed_access;
+
+    /// The element, or a row's span.
+    [[nodiscard]] decltype(auto) operator[](size_type position) const { return elements()[position]; }
+    /// What the rows are stored by: their elements' bit width (BitCodec), or their column widths (SchemaCodec).
+    [[nodiscard]] const Parameter& built_with() const noexcept
+        requires(!std::same_as<Parameter, std::monostate>)
+    { return m_parameter; }
+    /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
+    /// with end() races with the size, which another thread's insert moves between the two calls.
+    [[nodiscard]] std::optional<size_type> position(const T& element) const { return position_from(lookup(element)); }
+    [[nodiscard]] std::optional<size_type> position(const prehashed<T>& key) const { return position_from(lookup(key)); }
+    template<typename R>
+        requires row_input<R>
+    [[nodiscard]] std::optional<size_type> position(const R& row) const
+    { return position_from(lookup(row)); }
+    /// The position of `key`, appending what `make(position)` gives where it is new: the factory runs under the
+    /// writer lock with the position reserved, for an element that holds its own position, and must give an element
+    /// equal to `key`. It must not touch this set.
+    template<std::invocable<std::size_t> Factory>
+        requires(!Rows)
+    std::pair<iterator, bool> insert_with(const T& key, Factory make)
+    { return insert_with(prehash(key), std::move(make)); }
+    template<std::invocable<std::size_t> Factory>
+        requires(!Rows)
+    std::pair<iterator, bool> insert_with(const prehashed<T>& key, Factory make)
+    {
+        return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); });
+    }
     /// Erases the element at `position` by moving the last one into its place: O(1) expected, and only the last
     /// element's position changes (to `position`). The order is not kept.
     void swap_erase(Index position)
@@ -472,24 +497,6 @@ public:
         if (position != last)
             positions.insert(Position { position });
     }
-    /// The table of an empty set is left as it is: clearing it costs its capacity, and the thread-safe one locks each of
-    /// its 2^7 shards, which a set cleared over and over while empty (a relation layer reset per state) would pay each time.
-    void clear()
-    {
-        if (empty())
-            return;
-        auto& held = writable_state();
-        held.positions.clear();
-        held.elements.clear();
-    }
-
-    /// Equal elements in the same order.
-    [[nodiscard]] friend bool operator==(const IndexedSet& lhs, const IndexedSet& rhs)
-    {
-        return std::ranges::equal(lhs, rhs, [](const auto& a, const auto& b) { return Keys::equal(a, b); });
-    }
-
-private:
     [[nodiscard]] iterator at(Index position) const { return begin() + static_cast<difference_type>(position); }
     [[nodiscard]] iterator found_at(std::optional<Index> found) const { return found ? at(*found) : end(); }
     [[nodiscard]] static std::optional<size_type> position_from(std::optional<Index> found)
@@ -619,6 +626,34 @@ private:
 };
 
 }  // namespace urd::repr
+
+namespace urd::detail
+{
+
+/// What the interners and pools that hold an indexed set reach of it beyond a Store's interface: the parameter its rows
+/// are stored by, an element by position and its position, an insert that builds the element from its position, and an
+/// erase that moves the last element into the gap. The members are the set's own, private; this accessor is the one way to them.
+struct indexed_access
+{
+    template<typename Set>
+    [[nodiscard]] static decltype(auto) built_with(const Set& set)
+    { return set.built_with(); }
+    template<typename Set, typename Key>
+    [[nodiscard]] static auto position(const Set& set, const Key& key)
+    { return set.position(key); }
+    template<typename Set, typename Key, typename Factory>
+    static auto insert_with(Set& set, const Key& key, Factory make)
+    { return set.insert_with(key, std::move(make)); }
+    template<typename Set, typename Position>
+    static void swap_erase(Set& set, Position position)
+    { set.swap_erase(position); }
+    /// The element at `position`, or a row's span.
+    template<typename Set>
+    [[nodiscard]] static decltype(auto) element(const Set& set, std::size_t position)
+    { return set[position]; }
+};
+
+}  // namespace urd::detail
 
 namespace urd
 {

@@ -6,8 +6,8 @@ Kind
 A request names its kind first, with its element types (``include/urd/kinds.hpp``): ``set<K>`` (keys, each once),
 ``map<K, V>`` (a value per key), ``multiset<V>`` (values by value, in order), ``sequence<V>`` (values by position; ``sequence<V, P>`` addressed by an index type ``P``),
 ``queue<V>`` (values by their front or top: ``fifo``, ``lifo`` or ``by_priority``), ``pool<V>`` (each distinct value
-once, by handle), ``slots<V>`` (values in slots, by handle) and ``partition<K>`` (keys in disjoint classes). Every
-argument after it is a tag.
+once, by handle), ``slots<V>`` (values in slots, by handle), ``partition<K>`` (keys in disjoint classes) and ``graph<V, E>`` (vertices
+and edges, each edge with data ``E`` unless it is ``void``). Every argument after it is a tag.
 
 A kind decides what the Store is: which operations it has (its facets, see the :doc:`kinds </kinds/sets>`), what its
 elements are (its element types), and which questions its requests answer (its request format: its own, then those

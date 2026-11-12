@@ -1,4 +1,5 @@
 #include "urd/repr/pools/tree_vector.hpp"
+#include "urd/testing/inspect.hpp"
 
 #include <array>
 #include <bit>
@@ -35,8 +36,8 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
         singleton_set.copy(singleton_index, singleton_output);
         EXPECT_EQ(singleton_output, singleton);
         EXPECT_EQ(singleton_index.root, singleton.front());
-        EXPECT_EQ(singleton_set.num_leaves(), 0);
-        EXPECT_EQ(singleton_set.num_nodes(), 0);
+        EXPECT_EQ(urd::testing::inspect::num_leaves(singleton_set), 0);
+        EXPECT_EQ(urd::testing::inspect::num_nodes(singleton_set), 0);
     }
 
     auto set = TreeVectorSet<std::vector<std::uint32_t>, 2> {};
@@ -49,8 +50,8 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     constexpr auto repeated = std::array<std::uint32_t, 4> { 1, 2, 1, 2 };
     const auto repeated_index = set.insert(repeated).first;
     EXPECT_EQ(repeated_index.size, repeated.size());
-    EXPECT_EQ(set.num_leaves(), 0);
-    EXPECT_EQ(set.num_nodes(), 2);
+    EXPECT_EQ(urd::testing::inspect::num_leaves(set), 0);
+    EXPECT_EQ(urd::testing::inspect::num_nodes(set), 2);
 
     auto output = std::array<std::uint32_t, repeated.size()> {};
     set.copy(repeated_index, output);
@@ -61,8 +62,8 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     auto shared_subtree_output = std::array<std::uint32_t, shared_subtree.size()> {};
     set.copy(shared_subtree_index, shared_subtree_output);
     EXPECT_EQ(shared_subtree_output, shared_subtree);
-    EXPECT_EQ(set.num_leaves(), 0);
-    EXPECT_EQ(set.num_nodes(), 2);
+    EXPECT_EQ(urd::testing::inspect::num_leaves(set), 0);
+    EXPECT_EQ(urd::testing::inspect::num_nodes(set), 2);
 
     EXPECT_EQ(set.insert(repeated).first, repeated_index);
     EXPECT_EQ(set.insert(shared_subtree).first, shared_subtree_index);
@@ -70,8 +71,8 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
 
     set.clear();
     EXPECT_TRUE(set.empty());
-    EXPECT_EQ(set.num_leaves(), 0);
-    EXPECT_EQ(set.num_nodes(), 0);
+    EXPECT_EQ(urd::testing::inspect::num_leaves(set), 0);
+    EXPECT_EQ(urd::testing::inspect::num_nodes(set), 0);
 }
 
 TEST(CommonTreeVectorSetTest, SupportsDifferentLeafTypesAndLengths)
@@ -82,7 +83,7 @@ TEST(CommonTreeVectorSetTest, SupportsDifferentLeafTypesAndLengths)
     auto float_output = std::array<double, floats.size()> {};
     float_set.copy(float_index, float_output);
     EXPECT_EQ(float_output, floats);
-    EXPECT_EQ(float_set.num_leaves(), floats.size());
+    EXPECT_EQ(urd::testing::inspect::num_leaves(float_set), floats.size());
 
     auto custom_set = TreeVectorSet<std::vector<CustomLeaf>, 2> {};
     constexpr auto custom = std::array<CustomLeaf, 3> { CustomLeaf { 1, 2 }, CustomLeaf { 3, 4 }, CustomLeaf { 5, 6 } };
@@ -90,7 +91,7 @@ TEST(CommonTreeVectorSetTest, SupportsDifferentLeafTypesAndLengths)
     auto custom_output = std::array<CustomLeaf, custom.size()> {};
     custom_set.copy(custom_index, custom_output);
     EXPECT_EQ(custom_output, custom);
-    EXPECT_EQ(custom_set.num_leaves(), custom.size());
+    EXPECT_EQ(urd::testing::inspect::num_leaves(custom_set), custom.size());
 }
 
 TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
@@ -129,7 +130,7 @@ TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
         EXPECT_EQ(output, single);
     }
 
-    EXPECT_EQ(set.num_leaves(), 0);
+    EXPECT_EQ(urd::testing::inspect::num_leaves(set), 0);
 }
 
 TEST(CommonTreeVectorSetTest, WritesMatchFullInsert)
@@ -138,7 +139,7 @@ TEST(CommonTreeVectorSetTest, WritesMatchFullInsert)
     {
         using Value = typename decltype(values)::value_type;
         const auto base = set.insert(values).first;
-        const auto nodes_before = set.num_nodes();
+        const auto nodes_before = urd::testing::inspect::num_nodes(set);
         const auto written = set.insert(base, std::span(writes)).first;
         for (const auto& write : writes)
             values[write.position] = write.value;
@@ -146,7 +147,7 @@ TEST(CommonTreeVectorSetTest, WritesMatchFullInsert)
         set.copy(written, output);
         EXPECT_EQ(output, values);
         EXPECT_EQ(written, set.insert(values).first);
-        EXPECT_LE(set.num_nodes() - nodes_before, writes.size() * static_cast<std::size_t>(std::bit_width(values.size())));
+        EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, writes.size() * static_cast<std::size_t>(std::bit_width(values.size())));
     };
 
     // Inline leaves, a value equal to its position's old value, and the last position.
@@ -166,7 +167,7 @@ TEST(CommonTreeVectorSetTest, WritesMatchFullInsert)
 template<typename Value, std::size_t Arity>
 void expect_arity_vectors()
 {
-    SCOPED_TRACE(testing::Message() << "Arity " << Arity << ", " << sizeof(Value) << "-byte values");
+    SCOPED_TRACE(::testing::Message() << "Arity " << Arity << ", " << sizeof(Value) << "-byte values");
     auto rng = std::mt19937_64 { Arity };
     auto set = TreeVectorSet<std::vector<Value>, Arity> {};
     static_assert(decltype(set)::arity == Arity);
@@ -193,7 +194,7 @@ void expect_arity_vectors()
         for (std::uint32_t position = 0; position < size; ++position)
             if (rng() % 5 == 0)
                 writes.push_back(urd::Write<Value> { position, Value(rng() % 7) });
-        const auto nodes_before = set.num_nodes();
+        const auto nodes_before = urd::testing::inspect::num_nodes(set);
         const auto written = set.insert(index, std::span<const urd::Write<Value>>(writes)).first;
         for (const auto& write : writes)
             values[write.position] = write.value;
@@ -202,7 +203,7 @@ void expect_arity_vectors()
         EXPECT_EQ(written, set.insert(values).first);
         const auto bits = static_cast<std::size_t>(std::countr_zero(Arity));
         const auto levels = (static_cast<std::size_t>(std::bit_width(size)) + bits - 1) / bits + 1;
-        EXPECT_LE(set.num_nodes() - nodes_before, writes.size() * levels);
+        EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, writes.size() * levels);
     }
 }
 

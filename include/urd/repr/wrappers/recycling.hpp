@@ -29,13 +29,46 @@ namespace detail
 /// What a recycling map and set share: Container (a std map or set, whose nodes can be taken out and put back), the
 /// nodes of its erased elements, and erasing into them.
 template<typename Container>
-class Recycled : public Container
+class Recycled : protected Container
 {
 public:
+    // What the facets reach of the std map or set, and nothing else of it (tests/exposure.py, rule F7).
+    using Container::begin;
+    using Container::contains;
+    using Container::count;
+    using Container::empty;
+    using Container::end;
+    using Container::equal_range;
+    using Container::find;
+    using Container::size;
     using typename Container::const_iterator;
+    using typename Container::const_reference;
+    using typename Container::difference_type;
     using typename Container::iterator;
     using typename Container::key_type;
+    using typename Container::reference;
     using typename Container::size_type;
+    using typename Container::value_type;
+    // What only some of the std maps and sets have: the ordered ones bounds, the hashed ones room, the maps at.
+    template<typename Key>
+    [[nodiscard]] auto lower_bound(const Key& key) const
+        requires requires(const Container& held) { held.lower_bound(key); }
+    { return Container::lower_bound(key); }
+    template<typename Key>
+    [[nodiscard]] auto upper_bound(const Key& key) const
+        requires requires(const Container& held) { held.upper_bound(key); }
+    { return Container::upper_bound(key); }
+    void reserve(size_type count)
+        requires requires(Container& held) { held.reserve(count); }
+    { Container::reserve(count); }
+    [[nodiscard]] const auto& at(const key_type& key) const
+        requires requires(const Container& held) { held.at(key); }
+    { return Container::at(key); }
+    auto& at(const key_type& key)
+        requires requires(Container& held) { held.at(key); }
+    { return Container::at(key); }
+
+    friend bool operator==(const Recycled& lhs, const Recycled& rhs) { return static_cast<const Container&>(lhs) == static_cast<const Container&>(rhs); }
 
     size_type erase(const key_type& key)
     {
@@ -83,6 +116,11 @@ protected:
 
     // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): the derived map and set take their nodes from it
     std::vector<typename Container::node_type> m_free;
+
+    /// Its memory is its container's and its kept nodes' (urd::memory_of).
+    template<typename Held>
+    friend struct urd::memory_of;
+    [[nodiscard]] const Container& container() const noexcept { return *this; }
 };
 
 }  // namespace detail
@@ -100,6 +138,7 @@ class Recycling : public detail::Recycled<Map>
 public:
     using typename Base::const_iterator;
     using typename Base::iterator;
+    using mapped_type = V;
 
     Recycling() = default;
 
@@ -238,13 +277,13 @@ std::size_t kept_bytes(const Free& free)
 template<typename Map>
 struct memory_of<repr::Recycling<Map>>
 {
-    static std::size_t bytes(const repr::Recycling<Map>& held) { return memory_usage(static_cast<const Map&>(held)) + detail::kept_bytes(held.m_free); }
+    static std::size_t bytes(const repr::Recycling<Map>& held) { return memory_usage(held.container()) + detail::kept_bytes(held.m_free); }
 };
 /// Its set's, and the nodes it keeps.
 template<typename Set>
 struct memory_of<repr::RecyclingSet<Set>>
 {
-    static std::size_t bytes(const repr::RecyclingSet<Set>& held) { return memory_usage(static_cast<const Set&>(held)) + detail::kept_bytes(held.m_free); }
+    static std::size_t bytes(const repr::RecyclingSet<Set>& held) { return memory_usage(held.container()) + detail::kept_bytes(held.m_free); }
 };
 
 template<>

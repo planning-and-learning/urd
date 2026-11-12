@@ -240,6 +240,31 @@ using stores_as_keys = requests<request<set<Store<set<int>, sorted, frozen>>>,
 
 using sparse_partitions = requests<request<partition<std::string>>>;
 
+using graphs = requests<request<graph<int>>,
+                        request<graph<int>, monotone>,
+                        request<graph<int>, bidirectional>,
+                        request<graph<int, int>>,
+                        request<graph<int>, frozen>,
+                        request<graph<int>, frozen, positional>,
+                        request<graph<int, int>, frozen, multi>,
+                        request<graph<int>, frozen, positional, bidirectional>,
+                        request<graph<int>, frozen, positional, constant_endpoints>,
+                        request<graph<int>, frozen, positional, bidirectional, constant_endpoints>,
+                        request<graph<int>, frozen, constant_adjacency>,
+                        request<graph<int>, frozen, bidirectional, constant_adjacency>,
+                        request<graph<int>, frozen, undirected, constant_adjacency>,
+                        request<graph<int>, frozen, partitioned, constant_adjacency>,
+                        request<graph<int>, frozen, partitioned, bidirectional, constant_adjacency>,
+                        request<graph<int>, frozen, partitioned, undirected, constant_adjacency>,
+                        request<graph<int>, monotone, constant_adjacency>,
+                        request<graph<int>, monotone, bidirectional, constant_adjacency>,
+                        request<graph<int>, monotone, undirected, constant_adjacency>,
+                        request<graph<int>, monotone, partitioned, constant_adjacency>,
+                        request<graph<int>, monotone, partitioned, bidirectional, constant_adjacency>,
+                        request<graph<int>, monotone, partitioned, undirected, constant_adjacency>,
+                        request<graph<int>, frozen, partitioned, undirected, constant_adjacency, positional>,
+                        request<graph<int>, undirected>>;
+
 using flat_pools = requests<request<pool<Id>, flat>,
                             request<pool<Id>, flat, monotone>,
                             request<pool<Id>, flat, stable_refs>,
@@ -282,6 +307,7 @@ using groups = std::tuple<group<"Sets of int", sets_of<int>>,
                           group<"Pools", pools>,
                           group<"Stores as keys", stores_as_keys>,
                           group<"Partitions of sparse keys", sparse_partitions>,
+                          group<"Graphs", graphs>,
                           group<"Records and values interned", flat_pools>>;
 
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.

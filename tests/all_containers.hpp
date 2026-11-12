@@ -4,6 +4,10 @@
 // Store (a Store's container is resolved where the Store is first named, and only containers whose headers precede
 // that are found defined). A container added to the registry adds its header here.
 
+#include "urd/repr/graphs/adjacency_lists.hpp"
+#include "urd/repr/graphs/bit_matrix.hpp"
+#include "urd/repr/graphs/bit_rows.hpp"
+#include "urd/repr/graphs/csr_graph.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"

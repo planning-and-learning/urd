@@ -20,3 +20,12 @@ representation costs is in the :doc:`complexity tables </kinds/sets>` of each ki
 .. urd-category:: any_sharing
 
    Equal parts of different rows are stored once (tree pools).
+
+.. urd-category:: any_adjacency
+
+   Whether two vertices of a graph are adjacent in O(log degree) or O(degree), or O(1), with a vertex's neighbours in a
+   part as a row of bits.
+
+.. urd-category:: any_endpoints
+
+   An edge's source from its number in O(log n), or O(1) at a source per edge.

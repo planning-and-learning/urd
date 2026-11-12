@@ -34,6 +34,9 @@ container's header is missing fails to compile naming the headers to include, a 
    * - ``disjoint_sets.hpp``
      - the partition
      - nothing
+   * - ``adjacency_lists.hpp``, ``csr_graph.hpp``, ``bit_matrix.hpp``, ``bit_rows.hpp``
+     - the graphs
+     - ``edge_values.hpp``, ``part_rows.hpp``; jagged rows and dense sets; pools of rows
    * - ``csr_multimap.hpp``, ``bidirectional_csr.hpp``, ``dense_multimap.hpp``
      - the multimaps by key index
      - nothing
@@ -142,6 +145,10 @@ urd's own
    * - ``LayeredPool``, ``Layered``
      - a pool, or a dense map (thread-safe over the thread-safe generation map), over a parent
      - ``layered``
+   * - ``AdjacencyLists``, ``CsrGraph``, ``BitMatrix``, ``BitRows``
+     - edges numbered as added, with lists out and in; compressed sparse rows (with in-rows, with a source per edge);
+       rows of bits per vertex and part, as fixed-shape rows of dense sets, or each distinct one once in a pool
+     - graphs that change; ``frozen`` graphs; ``monotone`` and ``frozen`` graphs with ``constant_adjacency``
    * - ``Scoped`` (over a flat hash, tree or dense map), ``DisjointSets``, ``SegmentedVector``
      - a map with a log of previous values; union-find; a vector of doubling segments
      - ``scoped``, ``partition``, ``monotone, stable_refs``

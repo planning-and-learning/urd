@@ -60,7 +60,6 @@ public:
 
     /// Answers from `parent` too, from now on; nullptr ends it.
     void layer_over(const Layered* parent) { m_parent = parent; }
-    [[nodiscard]] const Layered* parent() const { return m_parent; }
 
     [[nodiscard]] iterator begin() const { return m_own.begin(); }
     [[nodiscard]] iterator end() const { return m_own.end(); }
@@ -72,6 +71,9 @@ public:
     {
         return read_own(key, [](const mapped_type& /*value*/) { return true; }, false);
     }
+
+private:
+    // Read by this layer's lookups, of itself and its parents.
     /// The nearest layer, this one or a parent, whose own values hold `key`; nullptr where none does.
     [[nodiscard]] const Layered* owner(const key_type& key) const
     {
@@ -81,6 +83,7 @@ public:
         return layer;
     }
 
+public:
     /// The owner's element, else end().
     [[nodiscard]] iterator find(const key_type& key) const
     {
@@ -143,11 +146,16 @@ public:
         const auto* value = value_of(key);
         return value == nullptr ? missing : Result(f(*value));
     }
+
+private:
+    // Read by this layer's lookups, of itself and its parents.
     /// read(value) with this layer's own value of `key`, else `missing`: the parent's are not looked at.
     template<typename Read, typename Result>
         requires std::invocable<Read&, const mapped_type&>
     [[nodiscard]] Result read_own(const key_type& key, Read read, Result missing) const
     { return m_own.visit(key, read, missing); }
+
+public:
     /// This layer's own value of `key`, or nullptr: the parent's are not looked at.
     [[nodiscard]] const mapped_type* own_value(const key_type& key) const { return m_own.get_if(key); }
     [[nodiscard]] mapped_type* own_value(const key_type& key) { return m_own.get_if(key); }

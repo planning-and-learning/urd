@@ -35,15 +35,6 @@ public:
     {
     }
 
-    /// Rebuilds both directions from pairs.
-    template<std::input_iterator InputIt>
-    void assign(InputIt first, InputIt last)
-    {
-        const auto pairs = std::vector<std::pair<K, V>>(first, last);
-        CsrMultiMap<K, V>::assign(pairs.begin(), pairs.end());
-        m_inverse = inverted(pairs);
-    }
-
     /// The keys that map to `value`, in the order their pairs were given.
     [[nodiscard]] std::span<const K> keys(const V& value) const { return m_inverse.values(value); }
 

@@ -94,6 +94,17 @@ add_executable(complexity_table complexity_table.cpp)
 target_link_libraries(complexity_table PRIVATE urd::urd fmt::fmt)
 add_test(NAME complexity_table COMMAND complexity_table --check ${PROJECT_SOURCE_DIR}/share/urd/complexity.json)
 
+# What urd exposes publicly (tests/exposure.py, AGENTS.md rules F7 and F8), read with clang's parser: where the Python
+# that runs the tests has libclang (pip install -e '.[test]'), from the flags this build compiles with.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(COMMAND ${Python3_EXECUTABLE} -c "import clang.cindex" RESULT_VARIABLE urd_libclang OUTPUT_QUIET ERROR_QUIET)
+if(urd_libclang EQUAL 0)
+    add_test(NAME exposure COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/exposure.py --compile-commands
+                                   ${PROJECT_BINARY_DIR}/compile_commands.json)
+else()
+    message(STATUS "urd: ${Python3_EXECUTABLE} has no libclang; the exposure check (tests/exposure.py) is not run")
+endif()
+
 
 # The measurements behind the claims (benchmarks/record.py): every cell measured and current, every choice
 # holding, the generated part of docs/BENCHMARKS.md current; with the benchmarks built, every cell registered.

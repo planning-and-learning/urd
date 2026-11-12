@@ -44,18 +44,20 @@ public:
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
-        return inserted(
-            m_records.insert_with(key, [&make](std::size_t position) -> decltype(auto) { return make(handle_type(static_cast<std::uint32_t>(position))); }));
+        return inserted(urd::detail::indexed_access::insert_with(m_records,
+                                                                 key,
+                                                                 [&make](std::size_t position) -> decltype(auto)
+                                                                 { return make(handle_type(static_cast<std::uint32_t>(position))); }));
     }
     [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
     {
-        const auto found = m_records.position(key);
+        const auto found = urd::detail::indexed_access::position(m_records, key);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
     [[nodiscard]] bool contains(const T& record) const { return m_records.contains(record); }
     [[nodiscard]] bool contains(const prehashed<T>& key) const { return m_records.contains(key); }
-    [[nodiscard]] const T& operator[](handle_type at) const { return m_records[at.value]; }
+    [[nodiscard]] const T& operator[](handle_type at) const { return urd::detail::indexed_access::element(m_records, at.value); }
     [[nodiscard]] size_type size() const { return m_records.size(); }
     [[nodiscard]] bool empty() const { return m_records.empty(); }
     void clear() { m_records.clear(); }

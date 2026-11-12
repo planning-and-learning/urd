@@ -1,5 +1,6 @@
 #include "urd/repr/pools/tree_bitset.hpp"
 #include "urd/repr/values/dense_set.hpp"
+#include "urd/testing/inspect.hpp"
 
 #include <algorithm>
 #include <array>
@@ -52,13 +53,13 @@ TEST(CommonTreeBitsetSetTest, RoundTripsAndSkipsZeroBlocks)
     EXPECT_EQ(single_index.size, 1);
     EXPECT_EQ(read_all(set, single_index), std::vector<Block>(single.begin(), single.end()));
     EXPECT_EQ(single_index.root, single.front());  // Blocks are stored inline.
-    EXPECT_EQ(set.num_nodes(), 0);
+    EXPECT_EQ(urd::testing::inspect::num_nodes(set), 0);
 
     // Leading zero blocks and zero subtrees are not stored.
     constexpr auto sparse = std::array<Block, 8> { 0, 0, 0, 0, 0, 0, 0, 7 };
     const auto sparse_index = set.insert_blocks(sparse);
     EXPECT_EQ(read_all(set, sparse_index), std::vector<Block>(sparse.begin(), sparse.end()));
-    EXPECT_EQ(set.num_nodes(), 3);
+    EXPECT_EQ(urd::testing::inspect::num_nodes(set), 3);
 
     auto far = std::vector<Block>(std::size_t { 1 } << 20);
     far.front() = 1;
@@ -103,10 +104,10 @@ TEST(CommonTreeBitsetSetTest, DeltaInsertMatchesFullInsert)
     const auto base = set.insert_blocks(std::array<Block, 5> { 1, 2, 3, 4, 5 });
 
     // Same size: only the path to block 2 is new.
-    const auto nodes_before = set.num_nodes();
+    const auto nodes_before = urd::testing::inspect::num_nodes(set);
     const auto changed = set.insert_flips(base, std::array<Flip, 1> { Flip { 2, 0b11 } });
     EXPECT_EQ(changed, set.insert_blocks(std::array<Block, 5> { 1, 2, 0, 4, 5 }));
-    EXPECT_LE(set.num_nodes() - nodes_before, 3);
+    EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, 3);
 
     // Growing and shrinking.
     const auto grown = set.insert_flips(base, std::array<Flip, 1> { Flip { 9, 1 } });
@@ -194,12 +195,12 @@ TEST(CommonTreeBitsetSetTest, RandomDeltaChainsMatchFullInsert)
                 }
 
                 const auto blocks = to_blocks(words);
-                const auto nodes_before = set.num_nodes();
+                const auto nodes_before = urd::testing::inspect::num_nodes(set);
                 const auto height = blocks.empty() ? std::size_t { 0 } : static_cast<std::size_t>(std::bit_width(blocks.size()));
                 index = set.insert_flips(index, flip_list);
 
                 // Changing a block and growing or shrinking each rebuild at most one path.
-                EXPECT_LE(set.num_nodes() - nodes_before, (flip_list.size() + 2) * (height + 1));
+                EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, (flip_list.size() + 2) * (height + 1));
                 EXPECT_EQ(read_all(set, index), blocks);
                 EXPECT_EQ(index, set.insert_blocks(blocks));
                 EXPECT_EQ(read_all(reference, reference.insert_blocks(blocks)), blocks);
@@ -222,7 +223,7 @@ std::vector<std::uint32_t> arity_sizes()
 template<typename TestBlock, std::size_t Arity>
 void expect_arity_round_trips_and_canonical_trees()
 {
-    SCOPED_TRACE(testing::Message() << "Arity " << Arity << ", " << sizeof(TestBlock) << "-byte blocks");
+    SCOPED_TRACE(::testing::Message() << "Arity " << Arity << ", " << sizeof(TestBlock) << "-byte blocks");
     auto rng = std::mt19937_64 { Arity };
     auto set = TreeBitsetSet<Row, Arity> {};
     for (const auto size : arity_sizes<Arity>())
@@ -258,7 +259,7 @@ TEST(CommonTreeBitsetSetTest, RoundTripsAndCanonicalTreesForArities)
 template<typename TestBlock, std::size_t Arity>
 void expect_random_delta_chains_match_full_insert()
 {
-    SCOPED_TRACE(testing::Message() << "Arity " << Arity << ", " << sizeof(TestBlock) << "-byte blocks");
+    SCOPED_TRACE(::testing::Message() << "Arity " << Arity << ", " << sizeof(TestBlock) << "-byte blocks");
     using Flip = BlockFlip;
 
     auto rng = std::mt19937_64 { 7 * Arity };
@@ -294,13 +295,13 @@ void expect_random_delta_chains_match_full_insert()
                 for (const auto& [p, block] : words)
                     blocks[p] = block;
 
-                const auto nodes_before = set.num_nodes();
+                const auto nodes_before = urd::testing::inspect::num_nodes(set);
                 const auto bits = static_cast<std::size_t>(std::countr_zero(Arity));
                 const auto levels = blocks.empty() ? std::size_t { 0 } : (static_cast<std::size_t>(std::bit_width(blocks.size())) + bits - 1) / bits + 1;
                 index = set.insert_flips(index, flip_list);
 
                 // Changing a block and growing or shrinking each rebuild at most one path.
-                EXPECT_LE(set.num_nodes() - nodes_before, (flip_list.size() + 2) * (levels + 1));
+                EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, (flip_list.size() + 2) * (levels + 1));
                 auto output = std::vector<TestBlock>(index.size);
                 set.read_blocks(index, output);
                 EXPECT_EQ(output, blocks);

@@ -16,6 +16,7 @@
 #include <concepts>
 #include <cstddef>
 #include <fmt/format.h>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -81,6 +82,8 @@ std::vector<std::size_t> sizes_of()
         return { small_sizes.begin(), small_sizes.end() };
     else if constexpr (by_handle<S>)
         return { row_lengths.begin(), row_lengths.end() };
+    else if constexpr (std::same_as<typename S::kind, urd::graph_kind> && urd::has<S, urd::constant_adjacency>)
+        return { sizes.begin(), std::prev(sizes.end()) };  // a row of bits per vertex: n² bits, too many at the largest size
     else
         return { sizes.begin(), sizes.end() };
 }

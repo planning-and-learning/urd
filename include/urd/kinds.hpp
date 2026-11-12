@@ -9,12 +9,16 @@
 
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
+#include "urd/graph_types.hpp"
+#include "urd/key_range.hpp"
 #include "urd/property_set.hpp"
 #include "urd/registry/facts.hpp"
 #include "urd/tags.hpp"
+#include "urd/traits.hpp"
 
 #include <array>
 #include <boost/mp11.hpp>
+#include <concepts>
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
@@ -116,6 +120,16 @@ template<typename Derived, typename R, typename S>
 class shape;
 template<typename Derived, typename R, typename S>
 class ends;
+template<typename Derived, typename R, typename S>
+class graph;
+template<typename Derived, typename R, typename S>
+class graph_building;
+template<typename Derived, typename R, typename S>
+class graph_removal;
+template<typename Derived, typename R, typename S>
+class graph_edges;
+template<typename Derived, typename R, typename S>
+class graph_parts;
 }  // namespace facet
 
 /// Which types play role Role in a Store's data: its element type, or for the order the ordered type and its
@@ -306,6 +320,9 @@ struct set_kind : detail::any_kind
     }
     /// A set of dense keys is bits, set and cleared in place.
     static constexpr bool changes_in_place(const property_set& row) { return row.has(uniqueness::unique) && row.has(keys::dense); }
+    /// A dense set is built from the window its keys lie in (urd::key_range), whose words it keeps.
+    template<typename S, typename From>
+    static constexpr bool builds_from = std::same_as<From, key_range<typename S::element_type>>;
 };
 
 /// Values kept by value, in order, duplicates kept unless unique.
@@ -343,8 +360,24 @@ struct sequence_kind : detail::any_kind
     static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
 };
 
+/// Vertices 0..n-1 and edges between them. Edges are numbered where it is positional or has edge data: in the order
+/// they were added while it grows, by (source, target) once frozen (parallel edges in the order given). partitioned:
+/// its vertices fall into parts, numbered part after part, with no edge inside a part.
+struct graph_kind : detail::any_kind
+{
+    static constexpr std::string_view name = "graph";
+    static constexpr std::string_view page(const property_set& /*stated*/) { return "graphs"; }
+    using format = detail::request_format<direction, multiplicity, grouping, symmetry, adjacency, endpoints>;
+    using facets = detail::
+        facet_list<detail::facet::graph, detail::facet::graph_building, detail::facet::graph_removal, detail::facet::graph_edges, detail::facet::graph_parts>;
+    /// A graph is built from its vertex count, its edges and, partitioned, its parts (urd::graph_data), or from a
+    /// graph of rows of bits (constant_adjacency), whose rows it copies.
+    template<typename S, typename From>
+    static constexpr bool builds_from = std::same_as<From, graph_data<typename S::edge_input_type>> || has<From, constant_adjacency>;
+};
+
 /// urd's kinds: what its tables list.
-using kinds = boost::mp11::mp_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind>;
+using kinds = boost::mp11::mp_list<set_kind, map_kind, multiset_kind, sequence_kind, queue_kind, pool_kind, slots_kind, partition_kind, graph_kind>;
 
 namespace detail
 {
@@ -439,6 +472,17 @@ template<typename K>
 struct partition : detail::data_of<partition_kind, K>
 {
     using key_type = K;
+};
+/// Vertices of type V (an index: urd::index_of maps it to 0..n-1) and edges between them, each with data of type E,
+/// or none where E is void. Its elements are its vertices; it is built from edges (graph_input_edge).
+template<typename V, typename E = void>
+struct graph : detail::data_of<graph_kind, V, E>
+{
+    using element_types = std::conditional_t<std::is_void_v<E>, boost::mp11::mp_list<V>, boost::mp11::mp_list<V, E>>;
+    using vertex_type = V;
+    using edge_value_type = E;
+    using edge_input_type = graph_input_edge<V, E>;
+    using edge_type = graph_edge<V, E>;
 };
 
 namespace detail

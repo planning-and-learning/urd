@@ -12,6 +12,7 @@
 // be.
 
 #include "urd/registry/declaration.hpp"
+#include "urd/repr/graphs/graphs_fwd.hpp"
 #include "urd/repr/maps/dense_map_fwd.hpp"
 #include "urd/repr/maps/flat_map_fwd.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
@@ -174,6 +175,31 @@ template<>
 struct declarations_of<partition_kind>
 {
     using type = boost::mp11::mp_list<disjoint_sets_decl>;
+};
+
+/// Graphs: the declarations, in order of preference. A frozen graph is compressed sparse rows, plain before the variants
+/// that cost more, or with constant_adjacency rows of bits stored once; one that grows with constant_adjacency is a
+/// matrix of bits; anything else is lists. Rows of bits serve only requests of their shape (partitioned, undirected).
+template<>
+struct declarations_of<graph_kind>
+{
+    using type = boost::mp11::mp_list<csr_graph_decl<false, false>,
+                                      csr_graph_decl<false, true>,
+                                      csr_graph_decl<true, false>,
+                                      csr_graph_decl<true, true>,
+                                      bit_rows_decl<false, false, false>,
+                                      bit_rows_decl<false, false, true>,
+                                      bit_rows_decl<false, true, false>,
+                                      bit_rows_decl<true, false, false>,
+                                      bit_rows_decl<true, false, true>,
+                                      bit_rows_decl<true, true, false>,
+                                      bit_matrix_decl<false, false, false>,
+                                      bit_matrix_decl<false, false, true>,
+                                      bit_matrix_decl<false, true, false>,
+                                      bit_matrix_decl<true, false, false>,
+                                      bit_matrix_decl<true, false, true>,
+                                      bit_matrix_decl<true, true, false>,
+                                      adjacency_lists_decl>;
 };
 
 }  // namespace urd::detail

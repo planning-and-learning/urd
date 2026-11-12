@@ -31,6 +31,9 @@
 namespace urd::repr
 {
 
+template<typename R>
+class Layered;
+
 /// A map from indices to values, a slot per index below the largest key, iterated in key order. With Generations,
 /// each slot carries the generation it was written in, and clear only starts a new one (O(1)): older slots read
 /// as absent and keep their storage. Without, a slot is a std::optional.
@@ -156,13 +159,6 @@ public:
             return missing;
         return locked(*entry, [&]() -> Result { return Result(f(value_of(*entry))); });
     }
-    /// The value of `key`, or nullptr where it has none.
-    [[nodiscard]] const V* get_if(const K& key) const
-    {
-        const auto* entry = held_slot(key);
-        return entry == nullptr ? nullptr : &value_of(*entry);
-    }
-    [[nodiscard]] V* get_if(const K& key) { return contains(key) ? &value(index_of<K>::to_index(key)) : nullptr; }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key)) : end(); }
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
@@ -327,6 +323,18 @@ public:
     };
 
 private:
+    /// A layer reads its own values by key (Layered::own_value).
+    template<typename R>
+    friend class Layered;
+
+    /// The value of `key`, or nullptr where it has none.
+    [[nodiscard]] const V* get_if(const K& key) const
+    {
+        const auto* entry = held_slot(key);
+        return entry == nullptr ? nullptr : &value_of(*entry);
+    }
+    [[nodiscard]] V* get_if(const K& key) { return contains(key) ? &value(index_of<K>::to_index(key)) : nullptr; }
+
     [[nodiscard]] bool present(std::size_t index) const { return index < m_slots.size() && holds(m_slots[index]); }
     /// The slot of `key` where it holds a value, else nullptr: the slot is looked up once.
     [[nodiscard]] const slot* held_slot(const K& key) const

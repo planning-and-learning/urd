@@ -33,7 +33,7 @@ using SortedMap = urd::Store<urd::map<int, std::string>, urd::sorted>;
 using Nested = urd::Store<urd::sequence<urd::Store<urd::sequence<int>>>>;
 // A positional set hands out indices: its representation is a numbered indexed set (urd::repr::Numbered).
 using Positional = urd::Store<urd::set<int>, urd::positional, urd::monotone>;
-static_assert(requires(const Positional::representation& numbered) { numbered.container(); });
+static_assert(requires(const Positional::representation& numbered) { numbered.layer(); });
 
 static_assert(urd::python::castable<Sequence> && urd::python::castable<StableSequence> && urd::python::castable<Set> && urd::python::castable<SortedSet>
               && urd::python::castable<Map> && urd::python::castable<SortedMap> && urd::python::castable<Positional>);

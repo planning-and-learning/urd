@@ -123,6 +123,10 @@ const std::map<std::string, std::string>& notes()
         { "Store<queue<Id>, by_priority, constant_clear>",
           "missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared" },
         { "Store<partition<std::string>>", "missing: a partition over hashed keys (a map from key to position plus the forest); no site asks" },
+        { "Store<graph<int>, frozen, partition, undirected, constant_adjacency, positional>",
+          "missing: edge numbers in bit rows (a prefix count per row, an edge's number its rank); no site asks" },
+        { "Store<graph<int>, undirected>",
+          "missing: undirected lists or compressed rows (rows of bits serve undirected graphs that state constant_adjacency); runir adds an edge each way" },
     };
     return table;
 }

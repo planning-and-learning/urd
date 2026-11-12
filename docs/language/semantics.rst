@@ -51,7 +51,11 @@ What holds
 
 .. urd-category:: any_multiplicity
 
-   One value per key, or many (a multimap).
+   One value per key, or many (a multimap); in a graph, parallel edges between two vertices.
+
+.. urd-category:: any_symmetry
+
+   A graph's edges read one way, or both: with ``undirected`` each endpoint is a neighbour of the other, from one edge.
 
 .. urd-category:: may_change
 

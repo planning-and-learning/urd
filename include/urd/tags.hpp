@@ -717,6 +717,102 @@ struct tags_of<direction>
     using type = boost::mp11::mp_list<any_direction, bidirectional>;
 };
 
+enum class symmetry : std::uint8_t
+{
+    none,
+    undirected,
+};
+
+struct any_symmetry : tag_defaults
+{
+    using root = any_symmetry;
+    static constexpr auto value = symmetry::none;
+    static constexpr std::string_view name = "any_symmetry";
+    using group = semantics_group;
+    using heading = holds_heading;
+    static constexpr std::string_view question = "Is every edge read both ways?";
+};
+/// A graph whose edges have no direction: an edge between u and v makes each a neighbour of the other, stored once.
+struct undirected : any_symmetry
+{
+    static constexpr auto value = symmetry::undirected;
+    static constexpr std::string_view name = "undirected";
+    static constexpr std::string_view promise = "guaranteed";
+    static constexpr std::string_view description = "A graph whose edges have no direction: each endpoint is a neighbour of the other.";
+    static constexpr std::array<std::string_view, 3> phrases { "undirected graph", "symmetric adjacency", "compatibility graph" };
+};
+
+template<>
+struct tags_of<symmetry>
+{
+    using type = boost::mp11::mp_list<any_symmetry, undirected>;
+};
+
+enum class adjacency : std::uint8_t
+{
+    none,
+    constant_adjacency,
+};
+
+struct any_adjacency : tag_defaults
+{
+    using root = any_adjacency;
+    static constexpr auto value = adjacency::none;
+    static constexpr std::string_view name = "any_adjacency";
+    using group = costs_group;
+    static constexpr std::string_view question = "How fast is adjacency answered?";
+};
+/// Whether two vertices are adjacent is answered in constant time, and a vertex's neighbours in a part are a row of bits,
+/// so that rows are intersected a word at a time (cliques in a k-partite graph).
+struct constant_adjacency : any_adjacency
+{
+    static constexpr auto value = adjacency::constant_adjacency;
+    static constexpr std::string_view name = "constant_adjacency";
+    static constexpr std::string_view promise = "";
+    static constexpr std::string_view description =
+        "Adjacency in constant time, and a vertex's neighbours in a part as a row of bits, intersected a word at a time.";
+    static constexpr std::array<std::string_view, 3> phrases { "adjacency matrix", "bit rows", "clique search" };
+    static constexpr answer_says says { .costly = true };
+};
+
+template<>
+struct tags_of<adjacency>
+{
+    using type = boost::mp11::mp_list<any_adjacency, constant_adjacency>;
+};
+
+enum class endpoints : std::uint8_t
+{
+    none,
+    constant_endpoints,
+};
+
+struct any_endpoints : tag_defaults
+{
+    using root = any_endpoints;
+    static constexpr auto value = endpoints::none;
+    static constexpr std::string_view name = "any_endpoints";
+    using group = costs_group;
+    static constexpr std::string_view question = "How fast is an edge's source found from its number?";
+};
+/// An edge's source is read from its number in constant time: a frozen graph keeps a source per edge instead of
+/// searching its rows.
+struct constant_endpoints : any_endpoints
+{
+    static constexpr auto value = endpoints::constant_endpoints;
+    static constexpr std::string_view name = "constant_endpoints";
+    static constexpr std::string_view promise = "";
+    static constexpr std::string_view description = "An edge's source from its number in constant time, at a source per edge.";
+    static constexpr std::array<std::string_view, 3> phrases { "source of an edge", "edge endpoints", "edge to vertex" };
+    static constexpr answer_says says { .costly = true };
+};
+
+template<>
+struct tags_of<endpoints>
+{
+    using type = boost::mp11::mp_list<any_endpoints, constant_endpoints>;
+};
+
 enum class shape : std::uint8_t
 {
     none,

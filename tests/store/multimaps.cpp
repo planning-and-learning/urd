@@ -172,13 +172,6 @@ TEST(Graph, GivesSuccessorsAndPredecessors)
     EXPECT_TRUE(std::ranges::equal(graph.keys(1), std::vector<int> { 0, 2 }));
     EXPECT_TRUE(std::ranges::equal(graph.keys(2), std::vector<int> { 1, 0 }));
     EXPECT_TRUE(values_of(graph, 3).empty() && graph.keys(3).empty());
-    // The container's assign rebuilds both directions.
-    auto rebuilt = urd::repr::BidirectionalCsr<int, int>(edges.begin(), edges.end());
-    const auto fewer = std::vector<std::pair<int, int>> { { 1, 0 } };
-    rebuilt.assign(fewer.begin(), fewer.end());
-    EXPECT_TRUE(std::ranges::equal(values_of(rebuilt, 1), std::vector<int> { 0 }));
-    EXPECT_TRUE(std::ranges::equal(rebuilt.keys(0), std::vector<int> { 1 }));
-    EXPECT_TRUE(rebuilt.keys(1).empty() && rebuilt.keys(2).empty());
 }
 
 // Frozen rows rebuild in their arrays by assign, a sequence's; a Store of another kind is built anew, with the same result.

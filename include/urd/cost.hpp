@@ -237,6 +237,16 @@ struct scope
     static constexpr std::string_view name = "scope";
     static constexpr std::string_view description = "push_scope, changes, pop_scope";
 };
+struct adjacency
+{
+    static constexpr std::string_view name = "adjacency";
+    static constexpr std::string_view description = "a graph's adjacent(u, v) and edge(u, v)";
+};
+struct endpoints
+{
+    static constexpr std::string_view name = "endpoints";
+    static constexpr std::string_view description = "a graph's source(e) of an edge's number";
+};
 
 }  // namespace operation
 
@@ -304,6 +314,7 @@ inline constexpr cost log_na { .grows = growth::log, .amortized = true };
 inline constexpr cost lin_n { .grows = growth::linear };
 inline constexpr cost lin_keys { .grows = growth::linear, .of = quantity::keys };
 inline constexpr cost lin_capacity { .grows = growth::linear, .of = quantity::capacity };
+inline constexpr cost log_row { .grows = growth::log, .of = quantity::row };
 inline constexpr cost lin_row { .grows = growth::linear, .of = quantity::row };
 inline constexpr cost lin_row_e { .grows = growth::linear, .of = quantity::row, .expected = true };
 inline constexpr cost lin_changes { .grows = growth::linear, .of = quantity::changes };

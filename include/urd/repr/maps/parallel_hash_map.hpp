@@ -28,12 +28,39 @@ namespace urd::repr
 /// A gtl sharded table whose update and read run under the lock of the key's shard: safe while other threads do the
 /// same.
 template<typename Table>
-class LockedByKey : public Table
+class LockedByKey : private Table
 {
 public:
     using Table::Table;
+    // What the facets reach of gtl's table, and nothing else of it (tests/exposure.py, rule F7).
+    using Table::at;
+    using Table::begin;
+    using Table::clear;
+    using Table::contains;
+    using Table::count;
+    using Table::emplace;
+    using Table::empty;
+    using Table::end;
+    using Table::equal_range;
+    using Table::erase;
+    using Table::find;
+    using Table::insert;
+    using Table::insert_or_assign;
+    using typename Table::const_iterator;
+    using typename Table::const_reference;
+    using typename Table::difference_type;
+    using typename Table::iterator;
     using typename Table::key_type;
     using typename Table::mapped_type;
+    using typename Table::reference;
+    using typename Table::size_type;
+    using typename Table::value_type;
+    using Table::operator[];
+    using Table::reserve;
+    using Table::size;
+    using Table::try_emplace;
+
+    friend bool operator==(const LockedByKey& lhs, const LockedByKey& rhs) { return static_cast<const Table&>(lhs) == static_cast<const Table&>(rhs); }
 
     /// update(value, held) under the key's lock; a new value is built and updated before it goes in, still under it.
     template<typename Update>
@@ -75,6 +102,12 @@ public:
         this->if_contains(key, [&f, &result](const auto& entry) { result = Result(f(entry.second)); });
         return result;
     }
+
+private:
+    /// Its memory is gtl's table's (urd::memory_of, beside the maps below).
+    template<typename Held>
+    friend struct urd::memory_of;
+    [[nodiscard]] const Table& table() const noexcept { return *this; }
 };
 
 template<typename K, typename V>
@@ -110,12 +143,12 @@ public:
 template<typename K, typename V>
 struct urd::memory_of<urd::repr::ParallelHashMap<K, V>>
 {
-    static std::size_t bytes(const repr::ParallelHashMap<K, V>& held) { return detail::sharded_table_bytes(held); }
+    static std::size_t bytes(const repr::ParallelHashMap<K, V>& held) { return detail::sharded_table_bytes(held.table()); }
 };
 template<typename K, typename V>
 struct urd::memory_of<urd::repr::ParallelNodeHashMap<K, V>>
 {
-    static std::size_t bytes(const repr::ParallelNodeHashMap<K, V>& held) { return detail::sharded_table_bytes(held); }
+    static std::size_t bytes(const repr::ParallelNodeHashMap<K, V>& held) { return detail::sharded_table_bytes(held.table()); }
 };
 
 namespace urd::detail

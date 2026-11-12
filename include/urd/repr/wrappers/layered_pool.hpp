@@ -27,6 +27,11 @@
 #include <variant>
 #include <vector>
 
+namespace urd::testing
+{
+struct inspect;
+}  // namespace urd::testing
+
 namespace urd::repr
 {
 
@@ -96,12 +101,22 @@ public:
         m_parent = parent;
         m_base = parent == nullptr ? 0 : static_cast<std::uint32_t>(parent->size());
     }
+
+private:
+    // Read by tests (urd::testing::inspect), not by a Store.
+    friend struct urd::testing::inspect;
     [[nodiscard]] const LayeredPool* parent() const noexcept { return m_parent; }
+
+public:
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] size_type base() const noexcept { return m_base; }
+
+private:
+    // Read by its own inserts.
     /// Whether the parent grew after the branch, which it must not (an insert of a new element throws std::logic_error).
     [[nodiscard]] bool parent_grew() const noexcept { return m_parent != nullptr && m_parent->size() > m_base; }
 
+public:
     // NOLINTNEXTLINE(bugprone-exception-escape): the own pool counts an indexed set's elements; an empty set's shared storage is made without allocating
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
     /// The bit width its own pool was built with (urd::bit).

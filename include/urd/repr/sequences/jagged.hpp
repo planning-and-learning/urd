@@ -129,6 +129,11 @@ public:
     {
         m_touched.reset(size(), [this](size_type from, size_type to) { reset_rows(from, to); });
     }
+
+private:
+    // Reached by the Jagged that holds these rows (its reset), not by a Store.
+    template<typename, bool>
+    friend class Jagged;
     /// Rows [from, to) back to their defaults.
     void reset_rows(size_type from, size_type to)
         requires writable
@@ -141,6 +146,7 @@ public:
             m_data.reset_rows(m_offsets[from], m_offsets[to]);
     }
 
+public:
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
     [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
     [[nodiscard]] iterator begin()
@@ -150,6 +156,7 @@ public:
         requires writable
     { return iterator(this, size()); }
     [[nodiscard]] size_type size() const { return m_offsets.size() - 1; }
+    [[nodiscard]] bool empty() const { return size() == 0; }
 
     [[nodiscard]] const_row operator[](size_type pos) const { return row_at<const_row>(*this, pos); }
     [[nodiscard]] row operator[](size_type pos)
