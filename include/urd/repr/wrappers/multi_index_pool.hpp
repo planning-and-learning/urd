@@ -289,10 +289,17 @@ private:
         return inserted;
     }
     /// The value of column `column` of the row `at`, read in place.
-    [[nodiscard]] element column_of(handle_value at, std::size_t column) const { return std::ranges::begin(m_rows.at(handle_type(at)))[column]; }
+    /// Whether the key columns of the row `at`, read in place, hold `key`.
+    template<typename Key>
+    [[nodiscard]] bool has_key(const Index& index, handle_value at, const Key& key) const
+    {
+        const auto row = m_rows.at(handle_type(at));
+        const auto columns = std::ranges::begin(row);
+        return std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return element(columns[column]); }), key);
+    }
     /// The group of index whose key is `key`, else none.
     template<typename Key>
-    handle_value find_group(const Index& index, const Key& key) const
+    [[nodiscard]] handle_value find_group(const Index& index, const Key& key) const
     {
         const auto hash = hash_range(key);
         const auto found = index.by_hash.find(hash);
@@ -300,8 +307,7 @@ private:
             return none;
         for (auto group = found->second; group != none; group = index.groups[group].next_alike)
         {
-            const auto first = index.groups[group].first;
-            if (std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return column_of(first, column); }), key))
+            if (has_key(index, index.groups[group].first, key))
                 return group;
         }
         return none;
@@ -309,9 +315,11 @@ private:
     /// Links the row `at`, the last one, into its key's group (made where new).
     void link(Index& index, handle_value at)
     {
+        const auto row = m_rows.at(handle_type(at));
+        const auto columns = std::ranges::begin(row);
         m_key.clear();
         for (const auto column : index.columns)
-            m_key.push_back(column_of(at, column));
+            m_key.push_back(element(columns[column]));
         auto group = find_group(index, m_key);
         if (group == none)
         {
