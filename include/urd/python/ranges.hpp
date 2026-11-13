@@ -9,7 +9,7 @@
 
 #pragma once
 
-// Ranges read through a context (urd::resolve) convert to Python lists.
+// Views (spans, ranges read through a context: urd::resolve) convert to Python lists.
 
 #include <concepts>
 #include <nanobind/nanobind.h>
@@ -22,46 +22,30 @@
 NAMESPACE_BEGIN(NB_NAMESPACE)
 NAMESPACE_BEGIN(detail)
 
-template<typename Caster, typename T>
-handle sequence_view_from_cpp(T&& src, rv_policy policy, cleanup_list* cleanup)
+/// The elements of `range` (a view, copied: a filter is iterable only when it is not const) as a list.
+template<typename Caster, typename R>
+handle sequence_view_from_cpp(R range, rv_policy policy, cleanup_list* cleanup)
 {
-    object ret = steal(PyList_New(static_cast<Py_ssize_t>(src.size())));
-
-    if (ret.is_valid())
+    object result = steal(PyList_New(0));
+    if (!result.is_valid())
+        return {};
+    for (auto&& value : range)
     {
-        Py_ssize_t index = 0;
-
-        for (auto&& value : std::forward<T>(src))
-        {
-            handle h = Caster::from_cpp(forward_like_<T>(value), policy, cleanup);
-
-            if (!h.is_valid())
-            {
-                ret.reset();
-                break;
-            }
-
-            NB_LIST_SET_ITEM(ret.ptr(), index++, h.ptr());
-        }
+        const object item = steal(Caster::from_cpp(std::forward<decltype(value)>(value), policy, cleanup));
+        if (!item.is_valid() || PyList_Append(result.ptr(), item.ptr()) != 0)
+            return {};
     }
-
-    return ret.release();
+    return result.release();
 }
 
-// A range read through a context (urd::resolve: transformed or borrowed, never owning) as a list of its elements.
-// Adapted from nanobind/stl/detail/nb_list.h.
-template<typename T>
-inline constexpr bool is_std_span_v = false;
-template<typename T, std::size_t Extent>
-inline constexpr bool is_std_span_v<std::span<T, Extent>> = true;
-
-// Spans are bound as classes where they are exposed (nb::class_<std::span<...>>), so they are left to those bindings.
+// A view (a span, a range read through a context: transformed, filtered or borrowed, never owning) as a list of its
+// elements. Adapted from nanobind/stl/detail/nb_list.h.
 template<typename R>
-    requires std::ranges::view<R> && std::ranges::sized_range<const R> && (!is_std_span_v<R>)
+    requires std::ranges::view<R> && std::ranges::input_range<R>
 struct type_caster<R, int>
 {
 private:
-    using Entry = std::remove_cvref_t<std::ranges::range_reference_t<const R>>;
+    using Entry = std::remove_cvref_t<std::ranges::range_reference_t<R>>;
     using Caster = make_caster<Entry>;
 
 public:
@@ -72,7 +56,7 @@ public:
 
     template<typename T>
     static handle from_cpp(T&& src, rv_policy policy, cleanup_list* cleanup)
-    { return sequence_view_from_cpp<Caster>(std::forward<T>(src), policy, cleanup); }
+    { return sequence_view_from_cpp<Caster>(R(std::forward<T>(src)), policy, cleanup); }
 };
 
 NAMESPACE_END(detail)

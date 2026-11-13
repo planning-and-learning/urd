@@ -44,7 +44,7 @@ public:
 private:
     [[nodiscard]] auto rows() const
     {
-        return urd::transform(m_handles, [pool = m_pool](handle_type handle) { return pool->at(handle); });
+        return urd::transform(m_handles, m_pool, [](const Pool* pool, handle_type handle) { return pool->at(handle); });
     }
 
     const Pool* m_pool;

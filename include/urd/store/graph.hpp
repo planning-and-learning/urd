@@ -1,11 +1,13 @@
 #pragma once
 
-// A graph's interface (urd::graph<V, E>, urd/kinds.hpp): its vertices and neighbours (graph), adding and removing
-// (graph_building, graph_removal), its edges by number (graph_edges), and its parts (graph_parts). Each member forwards to one member of the container (rules
+// A graph's interface (urd::graph<V, E, D>, urd/kinds.hpp): its vertices, their data and neighbours (graph), adding
+// and removing (graph_building, graph_removal), its edges by number with their data (graph_edges), and its parts
+// (graph_parts). Each member forwards to one member of the container (rules
 // F1, F6).
 
 #include "urd/config.hpp"
 #include "urd/cost.hpp"
+#include "urd/graph_types.hpp"
 #include "urd/store/types.hpp"
 
 #include <cstddef>
@@ -41,6 +43,8 @@ public:
     [[nodiscard]] size_type in_degree(vertex v) const
         requires(has<S, bidirectional> || has<S, undirected>)
     { return representation().in_degree(v); }
+    /// The data of `v` (D: std::monostate where it carries none).
+    [[nodiscard]] decltype(auto) vertex_value(vertex v) const { return representation().vertex_value(v); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
@@ -53,12 +57,13 @@ class graph_building
     using vertex = typename S::vertex_type;
 
 public:
-    /// A new vertex, without edges; the vertices of a partitioned graph, or of rows of bits, are fixed when it is
-    /// built.
-    vertex add_vertex()
+    /// A new vertex, without edges, with its data (left out where it is a unit); the vertices of a partitioned graph, or
+    /// of rows of bits, are fixed when it is built.
+    template<typename... Value>
+    vertex add_vertex(const Value&... value)
         requires(!has<S, partitioned> && !has<S, constant_adjacency>)
-    { return representation().add_vertex(); }
-    /// A new edge from `u` to `v`, with its data where the graph has some: its number, or for rows of bits whether
+    { return representation().add_vertex(value...); }
+    /// A new edge from `u` to `v`, with its data (left out where it is a unit): its number, or for rows of bits whether
     /// it is new.
     template<typename... Value>
     decltype(auto) add_edge(vertex u, vertex v, const Value&... value)
@@ -87,8 +92,9 @@ private:
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
-/// Edges by number, each handed out with its endpoints and its data (urd::graph_edge): where the graph is positional or
-/// has edge data.
+/// Edges by number: an edge's number stays the one it was given (as added, or its position in the edges a frozen graph
+/// is built from), and its endpoints and data are read by it. Where the graph keeps edge lists (not rows of bits): an
+/// incidence and an edge list graph (urd/graphs.hpp).
 template<typename Derived, typename R, typename S>
 class graph_edges
 {
@@ -96,11 +102,11 @@ class graph_edges
 
 public:
     [[nodiscard]] std::size_t num_edges() const { return representation().num_edges(); }
-    /// Every edge, by number.
+    /// The numbers of every edge, in increasing order.
     [[nodiscard]] auto edges() const { return representation().edges(); }
-    /// The edges leaving `u`, by target.
+    /// The numbers of the edges leaving `u`.
     [[nodiscard]] auto out_edges(vertex u) const { return representation().out_edges(u); }
-    /// The edges entering `v`.
+    /// The numbers of the edges entering `v`.
     [[nodiscard]] auto in_edges(vertex v) const
         requires has<S, bidirectional>
     { return representation().in_edges(v); }
@@ -112,10 +118,9 @@ public:
     { return representation().edges_between(u, v); }
     [[nodiscard]] vertex source(std::size_t e) const { return representation().source(e); }
     [[nodiscard]] vertex target(std::size_t e) const { return representation().target(e); }
-    /// The data of the edge numbered `e`.
-    [[nodiscard]] decltype(auto) operator[](std::size_t e) const
-        requires(!std::is_void_v<typename S::edge_value_type>)
-    { return representation().value(e); }
+    /// The data of the edge numbered `e` (E: std::monostate where it carries none); operator[] reads it too.
+    [[nodiscard]] decltype(auto) edge_value(std::size_t e) const { return representation().edge_value(e); }
+    [[nodiscard]] decltype(auto) operator[](std::size_t e) const { return representation().edge_value(e); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
@@ -175,13 +180,13 @@ struct facet_operations<facet::graph_removal>
     using offered = operation_list<operation::erase>;
 };
 
-/// Edges are numbered where the request asks for positions or gives edge data.
+/// Edges are numbered where the graph keeps edge lists: everywhere but in rows of bits (constant_adjacency).
 template<>
 struct facet_condition<facet::graph_edges> : facet_defaults
 {
     template<typename R, typename S>
     static constexpr bool on()
-    { return has<S, positional> || !std::is_void_v<typename S::edge_value_type>; }
+    { return !has<S, constant_adjacency>; }
 };
 template<>
 struct facet_operations<facet::graph_edges>

@@ -68,6 +68,12 @@ namespace urd::detail::facet
 
 /// A pool: rows go in, handles come out; equal rows get equal handles, so a handle stands for its row (a state, a
 /// fact set) in comparisons and as a key. The rows come back by handle.
+/// Whether a pool of S erases rows: erasing moves the last row into the hole, so the handles must be positions (no
+/// structural_sharing) that no other thread reads as they move (no concurrent) and no layer over this one continues
+/// (no layered).
+template<typename S>
+inline constexpr bool pool_erases = shrinks<S> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
+
 template<typename Derived, typename R, typename S>
 class pool
 {
@@ -76,9 +82,7 @@ class pool
     /// Rows that are sequences take writes by position.
     static constexpr bool sequence_rows = appends<typename held_as<typename S::element_type>::kind>;
 
-    /// Erasing moves the last row into the hole: the handles must be positions (no structural_sharing) that no other
-    /// thread reads as they move (no concurrent) and no layer over this one continues (no layered).
-    static constexpr bool erasable = shrinks<S> && !has<S, structural_sharing> && !has<S, concurrent> && !has<S, layered>;
+    static constexpr bool erasable = pool_erases<S>;
 
 public:
     using handle_type = typename R::handle_type;

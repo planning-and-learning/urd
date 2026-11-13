@@ -5,6 +5,7 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/hash.hpp"
+#include "urd/elements/view.hpp"
 
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
@@ -72,6 +73,26 @@ void bind_index(nb::module_& m, const std::string& name)
     add_comparison(cls);
     cls.def("__hash__", [](const T& i) { return static_cast<typename T::value_type>(i.value); })
         .def("__repr__", [name](const T& i) { return name + "(" + std::to_string(static_cast<typename T::value_type>(i.value)) + ")"; });
+}
+
+/// The fields of record Data (urd::Fields), each a read/write attribute under its name, and an __init__ from their
+/// values, in order.
+template<typename Data>
+    requires HasFields<Data>
+void bind_fields(nb::class_<Data>& cls)
+{
+    for_each_field<Data>([&]<typename F>() { cls.def_rw(F::c_name, F::member); });
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { cls.def(nb::init<member_type_t<Fs::member>...>(), nb::arg(Fs::c_name)...); }(Data::fields());
+}
+
+/// A view's getters, get_<name> for each field of its record: the field resolved through the view's context.
+template<typename View>
+    requires HasFields<record_of<View>>
+void bind_field_getters(nb::class_<View>& cls)
+{
+    for_each_field<record_of<View>>(
+        [&]<typename F>()
+        { cls.def(F::template prefixed<"get_">.data(), [](const View& view) -> decltype(auto) { return view.template member<F::member>(); }); });
 }
 
 /// cls.def(init_from_views<Args...>(), names...): an __init__ taking Args as Python passes them (views, readouts,

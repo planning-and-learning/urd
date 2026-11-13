@@ -61,6 +61,36 @@ interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a
        static constexpr auto cista_members() noexcept { return urd::Members<&Predicate::name, &Predicate::arity> {}; }
    };
 
+Fields
+------
+
+A record may name its fields once: each a public name and the data member that holds it, in data order. Its
+identifying members are then their members, and whatever reads a record field by field (serialization, printing,
+Python bindings, a walk over its children) iterates the declaration instead of asking for each member, so that a field
+is never left out.
+
+.. code-block:: cpp
+
+   struct Atom
+   {
+       urd::index<Predicate> predicate;
+       urd::flat_vector<urd::index<Object>> objects;
+       static constexpr auto fields() noexcept
+       {
+           return urd::Fields<urd::field<"predicate", &Atom::predicate>, urd::field<"objects", &Atom::objects>> {};
+       }
+       static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+   };
+
+.. cpp:struct:: template<fixed_string Name, auto Member> field
+
+   ``name`` (a ``std::string_view``, null-terminated), ``member``, and ``prefixed<"get_">``, the name after a prefix.
+
+.. cpp:function:: template<HasFields T, typename F> constexpr void for_each_field(F&& f)
+
+   ``f.template operator()<Field>()`` for each field, in order. A field is read through a view as
+   ``view.template member<Field::member>()``: resolved through the view's context, like any member.
+
 Flat containers
 ---------------
 

@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include "urd/elements/less.hpp"
+#include "urd/store/pool.hpp"
 #include "urd/traits.hpp"
 
 #include <algorithm>
@@ -72,8 +73,11 @@ std::optional<std::string> run_pool(P& pool, unsigned seed, int steps)
             }
         }
         // Now and then a row erased, where the pool erases: the last row moves into its handle. The model drops every
-        // entry of the erased row and gives the moved row's entries the erased handle.
-        if constexpr (requires { pool.erase(handles.front()); })
+        // entry of the erased row and gives the moved row's entries the erased handle. Where the request promises
+        // erase (urd::detail::facet::pool_erases), the pool has it: a pool that lost it fails here, not untested.
+        constexpr bool erases = facet::pool_erases<Traits>;
+        static_assert(erases == requires { pool.erase(handles.front()); }, "the pool erases exactly where its request promises it");
+        if constexpr (erases)
         {
             if (!cleared && !rows.empty() && step % 7 == 6)
             {

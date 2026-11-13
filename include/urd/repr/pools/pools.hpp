@@ -361,11 +361,7 @@ public:
         Form::read(stored(handle), out);
     }
 
-    void reserve(size_type count)
-    {
-        if constexpr (requires { m_rows.reserve(count); })
-            m_rows.reserve(count);
-    }
+    void reserve(size_type count) { m_rows.reserve(count); }
     void clear() { m_rows.clear(); }
     /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
     /// Gives the handle the moved row had, or none where `handle` was the last. Views of the moved row stay valid.

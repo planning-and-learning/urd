@@ -14,6 +14,11 @@
 namespace urd
 {
 
+/// A type with one value (std::monostate, any empty type): regular void. Its value may be left out, since nothing is
+/// lost: a graph's data where it carries none, a storage's parameter where it takes none.
+template<typename T>
+concept unit = std::is_empty_v<T> && std::default_initializable<T>;
+
 // What a container needs of its elements to keep its properties. A container declares a property only for
 // elements that allow it: a tree is sorted only for orderable keys. urd::Hash, urd::EqualTo and urd::Less
 // (include/urd/elements/) cover numbers, strings and the standard's composites, and any type that names its

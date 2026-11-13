@@ -12,6 +12,7 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -20,9 +21,9 @@ namespace urd::repr
 {
 
 /// A graph that grows and shrinks (port of runir's DynamicGraph): edges numbered as added, each vertex the numbers of
-/// the edges that leave it and of those that enter it. A removed edge or vertex leaves a hole; numbers are never
-/// reused.
-template<typename V, typename E>
+/// the edges that leave it and of those that enter it, each edge and vertex its data where it has some. A removed edge
+/// or vertex leaves a hole; numbers are never reused.
+template<typename V, typename E, typename D>
 class AdjacencyLists
 {
 public:
@@ -31,20 +32,32 @@ public:
 
     AdjacencyLists() = default;
 
-    /// From edges (urd::graph_input_edge), with one vertex past every endpoint.
+    /// From edges (urd::input_edge_of), with one vertex past every endpoint, where its vertex data is a unit.
     template<std::input_iterator InputIt>
-        requires std::convertible_to<std::iter_reference_t<InputIt>, const graph_input_edge<V, E>&>
+        requires input_edge_of<std::iter_value_t<InputIt>, V, E> && unit<D>
     AdjacencyLists(InputIt first, InputIt last)
     {
         for (; first != last; ++first)
-            add_input(*first);
+        {
+            const auto& input = *first;
+            while (m_present.size() <= std::max(index(std::get<0>(input)), index(std::get<1>(input))))
+                add_vertex();
+            add_input(input);
+        }
     }
-    explicit AdjacencyLists(const graph_data<graph_input_edge<V, E>>& data)
+    template<input_edge_of<V, E> Edge>
+    explicit AdjacencyLists(const graph_data<Edge, D>& data)
     {
-        while (m_present.size() < data.vertices)
-            add_vertex();
+        auto values = graphs::Values<D>();
+        values.assign(data.vertices, data.vertex_values);
+        for (std::size_t at = 0; at < data.vertices; ++at)
+            add_vertex(values[at]);
         for (const auto& each : data.edges)
+        {
+            if (std::max(index(std::get<0>(each)), index(std::get<1>(each))) >= data.vertices)
+                throw std::out_of_range("urd::graph: an edge's endpoint past the vertices");
             add_input(each);
+        }
     }
 
     [[nodiscard]] size_type num_vertices() const noexcept { return m_num_vertices; }
@@ -65,22 +78,24 @@ public:
     }
     [[nodiscard]] size_type in_degree(V v) const { return m_in[index(v)].size(); }
 
-    V add_vertex()
+    /// A new vertex with its data.
+    V add_vertex(const D& value)
     {
-        m_present.push_back(true);
-        m_out.emplace_back();
-        m_in.emplace_back();
-        ++m_num_vertices;
-        return index_of<V>::from_index(m_present.size() - 1);
+        m_vertex_values.push(value);
+        return add_slot();
     }
-    template<typename... Value>
-    std::size_t add_edge(V u, V v, const Value&... value)
+    /// A new vertex, where its data is a unit.
+    V add_vertex()
+        requires unit<D>
+    { return add_vertex(D {}); }
+    /// A new edge from `u` to `v` with its data: its number.
+    std::size_t add_edge(V u, V v, const E& value)
     {
         check_vertex(u);
         check_vertex(v);
         const auto e = m_edges.size();
         m_edges.push_back(Edge { u, v, true });
-        m_values.push(value...);
+        m_values.push(value);
         m_out[index(u)].push_back(e);
         m_in[index(v)].push_back(e);
         ++m_num_edges;
@@ -109,6 +124,7 @@ public:
     {
         m_edges.clear();
         m_values.clear();
+        m_vertex_values.clear();
         m_out.clear();
         m_in.clear();
         m_present.clear();
@@ -117,19 +133,15 @@ public:
     }
 
     [[nodiscard]] size_type num_edges() const noexcept { return m_num_edges; }
+    /// The numbers of the edges there are, in increasing order.
     [[nodiscard]] auto edges() const
     {
-        return std::views::iota(std::size_t { 0 }, m_edges.size()) | std::views::filter([this](std::size_t e) { return m_edges[e].alive; })
-               | std::views::transform([this](std::size_t e) { return edge_at(e); });
+        return std::views::iota(std::size_t { 0 }, m_edges.size()) | std::views::filter([this](std::size_t e) { return m_edges[e].alive; });
     }
-    [[nodiscard]] auto out_edges(V u) const
-    {
-        return m_out[index(u)] | std::views::transform([this](std::size_t e) { return edge_at(e); });
-    }
-    [[nodiscard]] auto in_edges(V v) const
-    {
-        return m_in[index(v)] | std::views::transform([this](std::size_t e) { return edge_at(e); });
-    }
+    /// The numbers of the edges leaving `u`, as added.
+    [[nodiscard]] std::span<const std::size_t> out_edges(V u) const { return m_out[index(u)]; }
+    /// The numbers of the edges entering `v`, as added.
+    [[nodiscard]] std::span<const std::size_t> in_edges(V v) const { return m_in[index(v)]; }
     [[nodiscard]] std::optional<std::size_t> edge(V u, V v) const
     {
         const auto& row = m_out[index(u)];
@@ -142,9 +154,12 @@ public:
     }
     [[nodiscard]] V source(std::size_t e) const { return m_edges[e].source; }
     [[nodiscard]] V target(std::size_t e) const { return m_edges[e].target; }
-    [[nodiscard]] const auto& value(std::size_t e) const
-        requires(!std::is_void_v<E>)
-    { return m_values[e]; }
+    /// A new edge from `u` to `v`, where its data is a unit: its number.
+    std::size_t add_edge(V u, V v)
+        requires unit<E>
+    { return add_edge(u, v, E {}); }
+    [[nodiscard]] const E& edge_value(std::size_t e) const { return m_values[e]; }
+    [[nodiscard]] const D& vertex_value(V v) const { return m_vertex_values[index(v)]; }
 
     friend bool operator==(const AdjacencyLists&, const AdjacencyLists&) = default;
 
@@ -164,28 +179,28 @@ private:
         if (index(v) >= m_present.size() || !m_present[index(v)])
             throw std::out_of_range("urd::graph: a vertex that is not there");
     }
-    /// Adds an edge as given, with the vertices up to its endpoints.
-    void add_input(const graph_input_edge<V, E>& input)
+    V add_slot()
     {
-        const auto last = std::max(index(std::get<0>(input)), index(std::get<1>(input)));
-        while (m_present.size() <= last)
-            add_vertex();
+        m_present.push_back(true);
+        m_out.emplace_back();
+        m_in.emplace_back();
+        ++m_num_vertices;
+        return index_of<V>::from_index(m_present.size() - 1);
+    }
+    /// Adds an edge as given, between vertices it has.
+    template<typename Input>
+    void add_input(const Input& input)
+    {
         const auto e = m_edges.size();
         m_edges.push_back(Edge { std::get<0>(input), std::get<1>(input), true });
-        m_values.push_input(input);
+        m_values.push(input_value<E>(input));
         m_out[index(std::get<0>(input))].push_back(e);
         m_in[index(std::get<1>(input))].push_back(e);
         ++m_num_edges;
     }
-    [[nodiscard]] graph_edge<V, E> edge_at(std::size_t e) const
-        requires std::is_void_v<E>
-    { return { m_edges[e].source, m_edges[e].target, e }; }
-    [[nodiscard]] graph_edge<V, E> edge_at(std::size_t e) const
-        requires(!std::is_void_v<E>)
-    { return { m_edges[e].source, m_edges[e].target, e, m_values[e] }; }
-
     std::vector<Edge> m_edges;
-    graphs::EdgeValues<E> m_values;
+    graphs::Values<E> m_values;
+    graphs::Values<D> m_vertex_values;
     std::vector<std::vector<std::size_t>> m_out;
     std::vector<std::vector<std::size_t>> m_in;
     std::vector<bool> m_present;
@@ -195,7 +210,14 @@ private:
 public:
     /// The members it owns memory through (urd::memory_of).
     static constexpr auto memory_members() noexcept
-    { return Members<&AdjacencyLists::m_edges, &AdjacencyLists::m_values, &AdjacencyLists::m_out, &AdjacencyLists::m_in, &AdjacencyLists::m_present> {}; }
+    {
+        return Members<&AdjacencyLists::m_edges,
+                       &AdjacencyLists::m_values,
+                       &AdjacencyLists::m_vertex_values,
+                       &AdjacencyLists::m_out,
+                       &AdjacencyLists::m_in,
+                       &AdjacencyLists::m_present> {};
+    }
 };
 
 }  // namespace urd::repr
@@ -211,7 +233,7 @@ namespace urd::detail
 template<typename S>
 struct representation_of<adjacency_lists_decl, S>
 {
-    using type = repr::AdjacencyLists<typename S::vertex_type, typename S::edge_value_type>;
+    using type = repr::AdjacencyLists<typename S::vertex_type, typename S::edge_value_type, typename S::vertex_value_type>;
 };
 
 }  // namespace urd::detail

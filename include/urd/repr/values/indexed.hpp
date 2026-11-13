@@ -272,19 +272,16 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
+    /// Where the storage is built with nothing (a parameter of a type with one value, urd::unit, left out).
     IndexedSet()
-        requires std::same_as<Parameter, std::monostate>
+        requires unit<Parameter>
     = default;
     /// Rows stored as `parameter` says: elements each in a bit width (a pool of urd::bit), or columns by their widths (a
     /// pool of urd::by_column_widths).
-    explicit IndexedSet(const Parameter& parameter)
-        requires(!std::same_as<Parameter, std::monostate>)
-        : m_parameter(parameter)
-    {
-    }
+    explicit IndexedSet(const Parameter& parameter) : m_parameter(parameter) {}
 
     template<std::input_iterator InputIt>
-        requires std::same_as<Parameter, std::monostate>
+        requires unit<Parameter>
     IndexedSet(InputIt first, InputIt last)
     { insert(first, last); }
 
@@ -454,9 +451,7 @@ private:
     /// The element, or a row's span.
     [[nodiscard]] decltype(auto) operator[](size_type position) const { return elements()[position]; }
     /// What the rows are stored by: their elements' bit width (BitCodec), or their column widths (SchemaCodec).
-    [[nodiscard]] const Parameter& built_with() const noexcept
-        requires(!std::same_as<Parameter, std::monostate>)
-    { return m_parameter; }
+    [[nodiscard]] const Parameter& built_with() const noexcept { return m_parameter; }
     /// The position of `element`, or none. The lookup for a set threads insert into: an iterator from find compared
     /// with end() races with the size, which another thread's insert moves between the two calls.
     [[nodiscard]] std::optional<size_type> position(const T& element) const { return position_from(lookup(element)); }
@@ -541,7 +536,7 @@ private:
     template<typename U>
     std::pair<iterator, bool> inserted(U&& element, hash_t hash)
     {
-        if constexpr (requires(Elements& rows) { rows.check(element); })
+        if constexpr (Rows)  // a row storage refuses a row that does not fit (check); other storages hold any element
             writable().check(element);
         return appended(prehashed<std::remove_cvref_t<U>> { element, hash }, [&](Index /*position*/) -> decltype(auto) { return std::forward<U>(element); });
     }
@@ -571,10 +566,11 @@ private:
 
         [[nodiscard]] static Elements make([[maybe_unused]] const Parameter& parameter)
         {
-            if constexpr (std::same_as<Parameter, std::monostate>)
-                return Elements();
-            else
+            // A storage without a parameter of its own is built with nothing: its parameter is the unit left out.
+            if constexpr (std::constructible_from<Elements, const Parameter&>)
                 return Elements(parameter);
+            else
+                return Elements();
         }
 
         Elements elements;

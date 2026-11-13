@@ -222,7 +222,8 @@ struct urd::data<Item>
     int weight = 0;
     urd::index<Owner> owner;
     static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::owner> {}; }
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::weight, &data::owner> {}; }
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>, urd::field<"owner", &data::owner>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 template<>
 struct urd::data<Bare>
@@ -368,6 +369,24 @@ TEST(View, ClearMembersKeepsBuffers)
     EXPECT_TRUE(builder.owner.is_none());
 }
 
+/// A record's fields: their names in order, their members as its identifying members, each read through a view.
+TEST(Fields, NameMembersInOrderReadThroughAView)
+{
+    using Data = urd::data<Item>;
+    static_assert(std::same_as<decltype(Data::identifying_members()), urd::Members<&Data::weight, &Data::owner>>);
+    auto items = Items {};
+    const auto owner = items.owners.index(items.owners.insert(Owner { "ada" }).first);
+    items.records.push_back(Data { .weight = 3, .owner = owner });
+    const auto item = items.view(urd::index<Item>(0));
+
+    auto names = std::vector<std::string_view>();
+    urd::for_each_field<Data>([&]<typename F>() { names.push_back(F::name); });
+    EXPECT_EQ(names, (std::vector<std::string_view> { "weight", "owner" }));
+    using OwnerField = urd::field<"owner", &Data::owner>;
+    EXPECT_EQ(item.member<OwnerField::member>().data().name, "ada");
+    EXPECT_STREQ(OwnerField::prefixed<"get_">.data(), "get_owner");
+}
+
 TEST(View, ResolvesMembersThroughItsContext)
 {
     const auto both = make_both();
@@ -508,14 +527,14 @@ TEST(TransformedRange, ItsIteratorsOutliveIt)
     EXPECT_THROW((void) shifted().at(3), std::out_of_range);
 }
 
-TEST(TransformedRange, TakesACapturingLambda)
+TEST(TransformedRange, TakesItsStateAsAContext)
 {
-    // A capturing lambda is neither default-constructible nor assignable; its iterators still outlive the range
-    // expression, holding their own copy of it.
+    // A capturing lambda is neither default-constructible nor assignable, as iterators must be: the state it would
+    // capture comes as a context instead, and the iterators, holding their own copy of it, outlive the range expression.
     const auto values = std::vector<int> { 1, 2, 3 };
-    auto offset = 10;  // not a constant, so that the lambdas must capture it
-    const auto shifted = [&values, offset] { return urd::transform(values, [offset](int value) { return value + offset; }); };
-    static_assert(!std::default_initializable<decltype([offset](int value) { return value + offset; })>);
+    auto offset = 10;  // not a constant, so that a lambda would have to capture it
+    const auto shifted = [&values, offset] { return urd::transform(values, offset, [](int by, int value) { return value + by; }); };
+    static_assert(!std::semiregular<decltype([offset](int value) { return value + offset; })>);
     auto begin = shifted().begin();
     const auto end = shifted().end();
     EXPECT_EQ(end - begin, 3);

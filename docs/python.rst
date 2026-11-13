@@ -31,5 +31,16 @@ Casters exist for the sequences (``sequence``, ``segmented``), the sets (``dense
 ``parallel_hash_set``, ``sparse_set``, ``std_set``, ``unordered_flat_set``) and the maps with one value per key
 (``flat_map``, ``index_map``, ``ordered_map``, ``parallel_hash_map``, ``std_map``, ``unordered_flat_map``). A multimap
 has none, since a ``dict`` holds one value per key; nor do the wrappers (recycling, scoped, change-logged), queues,
-pools and partitions. ``urd::python::castable<S>`` says whether a Store converts. The headers need nanobind; nothing
+pools and partitions. ``urd::python::castable<S>`` says whether a Store converts.
+
+Records and graphs are bound, not converted:
+
+- ``bind_fields(cls)`` (``urd/python/bindings.hpp``): a record's fields as read/write attributes, and an ``__init__``
+  from their values.
+- ``bind_field_getters(cls)``: a view's ``get_<name>`` for each field.
+- ``bind_graph(cls)`` (``urd/python/graphs.hpp``): a graph's members, as urd's graph concepts say it has them. Their
+  values go through nanobind's casters: ranges as lists (``urd/python/ranges.hpp``), a graph's data by reference,
+  ``None`` where it carries none (``std::monostate``).
+
+The tests ``tests/python/views.py`` and ``tests/python/graphs.py`` are built with the caster test. The headers need nanobind; nothing
 else in urd does. The test ``tests/python/casters.py`` is built where CMake finds nanobind (``-Dnanobind_DIR=...``).

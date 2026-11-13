@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace
@@ -41,11 +42,12 @@ using urd::undirected;
 using V = std::uint32_t;
 
 // What a request resolves to.
-static_assert(std::same_as<Store<graph<V>>::representation, urd::repr::AdjacencyLists<V, void>>);
-static_assert(std::same_as<Store<graph<V, int>, monotone>::representation, urd::repr::AdjacencyLists<V, int>>);
-static_assert(std::same_as<Store<graph<V>, frozen>::representation, urd::repr::CsrGraph<V, void, false, false>>);
-static_assert(std::same_as<Store<graph<V>, frozen, bidirectional>::representation, urd::repr::CsrGraph<V, void, true, false>>);
-static_assert(std::same_as<Store<graph<V>, frozen, constant_endpoints>::representation, urd::repr::CsrGraph<V, void, false, true>>);
+static_assert(std::same_as<Store<graph<V>>::representation, urd::repr::AdjacencyLists<V, std::monostate, std::monostate>>);
+static_assert(std::same_as<Store<graph<V, int>, monotone>::representation, urd::repr::AdjacencyLists<V, int, std::monostate>>);
+static_assert(std::same_as<Store<graph<V>, frozen>::representation, urd::repr::CsrGraph<V, std::monostate, std::monostate, false>>);
+static_assert(std::same_as<Store<graph<V>, frozen, bidirectional>::representation, urd::repr::CsrGraph<V, std::monostate, std::monostate, true>>);
+static_assert(std::same_as<Store<graph<V>, frozen, constant_endpoints>::representation, urd::repr::CsrGraph<V, std::monostate, std::monostate, false>>);
+static_assert(std::same_as<Store<graph<V, int, char>, frozen>::representation, urd::repr::CsrGraph<V, int, char, false>>);
 // Rows of bits: frozen, stored once; growing, a matrix; partitioned or not, directed, with in-rows, or undirected.
 static_assert(std::same_as<Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>::representation, urd::repr::BitRows<V, true, true, false>>);
 static_assert(std::same_as<Store<graph<V>, monotone, partitioned, undirected, constant_adjacency>::representation, urd::repr::BitMatrix<V, true, true, false>>);
@@ -54,7 +56,7 @@ static_assert(std::same_as<Store<graph<V>, frozen, constant_adjacency, bidirecti
 static_assert(std::same_as<Store<graph<V>, monotone, constant_adjacency, undirected>::representation, urd::repr::BitMatrix<V, false, true, false>>);
 
 // The interface follows the request: a frozen graph adds nothing, a monotone one removes nothing, edges have numbers
-// only where asked for (positional) or where they carry data, in-neighbours only where bidirectional.
+// wherever the graph keeps edge lists (not rows of bits), in-neighbours only where bidirectional.
 template<typename G>
 concept adds = requires(G g) { g.add_edge(V { 0 }, V { 1 }); };
 template<typename G>
@@ -68,7 +70,12 @@ concept reads_bits = requires(const G g) { g.neighbours_in(V { 0 }, std::size_t 
 static_assert(adds<Store<graph<V>>> && removes<Store<graph<V>>>);
 static_assert(adds<Store<graph<V>, monotone>> && !removes<Store<graph<V>, monotone>>);
 static_assert(!adds<Store<graph<V>, frozen>> && !removes<Store<graph<V>, frozen>>);
-static_assert(!numbers_edges<Store<graph<V>, frozen>> && numbers_edges<Store<graph<V>, frozen, positional>> && numbers_edges<Store<graph<V, int>, frozen>>);
+static_assert(numbers_edges<Store<graph<V>>> && numbers_edges<Store<graph<V>, frozen>> && !numbers_edges<Store<graph<V>, frozen, constant_adjacency>>);
+// The concepts each models (urd/graphs.hpp): edge lists are incidence and edge list graphs, rows of bits are not.
+static_assert(urd::bidirectional_graph<Store<graph<V>, frozen, bidirectional>> && urd::edge_list_graph<Store<graph<V>, frozen>>
+              && urd::mutable_graph<Store<graph<V>>> && !urd::mutable_graph<Store<graph<V>, frozen>>);
+static_assert(urd::graph_like<Store<graph<V>, frozen, constant_adjacency, undirected>> && urd::in_adjacency_graph<Store<graph<V>, frozen, constant_adjacency, undirected>>
+              && !urd::edge_list_graph<Store<graph<V>, frozen, constant_adjacency>> && !urd::incidence_graph<Store<graph<V>, frozen, constant_adjacency>>);
 static_assert(!reads_in<Store<graph<V>>> && reads_in<Store<graph<V>, bidirectional>> && reads_in<Store<graph<V>, frozen, bidirectional>>);
 static_assert(!reads_bits<Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>> && !reads_bits<Store<graph<V>, frozen, constant_adjacency>>);
 static_assert(reads_in<Store<graph<V>, frozen, constant_adjacency, undirected>>);
@@ -170,20 +177,26 @@ TEST(Graph, ListsAgreeWithModel)
         for (V v = 0; v < present.size(); ++v)
             EXPECT_EQ(g.adjacent(u, v), present[v] && std::ranges::binary_search(out, v));
     }
-    for (const auto& edge : g.edges())
+    for (const auto e : g.edges())
     {
-        const auto& expected = edges[edge.id];
+        const auto& expected = edges[e];
         EXPECT_TRUE(expected.alive);
-        EXPECT_EQ(edge.source, expected.source);
-        EXPECT_EQ(edge.target, expected.target);
-        EXPECT_EQ(edge.value.get(), expected.value);
-        EXPECT_EQ(g[edge.id], expected.value);
-        EXPECT_EQ(g.source(edge.id), expected.source);
+        EXPECT_EQ(g.source(e), expected.source);
+        EXPECT_EQ(g.target(e), expected.target);
+        EXPECT_EQ(g[e], expected.value);
     }
+    for (V u = 0; u < present.size(); ++u)
+        if (present[u])
+        {
+            for (const auto e : g.out_edges(u))
+                EXPECT_EQ(g.source(e), u);
+            for (const auto e : g.in_edges(u))
+                EXPECT_EQ(g.target(e), u);
+        }
 }
 
-/// A frozen graph numbers its edges by (source, target), parallel edges in the order given, with or without a source
-/// per edge; its in-rows and edges between two vertices agree.
+/// A frozen graph keeps the numbers its edges were given (their positions), with their data; its out- and in-edges and
+/// edges between two vertices agree.
 template<typename G>
 void check_frozen(std::size_t seed)
 {
@@ -194,17 +207,14 @@ void check_frozen(std::size_t seed)
         given.emplace_back(static_cast<V>(random() % vertices), static_cast<V>(random() % vertices), each);
     const auto g = G(urd::graph_data<std::tuple<V, V, int>> { vertices, given, {} });
 
-    auto expected = given;
-    std::ranges::stable_sort(expected, {}, [](const auto& edge) { return std::pair(std::get<0>(edge), std::get<1>(edge)); });
+    const auto& expected = given;
     ASSERT_EQ(g.num_vertices(), vertices);
     ASSERT_EQ(g.num_edges(), expected.size());
     std::size_t number = 0;
-    for (const auto& edge : g.edges())
+    for (const auto e : g.edges())
     {
-        ASSERT_EQ(edge.id, number);
-        EXPECT_EQ(std::tuple(edge.source, edge.target, edge.value.get()), expected[number]);
-        EXPECT_EQ(g.source(number), std::get<0>(expected[number]));
-        EXPECT_EQ(g.target(number), std::get<1>(expected[number]));
+        ASSERT_EQ(e, number);
+        EXPECT_EQ(std::tuple(g.source(e), g.target(e), g[e]), expected[number]);
         ++number;
     }
     for (V u = 0; u < vertices; ++u)
@@ -228,14 +238,94 @@ void check_frozen(std::size_t seed)
             if (std::get<1>(edge) == v)
                 in.push_back(std::get<0>(edge));
         EXPECT_EQ(sorted(g.in_neighbours(v)), sorted(in));
-        for (const auto& edge : g.in_edges(v))
-            EXPECT_EQ(edge.target, v);
+        for (const auto e : g.in_edges(v))
+            EXPECT_EQ(g.target(e), v);
+        for (const auto e : g.out_edges(v))
+            EXPECT_EQ(g.source(e), v);
     }
 }
-TEST(Graph, FrozenNumbersBySourceAndTarget)
+TEST(Graph, FrozenKeepsEdgeNumbers)
 {
     check_frozen<Store<graph<V, int>, frozen, multi, bidirectional>>(7);
-    check_frozen<Store<graph<V, int>, frozen, multi, bidirectional, constant_endpoints>>(8);
+}
+
+/// Positional graphs without edge data hand out their edges as numbers too, in the order given.
+TEST(Graph, NumberedEdgesWithoutData)
+{
+    const auto given = std::vector<std::pair<V, V>> { { 1, 2 }, { 0, 1 } };
+    const auto check = [&](const auto& g)
+    {
+        auto targets = std::vector<V>();
+        for (const auto e : g.out_edges(1))
+        {
+            EXPECT_EQ(g.source(e), V { 1 });
+            targets.push_back(g.target(e));
+        }
+        EXPECT_EQ(targets, std::vector<V> { 2 });
+        auto ids = std::vector<std::size_t>();
+        for (const auto e : g.edges())
+            ids.push_back(e);
+        EXPECT_EQ(ids, (std::vector<std::size_t> { 0, 1 }));
+        EXPECT_EQ(g.source(1), V { 0 });
+    };
+    check(Store<graph<V>, positional>(given.begin(), given.end()));
+    check(Store<graph<V>, frozen, positional>(given.begin(), given.end()));
+}
+
+/// Vertex and edge data stay with the graph: added, frozen (edges keep their numbers, where none was removed) and in
+/// a subgraph (the kept vertices' data, the edges between them in the order of their numbers).
+TEST(Graph, DataThroughFreezeAndInduced)
+{
+    auto g = Store<graph<V, int, char>, monotone>();
+    EXPECT_EQ(g.add_vertex('a'), V { 0 });
+    EXPECT_EQ(g.add_vertex('b'), V { 1 });
+    EXPECT_EQ(g.add_vertex('c'), V { 2 });
+    EXPECT_EQ(g.add_edge(2, 0, 20), 0U);
+    EXPECT_EQ(g.add_edge(0, 1, 1), 1U);
+    EXPECT_EQ(g.add_edge(1, 2, 12), 2U);
+    EXPECT_EQ(g.vertex_value(1), 'b');
+
+    const auto f = urd::freeze<Store<graph<V, int, char>, frozen, bidirectional>>(g);
+    ASSERT_EQ(f.num_edges(), 3U);
+    for (const auto e : g.edges())
+        EXPECT_EQ(std::tuple(f.source(e), f.target(e), f[e]), std::tuple(g.source(e), g.target(e), g[e]));
+    for (V v = 0; v < 3; ++v)
+        EXPECT_EQ(f.vertex_value(v), g.vertex_value(v));
+
+    auto keep = Store<urd::set<V>>();
+    keep.insert(V { 0 });
+    keep.insert(V { 2 });
+    const auto sub = urd::induced<Store<graph<V, int, char>, frozen>>(f, keep);
+    ASSERT_EQ(sub.num_vertices(), 2U);
+    EXPECT_EQ(sub.vertex_value(0), 'a');
+    EXPECT_EQ(sub.vertex_value(1), 'c');
+    ASSERT_EQ(sub.num_edges(), 1U);
+    EXPECT_EQ(std::tuple(sub.source(0), sub.target(0), sub[0]), std::tuple(V { 1 }, V { 0 }, 20));
+
+    const auto built = Store<graph<V, int, char>, frozen>(
+        urd::graph_data<std::tuple<V, V, int>, char> { 2, std::vector<std::tuple<V, V, int>> { { 1, 0, 7 } }, {}, std::vector<char> { 'x', 'y' } });
+    EXPECT_EQ(built.vertex_value(1), 'y');
+    EXPECT_EQ(built[0], 7);
+}
+
+/// Vertex data, also without a default: given for every vertex (none given throws), carried through freeze and induced.
+TEST(Graph, VertexDataWithoutDefault)
+{
+    struct Name
+    {
+        explicit Name(char c) : value(c) {}
+        char value;
+    };
+    using Frozen = Store<graph<V, std::monostate, Name>, frozen, positional>;
+    const auto names = std::vector<Name> { Name('a'), Name('b'), Name('c') };
+    const auto edges = std::vector<std::pair<V, V>> { { 0, 2 } };
+    const auto g = Frozen(urd::graph_data<std::pair<V, V>, Name> { 3, edges, {}, names });
+    EXPECT_EQ(g.vertex_value(2).value, 'c');
+    EXPECT_THROW((Frozen(urd::graph_data<std::pair<V, V>, Name> { 3, edges, {}, {} })), std::invalid_argument);
+    auto keep = Store<urd::set<V>>();
+    keep.insert(V { 2 });
+    EXPECT_EQ(urd::induced<Frozen>(g, keep).vertex_value(0).value, 'c');
+    EXPECT_EQ(urd::freeze<Frozen>(g).vertex_value(1).value, 'b');
 }
 
 /// A frozen graph built from edges alone has a vertex past every endpoint; a vertex count below that throws.
@@ -322,7 +412,13 @@ void check_dense(unsigned seed)
         }
 
         const auto fast = urd::freeze<Rows>(m);
-        const auto slow = urd::freeze<Plain>(m);
+        // Rows of bits have no edge list: the compressed rows are built from the model's edges.
+        auto model_edges = std::vector<std::pair<V, V>>();
+        for (V u = 0; u < vertices; ++u)
+            for (V v = 0; v < vertices; ++v)
+                if (adjacent[u][v])
+                    model_edges.emplace_back(u, v);
+        const auto slow = Plain(urd::graph_data<std::pair<V, V>> { vertices, model_edges, {} });
         EXPECT_TRUE(same_edges(fast, m));
         EXPECT_TRUE(same_edges(slow, m));
         if constexpr (Undirected || InRows)

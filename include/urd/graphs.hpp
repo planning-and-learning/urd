@@ -23,19 +23,69 @@
 #include <cstddef>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace urd
 {
 
-/// A graph: vertices 0..n-1 (vertex_type, an index), each vertex's neighbours, and adjacency.
+// The graph concepts, after the Boost Graph Library's: what a graph offers, each a primitive of the containers that
+// have it. Every urd graph is a vertex list with adjacency (graph_like) and has its vertices' and edges' data
+// (vertex_value, edge_value; std::monostate where there is none); one that keeps edge lists numbers its edges and is an
+// incidence and an edge list graph, rows of bits are not.
+
+/// Vertices 0..n-1 (vertex_type, an index): how many, and each in increasing order.
 template<typename G>
-concept graph_like = requires(const G& graph, typename G::vertex_type v) {
+concept vertex_list_graph = requires(const G& graph) {
+    typename G::vertex_type;
     { graph.num_vertices() } -> std::convertible_to<std::size_t>;
     graph.vertices();
-    graph.neighbours(v);
-    { graph.adjacent(v, v) } -> std::convertible_to<bool>;
+};
+/// Each vertex's neighbours: the targets of the edges leaving it.
+template<typename G>
+concept adjacency_graph = vertex_list_graph<G> && requires(const G& graph, typename G::vertex_type u) {
+    graph.neighbours(u);
+    { graph.out_degree(u) } -> std::convertible_to<std::size_t>;
+};
+/// Whether an edge leads from one vertex to another.
+template<typename G>
+concept adjacency_matrix = vertex_list_graph<G> && requires(const G& graph, typename G::vertex_type u) {
+    { graph.adjacent(u, u) } -> std::convertible_to<bool>;
+};
+/// A graph: a vertex list with neighbours and adjacency.
+template<typename G>
+concept graph_like = adjacency_graph<G> && adjacency_matrix<G>;
+/// Each vertex's in-neighbours: the sources of the edges entering it.
+template<typename G>
+concept in_adjacency_graph = adjacency_graph<G> && requires(const G& graph, typename G::vertex_type v) {
+    graph.in_neighbours(v);
+    { graph.in_degree(v) } -> std::convertible_to<std::size_t>;
+};
+/// Edges by number (std::size_t): the numbers of the edges leaving each vertex, and each edge's endpoints.
+template<typename G>
+concept incidence_graph = adjacency_graph<G> && requires(const G& graph, typename G::vertex_type u, std::size_t e) {
+    graph.out_edges(u);
+    { graph.source(e) } -> std::convertible_to<typename G::vertex_type>;
+    { graph.target(e) } -> std::convertible_to<typename G::vertex_type>;
+};
+/// An incidence graph with the numbers of the edges entering each vertex.
+template<typename G>
+concept bidirectional_graph = incidence_graph<G> && in_adjacency_graph<G> && requires(const G& graph, typename G::vertex_type v) { graph.in_edges(v); };
+/// Every edge by number, and its endpoints.
+template<typename G>
+concept edge_list_graph = vertex_list_graph<G> && requires(const G& graph, std::size_t e) {
+    graph.edges();
+    { graph.num_edges() } -> std::convertible_to<std::size_t>;
+    { graph.source(e) } -> std::convertible_to<typename G::vertex_type>;
+    { graph.target(e) } -> std::convertible_to<typename G::vertex_type>;
+};
+/// A graph that grows: vertices and edges added.
+template<typename G>
+concept mutable_graph = vertex_list_graph<G> && requires(G& graph, typename G::vertex_type u) {
+    graph.add_vertex();
+    graph.add_edge(u, u);
 };
 /// A graph whose vertices fall into parts, numbered part after part.
 template<typename G>
@@ -201,18 +251,28 @@ std::size_t vertex_bound(const G& graph)
     return result;
 }
 /// Every edge of `graph` as To takes it (urd::graph_input_edge), its endpoints renumbered by `number` (an optional
-/// index; none: left out): each neighbour of each vertex, so an undirected graph's edges both ways.
-template<typename To, graph_like G, typename Number>
+/// index; none: left out), with its data, in the order of their numbers: so they keep their numbers where none is left
+/// out or was removed.
+template<typename To, edge_list_graph G, typename Number>
 auto edges_of(const G& graph, Number number)
 {
-    using In = typename container_traits<To>::edge_input_type;
     using W = typename container_traits<To>::vertex_type;
-    auto result = std::vector<In>();
-    for (const auto u : graph.vertices())
-        if (const auto from = number(u))
-            for (const auto w : graph.neighbours(u))
-                if (const auto to = number(w))
-                    result.emplace_back(index_of<W>::from_index(*from), index_of<W>::from_index(*to));
+    auto result = std::vector<typename container_traits<To>::edge_input_type>();
+    for (const auto e : graph.edges())
+        if (const auto from = number(graph.source(e)))
+            if (const auto to = number(graph.target(e)))
+                result.emplace_back(index_of<W>::from_index(*from), index_of<W>::from_index(*to), graph.edge_value(e));
+    return result;
+}
+/// The data of the vertices of `graph` that To keeps (`number`, an optional index; none: left out), in the order of
+/// their numbers, which increase with the vertices.
+template<typename To, graph_like G, typename Number>
+auto vertex_values_of(const G& graph, Number number)
+{
+    auto result = std::vector<typename container_traits<To>::vertex_value_type>();
+    for (const auto v : graph.vertices())
+        if (number(v))
+            result.push_back(graph.vertex_value(v));
     return result;
 }
 /// Whether graph To holds rows of bits shaped as G's: then one is built from the other's rows.
@@ -398,26 +458,30 @@ template<partitioned_graph G>
 void connect_parts(G& graph, std::size_t p, std::size_t q)
 { detail::graph_rows::connect_parts(repr::graphs::rows_of(graph), p, q); }
 
-/// The graph To (a Store of urd::graph<V>, frozen say) with the vertices and edges of `graph`, and its parts where
-/// both have them: from its edges (an undirected graph's both ways), or from its rows where both keep rows of bits of
-/// one shape, equal rows stored once.
-template<typename To, graph_like G>
+/// The graph To (a Store of urd::graph<V, E, D>, frozen say) with the vertices and edges of `graph`, their data and its
+/// parts where both have them: from its edges (an edge list graph), in the order of their numbers, so that they keep
+/// them where none was removed, or from its rows where both keep rows of bits of one shape, equal rows stored once.
+template<typename To, edge_list_graph G>
 To freeze(const G& graph)
 {
-    const auto edges = detail::edges_of<To>(graph, [](auto v) { return std::optional(index_of<typename G::vertex_type>::to_index(v)); });
+    const auto same = [](auto v) { return std::optional(index_of<typename G::vertex_type>::to_index(v)); };
+    const auto count = detail::vertex_bound(graph);
+    const auto edges = detail::edges_of<To>(graph, same);
+    const auto values = detail::vertex_values_of<To>(graph, same);
     const auto sizes = detail::part_sizes(graph);
-    return To(graph_data<typename container_traits<To>::edge_input_type> { detail::vertex_bound(graph), edges, sizes });
+    return To(typename container_traits<To>::graph_data_type { count, edges, sizes, values });
 }
 template<typename To, graph_like G>
     requires detail::same_rows<To, G>
 To freeze(const G& graph)
 { return To(graph); }
 
-/// The graph To on the vertices `keep` holds, with the edges between them: the vertices numbered in increasing order,
-/// so part after part, each part keeping its place (empty where none of it is kept). From edges, or where both keep
-/// rows of bits of one shape and `keep` is dense, each kept vertex's rows masked by `keep` a word at a time, or where
-/// `keep` holds every vertex, the rows copied whole.
-template<typename To, graph_like G, vertex_set_of<G> Set>
+/// The graph To on the vertices `keep` holds, with the edges between them and their data: the vertices numbered in
+/// increasing order, so part after part, each part keeping its place (empty where none of it is kept), the edges in the
+/// order of their numbers. From its edges (an edge list graph), or where both keep rows of bits of one shape and `keep`
+/// is dense, each kept vertex's rows masked by `keep` a word at a time, or where `keep` holds every vertex, the rows
+/// copied whole.
+template<typename To, edge_list_graph G, vertex_set_of<G> Set>
 To induced(const G& graph, const Set& keep)
 {
     using V = typename G::vertex_type;
@@ -430,8 +494,10 @@ To induced(const G& graph, const Set& keep)
             number[index_of<V>::to_index(v)] = next++;
             detail::count_in_part(graph, v, sizes);
         }
-    const auto edges = detail::edges_of<To>(graph, [&number](V v) { return number[index_of<V>::to_index(v)]; });
-    return To(graph_data<typename container_traits<To>::edge_input_type> { next, edges, sizes });
+    const auto renumber = [&number](V v) { return number[index_of<V>::to_index(v)]; };
+    const auto edges = detail::edges_of<To>(graph, renumber);
+    const auto values = detail::vertex_values_of<To>(graph, renumber);
+    return To(typename container_traits<To>::graph_data_type { next, edges, sizes, values });
 }
 template<typename To, graph_like G, vertex_set_of<G> Set>
     requires(detail::same_rows<To, G> && detail::by_words<G, Set>)
@@ -450,7 +516,7 @@ To induced(const G& graph, const Set& keep)
         ++sizes[rows.part_of(v)];
     }
     using Kept = repr::BitMatrix<V, has<G, partitioned>, has<G, undirected>, has<To, bidirectional> && !has<G, undirected>>;
-    auto kept = Kept(graph_data<graph_input_edge<V, void>> { next, {}, has<G, partitioned> ? sizes : std::vector<std::size_t>() });
+    auto kept = Kept(graph_data<std::pair<V, V>> { next, {}, has<G, partitioned> ? sizes : std::vector<std::size_t>() });
     const auto renumbered = [&number](V v) { return index_of<V>::from_index(number[index_of<V>::to_index(v)]); };
     for (const auto u : keep)
         detail::for_each_row(graph,

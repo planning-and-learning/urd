@@ -462,8 +462,8 @@ indexable).
 | `Store<graph<int>, frozen, positional>` | stable_refs, frozen, positional | `csr_graph` | csr_graph.hpp |
 | `Store<graph<int, int>, frozen, multi>` | multi, stable_refs, frozen | `csr_graph` | csr_graph.hpp |
 | `Store<graph<int>, frozen, positional, bidirectional>` | bidirectional, stable_refs, frozen, positional | `bidirectional_csr_graph` | csr_graph.hpp |
-| `Store<graph<int>, frozen, positional, constant_endpoints>` | constant_endpoints, stable_refs, frozen, positional | `csr_graph_with_sources` | csr_graph.hpp |
-| `Store<graph<int>, frozen, positional, bidirectional, constant_endpoints>` | bidirectional, constant_endpoints, stable_refs, frozen, positional | `bidirectional_csr_graph_with_sources` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional, constant_endpoints>` | constant_endpoints, stable_refs, frozen, positional | `csr_graph` | csr_graph.hpp |
+| `Store<graph<int>, frozen, positional, bidirectional, constant_endpoints>` | bidirectional, constant_endpoints, stable_refs, frozen, positional | `bidirectional_csr_graph` | csr_graph.hpp |
 | `Store<graph<int>, frozen, constant_adjacency>` | constant_adjacency, stable_refs, frozen | `bit_rows` | bit_rows.hpp |
 | `Store<graph<int>, frozen, bidirectional, constant_adjacency>` | bidirectional, constant_adjacency, stable_refs, frozen | `bidirectional_bit_rows` | bit_rows.hpp |
 | `Store<graph<int>, frozen, undirected, constant_adjacency>` | undirected, constant_adjacency, stable_refs, frozen | `undirected_bit_rows` | bit_rows.hpp |

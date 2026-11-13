@@ -17,6 +17,7 @@
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <variant>
 #include <vector>
 
 namespace urd::detail
@@ -78,6 +79,8 @@ public:
     }
     /// The neighbours of `u`, in increasing order.
     [[nodiscard]] auto neighbours(V u) const { return keys_of(u, rows_out()); }
+    /// The data of `v`: rows of bits hold none, so the one value of a unit.
+    [[nodiscard]] static std::monostate vertex_value(V /*v*/) noexcept { return {}; }
     [[nodiscard]] size_type out_degree(V u) const { return count_of(u, rows_out()); }
     [[nodiscard]] bool adjacent(V u, V v) const
     {

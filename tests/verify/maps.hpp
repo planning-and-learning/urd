@@ -100,9 +100,11 @@ map_violation(const R& range, const MapModel<Traits, K, V>& model, const std::ve
         const auto lost = static_cast<std::size_t>(std::ranges::count_if(before, [&](const V* address) { return !kept.contains(address); }));
         if (lost != (size_before > contents.size() ? size_before - contents.size() : 0))
             return "stable_refs: a value that was not removed moved";
-        if constexpr (has<Traits, unique> && requires(const R& constant, const K& key) {
-                          { constant.at(key) } -> std::same_as<const V&>;
-                      })
+        // A unique map has at(key) (its values_by_key facet): one that lost it fails here, not untested.
+        static_assert(!has<Traits, unique> || requires(const R& constant, const K& key) {
+            { constant.at(key) } -> std::same_as<const V&>;
+        });
+        if constexpr (has<Traits, unique>)
             for (const auto& entry : range)
                 if (std::addressof(range.at(entry.first)) != std::addressof(entry.second))
                     return "stable_refs: at(key) and iteration refer to different values";

@@ -20,12 +20,12 @@ namespace urd::repr
 
 /// Adjacency lists: edges numbered as added, each vertex the numbers of the edges that leave it and that enter it.
 /// Edges and vertices are removed in place; numbers are not reused.
-template<typename V, typename E>
+template<typename V, typename E, typename D>
 class AdjacencyLists;
 
 /// Compressed sparse rows: each vertex's edges in a row, sorted by target, the position of an edge its number. InEdges
 /// adds rows of the edges entering each vertex; Sources a source per edge.
-template<typename V, typename E, bool InEdges, bool Sources>
+template<typename V, typename E, typename D, bool InEdges>
 class CsrGraph;
 
 /// Rows of bits that grow: per vertex and part a row, the vertex's neighbours in the part (Partitioned: no edge inside
@@ -65,25 +65,23 @@ struct adjacency_lists_decl
     static constexpr std::string_view holds = "per edge its endpoints, data and two list entries; per vertex two lists";
 };
 
-template<bool InEdges, bool Sources>
+template<bool InEdges>
 struct csr_graph_decl
 {
-    static constexpr std::string_view id =
-        InEdges ? (Sources ? "bidirectional_csr_graph_with_sources" : "bidirectional_csr_graph") : (Sources ? "csr_graph_with_sources" : "csr_graph");
+    static constexpr std::string_view id = InEdges ? "bidirectional_csr_graph" : "csr_graph";
     static constexpr auto headers = header_list<1> { "urd/repr/graphs/csr_graph.hpp" };
     using kind = graph_kind;
-    static constexpr property_set provides = property_set::of({ position::positional,
-                                                                InEdges ? tag(direction::bidirectional) : tag(direction::none),
-                                                                Sources ? tag(endpoints::constant_endpoints) : tag(endpoints::none) });
+    static constexpr property_set provides =
+        property_set::of({ position::positional, InEdges ? tag(direction::bidirectional) : tag(direction::none), endpoints::constant_endpoints });
     static constexpr property_set relies_on = relies(stated({ change::frozen }), traits<role::element, trait::an_index>());
     static constexpr std::array<tag, 0> gives_elements {};
     using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_row>,
                                        cost_entry<operation::adjacency, costs::log_row>,
                                        cost_entry<operation::access, costs::one>,
-                                       cost_entry<operation::endpoints, Sources ? costs::one : costs::log_n>>;
-    static constexpr double words = 2.5 + (InEdges ? 5.5 : 0) + (Sources ? 1.5 : 0);
-    static constexpr std::string_view description = "compressed sparse rows, by source and target";
-    static constexpr std::string_view holds = "an offset per vertex; a target and data per edge";
+                                       cost_entry<operation::endpoints, costs::one>>;
+    static constexpr double words = 5 + (InEdges ? 5.5 : 0);
+    static constexpr std::string_view description = "compressed sparse rows, edges numbered as given";
+    static constexpr std::string_view holds = "an offset per vertex; per edge its endpoints, data, number and target in its row";
 };
 
 /// What a graph of rows of bits provides and relies on: rows (constant_adjacency); partition where Partitioned, which
@@ -151,17 +149,17 @@ struct bit_rows_decl
     static constexpr std::string_view holds = "per vertex its part and a handle per part; the distinct rows";
 };
 
-template<typename V, typename E>
-struct declaration_of<repr::AdjacencyLists<V, E>>
+template<typename V, typename E, typename D>
+struct declaration_of<repr::AdjacencyLists<V, E, D>>
 {
     using declaration = adjacency_lists_decl;
-    static constexpr property_set roles = roles_of<urd::graph<V, E>>();
+    static constexpr property_set roles = roles_of<urd::graph<V, E, D>>();
 };
-template<typename V, typename E, bool InEdges, bool Sources>
-struct declaration_of<repr::CsrGraph<V, E, InEdges, Sources>>
+template<typename V, typename E, typename D, bool InEdges>
+struct declaration_of<repr::CsrGraph<V, E, D, InEdges>>
 {
-    using declaration = csr_graph_decl<InEdges, Sources>;
-    static constexpr property_set roles = roles_of<urd::graph<V, E>>();
+    using declaration = csr_graph_decl<InEdges>;
+    static constexpr property_set roles = roles_of<urd::graph<V, E, D>>();
 };
 template<typename V, bool Partitioned, bool Undirected, bool InRows>
 struct declaration_of<repr::BitMatrix<V, Partitioned, Undirected, InRows>>

@@ -23,6 +23,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 namespace urd
 {
@@ -360,9 +361,9 @@ struct sequence_kind : detail::any_kind
     static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
 };
 
-/// Vertices 0..n-1 and edges between them. Edges are numbered where it is positional or has edge data: in the order
-/// they were added while it grows, by (source, target) once frozen (parallel edges in the order given). partitioned:
-/// its vertices fall into parts, numbered part after part, with no edge inside a part.
+/// Vertices 0..n-1 and edges between them. Edges are numbered where it keeps edge lists (all but rows of bits,
+/// constant_adjacency): in the order they were given, as added while it grows or as listed when it is built, and the numbers stay. partitioned: its
+/// vertices fall into parts, numbered part after part, with no edge inside a part.
 struct graph_kind : detail::any_kind
 {
     static constexpr std::string_view name = "graph";
@@ -373,7 +374,8 @@ struct graph_kind : detail::any_kind
     /// A graph is built from its vertex count, its edges and, partitioned, its parts (urd::graph_data), or from a
     /// graph of rows of bits (constant_adjacency), whose rows it copies.
     template<typename S, typename From>
-    static constexpr bool builds_from = std::same_as<From, graph_data<typename S::edge_input_type>> || has<From, constant_adjacency>;
+    static constexpr bool builds_from = graph_data_for<From, typename S::vertex_type, typename S::edge_value_type, typename S::vertex_value_type>
+                                        || has<From, constant_adjacency>;
 };
 
 /// urd's kinds: what its tables list.
@@ -473,16 +475,21 @@ struct partition : detail::data_of<partition_kind, K>
 {
     using key_type = K;
 };
-/// Vertices of type V (an index: urd::index_of maps it to 0..n-1) and edges between them, each with data of type E,
-/// or none where E is void. Its elements are its vertices; it is built from edges (graph_input_edge).
-template<typename V, typename E = void>
+/// Vertices of type V (an index: urd::index_of maps it to 0..n-1), each with data of type D, and edges between them,
+/// each with data of type E; std::monostate, a type with one value, where they carry none (urd/graph_types.hpp). Its
+/// elements are its vertices; it is built from edges (urd::input_edge_of), with the vertices' data (graph_data).
+template<typename V, typename E = std::monostate, typename D = std::monostate>
 struct graph : detail::data_of<graph_kind, V, E>
 {
-    using element_types = std::conditional_t<std::is_void_v<E>, boost::mp11::mp_list<V>, boost::mp11::mp_list<V, E>>;
+    /// Its types as written: trailing defaults left out (graph<V>, graph<V, E>).
+    using element_types = std::conditional_t<!std::same_as<D, std::monostate>,
+                                             boost::mp11::mp_list<V, E, D>,
+                                             std::conditional_t<!std::same_as<E, std::monostate>, boost::mp11::mp_list<V, E>, boost::mp11::mp_list<V>>>;
     using vertex_type = V;
     using edge_value_type = E;
+    using vertex_value_type = D;
     using edge_input_type = graph_input_edge<V, E>;
-    using edge_type = graph_edge<V, E>;
+    using graph_data_type = graph_data<edge_input_type, D>;
 };
 
 namespace detail

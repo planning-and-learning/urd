@@ -183,10 +183,8 @@ struct declarations_of<partition_kind>
 template<>
 struct declarations_of<graph_kind>
 {
-    using type = boost::mp11::mp_list<csr_graph_decl<false, false>,
-                                      csr_graph_decl<false, true>,
-                                      csr_graph_decl<true, false>,
-                                      csr_graph_decl<true, true>,
+    using type = boost::mp11::mp_list<csr_graph_decl<false>,
+                                      csr_graph_decl<true>,
                                       bit_rows_decl<false, false, false>,
                                       bit_rows_decl<false, false, true>,
                                       bit_rows_decl<false, true, false>,

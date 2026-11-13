@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -26,6 +27,7 @@
 #include <map>
 #include <set>
 #include <span>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -64,6 +66,76 @@ template<auto... Ms>
 struct Members
 {
 };
+
+/// A name as a template argument: the characters of a string literal, with its terminating null.
+template<std::size_t N>
+struct fixed_string
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,google-explicit-constructor): a string literal, as written
+    constexpr fixed_string(const char (&text)[N]) noexcept { std::copy_n(text, N, characters.begin()); }
+
+    [[nodiscard]] constexpr std::string_view view() const noexcept { return { characters.data(), N - 1 }; }
+
+    std::array<char, N> characters {};
+};
+/// `prefix` then `name`, as one name.
+template<fixed_string Prefix, fixed_string Name>
+consteval auto concatenated() noexcept
+{
+    constexpr auto prefix = Prefix.view();
+    constexpr auto name = Name.view();
+    auto result = std::array<char, prefix.size() + name.size() + 1> {};
+    std::copy(prefix.begin(), prefix.end(), result.begin());
+    std::copy(name.begin(), name.end(), result.begin() + static_cast<std::ptrdiff_t>(prefix.size()));
+    return result;
+}
+
+/// A field of a record: its public name and the data member that holds it.
+template<fixed_string Name, auto Member>
+struct field
+{
+    /// The name, null-terminated (a template parameter object: it lives as long as the program).
+    static constexpr std::string_view name = Name.view();
+    /// The name as a C string (where a function takes one).
+    static constexpr const char* c_name = Name.characters.data();
+    static constexpr auto member = Member;
+    /// The name after `Prefix` (get_lhs), null-terminated.
+    template<fixed_string Prefix>
+    static constexpr auto prefixed = concatenated<Prefix, Name>();
+};
+/// The type of the data member `Member` points to.
+template<typename T, typename C>
+T member_type_of(T C::* /*member*/);
+template<auto Member>
+using member_type_t = decltype(member_type_of(Member));
+/// A record's fields, in data order: what it is, under the names it is read and written by. A record declares them
+/// once, `static constexpr auto fields() noexcept { return urd::Fields<urd::field<"lhs", &Data::lhs>, ...> {}; }`,
+/// and its identifying members are their members (urd::members_of); serialization, printing and bindings iterate them
+/// (urd::for_each_field), each field read through a view as `view.template member<F::member>()`.
+template<typename... Fs>
+struct Fields
+{
+};
+/// The members of `fields`, as identifying_members gives them.
+template<typename... Fs>
+consteval auto members_of(Fields<Fs...> /*fields*/) noexcept
+{ return Members<Fs::member...> {}; }
+/// A record that declares its fields.
+template<typename T>
+concept HasFields = requires { T::fields(); };
+/// Whether record T declares a field named `name`.
+template<typename T>
+    requires requires { T::fields(); }
+consteval bool has_field(std::string_view name)
+{
+    return []<typename... Fs>(Fields<Fs...> /*fields*/, std::string_view wanted) { return ((Fs::name == wanted) || ...); }(T::fields(), name);
+}
+/// `f.template operator()<F>()` for each field F of record T, in order.
+template<HasFields T, typename Function>
+constexpr void for_each_field(const Function& f)
+{
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (f.template operator()<Fs>(), ...); }(T::fields());
+}
 
 namespace detail
 {

@@ -32,7 +32,7 @@ import subprocess
 import sys
 import tempfile
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import clang.cindex as ci
@@ -126,8 +126,6 @@ STANDARD_READS = {
     "cend": "cend",
     "size": "size",
 }
-# How far before a call's `(` `of` stands in `store_access::of<Derived>(*this)`.
-OF_REACH = 6
 # The parse errors written before giving up.
 ERRORS_WRITTEN = 10
 
@@ -279,34 +277,43 @@ def outside_bases(cursor: ci.Cursor | None, classes: Classes, seen: set[str] | N
     return result
 
 
+def nesting(tokens: list[str], positions: Iterable[int], opening: str, closing: str) -> Iterator[tuple[int, int]]:
+    """Each position of a traversal of `tokens`, with how deep it is: one deeper at each `opening`, one less at each
+    `closing` (so a backward traversal opens at `)`)."""
+    depth = 0
+    for at in positions:
+        depth += tokens[at] == opening
+        depth -= tokens[at] == closing
+        yield at, depth
+
+
 def callee_before(tokens: list[str], close: int) -> tuple[str, int]:
     """The name called by the call whose `)` is at `close`, and where its `(` is."""
-    depth = 0
-    at = close
-    while at >= 0:
-        depth += tokens[at] == ")"
-        depth -= tokens[at] == "("
-        if depth == 0:
-            break
-        at -= 1
+    backward = range(close, -1, -1)
+    at = next((at for at, depth in nesting(tokens, backward, ")", "(") if depth == 0), -1)
     return (tokens[at - 1] if at > 0 else ""), at
 
 
 def next_close(tokens: list[str], at: int) -> int:
     """The `)` that closes the call `tokens[at]` sits in, else `at`."""
-    depth = 0
-    for later in range(at + 1, len(tokens)):
-        depth += tokens[later] == "("
-        depth -= tokens[later] == ")"
-        if depth < 0:
-            return later
-    return at
+    forward = range(at + 1, len(tokens))
+    return next((later for later, depth in nesting(tokens, forward, "(", ")") if depth < 0), at)
 
 
 def reaches_container(tokens: list[str], close: int) -> bool:
     """Whether the call ending at `close` is `representation(...)` or `of<Derived>(*this)`: the facet's container."""
     callee, opening = callee_before(tokens, close)
-    return callee == "representation" or (callee == ">" and "of" in tokens[max(0, opening - OF_REACH) : opening])
+    calls_representation = callee == "representation"
+    # store_access::of<Derived>(*this): the call's `(` follows the `>` of the template `of`.
+    calls_store_access = callee == ">" and template_before(tokens, opening - 1) == "of"
+    return calls_representation or calls_store_access
+
+
+def template_before(tokens: list[str], close: int) -> str:
+    """The template whose argument list's `>` is at `close` (`of` in `of<Derived>`)."""
+    backward = range(close, -1, -1)
+    angle = next((at for at, depth in nesting(tokens, backward, ">", "<") if depth == 0), -1)
+    return tokens[angle - 1] if angle > 0 else ""
 
 
 def forwarded_in(tokens: list[str]) -> set[str]:

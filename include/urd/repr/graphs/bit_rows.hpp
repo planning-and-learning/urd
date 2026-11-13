@@ -14,6 +14,7 @@
 #include "urd/traits.hpp"
 
 #include <cstddef>
+#include <variant>
 #include <vector>
 
 namespace urd::repr
@@ -39,7 +40,10 @@ public:
     BitRows() = default;
 
     /// From its vertex count, its edges and, Partitioned, its parts' sizes, which add up to the vertex count.
-    explicit BitRows(const graph_data<graph_input_edge<V, void>>& data) : BitRows(BitMatrix<V, Partitioned, Undirected, InRows>(data)) {}
+    template<input_edge_of<V, std::monostate> Edge>
+    explicit BitRows(const graph_data<Edge>& data) : BitRows(BitMatrix<V, Partitioned, Undirected, InRows>(data))
+    {
+    }
     /// The rows of `graph`, each distinct one stored once.
     template<typename G>
         requires rows_shaped<G, Partitioned, Undirected, InRows>
@@ -120,7 +124,8 @@ namespace urd::detail
 template<bool Partitioned, bool Undirected, bool InRows, typename S>
 struct representation_of<bit_rows_decl<Partitioned, Undirected, InRows>, S>
 {
-    static_assert(std::is_void_v<typename S::edge_value_type>, "urd::graph: rows of bits hold no edge data: graph<V> without E");
+    static_assert(std::same_as<typename S::edge_value_type, std::monostate> && std::same_as<typename S::vertex_value_type, std::monostate>,
+                  "urd::graph: rows of bits hold no data: graph<V> without E and D");
     using type = repr::BitRows<typename S::vertex_type, Partitioned, Undirected, InRows>;
 };
 

@@ -15,6 +15,7 @@
 #include <span>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace urd::repr
@@ -34,14 +35,15 @@ public:
     BitMatrix() = default;
 
     /// From its vertex count, its edges and, Partitioned, its parts' sizes, which add up to the vertex count.
-    explicit BitMatrix(const graph_data<graph_input_edge<V, void>>& data)
+    template<input_edge_of<V, std::monostate> Edge>
+    explicit BitMatrix(const graph_data<Edge>& data)
     {
         this->adopt(data.vertices, data.parts);
         const auto shape = std::vector<std::vector<std::size_t>>(this->num_vertices(), this->part_sizes());
         m_rows = Rows(shape);
         m_in_rows = Rows(InRows ? shape : std::vector<std::vector<std::size_t>>());
-        for (const auto& [u, v] : data.edges)
-            add_edge(u, v);
+        for (const auto& each : data.edges)
+            add_edge(std::get<0>(each), std::get<1>(each));
     }
 
     /// Adds the edge from `u` to `v`; whether it is new. Endpoints past the vertices, or Partitioned in one part, throw
@@ -128,7 +130,8 @@ namespace urd::detail
 template<bool Partitioned, bool Undirected, bool InRows, typename S>
 struct representation_of<bit_matrix_decl<Partitioned, Undirected, InRows>, S>
 {
-    static_assert(std::is_void_v<typename S::edge_value_type>, "urd::graph: rows of bits hold no edge data: graph<V> without E");
+    static_assert(std::same_as<typename S::edge_value_type, std::monostate> && std::same_as<typename S::vertex_value_type, std::monostate>,
+                  "urd::graph: rows of bits hold no data: graph<V> without E and D");
     using type = repr::BitMatrix<typename S::vertex_type, Partitioned, Undirected, InRows>;
 };
 

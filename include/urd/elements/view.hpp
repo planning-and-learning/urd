@@ -137,58 +137,15 @@ struct resolution<M>
     }
 };
 
-namespace detail
-{
-/// A copy-constructible function held so that its holder is default-constructible and assignable even where the
-/// function is not (a capturing lambda): assignment re-makes it, as std's movable-box does for std::views::transform.
-template<std::copy_constructible F>
-class function_box
-{
-    std::optional<F> m_function;
-
-public:
-    function_box() = default;
-    explicit function_box(F function) : m_function(std::in_place, std::move(function)) {}
-    function_box(const function_box&) = default;
-    function_box(function_box&&) = default;
-    function_box& operator=(const function_box& other)
-    {
-        if (this != &other)
-        {
-            if (other.m_function)
-                m_function.emplace(*other.m_function);
-            else
-                m_function.reset();
-        }
-        return *this;
-    }
-    function_box& operator=(function_box&& other) noexcept(std::is_nothrow_move_constructible_v<F>)
-    {
-        if (this != &other)
-        {
-            if (other.m_function)
-                m_function.emplace(std::move(*other.m_function));
-            else
-                m_function.reset();
-        }
-        return *this;
-    }
-    ~function_box() = default;
-
-    // NOLINTNEXTLINE(bugprone-unchecked-optional-access): only a singular iterator's box (default-constructed) is empty
-    [[nodiscard]] const F& operator*() const noexcept { return *m_function; }
-};
-}  // namespace detail
-
 /// A range R read through a function F: each element x read as f(x). Held are R's iterators (a container's, or a
 /// borrowed view's: a span, iota, the set bits of a bitset) and the function, so that, unlike std::views::transform,
 /// its iterators do not point into it: they outlive it, and it is a borrowed range. It traverses as R does (random
 /// access where R is); its end is R's sentinel where R has one. R must outlive it where R is not a view. F is a small
-/// copy-constructible function object (a lambda, capturing what it reads through by value, or a struct naming it), held
-/// in a box (detail::function_box) that keeps the range and its iterators default-constructible and assignable; each
+/// semiregular function object, as an iterator must be default-constructible and assignable: a lambda without captures,
+/// a struct naming what it reads through, or a function with its context (urd::transform(range, context, f)); each
 /// iterator holds its own copy. A named type, so that it can be spelled (an alias, a parameter) before F can be called
-/// (urd::resolved_range): F is copy-constructible, but that is checked where one is made (urd::transform), not in the
-/// template head (a context named while incomplete would be instantiated too early).
+/// (urd::resolved_range): F is semiregular, but that is checked where one is made (urd::transform), not in the template
+/// head (a context named while incomplete would be instantiated too early).
 template<std::ranges::input_range R, typename F>
 class transformed_range : public std::ranges::view_interface<transformed_range<R, F>>
 {
@@ -198,13 +155,13 @@ class transformed_range : public std::ranges::view_interface<transformed_range<R
     using base_sentinel = std::ranges::sentinel_t<const R>;
     using held_range = decltype(std::ranges::subrange(std::declval<const R&>()));
     held_range m_range;
-    detail::function_box<F> m_function;
+    F m_function {};
 
 public:
     class iterator
     {
         base_iterator m_it {};
-        detail::function_box<F> m_function;
+        F m_function {};
 
     public:
         using reference = std::invoke_result_t<const F&, std::iter_reference_t<base_iterator>>;
@@ -218,9 +175,9 @@ public:
                                std::conditional_t<std::forward_iterator<base_iterator>, std::forward_iterator_tag, std::input_iterator_tag>>>;
 
         iterator() = default;
-        iterator(base_iterator it, const detail::function_box<F>& function) : m_it(std::move(it)), m_function(function) {}
+        iterator(base_iterator it, const F& function) : m_it(std::move(it)), m_function(function) {}
 
-        [[nodiscard]] reference operator*() const { return std::invoke(*m_function, *m_it); }
+        [[nodiscard]] reference operator*() const { return std::invoke(m_function, *m_it); }
         [[nodiscard]] reference operator[](difference_type n) const
             requires std::random_access_iterator<base_iterator>
         { return *(*this + n); }
@@ -285,11 +242,11 @@ public:
 
     /// The range read through (its elements as they are), as std's views name it, and the function.
     [[nodiscard]] const held_range& base() const noexcept { return m_range; }
-    [[nodiscard]] const F& function() const noexcept { return *m_function; }
+    [[nodiscard]] const F& function() const noexcept { return m_function; }
     /// The context it is read through, where its function names one (urd::resolver).
     [[nodiscard]] const auto& context() const noexcept
         requires requires(const F& function) { *function.context; }
-    { return *(*m_function).context; }
+    { return *m_function.context; }
 
     [[nodiscard]] iterator begin() const { return { m_range.begin(), m_function }; }
     [[nodiscard]] iterator end() const
@@ -314,9 +271,32 @@ public:
 /// `range` read through `function` (urd::transformed_range): a borrowed std::views::transform. An rvalue range only
 /// where it is borrowed (a view whose iterators outlive it); a container must outlive the result.
 template<std::ranges::input_range R, typename F>
-    requires std::ranges::borrowed_range<R> && std::copy_constructible<std::decay_t<F>>
+    requires std::ranges::borrowed_range<R> && std::semiregular<std::decay_t<F>>
 [[nodiscard]] transformed_range<std::remove_cvref_t<R>, std::decay_t<F>> transform(R&& range, F&& function)
 { return { std::forward<R>(range), std::forward<F>(function) }; }
+
+namespace detail
+{
+/// `f(context, x)` as a function of `x`: the state a function reads (a pointer, a pair), held beside a function that
+/// captures nothing, so that both stay semiregular, as transformed_range's iterators need.
+template<std::semiregular C, std::semiregular F>
+struct with_context
+{
+    C context {};
+    F function {};
+
+    template<typename X>
+    [[nodiscard]] decltype(auto) operator()(X&& x) const
+    { return std::invoke(function, context, std::forward<X>(x)); }
+};
+}  // namespace detail
+
+/// `range` read through `function(context, x)`: urd::transform where the function needs state. `function` captures
+/// nothing (a lambda without captures is semiregular); `context` is what it would have captured.
+template<std::ranges::input_range R, std::semiregular C, typename F>
+    requires std::ranges::borrowed_range<R> && std::semiregular<std::decay_t<F>>
+[[nodiscard]] auto transform(R&& range, C context, F&& function)
+{ return transform(std::forward<R>(range), detail::with_context<C, std::decay_t<F>> { std::move(context), std::forward<F>(function) }); }
 
 /// What a resolved_range reads its elements through: urd::resolve with the context, each element passed on as the
 /// range gives it (so that a stored record, which its view borrows, is refused as a temporary).
