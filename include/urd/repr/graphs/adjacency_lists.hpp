@@ -68,15 +68,15 @@ public:
     }
     [[nodiscard]] auto neighbours(V u) const
     {
-        return m_out[index(u)] | std::views::transform([this](std::size_t e) { return m_edges[e].target; });
+        return m_out[vertex_at(u)] | std::views::transform([this](std::size_t e) { return m_edges[e].target; });
     }
-    [[nodiscard]] size_type out_degree(V u) const { return m_out[index(u)].size(); }
+    [[nodiscard]] size_type out_degree(V u) const { return m_out[vertex_at(u)].size(); }
     [[nodiscard]] bool adjacent(V u, V v) const { return edge(u, v).has_value(); }
     [[nodiscard]] auto in_neighbours(V v) const
     {
-        return m_in[index(v)] | std::views::transform([this](std::size_t e) { return m_edges[e].source; });
+        return m_in[vertex_at(v)] | std::views::transform([this](std::size_t e) { return m_edges[e].source; });
     }
-    [[nodiscard]] size_type in_degree(V v) const { return m_in[index(v)].size(); }
+    [[nodiscard]] size_type in_degree(V v) const { return m_in[vertex_at(v)].size(); }
 
     /// A new vertex with its data.
     V add_vertex(const D& value)
@@ -91,33 +91,31 @@ public:
     /// A new edge from `u` to `v` with its data: its number.
     std::size_t add_edge(V u, V v, const E& value)
     {
-        check_vertex(u);
-        check_vertex(v);
+        const auto from = vertex_at(u);
+        const auto to = vertex_at(v);
         const auto e = m_edges.size();
         m_edges.push_back(Edge { u, v, true });
         m_values.push(value);
-        m_out[index(u)].push_back(e);
-        m_in[index(v)].push_back(e);
+        m_out[from].push_back(e);
+        m_in[to].push_back(e);
         ++m_num_edges;
         return e;
     }
     void remove_edge(std::size_t e)
     {
-        if (e >= m_edges.size() || !m_edges[e].alive)
-            throw std::out_of_range("urd::graph: remove_edge of an edge that is not there");
-        m_edges[e].alive = false;
+        m_edges[edge_at(e)].alive = false;
         std::erase(m_out[index(m_edges[e].source)], e);
         std::erase(m_in[index(m_edges[e].target)], e);
         --m_num_edges;
     }
     void remove_vertex(V v)
     {
-        check_vertex(v);
-        while (!m_out[index(v)].empty())
-            remove_edge(m_out[index(v)].back());
-        while (!m_in[index(v)].empty())
-            remove_edge(m_in[index(v)].back());
-        m_present[index(v)] = false;
+        const auto at = vertex_at(v);
+        while (!m_out[at].empty())
+            remove_edge(m_out[at].back());
+        while (!m_in[at].empty())
+            remove_edge(m_in[at].back());
+        m_present[at] = false;
         --m_num_vertices;
     }
     void clear()
@@ -139,27 +137,27 @@ public:
         return std::views::iota(std::size_t { 0 }, m_edges.size()) | std::views::filter([this](std::size_t e) { return m_edges[e].alive; });
     }
     /// The numbers of the edges leaving `u`, as added.
-    [[nodiscard]] std::span<const std::size_t> out_edges(V u) const { return m_out[index(u)]; }
+    [[nodiscard]] std::span<const std::size_t> out_edges(V u) const { return m_out[vertex_at(u)]; }
     /// The numbers of the edges entering `v`, as added.
-    [[nodiscard]] std::span<const std::size_t> in_edges(V v) const { return m_in[index(v)]; }
+    [[nodiscard]] std::span<const std::size_t> in_edges(V v) const { return m_in[vertex_at(v)]; }
     [[nodiscard]] std::optional<std::size_t> edge(V u, V v) const
     {
-        const auto& row = m_out[index(u)];
-        const auto found = std::ranges::find_if(row, [this, v](std::size_t e) { return m_edges[e].target == v; });
+        const auto& row = m_out[vertex_at(u)];
+        const auto found = std::ranges::find_if(row, [this, to = vertex_at(v)](std::size_t e) { return index(m_edges[e].target) == to; });
         return found == row.end() ? std::nullopt : std::optional<std::size_t>(*found);
     }
     [[nodiscard]] auto edges_between(V u, V v) const
     {
-        return m_out[index(u)] | std::views::filter([this, v](std::size_t e) { return m_edges[e].target == v; });
+        return m_out[vertex_at(u)] | std::views::filter([this, to = vertex_at(v)](std::size_t e) { return index(m_edges[e].target) == to; });
     }
-    [[nodiscard]] V source(std::size_t e) const { return m_edges[e].source; }
-    [[nodiscard]] V target(std::size_t e) const { return m_edges[e].target; }
+    [[nodiscard]] V source(std::size_t e) const { return m_edges[edge_at(e)].source; }
+    [[nodiscard]] V target(std::size_t e) const { return m_edges[edge_at(e)].target; }
     /// A new edge from `u` to `v`, where its data is a unit: its number.
     std::size_t add_edge(V u, V v)
         requires unit<E>
     { return add_edge(u, v, E {}); }
-    [[nodiscard]] const E& edge_value(std::size_t e) const { return m_values[e]; }
-    [[nodiscard]] const D& vertex_value(V v) const { return m_vertex_values[index(v)]; }
+    [[nodiscard]] const E& edge_value(std::size_t e) const { return m_values[edge_at(e)]; }
+    [[nodiscard]] const D& vertex_value(V v) const { return m_vertex_values[vertex_at(v)]; }
 
     friend bool operator==(const AdjacencyLists&, const AdjacencyLists&) = default;
 
@@ -174,10 +172,19 @@ private:
     };
 
     [[nodiscard]] static std::size_t index(V v) { return index_of<V>::to_index(v); }
-    void check_vertex(V v) const
+    /// The index of `v`, a vertex it has; else std::out_of_range.
+    [[nodiscard]] std::size_t vertex_at(V v) const
     {
         if (index(v) >= m_present.size() || !m_present[index(v)])
             throw std::out_of_range("urd::graph: a vertex that is not there");
+        return index(v);
+    }
+    /// `e`, an edge it has; else std::out_of_range.
+    [[nodiscard]] std::size_t edge_at(std::size_t e) const
+    {
+        if (e >= m_edges.size() || !m_edges[e].alive)
+            throw std::out_of_range("urd::graph: an edge that is not there");
+        return e;
     }
     V add_slot()
     {

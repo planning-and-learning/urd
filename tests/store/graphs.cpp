@@ -74,7 +74,8 @@ static_assert(numbers_edges<Store<graph<V>>> && numbers_edges<Store<graph<V>, fr
 // The concepts each models (urd/graphs.hpp): edge lists are incidence and edge list graphs, rows of bits are not.
 static_assert(urd::bidirectional_graph<Store<graph<V>, frozen, bidirectional>> && urd::edge_list_graph<Store<graph<V>, frozen>>
               && urd::mutable_graph<Store<graph<V>>> && !urd::mutable_graph<Store<graph<V>, frozen>>);
-static_assert(urd::graph_like<Store<graph<V>, frozen, constant_adjacency, undirected>> && urd::in_adjacency_graph<Store<graph<V>, frozen, constant_adjacency, undirected>>
+static_assert(urd::graph_like<Store<graph<V>, frozen, constant_adjacency, undirected>>
+              && urd::in_adjacency_graph<Store<graph<V>, frozen, constant_adjacency, undirected>>
               && !urd::edge_list_graph<Store<graph<V>, frozen, constant_adjacency>> && !urd::incidence_graph<Store<graph<V>, frozen, constant_adjacency>>);
 static_assert(!reads_in<Store<graph<V>>> && reads_in<Store<graph<V>, bidirectional>> && reads_in<Store<graph<V>, frozen, bidirectional>>);
 static_assert(!reads_bits<Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>> && !reads_bits<Store<graph<V>, frozen, constant_adjacency>>);
@@ -175,7 +176,10 @@ TEST(Graph, ListsAgreeWithModel)
         EXPECT_EQ(sorted(g.in_neighbours(u)), in);
         EXPECT_EQ(g.out_degree(u), out.size());
         for (V v = 0; v < present.size(); ++v)
-            EXPECT_EQ(g.adjacent(u, v), present[v] && std::ranges::binary_search(out, v));
+            if (present[v])
+                EXPECT_EQ(g.adjacent(u, v), std::ranges::binary_search(out, v));
+            else
+                EXPECT_THROW(static_cast<void>(g.adjacent(u, v)), std::out_of_range);
     }
     for (const auto e : g.edges())
     {
@@ -244,10 +248,7 @@ void check_frozen(std::size_t seed)
             EXPECT_EQ(g.source(e), v);
     }
 }
-TEST(Graph, FrozenKeepsEdgeNumbers)
-{
-    check_frozen<Store<graph<V, int>, frozen, multi, bidirectional>>(7);
-}
+TEST(Graph, FrozenKeepsEdgeNumbers) { check_frozen<Store<graph<V, int>, frozen, multi, bidirectional>>(7); }
 
 /// Positional graphs without edge data hand out their edges as numbers too, in the order given.
 TEST(Graph, NumberedEdgesWithoutData)
@@ -632,6 +633,32 @@ TEST(Graph, InducedOnAllVerticesIsTheGraph)
 }
 
 /// An edge inside a part, or parts that do not add up to the vertices, throw.
+/// Every member given a vertex or edge the graph does not have throws: past the count, or removed.
+TEST(Graph, MembersCheckTheirArguments)
+{
+    auto growing = Store<graph<V>>();
+    const auto a = growing.add_vertex();
+    const auto b = growing.add_vertex();
+    const auto e = growing.add_edge(a, b);
+    EXPECT_THROW(static_cast<void>(growing.neighbours(V { 2 })), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(growing.edge(a, V { 2 })), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(growing.vertex_value(V { 2 })), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(growing.target(1)), std::out_of_range);
+    growing.remove_edge(e);
+    EXPECT_THROW(static_cast<void>(growing.edge_value(e)), std::out_of_range);
+    EXPECT_THROW(growing.remove_edge(e), std::out_of_range);
+
+    const auto given = std::vector<std::pair<V, V>> { { 0, 1 } };
+    const auto frozen_graph = Store<graph<V>, frozen>(given.begin(), given.end());
+    EXPECT_THROW(static_cast<void>(frozen_graph.out_degree(V { 2 })), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(frozen_graph.source(1)), std::out_of_range);
+
+    using rows = Store<graph<V>, frozen, constant_adjacency>;
+    const auto bits = rows(urd::graph_data<std::pair<V, V>> { 2, given, {} });
+    EXPECT_THROW(static_cast<void>(bits.adjacent(V { 0 }, V { 2 })), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(bits.vertex_value(V { 2 })), std::out_of_range);
+}
+
 TEST(Graph, PartitionedChecks)
 {
     using rows = Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>;

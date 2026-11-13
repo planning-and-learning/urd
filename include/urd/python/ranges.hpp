@@ -22,14 +22,14 @@
 NAMESPACE_BEGIN(NB_NAMESPACE)
 NAMESPACE_BEGIN(detail)
 
-/// The elements of `range` (a view, copied: a filter is iterable only when it is not const) as a list.
+/// The elements of `range` (a view the caster copied: a filter is iterable only when it is not const) as a list.
 template<typename Caster, typename R>
-handle sequence_view_from_cpp(R range, rv_policy policy, cleanup_list* cleanup)
+handle sequence_view_from_cpp(R&& range, rv_policy policy, cleanup_list* cleanup)
 {
     object result = steal(PyList_New(0));
     if (!result.is_valid())
         return {};
-    for (auto&& value : range)
+    for (auto&& value : std::forward<R>(range))
     {
         const object item = steal(Caster::from_cpp(std::forward<decltype(value)>(value), policy, cleanup));
         if (!item.is_valid() || PyList_Append(result.ptr(), item.ptr()) != 0)

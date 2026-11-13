@@ -9,13 +9,10 @@
 #include "urd/graphs.hpp"
 #include "urd/python/ranges.hpp"
 
-#include <algorithm>
 #include <cstddef>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/variant.h>
-#include <ranges>
-#include <stdexcept>
 
 namespace urd::python
 {
@@ -24,7 +21,7 @@ namespace nb = nanobind;
 /// Binds graph G's members on its class: num_vertices, vertices(), neighbours(v), out_degree(v), adjacent(u, v) and
 /// vertex_value(v); an incidence and edge list graph adds num_edges, edges(), out_edges(v), edge(u, v), source(e),
 /// target(e) and edge_value(e); an in-adjacency graph in_neighbours(v) and in_degree(v); a bidirectional graph
-/// in_edges(v).
+/// in_edges(v). A vertex or edge the graph does not have raises IndexError (the graph's std::out_of_range).
 template<graph_like G>
 void bind_graph(nb::class_<G>& cls)
 {
@@ -46,16 +43,7 @@ void bind_graph(nb::class_<G>& cls)
             [](const G& g, V u, V v) { return g.adjacent(u, v); },
             "source"_a,
             "target"_a)
-        .def(
-            "vertex_value",
-            [](const G& g, V v) -> decltype(auto)
-            {
-                if (index_of<V>::to_index(v) >= urd::detail::vertex_bound(g))
-                    throw std::out_of_range("vertex_value: no such vertex");
-                return g.vertex_value(v);
-            },
-            "vertex"_a,
-            nb::rv_policy::reference_internal);
+        .def("vertex_value", [](const G& g, V v) -> decltype(auto) { return g.vertex_value(v); }, "vertex"_a, nb::rv_policy::reference_internal);
     if constexpr (incidence_graph<G> && edge_list_graph<G>)
         cls.def_prop_ro("num_edges", [](const G& g) { return g.num_edges(); })
             .def("edges", [](const G& g) { return g.edges(); })
@@ -76,23 +64,7 @@ void bind_graph(nb::class_<G>& cls)
                 "target",
                 [](const G& g, std::size_t e) { return g.target(e); },
                 "edge"_a)
-            .def(
-                "edge_value",
-                [](const G& g, std::size_t e) -> decltype(auto)
-                {
-                    // Numbered 0..num_edges-1 where none is removed; else looked for.
-                    if constexpr (requires(G& h) { h.remove_edge(e); })
-                    {
-                        auto edges = g.edges();  // a filter: read where it is held
-                        if (std::ranges::find(edges, e) == std::ranges::end(edges))
-                            throw std::out_of_range("edge_value: no such edge");
-                    }
-                    else if (e >= g.num_edges())
-                        throw std::out_of_range("edge_value: no such edge");
-                    return g.edge_value(e);
-                },
-                "edge"_a,
-                nb::rv_policy::reference_internal);
+            .def("edge_value", [](const G& g, std::size_t e) -> decltype(auto) { return g.edge_value(e); }, "edge"_a, nb::rv_policy::reference_internal);
     if constexpr (in_adjacency_graph<G>)
         cls.def(
                "in_neighbours",

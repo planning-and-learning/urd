@@ -34,7 +34,8 @@ namespace urd
 // The graph concepts, after the Boost Graph Library's: what a graph offers, each a primitive of the containers that
 // have it. Every urd graph is a vertex list with adjacency (graph_like) and has its vertices' and edges' data
 // (vertex_value, edge_value; std::monostate where there is none); one that keeps edge lists numbers its edges and is an
-// incidence and an edge list graph, rows of bits are not.
+// incidence and an edge list graph, rows of bits are not. A member given a vertex or edge the graph does not have throws
+// std::out_of_range.
 
 /// Vertices 0..n-1 (vertex_type, an index): how many, and each in increasing order.
 template<typename G>

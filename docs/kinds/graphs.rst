@@ -181,6 +181,9 @@ that an operation states what it needs and a graph of one's own with those primi
 Rows of bits (``constant_adjacency``) are graph-like, with in-neighbours where they keep them, but no incidence or edge
 list graphs: they have no edge numbers.
 
+Every member that takes a vertex, an edge or a part checks it: one the graph does not have (past the count, or
+removed) throws ``std::out_of_range``, which Python sees as ``IndexError``.
+
 Operations on any graph
 -----------------------
 

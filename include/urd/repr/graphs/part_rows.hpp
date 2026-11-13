@@ -78,14 +78,18 @@ public:
         return std::views::iota(std::size_t { 0 }, num_vertices()) | std::views::transform([](std::size_t at) { return index_of<V>::from_index(at); });
     }
     /// The neighbours of `u`, in increasing order.
-    [[nodiscard]] auto neighbours(V u) const { return keys_of(u, rows_out()); }
+    [[nodiscard]] auto neighbours(V u) const { return keys_of(vertex_at(u), rows_out()); }
     /// The data of `v`: rows of bits hold none, so the one value of a unit.
-    [[nodiscard]] static std::monostate vertex_value(V /*v*/) noexcept { return {}; }
-    [[nodiscard]] size_type out_degree(V u) const { return count_of(u, rows_out()); }
+    [[nodiscard]] std::monostate vertex_value(V v) const
+    {
+        [[maybe_unused]] const auto checked = vertex_at(v);
+        return {};
+    }
+    [[nodiscard]] size_type out_degree(V u) const { return count_of(vertex_at(u), rows_out()); }
     [[nodiscard]] bool adjacent(V u, V v) const
     {
-        const auto p = m_parts.of[index(v)];
-        const auto bits = urd::detail::graph_rows::row(self(), u, p);
+        const auto p = m_parts.of[index(vertex_at(v))];
+        const auto bits = urd::detail::graph_rows::row(self(), vertex_at(u), p);
         const auto at = index(v) - m_parts.first[p];
         return at < bits.size() && bits.test(at);
     }
@@ -95,18 +99,20 @@ public:
     { return neighbours(v); }
     [[nodiscard]] auto in_neighbours(V v) const
         requires InRows
-    { return keys_of(v, rows_in()); }
+    { return keys_of(vertex_at(v), rows_in()); }
     [[nodiscard]] size_type in_degree(V v) const
         requires Undirected
     { return out_degree(v); }
     [[nodiscard]] size_type in_degree(V v) const
         requires InRows
-    { return count_of(v, rows_in()); }
+    { return count_of(vertex_at(v), rows_in()); }
 
     [[nodiscard]] size_type num_parts() const noexcept { return m_parts.first.size() - 1; }
-    [[nodiscard]] size_type part_of(V v) const { return m_parts.of[index(v)]; }
+    [[nodiscard]] size_type part_of(V v) const { return m_parts.of[index(vertex_at(v))]; }
     [[nodiscard]] auto part(std::size_t p) const
     {
+        if (p >= num_parts())
+            throw std::out_of_range("urd::graph: a part that is not there");
         return std::views::iota(m_parts.first[p], m_parts.first[p + 1]) | std::views::transform([](std::size_t at) { return index_of<V>::from_index(at); });
     }
 
@@ -130,6 +136,13 @@ protected:
     }
 
     [[nodiscard]] static std::size_t index(V v) { return index_of<V>::to_index(v); }
+    /// `v`, a vertex it has; else std::out_of_range.
+    [[nodiscard]] V vertex_at(V v) const
+    {
+        if (index(v) >= num_vertices())
+            throw std::out_of_range("urd::graph: a vertex that is not there");
+        return v;
+    }
     /// Takes the parts' sizes, which add up to `vertices`; a graph that is not partitioned is one part of all.
     void adopt(std::size_t vertices, std::span<const std::size_t> sizes)
     {

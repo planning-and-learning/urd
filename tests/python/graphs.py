@@ -18,6 +18,12 @@ assert g.neighbours(a) == [b]
 assert g.source(e) == a and g.target(e) == b
 assert g.vertex_value(a) is None and g.edge_value(e) is None
 assert not hasattr(g, "in_edges")
+for missing in (lambda: g.neighbours(3), lambda: g.vertex_value(3), lambda: g.edge_value(2)):
+    try:
+        missing()
+        raise AssertionError("a vertex or edge the graph does not have")
+    except IndexError:
+        pass
 assert m.growing_from([(0, 1), (1, 2)]).neighbours(1) == [2]
 
 # A frozen graph with in-edges and data: its edges keep their numbers, its data by reference.
