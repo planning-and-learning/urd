@@ -51,6 +51,7 @@ public:
     [[nodiscard]] const_iterator begin() const { return m_rows.begin(); }
     [[nodiscard]] const_iterator end() const { return m_rows.begin() + static_cast<difference_type>(m_used); }
     [[nodiscard]] size_type size() const { return m_used; }
+    [[nodiscard]] bool empty() const { return m_used == 0; }
 
     void push_back(const Inner& row) { emplace_back() = row; }
     void push_back(Inner&& row) { emplace_back() = std::move(row); }

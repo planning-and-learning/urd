@@ -43,6 +43,10 @@ struct graph_rows
     template<typename Rows>
     [[nodiscard]] static std::vector<std::size_t> part_sizes(const Rows& rows)
     { return rows.part_sizes(); }
+    /// Makes every vertex of part p adjacent to every vertex of part q, their rows filled.
+    template<typename Rows>
+    static void connect_parts(Rows& rows, std::size_t p, std::size_t q)
+    { rows.connect_parts(p, q); }
 };
 
 }  // namespace urd::detail
@@ -193,6 +197,10 @@ namespace urd::repr::graphs
 template<typename G>
     requires is_store<G>
 const auto& rows_of(const G& graph)
+{ return urd::detail::store_access::representation(graph); }
+template<typename G>
+    requires is_store<G>
+auto& rows_of(G& graph)
 { return urd::detail::store_access::representation(graph); }
 template<typename G>
     requires(!is_store<G>)

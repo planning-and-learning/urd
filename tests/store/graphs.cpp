@@ -446,6 +446,95 @@ TEST(Graph, DenseAgreesWithModel)
                 false>(8);
 }
 
+/// intersect_neighbours from one set into another, on rows of bits and dense sets over a part's window or over all
+/// vertices, into a third set or in place, agrees with the default, which goes a vertex at a time.
+TEST(Graph, IntersectNeighboursFromAgreesWithTheDefault)
+{
+    using matrix = Store<graph<V>, monotone, partitioned, undirected, constant_adjacency>;
+    using rows = Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>;
+    using Dense = Store<urd::set<V>, urd::dense>;
+    auto random = std::mt19937(5);
+    const auto parts = std::vector<std::size_t> { 3, 70, 1, 66 };
+    auto first_of = std::vector<std::size_t> { 0 };
+    for (const auto size : parts)
+        first_of.push_back(first_of.back() + size);
+    const auto vertices = first_of.back();
+    auto edges = std::vector<std::pair<V, V>>();
+    for (std::size_t u = 0; u < vertices; ++u)
+        for (std::size_t w = 0; w < vertices; ++w)
+            if (std::upper_bound(first_of.begin(), first_of.end(), u) != std::upper_bound(first_of.begin(), first_of.end(), w) && random() % 3 == 0)
+                edges.emplace_back(static_cast<V>(u), static_cast<V>(w));
+    const auto built = matrix(urd::graph_data<std::pair<V, V>> { vertices, edges, parts });
+    const auto frozen_rows = urd::freeze<rows>(built);
+    for (std::size_t p = 0; p < parts.size(); ++p)
+        for (std::size_t v = 0; v < vertices; v += 7)
+        {
+            const auto window = urd::key_range<V> { static_cast<V>(first_of[p]), static_cast<V>(first_of[p + 1]) };
+            auto from = Dense(window);
+            auto whole = Dense(urd::key_range<V> { 0, static_cast<V>(vertices) });
+            for (auto w = first_of[p]; w < first_of[p + 1]; ++w)
+                if (random() % 2 == 0)
+                {
+                    from.insert(static_cast<V>(w));
+                    whole.insert(static_cast<V>(w));
+                }
+            auto expected = Dense(window);
+            urd::detail::intersect_neighbours_by_iteration(frozen_rows, static_cast<V>(v), p, from, expected);
+            auto into = Dense(window);
+            urd::intersect_neighbours(frozen_rows, static_cast<V>(v), p, from, into);
+            EXPECT_EQ(into, expected);
+            EXPECT_EQ(into.size(), expected.size());
+            auto over_all = Dense(urd::key_range<V> { 0, static_cast<V>(vertices) });
+            urd::intersect_neighbours(built, static_cast<V>(v), p, whole, over_all);
+            EXPECT_EQ(over_all, expected);
+            auto in_place = from;
+            urd::intersect_neighbours(frozen_rows, static_cast<V>(v), p, in_place, in_place);
+            EXPECT_EQ(in_place, expected);
+            auto all_expected = Dense(urd::key_range<V> { 0, static_cast<V>(vertices) });
+            urd::detail::intersect_neighbours_by_iteration(built, static_cast<V>(v), whole, all_expected);
+            auto all_into = Dense(urd::key_range<V> { 0, static_cast<V>(vertices) });
+            urd::intersect_neighbours(built, static_cast<V>(v), whole, all_into);
+            EXPECT_EQ(all_into, all_expected);
+        }
+}
+
+/// connect_parts on rows of bits adds the edges the default adds, an edge from each vertex of one part to each of the
+/// other; inside one part it throws.
+TEST(Graph, ConnectPartsAgreesWithAddingEachEdge)
+{
+    using matrix = Store<graph<V>, monotone, partitioned, undirected, constant_adjacency>;
+    const auto parts = std::vector<std::size_t> { 2, 3, 2 };
+    const auto some = std::vector<std::pair<V, V>> { { 0, 5 }, { 3, 6 } };
+    auto by_rows = matrix(urd::graph_data<std::pair<V, V>> { 7, some, parts });
+    auto by_edges = by_rows;
+    urd::connect_parts(by_rows, 0, 1);
+    for (const auto u : by_edges.part(0))
+        for (const auto v : by_edges.part(1))
+            by_edges.add_edge(u, v);
+    for (V u = 0; u < 7; ++u)
+        for (V v = 0; v < 7; ++v)
+            EXPECT_EQ(by_rows.adjacent(u, v), by_edges.adjacent(u, v)) << u << " " << v;
+    EXPECT_TRUE(by_rows.adjacent(4, 1));
+    EXPECT_THROW(urd::connect_parts(by_rows, 2, 2), std::invalid_argument);
+}
+
+/// Keeping every vertex keeps the graph.
+TEST(Graph, InducedOnAllVerticesIsTheGraph)
+{
+    using matrix = Store<graph<V>, monotone, partitioned, undirected, constant_adjacency>;
+    using rows = Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>;
+    const auto parts = std::vector<std::size_t> { 2, 3 };
+    const auto some = std::vector<std::pair<V, V>> { { 0, 2 }, { 1, 4 } };
+    const auto g = matrix(urd::graph_data<std::pair<V, V>> { 5, some, parts });
+    auto all = Store<urd::set<V>, urd::dense>();
+    for (V v = 0; v < 5; ++v)
+        all.insert(v);
+    const auto kept = urd::induced<rows>(g, all);
+    for (V u = 0; u < 5; ++u)
+        for (V v = 0; v < 5; ++v)
+            EXPECT_EQ(kept.adjacent(u, v), g.adjacent(u, v)) << u << " " << v;
+}
+
 /// An edge inside a part, or parts that do not add up to the vertices, throw.
 TEST(Graph, PartitionedChecks)
 {

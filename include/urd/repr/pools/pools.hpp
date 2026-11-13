@@ -330,6 +330,7 @@ public:
     { return urd::detail::indexed_access::built_with(m_rows); }
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
+    [[nodiscard]] bool empty() const { return m_rows.empty(); }
 
     /// The row `base` with `writes` applied (sorted, unique positions within it), stored in full.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)

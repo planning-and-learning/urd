@@ -150,8 +150,9 @@ public:
     }
 
     // Set algebra on whole words, which the Store's set_algebra uses. Sets grow to their largest key, so the
-    // operations apply BitsetSpan to the words both have, and treat the rest of the longer one by itself. Sets over
-    // different windows combine a word at a time, the other's words shifted into this one's (window).
+    // operations combine the words both have, and treat the rest of the longer one by itself; each word through
+    // put_word, which counts only the bits that change. Sets over different windows combine a word at a time, the
+    // other's words shifted into this one's (window).
 
     [[nodiscard]] bool includes(const DenseSet& other) const
     {
@@ -173,25 +174,25 @@ public:
             return unite(other.m_words, other.m_first, other.bits().size());
         if (other.m_words.size() > m_words.size())
             m_words.resize(other.m_words.size());
-        words(other.m_words.size()) |= other.words(other.m_words.size());
-        return recount();
+        for (std::size_t at = 0; at < other.m_words.size(); ++at)
+            put_word(at, m_words[at] | other.m_words[at]);
+        return *this;
     }
     DenseSet& operator&=(const DenseSet& other)
     {
         if (m_first != other.m_first)
             return intersect(other.m_words, other.m_first, other.bits().size());
-        const auto common = std::min(m_words.size(), other.m_words.size());
-        words(common) &= other.words(common);
-        words_from(common).reset();
-        return recount();
+        for (std::size_t at = 0; at < m_words.size(); ++at)
+            put_word(at, at < other.m_words.size() ? m_words[at] & other.m_words[at] : word { 0 });
+        return *this;
     }
     DenseSet& operator-=(const DenseSet& other)
     {
         if (m_first != other.m_first)
             return subtract(other.m_words, other.m_first, other.bits().size());
-        const auto common = std::min(m_words.size(), other.m_words.size());
-        words(common) -= other.words(common);
-        return recount();
+        for (std::size_t at = 0; at < std::min(m_words.size(), other.m_words.size()); ++at)
+            put_word(at, m_words[at] & ~other.m_words[at]);
+        return *this;
     }
 
     /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
@@ -313,6 +314,52 @@ private:
             put_word(at, m_words[at] | window(given, first, bits, at));
         return *this;
     }
+    /// Makes this the keys of `from` the given bitset has: in one pass where both sets share a window, else from a copy.
+    DenseSet& assign_common(const DenseSet& from, std::span<const word> given, std::size_t first, std::size_t bits)
+    {
+        if (this == &from)
+            return intersect(given, first, bits);
+        if (m_first != from.m_first)
+        {
+            *this = from;
+            return intersect(given, first, bits);
+        }
+        return assign_each(from.m_words.size(), [&](std::size_t at) { return from.m_words[at] & window(given, first, bits, at); });
+    }
+    /// Makes this the keys `lhs` and `rhs` share: in one pass where all three share a window, else from a copy.
+    DenseSet& assign_intersection(const DenseSet& lhs, const DenseSet& rhs)
+    {
+        if (this == &lhs)
+            return *this &= rhs;
+        if (this == &rhs)
+            return *this &= lhs;
+        if (m_first != lhs.m_first || m_first != rhs.m_first)
+        {
+            *this = lhs;
+            return *this &= rhs;
+        }
+        return assign_each(std::min(lhs.m_words.size(), rhs.m_words.size()), [&](std::size_t at) { return lhs.m_words[at] & rhs.m_words[at]; });
+    }
+    /// Makes word `at` word(at), for `count` words: each written once and counted once, whatever it held.
+    template<typename Word>
+    DenseSet& assign_each(std::size_t count, Word word_at)
+    {
+        if (m_words.size() != count)
+            m_words.resize(count);
+        m_count = 0;
+        m_touched.clear();
+        for (std::size_t at = 0; at < count; ++at)
+        {
+            const auto value = word_at(at);
+            m_words[at] = value;
+            if (value != 0)
+            {
+                m_count += static_cast<std::size_t>(std::popcount(value));
+                m_touched.insert(at);
+            }
+        }
+        return *this;
+    }
     /// Keeps the keys the given bitset has.
     DenseSet& intersect(std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -396,6 +443,13 @@ private:
     /// m_first + at * Digits + j, 0 where `given` has none.
     [[nodiscard]] word window(std::span<const word> given, std::size_t first, std::size_t bits, std::size_t at) const
     {
+        if (first == m_first)  // the same window: word for word
+        {
+            if (at >= given.size() || at * Bits::Digits >= bits)
+                return 0;
+            const auto room = bits - (at * Bits::Digits);
+            return room < Bits::Digits ? given[at] & bit::lo_set<word>[room] : given[at];
+        }
         constexpr auto digits = static_cast<std::ptrdiff_t>(Bits::Digits);
         const auto from = static_cast<std::ptrdiff_t>(m_first + (at * Bits::Digits)) - static_cast<std::ptrdiff_t>(first);
         const auto source = [&given](std::ptrdiff_t i)
@@ -430,7 +484,13 @@ private:
     void put_word(std::size_t at, word value)
     {
         const auto old = m_words[at];
-        m_count = m_count - static_cast<std::size_t>(std::popcount(old)) + static_cast<std::size_t>(std::popcount(value));
+        if (old == value)
+            return;
+        // Only the bits that change are counted: an intersection loses some, a union gains some, most words keep all.
+        if (const auto gained = value & ~old; gained != 0)
+            m_count += static_cast<std::size_t>(std::popcount(gained));
+        if (const auto lost = old & ~value; lost != 0)
+            m_count -= static_cast<std::size_t>(std::popcount(lost));
         if (old == 0 && value != 0)
             m_touched.insert(at);
         else if (old != 0 && value == 0)
@@ -505,6 +565,12 @@ struct dense_words
     template<typename K, bool T>
     static void intersect(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.intersect(given, first, bits); }
+    template<typename K, bool T>
+    static void assign_common(repr::DenseSet<K, T>& set, const repr::DenseSet<K, T>& from, std::span<const word_t> given, std::size_t first, std::size_t bits)
+    { set.assign_common(from, given, first, bits); }
+    template<typename K, bool T>
+    static void assign_intersection(repr::DenseSet<K, T>& set, const repr::DenseSet<K, T>& lhs, const repr::DenseSet<K, T>& rhs)
+    { set.assign_intersection(lhs, rhs); }
     template<typename K, bool T>
     static void intersect_within(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.intersect_within(given, first, bits); }

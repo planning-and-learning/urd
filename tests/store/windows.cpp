@@ -3,6 +3,7 @@
 // bitset given as words.
 
 #include "urd/repr/values/dense_set.hpp"
+#include "urd/sets.hpp"
 #include "urd/store.hpp"
 
 #include <algorithm>
@@ -145,6 +146,38 @@ TEST(Window, Edges)
     EXPECT_THROW((void) set.significant_words(), std::logic_error);
     set.erase(100);
     EXPECT_EQ(set.size(), 1U);
+}
+
+/// set_intersection on dense sets, over different windows or one, into a third set or into one of them, agrees with
+/// the default, which goes an element at a time.
+TEST(Window, SetIntersectionAgreesWithTheDefault)
+{
+    auto random = std::mt19937(11);
+    for (int round = 0; round < 200; ++round)
+    {
+        auto [lhs, lhs_model, lhs_first] = drawn(random);
+        auto [rhs, rhs_model, rhs_first] = drawn(random);
+        if (round % 2 == 0)  // one window for all, the one-pass case
+        {
+            auto same = Set(urd::key_range<std::uint32_t> { lhs_first, lhs_first + 300 });
+            for (const auto key : rhs_model)
+                if (key >= lhs_first)
+                    same.insert(key);
+            rhs = same;
+        }
+        auto expected = Set(lhs);
+        urd::detail::set_intersection_by_iteration(lhs, rhs, expected);
+        auto into = Set(urd::key_range<std::uint32_t> { lhs_first, lhs_first + 1 });
+        urd::set_intersection(lhs, rhs, into);
+        EXPECT_EQ(keys_of(into), keys_of(expected));
+        EXPECT_EQ(into.size(), expected.size());
+        auto aliased = lhs;
+        urd::set_intersection(aliased, rhs, aliased);
+        EXPECT_EQ(keys_of(aliased), keys_of(expected));
+        auto other = rhs;
+        urd::set_intersection(lhs, other, other);
+        EXPECT_EQ(keys_of(other), keys_of(expected));
+    }
 }
 
 }  // namespace

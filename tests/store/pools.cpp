@@ -11,6 +11,7 @@
 #include "urd/repr/pools/tree_bitset.hpp"
 #include "urd/repr/records/arena.hpp"
 #include "urd/repr/records/records.hpp"
+#include "urd/repr/sequences/row_pool.hpp"
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
@@ -257,3 +258,21 @@ TEST(TreeBitsets, RowsGoInAndOutByWordsWithoutAllocating)
 }
 
 }  // namespace
+
+// Every container with a size answers empty() itself (the sizing facet forwards it): a partition, a pool of rows and a
+// sequence of rows kept for reuse.
+TEST(Sizing, EmptyIsTheContainers)
+{
+    auto partition = Store<urd::partition<int>>();
+    EXPECT_TRUE(partition.empty());
+    partition.insert(2);
+    EXPECT_FALSE(partition.empty());
+    auto rows = Store<urd::pool<Store<urd::sequence<int>, urd::stable_refs, urd::frozen>>>();
+    EXPECT_TRUE(rows.empty());
+    rows.insert(std::vector<int> { 1, 2 });
+    EXPECT_FALSE(rows.empty());
+    auto kept = Store<urd::sequence<Store<urd::sequence<int>, urd::retains>>, urd::retains>();
+    EXPECT_TRUE(kept.empty());
+    kept.emplace_back();
+    EXPECT_FALSE(kept.empty());
+}

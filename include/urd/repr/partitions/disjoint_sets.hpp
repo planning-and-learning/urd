@@ -49,6 +49,7 @@ public:
     }
 
     [[nodiscard]] size_type size() const { return m_parent.size(); }
+    [[nodiscard]] bool empty() const { return m_parent.empty(); }
     /// Whether `element` is an element: its index is below size().
     [[nodiscard]] bool contains(const K& element) const { return index_of<K>::to_index(element) < m_parent.size(); }
 

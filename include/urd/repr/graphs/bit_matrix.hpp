@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <span>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -70,6 +71,23 @@ private:
     [[nodiscard]] bitset_span<const word_t> in_row(V v, std::size_t p) const
         requires InRows
     { return std::as_const(m_in_rows)[base::index(v)][static_cast<std::ptrdiff_t>(p)]; }
+
+    /// Makes every vertex of part p adjacent to every vertex of part q: each one's row into the other part filled, a
+    /// word at a time. p and q the same part throws std::invalid_argument.
+    void connect_parts(std::size_t p, std::size_t q)
+    {
+        if (p == q)
+            throw std::invalid_argument("urd::graph: a partitioned graph has no edge inside a part");
+        for (auto u = this->first_of(p); u < this->first_of(p) + this->size_of(p); ++u)
+            m_rows[u][static_cast<std::ptrdiff_t>(q)].set();
+        for (auto v = this->first_of(q); v < this->first_of(q) + this->size_of(q); ++v)
+        {
+            if constexpr (Undirected)
+                m_rows[v][static_cast<std::ptrdiff_t>(p)].set();
+            if constexpr (InRows)
+                m_in_rows[v][static_cast<std::ptrdiff_t>(p)].set();
+        }
+    }
 
     /// Sets `v` in the row of `u` in `rows`.
     void set_bit(Rows& rows, V u, V v)

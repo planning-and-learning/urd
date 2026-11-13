@@ -114,6 +114,26 @@ void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v
     keep_only(into, [&](auto w) { return graph.adjacent(v, w); });
 }
 template<partitioned_graph G, vertex_set_of<G> Set>
+void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
+{
+    if (&from == &into)
+        return intersect_neighbours_by_iteration(graph, v, p, into);
+    into.clear();
+    for (const auto w : from)
+        if (graph.part_of(w) == p && graph.adjacent(v, w))
+            into.insert(w);
+}
+template<graph_like G, vertex_set_of<G> Set>
+void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
+{
+    if (&from == &into)
+        return intersect_neighbours_by_iteration(graph, v, into);
+    into.clear();
+    for (const auto w : from)
+        if (graph.adjacent(v, w))
+            into.insert(w);
+}
+template<partitioned_graph G, vertex_set_of<G> Set>
 void subtract_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 {
     for (const auto w : graph.neighbours(v))
@@ -264,6 +284,34 @@ void intersect_neighbours(const G& graph, typename G::vertex_type v, Set& into)
                          [](auto& set, auto words, std::size_t first, std::size_t bits) { detail::dense_words::intersect_within(set, words, first, bits); });
 }
 
+/// Sets `into` to the vertices of `from` that are neighbours of v in part p, or neighbours of v at all: the step of a
+/// clique search, candidates narrowed by the vertex chosen, without copying them first. `from` may be `into`.
+template<partitioned_graph G, vertex_set_of<G> Set>
+void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
+{ detail::intersect_neighbours_by_iteration(graph, v, p, from, into); }
+template<partitioned_graph G, vertex_set_of<G> Set>
+    requires detail::by_words<G, Set>
+void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
+{
+    const auto& rows = repr::graphs::rows_of(graph);
+    detail::dense_words::assign_common(detail::store_access::representation(into),
+                                       detail::store_access::representation(from),
+                                       detail::graph_rows::row(rows, v, p).blocks(),
+                                       detail::graph_rows::first_of(rows, p),
+                                       detail::graph_rows::size_of(rows, p));
+}
+template<graph_like G, vertex_set_of<G> Set>
+void intersect_neighbours(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
+{ detail::intersect_neighbours_by_iteration(graph, v, from, into); }
+template<graph_like G, vertex_set_of<G> Set>
+    requires detail::by_words<G, Set>
+void intersect_neighbours(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
+{
+    if (&from != &into)
+        into = from;
+    intersect_neighbours(graph, v, into);
+}
+
 /// Removes from `into` the neighbours of v in part p, or all of v's neighbours.
 template<partitioned_graph G, vertex_set_of<G> Set>
 void subtract_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
@@ -336,6 +384,20 @@ void for_each_neighbour_in(const G& graph, typename G::vertex_type v, const Set&
                          { detail::dense_words::for_each_common(set, words, first, bits, f); });
 }
 
+/// Makes every vertex of part p adjacent to every vertex of part q (another part): an edge from each to each. Where
+/// the graph keeps rows of bits, each one's row into the other part is filled, a word at a time.
+template<partitioned_graph G>
+void connect_parts(G& graph, std::size_t p, std::size_t q)
+{
+    for (const auto u : graph.part(p))
+        for (const auto v : graph.part(q))
+            graph.add_edge(u, v);
+}
+template<partitioned_graph G>
+    requires(has<G, constant_adjacency> && requires(G& graph, typename G::vertex_type v) { graph.add_edge(v, v); })
+void connect_parts(G& graph, std::size_t p, std::size_t q)
+{ detail::graph_rows::connect_parts(repr::graphs::rows_of(graph), p, q); }
+
 /// The graph To (a Store of urd::graph<V>, frozen say) with the vertices and edges of `graph`, and its parts where
 /// both have them: from its edges (an undirected graph's both ways), or from its rows where both keep rows of bits of
 /// one shape, equal rows stored once.
@@ -353,7 +415,8 @@ To freeze(const G& graph)
 
 /// The graph To on the vertices `keep` holds, with the edges between them: the vertices numbered in increasing order,
 /// so part after part, each part keeping its place (empty where none of it is kept). From edges, or where both keep
-/// rows of bits of one shape and `keep` is dense, each kept vertex's rows masked by `keep` a word at a time.
+/// rows of bits of one shape and `keep` is dense, each kept vertex's rows masked by `keep` a word at a time, or where
+/// `keep` holds every vertex, the rows copied whole.
 template<typename To, graph_like G, vertex_set_of<G> Set>
 To induced(const G& graph, const Set& keep)
 {
@@ -376,6 +439,8 @@ To induced(const G& graph, const Set& keep)
 {
     using V = typename G::vertex_type;
     const auto& rows = repr::graphs::rows_of(graph);
+    if (keep.size() == rows.num_vertices())  // all of it: its rows as they are
+        return freeze<To>(graph);
     auto number = std::vector<std::size_t>(rows.num_vertices(), 0);
     auto sizes = std::vector<std::size_t>(rows.num_parts(), 0);
     std::size_t next = 0;
