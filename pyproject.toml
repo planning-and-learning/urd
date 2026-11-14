@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "scikit-build-core>=1.0.3,<2",
-    "pybrokkr>=0.1.2,<0.2",
+    "pybrokkr>=0.1.3,<0.2",
     "pyurd-native==0.1.1",
 ]
 build-backend = "pyurd_build_backend"
@@ -9,7 +9,7 @@ backend-path = ["python"]
 
 [project]
 name = "pyurd"
-version = "0.1.2"
+version = "0.2.0"
 description = "urd: containers described by what the data is, as headers and a CMake package"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -30,7 +30,7 @@ test = [
     "libclang",  # tests/rules/exposure.py: what urd exposes, read with clang's parser
     # The build backend wraps pybrokkr; installed here so type checkers
     # resolve it (it is otherwise only a build-system requirement).
-    "pybrokkr>=0.1.2,<0.2",
+    "pybrokkr>=0.1.3,<0.2",
 ]
 
 [tool.pytest.ini_options]
