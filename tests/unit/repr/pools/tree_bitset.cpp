@@ -1,4 +1,5 @@
 #include "urd/repr/pools/tree_bitset.hpp"
+
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/testing/inspect.hpp"
 

@@ -72,7 +72,7 @@ template<std::size_t N>
 struct fixed_string
 {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,google-explicit-constructor): a string literal, as written
-    constexpr fixed_string(const char (&text)[N]) noexcept { std::copy_n(text, N, characters.begin()); }
+    constexpr fixed_string(const char (&text)[N]) noexcept { std::ranges::copy(text, characters.begin()); }
 
     [[nodiscard]] constexpr std::string_view view() const noexcept { return { characters.data(), N - 1 }; }
 
@@ -85,8 +85,7 @@ consteval auto concatenated() noexcept
     constexpr auto prefix = Prefix.view();
     constexpr auto name = Name.view();
     auto result = std::array<char, prefix.size() + name.size() + 1> {};
-    std::copy(prefix.begin(), prefix.end(), result.begin());
-    std::copy(name.begin(), name.end(), result.begin() + static_cast<std::ptrdiff_t>(prefix.size()));
+    std::ranges::copy(name, std::ranges::copy(prefix, result.begin()).out);
     return result;
 }
 

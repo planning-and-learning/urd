@@ -374,8 +374,8 @@ struct graph_kind : detail::any_kind
     /// A graph is built from its vertex count, its edges and, partitioned, its parts (urd::graph_data), or from a
     /// graph of rows of bits (constant_adjacency), whose rows it copies.
     template<typename S, typename From>
-    static constexpr bool builds_from = graph_data_for<From, typename S::vertex_type, typename S::edge_value_type, typename S::vertex_value_type>
-                                        || has<From, constant_adjacency>;
+    static constexpr bool builds_from =
+        graph_data_for<From, typename S::vertex_type, typename S::edge_value_type, typename S::vertex_value_type> || has<From, constant_adjacency>;
 };
 
 /// urd's kinds: what its tables list.

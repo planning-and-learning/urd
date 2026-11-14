@@ -108,6 +108,66 @@
     "plain": true
    }
   },
+  "adjacency_lists/-;-/1000": {
+   "fingerprint": "a98d75907d603f96",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.032,
+    "iterate": 0.799,
+    "insert": 26.069,
+    "erase": 3.475,
+    "clear": 8.214,
+    "adjacency": 4.122,
+    "endpoints": 2.048
+   },
+   "memory": {
+    "counted": 162432,
+    "told": 163328,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "adjacency_lists/-;-/10000": {
+   "fingerprint": "a98d75907d603f96",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.161,
+    "iterate": 1.08,
+    "insert": 34.42,
+    "erase": 6.619,
+    "clear": 11.488,
+    "adjacency": 8.292,
+    "endpoints": 2.061
+   },
+   "memory": {
+    "counted": 1821696,
+    "told": 1836032,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "adjacency_lists/-;-/100000": {
+   "fingerprint": "a98d75907d603f96",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 4.638,
+    "iterate": 1.775,
+    "insert": 33.139,
+    "erase": 9.064,
+    "clear": 16.643,
+    "adjacency": 29.366,
+    "endpoints": 2.226
+   },
+   "memory": {
+    "counted": 18999296,
+    "told": 19113984,
+    "elements": 100000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
   "arena_interner/-;Text/16": {
    "fingerprint": "c24ca1d13e1381d1",
    "recorded": "2026-11-10",
@@ -153,6 +213,68 @@
     "told": 2089863,
     "elements": 1048576,
     "element_size": 1,
+    "plain": true
+   }
+  },
+  "bidirectional_bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 3.755,
+    "insert": 2.819,
+    "adjacency": 4.079
+   },
+   "memory": {
+    "counted": 308432,
+    "told": 308432,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bidirectional_bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 23.275,
+    "insert": 12.04,
+    "adjacency": 9.094
+   },
+   "memory": {
+    "counted": 25742192,
+    "told": 25742192,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bidirectional_bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 2.667,
+    "adjacency": 4.033
+   },
+   "memory": {
+    "counted": 256700,
+    "told": 256700,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bidirectional_bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 11.819,
+    "adjacency": 18.953
+   },
+   "memory": {
+    "counted": 17435356,
+    "told": 17435356,
+    "elements": 10000,
+    "element_size": 4,
     "plain": true
    }
   },
@@ -246,6 +368,119 @@
     "told": 2958560,
     "elements": 100000,
     "element_size": 8,
+    "plain": true
+   }
+  },
+  "bidirectional_csr_graph/-;-/1000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.061,
+    "iterate": 0.458,
+    "adjacency": 4.317,
+    "endpoints": 2.09
+   },
+   "memory": {
+    "counted": 112016,
+    "told": 112016,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bidirectional_csr_graph/-;-/10000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.02,
+    "iterate": 0.449,
+    "adjacency": 4.401,
+    "endpoints": 2.021
+   },
+   "memory": {
+    "counted": 1120016,
+    "told": 1120016,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bidirectional_csr_graph/-;-/100000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.391,
+    "iterate": 0.405,
+    "adjacency": 7.284,
+    "endpoints": 2.271
+   },
+   "memory": {
+    "counted": 11200016,
+    "told": 11200016,
+    "elements": 100000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 3.847,
+    "insert": 2.395,
+    "adjacency": 4.11
+   },
+   "memory": {
+    "counted": 156240,
+    "told": 156240,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 20.809,
+    "insert": 4.207,
+    "adjacency": 7.924
+   },
+   "memory": {
+    "counted": 12891120,
+    "told": 12891120,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 2.9,
+    "adjacency": 4.428
+   },
+   "memory": {
+    "counted": 109724,
+    "told": 109724,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 11.737,
+    "adjacency": 9.97
+   },
+   "memory": {
+    "counted": 6847788,
+    "told": 6847788,
+    "elements": 10000,
+    "element_size": 4,
     "plain": true
    }
   },
@@ -706,6 +941,57 @@
    "memory": {
     "counted": 524160,
     "told": 524160,
+    "elements": 100000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "csr_graph/-;-/1000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 3.038,
+    "iterate": 0.615,
+    "adjacency": 6.299,
+    "endpoints": 3.039
+   },
+   "memory": {
+    "counted": 68008,
+    "told": 68008,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "csr_graph/-;-/10000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.014,
+    "iterate": 0.407,
+    "adjacency": 4.644,
+    "endpoints": 2.015
+   },
+   "memory": {
+    "counted": 680008,
+    "told": 680008,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "csr_graph/-;-/100000": {
+   "fingerprint": "43f742e77f415344",
+   "recorded": "2026-11-14",
+   "ns": {
+    "access": 2.107,
+    "iterate": 0.414,
+    "adjacency": 9.289,
+    "endpoints": 2.054
+   },
+   "memory": {
+    "counted": 6800008,
+    "told": 6800008,
     "elements": 100000,
     "element_size": 4,
     "plain": true
@@ -11925,6 +12211,192 @@
     "plain": false
    }
   },
+  "partitioned_bidirectional_bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 4.181,
+    "insert": 3.729,
+    "adjacency": 5.996
+   },
+   "memory": {
+    "counted": 405632,
+    "told": 405632,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bidirectional_bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 27.311,
+    "insert": 19.805,
+    "adjacency": 19.246
+   },
+   "memory": {
+    "counted": 27488672,
+    "told": 27488672,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bidirectional_bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 3.992,
+    "adjacency": 6.179
+   },
+   "memory": {
+    "counted": 49788,
+    "told": 49788,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bidirectional_bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 10.51,
+    "adjacency": 7.75
+   },
+   "memory": {
+    "counted": 879580,
+    "told": 879580,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 4.557,
+    "insert": 2.886,
+    "adjacency": 5.939
+   },
+   "memory": {
+    "counted": 204864,
+    "told": 204864,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 28.908,
+    "insert": 8.031,
+    "adjacency": 13.557
+   },
+   "memory": {
+    "counted": 13764384,
+    "told": 13764384,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 4.187,
+    "adjacency": 6.302
+   },
+   "memory": {
+    "counted": 33788,
+    "told": 33788,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 10.192,
+    "adjacency": 7.127
+   },
+   "memory": {
+    "counted": 719580,
+    "told": 719580,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_undirected_bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 2.714,
+    "insert": 3.506,
+    "adjacency": 6.024
+   },
+   "memory": {
+    "counted": 204864,
+    "told": 204864,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_undirected_bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 22.082,
+    "insert": 13.86,
+    "adjacency": 10.914
+   },
+   "memory": {
+    "counted": 13764384,
+    "told": 13764384,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_undirected_bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 2.897,
+    "adjacency": 6.023
+   },
+   "memory": {
+    "counted": 68092,
+    "told": 68092,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "partitioned_undirected_bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 15.138,
+    "adjacency": 10.027
+   },
+   "memory": {
+    "counted": 2065980,
+    "told": 2065980,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
   "posting_map/Id;Id/1000": {
    "fingerprint": "c1e0c36e0ffbdf38",
    "recorded": "2026-11-10",
@@ -21350,6 +21822,68 @@
     "counted": 6815836,
     "told": 6815836,
     "elements": 1048576,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "undirected_bit_matrix/-;-/1000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 2.375,
+    "insert": 3.303,
+    "adjacency": 4.254
+   },
+   "memory": {
+    "counted": 156240,
+    "told": 156240,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "undirected_bit_matrix/-;-/10000": {
+   "fingerprint": "264092fd78840bd2",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 14.412,
+    "insert": 12.494,
+    "adjacency": 7.641
+   },
+   "memory": {
+    "counted": 12891120,
+    "told": 12891120,
+    "elements": 10000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "undirected_bit_rows/-;-/1000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 3.317,
+    "adjacency": 4.184
+   },
+   "memory": {
+    "counted": 153484,
+    "told": 153484,
+    "elements": 1000,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "undirected_bit_rows/-;-/10000": {
+   "fingerprint": "0bd27fa09db1c026",
+   "recorded": "2026-11-14",
+   "ns": {
+    "iterate": 14.349,
+    "adjacency": 13.502
+   },
+   "memory": {
+    "counted": 11001436,
+    "told": 11001436,
+    "elements": 10000,
     "element_size": 4,
     "plain": true
    }

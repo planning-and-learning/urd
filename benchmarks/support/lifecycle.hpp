@@ -4,8 +4,8 @@
 // erase, pop, clear; for a pool, its rows. Through the Store over the container (urd::test::store_over<S, R>), so every
 // container is measured through the same members. Included by benchmarks/experiment.cpp, once per container.
 
-#include "grid.hpp"
 #include "cells.hpp"
+#include "grid.hpp"
 
 #include <algorithm>
 #include <array>
@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace urd::bench
@@ -74,6 +75,8 @@ T make(std::size_t at)
 {
     if constexpr (std::is_arithmetic_v<T>)
         return static_cast<T>(at);
+    else if constexpr (std::is_same_v<T, std::monostate>)
+        return T {};
     else if constexpr (std::is_same_v<T, std::string>)
         return "an element of some length " + std::to_string(at);
     else if constexpr (std::is_same_v<T, urd::test::Id>)
@@ -512,13 +515,7 @@ struct graph_workload
         else
             return ((u * stride) + k + 1) % size;
     }
-    static Input input(std::size_t u, std::size_t v)
-    {
-        if constexpr (std::is_void_v<Value>)
-            return Input(vertex(u), vertex(v));
-        else
-            return Input(vertex(u), vertex(v), make<Value>(u));
-    }
+    static Input input(std::size_t u, std::size_t v) { return Input(vertex(u), vertex(v), make<Value>(u)); }
 
     /// The graph of a cell's size: built at once where it does not grow, else added to vertex by vertex, edge by edge
     /// (timed as insert into `into`, where given).
@@ -541,7 +538,7 @@ struct graph_workload
             for (std::size_t u = 0; u < size; ++u)
                 for (std::size_t k = 0; k < degree; ++k)
                 {
-                    if constexpr (std::is_void_v<Value>)
+                    if constexpr (std::is_same_v<Value, std::monostate>)
                         use(store->add_edge(vertex(u), vertex(target(size, u, k))));
                     else
                         use(store->add_edge(vertex(u), vertex(target(size, u, k)), make<Value>(u)));
@@ -596,7 +593,7 @@ struct graph_workload
                 into.start();
                 for (std::size_t each = 0; each < probes; ++each)
                 {
-                    if constexpr (std::is_void_v<Value>)
+                    if constexpr (std::is_same_v<Value, std::monostate>)
                         use(std::as_const(held).target((each * stride) % edges));
                     else
                         use(std::as_const(held)[(each * stride) % edges]);

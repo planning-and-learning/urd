@@ -225,6 +225,7 @@ None.
 - layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 70309.4 against 62575.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
 - layered_thread_safe_bit_row_interner > layered_thread_safe_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 83845.5 against 47462.8 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered, concurrent>)
 - flat_map > map / ordered_lookup,iterate,lookup / std::string;double: at 100000, 550.3 against 479.3 ns per element (Store<map<std::string, double>, sorted, frozen>)
+- undirected_bit_rows > undirected_bit_matrix / iterate,adjacency / -;-: at 10000, 27.9 against 22.1 ns per element (Store<graph<int>, frozen, undirected, constant_adjacency>)
 
 ## Memory, measured
 
@@ -233,12 +234,19 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | Container | Declared | Measured words | memory_usage off by |
 |---|---|---|---|
 | `addressable_heap` | O(n), 5 words | 4.92 | 0.0% |
+| `adjacency_lists` | O(n), 27 words | 23.75 | 0.8% |
 | `arena_interner` | O(n), 2.5 words | 0.90 | 0.0% |
+| `bidirectional_bit_matrix` | O(n), 336 words | 321.78 | 0.0% |
+| `bidirectional_bit_rows` | O(n), 336 words | 217.94 | 0.0% |
 | `bidirectional_csr` | O(U), 4.8 words | 4.75 | 0.0% |
+| `bidirectional_csr_graph` | O(n), 14 words | 14.00 | 0.0% |
+| `bit_matrix` | O(n), 168 words | 161.14 | 0.0% |
+| `bit_rows` | O(n), 168 words | 85.60 | 0.0% |
 | `bucket_queue` | O(U), 6.2 words | 6.13 | 0.0% |
 | `chained_posting_map` | O(capacity), 8.5 words | 8.45 | 0.0% |
 | `concurrent_indexed_set` | O(capacity), 4.3 words | 4.30 | 0.0% |
 | `concurrent_segmented_vector` | O(n), 1.6 words | 1.01 | 0.0% |
+| `csr_graph` | O(n), 8.5 words | 8.50 | 0.0% |
 | `csr_multimap` | O(U), 2.4 words | 2.38 | 0.0% |
 | `dense_map` | O(U), 2 words | 1.64 | 0.0% |
 | `dense_multimap` | O(U), 6.2 words | 6.13 | 0.0% |
@@ -275,6 +283,12 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `parallel_hash_set` | O(capacity), 1.3 words | 1.06 | 0.0% |
 | `parallel_node_hash_map` | O(n), 3 words | 2.89 | 0.0% |
 | `parallel_node_hash_set` | O(n), 3 words | 2.39 | 0.0% |
+| `partitioned_bidirectional_bit_matrix` | O(n), 352 words | 343.61 | 0.0% |
+| `partitioned_bidirectional_bit_rows` | O(n), 336 words | 10.99 | 0.0% |
+| `partitioned_bit_matrix` | O(n), 176 words | 172.05 | 0.0% |
+| `partitioned_bit_rows` | O(n), 168 words | 8.99 | 0.0% |
+| `partitioned_undirected_bit_matrix` | O(n), 176 words | 172.05 | 0.0% |
+| `partitioned_undirected_bit_rows` | O(n), 168 words | 25.82 | 0.0% |
 | `posting_map` | O(capacity), 9 words | 8.95 | 0.0% |
 | `record_interner` | O(n), 2.5 words | 0.11 | 0.0% |
 | `recycling_hash_map` | O(n), 4.5 words | 4.73 | 0.0% |
@@ -308,6 +322,8 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `tracked_jagged` | O(n), 1.3 words | — | 0.0% |
 | `tree_bitset_set` | O(n), 0.2 words | 0.17 | 0.0% |
 | `tree_vector_set` | O(n), 1 words | 0.82 | 0.0% |
+| `undirected_bit_matrix` | O(n), 168 words | 161.14 | 0.0% |
+| `undirected_bit_rows` | O(n), 168 words | 137.52 | 0.0% |
 | `unordered_flat_map` | O(capacity), 2.4 words | 2.31 | 0.0% |
 | `unordered_flat_set` | O(capacity), 1.3 words | 1.28 | 0.0% |
 | `unordered_map` | O(n), 5 words | 4.73 | 0.0% |

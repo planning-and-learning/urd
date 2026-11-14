@@ -28,6 +28,8 @@ inline constexpr int records = 1;
 
 namespace mechanism
 {
+// NOLINTBEGIN(misc-use-internal-linkage): mechanism.py spells these types in mechanism_resolved.hpp, which no anonymous
+// namespace could be spelled in
 
 /// The record types of family I, as tyr's tags of records (urd::data<Tag> holds the fields): a ground one (an index
 /// and a reference), a lifted one (with a nested Store of references), and a row of a relation.
@@ -51,9 +53,9 @@ struct Repository
 {
     const urd::data<A<I>>& operator[](urd::index<A<I>> at) const;
     const urd::data<B<I>>& operator[](urd::index<B<I>> at) const;
-    urd::index_view<A<I>, Repository> view(urd::index<A<I>> at) const;
-    urd::index_view<B<I>, Repository> view(urd::index<B<I>> at) const;
-    std::size_t layer() const;
+    [[nodiscard]] urd::index_view<A<I>, Repository> view(urd::index<A<I>> at) const;
+    [[nodiscard]] urd::index_view<B<I>, Repository> view(urd::index<B<I>> at) const;
+    [[nodiscard]] std::size_t layer() const;
 };
 template<int I>
 using Context = Repository<I,
@@ -101,6 +103,7 @@ using Context = Repository<I,
                            B<I + 1018>,
                            B<I + 1019>>;
 
+// NOLINTEND(misc-use-internal-linkage)
 }  // namespace mechanism
 
 template<int I>
@@ -148,7 +151,7 @@ using Requests = boost::mp11::mp_list<urd::Store<urd::pool<urd::data<A<I>>, Inde
                                       urd::Store<urd::sequence<Index<A<I>>>>,
                                       urd::Store<urd::sequence<Index<B<I>>>>,
                                       urd::Store<urd::map<Index<A<I>>, Index<B<I>>>, urd::dense, urd::layered, urd::concurrent>,
-                                      urd::Store<urd::pool<urd::Store<urd::sequence<unsigned long>, urd::frozen>, Index<Row<I>>>,
+                                      urd::Store<urd::pool<urd::Store<urd::sequence<std::uint64_t>, urd::frozen>, Index<Row<I>>>,
                                                  urd::monotone_until_clear,
                                                  urd::by_column_widths,
                                                  urd::layered,
@@ -196,7 +199,7 @@ constexpr bool show()
 
 /// Every Store of family I made complete, as a class a library holds is.
 template<int I, typename... Stores>
-constexpr std::size_t hold(boost::mp11::mp_list<Stores...> /*stores*/)
+static constexpr std::size_t hold(boost::mp11::mp_list<Stores...> /*stores*/)
 {
 #if defined(URD_MECHANISM_PROBE)
     [[maybe_unused]] constexpr bool shown = [&]<std::size_t... N>(std::index_sequence<N...>)
@@ -206,7 +209,7 @@ constexpr std::size_t hold(boost::mp11::mp_list<Stores...> /*stores*/)
 }
 
 template<int... I>
-constexpr std::size_t hold_all(std::integer_sequence<int, I...> /*records*/)
+static constexpr std::size_t hold_all(std::integer_sequence<int, I...> /*records*/)
 { return (mechanism::hold<I>(Requests<I> {}) + ...); }  // qualified: no ADL, which would complete every Store listed
 
 }  // namespace mechanism

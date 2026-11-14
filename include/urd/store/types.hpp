@@ -90,7 +90,9 @@ struct iterator_types
 /// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet
 /// hands out indices for views (records, insertion_positions), so that the Store's container is numbered (urd::layer).
 struct facet_defaults
-{ static constexpr bool hands_out_indices = false; };
+{
+    static constexpr bool hands_out_indices = false;
+};
 /// When a Store has facet F: `on<R, S>()`, asked only of the facets its kind lists (urd/kinds.hpp). Always, unless
 /// the facet's header (urd/store/<facet>.hpp) specializes it. With R void it is asked from the spec alone, before a
 /// container is chosen (what a kind offers; whether its container is numbered).

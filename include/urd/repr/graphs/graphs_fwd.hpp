@@ -79,7 +79,7 @@ struct csr_graph_decl
                                        cost_entry<operation::adjacency, costs::log_row>,
                                        cost_entry<operation::access, costs::one>,
                                        cost_entry<operation::endpoints, costs::one>>;
-    static constexpr double words = 5 + (InEdges ? 5.5 : 0);
+    static constexpr double words = 8.5 + (InEdges ? 5.5 : 0);
     static constexpr std::string_view description = "compressed sparse rows, edges numbered as given";
     static constexpr std::string_view holds = "an offset per vertex; per edge its endpoints, data, number and target in its row";
 };
