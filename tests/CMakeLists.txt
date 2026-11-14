@@ -41,8 +41,8 @@ function(urd_syntax_only out target source)
     )
 endfunction()
 
-# The groups of tests/support/grid.hpp, counted from it (one `group<"` each): requests_table checks the number, and
-# the requests are compiled one group at a time.
+# The groups of tests/support/grid.hpp, counted from it (one `group<"` each): requests_table checks the number;
+# the surface and the requests are compiled one group at a time.
 file(STRINGS ${PROJECT_SOURCE_DIR}/tests/support/grid.hpp grid_groups REGEX "group<\"")
 list(LENGTH grid_groups URD_REQUEST_GROUPS)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/support/grid.hpp)
@@ -72,12 +72,13 @@ foreach(topic ${store_topics})
 endforeach()
 # The rules are compile-time only.
 set_tests_properties(store_rules PROPERTIES PASS_REGULAR_EXPRESSION "Running 0 tests|PASSED")
-# The containers of urd/repr/containers/, each on its own.
-foreach(test segmented_vector tree_vector_set tree_bitset_set bitset_span bit)
-    add_executable(test_repr_${test} unit/repr/containers/${test}.cpp support/main.cpp)
-    target_link_libraries(test_repr_${test} PRIVATE urd::urd GTest::gtest)
-    add_test(NAME repr_${test} COMMAND test_repr_${test})
-    set_tests_properties(repr_${test} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
+# The containers of urd/repr/containers/ and the pools of urd/repr/pools/, each on its own.
+foreach(test containers/segmented_vector pools/tree_vector pools/tree_bitset containers/bitset_span containers/bit)
+    cmake_path(GET test FILENAME name)
+    add_executable(test_repr_${name} unit/repr/${test}.cpp support/main.cpp)
+    target_link_libraries(test_repr_${name} PRIVATE urd::urd GTest::gtest)
+    add_test(NAME repr_${name} COMMAND test_repr_${name})
+    set_tests_properties(repr_${name} PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
 endforeach()
 urd_label_tests(unit)
 
@@ -96,6 +97,14 @@ add_executable(test_containers support/main.cpp)
 target_link_libraries(test_containers PRIVATE ${container_test_objects} urd::urd urd::count_allocations GTest::gtest Threads::Threads fmt::fmt)
 add_test(NAME containers COMMAND test_containers)
 set_tests_properties(containers PROPERTIES FAIL_REGULAR_EXPRESSION "Running 0 tests")
+# A Store's surface: for every request of the grid a container serves, each facet of its kind is on exactly where its
+# probe (tests/laws/surface.hpp) holds. One compiler run per group of the grid, syntax only.
+add_executable(test_surface_control EXCLUDE_FROM_ALL laws/surface_group.cpp)
+target_link_libraries(test_surface_control PRIVATE urd::urd fmt::fmt)
+urd_syntax_only(compile test_surface_control laws/surface_group.cpp)
+foreach(group RANGE ${last_group})
+    add_test(NAME surface_${group} COMMAND ${compile} -DURD_GROUP=${group} COMMAND_EXPAND_LISTS)
+endforeach()
 urd_label_tests(laws)
 
 # tables/: the generated files, each checked against what it is generated from.
@@ -178,14 +187,14 @@ urd_budget(bare test_budget_bare_control cost/budget/bare.cpp 210 210)
 
 # What a Store costs to compile beyond the container it chooses, per container: tests/cost/overhead.py compiles
 # cost/overhead/containers.cpp holding Stores and holding their containers directly, and fails when urd's memory per
-# container exceeds the limit for this compiler (measured: GCC 13 1.61 MB, Clang 18 1.15 MB).
+# container exceeds the limit for this compiler (measured: GCC 13 1.43 MB, Clang 18 0.95 MB).
 add_executable(test_overhead_control EXCLUDE_FROM_ALL cost/overhead/containers.cpp)
 target_link_libraries(test_overhead_control PRIVATE urd::urd)
 urd_syntax_only(compile test_overhead_control cost/overhead/containers.cpp)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(overhead_limit 1.4)
+    set(overhead_limit 1.15)
 else()
-    set(overhead_limit 1.9)
+    set(overhead_limit 1.7)
 endif()
 add_test(NAME overhead
          COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/cost/overhead.py --types 40 --limit-mb ${overhead_limit} -- ${compile}
@@ -306,6 +315,10 @@ if(nanobind_FOUND AND Python_FOUND)
     target_link_libraries(urd_views_test PRIVATE urd::urd)
     add_test(NAME python_views COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/integration/python/views.py $<TARGET_FILE:urd_views_test>)
     set_tests_properties(python_views PROPERTIES PASS_REGULAR_EXPRESSION "PASSED")
+    nanobind_add_module(urd_bindings_test NB_SUPPRESS_WARNINGS integration/python/bindings_module.cpp)
+    target_link_libraries(urd_bindings_test PRIVATE urd::urd)
+    add_test(NAME python_bindings COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/integration/python/bindings.py $<TARGET_FILE:urd_bindings_test>)
+    set_tests_properties(python_bindings PROPERTIES PASS_REGULAR_EXPRESSION "PASSED")
     nanobind_add_module(urd_graphs_test NB_SUPPRESS_WARNINGS integration/python/graphs_module.cpp)
     target_link_libraries(urd_graphs_test PRIVATE urd::urd)
     add_test(NAME python_graphs COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/integration/python/graphs.py $<TARGET_FILE:urd_graphs_test>)

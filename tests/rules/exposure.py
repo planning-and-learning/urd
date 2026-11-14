@@ -33,6 +33,7 @@ import sys
 import tempfile
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
+from collections.abc import Set as AbstractSet
 from pathlib import Path
 
 import clang.cindex as ci
@@ -80,7 +81,7 @@ ASSOCIATIVE = CONTAINER | {
     *("load_factor", "max_load_factor", "hash_function", "key_eq"),
 }
 QUEUE = {"front", "back", "top", "push", "emplace", "pop", "empty", "size", "swap"}
-STANDARD_COUNTERPART = {
+STANDARD_COUNTERPART: dict[str, AbstractSet[str]] = {
     "sequence_kind": SEQUENCE,
     "set_kind": ASSOCIATIVE,
     "multiset_kind": ASSOCIATIVE,

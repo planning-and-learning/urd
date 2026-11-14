@@ -7,6 +7,7 @@
 #include "urd/config.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/hash.hpp"
+#include "urd/elements/packed_row.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/repr/containers/bit.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
@@ -107,9 +108,6 @@ struct Hash<column_widths>
 
 namespace urd::repr
 {
-
-template<bool ThreadSafe>
-class SchemaRow;
 
 namespace detail
 {

@@ -178,19 +178,28 @@ struct role_facts<role::row, Asked>
     { return held_as<T>::properties; }
 };
 
+/// The facts of the types one role is played by (plays<Role, Args…>), about that role.
+template<typename Plays, typename Asked>
+struct played_facts;
+template<typename Role, typename... Args, typename Asked>
+struct played_facts<plays<Role, Args...>, Asked>
+{
+    static consteval property_set get() { return about(role_v<Role>, role_facts<Role, Asked>::template of<Args...>()); }
+};
+/// Each role's facts joined in one pack expansion: no lambda is instantiated per request (brokkr's template rules, rule 22).
+template<typename Asked, typename... Plays>
+consteval property_set played_roles(boost::mp11::mp_list<Plays...> /*played*/)
+{
+    auto result = property_set::roots();
+    ((result = with(result, played_facts<Plays, Asked>::get())), ...);
+    return result;
+}
 /// The facts by role of Data, a kind with its element types (urd::set<K>, …) or a request's spec, ordered by Order:
 /// each role its played types (Data::played<Order>: plays<Role, Args…>) have, about that role, of the traits Asked
 /// asks. What a container's template arguments make (declaration_of::roles: every trait) and what a request's data is.
 template<typename Data, typename Order = Less<typename Data::ordered_type>, typename Asked = every_trait>
 consteval property_set roles_of()
-{
-    auto result = property_set::roots();
-    const auto add = [&result]<typename Role, typename... Args>(plays<Role, Args...> /*plays*/)
-    { result = with(result, about(role_v<Role>, role_facts<Role, Asked>::template of<Args...>())); };
-    []<typename... Plays>(boost::mp11::mp_list<Plays...> /*played*/, const auto& each)
-    { (each(Plays {}), ...); }(typename Data::template played<Order> {}, add);
-    return result;
-}
+{ return detail::played_roles<Asked>(typename Data::template played<Order> {}); }  // qualified: no ADL, which would complete the played types
 
 /// The facts of spec S: what it promises, and its data's facts by role, of the traits Asked asks.
 template<typename S, typename Asked>

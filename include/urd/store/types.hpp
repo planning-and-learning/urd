@@ -90,9 +90,7 @@ struct iterator_types
 /// What every facet's condition says unless it says otherwise: each specialization derives from it. Whether the facet
 /// hands out indices for views (records, insertion_positions), so that the Store's container is numbered (urd::layer).
 struct facet_defaults
-{
-    static constexpr bool hands_out_indices = false;
-};
+{ static constexpr bool hands_out_indices = false; };
 /// When a Store has facet F: `on<R, S>()`, asked only of the facets its kind lists (urd/kinds.hpp). Always, unless
 /// the facet's header (urd/store/<facet>.hpp) specializes it. With R void it is asked from the spec alone, before a
 /// container is chosen (what a kind offers; whether its container is numbered).
@@ -104,22 +102,27 @@ struct facet_condition : facet_defaults
     { return true; }
 };
 
-/// Whether a Store for spec S has a facet that hands out indices for views (facet_defaults::hands_out_indices), asked of
-/// the facets its kind lists, each by its own condition from the spec alone.
-template<typename S, template<typename, typename, typename> class F>
-consteval bool hands_out_indices_by()
+/// Two facet lists joined: declared only, for the fold in indexing_facets (one pack expansion, no recursion over the
+/// list: brokkr's template rules, rule 22).
+template<template<typename, typename, typename> class... As, template<typename, typename, typename> class... Bs>
+facet_list<As..., Bs...> operator|(facet_list<As...> /*as*/, facet_list<Bs...> /*bs*/);
+/// The facets of a list that may hand out indices for views (facet_defaults::hands_out_indices): picked once per list,
+/// so that each Store asks only these, not every facet of its kind (brokkr's template rules, rule 21).
+template<typename List>
+struct indexing_facets;
+template<template<typename, typename, typename> class... Fs>
+struct indexing_facets<facet_list<Fs...>>
 {
-    if constexpr (facet_condition<F>::hands_out_indices)
-        return facet_condition<F>::template on<void, S>();
-    else
-        return false;
-}
+    using type = decltype((facet_list<> {} | ... | std::conditional_t<facet_condition<Fs>::hands_out_indices, facet_list<Fs>, facet_list<>> {}));
+};
+/// Whether a Store for spec S has a facet that hands out indices for views, each such facet of its kind asked by its
+/// own condition from the spec alone.
 template<typename S, template<typename, typename, typename> class... Fs>
 consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
-{ return (hands_out_indices_by<S, Fs>() || ...); }
+{ return (facet_condition<Fs>::template on<void, S>() || ...); }
 /// The container R of a Store for spec S, numbered where the Store hands out indices for views (urd::layer).
 template<typename S, typename R>
-using numbered_t = std::conditional_t<hands_out_indices<S>(facets_of<typename S::kind> {}), repr::Numbered<R>, R>;
+using numbered_t = std::conditional_t<hands_out_indices<S>(typename indexing_facets<facets_of<typename S::kind>>::type {}), repr::Numbered<R>, R>;
 
 /// The operations a facet offers (urd::operation, cost.hpp), declared beside the facet as an operation_list: what a Store's container is
 /// asked to state a cost for, and what a search knows a kind offers. None by default.
