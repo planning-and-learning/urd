@@ -70,10 +70,24 @@ jobs:
       - name: Inspect release assets
         run: find dist -maxdepth 1 -type f
 
+      # The notes name the pyurd-native release this pyurd pins, whose assets hold the corresponding source of the
+      # native dependencies; the generated changelog follows them.
+      - name: Write release notes
+        run: |
+          NATIVE=$(python -c "
+          import tomllib
+          pins = [d for d in tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies'] if d.startswith('pyurd-native==')]
+          assert len(pins) == 1, f'pyurd must pin pyurd-native exactly once: {pins}'
+          print(pins[0].removeprefix('pyurd-native=='))")
+          cat > release-notes.md <<EOF
+          pyurd ${GITHUB_REF_NAME#v} depends on \`pyurd-native==${NATIVE}\`, which ships urd's native dependencies in binary form. Their corresponding source (pyurd-native's source distribution with the dependencies' build scripts and patches, and the exact upstream sources) is \`pyurd_native-${NATIVE}-corresponding-source.tar.gz\` in the [native-v${NATIVE} release](https://github.com/${GITHUB_REPOSITORY}/releases/tag/native-v${NATIVE}).
+          EOF
+          cat release-notes.md
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --notes "$(cat release-notes.md)" --generate-notes
 
   publish:
     needs: github_release
