@@ -409,7 +409,9 @@ void check_dense(unsigned seed)
             EXPECT_EQ(sorted(m.neighbours(u)), out[u]);
             EXPECT_EQ(m.out_degree(u), out[u].size());
             if constexpr (Undirected || InRows)
+            {
                 EXPECT_EQ(sorted(m.in_neighbours(u)), in[u]);
+            }
         }
 
         const auto fast = urd::freeze<Rows>(m);
@@ -423,8 +425,10 @@ void check_dense(unsigned seed)
         EXPECT_TRUE(same_edges(fast, m));
         EXPECT_TRUE(same_edges(slow, m));
         if constexpr (Undirected || InRows)
+        {
             for (V u = 0; u < vertices; ++u)
                 EXPECT_EQ(sorted(fast.in_neighbours(u)), in[u]);
+        }
 
         // Each operation, with rows and dense sets against the default with hashed sets.
         const auto random_set = [&](auto& set, std::size_t first, std::size_t last)
@@ -503,8 +507,10 @@ void check_dense(unsigned seed)
             for (V v = 0; v < kept.size(); ++v)
                 EXPECT_EQ(sub_fast.adjacent(u, v), adjacent[kept[u]][kept[v]]);
         if constexpr (Partitioned)
+        {
             for (V u = 0; u < kept.size(); ++u)
                 EXPECT_EQ(sub_fast.part_of(u), part_of[kept[u]]);
+        }
     }
 }
 
@@ -549,7 +555,6 @@ TEST(Graph, IntersectNeighboursFromAgreesWithTheDefault)
 {
     using matrix = Store<graph<V>, monotone, partitioned, undirected, constant_adjacency>;
     using rows = Store<graph<V>, frozen, partitioned, undirected, constant_adjacency>;
-    using Dense = Store<urd::set<V>, urd::dense>;
     auto random = std::mt19937(5);
     const auto parts = std::vector<std::size_t> { 3, 70, 1, 66 };
     auto first_of = std::vector<std::size_t> { 0 };

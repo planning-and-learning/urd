@@ -137,7 +137,7 @@ TEST(Window, Edges)
 {
     auto set = Set(urd::key_range<std::uint32_t> { 100, 110 });
     EXPECT_THROW(set.insert(99), std::out_of_range);
-    EXPECT_FALSE(set.contains(5));
+    EXPECT_FALSE(set.contains(5U));
     set.insert(500);
     set.insert(100);
     EXPECT_EQ(keys_of(set), (std::vector<std::uint32_t> { 100, 500 }));

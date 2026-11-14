@@ -165,14 +165,14 @@ template<typename T, auto M, auto... Ms>
 constexpr bool less_members(const T& lhs, const T& rhs)
 {
     using Member = std::remove_cvref_t<member_read_t<T, M>>;
-    const auto& first = std::invoke(M, lhs);
-    const auto& second = std::invoke(M, rhs);
-    if (Less<Member> {}(first, second))
+    // The members are read where they are compared, not bound to references first: GCC takes a reference bound to a
+    // call's result for a possibly dangling one (-Wdangling-reference).
+    if (Less<Member> {}(std::invoke(M, lhs), std::invoke(M, rhs)))
         return true;
     if constexpr (sizeof...(Ms) == 0)
         return false;
     else
-        return !Less<Member> {}(second, first) && less_members<T, Ms...>(lhs, rhs);
+        return !Less<Member> {}(std::invoke(M, rhs), std::invoke(M, lhs)) && less_members<T, Ms...>(lhs, rhs);
 }
 template<typename T, auto... Ms>
 constexpr bool less_members(const T& lhs, const T& rhs, Members<Ms...> /*members*/)

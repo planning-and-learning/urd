@@ -51,7 +51,7 @@ public:
     {
         const auto& rows = graphs::rows_of(graph);
         this->adopt(rows.num_vertices(), urd::detail::graph_rows::part_sizes(rows));
-        intern(rows, m_handles, [](const auto& graph, V v, std::size_t p) { return urd::detail::graph_rows::row(graph, v, p); });
+        intern(rows, m_handles, [](const auto& source, V v, std::size_t p) { return urd::detail::graph_rows::row(source, v, p); });
         intern_in(rows);
     }
 

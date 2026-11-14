@@ -58,9 +58,9 @@ public:
     [[nodiscard]] auto upper_bound(const Key& key) const
         requires requires(const Container& held) { held.upper_bound(key); }
     { return Container::upper_bound(key); }
-    void reserve(size_type count)
-        requires requires(Container& held) { held.reserve(count); }
-    { Container::reserve(count); }
+    void reserve(size_type room)
+        requires requires(Container& held) { held.reserve(room); }
+    { Container::reserve(room); }
     [[nodiscard]] const auto& at(const key_type& key) const
         requires requires(const Container& held) { held.at(key); }
     { return Container::at(key); }
