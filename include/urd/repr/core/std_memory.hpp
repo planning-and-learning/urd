@@ -4,7 +4,7 @@
 // (std::map, std::unordered_set, …) and builds on (Recycling, Scoped, Queue). Their nodes are the library's own, so
 // their sizes are libstdc++'s layout: a tree node's header is a color and three pointers, a hash node's a next pointer
 // and, where the library caches it, the hash; a deque's blocks are 512 bytes. The benchmarks check these against what
-// is allocated (benchmarks/record.py).
+// is allocated (benchmarks/tools/record.py).
 
 #include "urd/memory.hpp"
 

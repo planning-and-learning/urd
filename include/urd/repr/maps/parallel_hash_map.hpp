@@ -32,7 +32,7 @@ class LockedByKey : private Table
 {
 public:
     using Table::Table;
-    // What the facets reach of gtl's table, and nothing else of it (tests/exposure.py, rule F7).
+    // What the facets reach of gtl's table, and nothing else of it (tests/rules/exposure.py, rule F7).
     using Table::at;
     using Table::begin;
     using Table::clear;

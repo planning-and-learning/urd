@@ -4,7 +4,7 @@ find_package(Threads REQUIRED)
 foreach(example sets sequences maps rows dense interning queues scopes structures states)
     add_executable(example_${example} ${example}.cpp)
     target_link_libraries(example_${example} PRIVATE urd::urd Threads::Threads)
-    target_include_directories(example_${example} PRIVATE "${PROJECT_SOURCE_DIR}/tests")
+    target_include_directories(example_${example} PRIVATE "${PROJECT_SOURCE_DIR}/tests/support")
 endforeach()
 
 # Each example runs as a test where the tests are built.

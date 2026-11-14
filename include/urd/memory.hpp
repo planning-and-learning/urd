@@ -3,7 +3,7 @@
 // The memory a value holds: urd::memory_usage(x), the heap bytes x owns beyond sizeof(x). Each container answers for
 // itself, beside its own code (memory_of<R>); its declaration states at most how many words it takes per element (or
 // per key of its range, or slot of its capacity: words_per, urd/registry/declaration.hpp), which the benchmarks judge
-// against what is allocated (benchmarks/record.py). Its declared words are urd/cost.hpp's.
+// against what is allocated (benchmarks/tools/record.py). Its declared words are urd/cost.hpp's.
 
 #include "urd/elements/concepts.hpp"
 

@@ -2,7 +2,7 @@
 
 // What tests reach of a container beyond what its Store offers: how many nodes a tree pool keeps, a layer's parent, a
 // segmented vector's append by reserved index. A
-// friend of those containers (tests/exposure.py, rule F7); nothing outside tests uses it.
+// friend of those containers (tests/rules/exposure.py, rule F7); nothing outside tests uses it.
 
 #include <cstddef>
 #include <utility>

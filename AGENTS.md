@@ -58,7 +58,7 @@ The rules that the planning-and-learning libraries share are maintained in brokk
   (`dense_words`, `graph_rows`, `indexed_access`) or the one component that uses it; what tests need, through
   `urd::testing::inspect`. Construction, assignment, comparison and the protocols urd reads of a type
   (`memory_members`, `identifying_members`) every container has.
-  **Check**: `python3 tests/exposure.py --compile-commands build/compile_commands.json` (the `exposure` test; needs
+  **Check**: `python3 tests/rules/exposure.py --compile-commands build/compile_commands.json` (the `exposure` test; needs
   `libclang` from PyPI, in the `test` extra)
 - **F8 No representation in a facet's signature** (*open*, 3 sites: `set_algebra`'s `significant_words` and
   `assign_words`, which tyr's state storage reads). A facet's public member MUST NOT take or return words or bitsets
@@ -80,7 +80,7 @@ The rules that the planning-and-learning libraries share are maintained in brokk
 - **I5 Incomplete elements.** A `Store<sequence<T>>` whose container is a `std::vector` MUST be holdable where `T` is
   incomplete, as `std::vector<T>` is (a recursive type holds a sequence of itself): choosing a container asks a type
   only the traits some container of the request's kind relies on, and a facet's condition asks the element type
-  nothing. **Check:** `tests/store/incomplete.cpp`.
+  nothing. **Check:** `tests/unit/store/incomplete.cpp`.
 
 ## Containers
 
@@ -105,14 +105,14 @@ The rules that the planning-and-learning libraries share are maintained in brokk
   differently, and the table would lose the row. A type with one holder MAY hash its bytes: text does
   (`Hash<std::string_view>`, which every text type goes through).
 - **C7 Measure where it shows.** A change to hashing, comparing or copying elements MUST be measured with
-  `benchmarks/record.py` (long keys, strings) before its cost is reported, not only on one application.
+  `benchmarks/tools/record.py` (long keys, strings) before its cost is reported, not only on one application.
 
 ## Declarations
 
 - **D1 Derive, do not repeat.** A declaration that is a variant of another MUST inherit it and state only what
   differs (`with`, `with_header`, `costs_over`).
 - **D2 Generated tables are the proof.** `share/urd/complexity.json`, `docs/RESOLUTION.md` and
-  `benchmarks/requests.json` MUST pass their checks without being regenerated when a change is meant to leave the
+  `benchmarks/suites/requests.json` MUST pass their checks without being regenerated when a change is meant to leave the
   declarations' meaning as it was.
 - **D3 Memory by members.** A container whose memory is the sum of its members' MUST state them with
   `memory_members()`; it MUST NOT specialize `urd::memory_of`.

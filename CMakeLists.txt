@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(URD_BUILD_TESTS "Build urd's tests." ${PROJECT_IS_TOP_LEVEL})
-# The exposure check (tests/exposure.py) and clang-tidy read the flags the build compiles with.
+# The exposure check (tests/rules/exposure.py) and clang-tidy read the flags the build compiles with.
 if(URD_BUILD_TESTS)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
@@ -65,19 +65,21 @@ add_library(urd_count_allocations INTERFACE)
 add_library(urd::count_allocations ALIAS urd_count_allocations)
 set_target_properties(urd_count_allocations PROPERTIES EXPORT_NAME count_allocations)
 target_sources(urd_count_allocations INTERFACE
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/urd/testing/allocations.cpp>"
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/testing/allocations.cpp>"
     "$<INSTALL_INTERFACE:${URD_INSTALL_INCLUDEDIR}/urd/testing/allocations.cpp>"
 )
 target_link_libraries(urd_count_allocations INTERFACE urd)
 
 # The package: find_package(urd) after an install, or against this build tree with urd_DIR=<build>.
 install(DIRECTORY include/urd DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# A source the consumer compiles (urd::count_allocations), installed beside the headers that declare what it defines.
+install(FILES src/testing/allocations.cpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/urd/testing")
 # The tags in plain words, for tools that write requests (share/urd/vocabulary.json, generated and checked by a test).
 install(FILES share/urd/vocabulary.json share/urd/complexity.json DESTINATION "${CMAKE_INSTALL_DATADIR}/urd")
 install(TARGETS urd urd_count_allocations EXPORT urdTargets)
 install(EXPORT urdTargets NAMESPACE urd:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd")
 export(EXPORT urdTargets NAMESPACE urd:: FILE "${CMAKE_BINARY_DIR}/urdTargets.cmake")
-configure_package_config_file(cmake/urdConfig.cmake.in "${CMAKE_BINARY_DIR}/urdConfig.cmake"
+configure_package_config_file(Config.cmake.in "${CMAKE_BINARY_DIR}/urdConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/urd"
 )
 # Headers only: the same package serves every architecture (pyurd is one wheel for all of them).

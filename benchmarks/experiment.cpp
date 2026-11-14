@@ -1,6 +1,6 @@
-// One container's benchmarks: its experiments (benchmarks/cells.hpp), each the container's lifecycle on one shape of
-// element at each size (benchmarks/lifecycle.hpp). CMake compiles this file once per container listed in
-// benchmarks/requests.json, through a generated source that includes the container's headers first (only
+// One container's benchmarks: its experiments (benchmarks/support/cells.hpp), each the container's lifecycle on one shape of
+// element at each size (benchmarks/support/lifecycle.hpp). CMake compiles this file once per container listed in
+// benchmarks/suites/requests.json, through a generated source that includes the container's headers first (only
 // those: a header costs its compile whether used or not), defines
 //
 //     URD_CONTAINER    its id (urd::test::name<R>::id)

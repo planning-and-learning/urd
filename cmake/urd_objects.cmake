@@ -9,21 +9,21 @@ function(urd_small_object target)
     endif()
 endfunction()
 
-# One object per container of benchmarks/requests.json, each compiling SOURCE with only that container's headers
+# One object per container of benchmarks/suites/requests.json, each compiling SOURCE with only that container's headers
 # included first, so adding a container adds its own objects and changing one rebuilds its own. KEY names the map of
 # containers to grid positions (FIELDS numbers each); an object takes at most PER_OBJECT of them, so no object grows
 # with the grid. Each object defines URD_CONTAINER, DEFINE (its positions) and URD_CHUNK (its index among the
 # container's objects), and its source ends with TAIL, where @object@ is the object's name. The objects are named PREFIX_<container>_<chunk> and returned in OUT_OBJECTS.
 function(urd_per_container)
     cmake_parse_arguments(PARSE_ARGV 0 arg "" "KEY;FIELDS;PER_OBJECT;PREFIX;SOURCE;DEFINE;TAIL;OUT_OBJECTS" "LINK")
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/benchmarks/suites/requests.json)
     set(requests "{}")
-    if(EXISTS ${PROJECT_SOURCE_DIR}/benchmarks/requests.json)
-        file(READ ${PROJECT_SOURCE_DIR}/benchmarks/requests.json requests)
+    if(EXISTS ${PROJECT_SOURCE_DIR}/benchmarks/suites/requests.json)
+        file(READ ${PROJECT_SOURCE_DIR}/benchmarks/suites/requests.json requests)
     endif()
     string(JSON container_count ERROR_VARIABLE missing LENGTH "${requests}" ${arg_KEY})
     if(missing)
-        message(WARNING "benchmarks/requests.json lists no ${arg_KEY}: requests_table --write it, then reconfigure")
+        message(WARNING "benchmarks/suites/requests.json lists no ${arg_KEY}: requests_table --write it, then reconfigure")
         set(container_count 0)
     endif()
     set(objects "")
@@ -66,7 +66,7 @@ function(urd_per_container)
                      CONTENT "${headers}#include \"${arg_SOURCE}\"\n\n${tail}")
                 add_library(${object} OBJECT ${CMAKE_CURRENT_BINARY_DIR}/per_container/${object}.cpp)
                 target_link_libraries(${object} PRIVATE urd::urd ${arg_LINK})
-                target_include_directories(${object} PRIVATE ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/benchmarks)
+                target_include_directories(${object} PRIVATE ${PROJECT_SOURCE_DIR}/tests/support ${PROJECT_SOURCE_DIR}/benchmarks/support)
                 target_compile_definitions(${object} PRIVATE URD_CONTAINER="${container}" ${arg_DEFINE}=${joined} URD_CHUNK=${chunk})
                 # GCC's -Wmaybe-uninitialized misfires on a slot vector held in a std::optional (a known false positive
                 # of its optimizer); the other warnings stay on.

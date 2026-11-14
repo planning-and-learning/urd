@@ -138,7 +138,7 @@ grid of requests (a ``none`` row carries a note saying what is missing). ``to_sp
 ill-formed whatever container would hold it: a first argument that is no kind, an argument after it that is no tag,
 a tag its kind's format does not ask, and the rules its kind states (``well_formed`` in ``include/urd/kinds.hpp``: a
 queue is reached by ``fifo``, ``lifo`` or ``by_priority``, ``monotone_priority`` needs ``by_priority``, ``order_by``
-needs ``sorted`` or ``by_priority``), each with its message. A compile-fail case in ``tests/compile_fail_store.cpp`` pins
+needs ``sorted`` or ``by_priority``), each with its message. A compile-fail case in ``tests/rules/compile_fail_store.cpp`` pins
 each message (``urd_compile_fail_expects`` in ``CMakeLists.txt``).
 
 .. list-table::

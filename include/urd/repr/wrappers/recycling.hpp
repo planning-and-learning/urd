@@ -32,7 +32,7 @@ template<typename Container>
 class Recycled : protected Container
 {
 public:
-    // What the facets reach of the std map or set, and nothing else of it (tests/exposure.py, rule F7).
+    // What the facets reach of the std map or set, and nothing else of it (tests/rules/exposure.py, rule F7).
     using Container::begin;
     using Container::contains;
     using Container::count;

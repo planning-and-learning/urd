@@ -42,5 +42,5 @@ Records and graphs are bound, not converted:
   values go through nanobind's casters: ranges as lists (``urd/python/ranges.hpp``), a graph's data by reference,
   ``None`` where it carries none (``std::monostate``).
 
-The tests ``tests/python/views.py`` and ``tests/python/graphs.py`` are built with the caster test. The headers need nanobind; nothing
-else in urd does. The test ``tests/python/casters.py`` is built where CMake finds nanobind (``-Dnanobind_DIR=...``).
+The tests ``tests/integration/python/views.py`` and ``tests/integration/python/graphs.py`` are built with the caster test. The headers need nanobind; nothing
+else in urd does. The test ``tests/integration/python/casters.py`` is built where CMake finds nanobind (``-Dnanobind_DIR=...``).

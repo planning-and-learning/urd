@@ -33,7 +33,7 @@ template<typename T>
 inline constexpr bool is_store = false;
 
 /// What a container guarantees, by itself, through every operation it offers: derived from its declaration's
-/// `provides` (urd/registry/derived.hpp), and checked by its property tests (tests/properties.hpp). A container is
+/// `provides` (urd/registry/derived.hpp), and checked by its property tests (tests/laws/properties.hpp). A container is
 /// declared (urd/registry/declaration.hpp) or urd knows nothing of it: one nobody declared guarantees nothing, and no
 /// Store resolves to it.
 template<typename R>

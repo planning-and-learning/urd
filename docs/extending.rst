@@ -14,7 +14,7 @@ beside urd's. Adding one is its own file, plus its entry in the one list it belo
      - Its entry
    * - A container
      - ``declarations_of<Kind>`` (``include/urd/registry/declarations.hpp``: its place is its preference) and the
-       include of its ``*_fwd.hpp`` there; in urd also its header in ``tests/all_containers.hpp``
+       include of its ``*_fwd.hpp`` there; in urd also its header in ``tests/support/all_containers.hpp``
    * - A kind
      - ``urd::kinds`` (``include/urd/kinds.hpp``) and its ``declarations_of<Kind>``
    * - A tag answer, or a category
@@ -31,7 +31,7 @@ beside urd's. Adding one is its own file, plus its entry in the one list it belo
 
 What a tag means for a Store is the tag's own data (``urd::tag_defaults``: what it implies, keeps, promises and puts
 later; ``urd::answer_says``: what it stops or fixes, whether it is demanded or costly), a trait's meaning is its ``holds``, a facet's is its condition (``facet_defaults``), and the
-tables, tests and docs derive their lists from these registries. ``tests/store/outside_kind.cpp`` adds a kind with a
+tables, tests and docs derive their lists from these registries. ``tests/unit/store/outside_kind.cpp`` adds a kind with a
 category, a facet, operations and a container, and resolves a Store to it; it is the example below.
 
 A container
@@ -62,7 +62,7 @@ A container is a declaration (``include/urd/repr/<kind>/*_fwd.hpp`` in urd) and 
   kind it serves has them (``roles_of<urd::set<T>, C>()``).
 - ``urd::memory_of<MySet<T>>`` tells the heap it holds, for ``urd::memory_usage``: ``static std::size_t
   bytes(const MySet<T>&)``, beside the type. The benchmarks check it, and the declared memory, against what is
-  allocated (``benchmarks/record.py``).
+  allocated (``benchmarks/tools/record.py``).
 - ``declarations_of<Kind>`` lists a kind's containers in order of preference; a container added to an existing kind
   is placed there.
 
@@ -117,7 +117,7 @@ An operation and a facet
 
 An operation is a struct with its words (``urd::operation::insert`` in ``include/urd/cost.hpp``); a container
 states its cost by an entry for it in its ``operation_costs``, a ``cost_table`` (a wrapper's, ``costs_over`` its part's
-declaration, passes on every operation it has no entry for). ``tests/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
+declaration, passes on every operation it has no entry for). ``tests/unit/store/outside_kind.cpp`` adds two. A facet is a class template ``F<Derived, R, S>`` that gives the Store members, with
 ``facet_condition<F>`` (when a Store has it; always, unless specialized) and ``facet_operations<F>`` (the operations
 it offers), as in ``include/urd/store/*.hpp``.
 

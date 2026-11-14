@@ -42,7 +42,7 @@ class BitRows;
 namespace urd::detail
 {
 
-// A graph's words are per vertex, measured on the benchmarks' graphs of three edges per vertex (benchmarks/lifecycle.hpp,
+// A graph's words are per vertex, measured on the benchmarks' graphs of three edges per vertex (benchmarks/support/lifecycle.hpp,
 // graph_workload): the edges a vertex has decide its memory, which an element's words cannot say otherwise.
 
 struct adjacency_lists_decl

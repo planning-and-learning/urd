@@ -1,0 +1,183 @@
+// Writes docs/RESOLUTION.md from the request grid (tests/support/grid.hpp), or checks the committed file against it:
+//
+//     resolution_table --write docs/RESOLUTION.md
+//     resolution_table --check docs/RESOLUTION.md     (the `resolution` test; exits 1 and names the first difference)
+//
+// No Store is instantiated: each request resolves through the registry's choose, which reads only traits.
+
+#include "generated.hpp"
+#include "grid.hpp"
+#include "urd/registry/select.hpp"
+
+#include <algorithm>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace
+{
+
+template<typename S>
+std::string_view resolved_name()
+{
+    if constexpr (urd::detail::choose<S>::found)
+        return urd::detail::choose<S>::id;
+    else
+        return "none";
+}
+
+/// The headers a file holding a Store for S includes, by name in urd/repr/, a wrapper's part first.
+template<typename S>
+std::string headers()
+{
+    if constexpr (!urd::detail::choose<S>::found)
+        return "";
+    else
+    {
+        auto result = std::string();
+        for (const auto name : urd::detail::choose<S>::headers)
+            if (!name.empty())
+                result += (result.empty() ? "" : " + ") + std::string(name.substr(name.rfind('/') + 1));
+        return result;
+    }
+}
+
+/// The spec's tags: what the request implies beyond what it states.
+template<typename S>
+std::string spec_tags()
+{
+    auto result = std::string();
+    S::urd_properties.for_each(
+        [&result](urd::tag each)
+        {
+            if (!result.empty())
+                result += ", ";
+            result += urd::test::tag_name(each);
+        });
+    return result;
+}
+
+/// Why a request of the grid resolves to `none`, keyed by the request as written. A missing representation is
+/// one that could be written (nobody has needed it yet); an incompatible one is a contract no representation can
+/// keep, which the registry rejects (its compile-fail case is named). generate() fails on a `none`
+/// row without a note, and on a note whose request is served now.
+const std::map<std::string, std::string>& notes()
+{
+    static const auto table = std::map<std::string, std::string> {
+        { "Store<set<int>, dense, concurrent>", "missing: a dense set written by threads (an atomic bitset)" },
+        { "Store<set<Id>, dense, concurrent>", "missing: a dense set written by threads (an atomic bitset)" },
+        { "Store<set<int>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
+        { "Store<set<Id>, dense, stable_refs>", "missing: dense keys in segmented slots; M14" },
+        { "Store<map<int, int>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
+        { "Store<map<std::string, double>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
+        { "Store<map<Id, Id>, concurrent, retains>", "incompatible: the concurrent tables return their storage on clear" },
+        { "Store<slots<int>, layered>", "incompatible: slots are recycled, so no layer continues their handles (compile-fail case 36)" },
+        { "Store<pool<Store<sequence<int>, stable_refs, frozen, positional>>, structural_sharing, layered>",
+          "incompatible: a tree pool numbers nodes, not rows (compile-fail case 37)" },
+        { "Store<set<Store<set<int>, unique>>>", "incompatible: an unordered Store is no hashed key (compile-fail case 28)" },
+        { "Store<set<Store<set<int>, unique, dense, stable_refs, frozen>>>", "incompatible: dense alone fixes no order (compile-fail case 29)" },
+        { "Store<set<int>, insertion_ordered, reclaims>",
+          "missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks" },
+        { "Store<set<int>, scoped>", "missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps" },
+        { "Store<set<int>, positional, monotone, layered>",
+          "missing: a layered interner continuing its parent's positions, an iterator over both; own milestone" },
+        { "Store<set<std::string>, insertion_ordered, reclaims>",
+          "missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks" },
+        { "Store<set<std::string>, scoped>", "missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps" },
+        { "Store<set<std::string>, positional, monotone, layered>",
+          "missing: a layered interner continuing its parent's positions, an iterator over both; own milestone" },
+        { "Store<set<Id>, insertion_ordered, reclaims>",
+          "missing: an insertion-ordered set returning storage per erase (a tombstoned node table); no site asks" },
+        { "Store<set<Id>, scoped>", "missing: a scoped set (the Scoped wrapper over a set); runir's parser scopes are maps" },
+        { "Store<set<Id>, positional, monotone, layered>",
+          "missing: a layered interner continuing its parent's positions, an iterator over both; own milestone" },
+        { "Store<map<int, int>, concurrent, layered>",
+          "missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks" },
+        { "Store<map<std::string, double>, concurrent, layered>",
+          "missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks" },
+        { "Store<map<Id, Id>, concurrent, layered>", "missing: a layer over a concurrent hash map (lookups fall through under the shard locks); no site asks" },
+        { "Store<set<int>, dense, sorted, constant_clear>", "missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks" },
+        { "Store<set<int>, dense, sorted, contiguous, frozen>",
+          "incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous)" },
+        { "Store<map<int, int>, dense, contiguous>",
+          "missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values" },
+        { "Store<map<int, int>, multi, dense, bidirectional>", "missing: the dynamic bidirectional graph (Bidirectional over DenseGroups)" },
+        { "Store<set<Id>, dense, sorted, constant_clear>", "missing: a generation-stamped bitset (a stamp per word, sorted iteration); no site asks" },
+        { "Store<set<Id>, dense, sorted, contiguous, frozen>",
+          "incompatible in effect: drop dense for flat_set (sorted, contiguous), or drop sorted for SparseSet (dense, contiguous)" },
+        { "Store<map<Id, double>, dense, contiguous>",
+          "missing: values() of a dense, insertion_ordered map is the span wanted; no slot-per-index map is contiguous in its values" },
+        { "Store<map<Id, Id>, multi, dense, bidirectional>", "missing: the dynamic bidirectional graph (Bidirectional over DenseGroups)" },
+        { "Store<sequence<int>, reclaims>",
+          "missing: a vector returns its storage only whole (shrink_to_fit); a sequence returning storage per erase is a deque of blocks" },
+        { "Store<queue<int>, lifo, constant_clear>",
+          "missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared" },
+        { "Store<queue<int>, by_priority, constant_clear>",
+          "missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared" },
+        { "Store<queue<Id>, lifo, constant_clear>",
+          "missing: a stack clears by size reset already (proportional in its destructors); constant_clear as a promise on queues is not declared" },
+        { "Store<queue<Id>, by_priority, constant_clear>",
+          "missing: a heap clears by size reset already; constant_clear as a promise on queues is not declared" },
+        { "Store<partition<std::string>>", "missing: a partition over hashed keys (a map from key to position plus the forest); no site asks" },
+        { "Store<graph<int>, frozen, partition, undirected, constant_adjacency, positional>",
+          "missing: edge numbers in bit rows (a prefix count per row, an edge's number its rank); no site asks" },
+        { "Store<graph<int>, undirected>",
+          "missing: undirected lists or compressed rows (rows of bits serve undirected graphs that state constant_adjacency); runir adds an edge each way" },
+    };
+    return table;
+}
+
+std::string generate()
+{
+    auto out = std::ostringstream();
+    out << "# What a request resolves to\n\n"
+           "Generated by `resolution_table --write docs/RESOLUTION.md` from the request grid in `tests/support/grid.hpp`, and checked\n"
+           "against the registry by the `resolution` test: a change to `include/urd/registry/declarations.hpp` that moves a request shows up\n"
+           "here. Each row is a request as written, the properties its spec holds (what the request implies beyond what it\n"
+           "states), the representation chosen, and the headers in `urd/repr/` a file holding such a Store includes: the\n"
+           "container's own, after its part's for a wrapper. This table is built with no container header included:\n"
+           "resolving completes nothing.\n"
+           "A request is one of three things: served; `none` and missing, a\n"
+           "representation that could be written (its note says which); or incompatible, a contract no representation can\n"
+           "keep, which `Store` rejects with a message (the rules are listed in docs/language/index.rst, \"Incompatible\n"
+           "combinations\"; a request rejected by a rule cannot appear here, one rejected by the registry appears as `none`\n"
+           "with its compile-fail case). `Id` is a key identified by one integral member (hashable, orderable,\n"
+           "indexable).\n";
+    auto noted = std::set<std::string>();
+    urd::test::for_each_group(
+        [&](const char* title, auto list)
+        {
+            out << "\n## " << title << "\n\n| Request | Spec | Representation | Include |\n|---|---|---|---|\n";
+            urd::test::for_each_request(list,
+                                        [&]<typename R>(std::type_identity<R>)
+                                        {
+                                            const auto request = R::describe();
+                                            const auto resolved = resolved_name<typename R::spec>();
+                                            out << "| `" << request << "` | " << spec_tags<typename R::spec>() << " | `" << resolved << "`";
+                                            if (resolved == "none")
+                                            {
+                                                const auto note = notes().find(request);
+                                                if (note == notes().end())
+                                                    throw std::runtime_error("no note says why `" + request
+                                                                             + "` resolves to none (notes in tests/tables/resolution_table.cpp)");
+                                                out << " — " << note->second;
+                                                noted.insert(request);
+                                            }
+                                            else if (notes().contains(request))
+                                                throw std::runtime_error("`" + request + "` is served now; drop its note in tests/tables/resolution_table.cpp");
+                                            out << " | " << headers<typename R::spec>() << " |\n";
+                                        });
+        });
+    for (const auto& [request, note] : notes())
+        if (!noted.contains(request))
+            throw std::runtime_error("the note for `" + request + "` names no request of the grid (tests/support/grid.hpp)");
+    return out.str();
+}
+
+}  // namespace
+
+int main(int argc, char** argv) { return urd::test::write_or_check(argc, argv, "resolution_table", generate); }

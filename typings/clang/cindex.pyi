@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Dominik Drexler
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Types for the part of libclang's Python bindings tests/exposure.py reads; the bindings declare none.
+# Types for the part of libclang's Python bindings tests/rules/exposure.py reads; the bindings declare none.
 
 from collections.abc import Iterator
 
