@@ -18,6 +18,11 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/urd"
     DESTINATION "${URD_INSTALL_PACKAGEDIR}/include"
     COMPONENT pyurd
 )
+# A source the consumer compiles (urd::count_allocations), beside the headers that declare what it defines.
+install(FILES "${PROJECT_SOURCE_DIR}/src/testing/allocations.cpp"
+    DESTINATION "${URD_INSTALL_PACKAGEDIR}/include/urd/testing"
+    COMPONENT pyurd
+)
 install(FILES "${PROJECT_SOURCE_DIR}/share/urd/vocabulary.json" "${PROJECT_SOURCE_DIR}/share/urd/complexity.json"
     DESTINATION "${URD_INSTALL_PACKAGEDIR}/share/urd"
     COMPONENT pyurd
