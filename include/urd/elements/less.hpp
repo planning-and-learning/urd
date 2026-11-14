@@ -156,14 +156,43 @@ struct Less<V<Ts...>>
 };
 /// An identified type orders as what identifies it (detail::identity); it also orders with what identifies it given
 /// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
+namespace detail
+{
+
+/// Whether `lhs` comes before `rhs` by their identifying members M, Ms…, in order, as the tuple of them orders,
+/// without one.
+template<typename T, auto M, auto... Ms>
+constexpr bool less_members(const T& lhs, const T& rhs)
+{
+    using Member = std::remove_cvref_t<member_read_t<T, M>>;
+    const auto& first = std::invoke(M, lhs);
+    const auto& second = std::invoke(M, rhs);
+    if (Less<Member> {}(first, second))
+        return true;
+    if constexpr (sizeof...(Ms) == 0)
+        return false;
+    else
+        return !Less<Member> {}(second, first) && less_members<T, Ms...>(lhs, rhs);
+}
+template<typename T, auto... Ms>
+constexpr bool less_members(const T& lhs, const T& rhs, Members<Ms...> /*members*/)
+{
+    if constexpr (sizeof...(Ms) == 0)
+        return false;
+    else
+        return less_members<T, Ms...>(lhs, rhs);
+}
+
+}  // namespace detail
+
 template<Identifiable T>
 struct Less<T>
 {
     using is_transparent = void;
 
     constexpr bool operator()(const T& lhs, const T& rhs) const
-        requires OrderedByLess<detail::identity_t<T>>
-    { return Less<detail::identity_t<T>> {}(detail::identity(lhs), detail::identity(rhs)); }
+        requires(detail::members_ordered<T>(T::identifying_members()))
+    { return detail::less_members(lhs, rhs, T::identifying_members()); }
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const
         requires OrderedByLess<detail::identity_t<T>>

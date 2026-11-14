@@ -179,8 +179,19 @@ constexpr auto identity(const T& x)
     return []<auto... Ms>(const T& of, Members<Ms...> /*members*/)
     { return std::tuple<decltype(std::invoke(Ms, of))...>(std::invoke(Ms, of)...); }(x, T::identifying_members());
 }
+/// What member M (a data member or a getter) gives of a T: what identity() holds of it.
+template<typename T, auto M>
+using member_read_t = decltype(std::invoke(M, std::declval<const T&>()));
+template<typename T, typename Ms>
+struct identity_of_members;
+template<typename T, auto... Ms>
+struct identity_of_members<T, Members<Ms...>>
+{
+    using type = std::tuple<member_read_t<T, Ms>...>;
+};
+/// The type identity() gives, named from the members: naming it instantiates neither identity() nor the tuple.
 template<Identifiable T>
-using identity_t = decltype(identity(std::declval<const T&>()));
+using identity_t = typename identity_of_members<T, decltype(T::identifying_members())>::type;
 
 }  // namespace detail
 
@@ -225,6 +236,23 @@ concept EqualityComparableByEqualTo = EqualToFor<EqualTo<std::remove_cvref_t<T>>
 
 template<typename T>
 concept OrderedByLess = LessFor<Less<std::remove_cvref_t<T>>, T>;
+
+namespace detail
+{
+
+/// Whether every identifying member of T is hashable, equality-comparable or ordered: what Hash, EqualTo and Less of T
+/// require, folded over the members, so that no tuple of them is instantiated for a record (identity_t only names one).
+template<typename T, auto... Ms>
+consteval bool members_hashable(Members<Ms...> /*members*/)
+{ return (Hashable<member_read_t<T, Ms>> && ...); }
+template<typename T, auto... Ms>
+consteval bool members_equality_comparable(Members<Ms...> /*members*/)
+{ return (EqualityComparableByEqualTo<member_read_t<T, Ms>> && ...); }
+template<typename T, auto... Ms>
+consteval bool members_ordered(Members<Ms...> /*members*/)
+{ return (OrderedByLess<member_read_t<T, Ms>> && ...); }
+
+}  // namespace detail
 
 /// U is what identifies T, given alone (its identity_t: data members by reference, as std::tie gives them, getters' results
 /// as they give them), so a transparent lookup takes a U for a T.

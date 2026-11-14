@@ -52,9 +52,13 @@ inline constexpr request_shape shape_of = []
     return request_shape { S::required, request_roles<S, traits_relied_on_by<typename S::kind>>(), held::properties, held::required };
 }();
 
+/// Every entry of Kind serving a request of this shape, scanned once per shape: requests over different element types
+/// often share one.
+template<typename Kind, request_shape Shape>
+inline constexpr serving_entries<Kind> serving_for = all_serving<Kind>(Shape);
 /// Every entry serving spec S, in the order they are preferred: what the tables and tests read of a request.
 template<typename S>
-inline constexpr serving_entries<typename S::kind> serving_v = all_serving<typename S::kind>(shape_of<S>);
+inline constexpr const serving_entries<typename S::kind>& serving_v = serving_for<typename S::kind, shape_of<S>>;
 template<typename S, std::size_t... I>
 auto serving_declarations_of(std::index_sequence<I...> /*serving*/)
     -> boost::mp11::mp_list<boost::mp11::mp_at_c<declarations_t<typename S::kind>, serving_v<S>.held[I]>...>;

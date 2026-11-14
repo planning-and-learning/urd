@@ -137,14 +137,24 @@ struct EqualTo<M>
 };
 /// An identified type equals as what identifies it (detail::identity); it also compares with what identifies it given
 /// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
+namespace detail
+{
+
+/// Whether two of T are equal in every identifying member, without a tuple of them.
+template<typename T, auto... Ms>
+constexpr bool equal_members(const T& lhs, const T& rhs, Members<Ms...> /*members*/)
+{ return (EqualTo<std::remove_cvref_t<member_read_t<T, Ms>>> {}(std::invoke(Ms, lhs), std::invoke(Ms, rhs)) && ...); }
+
+}  // namespace detail
+
 template<Identifiable T>
 struct EqualTo<T>
 {
     using is_transparent = void;
 
     constexpr bool operator()(const T& lhs, const T& rhs) const
-        requires EqualityComparableByEqualTo<detail::identity_t<T>>
-    { return EqualTo<detail::identity_t<T>> {}(detail::identity(lhs), detail::identity(rhs)); }
+        requires(detail::members_equality_comparable<T>(T::identifying_members()))
+    { return detail::equal_members(lhs, rhs, T::identifying_members()); }
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const
         requires EqualityComparableByEqualTo<detail::identity_t<T>>

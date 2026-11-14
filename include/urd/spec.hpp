@@ -128,19 +128,19 @@ consteval bool in_format(request_format<Es...> /*format*/, const property_set& s
     return std::ranges::all_of(stated, [](tag each) { return ((each.in == urd::category<Es>) || ...); });
 }
 
-/// The spec whose answers are those of Meant beyond none, in the order of Format: S with them appended.
-template<typename S, typename Format, property_set Meant>
-struct spec_answers
-{
-    using type = S;
-};
-template<typename Kind, typename Compare, typename Key, auto... As, category_enum E, category_enum... Es, property_set Meant>
-struct spec_answers<spec<Kind, Compare, Key, As...>, request_format<E, Es...>, Meant> :
-    spec_answers<std::conditional_t<Meant.template get<E>() == E {}, spec<Kind, Compare, Key, As...>, spec<Kind, Compare, Key, As..., Meant.template get<E>()>>,
-                 request_format<Es...>,
-                 Meant>
-{
-};
+/// An answer as a list element: none where it says no more than its category's none.
+template<auto Answer>
+using answer_if_any =
+    std::conditional_t<Answer == decltype(Answer) {}, boost::mp11::mp_list<>, boost::mp11::mp_list<std::integral_constant<decltype(Answer), Answer>>>;
+
+/// The answers of Meant beyond none, in the order of Format. One expansion over the format, not a recursion: each step
+/// of a recursion is a class instantiation that carries Meant, a property_set, as its argument.
+template<property_set Meant, category_enum... Es>
+auto answers_of(request_format<Es...> /*format*/) -> boost::mp11::mp_append<boost::mp11::mp_list<>, answer_if_any<Meant.template get<Es>()>...>;
+
+/// The spec of Kind, Compare and Key with these answers.
+template<typename Kind, typename Compare, typename Key, typename... Answers>
+auto spec_with(boost::mp11::mp_list<Answers...> /*answers*/) -> spec<Kind, Compare, Key, Answers::value...>;
 
 /// Checks a request, its kind and its tags, and turns it into its spec. Each static_assert names what is wrong.
 template<typename Kind, typename... Tags>
@@ -179,7 +179,7 @@ struct to_spec
     static constexpr property_set meant = kind::meaning(stated);
     /// Its keyed<K>'s K, or void.
     using key = typename key_of<typename tag_in<any_keying, Tags...>::type>::type;
-    using type = typename spec_answers<spec<Kind, compare, key>, format, meant>::type;
+    using type = decltype(spec_with<Kind, compare, key>(decltype(answers_of<meant>(format {})) {}));
 };
 
 /// Not a tag: among a Store's Tags, it puts the Store over container R instead of the one urd chooses, for the tests

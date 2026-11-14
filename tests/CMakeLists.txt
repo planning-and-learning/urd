@@ -170,6 +170,21 @@ add_executable(test_budget_bare_control EXCLUDE_FROM_ALL budget/bare.cpp)
 target_link_libraries(test_budget_bare_control PRIVATE urd::urd)
 urd_budget(bare test_budget_bare_control budget/bare.cpp 210 210)
 
+# What a Store costs to compile beyond the container it chooses, per container: tests/overhead.py compiles
+# overhead/containers.cpp holding Stores and holding their containers directly, and fails when urd's memory per
+# container exceeds the limit for this compiler (measured: GCC 13 1.61 MB, Clang 18 1.15 MB).
+add_executable(test_overhead_control EXCLUDE_FROM_ALL overhead/containers.cpp)
+target_link_libraries(test_overhead_control PRIVATE urd::urd)
+urd_syntax_only(compile test_overhead_control overhead/containers.cpp)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(overhead_limit 1.4)
+else()
+    set(overhead_limit 1.9)
+endif()
+add_test(NAME overhead
+         COMMAND ${Python3_EXECUTABLE} -I ${PROJECT_SOURCE_DIR}/tests/overhead.py --types 40 --limit-mb ${overhead_limit} -- ${compile}
+         COMMAND_EXPAND_LISTS)
+
 # A file holding a Store pays for its own container and for no other registered one: tests/scaling.py
 # compiles it with Clang's -ftime-trace and fails on an instantiation of a container its Store did not choose. Store<set<int>>
 # resolves to gtl's flat hash set.

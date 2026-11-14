@@ -6,6 +6,7 @@
 #include "urd/elements/index.hpp"
 #include "urd/elements/less.hpp"
 
+#include <boost/mp11.hpp>
 #include <compare>
 #include <concepts>
 #include <cstddef>
@@ -98,7 +99,8 @@ struct resolution<index<U>>
 };
 
 /// A variant (std's or cista's) as the std::variant of its alternatives resolved. An empty one (a cista variant not
-/// assigned, a std::variant valueless) throws std::bad_variant_access.
+/// assigned, a std::variant valueless) throws std::bad_variant_access. Each alternative is constructed by its index:
+/// std::variant's converting constructor would resolve its overloads over every alternative, for every alternative.
 template<template<typename...> typename V, typename... Ts>
     requires variant_value<V<Ts...>>
 struct resolution<V<Ts...>>
@@ -109,7 +111,13 @@ struct resolution<V<Ts...>>
         using resolved = std::variant<resolved_t<Ts, C>...>;
         if (member.index() >= sizeof...(Ts))
             throw std::bad_variant_access();
-        return visit([&context](const auto& alternative) { return resolved(urd::resolve(alternative, context)); }, member);
+        return visit(
+            [&context](const auto& alternative)
+            {
+                constexpr auto at = boost::mp11::mp_find<boost::mp11::mp_list<Ts...>, std::remove_cvref_t<decltype(alternative)>>::value;
+                return resolved(std::in_place_index<at>, urd::resolve(alternative, context));
+            },
+            member);
     }
 };
 

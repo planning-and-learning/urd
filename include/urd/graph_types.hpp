@@ -47,9 +47,9 @@ template<typename Edge, typename D = std::monostate>
 struct graph_data
 {
     std::size_t vertices = 0;
-    std::span<const Edge> edges;
-    std::span<const std::size_t> parts;
-    std::span<const D> vertex_values;
+    std::span<const Edge> edges {};
+    std::span<const std::size_t> parts {};
+    std::span<const D> vertex_values {};
 };
 
 /// Whether From is graph_data a graph with vertices V, edge data E and vertex data D is built from: its vertex data D,

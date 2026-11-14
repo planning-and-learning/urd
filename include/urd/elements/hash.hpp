@@ -199,6 +199,19 @@ hash_t hash_identity(const std::tuple<M>& identity)
 template<typename... Ms>
 hash_t hash_identity(const std::tuple<Ms...>& identity)
 { return Hash<std::tuple<Ms...>> {}(identity); }
+/// The same hash, read from the element's members without a tuple of them.
+template<typename T, auto... Ms>
+hash_t hash_members(const T& element, Members<Ms...> /*members*/)
+{
+    if constexpr (sizeof...(Ms) == 1)
+        return (Hash<std::remove_cvref_t<member_read_t<T, Ms>>> {}(std::invoke(Ms, element)), ...);
+    else
+    {
+        hash_t seed = sizeof...(Ms);
+        (urd::hash_combine(seed, std::invoke(Ms, element)), ...);
+        return seed;
+    }
+}
 
 }  // namespace detail
 
@@ -210,8 +223,8 @@ struct Hash<T>
     using is_transparent = void;
 
     hash_t operator()(const T& element) const
-        requires Hashable<detail::identity_t<T>>
-    { return detail::hash_identity(detail::identity(element)); }
+        requires(detail::members_hashable<T>(T::identifying_members()))
+    { return detail::hash_members(element, T::identifying_members()); }
     template<identity_of<T> U>
     hash_t operator()(const U& identity) const
         requires Hashable<detail::identity_t<T>>
