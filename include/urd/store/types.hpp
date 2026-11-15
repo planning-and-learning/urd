@@ -41,6 +41,15 @@ template<typename S>
 inline constexpr bool changes_in_the_middle =
     shrinks<S> && !(std::same_as<typename S::kind, sequence_kind> && traits_t<S>::urd_properties.template any_says<&answer_says::changes_at_ends>());
 
+/// Whether a facet's member that would copy a T in is denied: T is move-only. Every member that puts an element (or a
+/// key) in has a form that moves it; one that copies it (a const T&, a range of iterators, an initializer_list, copies of
+/// one value) is declared twice, constrained by std::copy_constructible<T>, and deleted, constrained by this, so that a
+/// call that would copy a move-only T fails at overload resolution, naming Reason: what to call instead. A deleted
+/// template takes Reason as its last template parameter, defaulted, so that the error, which names a template's
+/// arguments and not its constraints, names it too.
+template<urd::fixed_string Reason, typename T>
+concept denied = !std::copy_constructible<T>;
+
 /// What a Store and its facets share, whatever its kind: the facts its request decides, and its member types. They come
 /// from the spec S alone, not from the Store, which is still incomplete while its facets are built.
 template<typename S>

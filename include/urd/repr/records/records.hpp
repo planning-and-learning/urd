@@ -35,6 +35,8 @@ public:
 
     // Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
     std::pair<handle_type, bool> insert(const T& record) { return inserted(m_records.insert(record)); }
+    /// Handed over: moved in where it is new (serialized from by the arena); one already held leaves `record` as it was.
+    std::pair<handle_type, bool> insert(T&& record) { return inserted(m_records.insert(std::move(record))); }
     std::pair<handle_type, bool> insert(const prehashed<T>& key) { return inserted(m_records.insert(key)); }
     /// The index `key` gets, built where new from `make(index)`, which must give a record equal to `key` and must not
     /// touch this pool.

@@ -114,9 +114,13 @@ struct type_caster<urd::flat_variant<Ts...>>
     }
 };
 
-// Taken from nanobind/stl/optional.h
+// Taken from nanobind/stl/optional.h: None is an empty optional, so a function taking one accepts None.
 template<typename T>
 struct type_caster<urd::flat_optional<T>> : optional_caster<urd::flat_optional<T>>
+{
+};
+template<typename T>
+struct has_arg_defaults<urd::flat_optional<T>> : std::true_type
 {
 };
 

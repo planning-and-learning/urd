@@ -9,7 +9,8 @@
 
 #pragma once
 
-// Views (spans, ranges read through a context: urd::resolve) convert to Python lists.
+// Views (spans, ranges read through a context: urd::resolve) convert to Python lists, and a Python sequence to a span
+// of const elements.
 
 #include <concepts>
 #include <nanobind/nanobind.h>
@@ -18,6 +19,7 @@
 #include <span>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 NAMESPACE_BEGIN(NB_NAMESPACE)
 NAMESPACE_BEGIN(detail)
@@ -57,6 +59,33 @@ public:
     template<typename T>
     static handle from_cpp(T&& src, rv_policy policy, cleanup_list* cleanup)
     { return sequence_view_from_cpp<Caster>(R(std::forward<T>(src)), policy, cleanup); }
+};
+
+/// A span of const elements: written as the views above, and read from a Python sequence into storage of the caster's
+/// own, which lives for the call. A function bound with a span parameter therefore must not keep the span: it copies
+/// what it keeps, as a function given a span of a temporary must.
+template<typename T>
+struct type_caster<std::span<const T>, int>
+{
+private:
+    using Entry = std::remove_cv_t<T>;
+    using Caster = make_caster<Entry>;
+    list_caster<std::vector<Entry>, Entry> m_elements;
+
+public:
+    NB_TYPE_CASTER(std::span<const T>, io_name("collections.abc.Sequence", "list") + const_name("[") + Caster::Name + const_name("]"))
+
+    bool from_python(handle src, uint32_t flags, cleanup_list* cleanup) noexcept
+    {
+        if (!m_elements.from_python(src, flags, cleanup))
+            return false;
+        value = std::span<const T>(m_elements.value);
+        return true;
+    }
+
+    template<typename S>
+    static handle from_cpp(S&& src, rv_policy policy, cleanup_list* cleanup)
+    { return sequence_view_from_cpp<Caster>(std::span<const T>(std::forward<S>(src)), policy, cleanup); }
 };
 
 NAMESPACE_END(detail)

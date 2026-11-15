@@ -86,6 +86,7 @@ queue is not compared: a heap's order is no part of its contents.
    Shrinkable queues; a ``monotone`` queue empties only by ``pop``.
 
 .. cpp:function:: void update(const handle_type& handle, const value_type& element)
+.. cpp:function:: void update(const handle_type& handle, value_type&& element)
 .. cpp:function:: void erase(const handle_type& handle)
 
    With ``handles``: replaces the element of ``handle``, which moves to its place in the order; removes it,

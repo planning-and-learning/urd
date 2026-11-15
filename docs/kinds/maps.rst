@@ -108,11 +108,17 @@ Values by key (one value per key)
    one ordered by its values.
 
 .. cpp:function:: mapped_type& operator[](const key_type& key)
+.. cpp:function:: mapped_type& operator[](key_type&& key)
 
    The value for ``key``, inserted as a default first where there is none (not frozen, default-constructible value).
 
 .. cpp:function:: template<typename... Args> std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
+.. cpp:function:: template<typename... Args> std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args)
 .. cpp:function:: template<typename M> std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)
+.. cpp:function:: template<typename M> std::pair<iterator, bool> insert_or_assign(key_type&& key, M&& value)
+
+   A key is moved in from an rvalue, where it is new; the ``const&`` forms, ``update`` and ``insert_or_combine``
+   copy it, and are only of a copyable key (:ref:`moving-and-copying`).
 
 .. cpp:function:: template<typename Update> decltype(auto) update(const key_type& key, Update update)
 

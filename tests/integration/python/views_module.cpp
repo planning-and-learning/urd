@@ -62,7 +62,7 @@ NB_MODULE(urd_views_test, m)
           });
 
     nb::class_<NumberView>(m, "NumberView")
-        .def_prop_ro("value", [](const NumberView& view) { return view.data().value; })
+        .def_prop_ro("value", [](const NumberView& view) { return view.template member<&Number::value>(); })
         .def("next", [](const NumberView& view) { return view.context().view(urd::index<Number>(view.index().value + 1)); });
-    nb::class_<ComputedNumber>(m, "ComputedNumber").def_prop_ro("value", [](const ComputedNumber& view) { return view.data().value; });
+    nb::class_<ComputedNumber>(m, "ComputedNumber").def_prop_ro("value", [](const ComputedNumber& view) { return view.template member<&Number::value>(); });
 }

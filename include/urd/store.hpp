@@ -144,20 +144,30 @@ public:
 
     // Construction stays here, as a facet's constructor could not initialize the Store's representation.
 
-    /// From any elements: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one.
+    /// From any elements, copied: a set keeps each once, a sorted sequence sorts them. A nonempty Store needs one. The
+    /// forms that copy elements are only of a copyable element (urd::detail::denied); a Store of move-only elements is
+    /// built empty, and its elements moved in.
     template<std::input_iterator InputIt>
-        requires std::constructible_from<R, InputIt, InputIt>
+        requires std::constructible_from<R, InputIt, InputIt> && std::copy_constructible<value_type>
     Store(InputIt first, InputIt last) : m_representation(first, last)
     { check_holds_one(); }
+    template<std::input_iterator InputIt, urd::fixed_string Reason = "Store(first, last): the element is move-only: build the Store empty and move each in">
+        requires detail::denied<Reason, value_type>
+    Store(InputIt first, InputIt last) = delete;
 
     /// A template, so that its constraint is asked only of a list of elements: asked of a Store to copy or move, it
     /// would ask whether the element is constructible while the element's own constructors are being declared (a type
     /// that holds a Store of itself, rule I5).
     template<typename Deferred = void>
         requires std::constructible_from<R, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+                 && std::copy_constructible<value_type>
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end())
     {
     }
+    template<typename Deferred = void,
+             urd::fixed_string Reason = "Store({...}): the element is move-only: an initializer_list is copied; build the Store empty and move each in">
+        requires detail::denied<Reason, value_type>
+    Store(std::initializer_list<value_type> elements) = delete;
 
     /// A sequence of `count` elements, value-initialized or copies of `value`, as std::vector(count[, value]).
     explicit Store(std::size_t count)
@@ -166,8 +176,13 @@ public:
     { check_holds_one(); }
     Store(std::size_t count, const value_type& value)
         requires std::same_as<typename S::kind, sequence_kind> && std::constructible_from<R, std::size_t, const value_type&>
+                 && std::copy_constructible<value_type>
         : m_representation(count, value)
     { check_holds_one(); }
+    Store(std::size_t count, const value_type& value)
+        requires std::same_as<typename S::kind, sequence_kind>
+                     && detail::denied<"Store(n, const T&): the element is move-only: it is copied n times", value_type>
+    = delete;
 
     /// A Store of urd::bit is built with the bit width every element fits in; a representation that stores elements
     /// whole (which serves the request too) is built as it is, without it.
@@ -194,8 +209,11 @@ public:
     explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
     { check_holds_one(); }
     Store(urd::layer number, std::initializer_list<value_type> elements)
-        requires std::
-            constructible_from<R, urd::layer, typename std::initializer_list<value_type>::iterator, typename std::initializer_list<value_type>::iterator>
+        requires std::constructible_from<R,
+                                         urd::layer,
+                                         typename std::initializer_list<value_type>::iterator,
+                                         typename std::initializer_list<value_type>::iterator>
+                 && std::copy_constructible<value_type>
         : Store(number, elements.begin(), elements.end())
     {
     }

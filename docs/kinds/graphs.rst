@@ -85,7 +85,8 @@ Member functions
 .. cpp:function:: I add_vertex(const D& value)
 
    Where it grows and is not ``partitioned``: a partitioned graph's vertices are fixed by its parts. Without a value
-   only where ``D`` is a unit.
+   only where ``D`` is a unit. A value is moved in from an rvalue, copied only where it is copyable; the same for
+   ``add_edge`` (:ref:`moving-and-copying`).
 
 .. cpp:function:: const D& vertex_value(I v) const
 

@@ -56,9 +56,39 @@ struct view_mixin<builder<T>, V> : view_mixin<T, V>
 {
 };
 
-/// The record a view V reads (its data()).
+namespace detail
+{
+/// The one way to a view's stored record, for urd itself: resolving its members (member<>), naming its record type
+/// (record_of), copying it into another context (map_children). A view hands out its members resolved; its stored form,
+/// with indices where records are and the layout of its fields, stays inside urd.
+struct view_access
+{
+    template<typename V>
+    [[nodiscard]] static auto data(const V& view) -> decltype(view.data())
+    { return view.data(); }
+};
+}  // namespace detail
+
+/// The record a view V reads.
 template<typename V>
-using record_of = std::remove_cvref_t<decltype(std::declval<const V&>().data())>;
+using record_of = std::remove_cvref_t<decltype(detail::view_access::data(std::declval<const V&>()))>;
+
+/// How a view of T whose record is stored in another layout than data<T> (a row packed into its pool, its relation in
+/// its key) reads a member of data<T>: `stored_member<T>::of(view, member_tag<&data<T>::m>())`, resolved as member<>
+/// gives it, one overload per member. Specialize it for such a T; a view's member<> asks it only where its record has no such member.
+template<typename T>
+struct stored_member;
+
+/// The record whose fields a view V reads: its own (data<T>, builder<T>), or data<T>'s where it is stored in another
+/// layout (stored_member).
+template<typename V>
+using fields_record_t = std::conditional_t<HasFields<record_of<V>>, record_of<V>, data<typename V::value_type>>;
+
+/// A member pointer as a type, for a stored_member overload of one member.
+template<auto Member>
+struct member_tag
+{
+};
 
 /// How a view resolves a member of type M through its context (urd::resolve): `resolution<M>::of(member, context)`.
 /// As it is, unless a specialization for M says otherwise: given below for indices, ranges, pairs, variants and
@@ -342,9 +372,9 @@ struct resolution<M>
 namespace detail
 {
 /// What the four views share (V: the view; K: the key of its mixin): the context, a const C* the context must outlive;
-/// the record, V's data(); its members resolved through the context, member<&T::m>(); the mixin's accessors; and the
-/// identity: what V identifies its record by (V's identity()) and the number of its context (urd::layer), so that
-/// equal views are the same element wherever they were made.
+/// the record, V's data() (private: urd reads it through detail::view_access); its members resolved through the context, member<&T::m>(); the mixin's
+/// accessors; and the identity: what V identifies its record by (V's identity()) and the number of its context (urd::layer), so that equal views are the same
+/// element wherever they were made.
 template<typename V, typename T, typename C, typename K>
 class view_base : public view_mixin<K, V>, public compared_by_identity<V>
 {
@@ -352,10 +382,17 @@ public:
     using value_type = T;
 
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
-    /// A member of the record, resolved through the context (urd::resolve).
+    /// A member of the record, resolved through the context (urd::resolve); of a record stored in another layout, as
+    /// stored_member<T> reads it.
     template<auto Member>
     [[nodiscard]] decltype(auto) member() const
-    { return urd::resolve(static_cast<const V&>(*this).data().*Member, *m_context); }
+    {
+        const auto& view = static_cast<const V&>(*this);
+        if constexpr (requires { view_access::data(view).*Member; })
+            return urd::resolve(view_access::data(view).*Member, *m_context);
+        else
+            return stored_member<T>::of(view, member_tag<Member>());
+    }
 
     /// The identity: what identifies the record, and the number of the context (a context without a number gives
     /// none).
@@ -374,24 +411,26 @@ private:
 
 }  // namespace detail
 
-/// A T through a context C, held as its index: read through the context, context[index] (a T, or the stored record
+/// A T through a context C, held as its index K: read through the context, context[index] (a T, or the stored record
 /// data<T>), and identified by the index. What a context makes of its indices, context.view(index); the only view that
-/// names its index, index().
-template<typename T, typename C>
-class index_view : public detail::view_base<index_view<T, C>, T, C, T>
+/// names its index, index(). K is urd::index<T>, or a handle of another shape that the context resolves (a key of
+/// several parts: a row's pool and its position there).
+template<typename T, typename C, typename K>
+class index_view : public detail::view_base<index_view<T, C, K>, T, C, T>
 {
     friend detail::view_base<index_view, T, C, T>;
+    friend detail::view_access;
 
 public:
-    index_view(urd::index<T> at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
+    index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
 
-    [[nodiscard]] urd::index<T> index() const noexcept { return m_at; }
-    [[nodiscard]] decltype(auto) data() const { return this->context()[m_at]; }
+    [[nodiscard]] K index() const noexcept { return m_at; }
 
 private:
-    [[nodiscard]] const urd::index<T>& identity() const noexcept { return m_at; }
+    [[nodiscard]] decltype(auto) data() const { return this->context()[m_at]; }
+    [[nodiscard]] const K& identity() const noexcept { return m_at; }
 
-    urd::index<T> m_at;
+    K m_at;
 };
 
 /// A T through a context C, held as a record R (data<T>, or builder<T>) outside the context, which it points at: the
@@ -400,13 +439,13 @@ template<typename T, typename C, typename R>
 class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
 {
     friend detail::view_base<borrowed_view, T, C, R>;
+    friend detail::view_access;
 
 public:
     borrowed_view(const R* record, const C* context) noexcept : detail::view_base<borrowed_view, T, C, R>(context), m_record(record) {}
 
-    [[nodiscard]] const R& data() const noexcept { return *m_record; }
-
 private:
+    [[nodiscard]] const R& data() const noexcept { return *m_record; }
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
     const R* m_record;
@@ -418,6 +457,7 @@ template<typename T, typename C, typename R>
 class owning_view : public detail::view_base<owning_view<T, C, R>, T, C, R>
 {
     friend detail::view_base<owning_view, T, C, R>;
+    friend detail::view_access;
 
 public:
     owning_view(R record, const C* context) noexcept(std::is_nothrow_move_constructible_v<R>) :
@@ -426,9 +466,8 @@ public:
     {
     }
 
-    [[nodiscard]] const R& data() const noexcept { return m_record; }
-
 private:
+    [[nodiscard]] const R& data() const noexcept { return m_record; }
     [[nodiscard]] const R& identity() const noexcept { return m_record; }
 
     R m_record;
@@ -440,13 +479,13 @@ template<typename T, typename C, typename R>
 class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
 {
     friend detail::view_base<shared_view, T, C, R>;
+    friend detail::view_access;
 
 public:
     shared_view(std::shared_ptr<const R> record, const C* context) noexcept : detail::view_base<shared_view, T, C, R>(context), m_record(std::move(record)) {}
 
-    [[nodiscard]] const R& data() const noexcept { return *m_record; }
-
 private:
+    [[nodiscard]] const R& data() const noexcept { return *m_record; }
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
     std::shared_ptr<const R> m_record;

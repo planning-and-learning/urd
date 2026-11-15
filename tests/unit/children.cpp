@@ -102,11 +102,25 @@ TEST(Children, VisitsEveryNestedShapeInMemberOrder)
     EXPECT_EQ(nodes, (std::vector<LeafIndex::value_type> { 11, 14 }));
 }
 
+// The view overload visits the children of the record the view reads, through the view's own context.
+TEST(Children, VisitsTheChildrenOfAView)
+{
+    const auto context = Context();
+    const auto node = make_node();
+    const auto view = urd::borrowed_view<Node, Context, Node>(&node, &context);
+    auto visited = std::vector<LeafIndex::value_type>();
+    urd::for_each_child<Children, Node>(view, [&]<typename U>(urd::index_view<U, Context> child) { visited.push_back(child.index().value); });
+    EXPECT_EQ(visited, (std::vector<LeafIndex::value_type> { 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14 }));
+}
+
 TEST(Children, MapsEveryNestedShapeAndKeepsTheRest)
 {
     const auto context = Context();
-    const auto mapped =
-        urd::map_children<Children, Node>(make_node(),
+    const auto source = make_node();
+    auto scratch = Node();  // a checked-out builder in the libraries: its memory is reused
+    const auto& mapped =
+        urd::map_children<Children, Node>(source,
+                                          scratch,
                                           context,
                                           []<typename U>(urd::index_view<U, Context> child) { return urd::index<U>(child.index().value + 100); });
     EXPECT_EQ(mapped.single.value, 101U);
@@ -123,14 +137,18 @@ TEST(Children, MapsEveryNestedShapeAndKeepsTheRest)
     EXPECT_EQ(mapped.link.first.value, 113U);
     EXPECT_EQ(mapped.link.second.value, 114U);
     EXPECT_EQ(mapped.unrelated, 9);
-    // The record's own handle is kept.
-    EXPECT_EQ(mapped.self.value, 0U);
+    // The scratch's own handle is kept (none: the mapped record is a new one, given its index when interned), and the
+    // source is left as it was.
+    EXPECT_TRUE(mapped.self.is_none());
+    EXPECT_EQ(source.single.value, 1U);
 }
 
 TEST(Children, MapsChildrenThroughViewsToo)
 {
     const auto context = Context();
-    const auto mapped = urd::map_children<Children, Node>(make_node(), context, [](auto child) { return child; });
+    const auto source = make_node();
+    auto scratch = Node();  // a checked-out builder in the libraries: its memory is reused
+    const auto& mapped = urd::map_children<Children, Node>(source, scratch, context, [](auto child) { return child; });
     EXPECT_EQ(mapped.single.value, 1U);
     EXPECT_EQ(cista::get<urd::index<Node>>(mapped.operands[1]).value, 11U);
 }
@@ -138,13 +156,16 @@ TEST(Children, MapsChildrenThroughViewsToo)
 using Operand = std::variant<urd::index_view<Leaf, Context>, urd::index_view<Node, Context>>;
 
 // Each variant slot (outside another variant) is handed to the callback whole, resolved, and may become another
-// alternative; the children outside variants are mapped as map_children maps them; the record's own handle is kept.
+// alternative; the children outside variants are mapped as map_children maps them; the scratch's own handle is kept.
 TEST(Children, MapsWholeVariantSlots)
 {
     const auto context = Context();
+    const auto source = make_node();
+    auto scratch = Node();  // a checked-out builder in the libraries: its memory is reused
     auto slots = std::vector<std::size_t>();
-    const auto mapped =
-        urd::map_variant_children<Children, Node>(make_node(),
+    const auto& mapped =
+        urd::map_variant_children<Children, Node>(source,
+                                                  scratch,
                                                   context,
                                                   [&]<typename A>(const A& child)
                                                   {
@@ -168,7 +189,7 @@ TEST(Children, MapsWholeVariantSlots)
     EXPECT_EQ(mapped.pairs[0].second.value, 106U);
     EXPECT_EQ(mapped.present->value, 112U);
     EXPECT_EQ(mapped.link.second.value, 114U);
-    EXPECT_EQ(mapped.self.value, 0U);
+    EXPECT_TRUE(mapped.self.is_none());
     EXPECT_EQ(cista::get<LeafIndex>(mapped.variants[0]).value, 4U);
     EXPECT_EQ(cista::get<int>(mapped.variants[1]), 7);
     EXPECT_EQ(cista::get<urd::index<Node>>(mapped.operands[0]).value, 210U);

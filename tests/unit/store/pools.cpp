@@ -1,5 +1,7 @@
 // Interners, partitions and pools of records. Each header a Store here needs is included.
 
+#include "urd/elements/data.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -16,6 +18,7 @@
 #include "urd/repr/values/indexed.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
+#include "urd/repr/wrappers/layered_pool.hpp"
 #include "urd/store.hpp"
 #include "urd/testing/allocations.hpp"
 
@@ -37,10 +40,25 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+namespace
+{
+struct CellTag;
+}  // namespace
+
+/// A record that is copyable, and says so.
+template<>
+struct urd::data<CellTag>
+{
+    std::uint32_t id = 0;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::id> {}; }
+};
 
 namespace
 {
@@ -102,6 +120,116 @@ TEST(Records, Count)
     points.insert(Point { 1 });
     EXPECT_EQ(points.count(Point { 1 }), 1U);
     EXPECT_EQ(points.count(Point { 2 }), 0U);
+}
+
+/// A move-only record that owns memory: interned serialized (flat, the arena).
+struct Owning
+{
+    urd::flat_vector<std::uint32_t> items;
+
+    Owning() = default;
+    Owning(const Owning&) = delete;
+    Owning& operator=(const Owning&) = delete;
+    Owning(Owning&&) = default;
+    Owning& operator=(Owning&&) = default;
+    ~Owning() = default;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Owning::items> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Owning::items> {}; }
+};
+
+/// A copyable record: interned by value from a const T&, copied; the record given stays as it was.
+template<typename Records>
+void interns_from_a_reference()
+{
+    using Cell = urd::data<CellTag>;
+    auto records = Records(urd::layer { 0 });
+    const auto record = Cell { 1 };
+    const auto [at, inserted] = records.insert(record);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(records.insert(record), std::pair(at, false));
+    EXPECT_EQ(records.insert(Cell { 2 }).first.value, at.value + 1);
+    EXPECT_EQ(records.insert(record, [&record](auto) -> const Cell& { return record; }), std::pair(at, false));
+    EXPECT_EQ(records[at].id, 1U);
+    EXPECT_EQ(record.id, 1U);
+}
+
+TEST(Records, InternFromAReference)
+{
+    interns_from_a_reference<Store<pool<urd::data<CellTag>>>>();
+    interns_from_a_reference<Store<pool<urd::data<CellTag>>, urd::flat>>();
+    interns_from_a_reference<Store<pool<urd::data<CellTag>>, urd::flat, urd::monotone, urd::layered>>();
+}
+
+// A scratch record interned is the caller's still: its buffer, contents and all, as a checked-out builder reuses it.
+TEST(Records, InternLeavesTheRecordAsItWas)
+{
+    auto records = Store<pool<Owning>, urd::flat>(urd::layer { 0 });
+    auto scratch = Owning();
+    for (std::uint32_t item = 0; item < 3; ++item)
+        scratch.items.push_back(item);
+    const auto* const buffer = scratch.items.data();
+    const auto at = records.insert(scratch).first;
+    EXPECT_EQ(scratch.items.data(), buffer);
+    EXPECT_EQ(scratch.items.size(), 3U);
+    EXPECT_EQ(records[at].items.size(), 3U);
+    EXPECT_NE(records[at].items.data(), buffer);
+    scratch.items.push_back(3);
+    EXPECT_TRUE(records.insert(scratch).second);
+}
+
+/// A move-only record that tells whether it was moved from.
+struct Moving
+{
+    std::uint32_t id = 0;
+    bool moved_from = false;
+
+    Moving() = default;
+    explicit Moving(std::uint32_t value) : id(value) {}
+    Moving(const Moving&) = delete;
+    Moving& operator=(const Moving&) = delete;
+    Moving(Moving&& other) noexcept : id(other.id) { other.moved_from = true; }
+    Moving& operator=(Moving&& other) noexcept
+    {
+        id = other.id;
+        other.moved_from = true;
+        return *this;
+    }
+    ~Moving() = default;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Moving::id> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Moving::id, &Moving::moved_from> {}; }
+};
+
+/// insert(T&&) hands a record over: moved in where it is new (serialized from, where records are serialized:
+/// moves_where_new false), left as it was where an equal one is held; a make that gives T&& likewise.
+template<typename Records>
+void hands_over_only_where_new(bool moves_where_new)
+{
+    auto records = Records(urd::layer { 0 });
+    auto first = Moving(1);
+    const auto [at, inserted] = records.insert(std::move(first));
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(first.moved_from, moves_where_new);  // NOLINT(bugprone-use-after-move,hicpp-invalid-access-moved): what the move left
+    auto again = Moving(1);
+    EXPECT_EQ(records.insert(std::move(again)), std::pair(at, false));
+    EXPECT_FALSE(again.moved_from) << "a record already held leaves the argument as it was";  // NOLINT(bugprone-use-after-move,hicpp-invalid-access-moved)
+    auto made = Moving(2);
+    const auto key = Moving(2);
+    EXPECT_TRUE(records
+                    .insert(key, [&made](auto) -> Moving&& { return std::move(made); })
+                    .second);
+    EXPECT_EQ(made.moved_from, moves_where_new);
+    EXPECT_EQ(records[at].id, 1U);
+    EXPECT_FALSE(records[at].moved_from);
+}
+
+TEST(Records, HandOverOnlyWhereNew)
+{
+    hands_over_only_where_new<Store<pool<Moving>>>(true);
+    hands_over_only_where_new<Store<pool<Moving>, urd::stable_refs>>(true);
+    hands_over_only_where_new<Store<pool<Moving>, urd::flat>>(false);
+    hands_over_only_where_new<Store<pool<Moving>, urd::flat, urd::monotone, urd::layered>>(false);
 }
 
 // A partition: union-find over indices, by request.

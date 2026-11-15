@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace urd::repr::graphs
@@ -19,7 +20,7 @@ template<typename T>
 class Values
 {
 public:
-    void push(const T& value) { m_values.push_back(value); }
+    void push(T value) { m_values.push_back(std::move(value)); }
     /// The values of `count` vertices or edges, one each.
     void assign(std::size_t count, std::span<const T> values)
     {

@@ -32,7 +32,12 @@ public:
     using handle_type = typename queue_handle<R, has<S, handles>>::type;
 
     /// With handles, the handle that reaches the element later (update, erase).
-    decltype(auto) push(const value_type& element) { return representation().push(element); }
+    decltype(auto) push(const value_type& element)
+        requires std::copy_constructible<value_type>
+    { return representation().push(element); }
+    decltype(auto) push(const value_type& element)
+        requires denied<"push(const T&): the element is move-only: move it in, push(std::move(x))", value_type>
+    = delete;
     decltype(auto) push(value_type&& element) { return representation().push(std::move(element)); }
     template<typename... Args>
     decltype(auto) emplace(Args&&... args)
@@ -48,7 +53,18 @@ public:
     template<typename Handle = handle_type>
         requires has<S, handles>
     void update(const Handle& handle, const value_type& element)
+        requires std::copy_constructible<value_type>
     { representation().update(handle, element); }
+    template<typename Handle = handle_type,
+             urd::fixed_string Reason = "update(handle, const T&): the element is move-only: move it in, update(handle, std::move(x))">
+        requires has<S, handles>
+    void update(const Handle& handle, const value_type& element)
+        requires denied<Reason, value_type>
+    = delete;
+    template<typename Handle = handle_type>
+        requires has<S, handles>
+    void update(const Handle& handle, value_type&& element)
+    { representation().update(handle, std::move(element)); }
     /// Removes the element of `handle`, wherever it is in the order.
     template<typename Handle = handle_type>
         requires has<S, handles>

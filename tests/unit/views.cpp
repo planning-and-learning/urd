@@ -3,6 +3,7 @@
 
 #include "urd/elements/flat.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/format.hpp"
 #include "urd/repr/containers/bit_rows.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -80,7 +81,7 @@ template<typename V>
 struct urd::view_mixin<Rec, V>
 {
     [[nodiscard]] std::string_view name() const { return static_cast<const V&>(*this).template member<&Rec::name>(); }
-    [[nodiscard]] std::size_t part(std::size_t at) const { return static_cast<const V&>(*this).data().parts.at(at).value; }
+    [[nodiscard]] std::size_t part(std::size_t at) const { return static_cast<const V&>(*this).template member<&Rec::parts>().at(at).index().value; }
 };
 
 namespace
@@ -264,9 +265,9 @@ TEST(View, ReadsTheStoredRecordOfItsTag)
     items.records.push_back(urd::data<Item> { .weight = 3, .owner = owner });
 
     const auto item = items.view(urd::index<Item>(0));
-    static_assert(std::same_as<decltype(item.data()), const urd::data<Item>&>);
-    EXPECT_EQ(item.data().weight, 3);
-    EXPECT_EQ(item.member<&urd::data<Item>::owner>().data().name, "ada");
+    static_assert(std::same_as<decltype(urd::detail::view_access::data(item)), const urd::data<Item>&>);
+    EXPECT_EQ(item.member<&urd::data<Item>::weight>(), 3);
+    EXPECT_EQ(item.member<&urd::data<Item>::owner>().member<&Owner::name>(), "ada");
     const auto held = urd::resolve(items.records[0], items);
     EXPECT_EQ(held.member<&urd::data<Item>::weight>(), 3);
     EXPECT_EQ(held.context().layer(), 5U);
@@ -303,7 +304,7 @@ TEST(View, BorrowsARecordNotInserted)
     const auto both = make_both();
     const auto record = Rec { "offered", { urd::index<Owner>(1), urd::index<Owner>(0) }, urd::index<Owner>(0), 3 };
     const auto offered = both.view(record);
-    EXPECT_EQ(&offered.data(), &record);
+    EXPECT_EQ(&urd::detail::view_access::data(offered), &record);
     EXPECT_EQ(offered.member<&Rec::owner>().member<&Owner::name>(), "a");
     auto names = std::vector<std::string_view>();
     for (const auto part : offered.member<&Rec::parts>())
@@ -383,7 +384,7 @@ TEST(Fields, NameMembersInOrderReadThroughAView)
     urd::for_each_field<Data>([&]<typename F>() { names.push_back(F::name); });
     EXPECT_EQ(names, (std::vector<std::string_view> { "weight", "owner" }));
     using OwnerField = urd::field<"owner", &Data::owner>;
-    EXPECT_EQ(item.member<OwnerField::member>().data().name, "ada");
+    EXPECT_EQ(item.member<OwnerField::member>().member<&Owner::name>(), "ada");
     EXPECT_STREQ(OwnerField::prefixed<"get_">.data(), "get_owner");
 }
 
@@ -392,7 +393,7 @@ TEST(View, ResolvesMembersThroughItsContext)
     const auto both = make_both();
     const auto whole = index_view<Rec>(urd::index<Rec>(0), &both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
-    EXPECT_EQ(whole.part(1), whole.data().parts[1].value);
+    EXPECT_EQ(whole.part(1), urd::detail::view_access::data(whole).parts[1].value);
     EXPECT_EQ(whole.member<&Rec::owner>().member<&Owner::name>(), "b");
     auto names = std::vector<std::string_view>();
     for (const auto part : whole.member<&Rec::parts>())
@@ -452,9 +453,9 @@ TEST(View, BorrowsAHeldRecord)
     static_assert(!views_a_temporary<Both>);
     const auto both = make_both();
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
-    EXPECT_EQ(&both.view(record).data(), &record);
+    EXPECT_EQ(&urd::detail::view_access::data(both.view(record)), &record);
     const auto by_index = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
-    EXPECT_EQ(&by_index.data(), &both[urd::index<Owner>(1)]);
+    EXPECT_EQ(&urd::detail::view_access::data(by_index), &both[urd::index<Owner>(1)]);
 }
 
 namespace
@@ -479,8 +480,8 @@ TEST(View, SharesARecord)
     EXPECT_FALSE(weak.expired());
     EXPECT_EQ(shared.name(), "shared");
     EXPECT_EQ(shared.member<&Rec::owner>().member<&Owner::name>(), "a");
-    const auto equal = Shared(std::make_shared<const Rec>(shared.data()), &both);
-    EXPECT_NE(&equal.data(), &shared.data());
+    const auto equal = Shared(std::make_shared<const Rec>(urd::detail::view_access::data(shared)), &both);
+    EXPECT_NE(&urd::detail::view_access::data(equal), &urd::detail::view_access::data(shared));
     EXPECT_EQ(equal, shared);
 }
 
@@ -492,14 +493,14 @@ TEST(View, OwnsACopyOfARecord)
     const auto both = make_both();
     auto record = Rec { "computed", { urd::index<Owner>(1) }, urd::index<Owner>(1), 3 };
     const auto owning = Owning(record, &both);
-    EXPECT_NE(&owning.data(), &record);
+    EXPECT_NE(&urd::detail::view_access::data(owning), &record);
     record.name = "changed";
     EXPECT_EQ(owning.name(), "computed");
     EXPECT_EQ(owning.member<&Rec::owner>().member<&Owner::name>(), "b");
     EXPECT_EQ(owning.member<&Rec::parts>()[0].member<&Owner::name>(), "b");
-    EXPECT_EQ(owning, Owning(owning.data(), &both));
+    EXPECT_EQ(owning, Owning(urd::detail::view_access::data(owning), &both));
     const auto other = make_both(urd::layer { 1 });
-    EXPECT_NE(owning, Owning(owning.data(), &other));
+    EXPECT_NE(owning, Owning(urd::detail::view_access::data(owning), &other));
 }
 
 TEST(TransformedRange, ItsIteratorsOutliveIt)
@@ -554,4 +555,87 @@ TEST(TransformedRange, EndsWhereWhatItReadsEnds)
     static_assert(!std::ranges::common_range<decltype(squares)> && std::ranges::random_access_range<decltype(squares)>);
     EXPECT_NE(squares.begin(), squares.end());
     EXPECT_TRUE(std::ranges::equal(squares | std::views::take(3), std::vector<int> { 1, 4, 9 }));
+}
+
+namespace
+{
+// Records written with fmt as urd writes them (urd/format.hpp): a record of fields of each kind, and one inside it.
+struct Inner
+{
+    static constexpr std::string_view name = "Inner";
+};
+struct Shown
+{
+    static constexpr std::string_view name = "Shown";
+};
+struct Empty
+{
+    static constexpr std::string_view name = "Empty";
+};
+template<typename A, typename B>
+struct Twin
+{
+    static constexpr std::string_view name = "Twin";
+};
+}  // namespace
+
+template<>
+struct urd::data<Inner>
+{
+    int value = 0;
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"value", &data::value>> {}; }
+};
+template<>
+struct urd::data<Shown>
+{
+    int count = 0;
+    urd::flat_optional<int> limit;
+    urd::flat_variant<int, bool> choice;
+    urd::flat_vector<urd::flat_variant<int, bool>> choices;
+    urd::data<Inner> inner;
+    static constexpr auto fields() noexcept
+    {
+        return urd::Fields<urd::field<"count", &data::count>,
+                           urd::field<"limit", &data::limit>,
+                           urd::field<"choice", &data::choice>,
+                           urd::field<"choices", &data::choices>,
+                           urd::field<"inner", &data::inner>> {};
+    }
+};
+template<>
+struct urd::data<Empty>
+{
+    static constexpr auto fields() noexcept { return urd::Fields<> {}; }
+};
+
+TEST(Format, WritesARecordFieldByField)
+{
+    auto shown = urd::data<Shown>();
+    shown.count = 3;
+    shown.choice = true;
+    shown.choices.push_back(urd::flat_variant<int, bool>(1));
+    shown.choices.push_back(urd::flat_variant<int, bool>(false));
+    shown.inner.value = 7;
+    EXPECT_EQ(fmt::format("{}", shown),
+              "Shown(\n"
+              "    count=3\n"
+              "    limit=none\n"
+              "    choice=true\n"
+              "    choices=[\n"
+              "        1\n"
+              "        false\n"
+              "    ]\n"
+              "    inner=Inner(\n"
+              "        value=7\n"
+              "    )\n"
+              ")");
+    shown.limit = 2;
+    EXPECT_NE(fmt::format("{}", shown).find("limit=2"), std::string::npos);
+    EXPECT_EQ(fmt::format("{}", urd::data<Empty>()), "Empty()");
+}
+
+TEST(Format, NamesATagByItsNameAndItsArguments)
+{
+    EXPECT_EQ(urd::name<Shown>(), "Shown");
+    EXPECT_EQ((urd::name<Twin<Inner, Twin<Shown, Empty>>>()), "TwinInnerTwinShownEmpty");
 }

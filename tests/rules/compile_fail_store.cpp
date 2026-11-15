@@ -6,7 +6,11 @@
 #include "all_containers.hpp"
 #include "urd/elements/view.hpp"
 
+#include <cstdint>
+#include <memory>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 using urd::map;
 using urd::multiset;
@@ -239,6 +243,9 @@ int main()
 #elif URD_CASE == 64  // a monotone_until_clear Store removes by clear() alone
     auto names = Store<set<int>, urd::monotone_until_clear> { 1, 2 };
     (void) names.erase(1);
+#elif URD_CASE == 65  // a move-only element is moved in, never copied: the const& form is denied
+    const auto element = std::unique_ptr<int>();
+    Store<sequence<std::unique_ptr<int>>>().push_back(element);
 #elif URD_CASE == 25  // order_by<C> orders a set only where it is sorted: unsorted, it orders nothing asked for
     using S = Store<set<int>, urd::order_by<urd::by<[](int key) { return -key; }>>>;
     (void) S();

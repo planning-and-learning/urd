@@ -10,9 +10,11 @@
 #include "urd/graph_types.hpp"
 #include "urd/store/types.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <optional>
 #include <type_traits>
+#include <utility>
 
 namespace urd::detail::facet
 {
@@ -55,19 +57,34 @@ template<typename Derived, typename R, typename S>
 class graph_building
 {
     using vertex = typename S::vertex_type;
+    /// Data given as V is taken: moved from an rvalue, copied from an lvalue of a copyable type.
+    template<typename V>
+    static constexpr bool taken = !std::is_lvalue_reference_v<V> || std::copy_constructible<std::remove_cvref_t<V>>;
 
 public:
+    // Data is moved in from an rvalue and copied from an lvalue: only data of a copyable type, deleted for a move-only
+    // one (urd::detail::denied).
     /// A new vertex, without edges, with its data (left out where it is a unit); the vertices of a partitioned graph, or
     /// of rows of bits, are fixed when it is built.
     template<typename... Value>
-    vertex add_vertex(const Value&... value)
-        requires(!has<S, partitioned> && !has<S, constant_adjacency>)
-    { return representation().add_vertex(value...); }
+    vertex add_vertex(Value&&... value)
+        requires(!has<S, partitioned> && !has<S, constant_adjacency> && (taken<Value> && ...))
+    { return representation().add_vertex(std::forward<Value>(value)...); }
+    template<typename... Value, urd::fixed_string Reason = "add_vertex(const D&): the vertex data is move-only: move it in, add_vertex(std::move(d))">
+    vertex add_vertex(Value&&... value)
+        requires(!has<S, partitioned> && !has<S, constant_adjacency>
+                 && (... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) ))
+    = delete;
     /// A new edge from `u` to `v`, with its data (left out where it is a unit): its number, or for rows of bits whether
     /// it is new.
     template<typename... Value>
-    decltype(auto) add_edge(vertex u, vertex v, const Value&... value)
-    { return representation().add_edge(u, v, value...); }
+    decltype(auto) add_edge(vertex u, vertex v, Value&&... value)
+        requires(taken<Value> && ...)
+    { return representation().add_edge(u, v, std::forward<Value>(value)...); }
+    template<typename... Value, urd::fixed_string Reason = "add_edge(u, v, const E&): the edge data is move-only: move it in, add_edge(u, v, std::move(e))">
+    decltype(auto) add_edge(vertex u, vertex v, Value&&... value)
+        requires(... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) )
+    = delete;
     void clear()
         requires clears<S>
     { representation().clear(); }

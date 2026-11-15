@@ -47,10 +47,12 @@ while (!frontier.empty())
 - **Say what, not which.** You write what the data is; urd resolves the request at compile time to a container from
   the standard library, Boost or its own, picked by benchmarks.
 - **The interface follows the properties.** A `frozen` Store has no `insert`, an unordered one no `lower_bound`, a
-  queue no iteration, and the compiler says why:
+  queue no iteration. Elements are moved in, and copied only where they are copyable; a copy of a move-only one is
+  refused, and the compiler says why:
 
   ```
-  note: constraints not satisfied: 'denied<"push_back/emplace_back: a keyed Store (a set or a map) takes insert">'
+  error: use of deleted function '... push_back(const value_type&) requires denied<urd::fixed_string<83>{{"push_back(const
+  T&): the element is move-only: move it in, push_back(std::move(x))"}}, ...>'
   ```
 - **You pay only for what you use.** A Store is the chosen container plus inline forwarding: no virtual calls, and no
   header of a container you do not use is compiled. Forget the one your Store resolves to, and the compiler names it:

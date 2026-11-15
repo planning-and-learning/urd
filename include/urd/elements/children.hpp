@@ -3,6 +3,7 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/view.hpp"
 
 #include <boost/mp11/algorithm.hpp>
 #include <concepts>
@@ -78,6 +79,28 @@ void walk_members(R& record, F f)
                                   walk(member, f);
                           });
 }
+/// Assigns source's members to scratch's, all but scratch's own handle (a direct member of type index<T>, which stays as
+/// it is: none in a checked-out scratch). A flat vector keeps the memory it has (set), so a scratch reused across calls
+/// allocates only where a member grows beyond what it held before; every other member is assigned.
+template<typename T, typename R>
+void assign_members(R& scratch, const R& source)
+{
+    [&]<auto... Ms>(Members<Ms...>)
+    {
+        (
+            [&]
+            {
+                using M = std::remove_cvref_t<decltype(scratch.*Ms)>;
+                if constexpr (std::same_as<M, index<T>>)
+                    return;
+                else if constexpr (is_flat_vector<M>)
+                    (scratch.*Ms).set((source.*Ms).begin(), (source.*Ms).end());
+                else
+                    scratch.*Ms = source.*Ms;
+            }(),
+            ...);
+    }(R::cista_members());
+}
 }  // namespace detail
 
 /// Calls f(context.view(child)) for every child of record, in member order.
@@ -89,32 +112,53 @@ void for_each_child(const R& record, const C& context, F f)
                                 requires detail::is_child<Types, S> { f(context.view(child)); });
 }
 
-/// record with every child c replaced by urd::to_stored(f(context.view(c))), in member order: f returns an index of
-/// c's type, or a view of one.
+/// for_each_child of the record a view reads, through its own context: the way to visit a view's children without
+/// handing its stored form out of urd (detail::view_access).
+template<typename Types, typename T, typename V, typename F>
+void for_each_child(const V& source, F f)
+{ urd::for_each_child<Types, T>(detail::view_access::data(source), source.context(), std::move(f)); }
+
+/// source with every child c replaced by urd::to_stored(f(context.view(c))), in member order, written into scratch, which
+/// it returns: f returns an index of c's type, or a view of one. source is read, not copied (a record is move-only):
+/// scratch's members are assigned from it (detail::assign_members), so a scratch reused across calls (a checked-out
+/// builder) allocates nothing once its members have grown; scratch's own handle stays as it is.
 template<typename Types, typename T, typename R, typename C, typename F>
-R map_children(R record, const C& context, F f)
+R& map_children(const R& source, R& scratch, const C& context, F f)
 {
-    detail::walk_members<T>(record,
+    detail::assign_members<T>(scratch, source);
+    detail::walk_members<T>(scratch,
                             [&]<typename S>(S& child)
                                 requires detail::is_child<Types, S> { child = urd::to_stored(f(context.view(child))); });
-    return record;
+    return scratch;
 }
 
+/// map_children of the record a view reads, through its own context: the way to rebuild a record from a view without
+/// handing its stored form out of urd (detail::view_access).
+template<typename Types, typename T, typename V, typename R, typename F>
+R& map_children(const V& source, R& scratch, F f)
+{ return urd::map_children<Types, T>(detail::view_access::data(source), scratch, source.context(), std::move(f)); }
+
 /// map_children, but every flat_variant slot (one not inside another variant; any alternatives, children or not) is
-/// replaced whole: by urd::to_stored(f(urd::resolve(slot, context))), f called with the std::variant of the slot's
+/// replaced whole, in scratch: by urd::to_stored(f(urd::resolve(slot, context))), f called with the std::variant of the slot's
 /// alternatives resolved (an empty slot throws std::bad_variant_access). f returns that variant, another of its
 /// alternatives (a view or index of another alternative type), or anything else to_stored makes into the slot's type or
 /// one of its alternatives. The walk does not descend into a slot: the children (and nested variants) inside it are
 /// f's to map. Children outside variants are replaced as map_children replaces them, so f is an overload set (or a
 /// generic callback) taking both the views and the resolved variants.
 template<typename Types, typename T, typename R, typename C, typename F>
-R map_variant_children(R record, const C& context, F f)
+R& map_variant_children(const R& source, R& scratch, const C& context, F f)
 {
-    detail::walk_members<T>(record,
+    detail::assign_members<T>(scratch, source);
+    detail::walk_members<T>(scratch,
                             [&]<typename S>(S& slot)
                                 requires(detail::is_child<Types, S> || is_flat_variant<S>)
                             { slot = urd::to_stored(f(urd::resolve(std::as_const(slot), context))); });
-    return record;
+    return scratch;
 }
+
+/// map_variant_children of the record a view reads, through its own context (detail::view_access).
+template<typename Types, typename T, typename V, typename R, typename F>
+R& map_variant_children(const V& source, R& scratch, F f)
+{ return urd::map_variant_children<Types, T>(detail::view_access::data(source), scratch, source.context(), std::move(f)); }
 
 }  // namespace urd

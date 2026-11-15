@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/cost.hpp"
+#include "urd/elements/data.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/repr/core/position_iterator.hpp"
@@ -50,14 +51,19 @@ public:
         requires(!has<S, layered>)
     { return { &representation(), static_cast<std::uint32_t>(representation().size()) }; }
 
-    /// The record's index, and whether it was new: an equal record already held gives its index.
+    /// The record's index, and whether it was new: an equal record already held gives its index. Interning reads the
+    /// record: serialized (flat, the arena), any record, a move-only one too; held by value, copied, a copyable one. It
+    /// stays the caller's as it was, as a scratch record reused for the next one is.
     std::pair<handle_type, bool> insert(const T& record) { return representation().insert(record); }
+    /// The same, handing the record over: moved in where it is new (serialized from, where records are serialized);
+    /// one already held leaves it as it was.
+    std::pair<handle_type, bool> insert(T&& record) { return representation().insert(std::move(record)); }
     /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
     std::pair<handle_type, bool> insert(const prehashed<T>& key) { return representation().insert(key); }
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
     /// must not touch this Store.
-    /// `make` gives the record or a reference to it: a record serialized into an arena needs no copy of its own.
+    /// `make` gives the record (a T or a T&&, moved in) or a reference to it (read, as insert(const T&) reads it).
     template<std::invocable<handle_type> Factory>
         requires makes_record<Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)

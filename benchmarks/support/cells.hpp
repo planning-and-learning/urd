@@ -63,7 +63,17 @@ struct value_of<S>
 
 template<typename S>
 std::string shape_of_spec()
-{ return fmt::format("{};{}", urd::spelling<typename key_of<S>::type>(), urd::spelling<typename value_of<S>::type>()); }
+{
+    // A part the request does not have (a set's value: void) is "-".
+    const auto spelled = []<typename T>() -> std::string
+    {
+        if constexpr (std::is_void_v<T>)
+            return "-";
+        else
+            return urd::spelling<T>();
+    };
+    return fmt::format("{};{}", spelled.template operator()<typename key_of<S>::type>(), spelled.template operator()<typename value_of<S>::type>());
+}
 
 /// The experiment of container R for the request spec S.
 template<typename S>

@@ -129,8 +129,8 @@ template<typename R>
                                                                                                               urd::to_stored(readout.second) };
     else if constexpr (requires { readout.index(); })
         return readout.index();
-    else if constexpr (requires { requires std::is_class_v<std::remove_cvref_t<decltype(readout.data())>>; })
-        return readout.data();
+    else if constexpr (requires { requires std::is_class_v<std::remove_cvref_t<decltype(detail::view_access::data(readout))>>; })
+        return detail::view_access::data(readout);
     else if constexpr (std::ranges::input_range<const R> && !std::convertible_to<const R&, std::string_view>)
     {
         auto stored = flat_vector<decltype(urd::to_stored(*std::ranges::begin(readout)))>();

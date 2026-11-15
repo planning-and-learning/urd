@@ -4,6 +4,7 @@
 #include "urd/elements/equal_to.hpp"
 #include "urd/store/types.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <iterator>
 #include <type_traits>
@@ -23,20 +24,38 @@ class appending
     using const_iterator_type = typename iterator_types<R, S>::const_iterator;
 
 public:
-    void push_back(const value_type& element) { representation().push_back(element); }
+    // An element is moved in by the && forms; the const& and range forms copy, and are deleted for a move-only element
+    // (urd::detail::denied).
+    void push_back(const value_type& element)
+        requires std::copy_constructible<value_type>
+    { representation().push_back(element); }
+    void push_back(const value_type& element)
+        requires denied<"push_back(const T&): the element is move-only: move it in, push_back(std::move(x))", value_type>
+    = delete;
     void push_back(value_type&& element) { representation().push_back(std::move(element)); }
     /// The new element; changeable in place only where the Store's elements are.
     template<typename... Args>
     typename iterator_types<R, S>::reference emplace_back(Args&&... args)
     { return representation().emplace_back(std::forward<Args>(args)...); }
     iterator_type insert(const_iterator_type pos, const value_type& element)
-        requires changes_in_the_middle<S>
+        requires changes_in_the_middle<S> && std::copy_constructible<value_type>
     { return representation().insert(pos, element); }
+    iterator_type insert(const_iterator_type pos, const value_type& element)
+        requires changes_in_the_middle<S> && denied<"insert(pos, const T&): the element is move-only: move it in, insert(pos, std::move(x))", value_type>
+    = delete;
+    iterator_type insert(const_iterator_type pos, value_type&& element)
+        requires changes_in_the_middle<S>
+    { return representation().insert(pos, std::move(element)); }
     /// Copies of [first, last) before `pos`, as std::vector::insert.
     template<std::input_iterator InputIt>
     iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
-        requires changes_in_the_middle<S>
+        requires changes_in_the_middle<S> && std::copy_constructible<value_type>
     { return representation().insert(pos, first, last); }
+    template<std::input_iterator InputIt,
+             urd::fixed_string Reason = "insert(pos, first, last): the element is move-only: move each in, insert(pos, std::move(x))">
+    iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
+        requires changes_in_the_middle<S> && denied<Reason, value_type>
+    = delete;
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
         requires changes_in_the_middle<S>
@@ -50,8 +69,11 @@ public:
         requires shrinks<S>
     { representation().resize(count); }
     void resize(std::size_t count, const value_type& value)
-        requires shrinks<S>
+        requires shrinks<S> && std::copy_constructible<value_type>
     { representation().resize(count, value); }
+    void resize(std::size_t count, const value_type& value)
+        requires shrinks<S> && denied<"resize(n, const T&): the element is move-only: resize(n) value-initializes", value_type>
+    = delete;
     /// Every element equal to `element` (urd::EqualTo, as the Store's ==); how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)
         requires changes_in_the_middle<S>

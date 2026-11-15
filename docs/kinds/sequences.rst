@@ -91,7 +91,8 @@ Growable (not ``frozen``, not ``fixed_shape``):
 .. cpp:function:: void push_back(value_type&& element)
 .. cpp:function:: template<typename... Args> reference emplace_back(Args&&... args)
 
-   Sequences (the ``appending`` facet). The new element, changeable in place where the elements are.
+   Sequences (the ``appending`` facet). The new element, changeable in place where the elements are. The
+   ``const&`` forms only of a copyable element (:ref:`moving-and-copying`).
 
 .. cpp:function:: iterator insert(const value_type& element)
 .. cpp:function:: template<typename... Args> iterator emplace(Args&&... args)
@@ -99,6 +100,7 @@ Growable (not ``frozen``, not ``fixed_shape``):
    Multisets (the ``insertion`` facet): into place, by value.
 
 .. cpp:function:: iterator insert(const_iterator pos, const value_type& element)
+.. cpp:function:: iterator insert(const_iterator pos, value_type&& element)
 .. cpp:function:: template<typename... Args> iterator emplace(const_iterator pos, Args&&... args)
 
    Sequences, at a position (not ``monotone``).

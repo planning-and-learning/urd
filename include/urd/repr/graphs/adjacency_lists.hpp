@@ -15,6 +15,7 @@
 #include <span>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace urd::repr
@@ -78,24 +79,24 @@ public:
     }
     [[nodiscard]] size_type in_degree(V v) const { return m_in[vertex_at(v)].size(); }
 
-    /// A new vertex with its data.
-    V add_vertex(const D& value)
+    /// A new vertex with its data, moved in.
+    V add_vertex(D value)
     {
-        m_vertex_values.push(value);
+        m_vertex_values.push(std::move(value));
         return add_slot();
     }
     /// A new vertex, where its data is a unit.
     V add_vertex()
         requires unit<D>
     { return add_vertex(D {}); }
-    /// A new edge from `u` to `v` with its data: its number.
-    std::size_t add_edge(V u, V v, const E& value)
+    /// A new edge from `u` to `v` with its data, moved in: its number.
+    std::size_t add_edge(V u, V v, E value)
     {
         const auto from = vertex_at(u);
         const auto to = vertex_at(v);
         const auto e = m_edges.size();
         m_edges.push_back(Edge { u, v, true });
-        m_values.push(value);
+        m_values.push(std::move(value));
         m_out[from].push_back(e);
         m_in[to].push_back(e);
         ++m_num_edges;

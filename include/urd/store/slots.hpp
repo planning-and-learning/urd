@@ -84,8 +84,11 @@ public:
     };
 
     handle_type insert(const value_type& element)
-        requires unkeyed
+        requires unkeyed && std::copy_constructible<value_type>
     { return representation().insert(element); }
+    handle_type insert(const value_type& element)
+        requires unkeyed && denied<"insert(const T&): the element is move-only: move it in, insert(std::move(x))", value_type>
+    = delete;
     handle_type insert(value_type&& element)
         requires unkeyed
     { return representation().insert(std::move(element)); }

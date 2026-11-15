@@ -13,7 +13,9 @@
 #include "urd/bits.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/spec.hpp"
 #include "urd/traits.hpp"
 
@@ -90,15 +92,10 @@ struct type_spelling<Store<Kind, Tags...>>
     static std::string spelled() { return spelling_of_spec<typename detail::to_spec<Kind, Tags...>::type>(); }
 };
 
-/// Type T as a request names it; "-" for none (void).
+/// Type T as a request names it.
 template<typename T>
 std::string spelling()
-{
-    if constexpr (std::is_void_v<T>)
-        return "-";
-    else
-        return type_spelling<T>::spelled();
-}
+{ return type_spelling<T>::spelled(); }
 
 /// Spec S as the request that states its tags: its kind with its element types (set<int>), then the tags that say
 /// more than their category's none, in the order of the categories.
@@ -112,7 +109,158 @@ std::string spelling_of_spec()
     return fmt::format("Store<{}>", fmt::join(parts, ", "));
 }
 
+/// The name of tag T: its `name` (a static constexpr std::string_view), followed by the names of its template arguments,
+/// so that Condition<AndTag> is "ConditionAnd" and Atom<LiftedTag, FluentTag> is "AtomLiftedFluent". Each tag declares
+/// its name; specialize it for a tag named otherwise. A record is written (fmt) and bound in Python under it.
+template<typename T>
+struct name_of
+{
+    static std::string named() { return std::string(T::name); }
+};
+template<template<typename...> class X, typename... Arguments>
+struct name_of<X<Arguments...>>
+{
+    static std::string named() { return (std::string(X<Arguments...>::name) + ... + name_of<Arguments>::named()); }
+};
+
+/// The name of tag T (name_of).
+template<typename T>
+std::string name()
+{ return name_of<T>::named(); }
+
+namespace detail
+{
+/// The indentation of what is written on this thread: 4 spaces per scoped_indent open around it.
+inline int& indent_level() noexcept
+{
+    thread_local int level = 0;
+    return level;
+}
+/// A new line at the current indentation.
+inline std::string new_line() { return "\n" + std::string(static_cast<std::size_t>(4 * indent_level()), ' '); }
+
+/// A value as a record's field writes it: an optional as its value or `none`, a variant as its alternative, a string as
+/// its characters, a range as `[`, each element written so on a line of its own one level deeper, `]` (`[]` empty), and
+/// anything else as fmt writes it.
+template<typename V>
+std::string field_written(const V& value);
+}  // namespace detail
+
+/// Indentation one level deeper while it lives: what urd writes inside it (a record's fields, a list's elements) is
+/// indented by 4 more spaces, on this thread.
+class scoped_indent
+{
+public:
+    scoped_indent() noexcept { ++detail::indent_level(); }
+    scoped_indent(const scoped_indent&) = delete;
+    scoped_indent& operator=(const scoped_indent&) = delete;
+    scoped_indent(scoped_indent&&) = delete;
+    scoped_indent& operator=(scoped_indent&&) = delete;
+    ~scoped_indent() { --detail::indent_level(); }
+};
+
+namespace detail
+{
+template<typename V>
+std::string field_written(const V& value)
+{
+    if constexpr (optional_value<V>)
+        return value.has_value() ? field_written(*value) : std::string("none");
+    else if constexpr (variant_value<V>)
+        return visit([](const auto& alternative) { return field_written(alternative); }, value);
+    else if constexpr (std::convertible_to<const V&, std::string_view>)
+        return std::string(std::string_view(value));
+    else if constexpr (std::ranges::input_range<const V>)
+    {
+        if (std::ranges::empty(value))
+            return "[]";
+        auto out = std::string("[");
+        {
+            const auto deeper = scoped_indent();
+            for (const auto& element : value)
+                out += new_line() + field_written(element);
+        }
+        return out + new_line() + "]";
+    }
+    else
+        return fmt::format("{}", value);
+}
+
+}  // namespace detail
+
+/// A record of tag T as urd writes one: `Name(`, each field of Record (data<T>, or builder<T>) on a line of its own one
+/// level deeper, `name=value`, its value read by read.template operator()<F>() and written as a field's (an optional, a
+/// variant, a list), then `)`. A library calls it for a view that reads its fields otherwise (a packed record).
+template<typename T, typename Record, typename Read>
+std::string record_written(Read read)
+{
+    auto out = name<T>() + "(";
+    auto any = false;
+    {
+        const auto deeper = scoped_indent();
+        for_each_field<Record>(
+            [&]<typename F>()
+            {
+                out += detail::new_line() + F::c_name + "=" + detail::field_written(read.template operator()<F>());
+                any = true;
+            });
+    }
+    return out + (any ? detail::new_line() + ")" : ")");
+}
+
+namespace detail
+{
+
+/// A view V written as its record (record_written), each field resolved through the view's context.
+template<typename V>
+struct view_formatter : fmt::formatter<std::string_view>
+{
+    auto format(const V& view, fmt::format_context& context) const
+    {
+        return fmt::formatter<std::string_view>::format(
+            record_written<typename V::value_type, fields_record_t<V>>([&]<typename F>() -> decltype(auto) { return view.template member<F::member>(); }),
+            context);
+    }
+};
+}  // namespace detail
+
 }  // namespace urd
+
+/// A record, `Name(\n    field=value\n    ...\n)` (urd::name of its tag, its fields in order). A library that writes a
+/// record otherwise specializes this for its own record.
+template<typename T>
+    requires urd::HasFields<urd::data<T>>
+struct fmt::formatter<urd::data<T>> : fmt::formatter<std::string_view>
+{
+    auto format(const urd::data<T>& record, fmt::format_context& context) const
+    {
+        return fmt::formatter<std::string_view>::format(urd::record_written<T, urd::data<T>>([&]<typename F>() -> decltype(auto) { return record.*F::member; }),
+                                                        context);
+    }
+};
+
+/// A view of a record or a builder whose fields its record names, written as that record (each field resolved through
+/// the view's context). A library that writes a view otherwise specializes this for its own record.
+template<typename T, typename C, typename K>
+    requires urd::HasFields<urd::fields_record_t<urd::index_view<T, C, K>>>
+struct fmt::formatter<urd::index_view<T, C, K>> : urd::detail::view_formatter<urd::index_view<T, C, K>>
+{
+};
+template<typename T, typename C, typename R>
+    requires urd::HasFields<R>
+struct fmt::formatter<urd::borrowed_view<T, C, R>> : urd::detail::view_formatter<urd::borrowed_view<T, C, R>>
+{
+};
+template<typename T, typename C, typename R>
+    requires urd::HasFields<R>
+struct fmt::formatter<urd::owning_view<T, C, R>> : urd::detail::view_formatter<urd::owning_view<T, C, R>>
+{
+};
+template<typename T, typename C, typename R>
+    requires urd::HasFields<R>
+struct fmt::formatter<urd::shared_view<T, C, R>> : urd::detail::view_formatter<urd::shared_view<T, C, R>>
+{
+};
 
 /// A cost as the docs write it: O(1), O(log n), O(n log n), O(n changes), with * for amortized and ~ for expected.
 template<>

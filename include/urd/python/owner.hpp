@@ -46,8 +46,8 @@ struct urd_view_caster : type_caster_base<V>
     }
 };
 
-template<typename T, typename C>
-struct type_caster<urd::index_view<T, C>> : urd_view_caster<urd::index_view<T, C>>
+template<typename T, typename C, typename K>
+struct type_caster<urd::index_view<T, C, K>> : urd_view_caster<urd::index_view<T, C, K>>
 {
 };
 template<typename T, typename C, typename R>

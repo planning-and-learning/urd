@@ -18,7 +18,9 @@
 #include <cista/containers/array.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
+#include <numeric>
 #include <ranges>
+#include <span>
 #include <string>
 
 namespace
@@ -91,4 +93,6 @@ NB_MODULE(urd_casters_test, m)
     m.def("roundtrip_pair", [](urd::flat_pair<int, int> value) { return value; });
     m.def("roundtrip_optional_pairs", [](urd::flat_vector<urd::flat_optional<urd::flat_pair<int, int>>> values) { return values; });
     m.def("roundtrip_variant", [](urd::flat_variant<int, double> value) { return value; });
+    // A span parameter reads a Python sequence.
+    m.def("span_sum", [](std::span<const int> values) { return std::accumulate(values.begin(), values.end(), 0); });
 }

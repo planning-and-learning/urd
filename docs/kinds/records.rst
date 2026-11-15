@@ -120,8 +120,11 @@ Member functions
    index and number. A layer gets its own number, as its parent does.
 
 .. cpp:function:: std::pair<handle_type, bool> insert(const value_type& record)
+.. cpp:function:: std::pair<handle_type, bool> insert(value_type&& record)
 
-   The record's index, and whether it was new: an equal record already held gives its index.
+   The record's index, and whether it was new: an equal record already held gives its index. The record is read and
+   serialized (``flat``, any record) or copied (by value, a copyable record); it stays as it was. An rvalue is handed
+   over: moved in where it is new (:ref:`moving-and-copying`).
 
 .. cpp:function:: template<std::invocable<handle_type> Factory> std::pair<handle_type, bool> insert(const value_type& key, Factory make)
 

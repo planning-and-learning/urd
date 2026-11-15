@@ -153,11 +153,13 @@ Growable Stores (not ``frozen``):
 .. cpp:function:: std::pair<iterator, bool> insert(const value_type& element)
 .. cpp:function:: std::pair<iterator, bool> insert(value_type&& element)
 .. cpp:function:: iterator insert(const_iterator hint, const value_type& element)
+.. cpp:function:: iterator insert(const_iterator hint, value_type&& element)
 .. cpp:function:: template<std::input_iterator InputIt> void insert(InputIt first, InputIt last)
 .. cpp:function:: void insert(std::initializer_list<value_type> elements)
 .. cpp:function:: template<typename... Args> std::pair<iterator, bool> emplace(Args&&... args)
 
-   Inserts the element unless an equal one is held; the iterator to it and whether it was inserted. In an interner
+   Inserts the element unless an equal one is held; the iterator to it and whether it was inserted. An rvalue is
+   moved in only where it is new; the copying forms only of a copyable element (:ref:`moving-and-copying`). In an interner
    (``positional, monotone``) the element's position is its index and never shifts.
 
 Shrinkable Stores (neither ``frozen`` nor ``monotone``; ``monotone_until_clear`` keeps ``clear`` only):

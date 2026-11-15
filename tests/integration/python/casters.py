@@ -53,6 +53,15 @@ def main() -> None:
         result = module.roundtrip_variant(value)
         assert type(result) is type(value)
         assert result == value
+    assert module.span_sum([1, 2, 3]) == 6
+    assert module.span_sum((4, 5)) == 9
+    assert module.span_sum([]) == 0
+    try:
+        module.span_sum([1, "x"])
+    except TypeError:
+        pass
+    else:
+        raise AssertionError("a span accepted a non-integer")
     print("casters ok")
 
 

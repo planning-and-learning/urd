@@ -11,10 +11,14 @@
 // <=>) are called on the Store: no other facet declares them.
 
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/prehashed.hpp"
 #include "urd/store.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <type_traits>
+#include <utility>
 
 namespace urd::test
 {
@@ -135,7 +139,7 @@ template<>
 struct probe<facet::insertion> : probe_defaults
 {
     template<typename B, typename T, typename S>
-    static constexpr bool on_facet = requires(B& facet, std::initializer_list<element_of<S>> elements) { facet.insert(elements); };
+    static constexpr bool on_facet = requires(B& facet, element_of<S>&& element) { facet.emplace(std::move(element)); };
 };
 template<>
 struct probe<facet::removal> : probe_defaults
@@ -147,11 +151,14 @@ template<>
 struct probe<facet::appending> : probe_defaults
 {
     template<typename B, typename T, typename S>
-    static constexpr bool on_facet = requires(B& facet, const element_of<S>& element) { facet.push_back(element); };
+    static constexpr bool on_facet = requires(B& facet, element_of<S>&& element) { facet.push_back(std::move(element)); };
 };
+/// assign copies: only a copyable element (takes<facet::assigning> below).
 template<>
-struct probe<facet::assigning> : probe_defaults
+struct probe<facet::assigning>
 {
+    template<typename T, typename R, typename S>
+    static constexpr bool also = std::copy_constructible<element_of<S>>;
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet, const element_of<S>& element) { facet.assign(std::size_t {}, element); };
 };
@@ -248,6 +255,174 @@ template<>
 inline constexpr bool unprobed<facet::pool> = true;
 template<>
 inline constexpr bool unprobed<facet::slots> = true;
+
+// Moving and copying (docs/semantics.rst): a facet's members that put an element (or a key) in move it in by their &&
+// forms, accepted wherever the facet offers them, and copy it in by their const&, range and initializer_list forms,
+// accepted exactly where it is copyable; for a move-only one they are deleted (urd::detail::denied). `takes<F>` names a
+// facet's moving calls (`moves`) and how many of its copying calls a facet base accepts (`copies`, of `copying`), for
+// the element or key it takes (`taken`), where the facet's member is offered (`offered`); `move` makes the moving calls
+// (a pool of records: its interning calls), so that they are compiled, not only resolved.
+
+/// A facet that takes nothing names no calls.
+template<template<typename, typename, typename> class F>
+struct takes
+{
+    static constexpr bool any = false;
+};
+/// What a facet that takes elements has unless it says otherwise: it takes the element, and offers its members wherever
+/// it is on.
+struct takes_defaults
+{
+    static constexpr bool any = true;
+    /// It interns (reads what it is given) rather than taking it: its copying calls are accepted for any element.
+    static constexpr bool interns = false;
+    template<typename S>
+    using taken = element_of<S>;
+    template<typename T, typename R, typename S>
+    static constexpr bool offered = true;
+};
+
+template<>
+struct takes<facet::insertion> : takes_defaults
+{
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, element_of<S>&& element) { facet.insert(std::move(element)); };
+    static constexpr int copying = 3;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } }
+                                  + int { requires(B& facet, std::initializer_list<element_of<S>> elements) { facet.insert(elements); } }
+                                  + int { requires(B& facet, const element_of<S>* first) { facet.insert(first, first); } };
+    /// A map whose key is move-only takes its keys by values_by_key's try_emplace.
+    template<typename B, typename S>
+    static void move(B& facet, element_of<S>&& element)
+    {
+        if constexpr (std::move_constructible<element_of<S>>)
+            facet.insert(std::move(element));
+    }
+};
+template<>
+struct takes<facet::appending> : takes_defaults
+{
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, element_of<S>&& element) { facet.push_back(std::move(element)); };
+    static constexpr int copying = 1;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.push_back(element); } };
+    template<typename B, typename S>
+    static void move(B& facet, element_of<S>&& element)
+    { facet.push_back(std::move(element)); }
+};
+/// Assigning only copies: a Store of move-only elements is assigned another Store, moved.
+template<>
+struct takes<facet::assigning> : takes_defaults
+{
+    template<typename B, typename S>
+    static constexpr bool moves = true;
+    static constexpr int copying = 2;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.assign(std::size_t {}, element); } }
+                                  + int { requires(B& facet, const element_of<S>* first) { facet.assign(first, first); } };
+    template<typename B, typename S>
+    static void move(B& /*facet*/, element_of<S>&& /*element*/)
+    {
+    }
+};
+template<>
+struct takes<facet::queue_access> : takes_defaults
+{
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, element_of<S>&& element) { facet.push(std::move(element)); };
+    static constexpr int copying = 1;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.push(element); } };
+    template<typename B, typename S>
+    static void move(B& facet, element_of<S>&& element)
+    { facet.push(std::move(element)); }
+};
+/// Slots acquired by key (urd::keyed<K>) take no element.
+template<>
+struct takes<facet::slots> : takes_defaults
+{
+    template<typename T, typename R, typename S>
+    static constexpr bool offered = std::is_void_v<typename S::slot_key_type>;
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, element_of<S>&& element) { facet.insert(std::move(element)); };
+    static constexpr int copying = 1;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } };
+    template<typename B, typename S>
+    static void move(B& facet, element_of<S>&& element)
+    { facet.insert(std::move(element)); }
+};
+/// A pool of records interns: it reads a record (a const T&, or one insert(key, make)'s make refers to), which the arena
+/// serializes and a by-value interner copies (a copyable record; the calls resolve for any record, and a move-only one
+/// fails at its deleted copy constructor). insert(T&&) and a make that gives a T hand the record over.
+template<>
+struct takes<facet::records> : takes_defaults
+{
+    static constexpr bool interns = true;
+    template<typename S>
+    using refers = const element_of<S>& (*) (typename S::handle_type);
+    template<typename S>
+    using gives = element_of<S> (*)(typename S::handle_type);
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, element_of<S>&& element, const element_of<S>& key, gives<S> make) {
+        facet.insert(std::move(element));
+        facet.insert(key, make);
+    };
+    static constexpr int copying = 3;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } }
+                                  + int { requires(B& facet, const urd::prehashed<element_of<S>>& key) { facet.insert(key); } }
+                                  + int { requires(B& facet, const element_of<S>& key, refers<S> make) { facet.insert(key, make); } };
+    template<typename B, typename S>
+    static void move(B& facet, element_of<S>&& element)
+    {
+        if constexpr (std::copy_constructible<element_of<S>>)
+        {
+            const auto& record = element;
+            facet.insert(record);
+            facet.insert(record, [&record](auto) -> const element_of<S>& { return record; });
+        }
+        facet.insert(std::move(element));
+    }
+};
+/// A map with unique keys stores a key where it is new.
+template<>
+struct takes<facet::values_by_key> : takes_defaults
+{
+    template<typename S>
+    using taken = typename S::key_type;
+    template<typename T, typename R, typename S>
+    static constexpr bool offered = urd::detail::grows<S>;
+    template<typename B, typename S>
+    static constexpr bool moves = requires(B& facet, typename S::key_type&& key) { facet.try_emplace(std::move(key)); };
+    static constexpr int copying = 1;
+    template<typename B, typename S>
+    static constexpr int copies = int { requires(B& facet, const typename S::key_type& key) { facet.try_emplace(key); } };
+    template<typename B, typename S>
+    static void move(B& facet, typename S::key_type&& key)
+    { facet.try_emplace(std::move(key)); }
+};
+
+/// Whether facet F of Store T (over R, for S) takes elements as the rule says: where it offers its members, the moving
+/// calls are accepted (where the element can be moved: a map's element holds its key const), and the copying calls all
+/// where what it takes is copyable or the facet interns it, none where it is move-only.
+template<typename T, typename R, typename S, template<typename, typename, typename> class F>
+constexpr bool takes_by_the_rule()
+{
+    if constexpr (!takes<F>::any)
+        return true;
+    else if constexpr (!urd::detail::facet_condition<F>::template on<R, S>() || !takes<F>::template offered<T, R, S>)
+        return true;
+    else
+    {
+        using B = F<T, R, S>;
+        using taken = typename takes<F>::template taken<S>;
+        return takes<F>::template moves<B, S> == std::move_constructible<taken>
+               && takes<F>::template copies<B, S> == (takes<F>::interns || std::copy_constructible<taken> ? takes<F>::copying : 0);
+    }
+}
 
 /// Whether Store T (over R, for S) can make facet F's call: on the Store, or on the facet's base where the Store
 /// inherits it (its condition holds), else not.

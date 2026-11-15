@@ -382,6 +382,7 @@ public:
     { return inserted(key.key, key.hash); }
     /// New elements go last, wherever the hint is.
     iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
+    iterator insert(const_iterator /*hint*/, T&& element) { return insert(std::move(element)).first; }
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {

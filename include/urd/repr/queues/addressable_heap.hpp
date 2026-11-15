@@ -72,9 +72,9 @@ public:
         return handle;
     }
     void pop() { erase(m_heap.front()); }
-    void update(handle_type handle, const T& element)
+    void update(handle_type handle, T element)
     {
-        m_slots[handle].element = element;
+        m_slots[handle].element = std::move(element);
         sift_up(m_slots[handle].position);
         sift_down(m_slots[handle].position);
     }

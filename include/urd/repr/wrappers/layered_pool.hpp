@@ -139,6 +139,13 @@ public:
     {
         return insert(key, [&key](handle_type) -> const T& { return key.key; });
     }
+    /// Handed over: moved in where it is new to the chain; one already held leaves `record` as it was.
+    std::pair<handle_type, bool> insert(T&& record)
+        requires(!row_pool)
+    {
+        const auto key = prehash(record);
+        return insert(key, [&record](handle_type) -> T&& { return std::move(record); });
+    }
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
         requires(!row_pool)

@@ -146,25 +146,25 @@ public:
     Recycling(InputIt first, InputIt last)
     { insert(first, last); }
 
-    /// A value built from `args` for `key` unless it has one; a kept node first, where there is one.
+    /// A value built from `args` for `key` unless it has one; a kept node first, where there is one. The key is moved in
+    /// from an rvalue, where it is new.
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
-    {
-        if (const auto found = Base::find(key); found != Base::end())
-            return { found, false };
-        if (m_free.empty())
-            return Base::try_emplace(key, std::forward<Args>(args)...);
-        auto node = std::move(m_free.back());
-        m_free.pop_back();
-        node.key() = key;
-        if constexpr (sizeof...(Args) > 0)
-            node.mapped() = V(std::forward<Args>(args)...);
-        return { Base::insert(std::move(node)).position, true };
-    }
+    { return emplaced(key, std::forward<Args>(args)...); }
+    template<typename... Args>
+    std::pair<iterator, bool> try_emplace(K&& key, Args&&... args)
+    { return emplaced(std::move(key), std::forward<Args>(args)...); }
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
     {
         const auto [at, inserted] = try_emplace(key);
+        at->second = std::forward<M>(mapped);
+        return { at, inserted };
+    }
+    template<typename M>
+    std::pair<iterator, bool> insert_or_assign(K&& key, M&& mapped)
+    {
+        const auto [at, inserted] = try_emplace(std::move(key));
         at->second = std::forward<M>(mapped);
         return { at, inserted };
     }
@@ -192,6 +192,21 @@ public:
 
 private:
     friend struct urd::memory_of<Recycling>;
+
+    template<typename Key, typename... Args>
+    std::pair<iterator, bool> emplaced(Key&& key, Args&&... args)
+    {
+        if (const auto found = Base::find(key); found != Base::end())
+            return { found, false };
+        if (m_free.empty())
+            return Base::try_emplace(std::forward<Key>(key), std::forward<Args>(args)...);
+        auto node = std::move(m_free.back());
+        m_free.pop_back();
+        node.key() = std::forward<Key>(key);
+        if constexpr (sizeof...(Args) > 0)
+            node.mapped() = V(std::forward<Args>(args)...);
+        return { Base::insert(std::move(node)).position, true };
+    }
 
     using Base::m_free;
 };
