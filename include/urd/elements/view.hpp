@@ -6,6 +6,8 @@
 #include "urd/elements/index.hpp"
 #include "urd/elements/less.hpp"
 
+#include <algorithm>
+#include <array>
 #include <boost/mp11.hpp>
 #include <compare>
 #include <concepts>
@@ -73,22 +75,19 @@ struct view_access
 template<typename V>
 using record_of = std::remove_cvref_t<decltype(detail::view_access::data(std::declval<const V&>()))>;
 
-/// How a view of T whose record is stored in another layout than data<T> (a row packed into its pool, its relation in
-/// its key) reads a member of data<T>: `stored_member<T>::of(view, member_tag<&data<T>::m>())`, resolved as member<>
-/// gives it, one overload per member. Specialize it for such a T; a view's member<> asks it only where its record has no such member.
-template<typename T>
-struct stored_member;
+template<typename M>
+struct resolution;
 
-/// The record whose fields a view V reads: its own (data<T>, builder<T>), or data<T>'s where it is stored in another
-/// layout (stored_member).
-template<typename V>
-using fields_record_t = std::conditional_t<HasFields<record_of<V>>, record_of<V>, data<typename V::value_type>>;
+/// Whether a member of type M is written from a readout of type R (resolution<M>::stored).
+template<typename M, typename R>
+concept stores = requires(const R& readout) { resolution<M>::stored(readout); };
 
-/// A member pointer as a type, for a stored_member overload of one member.
-template<auto Member>
-struct member_tag
+namespace detail
 {
-};
+/// How many of the members Ts are written from a readout of type R.
+template<typename R, typename... Ts>
+inline constexpr std::size_t takers = (std::size_t { 0 } + ... + static_cast<std::size_t>(stores<Ts, R>));
+}  // namespace detail
 
 /// How a view resolves a member of type M through its context (urd::resolve): `resolution<M>::of(member, context)`.
 /// As it is, unless a specialization for M says otherwise: given below for indices, ranges, pairs, variants and
@@ -102,6 +101,10 @@ struct resolution
     template<typename C>
     static const M& of(const M& member, const C& /*context*/) noexcept
     { return member; }  // NOLINT(bugprone-return-const-ref-from-parameter)
+    /// Written only from an M: no conversion.
+    template<std::same_as<M> R>
+    static M stored(const R& readout)
+    { return readout; }
 };
 
 /// A record's member, as a view sees it: what its resolution makes of it. The member is passed on as it is given, so
@@ -126,6 +129,14 @@ struct resolution<index<U>>
     template<typename C>
     static auto of(index<U> at, const C& context)
     { return context.view(at); }
+    /// Written from the index itself, or from a view of the element (its index()).
+    template<std::same_as<index<U>> R>
+    static index<U> stored(const R& readout) noexcept
+    { return readout; }
+    template<typename V>
+        requires std::same_as<std::remove_cvref_t<decltype(std::declval<const V&>().index())>, index<U>>
+    static index<U> stored(const V& view) noexcept
+    { return view.index(); }
 };
 
 /// A variant (std's or cista's) as the std::variant of its alternatives resolved. An empty one (a cista variant not
@@ -149,6 +160,27 @@ struct resolution<V<Ts...>>
             },
             member);
     }
+    /// Written from a readout of one alternative, or from a variant of such readouts: each to the one alternative whose
+    /// stored takes it, whichever its position (none or several is a compile error).
+    template<typename R>
+        requires(variant_value<R> || detail::takers<R, Ts...> == 1)
+    static V<Ts...> stored(const R& readout)
+    {
+        if constexpr (variant_value<R>)
+            return visit([](const auto& alternative) { return stored_alternative(alternative); }, readout);
+        else
+            return stored_alternative(readout);
+    }
+
+private:
+    template<typename A>
+    static V<Ts...> stored_alternative(const A& alternative)
+    {
+        static_assert(detail::takers<A, Ts...> == 1, "urd::resolution<variant>::stored: exactly one alternative takes the readout");
+        constexpr auto takes = std::array<bool, sizeof...(Ts)> { stores<Ts, A>... };
+        using Target = boost::mp11::mp_at_c<boost::mp11::mp_list<Ts...>, static_cast<std::size_t>(std::ranges::find(takes, true) - takes.begin())>;
+        return V<Ts...>(resolution<Target>::stored(alternative));
+    }
 };
 
 /// An optional as the std::optional of its value resolved.
@@ -160,6 +192,16 @@ struct resolution<M>
     {
         using resolved = std::optional<resolved_t<std::remove_cvref_t<decltype(*member)>, C>>;
         return member.has_value() ? resolved(urd::resolve(*member, context)) : resolved();
+    }
+    /// Written from an optional readout (none: none), or from a readout of its value.
+    template<typename R>
+    static M stored(const R& readout)
+    {
+        using E = optional_value_t<M>;
+        if constexpr (optional_value<R>)
+            return readout.has_value() ? M(resolution<E>::stored(*readout)) : M();
+        else
+            return M(resolution<E>::stored(readout));
     }
 };
 
@@ -173,6 +215,10 @@ struct resolution<M>
         using resolved = std::pair<resolved_t<typename M::first_type, C>, resolved_t<typename M::second_type, C>>;
         return resolved(urd::resolve(member.first, context), urd::resolve(member.second, context));
     }
+    /// Written from a pair of readouts, each as its member.
+    template<pair_value R>
+    static M stored(const R& readout)
+    { return M { resolution<typename M::first_type>::stored(readout.first), resolution<typename M::second_type>::stored(readout.second) }; }
 };
 
 /// A range R read through a function F: each element x read as f(x). Held are R's iterators (a container's, or a
@@ -367,6 +413,18 @@ struct resolution<M>
     template<typename C>
     static resolved_range<M, C> of(const M& member, const C& context)
     { return { member, resolver<C> { &context } }; }
+    /// Written from a range of readouts, element by element.
+    template<std::ranges::input_range R>
+    static M stored(const R& readout)
+    {
+        using E = std::ranges::range_value_t<M>;
+        auto result = M();
+        if constexpr (std::ranges::sized_range<const R> && requires(M& stored) { stored.reserve(std::size_t {}); })
+            result.reserve(std::ranges::size(readout));
+        for (const auto& element : readout)
+            result.push_back(resolution<E>::stored(element));
+        return result;
+    }
 };
 
 namespace detail
@@ -382,16 +440,21 @@ public:
     using value_type = T;
 
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
-    /// A member of the record, resolved through the context (urd::resolve); of a record stored in another layout, as
-    /// stored_member<T> reads it.
+    /// A member of the record, resolved through the context (urd::resolve). A record the context hands out by value (a
+    /// stored form of another layout, holding handles only) lives for this call: what is read from it is returned by
+    /// value, never as a reference into it.
     template<auto Member>
     [[nodiscard]] decltype(auto) member() const
     {
         const auto& view = static_cast<const V&>(*this);
-        if constexpr (requires { view_access::data(view).*Member; })
+        if constexpr (std::is_reference_v<decltype(view_access::data(view))>)
             return urd::resolve(view_access::data(view).*Member, *m_context);
         else
-            return stored_member<T>::of(view, member_tag<Member>());
+        {
+            const auto record = view_access::data(view);
+            using Read = std::remove_cvref_t<decltype(urd::resolve(record.*Member, *m_context))>;
+            return Read(urd::resolve(record.*Member, *m_context));
+        }
     }
 
     /// The identity: what identifies the record, and the number of the context (a context without a number gives

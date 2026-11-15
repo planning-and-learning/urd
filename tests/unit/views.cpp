@@ -32,6 +32,7 @@
 #include "urd/store.hpp"
 
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -317,7 +318,7 @@ TEST(View, BorrowsARecordNotInserted)
     EXPECT_EQ(urd::Hash<Borrowed> {}(offered), urd::Hash<Borrowed> {}(both.view(copy)));
 }
 
-TEST(View, ToStoredInvertsResolve)
+TEST(View, StoredInvertsResolve)
 {
     const auto both = make_both();
     const auto a = urd::index<Owner>(0);
@@ -326,10 +327,9 @@ TEST(View, ToStoredInvertsResolve)
         { a, { b, std::nullopt } },
         { b, {} },
     };
-    // Each part read back as its flat counterpart: views as indices, ranges as flat vectors, pairs and optionals as cista's.
-    const auto stored = urd::to_stored(urd::resolve(groups, both));
-    static_assert(std::same_as<std::remove_const_t<decltype(stored)>,
-                               urd::flat_vector<urd::flat_pair<urd::index<Owner>, urd::flat_vector<urd::flat_optional<urd::index<Owner>>>>>>);
+    // Each part written as the member's type stores it: views as indices, ranges as lists, pairs and optionals as cista's.
+    using Groups = urd::flat_vector<urd::flat_pair<urd::index<Owner>, urd::flat_vector<urd::flat_optional<urd::index<Owner>>>>>;
+    const auto stored = urd::stored<Groups>(urd::resolve(groups, both));
     ASSERT_EQ(stored.size(), 2U);
     EXPECT_EQ(stored[0].first, a);
     ASSERT_EQ(stored[0].second.size(), 2U);
@@ -338,20 +338,41 @@ TEST(View, ToStoredInvertsResolve)
     EXPECT_EQ(stored[1].first, b);
     EXPECT_TRUE(stored[1].second.empty());
 
-    // A variant as the flat variant of its alternatives' stored forms; a value as it is.
+    // A variant readout goes to the alternative of the member that takes it, whichever its position; a value as it is.
     const auto alternative = urd::resolve(std::variant<urd::index<Owner>, int>(b), both);
-    const auto variant = urd::to_stored(alternative);
-    static_assert(std::same_as<std::remove_const_t<decltype(variant)>, urd::flat_variant<urd::index<Owner>, int>>);
-    EXPECT_EQ(cista::get<urd::index<Owner>>(variant), b);
-    EXPECT_EQ(urd::to_stored(7), 7);
-    static_assert(std::same_as<urd::stored_t<index_view<Owner, Both>>, urd::index<Owner>>);
+    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::stored<urd::flat_variant<urd::index<Owner>, int>>(alternative)), b);
+    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::stored<urd::flat_variant<int, urd::index<Owner>>>(alternative)), b);
+    EXPECT_EQ(cista::get<int>(urd::stored<urd::flat_variant<int, urd::index<Owner>>>(7)), 7);
+    EXPECT_EQ(urd::stored<int>(7), 7);
 
-    // A borrowed record as a copy of it.
-    const auto record = Rec { "offered", { a }, b, 3 };
-    const auto copy = urd::to_stored(both.view(record));
-    static_assert(std::same_as<std::remove_const_t<decltype(copy)>, Rec>);
-    EXPECT_EQ(copy.name, "offered");
-    EXPECT_EQ(copy.owner, b);
+    // store writes into a member as its type stores it.
+    auto member = urd::flat_optional<urd::index<Owner>>();
+    urd::store(member, both.view(b));
+    EXPECT_EQ(*member, b);
+
+    // append adds to a list as its element type stores it.
+    auto list = urd::flat_vector<urd::index<Owner>>();
+    urd::append(list, both.view(a));
+    urd::append(list, b);
+    ASSERT_EQ(list.size(), 2U);
+    EXPECT_EQ(list[0], a);
+    EXPECT_EQ(list[1], b);
+
+    // What a member does not store does not compile: no conversion of values, no view of another element, no copy of a
+    // record out of its view.
+    static_assert(!urd::stores<double, int>);
+    static_assert(!urd::stores<urd::index<Owner>, int>);
+    static_assert(urd::stores<urd::index<Owner>, decltype(both.view(b))>);
+    static_assert(!urd::stores<Rec, decltype(both.view(std::declval<const Rec&>()))>);
+}
+
+TEST(View, MakeBuildsARecordFromOneReadoutPerField)
+{
+    auto items = Items();
+    const auto owner = items.owners.index(items.owners.insert(Owner { "o" }).first);
+    const auto record = urd::make<Item>(3, items.view(owner));
+    EXPECT_EQ(record.weight, 3);
+    EXPECT_EQ(record.owner, owner);
 }
 
 TEST(View, ClearMembersKeepsBuffers)
@@ -638,4 +659,33 @@ TEST(Format, NamesATagByItsNameAndItsArguments)
 {
     EXPECT_EQ(urd::name<Shown>(), "Shown");
     EXPECT_EQ((urd::name<Twin<Inner, Twin<Shown, Empty>>>()), "TwinInnerTwinShownEmpty");
+}
+
+namespace
+{
+// A context that hands out its records by value, in another layout than data<Shown>: a value with handles only.
+struct Packed
+{
+    int number = 0;
+    std::span<const int> values;
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"number", &Packed::number>, urd::field<"values", &Packed::values>> {}; }
+};
+struct ByValue
+{
+    std::array<int, 3> storage { 4, 5, 6 };
+    [[nodiscard]] Packed operator[](urd::index<Shown> /*at*/) const { return { 2, storage }; }
+    [[nodiscard]] std::size_t layer() const noexcept { return 9; }
+};
+}  // namespace
+
+TEST(View, ReadsOfARecordHandedOutByValueAreValues)
+{
+    const auto context = ByValue();
+    const auto view = urd::index_view<Shown, ByValue>(urd::index<Shown>(0), &context);
+    // The record lives for the read only: what is read from it is a value, never a reference into it.
+    static_assert(!std::is_reference_v<decltype(view.template member<&Packed::values>())>);
+    const auto values = view.template member<&Packed::values>();
+    ASSERT_EQ(values.size(), 3U);
+    EXPECT_EQ(values[2], 6);
+    EXPECT_EQ(view.template member<&Packed::number>(), 2);
 }

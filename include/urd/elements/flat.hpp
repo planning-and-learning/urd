@@ -97,55 +97,39 @@ struct memory_of<T>
 template<typename T, template<typename> typename Ptr, bool IndexPointers, typename SizeType, class Allocator>
 inline constexpr bool value_range<::cista::basic_vector<T, Ptr, IndexPointers, SizeType, Allocator>> = true;
 
-namespace detail
-{
-template<typename T, template<typename...> typename Of>
-inline constexpr bool specializes = false;
-template<template<typename...> typename Of, typename... Ts>
-inline constexpr bool specializes<Of<Ts...>, Of> = true;
-}  // namespace detail
+/// A readout written as a member of type M: M's own rule, the inverse of how M is read (resolution<M>::stored). A view
+/// of an element gives its index, a range of readouts M's list of them, an optional or a variant of readouts M's
+/// optional or variant (each alternative to the one of M's that takes it), a pair its members; a plain value only an M
+/// itself, without conversion. A readout M does not take is a compile error naming M.
+template<typename M, typename R>
+    requires stores<M, R>
+[[nodiscard]] M stored(const R& readout)
+{ return resolution<M>::stored(readout); }
 
-/// The stored form of a readout, the inverse of urd::resolve: what a record holds for what a view reads. A variant
-/// (std's or cista's) gives the flat_variant of its alternatives' stored forms, a std::optional the flat_optional, a
-/// pair the flat_pair; a view of an element held by index gives its index (index()), a view of a record held elsewhere
-/// a copy of its record (data()); a range (not text) gives the flat_vector of its elements'; anything else is its own
-/// stored form.
-template<typename R>
-[[nodiscard]] auto to_stored(const R& readout)
+/// Writes a readout into a member, as the member's type stores it (urd::stored).
+template<typename M, typename R>
+    requires stores<M, R>
+void store(M& member, const R& readout)
+{ member = resolution<M>::stored(readout); }
+
+/// Appends a readout to a list member, as its element type stores it (urd::stored).
+template<typename List, typename R>
+    requires stores<std::ranges::range_value_t<List>, R>
+void append(List& list, const R& readout)
+{ list.push_back(resolution<std::ranges::range_value_t<List>>::stored(readout)); }
+
+/// The record data<T> from one readout per field, in field order (fields()), each written as its field's type
+/// (urd::store); its index, if it has one, is none.
+template<typename T, typename... Readouts>
+[[nodiscard]] data<T> make(const Readouts&... readouts)
 {
-    if constexpr (variant_value<R>)
-        return []<template<typename...> typename V, typename... Vs>(const V<Vs...>& alternatives)
-        {
-            using stored = flat_variant<decltype(urd::to_stored(std::declval<const Vs&>()))...>;
-            return visit([](const auto& alternative) { return stored(urd::to_stored(alternative)); }, alternatives);
-        }(readout);
-    else if constexpr (detail::specializes<R, std::optional>)
+    auto result = data<T>();
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/)
     {
-        using stored = flat_optional<decltype(urd::to_stored(*readout))>;
-        return readout.has_value() ? stored(urd::to_stored(*readout)) : stored();
-    }
-    else if constexpr (pair_value<R>)
-        return flat_pair<decltype(urd::to_stored(readout.first)), decltype(urd::to_stored(readout.second))> { urd::to_stored(readout.first),
-                                                                                                              urd::to_stored(readout.second) };
-    else if constexpr (requires { readout.index(); })
-        return readout.index();
-    else if constexpr (requires { requires std::is_class_v<std::remove_cvref_t<decltype(detail::view_access::data(readout))>>; })
-        return detail::view_access::data(readout);
-    else if constexpr (std::ranges::input_range<const R> && !std::convertible_to<const R&, std::string_view>)
-    {
-        auto stored = flat_vector<decltype(urd::to_stored(*std::ranges::begin(readout)))>();
-        if constexpr (std::ranges::sized_range<const R>)
-            stored.reserve(static_cast<typename decltype(stored)::size_type>(std::ranges::size(readout)));
-        for (const auto& element : readout)
-            stored.push_back(urd::to_stored(element));
-        return stored;
-    }
-    else
-        return readout;
+        static_assert(sizeof...(Fs) == sizeof...(Readouts), "urd::make: one readout per field of the record, in field order");
+        (urd::store(result.*Fs::member, readouts), ...);
+    }(data<T>::fields());
+    return result;
 }
-
-/// The type to_stored gives for a readout of type R.
-template<typename R>
-using stored_t = decltype(urd::to_stored(std::declval<const R&>()));
 
 }  // namespace urd

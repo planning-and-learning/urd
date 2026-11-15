@@ -218,7 +218,7 @@ struct view_formatter : fmt::formatter<std::string_view>
     auto format(const V& view, fmt::format_context& context) const
     {
         return fmt::formatter<std::string_view>::format(
-            record_written<typename V::value_type, fields_record_t<V>>([&]<typename F>() -> decltype(auto) { return view.template member<F::member>(); }),
+            record_written<typename V::value_type, record_of<V>>([&]<typename F>() -> decltype(auto) { return view.template member<F::member>(); }),
             context);
     }
 };
@@ -242,7 +242,7 @@ struct fmt::formatter<urd::data<T>> : fmt::formatter<std::string_view>
 /// A view of a record or a builder whose fields its record names, written as that record (each field resolved through
 /// the view's context). A library that writes a view otherwise specializes this for its own record.
 template<typename T, typename C, typename K>
-    requires urd::HasFields<urd::fields_record_t<urd::index_view<T, C, K>>>
+    requires urd::HasFields<urd::record_of<urd::index_view<T, C, K>>>
 struct fmt::formatter<urd::index_view<T, C, K>> : urd::detail::view_formatter<urd::index_view<T, C, K>>
 {
 };

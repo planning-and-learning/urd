@@ -85,26 +85,14 @@ void bind_fields(nb::class_<Data>& cls)
 
 /// A view's getters, get_<name> for each field of its record: the field resolved through the view's context.
 template<typename View>
-    requires HasFields<fields_record_t<View>>
+    requires HasFields<record_of<View>>
 void bind_field_getters(nb::class_<View>& cls)
 {
-    for_each_field<fields_record_t<View>>(
+    for_each_field<record_of<View>>(
         [&]<typename F>()
         { cls.def(F::template prefixed<"get_">.data(), [](const View& view) -> decltype(auto) { return view.template member<F::member>(); }); });
 }
 
-/// cls.def(init_from_views<Args...>(), names...): an __init__ taking Args as Python passes them (views, readouts,
-/// sequences of them, plain values), building the record from their stored forms (urd::to_stored).
-template<typename... Args>
-struct init_from_views : nb::def_visitor<init_from_views<Args...>>
-{
-    template<typename Class, typename... Extra>
-    void execute(Class& cls, const Extra&... extra) const
-    {
-        using Record = typename Class::Type;
-        cls.def("__init__", [](Record* self, Args... arguments) { new (self) Record(urd::to_stored(arguments)...); }, extra...);
-    }
-};
 /// Binds the plain value T (no record: a struct of fields, ColumnLayout, a row's key) under its name (urd::name<T>()):
 /// an __init__ from its fields in order, each field read and written under its name, compared by its identifying
 /// members, written with fmt (a value needs its fmt::formatter).
@@ -139,13 +127,13 @@ nb::class_<urd::data<T>> bind_data(nb::module_& m)
 }
 
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder for a view of a
-/// builder<T>), the one way a view is bound, whether it reads a stored record (data<T>), a record stored in another
-/// layout (read through urd::stored_member) or a builder (builder<T>): get_<field>() for each field of its record
-/// (fields_record_t), compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
+/// builder<T>), the one way a view is bound, whether it reads a stored record (data<T>), a record a context hands out
+/// in another layout (a value with the record's fields) or a builder (builder<T>): get_<field>() for each field of its
+/// record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
 /// that names its index (index_view: index() gives an urd::index<T>) also gives index() and converts to T's Index
 /// wherever an index is expected, also in lists and optionals; that Index is bound first, by bind_data<T>.
 template<typename View>
-    requires HasFields<fields_record_t<View>>
+    requires HasFields<record_of<View>>
 nb::class_<View> bind_view(nb::module_& m)
 {
     using T = typename View::value_type;

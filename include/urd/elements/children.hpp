@@ -118,7 +118,7 @@ template<typename Types, typename T, typename V, typename F>
 void for_each_child(const V& source, F f)
 { urd::for_each_child<Types, T>(detail::view_access::data(source), source.context(), std::move(f)); }
 
-/// source with every child c replaced by urd::to_stored(f(context.view(c))), in member order, written into scratch, which
+/// source with every child c replaced by what f(context.view(c)) reads, stored as c (urd::store), in member order, written into scratch, which
 /// it returns: f returns an index of c's type, or a view of one. source is read, not copied (a record is move-only):
 /// scratch's members are assigned from it (detail::assign_members), so a scratch reused across calls (a checked-out
 /// builder) allocates nothing once its members have grown; scratch's own handle stays as it is.
@@ -128,7 +128,7 @@ R& map_children(const R& source, R& scratch, const C& context, F f)
     detail::assign_members<T>(scratch, source);
     detail::walk_members<T>(scratch,
                             [&]<typename S>(S& child)
-                                requires detail::is_child<Types, S> { child = urd::to_stored(f(context.view(child))); });
+                                requires detail::is_child<Types, S> { urd::store(child, f(context.view(child))); });
     return scratch;
 }
 
@@ -139,9 +139,9 @@ R& map_children(const V& source, R& scratch, F f)
 { return urd::map_children<Types, T>(detail::view_access::data(source), scratch, source.context(), std::move(f)); }
 
 /// map_children, but every flat_variant slot (one not inside another variant; any alternatives, children or not) is
-/// replaced whole, in scratch: by urd::to_stored(f(urd::resolve(slot, context))), f called with the std::variant of the slot's
+/// replaced whole, in scratch: by f(urd::resolve(slot, context)) stored as the slot (urd::store), f called with the std::variant of the slot's
 /// alternatives resolved (an empty slot throws std::bad_variant_access). f returns that variant, another of its
-/// alternatives (a view or index of another alternative type), or anything else to_stored makes into the slot's type or
+/// alternatives (a view or index of another alternative type), or anything else the slot's type stores or
 /// one of its alternatives. The walk does not descend into a slot: the children (and nested variants) inside it are
 /// f's to map. Children outside variants are replaced as map_children replaces them, so f is an overload set (or a
 /// generic callback) taking both the views and the resolved variants.
@@ -152,7 +152,7 @@ R& map_variant_children(const R& source, R& scratch, const C& context, F f)
     detail::walk_members<T>(scratch,
                             [&]<typename S>(S& slot)
                                 requires(detail::is_child<Types, S> || is_flat_variant<S>)
-                            { slot = urd::to_stored(f(urd::resolve(std::as_const(slot), context))); });
+                            { urd::store(slot, f(urd::resolve(std::as_const(slot), context))); });
     return scratch;
 }
 
