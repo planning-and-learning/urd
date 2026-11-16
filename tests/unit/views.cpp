@@ -1,6 +1,7 @@
 // urd::index<T> and urd::index_view<T, C>: a strong index minted by the Store that numbers Ts, and a reference made of
 // an index and the context that resolves it, which resolves the record's members through the same context.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/format.hpp"
@@ -45,6 +46,8 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -213,10 +216,9 @@ Both make_both(urd::layer number = urd::layer { 0 })
 
 namespace
 {
-// A tag whose stored record is the slot urd::data<Tag> (Serializable), read through a context that holds the records;
-// and a tag whose record is not Serializable, which no context resolves.
+// A tag whose stored record is the slot urd::data<Tag> (Serializable), read through a context that holds the records.
+// (A record that is not Serializable, which no context resolves: tests/rules/compile_fail_view.cpp.)
 struct Item;
-struct Bare;
 }  // namespace
 
 template<>
@@ -224,14 +226,28 @@ struct urd::data<Item>
 {
     int weight = 0;
     urd::index<Owner> owner;
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::owner> {}; }
+
+    data() = default;
+    data(int weight_, urd::index<Owner> owner_) : weight(weight_), owner(owner_) {}
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>, urd::field<"owner", &data::owner>> {}; }
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::owner> {}; }
 };
-template<>
-struct urd::data<Bare>
+template<typename V>
+struct urd::view_mixin<Item, V>
 {
-    int weight = 0;
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
+    auto get_owner() const noexcept { return self().template member<&urd::record_of<V>::owner>(); }
 };
 
 namespace
@@ -247,15 +263,8 @@ struct Items
     [[nodiscard]] urd::index_view<Item, Items> view(urd::index<Item> at) const { return { at, this }; }
     [[nodiscard]] urd::index_view<Owner, Items> view(urd::index<Owner> at) const { return { at, this }; }
 };
-struct Bares
-{
-    std::vector<urd::data<Bare>> records;
-    const urd::data<Bare>& operator[](urd::index<Bare> at) const { return records[at.value]; }
-    [[nodiscard]] std::size_t layer() const noexcept { return 6; }
-    [[nodiscard]] urd::index_view<Bare, Bares> view(urd::index<Bare> at) const { return { at, this }; }
-};
-static_assert(urd::stored_record<Item> && !urd::stored_record<Bare>);
-static_assert(urd::resolves<Items, Item> && urd::resolves<Items, Owner> && !urd::resolves<Bares, Bare>);
+static_assert(urd::stored_record<Item>);
+static_assert(urd::resolves<Items, Item> && urd::resolves<Items, Owner>);
 static_assert(std::same_as<urd::resolved_t<urd::data<Item>, Items>, urd::borrowed_view<Item, Items>>);
 
 }  // namespace
@@ -264,7 +273,7 @@ TEST(View, ReadsTheStoredRecordOfItsTag)
 {
     auto items = Items {};
     const auto owner = items.owners.index(items.owners.insert(Owner { "ada" }).first);
-    items.records.push_back(urd::data<Item> { .weight = 3, .owner = owner });
+    items.records.push_back(urd::data<Item>(3, owner));
 
     const auto item = items.view(urd::index<Item>(0));
     static_assert(std::same_as<decltype(urd::detail::view_access::data(item)), const urd::data<Item>&>);
@@ -409,7 +418,7 @@ TEST(Fields, NameMembersInOrderReadThroughAView)
     static_assert(std::same_as<decltype(Data::identifying_members()), urd::Members<&Data::weight, &Data::owner>>);
     auto items = Items {};
     const auto owner = items.owners.index(items.owners.insert(Owner { "ada" }).first);
-    items.records.push_back(Data { .weight = 3, .owner = owner });
+    items.records.push_back(Data(3, owner));
     const auto item = items.view(urd::index<Item>(0));
 
     auto names = std::vector<std::string_view>();
@@ -615,7 +624,18 @@ template<>
 struct urd::data<Inner>
 {
     int value = 0;
+
+    data() = default;
+    explicit data(int value_) : value(value_) {}
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"value", &data::value>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::value> {}; }
 };
 template<>
 struct urd::data<Shown>
@@ -625,6 +645,26 @@ struct urd::data<Shown>
     urd::flat_variant<int, bool> choice;
     urd::flat_vector<urd::flat_variant<int, bool>> choices;
     urd::data<Inner> inner;
+
+    data() = default;
+    data(int count_,
+         urd::flat_optional<int> limit_,
+         urd::flat_variant<int, bool> choice_,
+         urd::flat_vector<urd::flat_variant<int, bool>> choices_,
+         urd::data<Inner> inner_) :
+        count(count_),
+        limit(limit_),
+        choice(choice_),
+        choices(std::move(choices_)),
+        inner(inner_)
+    {
+    }
+    data(const data& other) = delete;
+    data& operator=(const data& other) = delete;
+    data(data&& other) = default;
+    data& operator=(data&& other) = default;
+    ~data() = default;
+
     static constexpr auto fields() noexcept
     {
         return urd::Fields<urd::field<"count", &data::count>,
@@ -633,11 +673,53 @@ struct urd::data<Shown>
                            urd::field<"choices", &data::choices>,
                            urd::field<"inner", &data::inner>> {};
     }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+    static constexpr auto cista_members() noexcept
+    {
+        return urd::Members<&data::count, &data::limit, &data::choice, &data::choices, &data::inner> {};
+    }
 };
 template<>
 struct urd::data<Empty>
 {
+    data() = default;
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
     static constexpr auto fields() noexcept { return urd::Fields<> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+    static constexpr auto cista_members() noexcept { return urd::Members<> {}; }
+};
+template<typename V>
+struct urd::view_mixin<Inner, V>
+{
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_value() const noexcept { return self().template member<&urd::record_of<V>::value>(); }
+};
+template<typename V>
+struct urd::view_mixin<Shown, V>
+{
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_count() const noexcept { return self().template member<&urd::record_of<V>::count>(); }
+    auto get_limit() const noexcept { return self().template member<&urd::record_of<V>::limit>(); }
+    auto get_choice() const noexcept { return self().template member<&urd::record_of<V>::choice>(); }
+    auto get_choices() const noexcept { return self().template member<&urd::record_of<V>::choices>(); }
+    auto get_inner() const noexcept { return self().template member<&urd::record_of<V>::inner>(); }
+};
+template<typename V>
+struct urd::view_mixin<Empty, V>
+{
+private:
+    [[maybe_unused]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 };
 
 TEST(Format, WritesARecordFieldByField)

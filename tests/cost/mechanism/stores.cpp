@@ -12,12 +12,14 @@
 // mechanism.py reads to write mechanism_resolved.hpp.
 
 #include "all_containers.hpp"
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/store.hpp"
 
 #include <boost/mp11/list.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 
 #if defined(URD_MECHANISM_RECORDS)
@@ -112,8 +114,17 @@ struct urd::data<mechanism::A<I>>
     urd::index<mechanism::A<I>> index;
     urd::index<mechanism::Row<I>> row;
 
+    data() = default;
+    explicit data(urd::index<mechanism::Row<I>> row_) : index(), row(row_) {}
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"row", &data::row>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::row> {}; }
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::row> {}; }
 };
 
 template<int I>
@@ -124,14 +135,45 @@ struct urd::data<mechanism::B<I>>
     urd::Store<urd::sequence<urd::index<mechanism::A<I>>>> arguments;
 
     data() = default;
+    data(urd::index<mechanism::A<I>> head_, urd::Store<urd::sequence<urd::index<mechanism::A<I>>>> arguments_) :
+        index(),
+        head(head_),
+        arguments(std::move(arguments_))
+    {
+    }
     data(const data& other) = delete;
     data& operator=(const data& other) = delete;
     data(data&& other) = default;
     data& operator=(data&& other) = default;
     ~data() = default;
 
+    static constexpr auto fields() noexcept
+    {
+        return urd::Fields<urd::field<"head", &data::head>, urd::field<"arguments", &data::arguments>> {};
+    }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::head, &data::arguments> {}; }
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::head, &data::arguments> {}; }
+};
+
+template<int I, typename V>
+struct urd::view_mixin<mechanism::A<I>, V>
+{
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_row() const noexcept { return self().template member<&urd::record_of<V>::row>(); }
+};
+
+template<int I, typename V>
+struct urd::view_mixin<mechanism::B<I>, V>
+{
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
+    auto get_arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
 };
 
 namespace mechanism

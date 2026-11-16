@@ -215,6 +215,11 @@ if(URD_CLANG_FOR_TRACE)
                      --allow "gtl::flat_hash_set<" -- ${compile}
              COMMAND_EXPAND_LISTS)
 endif()
+
+# What urd's mechanism costs on a downstream library's mix of Stores: tests/cost/mechanism.py compiles
+# cost/mechanism/stores.cpp, run by hand (no test). Its control target, built by none, gives it compile commands.
+add_executable(test_mechanism_control EXCLUDE_FROM_ALL cost/mechanism/stores.cpp)
+target_link_libraries(test_mechanism_control PRIVATE urd::urd)
 urd_label_tests(cost)
 
 # rules/ (continued): code that must not compile. Each case is one run of the compiler on the source, syntax only,
@@ -238,6 +243,8 @@ function(urd_compile_fail_expects name case regex)
 endfunction()
 
 urd_compile_fail_cases(compile_fail_store rules/compile_fail_store.cpp 65)
+# A record that is not Serializable: no view reads it (its control is a record that one does).
+urd_compile_fail_cases(compile_fail_view rules/compile_fail_view.cpp 1)
 # A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")

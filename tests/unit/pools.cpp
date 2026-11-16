@@ -4,6 +4,7 @@
 #include "urd/repr/pools/pools.hpp"
 
 #include "names.hpp"
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
@@ -484,8 +485,27 @@ template<>
 struct urd::data<Symbol>
 {
     int id = 0;
+
+    data() = default;
+    explicit data(int id_) : id(id_) {}
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"id", &data::id>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
     static constexpr auto cista_members() noexcept { return urd::Members<&data::id> {}; }
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::id> {}; }
+};
+template<typename V>
+struct urd::view_mixin<Symbol, V>
+{
+private:
+    const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    auto get_id() const noexcept { return self().template member<&urd::record_of<V>::id>(); }
 };
 
 namespace
