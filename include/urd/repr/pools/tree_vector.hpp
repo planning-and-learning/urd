@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/pools/pools.hpp"
@@ -19,6 +20,7 @@
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -83,8 +85,11 @@ struct TreeHandle
     [[nodiscard]] static constexpr TreeHandle none() noexcept { return { tree::unused_child, 0 }; }
     [[nodiscard]] constexpr bool is_none() const noexcept { return root == tree::unused_child && size == 0; }
 
+    static constexpr std::string_view name = "TreeHandle";
+
     friend bool operator==(const TreeHandle&, const TreeHandle&) = default;
-    static constexpr auto identifying_members() noexcept { return Members<&TreeHandle::root, &TreeHandle::size> {}; }
+    static constexpr auto fields() noexcept { return Fields<field<"root", &TreeHandle::root>, field<"size", &TreeHandle::size>> {}; }
+    static constexpr auto identifying_members() noexcept { return members_of(fields()); }
 };
 
 /// A pool of sequence rows (Row: a Store of values, or a vector), each a balanced tree with Arity children per node,

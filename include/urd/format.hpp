@@ -12,7 +12,9 @@
 
 #include "urd/bits.hpp"
 #include "urd/cost.hpp"
+#include "urd/elements/builder.hpp"
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/data.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/view.hpp"
@@ -211,6 +213,25 @@ std::string record_written(Read read)
 namespace detail
 {
 
+/// The tag a value with fields is named after: T for a record data<T> or a builder builder<T>, the value itself otherwise.
+template<typename V>
+struct named
+{
+    using type = V;
+};
+template<typename T>
+struct named<data<T>>
+{
+    using type = T;
+};
+template<typename T>
+struct named<builder<T>>
+{
+    using type = T;
+};
+template<typename V>
+using named_t = typename named<V>::type;
+
 /// A view V written as its record (record_written), each field resolved through the view's context.
 template<typename V>
 struct view_formatter
@@ -228,18 +249,19 @@ struct view_formatter
 
 }  // namespace urd
 
-/// A record, `Name(\n    field=value\n    ...\n)` (urd::name of its tag, its fields in order). A library that writes a
-/// record otherwise specializes this for its own record.
-template<typename T>
-    requires urd::HasFields<urd::data<T>>
-struct fmt::formatter<urd::data<T>>
+/// A value that names its fields (fields()), `Name(\n    field=value\n    ...\n)`: a record (data<T>) or a builder
+/// (builder<T>) under the name of its tag T, any other value under its own name (urd::name), its fields in order. A
+/// library that writes such a value otherwise specializes this for it.
+template<typename V>
+    requires urd::HasFields<V>
+struct fmt::formatter<V>
 {
     constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
-    auto format(const urd::data<T>& record, fmt::format_context& context) const
+    auto format(const V& value, fmt::format_context& context) const
     {
         return fmt::format_to(context.out(),
                               "{}",
-                              urd::record_written<T, urd::data<T>>([&]<typename F>() -> decltype(auto) { return record.*F::member; }));
+                              urd::record_written<urd::detail::named_t<V>, V>([&]<typename F>() -> decltype(auto) { return value.*F::member; }));
     }
 };
 

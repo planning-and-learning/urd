@@ -323,7 +323,7 @@ struct takes<facet::assigning> : takes_defaults
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.assign(std::size_t {}, element); } }
                                   + int { requires(B& facet, const element_of<S>* first) { facet.assign(first, first); } };
     template<typename B, typename S>
-    static void move(B& /*facet*/, element_of<S>&& /*element*/)
+    static void move(B& /*facet*/, const element_of<S>& /*element*/)
     {
     }
 };
@@ -411,17 +411,18 @@ struct takes<facet::values_by_key> : takes_defaults
 template<typename T, typename R, typename S, template<typename, typename, typename> class F>
 constexpr bool takes_by_the_rule()
 {
-    if constexpr (!takes<F>::any)
-        return true;
-    else if constexpr (!urd::detail::facet_condition<F>::template on<R, S>() || !takes<F>::template offered<T, R, S>)
-        return true;
-    else
+    if constexpr (takes<F>::any)
     {
-        using B = F<T, R, S>;
-        using taken = typename takes<F>::template taken<S>;
-        return takes<F>::template moves<B, S> == std::move_constructible<taken>
-               && takes<F>::template copies<B, S> == (takes<F>::interns || std::copy_constructible<taken> ? takes<F>::copying : 0);
+        if constexpr (urd::detail::facet_condition<F>::template on<R, S>() && takes<F>::template offered<T, R, S>)
+        {
+            using B = F<T, R, S>;
+            using taken = typename takes<F>::template taken<S>;
+            return takes<F>::template moves<B, S> == std::move_constructible<taken>
+                   && takes<F>::template copies<B, S> == (takes<F>::interns || std::copy_constructible<taken> ? takes<F>::copying : 0);
+        }
     }
+    // A facet that takes nothing, or does not offer its members here, takes them by the rule.
+    return true;
 }
 
 /// Whether Store T (over R, for S) can make facet F's call: on the Store, or on the facet's base where the Store

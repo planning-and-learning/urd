@@ -243,11 +243,11 @@ template<typename V>
 struct urd::view_mixin<Item, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
-    auto get_owner() const noexcept { return self().template member<&urd::record_of<V>::owner>(); }
+    [[nodiscard]] auto get_weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] auto get_owner() const noexcept { return self().template member<&urd::record_of<V>::owner>(); }
 };
 
 namespace
@@ -273,7 +273,7 @@ TEST(View, ReadsTheStoredRecordOfItsTag)
 {
     auto items = Items {};
     const auto owner = items.owners.index(items.owners.insert(Owner { "ada" }).first);
-    items.records.push_back(urd::data<Item>(3, owner));
+    items.records.emplace_back(3, owner);
 
     const auto item = items.view(urd::index<Item>(0));
     static_assert(std::same_as<decltype(urd::detail::view_access::data(item)), const urd::data<Item>&>);
@@ -418,7 +418,7 @@ TEST(Fields, NameMembersInOrderReadThroughAView)
     static_assert(std::same_as<decltype(Data::identifying_members()), urd::Members<&Data::weight, &Data::owner>>);
     auto items = Items {};
     const auto owner = items.owners.index(items.owners.insert(Owner { "ada" }).first);
-    items.records.push_back(Data(3, owner));
+    items.records.emplace_back(3, owner);
     const auto item = items.view(urd::index<Item>(0));
 
     auto names = std::vector<std::string_view>();
@@ -653,8 +653,8 @@ struct urd::data<Shown>
          urd::flat_vector<urd::flat_variant<int, bool>> choices_,
          urd::data<Inner> inner_) :
         count(count_),
-        limit(limit_),
-        choice(choice_),
+        limit(std::move(limit_)),
+        choice(std::move(choice_)),
         choices(std::move(choices_)),
         inner(inner_)
     {
@@ -674,10 +674,7 @@ struct urd::data<Shown>
                            urd::field<"inner", &data::inner>> {};
     }
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
-    static constexpr auto cista_members() noexcept
-    {
-        return urd::Members<&data::count, &data::limit, &data::choice, &data::choices, &data::inner> {};
-    }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::count, &data::limit, &data::choice, &data::choices, &data::inner> {}; }
 };
 template<>
 struct urd::data<Empty>
@@ -697,23 +694,23 @@ template<typename V>
 struct urd::view_mixin<Inner, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_value() const noexcept { return self().template member<&urd::record_of<V>::value>(); }
+    [[nodiscard]] auto get_value() const noexcept { return self().template member<&urd::record_of<V>::value>(); }
 };
 template<typename V>
 struct urd::view_mixin<Shown, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_count() const noexcept { return self().template member<&urd::record_of<V>::count>(); }
-    auto get_limit() const noexcept { return self().template member<&urd::record_of<V>::limit>(); }
-    auto get_choice() const noexcept { return self().template member<&urd::record_of<V>::choice>(); }
-    auto get_choices() const noexcept { return self().template member<&urd::record_of<V>::choices>(); }
-    auto get_inner() const noexcept { return self().template member<&urd::record_of<V>::inner>(); }
+    [[nodiscard]] auto get_count() const noexcept { return self().template member<&urd::record_of<V>::count>(); }
+    [[nodiscard]] auto get_limit() const noexcept { return self().template member<&urd::record_of<V>::limit>(); }
+    [[nodiscard]] auto get_choice() const noexcept { return self().template member<&urd::record_of<V>::choice>(); }
+    [[nodiscard]] auto get_choices() const noexcept { return self().template member<&urd::record_of<V>::choices>(); }
+    [[nodiscard]] auto get_inner() const noexcept { return self().template member<&urd::record_of<V>::inner>(); }
 };
 template<typename V>
 struct urd::view_mixin<Empty, V>

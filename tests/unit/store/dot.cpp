@@ -2,6 +2,7 @@
 // graph's as `--`, each once.
 
 #include "urd/dot.hpp"
+
 #include "urd/repr/graphs/bit_matrix.hpp"
 #include "urd/repr/graphs/csr_graph.hpp"
 #include "urd/store.hpp"
@@ -41,12 +42,10 @@ TEST(Dot, LabelsAndEscapes)
 
 TEST(Dot, AnUndirectedGraphWritesEachEdgeOnce)
 {
-    auto g = urd::Store<urd::graph<V>, urd::monotone, urd::undirected, urd::constant_adjacency>(
-        urd::graph_data<std::pair<V, V>> { 3, {}, {} });
+    auto g = urd::Store<urd::graph<V>, urd::monotone, urd::undirected, urd::constant_adjacency>(urd::graph_data<std::pair<V, V>> { 3, {}, {} });
     g.add_edge(2, 0);
     g.add_edge(1, 2);
-    EXPECT_EQ(urd::to_dot(g, urd::unlabeled, urd::unlabeled, "pairs"),
-              "graph pairs {\n  rankdir=LR;\n  v0;\n  v1;\n  v2;\n  v0 -- v2;\n  v1 -- v2;\n}\n");
+    EXPECT_EQ(urd::to_dot(g, urd::unlabeled, urd::unlabeled, "pairs"), "graph pairs {\n  rankdir=LR;\n  v0;\n  v1;\n  v2;\n  v0 -- v2;\n  v1 -- v2;\n}\n");
 }
 
 }  // namespace

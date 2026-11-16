@@ -147,10 +147,7 @@ struct urd::data<mechanism::B<I>>
     data& operator=(data&& other) = default;
     ~data() = default;
 
-    static constexpr auto fields() noexcept
-    {
-        return urd::Fields<urd::field<"head", &data::head>, urd::field<"arguments", &data::arguments>> {};
-    }
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"head", &data::head>, urd::field<"arguments", &data::arguments>> {}; }
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::head, &data::arguments> {}; }
 };
@@ -159,21 +156,21 @@ template<int I, typename V>
 struct urd::view_mixin<mechanism::A<I>, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_row() const noexcept { return self().template member<&urd::record_of<V>::row>(); }
+    [[nodiscard]] auto get_row() const noexcept { return self().template member<&urd::record_of<V>::row>(); }
 };
 
 template<int I, typename V>
 struct urd::view_mixin<mechanism::B<I>, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
-    auto get_arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
+    [[nodiscard]] auto get_head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
+    [[nodiscard]] auto get_arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
 };
 
 namespace mechanism

@@ -502,10 +502,10 @@ template<typename V>
 struct urd::view_mixin<Symbol, V>
 {
 private:
-    const V& self() const noexcept { return static_cast<const V&>(*this); }
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    auto get_id() const noexcept { return self().template member<&urd::record_of<V>::id>(); }
+    [[nodiscard]] auto get_id() const noexcept { return self().template member<&urd::record_of<V>::id>(); }
 };
 
 namespace

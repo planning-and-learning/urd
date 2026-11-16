@@ -49,7 +49,13 @@ struct urd::data<Term>
     urd::flat_optional<int> weight;
 
     data() = default;
-    data(int arity_, urd::flat_vector<int> objects_, urd::flat_optional<int> weight_) : index(), arity(arity_), objects(std::move(objects_)), weight(weight_) {}
+    data(int arity_, urd::flat_vector<int> objects_, urd::flat_optional<int> weight_) :
+        index(),
+        arity(arity_),
+        objects(std::move(objects_)),
+        weight(std::move(weight_))
+    {
+    }
     data(const data& other) = delete;
     data& operator=(const data& other) = delete;
     data(data&& other) = default;
