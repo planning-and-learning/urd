@@ -36,6 +36,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <fmt/ranges.h>
 #include <gtest/gtest.h>
 #include <memory>
 #include <ranges>
@@ -345,6 +346,16 @@ TEST(View, StoredInvertsResolve)
     EXPECT_EQ(cista::get<int>(urd::stored<urd::flat_variant<int, urd::index<Owner>>>(7)), 7);
     EXPECT_EQ(urd::stored<int>(7), 7);
 
+    // One of the member's alternatives is that alternative, though another (a nested variant) would take it too; the
+    // member's own variant keeps each alternative as it is.
+    using Inner = urd::flat_variant<urd::index<Owner>, int>;
+    using Outer = urd::flat_variant<urd::index<Owner>, Inner>;
+    EXPECT_EQ(urd::stored<Outer>(b).index(), 0U);
+    const auto inner = urd::stored<Outer>(Inner(b));
+    ASSERT_EQ(inner.index(), 1U);
+    EXPECT_EQ(cista::get<urd::index<Owner>>(cista::get<Inner>(inner)), b);
+    EXPECT_EQ(urd::stored<Outer>(inner).index(), 1U);
+
     // store writes into a member as its type stores it.
     auto member = urd::flat_optional<urd::index<Owner>>();
     urd::store(member, both.view(b));
@@ -653,6 +664,8 @@ TEST(Format, WritesARecordFieldByField)
     shown.limit = 2;
     EXPECT_NE(fmt::format("{}", shown).find("limit=2"), std::string::npos);
     EXPECT_EQ(fmt::format("{}", urd::data<Empty>()), "Empty()");
+    // In a range, as itself: not quoted as a string.
+    EXPECT_EQ(fmt::format("{}", std::array { urd::data<Empty>() }), "[Empty()]");
 }
 
 TEST(Format, NamesATagByItsNameAndItsArguments)

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
@@ -96,6 +97,30 @@ concept partitioned_graph = graph_like<G> && requires(const G& graph, typename G
     graph.part(p);
 };
 /// A set of vertices of graph G.
+/// An edge as a walk over a graph hands it out: its endpoints and its number (`none` where the graph numbers no edges).
+template<typename V>
+struct Edge
+{
+    static constexpr auto none = std::numeric_limits<std::size_t>::max();
+
+    V source {};
+    V target {};
+    std::size_t id = none;
+
+    friend bool operator==(const Edge&, const Edge&) = default;
+};
+
+/// The edges leaving `u`, as Edge: from their numbers in an incidence graph, else from its neighbours.
+template<adjacency_graph G>
+[[nodiscard]] auto out_edges_of(const G& graph, typename G::vertex_type u)
+{
+    using V = typename G::vertex_type;
+    if constexpr (incidence_graph<G>)
+        return graph.out_edges(u) | std::views::transform([u, g = &graph](std::size_t e) { return Edge<V> { u, g->target(e), e }; });
+    else
+        return graph.neighbours(u) | std::views::transform([u](V v) { return Edge<V> { u, v }; });
+}
+
 template<typename Set, typename G>
 concept vertex_set_of = requires(Set& set, const Set& read, typename G::vertex_type v) {
     set.insert(v);

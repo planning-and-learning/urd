@@ -213,13 +213,15 @@ namespace detail
 
 /// A view V written as its record (record_written), each field resolved through the view's context.
 template<typename V>
-struct view_formatter : fmt::formatter<std::string_view>
+struct view_formatter
 {
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
     auto format(const V& view, fmt::format_context& context) const
     {
-        return fmt::formatter<std::string_view>::format(
-            record_written<typename V::value_type, record_of<V>>([&]<typename F>() -> decltype(auto) { return view.template member<F::member>(); }),
-            context);
+        return fmt::format_to(
+            context.out(),
+            "{}",
+            record_written<typename V::value_type, record_of<V>>([&]<typename F>() -> decltype(auto) { return view.template member<F::member>(); }));
     }
 };
 }  // namespace detail
@@ -230,12 +232,14 @@ struct view_formatter : fmt::formatter<std::string_view>
 /// record otherwise specializes this for its own record.
 template<typename T>
     requires urd::HasFields<urd::data<T>>
-struct fmt::formatter<urd::data<T>> : fmt::formatter<std::string_view>
+struct fmt::formatter<urd::data<T>>
 {
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
     auto format(const urd::data<T>& record, fmt::format_context& context) const
     {
-        return fmt::formatter<std::string_view>::format(urd::record_written<T, urd::data<T>>([&]<typename F>() -> decltype(auto) { return record.*F::member; }),
-                                                        context);
+        return fmt::format_to(context.out(),
+                              "{}",
+                              urd::record_written<T, urd::data<T>>([&]<typename F>() -> decltype(auto) { return record.*F::member; }));
     }
 };
 

@@ -151,6 +151,7 @@ urd::builder<Term>& term_builder()
 
 using TermView = urd::index_view<Term, Context>;
 using TermBuilderView = urd::borrowed_view<Term, Context, urd::builder<Term>>;
+using TermOwnedView = urd::owning_view<Term, Context>;
 
 }  // namespace
 
@@ -161,7 +162,15 @@ NB_MODULE(urd_bindings_test, m)
     urd::python::bind_data<Term>(m);
     urd::python::bind_view<TermView>(m).def("arity_plus_one", [](const TermView& view) { return view.get_arity() + 1; });
     urd::python::bind_view<TermBuilderView>(m);
+    urd::python::bind_view<TermOwnedView>(m);
     m.def("pair_name", [] { return urd::name<Pair<Term, Pair<Atom, Term>>>(); });
     m.def("term", [](std::size_t at) { return context().view(urd::index<Term>(static_cast<urd::index<Term>::value_type>(at))); });
     m.def("term_builder", [] { return TermBuilderView(&term_builder(), &context()); });
+    m.def("term_owned",
+          []
+          {
+              auto record = urd::data<Term>();
+              record.arity = 3;
+              return TermOwnedView(std::move(record), &context());
+          });
 }

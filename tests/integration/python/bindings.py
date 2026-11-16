@@ -59,6 +59,10 @@ assert str(builder) == "Term(\n    arity=1\n    objects=[\n        9\n    ]\n   
 assert type(builder) is m.TermBuilder
 assert m.pair_name() == "PairTermPairAtomTerm"
 assert not hasattr(builder, "index")
+# A view that owns its record is bound beside the record's other views, under its own name.
+owned = m.term_owned()
+assert type(owned) is m.TermOwned and m.Term is not m.TermOwned
+assert owned.get_arity() == 3
 # bind_value: a plain value, from its fields, each read and written, compared, written with fmt.
 point = m.Point(1, 2)
 assert (point.x, point.y) == (1, 2)

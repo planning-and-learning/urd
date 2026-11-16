@@ -16,6 +16,8 @@
 #include <nanobind/stl/string.h>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 namespace urd::python
 {
@@ -126,31 +128,42 @@ nb::class_<urd::data<T>> bind_data(nb::module_& m)
     return data;
 }
 
+namespace detail
+{
+/// Whether a view owns its record (owning_view): bound beside a view of the same record that does not.
+template<typename View>
+inline constexpr bool owns_record = false;
+template<typename T, typename C, typename R>
+inline constexpr bool owns_record<owning_view<T, C, R>> = true;
+}  // namespace detail
+
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder for a view of a
-/// builder<T>), the one way a view is bound, whether it reads a stored record (data<T>), a record a context hands out
+/// builder<T>, <name>Owned for a view that owns its record, so that the views of one record bound in one module have
+/// their own names), the one way a view is bound, whether it reads a stored record (data<T>), a record a context hands out
 /// in another layout (a value with the record's fields) or a builder (builder<T>): get_<field>() for each field of its
 /// record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
-/// that names its index (index_view: index() gives an urd::index<T>) also gives index() and converts to T's Index
-/// wherever an index is expected, also in lists and optionals; that Index is bound first, by bind_data<T>.
+/// that names its index (index_view: index() gives its key, an urd::index<T> or a key of its own such as a row's) also
+/// gives index() and converts to that key wherever one is expected, also in lists and optionals; the key is bound first
+/// (T's Index by bind_data<T>, another key by bind_value).
 template<typename View>
     requires HasFields<record_of<View>>
 nb::class_<View> bind_view(nb::module_& m)
 {
     using T = typename View::value_type;
-    const auto name = urd::name<T>() + (std::same_as<record_of<View>, urd::builder<T>> ? "Builder" : "");
+    const auto name = urd::name<T>() + (std::same_as<record_of<View>, urd::builder<T>> ? "Builder" : "") + (detail::owns_record<View> ? "Owned" : "");
     auto view = nb::class_<View>(m, name.c_str());
     bind_field_getters(view);
     add_comparison(view);
     add_hash(view);
     static_assert(fmt::is_formattable<View>::value, "urd::python::bind_view: a view is written with fmt: specialize fmt::formatter for it");
     view.def("__str__", [](const View& v) { return fmt::format("{}", v); }).def("__repr__", [](const View& v) { return fmt::format("{}", v); });
-    if constexpr (requires(const View& v) { requires std::same_as<decltype(v.index()), urd::index<typename View::value_type>>; })
+    if constexpr (requires(const View& v) { v.index(); })
     {
-        using Handle = urd::index<typename View::value_type>;
+        using Handle = std::remove_cvref_t<decltype(std::declval<const View&>().index())>;
         view.def("index", &View::index);
         const auto index_type = nb::type<Handle>();
         if (!index_type.is_valid())
-            throw std::logic_error("urd::python::bind_view: " + name + " names its index: bind its record with bind_data first.");
+            throw std::logic_error("urd::python::bind_view: " + name + " names its index: bind its index first (bind_data<T>, or bind_value of its key).");
         nb::borrow<nb::class_<Handle>>(index_type).def("__init__", [](Handle* self, const View& v) { new (self) Handle(v.index()); });
         nb::implicitly_convertible<View, Handle>();
     }

@@ -146,6 +146,10 @@ template<template<typename...> typename V, typename... Ts>
     requires variant_value<V<Ts...>>
 struct resolution<V<Ts...>>
 {
+    /// Whether A is one of the alternatives.
+    template<typename A>
+    static constexpr bool is_alternative = (std::same_as<A, Ts> || ...);
+
     template<typename C>
     static auto of(const V<Ts...>& member, const C& context)
     {
@@ -160,13 +164,14 @@ struct resolution<V<Ts...>>
             },
             member);
     }
-    /// Written from a readout of one alternative, or from a variant of such readouts: each to the one alternative whose
-    /// stored takes it, whichever its position (none or several is a compile error).
+    /// Written from one of its alternatives, as it is; from a readout of one alternative, or from a variant of such
+    /// readouts: each to its own alternative, else to the one alternative whose stored takes it, whichever its position
+    /// (none or several is a compile error).
     template<typename R>
-        requires(variant_value<R> || detail::takers<R, Ts...> == 1)
+        requires(is_alternative<R> || variant_value<R> || detail::takers<R, Ts...> == 1)
     static V<Ts...> stored(const R& readout)
     {
-        if constexpr (variant_value<R>)
+        if constexpr (!is_alternative<R> && variant_value<R>)
             return visit([](const auto& alternative) { return stored_alternative(alternative); }, readout);
         else
             return stored_alternative(readout);
@@ -176,10 +181,15 @@ private:
     template<typename A>
     static V<Ts...> stored_alternative(const A& alternative)
     {
-        static_assert(detail::takers<A, Ts...> == 1, "urd::resolution<variant>::stored: exactly one alternative takes the readout");
-        constexpr auto takes = std::array<bool, sizeof...(Ts)> { stores<Ts, A>... };
-        using Target = boost::mp11::mp_at_c<boost::mp11::mp_list<Ts...>, static_cast<std::size_t>(std::ranges::find(takes, true) - takes.begin())>;
-        return V<Ts...>(resolution<Target>::stored(alternative));
+        if constexpr (is_alternative<A>)
+            return V<Ts...>(alternative);
+        else
+        {
+            static_assert(detail::takers<A, Ts...> == 1, "urd::resolution<variant>::stored: exactly one alternative takes the readout");
+            constexpr auto takes = std::array<bool, sizeof...(Ts)> { stores<Ts, A>... };
+            using Target = boost::mp11::mp_at_c<boost::mp11::mp_list<Ts...>, static_cast<std::size_t>(std::ranges::find(takes, true) - takes.begin())>;
+            return V<Ts...>(resolution<Target>::stored(alternative));
+        }
     }
 };
 
