@@ -758,9 +758,12 @@ namespace
 // A context that hands out its records by value, in another layout than data<Shown>: a value with handles only.
 struct Packed
 {
+    static constexpr std::string_view name = "Packed";
+
     int number = 0;
     std::span<const int> values;
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"number", &Packed::number>, urd::field<"values", &Packed::values>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 struct ByValue
 {
