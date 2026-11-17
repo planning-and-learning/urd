@@ -32,8 +32,10 @@ struct Key
     int value = 0;
 
     friend bool operator==(const Key&, const Key&) = default;
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Key::value> {}; }
 };
+
 int hashes = 0;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables): the counter the tests read
 /// The calls per key (its value's low bits): a table that grows hashes the records it holds again.
 std::array<int, 4> hashes_of {};  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
@@ -92,10 +94,15 @@ void finds_and_inserts_hashing_once()
 }
 
 TEST(Prehashed, RecordInterner) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat>>(); }
+
 TEST(Prehashed, ThreadSafeRecordInterner) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat, urd::concurrent>>(); }
+
 TEST(Prehashed, ValueInterner) { finds_and_inserts_hashing_once<Store<pool<Key>>>(); }
+
 TEST(Prehashed, ArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key>>>(); }
+
 TEST(Prehashed, ThreadSafeArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key, true>>>(); }
+
 TEST(Prehashed, LayeredPool) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat, urd::layered>>(); }
 
 // A layered pool hashes a key once for its whole chain of layers, not once per layer.
@@ -126,7 +133,9 @@ struct Unique
     urd::flat_string name;
 
     Unique() = default;
+
     explicit Unique(std::string_view text) : name(text) {}
+
     Unique(const Unique&) = delete;
     Unique& operator=(const Unique&) = delete;
     Unique(Unique&&) = default;
@@ -134,6 +143,7 @@ struct Unique
     ~Unique() = default;
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&Unique::name> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Unique::name> {}; }
 };
 
@@ -154,14 +164,17 @@ struct Named
 {
     urd::flat_string name;
 };
+
 struct Derived : Named
 {
     std::uint32_t arity = 0;
 
     Derived() = default;
+
     Derived(std::string_view text, std::uint32_t arity_) : Named { urd::flat_string(text) }, arity(arity_) {}
 
     static constexpr auto cista_members() noexcept { return urd::Members<&Derived::name, &Derived::arity> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Derived::name, &Derived::arity> {}; }
 };
 

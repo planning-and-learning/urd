@@ -33,6 +33,7 @@ template<typename T, typename Compare>
 class AddressableHeap
 {
     friend struct urd::memory_of<AddressableHeap>;
+
     /// Reads the element at a position, for the iterator.
     struct element_at
     {
@@ -45,16 +46,23 @@ public:
     using handle_type = std::size_t;
 
     [[nodiscard]] size_type size() const { return m_heap.size(); }
+
     [[nodiscard]] bool empty() const { return m_heap.empty(); }
+
     [[nodiscard]] const T& top() const { return m_slots[m_heap.front()].element; }
+
     /// The element of `handle`, which must be in the queue.
     [[nodiscard]] const T& operator[](handle_type handle) const { return m_slots[handle].element; }
+
     /// The elements in no particular order.
     [[nodiscard]] PositionIterator<const AddressableHeap, element_at, std::forward_iterator_tag> begin() const { return { this, 0 }; }
+
     [[nodiscard]] PositionIterator<const AddressableHeap, element_at, std::forward_iterator_tag> end() const { return { this, m_heap.size() }; }
 
     handle_type push(const T& element) { return emplace(element); }
+
     handle_type push(T&& element) { return emplace(std::move(element)); }
+
     template<typename... Args>
     handle_type emplace(Args&&... args)
     {
@@ -71,13 +79,16 @@ public:
         sift_up(m_heap.size() - 1);
         return handle;
     }
+
     void pop() { erase(m_heap.front()); }
+
     void update(handle_type handle, T element)
     {
         m_slots[handle].element = std::move(element);
         sift_up(m_slots[handle].position);
         sift_down(m_slots[handle].position);
     }
+
     void erase(handle_type handle)
     {
         const auto at = m_slots[handle].position;
@@ -91,12 +102,14 @@ public:
         }
         m_free.push_back(handle);
     }
+
     void clear()
     {
         m_heap.clear();
         m_slots.clear();
         m_free.clear();
     }
+
     void reserve(size_type count)
     {
         m_heap.reserve(count);
@@ -113,11 +126,13 @@ private:
     [[nodiscard]] const T& at_position(size_type position) const { return m_slots[m_heap[position]].element; }
 
     [[nodiscard]] bool before(handle_type lhs, handle_type rhs) const { return Compare {}(m_slots[lhs].element, m_slots[rhs].element); }
+
     void place(size_type at, handle_type handle)
     {
         m_heap[at] = handle;
         m_slots[handle].position = at;
     }
+
     void sift_up(size_type at)
     {
         const auto handle = m_heap[at];
@@ -128,6 +143,7 @@ private:
         }
         place(at, handle);
     }
+
     void sift_down(size_type at)
     {
         const auto handle = m_heap[at];

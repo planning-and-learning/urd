@@ -23,6 +23,7 @@ struct representation_of<parallel_hash_set_decl, S>
 {
     using type = repr::ParallelHashSet<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<parallel_node_hash_set_decl, S>
 {

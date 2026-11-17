@@ -47,6 +47,7 @@ public:
         m_vertex_values.assign(vertices, {});
         build(vertices, std::span<const std::iter_value_t<InputIt>>(given));
     }
+
     template<input_edge_of<V, E> Edge>
     explicit CsrGraph(const graph_data<Edge, D>& data)
     {
@@ -55,35 +56,46 @@ public:
     }
 
     [[nodiscard]] size_type num_vertices() const noexcept { return m_offsets.size() - 1; }
+
     [[nodiscard]] auto vertices() const
     {
         return std::views::iota(std::size_t { 0 }, num_vertices()) | std::views::transform([](std::size_t at) { return index_of<V>::from_index(at); });
     }
+
     [[nodiscard]] std::span<const V> neighbours(V u) const { return std::span<const V>(m_row_targets).subspan(m_offsets[vertex_at(u)], out_degree(u)); }
+
     [[nodiscard]] size_type out_degree(V u) const { return m_offsets[vertex_at(u) + 1] - m_offsets[index(u)]; }
+
     [[nodiscard]] bool adjacent(V u, V v) const { return edge(u, v).has_value(); }
+
     [[nodiscard]] std::span<const V> in_neighbours(V v) const
         requires InEdges
     { return std::span<const V>(m_in_sources).subspan(m_in_offsets[vertex_at(v)], in_degree(v)); }
+
     [[nodiscard]] size_type in_degree(V v) const
         requires InEdges
     { return m_in_offsets[vertex_at(v) + 1] - m_in_offsets[index(v)]; }
 
     [[nodiscard]] size_type num_edges() const noexcept { return m_targets.size(); }
+
     /// The edges' numbers: 0..num_edges-1.
     [[nodiscard]] std::ranges::iota_view<std::size_t, std::size_t> edges() const { return { 0, num_edges() }; }
+
     /// The numbers of the edges leaving `u`, by target.
     [[nodiscard]] std::span<const std::size_t> out_edges(V u) const
     { return std::span<const std::size_t>(m_row_ids).subspan(m_offsets[vertex_at(u)], out_degree(u)); }
+
     /// The numbers of the edges entering `v`, by source.
     [[nodiscard]] std::span<const std::size_t> in_edges(V v) const
         requires InEdges
     { return std::span<const std::size_t>(m_in_ids).subspan(m_in_offsets[vertex_at(v)], in_degree(v)); }
+
     [[nodiscard]] std::optional<std::size_t> edge(V u, V v) const
     {
         const auto between = edges_between(u, v);
         return between.empty() ? std::nullopt : std::optional<std::size_t>(between.front());
     }
+
     /// The numbers of the edges from u to v, in the order given.
     [[nodiscard]] std::span<const std::size_t> edges_between(V u, V v) const
     {
@@ -91,15 +103,20 @@ public:
         const auto [first, last] = std::ranges::equal_range(row, vertex_at(v), {}, &CsrGraph::index);
         return out_edges(u).subspan(static_cast<std::size_t>(first - row.begin()), static_cast<std::size_t>(last - first));
     }
+
     [[nodiscard]] V source(std::size_t e) const { return m_sources[edge_at(e)]; }
+
     [[nodiscard]] V target(std::size_t e) const { return m_targets[edge_at(e)]; }
+
     [[nodiscard]] const E& edge_value(std::size_t e) const { return m_values[edge_at(e)]; }
+
     [[nodiscard]] const D& vertex_value(V v) const { return m_vertex_values[vertex_at(v)]; }
 
     friend bool operator==(const CsrGraph&, const CsrGraph&) = default;
 
 private:
     [[nodiscard]] static std::size_t index(V v) { return index_of<V>::to_index(v); }
+
     /// The index of `v`, a vertex it has; else std::out_of_range.
     [[nodiscard]] std::size_t vertex_at(V v) const
     {
@@ -107,6 +124,7 @@ private:
             throw std::out_of_range("urd::graph: a vertex that is not there");
         return index(v);
     }
+
     /// `e`, an edge it has; else std::out_of_range.
     [[nodiscard]] std::size_t edge_at(std::size_t e) const
     {
@@ -144,6 +162,7 @@ private:
         std::partial_sum(m_offsets.begin(), m_offsets.end(), m_offsets.begin());
         build_in_rows();
     }
+
     /// The rows of the edges entering each vertex, by source.
     void build_in_rows()
         requires InEdges
@@ -162,6 +181,7 @@ private:
             m_in_ids[at] = e;
         }
     }
+
     void build_in_rows()
         requires(!InEdges)
     {

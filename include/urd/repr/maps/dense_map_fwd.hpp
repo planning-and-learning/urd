@@ -50,6 +50,7 @@ struct dense_map_decl
     static constexpr std::string_view description = "dense map (a slot per index)";
     static constexpr std::string_view holds = "a slot per index";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false>>
 {
@@ -71,6 +72,7 @@ struct stable_dense_map_decl : dense_map_decl
     static constexpr std::string_view description = "dense map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot per index, in segments that never move";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, false, false, true>>
 {
@@ -98,6 +100,7 @@ struct generation_map_decl : dense_map_decl
     static constexpr std::string_view description = "generation map (a slot per index, O(1) clear by generation)";
     static constexpr std::string_view holds = "a slot and a generation per index";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true>>
 {
@@ -125,6 +128,7 @@ struct stable_generation_map_decl : generation_map_decl
     static constexpr std::string_view description = "generation map over slots that never move (segments)";
     static constexpr std::string_view holds = "a slot and a generation per index, in segments that never move";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, false, true>>
 {
@@ -152,6 +156,7 @@ struct thread_safe_generation_map_decl : generation_map_decl
     static constexpr std::string_view description = "generation map, thread-safe updates (a slot and a spin lock per index)";
     static constexpr std::string_view holds = "a slot, a generation and a lock byte per index, in segments";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::IndexMap<K, V, true, true>>
 {

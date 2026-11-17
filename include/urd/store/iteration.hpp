@@ -32,20 +32,27 @@ public:
                       "urd::Store: its container's iterator names a reference (std::iterator_traits) that iterating it does not give");
         return representation().begin();
     }
+
     [[nodiscard]] const_iterator end() const { return representation().end(); }
+
     /// Where what it iterates may change in place (a sequence's elements, a map's values).
     [[nodiscard]] iterator begin()
         requires types::values_writable
     { return store_access::of<Derived>(*this).begin(); }
+
     [[nodiscard]] iterator end()
         requires types::values_writable
     { return store_access::of<Derived>(*this).end(); }
+
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
+
     [[nodiscard]] const_iterator cend() const { return end(); }
+
     /// Backwards too, where it is iterated in an order the request fixes (sorted, insertion order, a sequence).
     [[nodiscard]] auto rbegin() const
         requires types::ordered
     { return std::make_reverse_iterator(end()); }
+
     [[nodiscard]] auto rend() const
         requires types::ordered
     { return std::make_reverse_iterator(begin()); }
@@ -80,6 +87,7 @@ struct facet_condition<facet::visiting> : facet_defaults
     static constexpr bool on()
     { return !has<S, monotone_priority>; }
 };
+
 template<>
 struct facet_operations<facet::visiting>
 {

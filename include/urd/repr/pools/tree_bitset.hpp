@@ -101,12 +101,14 @@ public:
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
     { return store_blocks(std::span<const Block>(blocks_of(elements))); }
+
     /// A row that keeps its bits (a dense set: significant_words()), by its words, read as blocks in place:
     /// allocates nothing.
     template<std::ranges::input_range Elements>
         requires keeps_words<Elements>
     std::pair<handle_type, bool> insert(const Elements& row)
     { return store_blocks(WordBlocks(row.significant_words())); }
+
     /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
     /// already, as a row or as a part of a longer one (all-zero parts and one-block rows need none). Else none.
     template<std::ranges::input_range Elements>
@@ -115,10 +117,12 @@ public:
         const auto blocks = blocks_of(elements);
         return find_blocks(std::span<const Block>(blocks));
     }
+
     template<std::ranges::input_range Elements>
         requires keeps_words<Elements>
     [[nodiscard]] handle_type find(const Elements& row) const
     { return find_blocks(WordBlocks(row.significant_words())); }
+
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
     /// from blocks at a changed length, to the root are rebuilt.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const K> added, std::span<const K> removed)
@@ -144,6 +148,7 @@ public:
         normalize(flips);
         return store_flips(base, flips);
     }
+
     /// Whether the row of `handle` holds `element`, read along one path, not by reading the row.
     [[nodiscard]] bool contains(handle_type handle, const K& element) const
     {
@@ -174,6 +179,7 @@ public:
         copy(handle, elements);
         return Row(elements.begin(), elements.end());
     }
+
     /// How many elements the row holds: the set bits, read along the tree; allocates nothing.
     [[nodiscard]] size_type row_size(handle_type handle) const
     {
@@ -181,6 +187,7 @@ public:
         for_each_block(handle, [&count](std::uint32_t /*position*/, Block block) { count += static_cast<size_type>(std::popcount(block)); });
         return count;
     }
+
     /// The row's elements, in key order, into `out`, which must hold row_size(handle) of them; allocates nothing.
     void copy(handle_type handle, std::span<K> out) const
     {
@@ -194,6 +201,7 @@ public:
                                *next++ = index_of<K>::from_index(std::size_t { position } * Bits::Digits + static_cast<std::size_t>(std::countr_zero(block)));
                        });
     }
+
     /// The row into `out`, a row that takes its bits as words (a dense set: assign_words), word by word into its
     /// storage, which is reused: allocates nothing where `out` holds as many words already.
     void copy(handle_type handle, Row& out) const
@@ -212,8 +220,10 @@ public:
 
     /// The handle of the row with these blocks, whose last block must not be zero.
     handle_type insert_blocks(std::span<const Block> blocks) { return store_blocks(blocks).first; }
+
     /// The row `base` with `flips` applied, sorted by unique position; trimmed to its last nonzero block.
     handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips).first; }
+
     /// The row's blocks into `blocks`, which must hold handle.size of them.
     void read_blocks(handle_type handle, std::span<Block> blocks) const
     {
@@ -245,16 +255,20 @@ public:
 private:
     // Read by tests (urd::testing::inspect), not by a Store.
     friend struct urd::testing::inspect;
+
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
 
 public:
     [[nodiscard]] bool empty() const { return m_nodes.empty(); }
+
     void clear() { m_nodes.clear(); }
 
 private:
     static constexpr std::uint32_t zero(std::uint32_t size) { return size == 1 ? 0 : zero_subtree; }
+
     static constexpr std::uint32_t child_size(std::uint32_t size, std::uint32_t k)
     { return std::min(tree::chunk<Arity>(size), size - k * tree::chunk<Arity>(size)); }
+
     static Children unused_children()
     {
         auto children = Children {};
@@ -272,15 +286,21 @@ private:
             while (m_count > 0 && (*this)[m_count - 1] == Block { 0 })
                 --m_count;
         }
+
         [[nodiscard]] std::size_t size() const noexcept { return m_count; }
+
         [[nodiscard]] bool empty() const noexcept { return m_count == 0; }
+
         [[nodiscard]] Block operator[](std::size_t i) const noexcept
         {
             const auto at = m_first + i;
             return static_cast<Block>(m_words[at / blocks_per_word] >> (Bits::Digits * (at % blocks_per_word)));
         }
+
         [[nodiscard]] Block front() const noexcept { return (*this)[0]; }
+
         [[nodiscard]] Block back() const noexcept { return (*this)[m_count - 1]; }
+
         [[nodiscard]] WordBlocks subspan(std::size_t offset, std::size_t count) const noexcept
         {
             auto part = *this;
@@ -302,6 +322,7 @@ private:
         if (handle.size > 0)
             for_each_block(handle.root, 0, handle.size, f);
     }
+
     template<typename F>
     void for_each_block(std::uint32_t root, std::uint32_t offset, std::uint32_t size, F& f) const
     {
@@ -356,6 +377,7 @@ private:
         const auto root = insert_recursive(blocks, stored);
         return { handle_type { root, size }, stored };
     }
+
     std::pair<handle_type, bool> store_flips(handle_type base, std::span<const BlockFlip> flips)
     {
         assert(std::ranges::is_sorted(flips, {}, &BlockFlip::position));
@@ -500,6 +522,7 @@ private:
             assert(count < nodes.size());
             nodes[count++] = node;
         }
+
         [[nodiscard]] bool holds(std::uint32_t node) const
         {
             const auto used = std::span(nodes).first(count);

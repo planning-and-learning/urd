@@ -39,10 +39,12 @@ template<int I>
 struct A
 {
 };
+
 template<int I>
 struct B
 {
 };
+
 template<int I>
 struct Row
 {
@@ -59,6 +61,7 @@ struct Repository
     [[nodiscard]] urd::index_view<B<I>, Repository> view(urd::index<B<I>> at) const;
     [[nodiscard]] std::size_t layer() const;
 };
+
 template<int I>
 using Context = Repository<I,
                            A<I>,
@@ -115,7 +118,9 @@ struct urd::data<mechanism::A<I>>
     urd::index<mechanism::Row<I>> row;
 
     data() = default;
+
     explicit data(urd::index<mechanism::Row<I>> row_) : index(), row(row_) {}
+
     static constexpr bool copyable() noexcept
     {
         static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
@@ -123,7 +128,9 @@ struct urd::data<mechanism::A<I>>
     }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"row", &data::row>> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::row> {}; }
 };
 
@@ -135,12 +142,14 @@ struct urd::data<mechanism::B<I>>
     urd::Store<urd::sequence<urd::index<mechanism::A<I>>>> arguments;
 
     data() = default;
+
     data(urd::index<mechanism::A<I>> head_, urd::Store<urd::sequence<urd::index<mechanism::A<I>>>> arguments_) :
         index(),
         head(head_),
         arguments(std::move(arguments_))
     {
     }
+
     data(const data& other) = delete;
     data& operator=(const data& other) = delete;
     data(data&& other) = default;
@@ -148,7 +157,9 @@ struct urd::data<mechanism::B<I>>
     ~data() = default;
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"head", &data::head>, urd::field<"arguments", &data::arguments>> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::head, &data::arguments> {}; }
 };
 
@@ -170,6 +181,7 @@ private:
 
 public:
     [[nodiscard]] auto get_head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
+
     [[nodiscard]] auto get_arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
 };
 
@@ -222,15 +234,18 @@ using held = Store;
 /// Each Store's request (its kind and tags), spec and container, printed by the compiler as a deprecation warning.
 template<typename Store>
 struct request_of;
+
 template<typename Kind, typename... Tags>
 struct request_of<urd::Store<Kind, Tags...>>
 {
     using type = boost::mp11::mp_list<Kind, Tags...>;
     using parts = urd::detail::store_parts<Kind, Tags...>;
 };
+
 template<int I, int N, typename Request, typename Spec, typename Representation>
 [[deprecated("urd mechanism probe")]] constexpr bool probe()
 { return true; }
+
 template<int I, int N, typename Store>
 constexpr bool show()
 { return probe<I, N, typename request_of<Store>::type, typename request_of<Store>::parts::spec, typename request_of<Store>::parts::representation>(); }

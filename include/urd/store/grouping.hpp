@@ -18,18 +18,23 @@ class grouping
 public:
     /// Makes `element` an element (and, for dense keys, every smaller index not yet one).
     void insert(const key& element) { representation().insert(element); }
+
     /// Joins the classes of `lhs` and `rhs`; false where they were one already.
     bool merge(const key& lhs, const key& rhs) { return representation().merge(lhs, rhs); }
+
     /// The element that names the class of `element`.
     [[nodiscard]] key find(const key& element) const { return representation().find(element); }
+
     /// Whether `element` is an element of some class.
     [[nodiscard]] bool contains(const key& element) const { return representation().contains(element); }
+
     void clear()
         requires clears<S>
     { representation().clear(); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 

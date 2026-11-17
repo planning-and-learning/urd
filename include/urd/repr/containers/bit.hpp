@@ -194,15 +194,19 @@ public:
         write_int<Block>(m_words, value, m_offset, m_len);
         return *this;
     }
+
     constexpr int_reference(const int_reference&) = default;
     constexpr ~int_reference() = default;
+
     constexpr int_reference& operator=(const int_reference& other)
     {
         if (this != &other)
             *this = static_cast<value_type>(other);
         return *this;
     }
+
     constexpr int_reference(int_reference&&) = default;
+
     constexpr int_reference& operator=(int_reference&& other) noexcept { return *this = static_cast<const int_reference&>(other); }
 
     constexpr operator value_type() const { return read_int<Block>(m_words, m_offset, m_len); }  // NOLINT(google-explicit-constructor)
@@ -228,6 +232,7 @@ public:
         assert(len <= digits && "Width exceeds block width.");
         assert(offset < digits && "Offset must lie within one block.");
     }
+
     atomic_int_reference& operator=(const value_type& value)
     {
         if ((value & ~lo_set<Block>[m_len]) != 0)
@@ -235,15 +240,19 @@ public:
         atomic_write_int<Block>(m_words, value, m_offset, m_len);
         return *this;
     }
+
     atomic_int_reference(const atomic_int_reference&) = default;
     ~atomic_int_reference() = default;
+
     atomic_int_reference& operator=(const atomic_int_reference& other)
     {
         if (this != &other)
             *this = static_cast<value_type>(other);
         return *this;
     }
+
     atomic_int_reference(atomic_int_reference&&) = default;
+
     atomic_int_reference& operator=(atomic_int_reference&& other) noexcept { return *this = static_cast<const atomic_int_reference&>(other); }
 
     operator value_type() const { return atomic_read_int<Block>(m_words, m_offset, m_len); }  // NOLINT(google-explicit-constructor)
@@ -266,6 +275,7 @@ struct bit_reference
     static constexpr size_t bits_per_block = std::numeric_limits<Block>::digits;
 
     static constexpr size_t block_index(size_t bit) { return bit / bits_per_block; }
+
     static constexpr size_t bit_index(size_t bit) { return bit % bits_per_block; }
 
     bit_reference& operator=(bool value)
@@ -289,13 +299,16 @@ struct bit_reference
 
     bit_reference(const bit_reference&) = default;
     ~bit_reference() = default;
+
     bit_reference& operator=(const bit_reference& other) noexcept
     {
         if (this != &other)
             *this = static_cast<bool>(other);
         return *this;
     }
+
     bit_reference(bit_reference&&) noexcept = default;
+
     bit_reference& operator=(bit_reference&& other) noexcept { return *this = static_cast<const bit_reference&>(other); }
 
     operator bool() const noexcept { return ((data[block_index(bit)] >> bit_index(bit)) & Block(1)) != 0; }  // NOLINT(google-explicit-constructor)

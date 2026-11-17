@@ -49,21 +49,26 @@ public:
     using typename Container::reference;
     using typename Container::size_type;
     using typename Container::value_type;
+
     // What only some of the std maps and sets have: the ordered ones bounds, the hashed ones room, the maps at.
     template<typename Key>
     [[nodiscard]] auto lower_bound(const Key& key) const
         requires requires(const Container& held) { held.lower_bound(key); }
     { return Container::lower_bound(key); }
+
     template<typename Key>
     [[nodiscard]] auto upper_bound(const Key& key) const
         requires requires(const Container& held) { held.upper_bound(key); }
     { return Container::upper_bound(key); }
+
     void reserve(size_type room)
         requires requires(Container& held) { held.reserve(room); }
     { Container::reserve(room); }
+
     [[nodiscard]] const auto& at(const key_type& key) const
         requires requires(const Container& held) { held.at(key); }
     { return Container::at(key); }
+
     auto& at(const key_type& key)
         requires requires(Container& held) { held.at(key); }
     { return Container::at(key); }
@@ -78,6 +83,7 @@ public:
         erase(const_iterator(found));
         return 1;
     }
+
     /// Keeps the node, its storage held; a map's value cleared (or made anew where it has no clear).
     iterator erase(const_iterator pos)
     {
@@ -87,12 +93,14 @@ public:
         m_free.push_back(std::move(node));
         return after;
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         while (first != last)
             first = erase(first);
         return Container::erase(first, first);
     }
+
     void clear()
     {
         while (!Container::empty())
@@ -109,6 +117,7 @@ protected:
         else
             node.mapped() = typename Node::mapped_type();
     }
+
     template<typename Node>
     static void reset(Node& /*a set's node: nothing to clear*/)
     {
@@ -120,6 +129,7 @@ protected:
     /// Its memory is its container's and its kept nodes' (urd::memory_of).
     template<typename Held>
     friend struct urd::memory_of;
+
     [[nodiscard]] const Container& container() const noexcept { return *this; }
 };
 
@@ -151,9 +161,11 @@ public:
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
     { return emplaced(key, std::forward<Args>(args)...); }
+
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(K&& key, Args&&... args)
     { return emplaced(std::move(key), std::forward<Args>(args)...); }
+
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
     {
@@ -161,6 +173,7 @@ public:
         at->second = std::forward<M>(mapped);
         return { at, inserted };
     }
+
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(K&& key, M&& mapped)
     {
@@ -168,6 +181,7 @@ public:
         at->second = std::forward<M>(mapped);
         return { at, inserted };
     }
+
     V& operator[](const K& key) { return try_emplace(key).first->second; }
 
     /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
@@ -178,14 +192,17 @@ public:
         }
     std::pair<iterator, bool> insert(const Pair& pair)
     { return try_emplace(K(pair.first), pair.second); }
+
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
     { return insert(pair).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& pair) { this->insert(pair); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
@@ -231,13 +248,17 @@ public:
     { insert(first, last); }
 
     std::pair<iterator, bool> insert(const T& element) { return put(element); }
+
     std::pair<iterator, bool> insert(T&& element) { return put(std::move(element)); }
+
     iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& element) { this->insert(T(element)); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(T(std::forward<Args>(args)...)); }
@@ -294,6 +315,7 @@ struct memory_of<repr::Recycling<Map>>
 {
     static std::size_t bytes(const repr::Recycling<Map>& held) { return memory_usage(held.container()) + detail::kept_bytes(held.m_free); }
 };
+
 /// Its set's, and the nodes it keeps.
 template<typename Set>
 struct memory_of<repr::RecyclingSet<Set>>
@@ -316,16 +338,19 @@ struct representation_of<recycling_hash_set_decl, S>
 {
     using type = repr::RecyclingHashSet<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<recycling_tree_set_decl, S>
 {
     using type = repr::RecyclingTreeSet<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<recycling_hash_map_decl, S>
 {
     using type = repr::RecyclingHashMap<typename S::key_type, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<recycling_map_decl, S>
 {

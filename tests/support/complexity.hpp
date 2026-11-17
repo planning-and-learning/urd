@@ -19,6 +19,7 @@ namespace urd::test
 
 template<typename Lists>
 struct offered_by;
+
 template<template<typename, typename, typename> class... Fs>
 struct offered_by<urd::detail::facet_list<Fs...>>
 {
@@ -27,12 +28,15 @@ struct offered_by<urd::detail::facet_list<Fs...>>
     {
         using type = Acc;
     };
+
     template<typename Acc, typename List, typename... Lists>
     struct all<Acc, List, Lists...> : all<typename append_list<Acc, List>::type, Lists...>
     {
     };
+
     using type = typename all<urd::operation_list<>, typename urd::detail::facet_operations<Fs>::offered...>::type;
 };
+
 template<typename Kind>
 struct operations_of_kind
 {
@@ -74,6 +78,7 @@ struct costs_holder
 {
     using type = urd::container_costs<X>;
 };
+
 template<typename X>
     requires requires { typename X::operation_costs; }
 struct costs_holder<X>
@@ -85,9 +90,11 @@ struct costs_holder<X>
 template<typename C, typename... Ops>
 constexpr std::array<std::optional<cost>, sizeof...(Ops)> costs_in(urd::operation_list<Ops...> /*operations*/)
 { return { C::template of<Ops>()... }; }
+
 template<typename C, typename... Ops>
 constexpr std::array<bool, sizeof...(Ops)> passed_in(urd::operation_list<Ops...> /*operations*/)
 { return { C::template passed_on<Ops>()... }; }
+
 template<typename R>
 inline constexpr auto costs_v = costs_in<typename costs_holder<R>::type>(operations {});
 template<typename R>
@@ -169,8 +176,10 @@ inline constexpr auto costly = []
 template<typename... Ops>
 constexpr std::array<op, sizeof...(Ops)> ops_of(urd::operation_list<Ops...> /*operations*/)
 { return { op_v<Ops>... }; }
+
 template<typename List>
 inline constexpr auto ops_v = ops_of(List {});
+
 /// Marks the operations of facet F of a Store of R for S where it is on, and of all its facets.
 template<typename R, typename S, template<typename, typename, typename> class F>
 constexpr void mark_facet(offers& into)
@@ -179,6 +188,7 @@ constexpr void mark_facet(offers& into)
         for (const auto each : ops_v<typename urd::detail::facet_operations<F>::offered>)
             into[static_cast<std::size_t>(each)] = true;
 }
+
 template<typename R, typename S, template<typename, typename, typename> class... Fs>
 constexpr void mark_offered(urd::detail::facet_list<Fs...> /*facets*/, offers& into)
 { (mark_facet<R, S, Fs>(into), ...); }

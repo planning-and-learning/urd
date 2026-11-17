@@ -46,6 +46,7 @@ inline constexpr bool listed_facet<F, facet_list<Fs...>> = (std::is_same_v<facet
 /// Two facet lists joined in order (facets are templates, so boost::mp11::mp_append does not apply).
 template<typename A, typename B>
 struct join_facets;
+
 template<template<typename, typename, typename> class... As, template<typename, typename, typename> class... Bs>
 struct join_facets<facet_list<As...>, facet_list<Bs...>>
 {
@@ -186,6 +187,7 @@ struct any_kind
         stated.for_each_listed<&category_table::implies>([&result](tag implied) { result.put(implied); });
         return result;
     }
+
     /// What it asks of its container: what it means, but for what the Store keeps itself (kept_by_store: a frozen
     /// Store's references stay put whatever holds it).
     static constexpr property_set asks(property_set meant)
@@ -194,6 +196,7 @@ struct any_kind
         meant.for_each_listed<&category_table::kept_by_store>([&result](tag kept) { result.put(tag(kept.in, 0, kept.role)); });
         return result;
     }
+
     /// What it promises its container: what it means, and what its tags promise where it holds less (promises: a
     /// Store that stays nonempty never erases, so it only grows).
     static constexpr property_set promises(property_set meant)
@@ -207,11 +210,16 @@ struct any_kind
             });
         return result;
     }
+
     /// The page of the docs (docs/kinds/<page>.rst) and tables that describes a Store of it, by what it states.
     static constexpr std::string_view page(const property_set& /*stated*/) { return {}; }
+
     static constexpr bool well_formed(const property_set& /*stated*/) { return true; }
+
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(order::sorted); }
+
     static constexpr bool changes_in_place(const property_set& /*row*/) { return true; }
+
     /// What a Store of it is built from besides its elements (spec S): nothing.
     template<typename S, typename From>
     static constexpr bool builds_from = false;
@@ -223,9 +231,12 @@ struct any_kind
 struct partition_kind : detail::any_kind
 {
     static constexpr std::string_view name = "partition";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "partitions"; }
+
     using format = detail::request_format<order, uniqueness, keys, grouping>;
     using facets = detail::facet_list<detail::facet::grouping>;
+
     /// Its keys fall into classes.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(grouping::partition)); }
 };
@@ -236,12 +247,16 @@ struct partition_kind : detail::any_kind
 struct queue_kind : detail::any_kind
 {
     static constexpr std::string_view name = "queue";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "queues"; }
+
     using format = detail::request_format<order, uniqueness, access, handling, priority>;
     using facets = detail::facet_list<detail::facet::visiting, detail::facet::queue_access>;
+
     /// A queue is reached somehow (fifo, lifo or by_priority); monotone_priority is a promise of one reached by priority.
     static constexpr bool well_formed(const property_set& stated)
     { return stated.get<access>() != access::none && (!stated.has(priority::monotone_priority) || stated.has(access::by_priority)); }
+
     /// Its order, by priority.
     static constexpr bool accepts_order_by(const property_set& stated) { return stated.has(access::by_priority); }
 };
@@ -251,10 +266,13 @@ struct queue_kind : detail::any_kind
 struct pool_kind : detail::any_kind
 {
     static constexpr std::string_view name = "pool";
+
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
+
     using format = detail::request_format<order, uniqueness, keys, handling, packing>;
     using facets = detail::facet_list<detail::facet::records, detail::facet::pool>;
+
     /// Each distinct value once, by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles).put(uniqueness::unique)); }
 };
@@ -263,10 +281,13 @@ struct pool_kind : detail::any_kind
 struct slots_kind : detail::any_kind
 {
     static constexpr std::string_view name = "slots";
+
     /// Records stored flat have a page of their own.
     static constexpr std::string_view page(const property_set& stated) { return stated.has(packing::flat) ? "records" : "pools"; }
+
     using format = detail::request_format<order, uniqueness, keys, handling, keying>;
     using facets = detail::facet_list<detail::facet::slots>;
+
     /// Its values are reached by handle.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(handling::handles)); }
 };
@@ -275,7 +296,9 @@ struct slots_kind : detail::any_kind
 struct map_kind : detail::any_kind
 {
     static constexpr std::string_view name = "map";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "maps"; }
+
     using format = detail::request_format<order, uniqueness, keys, direction, multiplicity>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -286,6 +309,7 @@ struct map_kind : detail::any_kind
                                       detail::facet::multi_values,
                                       detail::facet::entries,
                                       detail::facet::inverse>;
+
     /// Without multi, each key once.
     static constexpr property_set meaning(property_set stated)
     {
@@ -293,9 +317,11 @@ struct map_kind : detail::any_kind
             stated.put(uniqueness::unique);
         return any_kind::meaning(stated);
     }
+
     /// Positions are a multimap's: a map with each key once is reached by key (at, []), which positions would name
     /// again.
     static constexpr bool well_formed(const property_set& stated) { return !stated.has(position::positional) || stated.has(multiplicity::multi); }
+
     static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 
@@ -303,7 +329,9 @@ struct map_kind : detail::any_kind
 struct set_kind : detail::any_kind
 {
     static constexpr std::string_view name = "set";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sets"; }
+
     using format = detail::request_format<order, uniqueness, keys>;
     using facets = detail::facet_list<detail::facet::iteration,
                                       detail::facet::lookup,
@@ -311,6 +339,7 @@ struct set_kind : detail::any_kind
                                       detail::facet::insertion,
                                       detail::facet::removal,
                                       detail::facet::set_algebra>;
+
     /// Each key once; with positions and no order, numbered as they come.
     static constexpr property_set meaning(property_set stated)
     {
@@ -319,8 +348,10 @@ struct set_kind : detail::any_kind
             stated.put(order::insertion_ordered);
         return any_kind::meaning(stated);
     }
+
     /// A set of dense keys is bits, set and cleared in place.
     static constexpr bool changes_in_place(const property_set& row) { return row.has(uniqueness::unique) && row.has(keys::dense); }
+
     /// A dense set is built from the window its keys lie in (urd::key_range), whose words it keeps.
     template<typename S, typename From>
     static constexpr bool builds_from = std::same_as<From, key_range<typename S::element_type>>;
@@ -330,12 +361,16 @@ struct set_kind : detail::any_kind
 struct multiset_kind : detail::any_kind
 {
     static constexpr std::string_view name = "multiset";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
+
     using format = detail::request_format<order, uniqueness, keys, multiplicity>;
     using facets =
         detail::facet_list<detail::facet::iteration, detail::facet::lookup, detail::facet::positions, detail::facet::insertion, detail::facet::removal>;
+
     /// Its elements have positions.
     static constexpr property_set meaning(property_set stated) { return any_kind::meaning(stated.put(position::positional)); }
+
     static constexpr bool changes_in_place(const property_set& /*row*/) { return false; }
 };
 
@@ -343,10 +378,13 @@ struct multiset_kind : detail::any_kind
 struct sequence_kind : detail::any_kind
 {
     static constexpr std::string_view name = "sequence";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "sequences"; }
+
     using format = detail::request_format<order, keys, shape>;
     using facets =
         detail::facet_list<detail::facet::iteration, detail::facet::positions, detail::facet::appending, detail::facet::assigning, detail::facet::removal>;
+
     /// Its elements have positions; appended from several threads, they never move (what another thread reads stays
     /// where it is).
     static constexpr property_set meaning(property_set stated)
@@ -356,6 +394,7 @@ struct sequence_kind : detail::any_kind
             stated = stated.put(referencing::stable_refs);
         return any_kind::meaning(stated);
     }
+
     /// Rows of a fixed shape are built from their lengths (urd::row_lengths), or for rows of rows, each row's shape.
     template<typename S, typename From>
     static constexpr bool builds_from = S::urd_properties.has(shape::fixed_shape);
@@ -367,7 +406,9 @@ struct sequence_kind : detail::any_kind
 struct graph_kind : detail::any_kind
 {
     static constexpr std::string_view name = "graph";
+
     static constexpr std::string_view page(const property_set& /*stated*/) { return "graphs"; }
+
     using format = detail::request_format<direction, multiplicity, grouping, symmetry, adjacency, endpoints>;
     using facets = detail::
         facet_list<detail::facet::graph, detail::facet::graph_building, detail::facet::graph_removal, detail::facet::graph_edges, detail::facet::graph_parts>;
@@ -422,6 +463,7 @@ struct set : detail::data_of<set_kind, K>
 {
     using key_type = K;
 };
+
 /// A value of type V per key of type K: its elements are its keys, and it holds key and value pairs.
 template<typename K, typename V>
 struct map : detail::data_of<map_kind, K, V>
@@ -431,12 +473,14 @@ struct map : detail::data_of<map_kind, K, V>
     using mapped_type = V;
     using element_type = std::pair<const K, V>;
 };
+
 /// Values of type V kept by value, in order.
 template<typename V>
 struct multiset : detail::data_of<multiset_kind, V>
 {
     using value_type = V;
 };
+
 /// Values of type V by position, addressed by P: a number, or an index (urd::index<T>, any key urd::index_of maps to
 /// 0..n-1), so that a sequence parallel to the Ts a Store numbers is reached by their indices. P names no presence: a
 /// sequence holds an element at every position below its size.
@@ -447,12 +491,14 @@ struct sequence : detail::data_of<sequence_kind, V>
     using value_type = V;
     using position_type = P;
 };
+
 /// Values of type V reached by their front or top.
 template<typename V>
 struct queue : detail::data_of<queue_kind, V>
 {
     using value_type = V;
 };
+
 /// Values of type V interned by handle, each distinct one once. H is the handle insert hands out: an urd::index, of V
 /// by default, of any type where the pool names it (a pool of urd::data<T> handing out index<T>). Pools that number
 /// their values serve it; a tree pool, whose handle is its own (a root and a size), serves only the default.
@@ -463,18 +509,21 @@ struct pool : detail::data_of<pool_kind, V>
     using value_type = V;
     using handle_type = H;
 };
+
 /// Values of type V in slots, by handle.
 template<typename V>
 struct slots : detail::data_of<slots_kind, V>
 {
     using value_type = V;
 };
+
 /// Keys of type K in disjoint classes.
 template<typename K>
 struct partition : detail::data_of<partition_kind, K>
 {
     using key_type = K;
 };
+
 /// Vertices of type V (an index: urd::index_of maps it to 0..n-1), each with data of type D, and edges between them,
 /// each with data of type E; std::monostate, a type with one value, where they carry none (urd/graph_types.hpp). Its
 /// elements are its vertices; it is built from edges (urd::input_edge_of), with the vertices' data (graph_data).

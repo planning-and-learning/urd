@@ -128,6 +128,7 @@ struct Counted
 
     friend bool operator==(Counted, Counted) = default;
 };
+
 int hashes = 0;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables): the counter the test reads
 
 }  // namespace

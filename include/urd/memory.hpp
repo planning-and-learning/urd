@@ -27,6 +27,7 @@ template<typename T>
 struct memory_of
 {
     static_assert(std::is_trivially_copyable_v<T>, "urd::memory_of: a type that may own memory, without a specialization (urd/memory.hpp)");
+
     static constexpr std::size_t bytes(const T& /*held*/) { return 0; }
 };
 

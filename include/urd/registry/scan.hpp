@@ -71,6 +71,7 @@ inline constexpr std::size_t no_entry = static_cast<std::size_t>(-1);
 /// The entries of Kind serving a request, by position in its table, in the order they are preferred.
 template<typename Kind>
 using serving_entries = fixed_list<std::size_t, table_of<Kind>.size()>;
+
 template<typename Kind>
 constexpr serving_entries<Kind> all_serving(const request_shape& s)
 {

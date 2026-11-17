@@ -96,6 +96,7 @@ concept partitioned_graph = graph_like<G> && requires(const G& graph, typename G
     { graph.part_of(v) } -> std::convertible_to<std::size_t>;
     graph.part(p);
 };
+
 /// A set of vertices of graph G.
 /// An edge as a walk over a graph hands it out: its endpoints and its number (`none` where the graph numbers no edges).
 template<typename V>
@@ -146,6 +147,7 @@ void for_each_row(const G& graph, typename G::vertex_type v, std::size_t first_p
     for (auto p = first_part; p < last_part; ++p)
         f(words, graph_rows::row(rows, v, p).blocks(), graph_rows::first_of(rows, p), graph_rows::size_of(rows, p));
 }
+
 /// All the parts a graph's rows have (one where it is not partitioned).
 template<typename G>
 std::size_t row_parts(const G& graph)
@@ -161,6 +163,7 @@ void copy_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std
         if (graph.part_of(w) == p)
             into.insert(w);
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void copy_neighbours_by_iteration(const G& graph, typename G::vertex_type v, Set& into)
 {
@@ -168,6 +171,7 @@ void copy_neighbours_by_iteration(const G& graph, typename G::vertex_type v, Set
     for (const auto w : graph.neighbours(v))
         into.insert(w);
 }
+
 /// Removes from `into` each vertex `keep(w)` says no to.
 template<typename Set, typename Keep>
 void keep_only(Set& into, Keep keep)
@@ -179,16 +183,19 @@ void keep_only(Set& into, Keep keep)
     for (const auto w : dropped)
         into.erase(w);
 }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
 void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 {
     keep_only(into, [&](auto w) { return graph.part_of(w) == p && graph.adjacent(v, w); });
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, Set& into)
 {
     keep_only(into, [&](auto w) { return graph.adjacent(v, w); });
 }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
 void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
 {
@@ -199,6 +206,7 @@ void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v
         if (graph.part_of(w) == p && graph.adjacent(v, w))
             into.insert(w);
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
 {
@@ -209,6 +217,7 @@ void intersect_neighbours_by_iteration(const G& graph, typename G::vertex_type v
         if (graph.adjacent(v, w))
             into.insert(w);
 }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
 void subtract_neighbours_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 {
@@ -216,12 +225,14 @@ void subtract_neighbours_by_iteration(const G& graph, typename G::vertex_type v,
         if (graph.part_of(w) == p)
             into.erase(w);
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void subtract_neighbours_by_iteration(const G& graph, typename G::vertex_type v, Set& into)
 {
     for (const auto w : graph.neighbours(v))
         into.erase(w);
 }
+
 template<partitioned_graph G>
 std::size_t degree_in_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p)
 {
@@ -230,6 +241,7 @@ std::size_t degree_in_by_iteration(const G& graph, typename G::vertex_type v, st
         result += graph.part_of(w) == p ? 1U : 0U;
     return result;
 }
+
 template<partitioned_graph G, vertex_set_of<G> Set, typename F>
 void for_each_neighbour_in_by_iteration(const G& graph, typename G::vertex_type v, std::size_t p, const Set& among, F f)
 {
@@ -237,6 +249,7 @@ void for_each_neighbour_in_by_iteration(const G& graph, typename G::vertex_type 
         if (graph.part_of(w) == p && among.contains(w))
             f(w);
 }
+
 template<graph_like G, vertex_set_of<G> Set, typename F>
 void for_each_neighbour_in_by_iteration(const G& graph, typename G::vertex_type v, const Set& among, F f)
 {
@@ -254,19 +267,23 @@ std::vector<std::size_t> part_sizes(const G& graph)
         result.push_back(static_cast<std::size_t>(std::ranges::distance(graph.part(p))));
     return result;
 }
+
 template<graph_like G>
     requires(!partitioned_graph<G>)
 std::vector<std::size_t> part_sizes(const G& /*graph*/)
 { return {}; }
+
 /// Counts `v` in its part's size, where the graph has parts.
 template<partitioned_graph G>
 void count_in_part(const G& graph, typename G::vertex_type v, std::vector<std::size_t>& sizes)
 { ++sizes[graph.part_of(v)]; }
+
 template<graph_like G>
     requires(!partitioned_graph<G>)
 void count_in_part(const G& /*graph*/, typename G::vertex_type /*v*/, std::vector<std::size_t>& /*sizes*/)
 {
 }
+
 /// One past a graph's last vertex (its vertices may have holes where some were removed).
 template<graph_like G>
 std::size_t vertex_bound(const G& graph)
@@ -276,6 +293,7 @@ std::size_t vertex_bound(const G& graph)
         result = std::max(result, index_of<typename G::vertex_type>::to_index(v) + 1);
     return result;
 }
+
 /// Every edge of `graph` as To takes it (urd::graph_input_edge), its endpoints renumbered by `number` (an optional
 /// index; none: left out), with its data, in the order of their numbers: so they keep their numbers where none is left
 /// out or was removed.
@@ -290,6 +308,7 @@ auto edges_of(const G& graph, Number number)
                 result.emplace_back(index_of<W>::from_index(*from), index_of<W>::from_index(*to), graph.edge_value(e));
     return result;
 }
+
 /// The data of the vertices of `graph` that To keeps (`number`, an optional index; none: left out), in the order of
 /// their numbers, which increase with the vertices.
 template<typename To, graph_like G, typename Number>
@@ -301,6 +320,7 @@ auto vertex_values_of(const G& graph, Number number)
             result.push_back(graph.vertex_value(v));
     return result;
 }
+
 /// Whether graph To holds rows of bits shaped as G's: then one is built from the other's rows.
 template<typename To, typename G>
 concept same_rows = has<To, constant_adjacency> && has<G, constant_adjacency> && (has<To, partitioned> == has<G, partitioned>)
@@ -312,6 +332,7 @@ concept same_rows = has<To, constant_adjacency> && has<G, constant_adjacency> &&
 template<partitioned_graph G, vertex_set_of<G> Set>
 void copy_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 { detail::copy_neighbours_by_iteration(graph, v, p, into); }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void copy_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
@@ -323,9 +344,11 @@ void copy_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, S
                          into,
                          [](auto& set, auto words, std::size_t first, std::size_t bits) { detail::dense_words::assign(set, words, first, bits); });
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void copy_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 { detail::copy_neighbours_by_iteration(graph, v, into); }
+
 template<graph_like G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void copy_neighbours(const G& graph, typename G::vertex_type v, Set& into)
@@ -343,6 +366,7 @@ void copy_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 template<partitioned_graph G, vertex_set_of<G> Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 { detail::intersect_neighbours_by_iteration(graph, v, p, into); }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
@@ -354,9 +378,11 @@ void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t
                          into,
                          [](auto& set, auto words, std::size_t first, std::size_t bits) { detail::dense_words::intersect(set, words, first, bits); });
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 { detail::intersect_neighbours_by_iteration(graph, v, into); }
+
 template<graph_like G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, Set& into)
@@ -375,6 +401,7 @@ void intersect_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 template<partitioned_graph G, vertex_set_of<G> Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
 { detail::intersect_neighbours_by_iteration(graph, v, p, from, into); }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, const Set& from, Set& into)
@@ -386,9 +413,11 @@ void intersect_neighbours(const G& graph, typename G::vertex_type v, std::size_t
                                        detail::graph_rows::first_of(rows, p),
                                        detail::graph_rows::size_of(rows, p));
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
 { detail::intersect_neighbours_by_iteration(graph, v, from, into); }
+
 template<graph_like G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void intersect_neighbours(const G& graph, typename G::vertex_type v, const Set& from, Set& into)
@@ -402,6 +431,7 @@ void intersect_neighbours(const G& graph, typename G::vertex_type v, const Set& 
 template<partitioned_graph G, vertex_set_of<G> Set>
 void subtract_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
 { detail::subtract_neighbours_by_iteration(graph, v, p, into); }
+
 template<partitioned_graph G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void subtract_neighbours(const G& graph, typename G::vertex_type v, std::size_t p, Set& into)
@@ -413,9 +443,11 @@ void subtract_neighbours(const G& graph, typename G::vertex_type v, std::size_t 
                          into,
                          [](auto& set, auto words, std::size_t first, std::size_t bits) { detail::dense_words::subtract(set, words, first, bits); });
 }
+
 template<graph_like G, vertex_set_of<G> Set>
 void subtract_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 { detail::subtract_neighbours_by_iteration(graph, v, into); }
+
 template<graph_like G, vertex_set_of<G> Set>
     requires detail::by_words<G, Set>
 void subtract_neighbours(const G& graph, typename G::vertex_type v, Set& into)
@@ -432,6 +464,7 @@ void subtract_neighbours(const G& graph, typename G::vertex_type v, Set& into)
 template<partitioned_graph G>
 std::size_t degree_in(const G& graph, typename G::vertex_type v, std::size_t p)
 { return detail::degree_in_by_iteration(graph, v, p); }
+
 template<partitioned_graph G>
     requires has<G, constant_adjacency>
 std::size_t degree_in(const G& graph, typename G::vertex_type v, std::size_t p)
@@ -442,6 +475,7 @@ std::size_t degree_in(const G& graph, typename G::vertex_type v, std::size_t p)
 template<partitioned_graph G, vertex_set_of<G> Set, typename F>
 void for_each_neighbour_in(const G& graph, typename G::vertex_type v, std::size_t p, const Set& among, F f)
 { detail::for_each_neighbour_in_by_iteration(graph, v, p, among, std::move(f)); }
+
 template<partitioned_graph G, vertex_set_of<G> Set, typename F>
     requires detail::by_words<G, Set>
 void for_each_neighbour_in(const G& graph, typename G::vertex_type v, std::size_t p, const Set& among, F f)
@@ -454,9 +488,11 @@ void for_each_neighbour_in(const G& graph, typename G::vertex_type v, std::size_
                          [&f](const auto& set, auto words, std::size_t first, std::size_t bits)
                          { detail::dense_words::for_each_common(set, words, first, bits, f); });
 }
+
 template<graph_like G, vertex_set_of<G> Set, typename F>
 void for_each_neighbour_in(const G& graph, typename G::vertex_type v, const Set& among, F f)
 { detail::for_each_neighbour_in_by_iteration(graph, v, among, std::move(f)); }
+
 template<graph_like G, vertex_set_of<G> Set, typename F>
     requires detail::by_words<G, Set>
 void for_each_neighbour_in(const G& graph, typename G::vertex_type v, const Set& among, F f)
@@ -479,6 +515,7 @@ void connect_parts(G& graph, std::size_t p, std::size_t q)
         for (const auto v : graph.part(q))
             graph.add_edge(u, v);
 }
+
 template<partitioned_graph G>
     requires(has<G, constant_adjacency> && requires(G& graph, typename G::vertex_type v) { graph.add_edge(v, v); })
 void connect_parts(G& graph, std::size_t p, std::size_t q)
@@ -497,6 +534,7 @@ To freeze(const G& graph)
     const auto sizes = detail::part_sizes(graph);
     return To(typename container_traits<To>::graph_data_type { count, edges, sizes, values });
 }
+
 template<typename To, graph_like G>
     requires detail::same_rows<To, G>
 To freeze(const G& graph)
@@ -525,6 +563,7 @@ To induced(const G& graph, const Set& keep)
     const auto values = detail::vertex_values_of<To>(graph, renumber);
     return To(typename container_traits<To>::graph_data_type { next, edges, sizes, values });
 }
+
 template<typename To, graph_like G, vertex_set_of<G> Set>
     requires(detail::same_rows<To, G> && detail::by_words<G, Set>)
 To induced(const G& graph, const Set& keep)

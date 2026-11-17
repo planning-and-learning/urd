@@ -71,6 +71,7 @@ struct every_trait
     static consteval bool asks()
     { return true; }
 };
+
 /// Whether Asked asks any of Traits of role Role.
 template<typename Asked, typename Role, typename... Traits>
 consteval bool asks_any(boost::mp11::mp_list<Traits...> /*traits*/)
@@ -85,6 +86,7 @@ struct trait_where
     static consteval bool holds()
     { return Trait::template holds<Args...>(); }
 };
+
 template<>
 struct trait_where<false>
 {
@@ -137,26 +139,31 @@ struct element
     static constexpr std::string_view name = "element";
     static constexpr std::string_view description = "what its elements are (a map's keys)";
 };
+
 struct order
 {
     static constexpr std::string_view name = "order";
     static constexpr std::string_view description = "what its order is";
 };
+
 struct mapped
 {
     static constexpr std::string_view name = "mapped";
     static constexpr std::string_view description = "what a map's values are";
 };
+
 struct row
 {
     static constexpr std::string_view name = "row";
     static constexpr std::string_view description = "its elements' own tags, where they are Stores (rows)";
 };
+
 struct rows
 {
     static constexpr std::string_view name = "rows";
     static constexpr std::string_view description = "what its rows allow";
 };
+
 struct row_element
 {
     static constexpr std::string_view name = "row_element";
@@ -180,6 +187,7 @@ constexpr property_set about(const role_info* of, const property_set& set)
     set.for_each([&result, of](tag each) { result.put(each.about(of)); });
     return result;
 }
+
 /// The facts of `set` about a role (about_role), or about the Store itself (what it states or provides).
 constexpr property_set facts_where(const property_set& set, bool about_role)
 {
@@ -195,12 +203,15 @@ constexpr property_set facts_where(const property_set& set, bool about_role)
 
 /// The pieces a container's reliance is written in: what a request must state, and per role, traits or tags.
 constexpr property_set stated(std::initializer_list<tag> listed) { return property_set::of(listed); }
+
 template<typename Role, typename... Traits>
 constexpr property_set traits()
 { return property_set::of({ trait_tag<Traits>.about(role_v<Role>)... }); }
+
 template<typename Role>
 constexpr property_set tags(std::initializer_list<tag> listed)
 { return about(role_v<Role>, property_set::of(listed)); }
+
 /// A reliance from its pieces, all facts in one set: relies(stated({ change::monotone }), traits<role::element,
 /// trait::can_hash>()).
 constexpr property_set relies(const auto&... pieces)

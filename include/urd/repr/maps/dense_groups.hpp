@@ -44,13 +44,20 @@ public:
     }
 
     [[nodiscard]] group begin() const { return 0; }
+
     [[nodiscard]] group end() const { return m_rows.size(); }
+
     [[nodiscard]] std::size_t count() const { return m_count; }
+
     [[nodiscard]] K key(group at) const { return index_of<K>::from_index(at); }
+
     [[nodiscard]] std::span<const V> row(group at) const { return m_rows[at]; }
+
     [[nodiscard]] group find(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key), end()) : end(); }
+
     /// Keys that are no index (a negative integer) come before all.
     [[nodiscard]] group lower_bound(const K& key) const { return index_of<K>::is_index(key) ? find(key) : begin(); }
+
     [[nodiscard]] group upper_bound(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key) + 1, end()) : begin(); }
 
     /// The group of `key` and the position of the value appended to it; the rows grow to the key.
@@ -63,6 +70,7 @@ public:
         ++m_count;
         return { at, m_rows[at].size() - 1 };
     }
+
     /// Clears the key's row, keeping its storage.
     std::size_t erase(const K& key)
     {
@@ -74,6 +82,7 @@ public:
         m_count -= erased;
         return erased;
     }
+
     /// Where the value after the erased one is: the same place, which the caller normalizes past an emptied row.
     std::pair<group, std::size_t> erase(group at, std::size_t index)
     {
@@ -82,6 +91,7 @@ public:
         --m_count;
         return { at, index };
     }
+
     /// Clears every row, keeping the rows and their storage.
     void clear()
     {

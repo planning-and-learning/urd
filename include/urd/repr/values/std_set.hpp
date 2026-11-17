@@ -47,6 +47,7 @@ struct set_decl
     static constexpr std::string_view description = "std::set (balanced tree)";
     static constexpr std::string_view holds = "a node per element; reclaims";
 };
+
 template<typename T, typename C, typename A>
 struct declaration_of<std::set<T, C, A>>
 {
@@ -76,6 +77,7 @@ struct unordered_set_decl
     static constexpr std::string_view description = "std::unordered_set (hash table)";
     static constexpr std::string_view holds = "a node per element + buckets; stable references";
 };
+
 template<typename T, typename H, typename E, typename A>
 struct declaration_of<std::unordered_set<T, H, E, A>>
 {
@@ -100,6 +102,7 @@ struct representation_of<unordered_set_decl, S>
 {
     using type = std::unordered_set<typename S::element_type, urd::Hash<typename S::element_type>, urd::EqualTo<typename S::element_type>>;
 };
+
 template<typename S>
 struct representation_of<set_decl, S>
 {

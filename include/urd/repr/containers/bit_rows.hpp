@@ -43,6 +43,7 @@ struct packed_words
         else
             return bit::read_int<word>(from, offset, width);
     }
+
     /// Writes `value` into the `width` bits at bit `at`, keeping the bits around them.
     static void set(word* words, std::size_t at, std::uint8_t width, word value) noexcept
     {
@@ -82,36 +83,50 @@ public:
         using iterator_concept = std::random_access_iterator_tag;
 
         const_iterator() = default;
+
         const_iterator(const PackedRow& row, size_type pos) : m_words(row.m_words), m_first_bit(row.m_first_bit), m_width(row.m_width), m_pos(pos) {}
 
         reference operator*() const { return index_of<U>::from_index(static_cast<std::size_t>(words::get(m_words, m_first_bit + (m_pos * m_width), m_width))); }
+
         reference operator[](difference_type n) const { return *(*this + n); }
+
         const_iterator& operator++() { return *this += 1; }
+
         const_iterator operator++(int)
         {
             auto copy = *this;
             ++*this;
             return copy;
         }
+
         const_iterator& operator--() { return *this -= 1; }
+
         const_iterator operator--(int)
         {
             auto copy = *this;
             --*this;
             return copy;
         }
+
         const_iterator& operator+=(difference_type n)
         {
             m_pos = static_cast<size_type>(static_cast<difference_type>(m_pos) + n);
             return *this;
         }
+
         const_iterator& operator-=(difference_type n) { return *this += -n; }
+
         friend const_iterator operator+(const_iterator it, difference_type n) { return it += n; }
+
         friend const_iterator operator+(difference_type n, const_iterator it) { return it += n; }
+
         friend const_iterator operator-(const_iterator it, difference_type n) { return it -= n; }
+
         friend difference_type operator-(const const_iterator& lhs, const const_iterator& rhs)
         { return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos); }
+
         friend bool operator==(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_pos == rhs.m_pos; }
+
         friend auto operator<=>(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_pos <=> rhs.m_pos; }
 
     private:
@@ -120,9 +135,11 @@ public:
         std::uint8_t m_width = 1;
         size_type m_pos = 0;
     };
+
     using iterator = const_iterator;
 
     PackedRow() = default;
+
     PackedRow(const word* data, std::size_t first_bit, size_type length, std::uint8_t width) :
         m_words(data),
         m_first_bit(first_bit),
@@ -136,9 +153,13 @@ public:
         assert(pos < m_length);
         return index_of<U>::from_index(static_cast<std::size_t>(words::get(m_words, m_first_bit + (pos * m_width), m_width)));
     }
+
     [[nodiscard]] size_type size() const noexcept { return m_length; }
+
     [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
+
     [[nodiscard]] const_iterator begin() const { return const_iterator(*this, 0); }
+
     [[nodiscard]] const_iterator end() const { return const_iterator(*this, m_length); }
 
 private:
@@ -165,8 +186,10 @@ struct BitCodec
 
     /// The words of the rows' bits, and a word of room so that a read of the last element's bits never leaves them.
     [[nodiscard]] std::size_t units(std::size_t rows, std::size_t length) const noexcept { return bit::packed_blocks<unit>(rows * length * width); }
+
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t length) const noexcept
     { return value_type(data, at * length * width, length, width); }
+
     template<std::ranges::sized_range Row>
     void write(unit* data, std::size_t at, const Row& row) const
     {
@@ -177,6 +200,7 @@ struct BitCodec
             at_bit += width;
         }
     }
+
     /// Throws std::out_of_range where an element of `row` does not fit in the width (the caller's promise, urd::bit,
     /// broken).
     template<std::ranges::input_range Row>

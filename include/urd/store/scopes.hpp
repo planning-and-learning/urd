@@ -15,8 +15,10 @@ class scopes
 {
 public:
     void push_scope() { representation().push_scope(); }
+
     /// Undoes every change since the matching push_scope; a scope must be open.
     void pop_scope() { representation().pop_scope(); }
+
     /// How many scopes are open.
     [[nodiscard]] std::size_t depth() const { return store_access::of<Derived>(*this).depth(); }
     /// Whether `key` is bound and the innermost open scope bound it (with no scope open, whether it is bound): a
@@ -44,6 +46,7 @@ struct facet_condition<facet::scopes> : facet_defaults
     static constexpr bool on()
     { return has<S, scoped>; }
 };
+
 template<>
 struct facet_operations<facet::scopes>
 {

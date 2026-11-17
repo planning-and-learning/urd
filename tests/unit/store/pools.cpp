@@ -60,7 +60,9 @@ struct urd::data<CellTag>
     std::uint32_t id = 0;
 
     data() = default;
+
     explicit data(std::uint32_t id_) : id(id_) {}
+
     static constexpr bool copyable() noexcept
     {
         static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
@@ -68,9 +70,12 @@ struct urd::data<CellTag>
     }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"id", &data::id>> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&data::id> {}; }
 };
+
 template<typename V>
 struct urd::view_mixin<CellTag, V>
 {
@@ -117,8 +122,10 @@ TEST(Records, Iterate)
     struct Name
     {
         int id = 0;
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
     };
+
     auto names = Store<pool<Name>, urd::flat>(urd::layer { 0 });
     names.insert(Name { 7 });
     names.insert(Name { 2 });
@@ -135,8 +142,10 @@ TEST(Records, Count)
     struct Point
     {
         int x = 0;
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
     };
+
     auto points = Store<pool<Point>, urd::flat>(urd::layer { 0 });
     points.insert(Point { 1 });
     EXPECT_EQ(points.count(Point { 1 }), 1U);
@@ -156,6 +165,7 @@ struct Owning
     ~Owning() = default;
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&Owning::items> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Owning::items> {}; }
 };
 
@@ -206,19 +216,25 @@ struct Moving
     bool moved_from = false;
 
     Moving() = default;
+
     explicit Moving(std::uint32_t value) : id(value) {}
+
     Moving(const Moving&) = delete;
     Moving& operator=(const Moving&) = delete;
+
     Moving(Moving&& other) noexcept : id(other.id) { other.moved_from = true; }
+
     Moving& operator=(Moving&& other) noexcept
     {
         id = other.id;
         other.moved_from = true;
         return *this;
     }
+
     ~Moving() = default;
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&Moving::id> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Moving::id, &Moving::moved_from> {}; }
 };
 

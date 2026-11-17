@@ -71,31 +71,37 @@ struct memory_of<std::map<K, V, C, A>>
 {
     static std::size_t bytes(const std::map<K, V, C, A>& held) { return detail::tree_bytes(held); }
 };
+
 template<typename K, typename V, typename C, typename A>
 struct memory_of<std::multimap<K, V, C, A>>
 {
     static std::size_t bytes(const std::multimap<K, V, C, A>& held) { return detail::tree_bytes(held); }
 };
+
 template<typename T, typename C, typename A>
 struct memory_of<std::set<T, C, A>>
 {
     static std::size_t bytes(const std::set<T, C, A>& held) { return detail::tree_bytes(held); }
 };
+
 template<typename T, typename C, typename A>
 struct memory_of<std::multiset<T, C, A>>
 {
     static std::size_t bytes(const std::multiset<T, C, A>& held) { return detail::tree_bytes(held); }
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct memory_of<std::unordered_map<K, V, H, E, A>>
 {
     static std::size_t bytes(const std::unordered_map<K, V, H, E, A>& held) { return detail::hash_table_bytes(held); }
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct memory_of<std::unordered_multimap<K, V, H, E, A>>
 {
     static std::size_t bytes(const std::unordered_multimap<K, V, H, E, A>& held) { return detail::hash_table_bytes(held); }
 };
+
 template<typename T, typename H, typename E, typename A>
 struct memory_of<std::unordered_set<T, H, E, A>>
 {

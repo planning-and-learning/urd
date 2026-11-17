@@ -62,8 +62,11 @@ public:
     void layer_over(const Layered* parent) { m_parent = parent; }
 
     [[nodiscard]] iterator begin() const { return m_own.begin(); }
+
     [[nodiscard]] iterator end() const { return m_own.end(); }
+
     [[nodiscard]] size_type size() const { return m_own.size(); }
+
     [[nodiscard]] bool empty() const { return m_own.empty(); }
 
     /// Whether this layer's own values hold `key`.
@@ -90,12 +93,15 @@ public:
         const auto* layer = owner(key);
         return layer == nullptr ? end() : layer->m_own.find(key);
     }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const key_type& key) const
     {
         const auto found = find(key);
         return { found, found == end() ? found : std::next(found) };
     }
+
     [[nodiscard]] bool contains(const key_type& key) const { return owner(key) != nullptr; }
+
     [[nodiscard]] size_type count(const key_type& key) const { return contains(key) ? 1 : 0; }
 
     /// A key and its value, as any pair: inserts nothing where a parent holds the key.
@@ -107,23 +113,29 @@ public:
             return { layer->m_own.find(key), false };
         return m_own.insert(pair);
     }
+
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
     { return insert(pair).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         for (; first != last; ++first)
             insert(*first);
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(std::pair<key_type, mapped_type>(std::forward<Args>(args)...)); }
 
     /// Own values only: the parent's stay.
     size_type erase(const key_type& key) { return m_own.erase(key); }
+
     iterator erase(const_iterator pos) { return m_own.erase(pos); }
+
     iterator erase(const_iterator first, const_iterator last) { return m_own.erase(first, last); }
+
     void clear() { m_own.clear(); }
 
     /// The value of the owner of `key`.
@@ -133,11 +145,13 @@ public:
             return *value;
         throw std::out_of_range("urd::repr::Layered::at: no layer holds the key");
     }
+
     /// The own value, made where there is none.
     [[nodiscard]] mapped_type& at(const key_type& key)
     {
         return own(key, [](mapped_type& value, bool /*held*/) -> mapped_type& { return value; });
     }
+
     /// f(value) with the owner's value of `key`, else `missing`: one walk up the layers.
     template<typename F, typename Result>
         requires std::invocable<F&, const mapped_type&>
@@ -158,12 +172,15 @@ private:
 public:
     /// This layer's own value of `key`, or nullptr: the parent's are not looked at.
     [[nodiscard]] const mapped_type* own_value(const key_type& key) const { return m_own.get_if(key); }
+
     [[nodiscard]] mapped_type* own_value(const key_type& key) { return m_own.get_if(key); }
+
     /// update(value, held) with the own value of `key`, made where there is none (held is then false).
     template<typename Update>
         requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const key_type& key, Update update)
     { return own(key, update); }
+
     /// The own value of `key`, made from `args` where there is none: whether it was made now.
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
@@ -171,6 +188,7 @@ public:
         const bool made = own(key, [](mapped_type& /*value*/, bool held) { return !held; }, std::forward<Args>(args)...);
         return { m_own.find(key), made };
     }
+
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const key_type& key, M&& value)
     { return m_own.insert_or_assign(key, std::forward<M>(value)); }
@@ -200,6 +218,7 @@ private:
                                 return update(value, held);
                             });
     }
+
     /// The slot's value made own (see the class). A value that layers reuses what the slot kept (a generation map's
     /// earlier value), storage and all, where its Store offers clear() and it was built alike: cleared and layered anew.
     template<typename... Args>
@@ -217,6 +236,7 @@ private:
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal argument decays where mapped_type takes it
             value = mapped_type(std::forward<Args>(args)...);
     }
+
     /// Whether `value` was cleared for reuse: where its Store offers clear() (monotone_until_clear, or one that
     /// shrinks) and it was built alike.
     template<typename... Args>
@@ -228,24 +248,29 @@ private:
         value.clear();
         return true;
     }
+
     template<typename... Args>
     static bool reused(mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }
+
     /// Whether `value` is what `args` would build, but for its contents: no arguments, or the one it reports it was
     /// built with (a bit width, column widths).
     static bool built_alike(const mapped_type& /*value*/) { return true; }
+
     template<typename Arg>
         requires requires(const mapped_type& value, const Arg& arg) {
             { value.width() == arg } -> std::convertible_to<bool>;
         }
     static bool built_alike(const mapped_type& value, const Arg& arg)
     { return value.width() == arg; }
+
     template<typename Arg>
         requires requires(const mapped_type& value, const Arg& arg) {
             { value.column_widths() == arg } -> std::convertible_to<bool>;
         }
     static bool built_alike(const mapped_type& value, const Arg& arg)
     { return value.column_widths() == arg; }
+
     template<typename... Args>
     static bool built_alike(const mapped_type& /*value*/, const Args&... /*args*/)
     { return false; }

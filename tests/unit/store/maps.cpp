@@ -83,12 +83,14 @@ struct Interval
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&Interval::lower, &Interval::upper> {}; }
 };
+
 constexpr auto hull = [](const Interval& lhs, const Interval& rhs) { return Interval { std::min(lhs.lower, rhs.lower), std::max(lhs.upper, rhs.upper) }; };
 
 template<typename S>
 class Merge : public testing::Test
 {
 };
+
 using MergeMaps = testing::Types<Store<map<int, int>>,
                                  Store<map<int, int>, urd::sorted>,
                                  Store<map<int, int>, urd::dense>,
@@ -97,11 +99,13 @@ using MergeMaps = testing::Types<Store<map<int, int>>,
                                  Store<map<int, int>, urd::dense, urd::insertion_ordered>,
                                  Store<map<int, int>, urd::scoped>>;
 TYPED_TEST_SUITE(Merge, MergeMaps);
+
 // update and visit: the Stores whose container has them.
 template<typename S>
 class Update : public testing::Test
 {
 };
+
 using UpdateMaps = testing::Types<Store<map<int, int>, urd::dense>,
                                   Store<map<int, int>, urd::dense, urd::constant_clear>,
                                   Store<map<int, int>, urd::dense, urd::insertion_ordered>,

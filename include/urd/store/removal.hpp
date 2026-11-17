@@ -31,14 +31,17 @@ public:
         const std::ranges::iterator_t<R> next = representation().erase(pos);
         return next;
     }
+
     iterator_type erase(const_iterator_type first, const_iterator_type last)
         requires changes_in_the_middle<S>
     { return representation().erase(first, last); }
+
     /// Every element equal to `element` (in a map, with that key); how many there were. Where the kind places elements
     /// by their value or key (it does not append): one erase with the other erases, as std::set has it.
     std::size_t erase(const typename types::lookup_type& element)
         requires(shrinks<S> && !appends<typename S::kind>)
     { return representation().erase(element); }
+
     void clear() { representation().clear(); }
 
     /// Removes the elements `pred` holds for; how many. Found by argument-dependent lookup, as std::erase_if.
@@ -76,6 +79,7 @@ struct facet_condition<facet::removal> : facet_defaults
     static constexpr bool on()
     { return clears<S>; }
 };
+
 template<>
 struct facet_operations<facet::removal>
 {

@@ -94,6 +94,7 @@ public:
             return std::move(*result);
         }
     }
+
     /// f(value) where `key` has a value, else `missing`, under the key's lock.
     template<typename F, typename Result>
     [[nodiscard]] Result visit(const key_type& key, F& f, Result missing) const
@@ -107,6 +108,7 @@ private:
     /// Its memory is gtl's table's (urd::memory_of, beside the maps below).
     template<typename Held>
     friend struct urd::memory_of;
+
     [[nodiscard]] const Table& table() const noexcept { return *this; }
 };
 
@@ -145,6 +147,7 @@ struct urd::memory_of<urd::repr::ParallelHashMap<K, V>>
 {
     static std::size_t bytes(const repr::ParallelHashMap<K, V>& held) { return detail::sharded_table_bytes(held.table()); }
 };
+
 template<typename K, typename V>
 struct urd::memory_of<urd::repr::ParallelNodeHashMap<K, V>>
 {
@@ -159,6 +162,7 @@ struct representation_of<parallel_hash_map_decl, S>
 {
     using type = repr::ParallelHashMap<typename S::key_type, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<parallel_node_hash_map_decl, S>
 {

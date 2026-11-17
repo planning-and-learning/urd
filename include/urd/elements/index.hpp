@@ -36,12 +36,15 @@ struct index
     value_type value = none_value;
 
     constexpr index() = default;
+
     constexpr explicit index(value_type at) noexcept : value(at) {}
 
     [[nodiscard]] constexpr bool is_none() const noexcept { return value == none_value; }
 
     friend constexpr auto operator<=>(const index&, const index&) = default;
+
     static constexpr auto identifying_members() noexcept { return Members<&index::value> {}; }
+
     /// For records stored flat: cista serializes an index by its value.
     static constexpr auto cista_members() noexcept { return Members<&index::value> {}; }
 };
@@ -51,11 +54,13 @@ template<typename T>
 struct index_of<index<T>>
 {
     [[nodiscard]] static constexpr bool is_index(index<T> at) noexcept { return !at.is_none(); }
+
     [[nodiscard]] static constexpr std::size_t to_index(index<T> at) noexcept
     {
         assert(is_index(at) && "urd::index_of: none is no index");
         return at.value;
     }
+
     [[nodiscard]] static constexpr index<T> from_index(std::size_t at) noexcept { return index<T>(static_cast<std::uint32_t>(at)); }
 };
 

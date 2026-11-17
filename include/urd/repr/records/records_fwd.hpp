@@ -54,6 +54,7 @@ struct record_interner_decl
     static constexpr std::string_view description = "record interner (trivially copyable records in an indexed set)";
     static constexpr std::string_view holds = "each distinct record once, as one block of bytes";
 };
+
 struct stable_record_interner_decl : record_interner_decl
 {
     static constexpr std::string_view id = "stable_record_interner";
@@ -62,6 +63,7 @@ struct stable_record_interner_decl : record_interner_decl
     static constexpr std::string_view description = "record interner over segments that never move (no lock)";
     static constexpr std::string_view holds = "each distinct record once, in segments that never move";
 };
+
 struct thread_safe_record_interner_decl : stable_record_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_record_interner";
@@ -80,6 +82,7 @@ struct value_interner_decl : record_interner_decl
     static constexpr std::string_view description = "value interner (distinct values in an indexed set)";
     static constexpr std::string_view holds = "each distinct value once";
 };
+
 struct stable_value_interner_decl : value_interner_decl
 {
     static constexpr std::string_view id = "stable_value_interner";
@@ -88,6 +91,7 @@ struct stable_value_interner_decl : value_interner_decl
     static constexpr std::string_view description = "value interner over segments that never move (no lock)";
     static constexpr std::string_view holds = "each distinct value once, in segments that never move";
 };
+
 struct thread_safe_value_interner_decl : stable_value_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_value_interner";
@@ -108,6 +112,7 @@ struct arena_interner_decl : record_interner_decl
     static constexpr std::string_view description = "arena interner (records serialized by cista into a byte arena)";
     static constexpr std::string_view holds = "each distinct record once, serialized into an arena";
 };
+
 struct thread_safe_arena_interner_decl : arena_interner_decl
 {
     static constexpr std::string_view id = "thread_safe_arena_interner";
@@ -124,36 +129,43 @@ struct declaration_of<repr::RecordInterner<T, false, false, H>>
     using declaration = record_interner_decl;
     static constexpr property_set roles = roles_of<urd::pool<T, H>>();
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::RecordInterner<T, false, true, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = stable_record_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::RecordInterner<T, true, true, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = thread_safe_record_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::ValueInterner<T, false, false, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = value_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::ValueInterner<T, false, true, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = stable_value_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::ValueInterner<T, true, true, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = thread_safe_value_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::ArenaInterner<T, false, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {
     using declaration = arena_interner_decl;
 };
+
 template<typename T, typename H>
 struct declaration_of<repr::ArenaInterner<T, true, H>> : declaration_of<repr::RecordInterner<T, false, false, H>>
 {

@@ -54,6 +54,7 @@ concept set_by_words = is_store<Set> && has<typename Set::representation, dense,
 template<combinable_set Set>
 void set_intersection(const Set& lhs, const Set& rhs, Set& into)
 { detail::set_intersection_by_iteration(lhs, rhs, into); }
+
 template<combinable_set Set>
     requires detail::set_by_words<Set>
 void set_intersection(const Set& lhs, const Set& rhs, Set& into)

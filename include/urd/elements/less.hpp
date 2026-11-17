@@ -131,6 +131,7 @@ struct Less<M>
         return lhs.has_value() && Less<optional_value_t<M>> {}(*lhs, *rhs);
     }
 };
+
 /// Variants (std's or cista's) order by the index they hold, then by the alternative.
 template<template<typename...> typename V, typename... Ts>
     requires variant_value<V<Ts...>>
@@ -154,6 +155,7 @@ struct Less<V<Ts...>>
                    rhs);
     }
 };
+
 /// An identified type orders as what identifies it (detail::identity); it also orders with what identifies it given
 /// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
 namespace detail
@@ -174,6 +176,7 @@ constexpr bool less_members(const T& lhs, const T& rhs)
     else
         return !Less<Member> {}(std::invoke(M, rhs), std::invoke(M, lhs)) && less_members<T, Ms...>(lhs, rhs);
 }
+
 template<typename T, auto... Ms>
 constexpr bool less_members(const T& lhs, const T& rhs, Members<Ms...> /*members*/)
 {
@@ -193,14 +196,17 @@ struct Less<T>
     constexpr bool operator()(const T& lhs, const T& rhs) const
         requires(detail::members_ordered<T>(T::identifying_members()))
     { return detail::less_members(lhs, rhs, T::identifying_members()); }
+
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const
         requires OrderedByLess<detail::identity_t<T>>
     { return Less<detail::identity_t<T>> {}(detail::identity(lhs), rhs); }
+
     template<identity_of<T> U>
     constexpr bool operator()(const U& lhs, const T& rhs) const
         requires OrderedByLess<detail::identity_t<T>>
     { return Less<detail::identity_t<T>> {}(lhs, detail::identity(rhs)); }
+
     template<identity_of<T> U, identity_of<T> V>
     constexpr bool operator()(const U& lhs, const V& rhs) const
         requires OrderedByLess<detail::identity_t<T>>
@@ -237,6 +243,7 @@ struct LessEqual
     constexpr bool operator()(const U& lhs, const V& rhs) const
     { return !detail::order_of<T, U> {}(rhs, lhs); }
 };
+
 template<typename T = void>
 struct Greater
 {
@@ -247,6 +254,7 @@ struct Greater
     constexpr bool operator()(const U& lhs, const V& rhs) const
     { return detail::order_of<T, U> {}(rhs, lhs); }
 };
+
 template<typename T = void>
 struct GreaterEqual
 {
@@ -257,6 +265,7 @@ struct GreaterEqual
     constexpr bool operator()(const U& lhs, const V& rhs) const
     { return !detail::order_of<T, U> {}(lhs, rhs); }
 };
+
 template<typename T = void>
 struct ThreeWayCompare
 {

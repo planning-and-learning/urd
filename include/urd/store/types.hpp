@@ -102,6 +102,7 @@ struct facet_defaults
 {
     static constexpr bool hands_out_indices = false;
 };
+
 /// When a Store has facet F: `on<R, S>()`, asked only of the facets its kind lists (urd/kinds.hpp). Always, unless
 /// the facet's header (urd/store/<facet>.hpp) specializes it. With R void it is asked from the spec alone, before a
 /// container is chosen (what a kind offers; whether its container is numbered).
@@ -121,16 +122,19 @@ facet_list<As..., Bs...> operator|(facet_list<As...> /*as*/, facet_list<Bs...> /
 /// so that each Store asks only these, not every facet of its kind (brokkr's template rules, rule 21).
 template<typename List>
 struct indexing_facets;
+
 template<template<typename, typename, typename> class... Fs>
 struct indexing_facets<facet_list<Fs...>>
 {
     using type = decltype((facet_list<> {} | ... | std::conditional_t<facet_condition<Fs>::hands_out_indices, facet_list<Fs>, facet_list<>> {}));
 };
+
 /// Whether a Store for spec S has a facet that hands out indices for views, each such facet of its kind asked by its
 /// own condition from the spec alone.
 template<typename S, template<typename, typename, typename> class... Fs>
 consteval bool hands_out_indices(facet_list<Fs...> /*facets*/)
 { return (facet_condition<Fs>::template on<void, S>() || ...); }
+
 /// The container R of a Store for spec S, numbered where the Store hands out indices for views (urd::layer).
 template<typename S, typename R>
 using numbered_t = std::conditional_t<hands_out_indices<S>(typename indexing_facets<facets_of<typename S::kind>>::type {}), repr::Numbered<R>, R>;
@@ -150,12 +154,15 @@ struct store_access
     template<typename Store>
     static auto& representation(Store& store)
     { return store.m_representation; }
+
     template<typename Store>
     static const auto& representation(const Store& store)
     { return store.m_representation; }
+
     template<typename Derived, typename Facet>
     static auto& of(Facet& facet)
     { return representation(static_cast<Derived&>(facet)); }
+
     template<typename Derived, typename Facet>
     static const auto& of(const Facet& facet)
     { return representation(static_cast<const Derived&>(facet)); }
@@ -168,6 +175,7 @@ template<bool On, typename Facet>
 struct facet_if : Facet
 {
 };
+
 template<typename Facet>
 struct facet_if<false, Facet>
 {
@@ -176,6 +184,7 @@ struct facet_if<false, Facet>
 /// The facets a Store inherits: those its kind lists (urd/kinds.hpp) whose conditions hold.
 template<typename Derived, typename R, typename S, typename List>
 struct facet_bases;
+
 template<typename Derived, typename R, typename S, template<typename, typename, typename> class... Fs>
 struct facet_bases<Derived, R, S, facet_list<Fs...>> : facet_if<facet_condition<Fs>::template on<R, S>(), Fs<Derived, R, S>>...
 {

@@ -48,6 +48,7 @@ struct segmented_vector_decl
     static constexpr std::string_view description = "segmented vector (elements never move)";
     static constexpr std::string_view holds = "doubling segments; stable references";
 };
+
 template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, false, I>>
 {
@@ -69,6 +70,7 @@ struct concurrent_segmented_vector_decl : segmented_vector_decl
     static constexpr std::string_view description = "segmented vector, thread-safe appends";
     static constexpr std::string_view holds = "doubling segments; stable references; appends from threads";
 };
+
 template<typename T, std::size_t N, typename I>
 struct declaration_of<repr::SegmentedVector<T, N, true, I>>
 {

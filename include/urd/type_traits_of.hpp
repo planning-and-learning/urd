@@ -33,6 +33,7 @@ struct held_as
     using kind = void;
     using elements = void;
 };
+
 template<typename T>
     requires is_store<T>
 struct held_as<T>
@@ -43,6 +44,7 @@ struct held_as<T>
     using kind = typename container_traits<T>::kind;
     using elements = typename container_traits<T>::element_type;
 };
+
 template<typename T>
     requires(!is_store<T> && declared_container<T> && std::ranges::range<T>)
 struct held_as<T>
@@ -68,46 +70,57 @@ struct can_hash
 {
     static constexpr std::string_view name = "can_hash";
     static constexpr std::string_view description = "urd::Hash and urd::EqualTo hash and compare it";
+
     template<typename T>
     static consteval bool holds()
     { return hashable<T>; }
 };
+
 struct an_index
 {
     static constexpr std::string_view name = "an_index";
     static constexpr std::string_view description = "an index 0..n-1 (index_of)";
+
     template<typename T>
     static consteval bool holds()
     { return indexable<T>; }
 };
+
 struct copies_as_bytes
 {
     static constexpr std::string_view name = "copies_as_bytes";
     static constexpr std::string_view description = "trivially copyable: copied as bytes";
+
     template<typename T>
     static consteval bool holds()
     { return std::is_trivially_copyable_v<T>; }
 };
+
 struct destroys_trivially
 {
     static constexpr std::string_view name = "destroys_trivially";
     static constexpr std::string_view description = "trivially destructible: destroyed without code";
+
     template<typename T>
     static consteval bool holds()
     { return std::is_trivially_destructible_v<T>; }
 };
+
 struct names_members
 {
     static constexpr std::string_view name = "names_members";
     static constexpr std::string_view description = "names its members for cista (cista_members)";
+
     template<typename T>
     static consteval bool holds()
     { return Serializable<T>; }
 };
+
 struct whole_value
 {
     static constexpr std::string_view name = "whole_value";
     static constexpr std::string_view description = "a value interned whole: no Store and no container of elements, which a pool holds as rows";
+
     template<typename T>
     static consteval bool holds()
     { return !detail::held_as<T>::row; }
@@ -118,22 +131,27 @@ struct own_order
 {
     static constexpr std::string_view name = "own_order";
     static constexpr std::string_view description = "ordered by urd::Less: no order_by";
+
     template<typename Ordered, typename C>
     static consteval bool holds()
     { return std::same_as<C, Less<Ordered>>; }
 };
+
 struct natural_ordered
 {
     static constexpr std::string_view name = "natural_ordered";
     static constexpr std::string_view description = "ordered as sorted means";
+
     template<typename Ordered, typename C>
     static consteval bool holds()
     { return natural_order<C, Ordered>; }
 };
+
 struct integral_priority
 {
     static constexpr std::string_view name = "integral_priority";
     static constexpr std::string_view description = "what the order compares is an integral number";
+
     template<typename Ordered, typename C>
     static consteval bool holds()
     {
@@ -152,14 +170,17 @@ struct urd::traits_of_role<urd::role::element>
     using type =
         boost::mp11::mp_list<trait::can_hash, trait::an_index, trait::copies_as_bytes, trait::destroys_trivially, trait::names_members, trait::whole_value>;
 };
+
 template<>
 struct urd::traits_of_role<urd::role::mapped> : traits_of_role<role::element>
 {
 };
+
 template<>
 struct urd::traits_of_role<urd::role::row_element> : traits_of_role<role::element>
 {
 };
+
 template<>
 struct urd::traits_of_role<urd::role::order>
 {
@@ -181,11 +202,13 @@ struct role_facts<role::row, Asked>
 /// The facts of the types one role is played by (plays<Role, Args…>), about that role.
 template<typename Plays, typename Asked>
 struct played_facts;
+
 template<typename Role, typename... Args, typename Asked>
 struct played_facts<plays<Role, Args...>, Asked>
 {
     static consteval property_set get() { return about(role_v<Role>, role_facts<Role, Asked>::template of<Args...>()); }
 };
+
 /// Each role's facts joined in one pack expansion: no lambda is instantiated per request (brokkr's template rules, rule 22).
 template<typename Asked, typename... Plays>
 consteval property_set played_roles(boost::mp11::mp_list<Plays...> /*played*/)
@@ -194,6 +217,7 @@ consteval property_set played_roles(boost::mp11::mp_list<Plays...> /*played*/)
     ((result = with(result, played_facts<Plays, Asked>::get())), ...);
     return result;
 }
+
 /// The facts by role of Data, a kind with its element types (urd::set<K>, …) or a request's spec, ordered by Order:
 /// each role its played types (Data::played<Order>: plays<Role, Args…>) have, about that role, of the traits Asked
 /// asks. What a container's template arguments make (declaration_of::roles: every trait) and what a request's data is.

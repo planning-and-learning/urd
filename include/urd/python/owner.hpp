@@ -50,14 +50,17 @@ template<typename T, typename C, typename K>
 struct type_caster<urd::index_view<T, C, K>> : urd_view_caster<urd::index_view<T, C, K>>
 {
 };
+
 template<typename T, typename C, typename R>
 struct type_caster<urd::borrowed_view<T, C, R>> : urd_view_caster<urd::borrowed_view<T, C, R>>
 {
 };
+
 template<typename T, typename C, typename R>
 struct type_caster<urd::owning_view<T, C, R>> : urd_view_caster<urd::owning_view<T, C, R>>
 {
 };
+
 template<typename T, typename C, typename R>
 struct type_caster<urd::shared_view<T, C, R>> : urd_view_caster<urd::shared_view<T, C, R>>
 {

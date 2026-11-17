@@ -108,6 +108,7 @@ enum class scale : std::uint8_t
     delta,
     changes,
 };
+
 /// A scale's name.
 constexpr std::string_view name(scale of)
 {
@@ -124,6 +125,7 @@ constexpr std::string_view name(scale of)
     }
     return {};
 }
+
 constexpr scale scale_of(quantity of)
 {
     switch (of)
@@ -163,6 +165,7 @@ template<typename... Ops>
 struct operation_list
 {
 };
+
 /// urd's operations: each its words, and the key of its entry in a container's costs (cost_table).
 namespace operation
 {
@@ -172,76 +175,91 @@ struct insert
     static constexpr std::string_view name = "insert";
     static constexpr std::string_view description = "a set's or map's insert, a sequence's push_back";
 };
+
 struct lookup
 {
     static constexpr std::string_view name = "lookup";
     static constexpr std::string_view description = "find, contains, a map's value by key";
 };
+
 struct ordered_lookup
 {
     static constexpr std::string_view name = "ordered_lookup";
     static constexpr std::string_view description = "lower_bound";
 };
+
 struct erase
 {
     static constexpr std::string_view name = "erase";
     static constexpr std::string_view description = "by key, or by position";
 };
+
 struct clear
 {
     static constexpr std::string_view name = "clear";
     static constexpr std::string_view description = "every element at once";
 };
+
 struct iterate
 {
     static constexpr std::string_view name = "iterate";
     static constexpr std::string_view description = "every element in turn";
 };
+
 struct access
 {
     static constexpr std::string_view name = "access";
     static constexpr std::string_view description = "by position or handle";
 };
+
 struct push
 {
     static constexpr std::string_view name = "push";
     static constexpr std::string_view description = "a queue's";
 };
+
 struct pop
 {
     static constexpr std::string_view name = "pop";
     static constexpr std::string_view description = "a queue's";
 };
+
 struct top
 {
     static constexpr std::string_view name = "top";
     static constexpr std::string_view description = "a queue's";
 };
+
 struct merge
 {
     static constexpr std::string_view name = "merge";
     static constexpr std::string_view description = "a partition's";
 };
+
 struct insert_row
 {
     static constexpr std::string_view name = "insert_row";
     static constexpr std::string_view description = "a pool's insert";
 };
+
 struct find_row
 {
     static constexpr std::string_view name = "find_row";
     static constexpr std::string_view description = "a pool's find";
 };
+
 struct scope
 {
     static constexpr std::string_view name = "scope";
     static constexpr std::string_view description = "push_scope, changes, pop_scope";
 };
+
 struct adjacency
 {
     static constexpr std::string_view name = "adjacency";
     static constexpr std::string_view description = "a graph's adjacent(u, v) and edge(u, v)";
 };
+
 struct endpoints
 {
     static constexpr std::string_view name = "endpoints";
@@ -269,6 +287,7 @@ struct cost_table
         ((std::same_as<Op, typename Entries::operation> ? void(found = Entries::value) : void()), ...);
         return found;
     }
+
     template<typename Op>
     static constexpr bool passed_on()
     { return false; }
@@ -280,12 +299,14 @@ template<typename Part, typename... Entries>
 struct costs_over
 {
     using part = Part;
+
     template<typename Op>
     static constexpr std::optional<cost> of()
     {
         const auto own = cost_table<Entries...>::template of<Op>();
         return own ? own : Part::operation_costs::template of<Op>();
     }
+
     template<typename Op>
     static constexpr bool passed_on()
     { return !cost_table<Entries...>::template of<Op>() && Part::operation_costs::template of<Op>(); }

@@ -56,6 +56,7 @@ public:
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): an offset into the segment, which make_room sized
         return segment.storage.get() + aligned;
     }
+
     /// Copies `amount` bytes in, at an address aligned to `align` (a power of two), and gives that address.
     const std::uint8_t* write(const std::uint8_t* data, std::size_t amount, std::size_t align = 1)
     {
@@ -78,9 +79,12 @@ public:
 
     /// The bytes written, padding included.
     [[nodiscard]] std::size_t size() const noexcept { return m_size; }
+
     [[nodiscard]] bool empty() const noexcept { return m_size == 0; }
+
     /// The bytes held by the segments.
     [[nodiscard]] std::size_t capacity() const noexcept { return m_capacity; }
+
     [[nodiscard]] std::size_t segments() const noexcept { return m_segments.size(); }
 
 private:

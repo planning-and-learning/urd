@@ -31,19 +31,24 @@ struct graph_rows
     template<typename Rows>
     [[nodiscard]] static auto row(const Rows& rows, typename Rows::vertex_type v, std::size_t p)
     { return rows.row(v, p); }
+
     template<typename Rows>
     [[nodiscard]] static auto in_row(const Rows& rows, typename Rows::vertex_type v, std::size_t p)
     { return rows.in_row(v, p); }
+
     /// Where part p's vertices begin, how many it has, and the sizes of all parts.
     template<typename Rows>
     [[nodiscard]] static std::size_t first_of(const Rows& rows, std::size_t p)
     { return rows.first_of(p); }
+
     template<typename Rows>
     [[nodiscard]] static std::size_t size_of(const Rows& rows, std::size_t p)
     { return rows.size_of(p); }
+
     template<typename Rows>
     [[nodiscard]] static std::vector<std::size_t> part_sizes(const Rows& rows)
     { return rows.part_sizes(); }
+
     /// Makes every vertex of part p adjacent to every vertex of part q, their rows filled.
     template<typename Rows>
     static void connect_parts(Rows& rows, std::size_t p, std::size_t q)
@@ -62,6 +67,7 @@ struct Parts
     std::vector<std::uint32_t> of;
 
     friend bool operator==(const Parts&, const Parts&) = default;
+
     static constexpr auto memory_members() noexcept { return Members<&Parts::first, &Parts::of> {}; }
 };
 
@@ -73,19 +79,24 @@ public:
     using size_type = std::size_t;
 
     [[nodiscard]] size_type num_vertices() const noexcept { return m_parts.of.size(); }
+
     [[nodiscard]] auto vertices() const
     {
         return std::views::iota(std::size_t { 0 }, num_vertices()) | std::views::transform([](std::size_t at) { return index_of<V>::from_index(at); });
     }
+
     /// The neighbours of `u`, in increasing order.
     [[nodiscard]] auto neighbours(V u) const { return keys_of(vertex_at(u), rows_out()); }
+
     /// The data of `v`: rows of bits hold none, so the one value of a unit.
     [[nodiscard]] std::monostate vertex_value(V v) const
     {
         [[maybe_unused]] const auto checked = vertex_at(v);
         return {};
     }
+
     [[nodiscard]] size_type out_degree(V u) const { return count_of(vertex_at(u), rows_out()); }
+
     [[nodiscard]] bool adjacent(V u, V v) const
     {
         const auto p = m_parts.of[index(vertex_at(v))];
@@ -93,22 +104,28 @@ public:
         const auto at = index(v) - m_parts.first[p];
         return at < bits.size() && bits.test(at);
     }
+
     /// The vertices whose neighbour `v` is: its neighbours where undirected.
     [[nodiscard]] auto in_neighbours(V v) const
         requires Undirected
     { return neighbours(v); }
+
     [[nodiscard]] auto in_neighbours(V v) const
         requires InRows
     { return keys_of(vertex_at(v), rows_in()); }
+
     [[nodiscard]] size_type in_degree(V v) const
         requires Undirected
     { return out_degree(v); }
+
     [[nodiscard]] size_type in_degree(V v) const
         requires InRows
     { return count_of(vertex_at(v), rows_in()); }
 
     [[nodiscard]] size_type num_parts() const noexcept { return m_parts.first.size() - 1; }
+
     [[nodiscard]] size_type part_of(V v) const { return m_parts.of[index(vertex_at(v))]; }
+
     [[nodiscard]] auto part(std::size_t p) const
     {
         if (p >= num_parts())
@@ -125,7 +142,9 @@ protected:
 
     /// The index of part p's first vertex, and how many it has: whose keys a row of the part holds, from its bit 0.
     [[nodiscard]] std::size_t first_of(std::size_t p) const { return m_parts.first[p]; }
+
     [[nodiscard]] std::size_t size_of(std::size_t p) const { return m_parts.first[p + 1] - m_parts.first[p]; }
+
     /// The sizes of its parts.
     [[nodiscard]] std::vector<std::size_t> part_sizes() const
     {
@@ -136,6 +155,7 @@ protected:
     }
 
     [[nodiscard]] static std::size_t index(V v) { return index_of<V>::to_index(v); }
+
     /// `v`, a vertex it has; else std::out_of_range.
     [[nodiscard]] V vertex_at(V v) const
     {
@@ -143,6 +163,7 @@ protected:
             throw std::out_of_range("urd::graph: a vertex that is not there");
         return v;
     }
+
     /// Takes the parts' sizes, which add up to `vertices`; a graph that is not partitioned is one part of all.
     void adopt(std::size_t vertices, std::span<const std::size_t> sizes)
     {
@@ -158,6 +179,7 @@ protected:
             m_parts.of.insert(m_parts.of.end(), parts[p], static_cast<std::uint32_t>(p));
         }
     }
+
     /// An edge's endpoints are vertices, and partitioned, of different parts; else std::invalid_argument.
     void check_edge(V u, V v) const
     {
@@ -166,6 +188,7 @@ protected:
         if (Partitioned && m_parts.of[index(u)] == m_parts.of[index(v)])
             throw std::invalid_argument("urd::graph: a partitioned graph has no edge inside a part");
     }
+
     // The containers built on it list it among the members they own memory through (rule D3).
     // NOLINTBEGIN(cppcoreguidelines-non-private-member-variables-in-classes)
     Parts m_parts;
@@ -173,15 +196,18 @@ protected:
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }
+
     /// How a vertex's rows, or in-rows, are read.
     static constexpr auto rows_out()
     {
         return [](const Derived& graph, V v, std::size_t p) { return urd::detail::graph_rows::row(graph, v, p); };
     }
+
     static constexpr auto rows_in()
     {
         return [](const Derived& graph, V v, std::size_t p) { return urd::detail::graph_rows::in_row(graph, v, p); };
     }
+
     /// The vertices whose bits the rows of `u` (as `rows` reads them) set, part after part.
     template<typename Rows>
     [[nodiscard]] auto keys_of(V u, Rows rows) const
@@ -195,6 +221,7 @@ private:
                    })
                | std::views::join;
     }
+
     template<typename Rows>
     [[nodiscard]] std::size_t count_of(V u, Rows rows) const
     {
@@ -214,10 +241,12 @@ template<typename G>
     requires is_store<G>
 const auto& rows_of(const G& graph)
 { return urd::detail::store_access::representation(graph); }
+
 template<typename G>
     requires is_store<G>
 auto& rows_of(G& graph)
 { return urd::detail::store_access::representation(graph); }
+
 template<typename G>
     requires(!is_store<G>)
 const G& rows_of(const G& graph)

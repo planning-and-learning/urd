@@ -50,6 +50,7 @@ struct probe<facet::sizing> : probe_defaults
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.size(); };
 };
+
 template<>
 struct probe<facet::equality>
 {
@@ -58,6 +59,7 @@ struct probe<facet::equality>
     template<typename T, typename R, typename S>
     static constexpr bool also = urd::EqualityComparableByEqualTo<R>;
 };
+
 template<>
 struct probe<facet::ordering>
 {
@@ -67,18 +69,21 @@ struct probe<facet::ordering>
     template<typename T, typename R, typename S>
     static constexpr bool also = urd::OrderedByLess<std::ranges::range_value_t<T>>;
 };
+
 template<>
 struct probe<facet::ordered_lookup> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, const key_of<S>& key) { facet.lower_bound(key); };
 };
+
 template<>
 struct probe<facet::contiguous_data> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.data(); };
 };
+
 template<>
 struct probe<facet::reserving>
 {
@@ -87,72 +92,84 @@ struct probe<facet::reserving>
     template<typename T, typename R, typename S>
     static constexpr bool also = urd::has<R, urd::reservable>;
 };
+
 template<>
 struct probe<facet::scopes> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.push_scope(); };
 };
+
 template<>
 struct probe<facet::layers> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.parent(); };
 };
+
 template<>
 struct probe<facet::shape> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.reset(); };
 };
+
 template<>
 struct probe<facet::ends> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.front(); };
 };
+
 template<>
 struct probe<facet::iteration> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.begin(); };
 };
+
 template<>
 struct probe<facet::lookup> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, const key_of<S>& key) { facet.find(key); };
 };
+
 template<>
 struct probe<facet::positions> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, typename B::position_type position) { facet.at(position); };
 };
+
 template<>
 struct probe<facet::insertion_positions> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, typename B::index_type index) { facet.at(index); };
 };
+
 template<>
 struct probe<facet::insertion> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet, element_of<S>&& element) { facet.emplace(std::move(element)); };
 };
+
 template<>
 struct probe<facet::removal> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.clear(); };
 };
+
 template<>
 struct probe<facet::appending> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet, element_of<S>&& element) { facet.push_back(std::move(element)); };
 };
+
 /// assign copies: only a copyable element (takes<facet::assigning> below).
 template<>
 struct probe<facet::assigning>
@@ -162,30 +179,35 @@ struct probe<facet::assigning>
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet, const element_of<S>& element) { facet.assign(std::size_t {}, element); };
 };
+
 template<>
 struct probe<facet::values_by_key> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet, const key_of<S>& key) { facet.at(key); };
 };
+
 template<>
 struct probe<facet::entries> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.values(); };
 };
+
 template<>
 struct probe<facet::inverse> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, const typename S::mapped_type& value) { facet.keys(value); };
 };
+
 template<>
 struct probe<facet::graph> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.num_vertices(); };
 };
+
 template<>
 struct probe<facet::graph_building>
 {
@@ -195,36 +217,42 @@ struct probe<facet::graph_building>
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.clear(); };
 };
+
 template<>
 struct probe<facet::graph_removal> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.remove_edge(std::size_t {}); };
 };
+
 template<>
 struct probe<facet::graph_edges> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.num_edges(); };
 };
+
 template<>
 struct probe<facet::graph_parts> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.num_parts(); };
 };
+
 template<>
 struct probe<facet::grouping> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet, const key_of<S>& key) { facet.contains(key); };
 };
+
 template<>
 struct probe<facet::queue_access> : probe_defaults
 {
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(B& facet) { facet.pop(); };
 };
+
 template<>
 struct probe<facet::records>
 {
@@ -234,6 +262,7 @@ struct probe<facet::records>
     template<typename B, typename T, typename S>
     static constexpr bool on_facet = requires(const B& facet) { facet.begin(); };
 };
+
 template<>
 struct probe<facet::set_algebra>
 {
@@ -269,6 +298,7 @@ struct takes
 {
     static constexpr bool any = false;
 };
+
 /// What a facet that takes elements has unless it says otherwise: it takes the element, and offers its members wherever
 /// it is on.
 struct takes_defaults
@@ -292,6 +322,7 @@ struct takes<facet::insertion> : takes_defaults
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } }
                                   + int { requires(B& facet, std::initializer_list<element_of<S>> elements) { facet.insert(elements); } }
                                   + int { requires(B& facet, const element_of<S>* first) { facet.insert(first, first); } };
+
     /// A map whose key is move-only takes its keys by values_by_key's try_emplace.
     template<typename B, typename S>
     static void move(B& facet, element_of<S>&& element)
@@ -300,6 +331,7 @@ struct takes<facet::insertion> : takes_defaults
             facet.insert(std::move(element));
     }
 };
+
 template<>
 struct takes<facet::appending> : takes_defaults
 {
@@ -308,10 +340,12 @@ struct takes<facet::appending> : takes_defaults
     static constexpr int copying = 1;
     template<typename B, typename S>
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.push_back(element); } };
+
     template<typename B, typename S>
     static void move(B& facet, element_of<S>&& element)
     { facet.push_back(std::move(element)); }
 };
+
 /// Assigning only copies: a Store of move-only elements is assigned another Store, moved.
 template<>
 struct takes<facet::assigning> : takes_defaults
@@ -322,11 +356,13 @@ struct takes<facet::assigning> : takes_defaults
     template<typename B, typename S>
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.assign(std::size_t {}, element); } }
                                   + int { requires(B& facet, const element_of<S>* first) { facet.assign(first, first); } };
+
     template<typename B, typename S>
     static void move(B& /*facet*/, const element_of<S>& /*element*/)
     {
     }
 };
+
 template<>
 struct takes<facet::queue_access> : takes_defaults
 {
@@ -335,10 +371,12 @@ struct takes<facet::queue_access> : takes_defaults
     static constexpr int copying = 1;
     template<typename B, typename S>
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.push(element); } };
+
     template<typename B, typename S>
     static void move(B& facet, element_of<S>&& element)
     { facet.push(std::move(element)); }
 };
+
 /// Slots acquired by key (urd::keyed<K>) take no element.
 template<>
 struct takes<facet::slots> : takes_defaults
@@ -350,10 +388,12 @@ struct takes<facet::slots> : takes_defaults
     static constexpr int copying = 1;
     template<typename B, typename S>
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } };
+
     template<typename B, typename S>
     static void move(B& facet, element_of<S>&& element)
     { facet.insert(std::move(element)); }
 };
+
 /// A pool of records interns: it reads a record (a const T&, or one insert(key, make)'s make refers to), which the arena
 /// serializes and a by-value interner copies (a copyable record; the calls resolve for any record, and a move-only one
 /// fails at its deleted copy constructor). insert(T&&) and a make that gives a T hand the record over.
@@ -375,6 +415,7 @@ struct takes<facet::records> : takes_defaults
     static constexpr int copies = int { requires(B& facet, const element_of<S>& element) { facet.insert(element); } }
                                   + int { requires(B& facet, const urd::prehashed<element_of<S>>& key) { facet.insert(key); } }
                                   + int { requires(B& facet, const element_of<S>& key, refers<S> make) { facet.insert(key, make); } };
+
     template<typename B, typename S>
     static void move(B& facet, element_of<S>&& element)
     {
@@ -387,6 +428,7 @@ struct takes<facet::records> : takes_defaults
         facet.insert(std::move(element));
     }
 };
+
 /// A map with unique keys stores a key where it is new.
 template<>
 struct takes<facet::values_by_key> : takes_defaults
@@ -400,6 +442,7 @@ struct takes<facet::values_by_key> : takes_defaults
     static constexpr int copying = 1;
     template<typename B, typename S>
     static constexpr int copies = int { requires(B& facet, const typename S::key_type& key) { facet.try_emplace(key); } };
+
     template<typename B, typename S>
     static void move(B& facet, typename S::key_type&& key)
     { facet.try_emplace(std::move(key)); }

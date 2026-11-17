@@ -23,6 +23,7 @@ struct Node
 
     // Written out: a comparison defaulted in the class would ask the Stores', which ask Node's.
     friend bool operator==(const Node& lhs, const Node& rhs) { return lhs.value == rhs.value && lhs.children == rhs.children; }
+
     friend std::strong_ordering operator<=>(const Node& lhs, const Node& rhs)
     {
         if (const auto by_value = lhs.value <=> rhs.value; by_value != 0)
@@ -36,14 +37,17 @@ struct Node
 /// Two types that hold each other through a variant.
 struct Leaf;
 struct Branch;
+
 struct Forest
 {
     urd::Store<urd::sequence<std::variant<Leaf, Branch>>> trees;
 };
+
 struct Leaf
 {
     int value = 0;
 };
+
 struct Branch
 {
     Forest below;

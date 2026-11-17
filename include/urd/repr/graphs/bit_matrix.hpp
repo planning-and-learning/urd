@@ -56,6 +56,7 @@ public:
         set_back(u, v);
         return added;
     }
+
     void clear()
     {
         m_rows.reset();
@@ -70,6 +71,7 @@ private:
     /// The neighbours of `v` in part `p` (bit i for the part's i-th vertex), and with InRows the vertices of part p that
     /// `v` is a neighbour of.
     [[nodiscard]] bitset_span<const word_t> row(V v, std::size_t p) const { return std::as_const(m_rows)[base::index(v)][static_cast<std::ptrdiff_t>(p)]; }
+
     [[nodiscard]] bitset_span<const word_t> in_row(V v, std::size_t p) const
         requires InRows
     { return std::as_const(m_in_rows)[base::index(v)][static_cast<std::ptrdiff_t>(p)]; }
@@ -97,13 +99,16 @@ private:
         const auto p = this->part_of(v);
         rows[base::index(u)][static_cast<std::ptrdiff_t>(p)].set(base::index(v) - this->first_of(p));
     }
+
     /// The other side of an edge: `u` in the row of `v` where undirected, in its in-row with InRows.
     void set_back(V u, V v)
         requires Undirected
     { set_bit(m_rows, v, u); }
+
     void set_back(V u, V v)
         requires InRows
     { set_bit(m_in_rows, v, u); }
+
     void set_back(V /*u*/, V /*v*/)
         requires(!Undirected && !InRows)
     {

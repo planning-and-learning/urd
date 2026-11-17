@@ -44,6 +44,7 @@ struct ordered_map_decl
     static constexpr std::string_view description = "ordered map (keys in an insertion-ordered set, values beside them)";
     static constexpr std::string_view holds = "its key set + n values in order";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::IndexedSet<K>, V>>
 {
@@ -77,6 +78,7 @@ struct dense_ordered_map_decl
     static constexpr std::string_view description = "dense ordered map (indices in an insertion-ordered sparse set, values beside them)";
     static constexpr std::string_view holds = "its sparse set + n values in order";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::OrderedMap<repr::SparseSet<K, true>, V>>
 {

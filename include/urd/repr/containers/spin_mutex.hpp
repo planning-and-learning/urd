@@ -19,6 +19,7 @@ class SpinBackoff
 
 public:
     void reset() noexcept { m_count = 1; }
+
     void pause() noexcept
     {
         if (m_count <= LOOPS_BEFORE_YIELD)
@@ -108,11 +109,13 @@ public:
             }
         }
     }
+
     bool try_lock() noexcept
     {
         auto state = m_state.load(std::memory_order_relaxed);
         return !(state & BUSY) && m_state.compare_exchange_strong(state, WRITER);
     }
+
     void unlock() noexcept { m_state &= READERS; }
 
     void lock_shared() noexcept
@@ -121,6 +124,7 @@ public:
             if (try_lock_shared())
                 return;
     }
+
     bool try_lock_shared() noexcept
     {
         if (m_state.load(std::memory_order_relaxed) & (WRITER | WRITER_PENDING))
@@ -130,6 +134,7 @@ public:
         m_state -= ONE_READER;
         return false;
     }
+
     void unlock_shared() noexcept { m_state -= ONE_READER; }
 };
 
@@ -137,6 +142,7 @@ public:
 struct NoLock
 {
     static void lock() noexcept {}
+
     static void unlock() noexcept {}
 };
 

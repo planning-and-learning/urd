@@ -49,12 +49,15 @@ public:
     }
 
     [[nodiscard]] size_type size() const { return m_parent.size(); }
+
     [[nodiscard]] bool empty() const { return m_parent.empty(); }
+
     /// Whether `element` is an element: its index is below size().
     [[nodiscard]] bool contains(const K& element) const { return index_of<K>::to_index(element) < m_parent.size(); }
 
     /// The element that names the class of `element`; it changes only when the class is merged.
     [[nodiscard]] K find(const K& element) const { return index_of<K>::from_index(root(index_of<K>::to_index(element))); }
+
     /// Joins the classes of `lhs` and `rhs`; false where they were one already.
     bool merge(const K& lhs, const K& rhs)
     {

@@ -51,6 +51,7 @@ struct Shaped
 
     explicit Shaped(const urd::column_widths& key, std::size_t reserve = 0) : shape(key) { buffer.reserve(reserve); }
 };
+
 using KeyedPool = urd::Store<urd::slots<Shaped>, urd::keyed<urd::column_widths>>;
 using ConcurrentPool = urd::Store<urd::slots<Scratch>, urd::concurrent>;
 
@@ -142,10 +143,12 @@ struct PoolOwner : std::enable_shared_from_this<PoolOwner>
     std::size_t* in_use_at_destruction;
 
     explicit PoolOwner(std::size_t* in_use) : in_use_at_destruction(in_use) {}
+
     PoolOwner(const PoolOwner&) = delete;
     PoolOwner& operator=(const PoolOwner&) = delete;
     PoolOwner(PoolOwner&&) = delete;
     PoolOwner& operator=(PoolOwner&&) = delete;
+
     ~PoolOwner() { *in_use_at_destruction = pool.size(); }
 };
 

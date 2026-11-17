@@ -87,6 +87,7 @@ int main()
     {
         int value;
     };
+
     (void) Store<set<Opaque>>();
 #elif URD_CASE == 20  // an interner's element is its index's: changing it in place would break the lookup
     auto symbols = Store<set<int>, urd::positional> { 1, 2 };
@@ -129,6 +130,7 @@ int main()
     {
         int x = 0;
     };
+
     using S = Store<pool<Point>>;
     (void) S();
 #elif URD_CASE == 33  // flat is how a pool stores records, a question a set does not answer
@@ -138,16 +140,20 @@ int main()
     struct Note
     {
         std::string text;
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Note::text> {}; }
     };
+
     using S = Store<pool<Note>, urd::flat>;
     (void) S();
 #elif URD_CASE == 35  // a stored record is frozen: read by index, never written through it
     struct Point
     {
         int x = 0;
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x> {}; }
     };
+
     auto points = Store<pool<Point>, urd::flat>();
     const auto at = points.insert(Point { 1 }).first;
     points[at].x = 2;
@@ -225,8 +231,10 @@ int main()
     struct Name
     {
         int id = 0;
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Name::id> {}; }
     };
+
     using S = Store<pool<Name>, urd::flat, urd::layered>;
     (void) S().begin();
 #elif URD_CASE == 60  // a queue has no direction: bidirectional is no question its requests answer

@@ -15,6 +15,7 @@ namespace
 struct Vertex
 {
 };
+
 using Id = urd::index<Vertex>;
 using Levels = urd::Store<urd::sequence<int, Id>>;
 

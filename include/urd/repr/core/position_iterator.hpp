@@ -45,22 +45,28 @@ public:
     struct arrow
     {
         value_type value;
+
         const value_type* operator->() const { return std::addressof(value); }
     };
 
     PositionIterator() = default;
+
     PositionIterator(Owner* owner, std::size_t position) noexcept : m_owner(owner), m_position(position) {}
+
     operator PositionIterator<const Owner, Read, Concept>() const noexcept
         requires(!std::is_const_v<Owner>)
     { return { m_owner, m_position }; }
 
     reference operator*() const { return Read {}(*m_owner, m_position); }
+
     auto operator->() const
         requires std::is_lvalue_reference_v<reference>
     { return std::addressof(**this); }
+
     arrow operator->() const
         requires(!std::is_lvalue_reference_v<reference>)
     { return { **this }; }
+
     reference operator[](difference_type n) const
         requires random_access
     { return *(*this + n); }
@@ -70,18 +76,21 @@ public:
         ++m_position;
         return *this;
     }
+
     PositionIterator operator++(int) noexcept
     {
         auto before = *this;
         ++*this;
         return before;
     }
+
     PositionIterator& operator--() noexcept
         requires bidirectional
     {
         --m_position;
         return *this;
     }
+
     PositionIterator operator--(int) noexcept
         requires bidirectional
     {
@@ -89,29 +98,37 @@ public:
         --*this;
         return before;
     }
+
     PositionIterator& operator+=(difference_type n) noexcept
         requires random_access
     {
         m_position = static_cast<std::size_t>(static_cast<difference_type>(m_position) + n);
         return *this;
     }
+
     PositionIterator& operator-=(difference_type n) noexcept
         requires random_access
     { return *this += -n; }
+
     friend PositionIterator operator+(PositionIterator it, difference_type n) noexcept
         requires random_access
     { return it += n; }
+
     friend PositionIterator operator+(difference_type n, PositionIterator it) noexcept
         requires random_access
     { return it += n; }
+
     friend PositionIterator operator-(PositionIterator it, difference_type n) noexcept
         requires random_access
     { return it -= n; }
+
     /// How many positions lie between (from bidirectional on: an entry's position is `it - begin()`).
     friend difference_type operator-(const PositionIterator& lhs, const PositionIterator& rhs) noexcept
         requires bidirectional
     { return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position); }
+
     friend bool operator==(const PositionIterator& lhs, const PositionIterator& rhs) noexcept { return lhs.m_position == rhs.m_position; }
+
     friend std::strong_ordering operator<=>(const PositionIterator& lhs, const PositionIterator& rhs) noexcept
         requires random_access
     { return lhs.m_position <=> rhs.m_position; }

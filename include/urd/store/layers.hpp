@@ -34,11 +34,14 @@ public:
         representation().layer_over(parent == nullptr ? nullptr : &store_access::representation(*parent));
         m_parent = parent;
     }
+
     [[nodiscard]] const Derived* parent() const noexcept { return m_parent; }
+
     /// Where this layer's own indices start: the parent's size at the branch.
     [[nodiscard]] std::size_t base() const
         requires chained
     { return representation().base(); }
+
     /// The Store along the chain that holds the element at `at`: this one, or an ancestor.
     template<typename Index>
     [[nodiscard]] const Derived& owner(Index at) const
@@ -49,6 +52,7 @@ public:
             layer = layer->m_parent;
         return *layer;
     }
+
     /// The Store along the chain whose own values hold `key` (a layered map): this one, or an ancestor. Some layer must
     /// hold it (contains(key)).
     template<typename Key>
@@ -63,11 +67,13 @@ public:
         }
         return *layer;
     }
+
     /// This layer's own value of `key` (a layered map), or nullptr: the parent's are not looked at.
     template<typename Key>
     [[nodiscard]] const auto* own_value(const Key& key) const
         requires(!chained)
     { return representation().own_value(key); }
+
     template<typename Key>
     [[nodiscard]] auto* own_value(const Key& key)
         requires(!chained)
@@ -75,6 +81,7 @@ public:
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 
     const Derived* m_parent = nullptr;

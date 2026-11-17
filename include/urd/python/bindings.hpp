@@ -59,6 +59,13 @@ nb::class_<V>& add_hash(nb::class_<V>& cls)
 template<typename T>
 nb::class_<T> bind_index(nb::module_& m, const std::string& name)
 {
+    // An index is bound once, by whichever module binds it first (a tag one library defines and another stores records
+    // of: ygg::formalism::Object); every other module names that class.
+    if (const auto bound = nb::type<T>(); bound.is_valid())
+    {
+        m.attr(name.c_str()) = bound;
+        return nb::borrow<nb::class_<T>>(bound);
+    }
     auto cls = nb::class_<T>(m, name.c_str());
     // urd::index's own names: the default is none, value is the integer, int() and index() give it too.
     cls.def(nb::init<>())
@@ -137,6 +144,54 @@ template<typename T, typename C, typename R>
 inline constexpr bool owns_record<owning_view<T, C, R>> = true;
 }  // namespace detail
 
+namespace detail
+{
+/// A view's function F bound as a method of View: a member of its mixin called on the view, a free function with the
+/// view first as it is. A reference it returns refers into the view's context (reference_internal: Python keeps the view
+/// alive); a view or a value is returned as nanobind returns one (a view keeps its context alive, urd/python/owner.hpp).
+template<typename View, auto F, typename R, typename... Args>
+constexpr auto method(R (* /*function*/)(const View&, Args...))
+{ return F; }
+
+template<typename View, auto F, typename R, typename C, typename... Args>
+constexpr auto method(R (C::* /*member*/)(Args...) const)
+{
+    return +[](const View& view, Args... args) -> R { return (view.*F)(std::forward<Args>(args)...); };
+}
+
+template<typename View, auto F, typename R, typename C, typename... Args>
+constexpr auto method(R (C::* /*member*/)(Args...) const noexcept)
+{
+    return +[](const View& view, Args... args) -> R { return (view.*F)(std::forward<Args>(args)...); };
+}
+
+template<typename View, auto F, typename R, typename... Args>
+constexpr auto method(R (* /*function*/)(const View&, Args...) noexcept)
+{ return F; }
+
+/// What a function returns.
+template<typename R, typename... Args>
+R returned(R (* /*function*/)(Args...));
+template<typename R, typename... Args>
+R returned(R (* /*function*/)(Args...) noexcept);
+}  // namespace detail
+
+/// Each function a view's mixin lists (urd::Functions), a method of View under its listed name.
+template<typename View>
+void bind_functions(nb::class_<View>& cls)
+{
+    if constexpr (HasFunctions<View>)
+        for_each_function<View>(
+            [&]<typename F>()
+            {
+                constexpr auto bound = detail::method<View, F::pointer>(F::pointer);
+                if constexpr (std::is_lvalue_reference_v<decltype(detail::returned(bound))>)
+                    cls.def(F::c_name, bound, nb::rv_policy::reference_internal);
+                else
+                    cls.def(F::c_name, bound);
+            });
+}
+
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder for a view of a
 /// builder<T>, <name>Owned for a view that owns its record, so that the views of one record bound in one module have
 /// their own names), the one way a view is bound, whether it reads a stored record (data<T>), a record a context hands out
@@ -153,6 +208,10 @@ nb::class_<View> bind_view(nb::module_& m)
     const auto name = urd::name<T>() + (std::same_as<record_of<View>, urd::builder<T>> ? "Builder" : "") + (detail::owns_record<View> ? "Owned" : "");
     auto view = nb::class_<View>(m, name.c_str());
     bind_field_getters(view);
+    bind_functions(view);
+    // Its context, referred to, not copied: what a view is read through (a repository, a builder) is reached the same
+    // way from every view, with no getter of its own.
+    view.def("context", &View::context, nb::rv_policy::reference_internal);
     add_comparison(view);
     add_hash(view);
     static_assert(fmt::is_formattable<View>::value, "urd::python::bind_view: a view is written with fmt: specialize fmt::formatter for it");

@@ -50,6 +50,7 @@ std::string tag_list(const urd::detail::property_set& held, const urd::role_info
             result += (result.size() > 1 ? ", " : "") + json_text(prefix + std::string(urd::tag_name(each)));
     return result;
 }
+
 /// The traits about role `role`, as names prefixed by it ("element:can_hash"), in the vocabulary's order.
 std::string trait_list(std::string result, const urd::role_info* role, const urd::detail::property_set& held)
 {
@@ -58,6 +59,7 @@ std::string trait_list(std::string result, const urd::role_info* role, const urd
             result += (result.size() > 1 ? ", " : "") + json_text(std::string(role->name) + ":" + std::string(each->name));
     return result;
 }
+
 /// What a declaration relies on, as a JSON list: what a request states, then each role's tags and traits prefixed by
 /// its name ("element:can_hash"), in the vocabulary's order.
 std::string roles_list(const urd::detail::property_set& relied)
@@ -96,6 +98,7 @@ std::string kind_of()
 
 template<typename S, typename List>
 struct collect;
+
 template<typename S, typename... Rs>
 struct collect<S, boost::mp11::mp_list<Rs...>>
 {
@@ -137,6 +140,7 @@ struct collect<S, boost::mp11::mp_list<Rs...>>
                 found->offered[what] = found->offered[what] || offers[what];
         }
     }
+
     static void run(std::vector<representation>& into) { (one<Rs>(into), ...); }
 };
 

@@ -78,6 +78,7 @@ template<typename S>
 class ConcurrentSets : public testing::Test
 {
 };
+
 using Sets = testing::Types<Store<set<int>, urd::positional, urd::monotone, urd::concurrent>,
                             urd::repr::ConcurrentIndexedSet<int>,
                             Store<set<int>, urd::concurrent>,
@@ -170,6 +171,7 @@ template<typename M>
 class ConcurrentMaps : public testing::Test
 {
 };
+
 using Maps = testing::Types<Store<map<int, int>, urd::dense, urd::constant_clear, urd::concurrent>,
                             Store<map<int, int>, urd::concurrent>,
                             Store<map<int, int>, urd::stable_refs, urd::concurrent>>;
@@ -274,6 +276,7 @@ template<typename P>
 class ConcurrentRowPools : public testing::Test
 {
 };
+
 using RowPools = testing::Types<Store<pool<Store<sequence<int>, urd::frozen>>, urd::concurrent>,
                                 Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing, urd::concurrent>,
                                 Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>>;
@@ -345,10 +348,14 @@ struct Point
     int y = 0;
 
     Point() = default;
+
     explicit Point(int drawn) : x(drawn % 50), y(drawn / 50) {}
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
 };
+
 /// A record with a string, serialized into the arena.
 struct Named
 {
@@ -356,8 +363,11 @@ struct Named
     std::uint32_t arity = 0;
 
     Named() = default;
+
     explicit Named(int drawn) : name(std::string_view(std::string(static_cast<std::size_t>(drawn % 4), 'a'))), arity(static_cast<std::uint32_t>(drawn / 4)) {}
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
 };
 
@@ -365,6 +375,7 @@ template<typename P>
 class ConcurrentRecordPools : public testing::Test
 {
 };
+
 using RecordPools = testing::Types<Store<pool<Point>, urd::flat, urd::concurrent>,
                                    Store<pool<Named>, urd::flat, urd::concurrent>,
                                    Store<pool<Point>, urd::flat, urd::monotone, urd::layered, urd::concurrent>,

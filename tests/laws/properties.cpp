@@ -33,7 +33,9 @@ class Journal
 {
 public:
     [[nodiscard]] auto begin() const { return m_entries.begin(); }
+
     [[nodiscard]] auto end() const { return m_entries.end(); }
+
     [[nodiscard]] std::size_t count() const { return m_entries.size(); }
 
     const int& append(int entry) { return m_entries.emplace_back(entry); }
@@ -75,6 +77,7 @@ class Journal
 {
 public:
     Journal() = default;
+
     template<std::input_iterator InputIt>
     Journal(InputIt first, InputIt last)
     {
@@ -82,10 +85,13 @@ public:
     }
 
     [[nodiscard]] auto begin() const { return m_journal.begin(); }
+
     [[nodiscard]] auto end() const { return m_journal.end(); }
+
     [[nodiscard]] std::size_t size() const { return m_journal.count(); }
 
     void push_back(int entry) { m_journal.append(entry); }
+
     const int& emplace_back(int entry) { return m_journal.append(entry); }
 
 private:
@@ -115,14 +121,20 @@ struct ClaimsStableRefs
     std::vector<int> elements;
 
     ClaimsStableRefs() = default;
+
     template<std::input_iterator InputIt>
     ClaimsStableRefs(InputIt first, InputIt last) : elements(first, last)
     {
     }
+
     [[nodiscard]] auto begin() const { return elements.begin(); }
+
     [[nodiscard]] auto end() const { return elements.end(); }
+
     [[nodiscard]] std::size_t size() const { return elements.size(); }
+
     void push_back(int element) { elements.push_back(element); }
+
     const int& emplace_back(int element) { return elements.emplace_back(element); }
 };
 

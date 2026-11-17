@@ -25,7 +25,9 @@ struct Numbers
     std::vector<Number> records;
 
     const Number& operator[](urd::index<Number> at) const { return records[at.value]; }
+
     [[nodiscard]] std::size_t layer() const noexcept { return 0; }
+
     [[nodiscard]] urd::index_view<Number, Numbers> view(urd::index<Number> at) const { return { at, this }; }
 };
 

@@ -69,6 +69,7 @@ struct csr_multimap_decl
     static constexpr std::string_view description = "CSR multimap (each key's values together, in key order)";
     static constexpr std::string_view holds = "n values + U + 1 offsets";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::CsrMultiMap<K, V>>
 {
@@ -100,6 +101,7 @@ struct dense_multimap_decl
     static constexpr std::string_view description = "dense multimap (a vector of values per index, growing)";
     static constexpr std::string_view holds = "a vector per index; retains";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::DenseMultiMap<K, V>>
 {
@@ -130,6 +132,7 @@ struct posting_map_decl
     static constexpr std::string_view description = "postings (a flat hash table of value vectors)";
     static constexpr std::string_view holds = "a vector of values per key";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::PostingMap<K, V>>
 {
@@ -150,6 +153,7 @@ struct chained_posting_map_decl : posting_map_decl
     static constexpr std::string_view description = "chained postings (a flat hash table of key chains over one pool of value slots)";
     static constexpr std::string_view holds = "a slot per value, freed slots reused by any key; retains";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::ChainedPostingMap<K, V>>
 {
@@ -171,6 +175,7 @@ struct bidirectional_csr_decl : csr_multimap_decl
     static constexpr std::string_view description = "bidirectional CSR (each key's values and each value's keys together)";
     static constexpr std::string_view holds = "n values + U + 1 offsets, both ways";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::BidirectionalCsr<K, V>>
 {

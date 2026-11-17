@@ -23,6 +23,7 @@ struct representation_of<flat_set_decl, S>
 {
     using type = boost::container::flat_set<typename S::element_type, typename S::order_type>;
 };
+
 template<typename S>
 struct representation_of<flat_multiset_decl, S>
 {

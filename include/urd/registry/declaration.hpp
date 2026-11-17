@@ -71,6 +71,7 @@ struct fixed_string
     std::array<char, N> text {};
 
     consteval fixed_string(const char (&literal)[N]) { std::ranges::copy(literal, text.begin()); }
+
     /// From a string computed at compile time (a row's id), N its size plus the terminating zero.
     consteval explicit fixed_string(std::string_view computed) { std::ranges::copy(computed, text.begin()); }
 
@@ -104,6 +105,7 @@ namespace urd::detail
 /// The headers a file holding a Store of a container includes: a wrapper's part's first, then its own.
 template<std::size_t N>
 using header_list = std::array<std::string_view, N>;
+
 template<std::size_t N>
 constexpr header_list<N + 1> with_header(const header_list<N>& part, std::string_view own)
 {
@@ -126,6 +128,7 @@ struct registry_entry
     std::string_view description;
     std::string_view holds;
 };
+
 template<typename Decl>
 constexpr registry_entry entry_of()
 {

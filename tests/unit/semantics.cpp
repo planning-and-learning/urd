@@ -134,6 +134,7 @@ template<typename T>
 class Semantics : public testing::Test
 {
 };
+
 TYPED_TEST_SUITE(Semantics, Types);
 
 constexpr int samples = 2000;
@@ -203,6 +204,7 @@ struct Named
 {
     std::string name;
     int arity = 0;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
 };
 
@@ -251,14 +253,17 @@ struct ValidHash
 {
     urd::hash_t operator()(int) const { return 0; }
 };
+
 struct InvalidHash
 {
     bool operator()(int) const { return true; }
 };
+
 struct ValidPredicate
 {
     bool operator()(int, int) const { return true; }
 };
+
 struct InvalidPredicate
 {
     int operator()(int, int) const { return 0; }
@@ -407,12 +412,16 @@ TEST(Hashing, RangesHashTheirValuesWhateverHoldsThem)
     EXPECT_EQ(urd::hash_range(booleans), elementwise(booleans));
     EXPECT_EQ(urd::hash_range(packed), elementwise(booleans));
     EXPECT_EQ(urd::Hash<std::vector<bool>> {}(packed), elementwise(booleans));
+
     struct Digit
     {
         std::uint32_t value;
+
         [[nodiscard]] std::uint32_t digit() const noexcept { return value % 10; }
+
         static constexpr auto identifying_members() noexcept { return urd::Members<&Digit::digit> {}; }
     };
+
     static_assert(std::has_unique_object_representations_v<Digit>);
     EXPECT_EQ(urd::hash_range(std::array { Digit { 1 }, Digit { 2 } }), urd::hash_range(std::array { Digit { 11 }, Digit { 22 } }));
 }
@@ -511,10 +520,13 @@ TEST(Predicates, RangeComparisonsTakeAnyInputRange)
     EXPECT_TRUE(urd::less_range(proxies, std::array { true }));
     EXPECT_FALSE(urd::less_range(std::array { true }, proxies));
     EXPECT_TRUE(urd::less_range(std::array { false }, proxies));
+
     struct Pinned
     {
         int value;
+
         explicit Pinned(int value_) : value(value_) {}
+
         Pinned(const Pinned&) = delete;
         Pinned& operator=(const Pinned&) = delete;
         Pinned(Pinned&&) = delete;
@@ -522,6 +534,7 @@ TEST(Predicates, RangeComparisonsTakeAnyInputRange)
         ~Pinned() = default;
         bool operator==(const Pinned&) const = default;
     };
+
     EXPECT_TRUE(urd::equal_elements(std::array { Pinned(1), Pinned(2) }, std::array { Pinned(1), Pinned(2) }));
 
     const auto lhs = Named { "at", 2 };
@@ -588,6 +601,7 @@ static_assert(std::three_way_comparable<ComparedValue, std::strong_ordering>);
 struct ThrowingIdentity : urd::compared_by_identity<ThrowingIdentity>
 {
     [[nodiscard]] int identity() const { throw std::runtime_error("identity"); }
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&ThrowingIdentity::identity> {}; }
 };
 
@@ -609,7 +623,9 @@ struct TiedRecord
     double weight;
 
     [[nodiscard]] int get_name() const noexcept { return name; }
+
     [[nodiscard]] double get_weight() const noexcept { return weight; }
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&TiedRecord::get_name, &TiedRecord::get_weight> {}; }
 };
 

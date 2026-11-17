@@ -40,6 +40,7 @@ public:
 
 private:
     explicit BidirectionalCsr(const std::vector<std::pair<K, V>>& pairs) : CsrMultiMap<K, V>(pairs.begin(), pairs.end()), m_inverse(inverted(pairs)) {}
+
     [[nodiscard]] static CsrMultiMap<V, K> inverted(const std::vector<std::pair<K, V>>& pairs)
     {
         auto swapped = std::vector<std::pair<V, K>>();

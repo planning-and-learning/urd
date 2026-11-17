@@ -15,6 +15,7 @@ namespace urd::test
 struct Id
 {
     std::uint32_t id = 0;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Id::id> {}; }
 };
 
@@ -22,7 +23,9 @@ struct Id
 struct Text
 {
     urd::flat_string text;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Text::text> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Text::text> {}; }
 };
 
@@ -37,6 +40,7 @@ struct urd::type_spelling<urd::test::Id>
 {
     static std::string spelled() { return "Id"; }
 };
+
 template<>
 struct urd::type_spelling<urd::test::Text>
 {

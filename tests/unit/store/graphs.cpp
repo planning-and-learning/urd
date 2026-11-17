@@ -248,6 +248,7 @@ void check_frozen(std::size_t seed)
             EXPECT_EQ(g.source(e), v);
     }
 }
+
 TEST(Graph, FrozenKeepsEdgeNumbers) { check_frozen<Store<graph<V, int>, frozen, multi, bidirectional>>(7); }
 
 /// Positional graphs without edge data hand out their edges as numbers too, in the order given.
@@ -315,8 +316,10 @@ TEST(Graph, VertexDataWithoutDefault)
     struct Name
     {
         explicit Name(char c) : value(c) {}
+
         char value;
     };
+
     using Frozen = Store<graph<V, std::monostate, Name>, frozen, positional>;
     const auto names = std::vector<Name> { Name('a'), Name('b'), Name('c') };
     const auto edges = std::vector<std::pair<V, V>> { { 0, 2 } };

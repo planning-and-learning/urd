@@ -58,15 +58,18 @@ public:
     UniformRows()
         requires std::default_initializable<Codec>
     = default;
+
     explicit UniformRows(const parameter& built_with)
         requires std::constructible_from<Codec, const parameter&>
         : m_codec(built_with)
     {
     }
+
     UniformRows(const UniformRows&) = delete;
     UniformRows& operator=(const UniformRows&) = delete;
     UniformRows(UniformRows&&) = delete;
     UniformRows& operator=(UniformRows&&) = delete;
+
     ~UniformRows()
     {
         for (auto& segment : m_segments)
@@ -75,10 +78,15 @@ public:
     }
 
     [[nodiscard]] size_type size() const noexcept { return detail::load(m_size); }
+
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
+
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
+
     [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
+
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
+
     [[nodiscard]] const_iterator cend() const { return end(); }
 
     /// The table holds a row once rows of other lengths came; until then (and while it takes the earlier rows over)
@@ -181,14 +189,17 @@ struct PlainCodec
     using parameter = std::monostate;
 
     [[nodiscard]] static std::size_t units(std::size_t rows, std::size_t length) noexcept { return rows * length; }
+
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): row `at` of the rows of `length` units each that lie at data
     [[nodiscard]] static value_type read(const U* data, std::size_t at, std::size_t length) noexcept { return value_type(data + (at * length), length); }
+
     static void write(U* data, std::size_t at, value_type row) noexcept
     {
         if (!row.empty())  // an empty span may have no data, which memcpy does not take
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): row `at` of the rows of row.size() units each that lie at data
             std::memcpy(data + (at * row.size()), row.data(), row.size_bytes());
     }
+
     static void check(value_type /*row*/) noexcept {}
 };
 

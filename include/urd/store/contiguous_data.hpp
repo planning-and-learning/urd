@@ -15,6 +15,7 @@ class contiguous_data
 
 public:
     [[nodiscard]] auto data() const { return std::ranges::cdata(representation()); }
+
     [[nodiscard]] auto data()
         requires types::writable
     { return std::ranges::data(store_access::of<Derived>(*this)); }

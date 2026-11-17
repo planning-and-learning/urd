@@ -74,6 +74,7 @@ struct fifo_decl
     static constexpr std::string_view description = "queue (a deque, first in first out)";
     static constexpr std::string_view holds = "a deque; stable references";
 };
+
 template<typename T>
 struct declaration_of<repr::Fifo<T>>
 {
@@ -95,6 +96,7 @@ struct ring_fifo_decl : fifo_decl
     static constexpr std::string_view description = "ring fifo (one vector used as a ring, kept on pop and clear)";
     static constexpr std::string_view holds = "one vector as a ring; retains";
 };
+
 template<typename T>
 struct declaration_of<repr::RingFifo<T>>
 {
@@ -115,6 +117,7 @@ struct lifo_decl : fifo_decl
     static constexpr std::string_view description = "stack (a vector, last in first out)";
     static constexpr std::string_view holds = "a vector; retains";
 };
+
 template<typename T>
 struct declaration_of<repr::Lifo<T>>
 {
@@ -140,6 +143,7 @@ struct heap_decl : lifo_decl
     static constexpr std::string_view description = "binary heap (a vector, least first, by urd::Less or an order_by)";
     static constexpr std::string_view holds = "a vector as a binary heap; retains";
 };
+
 template<typename T, typename Compare>
 struct declaration_of<repr::Queue<T, repr::leaving::least, Compare>>
 {
@@ -161,6 +165,7 @@ struct addressable_heap_decl : heap_decl
     static constexpr std::string_view description = "addressable heap (push gives a handle to update or erase by)";
     static constexpr std::string_view holds = "a heap of handles + a slot per handle";
 };
+
 template<typename T, typename Compare>
 struct declaration_of<repr::AddressableHeap<T, Compare>>
 {
@@ -191,6 +196,7 @@ struct bucket_queue_decl
     static constexpr std::string_view description = "bucket queue (a bucket per integral priority)";
     static constexpr std::string_view holds = "a vector per priority";
 };
+
 template<typename T, typename Compare>
 struct declaration_of<repr::BucketQueue<T, Compare>>
 {

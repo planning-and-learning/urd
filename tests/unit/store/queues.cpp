@@ -91,6 +91,7 @@ TEST(Queues, IterateTheirElements)
     EXPECT_EQ(sorted(heap), (std::vector { 1, 1, 3, 4 }));
     EXPECT_EQ(sorted(handled), (std::vector { 1, 1, 3, 4 }));
 }
+
 template<typename S>
 concept iterates = requires(const S& store) { store.begin(); };
 static_assert(iterates<Store<queue<int>, urd::fifo>> && !iterates<Store<queue<int>, urd::by_priority, urd::monotone_priority>>);

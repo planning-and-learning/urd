@@ -40,13 +40,16 @@ public:
     {
         const T& operator()(const R& records, std::size_t at) const { return records[handle_type(static_cast<std::uint32_t>(at))]; }
     };
+
     /// The records in index order, 0 to size() - 1, each read by its index.
     using const_iterator = urd::repr::PositionIterator<const R, record_at>;
+
     /// O(n): the records lie in one store, each at its index. Not where layered: there a record is reached through
     /// the layer that owns it.
     [[nodiscard]] const_iterator begin() const
         requires(!has<S, layered>)
     { return { &representation(), 0 }; }
+
     [[nodiscard]] const_iterator end() const
         requires(!has<S, layered>)
     { return { &representation(), static_cast<std::uint32_t>(representation().size()) }; }
@@ -55,11 +58,14 @@ public:
     /// record: serialized (flat, the arena), any record, a move-only one too; held by value, copied, a copyable one. It
     /// stays the caller's as it was, as a scratch record reused for the next one is.
     std::pair<handle_type, bool> insert(const T& record) { return representation().insert(record); }
+
     /// The same, handing the record over: moved in where it is new (serialized from, where records are serialized);
     /// one already held leaves it as it was.
     std::pair<handle_type, bool> insert(T&& record) { return representation().insert(std::move(record)); }
+
     /// The same, by a key with its hash (urd/elements/prehashed.hpp): the record is not hashed again.
     std::pair<handle_type, bool> insert(const prehashed<T>& key) { return representation().insert(key); }
+
     /// The index `key` gets, and whether it was new: where it is, the record stored is what `make(index)` gives,
     /// built with the index reserved for it (a record that holds its own index). It must equal `key`, and `make`
     /// must not touch this Store.
@@ -68,24 +74,34 @@ public:
         requires makes_record<Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
     { return representation().insert(key, make); }
+
     template<std::invocable<handle_type> Factory>
         requires makes_record<Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     { return representation().insert(key, make); }
+
     /// The index of an equal record, or none.
     [[nodiscard]] handle_type find(const T& record) const { return representation().find(record); }
+
     [[nodiscard]] bool contains(const T& record) const { return representation().contains(record); }
+
     [[nodiscard]] handle_type find(const prehashed<T>& key) const { return representation().find(key); }
+
     [[nodiscard]] bool contains(const prehashed<T>& key) const { return representation().contains(key); }
+
     [[nodiscard]] std::size_t count(const T& record) const { return contains(record) ? 1 : 0; }
+
     [[nodiscard]] bool contains(handle_type at) const { return !at.is_none() && (at.value) < representation().size(); }
+
     [[nodiscard]] const T& operator[](handle_type at) const { return representation()[at]; }
+
     [[nodiscard]] const T& at(handle_type at) const
     {
         if (!contains(at))
             throw std::out_of_range("urd::Store::at: no record at this index");
         return (*this)[at];
     }
+
     /// A view of the record at `at`, through this Store (urd/elements/view.hpp must be included where views are made):
     /// of the handle's element type (of U for a pool of urd::data<U> handing out index<U>).
     [[nodiscard]] auto view(handle_type at) const
@@ -97,14 +113,17 @@ public:
         else
             return view_type(at, &static_cast<const Derived&>(*this));
     }
+
     /// Its number, as it was built with (urd::layer): with an index, what its views are identified by.
     [[nodiscard]] std::size_t layer() const { return representation().layer(); }
+
     void clear()
         requires clears<S>
     { representation().clear(); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     R& representation() { return store_access::of<Derived>(*this); }
 };
 
@@ -119,10 +138,12 @@ struct facet_condition<facet::records> : facet_defaults
 {
     /// It hands out indices for views, so the Store's container is numbered (urd::layer).
     static constexpr bool hands_out_indices = true;
+
     template<typename R, typename S>
     static constexpr bool on()
     { return !held_as<typename S::element_type>::row; }
 };
+
 template<>
 struct facet_operations<facet::records>
 {

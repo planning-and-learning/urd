@@ -30,6 +30,7 @@ struct kind_of_range
 {
     using type = typename declaration_t<R>::kind;
 };
+
 template<typename R>
     requires is_store<R>
 struct kind_of_range<R>
@@ -81,6 +82,7 @@ consteval bool grows_of()
         return !relied.has(change::frozen) && !relied.has(shape::fixed_shape);
     }
 }
+
 template<typename R>
 consteval bool shrinks_of()
 {
@@ -89,6 +91,7 @@ consteval bool shrinks_of()
     else
         return grows_of<R>() && !facts_where(declaration_t<R>::relies_on, false).has(change::monotone_until_clear);
 }
+
 /// Whether a sequence that shrinks also inserts and erases in the middle: one with stable references removes at its
 /// end only.
 template<typename R>
@@ -99,6 +102,7 @@ consteval bool changes_in_the_middle_of()
     else
         return shrinks_of<R>() && !declaration_t<R>::provides.has(referencing::stable_refs);
 }
+
 template<typename R>
 inline constexpr bool container_grows = grows_of<R>();
 template<typename R>

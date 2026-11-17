@@ -16,8 +16,11 @@ namespace urd::repr::detail
 struct Untracked
 {
     static void insert(std::size_t /*position*/) noexcept {}
+
     static void erase(std::size_t /*position*/) noexcept {}
+
     static void clear() noexcept {}
+
     /// Calls reset(first, last) for the positions to reset among the `count` there are: all of them, at once.
     template<typename Reset>
     static void reset(std::size_t count, Reset reset)
@@ -28,8 +31,11 @@ struct Untracked
 struct Touched
 {
     void insert(std::size_t position) { positions.insert(position); }
+
     void erase(std::size_t position) { positions.erase(position); }
+
     void clear() { positions.clear(); }
+
     /// Calls reset(position, position + 1) for each position written, and forgets them.
     template<typename Reset>
     void reset(std::size_t /*count*/, Reset reset)
@@ -52,6 +58,7 @@ struct urd::memory_of<urd::repr::detail::Untracked>
 {
     static std::size_t bytes(const urd::repr::detail::Untracked& /*held*/) noexcept { return 0; }
 };
+
 template<>
 struct urd::memory_of<urd::repr::detail::Touched>
 {

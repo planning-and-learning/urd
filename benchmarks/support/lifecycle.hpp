@@ -147,6 +147,7 @@ struct timing
     std::chrono::steady_clock::time_point began;
 
     void start() { began = std::chrono::steady_clock::now(); }
+
     void stop(op what, std::size_t count)
     {
         nanoseconds[static_cast<std::size_t>(what)] += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - began).count();
@@ -504,6 +505,7 @@ struct graph_workload
     static constexpr std::size_t degree = 3;
 
     static Vertex vertex(std::size_t at) { return urd::index_of<Vertex>::from_index(at); }
+
     /// The target of the k-th edge of u: in the part after u's (cycling) where partitioned, else anywhere.
     static std::size_t target(std::size_t size, std::size_t u, std::size_t k)
     {
@@ -515,6 +517,7 @@ struct graph_workload
         else
             return ((u * stride) + k + 1) % size;
     }
+
     static Input input(std::size_t u, std::size_t v) { return Input(vertex(u), vertex(v), make<Value>(u)); }
 
     /// The graph of a cell's size: built at once where it does not grow, else added to vertex by vertex, edge by edge

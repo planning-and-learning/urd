@@ -43,7 +43,9 @@ public:
     static constexpr std::size_t BlockMask = Digits - 1;
 
     static constexpr std::size_t block_index(std::size_t pos) noexcept { return pos >> BlockShift; }
+
     static constexpr std::size_t block_pos(std::size_t pos) noexcept { return pos & BlockMask; }
+
     static constexpr std::size_t num_blocks(std::size_t num_bits) noexcept { return (num_bits + Digits - 1) >> BlockShift; }
 
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
@@ -443,10 +445,13 @@ public:
     { return { m_data, num_blocks(m_num_bits) }; }
 
     [[nodiscard]] std::span<const U> blocks() const noexcept { return { m_data, num_blocks(m_num_bits) }; }
+
     U* data() noexcept
         requires(!std::is_const_v<Block>)
     { return m_data; }
+
     [[nodiscard]] const U* data() const noexcept { return m_data; }
+
     [[nodiscard]] std::size_t num_bits() const noexcept { return m_num_bits; }
 
 private:
@@ -510,12 +515,15 @@ public:
         using iterator_concept = std::forward_iterator_tag;
 
         Iterator() noexcept = default;
+
         Iterator(Bitset bits, std::size_t position) noexcept : m_bits(bits), m_word_offset(position == Bitset::npos ? position : position & ~Bitset::BlockMask)
         {
             if (position != Bitset::npos)
                 m_remaining = bits.blocks()[Bitset::block_index(position)] & (Bitset::full_mask() << Bitset::block_pos(position));
         }
+
         std::size_t operator*() const noexcept { return m_word_offset + static_cast<std::size_t>(std::countr_zero(m_remaining)); }
+
         Iterator& operator++() noexcept
         {
             m_remaining &= m_remaining - 1;
@@ -535,13 +543,16 @@ public:
             m_word_offset = Bitset::npos;
             return *this;
         }
+
         Iterator operator++(int) noexcept
         {
             auto result = *this;
             ++*this;
             return result;
         }
+
         friend bool operator==(const Iterator& iterator, std::default_sentinel_t) noexcept { return iterator.m_word_offset == Bitset::npos; }
+
         friend bool operator==(const Iterator& lhs, const Iterator& rhs) noexcept
         {
             return lhs.m_bits.data() == rhs.m_bits.data() && lhs.m_bits.size() == rhs.m_bits.size() && lhs.m_word_offset == rhs.m_word_offset
@@ -550,8 +561,11 @@ public:
     };
 
     SetBitIndices() noexcept = default;
+
     explicit SetBitIndices(Bitset bits) noexcept : m_bits(bits) {}
+
     [[nodiscard]] Iterator begin() const noexcept { return Iterator(m_bits, m_bits.find_first()); }
+
     [[nodiscard]] std::default_sentinel_t end() const noexcept { return {}; }
 };
 

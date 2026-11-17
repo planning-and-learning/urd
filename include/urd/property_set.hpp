@@ -39,7 +39,9 @@ struct tag_list
 {
     const tag* first = nullptr;
     const tag* last = nullptr;
+
     [[nodiscard]] constexpr const tag* begin() const { return first; }
+
     [[nodiscard]] constexpr const tag* end() const { return last; }
 };
 
@@ -64,6 +66,7 @@ struct category_table
     std::array<tag_list, most_answers> promises {};
     std::array<tag_list, most_answers> later {};
 };
+
 /// The tags of a type list of tag types (defined once `tag` is, below).
 template<typename List>
 consteval tag_list tag_list_of();
@@ -111,6 +114,7 @@ struct words
     std::string_view name;
     std::string_view description;
 };
+
 /// The words of T (a struct with its name and description), as Of.
 template<typename Of, typename T>
 inline constexpr words<Of> words_of { T::name, T::description };
@@ -129,7 +133,9 @@ struct tag
     const role_info* role = nullptr;             ///< nullptr: about the Store itself
 
     constexpr tag() = default;
+
     constexpr tag(const detail::category_table* of, std::uint8_t value, const role_info* about_role = nullptr) : in(of), answer(value), role(about_role) {}
+
     template<category_enum E>
     constexpr tag(E value)  // NOLINT(google-explicit-constructor): every category's answer is a tag
         :
@@ -137,8 +143,10 @@ struct tag
         answer(static_cast<std::uint8_t>(value))
     {
     }
+
     /// This fact, about `of` (a role) instead.
     [[nodiscard]] constexpr tag about(const role_info* of) const { return { in, answer, of }; }
+
     friend constexpr bool operator==(tag, tag) = default;
 };
 
@@ -149,6 +157,7 @@ template<typename List>
 inline constexpr std::array<tag, 0> tags_array {};
 template<typename... Tags>
 inline constexpr std::array<tag, sizeof...(Tags)> tags_array<boost::mp11::mp_list<Tags...>> { tag(Tags::value)... };
+
 template<typename List>
 consteval tag_list tag_list_of()
 { return { tags_array<List>.data(), std::to_address(tags_array<List>.end()) }; }
@@ -164,6 +173,7 @@ namespace detail
 
 /// Whether answer `have` is at least `want`, both of category `of`.
 constexpr bool at_least(const category_table* of, std::uint8_t have, std::uint8_t want) { return of->at_least[have][want]; }
+
 constexpr bool at_least(tag have, tag want) { return have.in == want.in && have.role == want.role && at_least(have.in, have.answer, want.answer); }
 
 /// The most categories one set answers.
@@ -178,9 +188,13 @@ struct fixed_list
     std::size_t count = 0;
 
     [[nodiscard]] constexpr auto begin() const { return held.begin(); }
+
     [[nodiscard]] constexpr auto end() const { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
+
     [[nodiscard]] constexpr auto begin() { return held.begin(); }
+
     [[nodiscard]] constexpr auto end() { return std::next(held.begin(), static_cast<std::ptrdiff_t>(count)); }
+
     /// Appends `value`; past N, constant evaluation fails (raise its N: most_categories for a property_set).
     constexpr T& push(const T& value)
     {
@@ -189,12 +203,14 @@ struct fixed_list
         held[count] = value;
         return held[count++];
     }
+
     /// Removes the value at `at`, keeping the order of the others.
     constexpr void erase(auto at)
     {
         std::move(std::next(at), end(), at);
         held[--count] = T {};
     }
+
     template<typename F>
     constexpr void for_each(F f) const
     { std::ranges::for_each(*this, f); }
@@ -206,6 +222,7 @@ struct property_set : fixed_list<tag, most_categories>
 {
     /// Nothing said: every category at none.
     static constexpr property_set roots() { return {}; }
+
     /// The given tags (any category's answers: order::sorted, …), at most one per category, the others at none.
     static constexpr property_set of(std::initializer_list<tag> stated)
     {
@@ -221,12 +238,15 @@ struct property_set : fixed_list<tag, most_categories>
         const auto found = std::ranges::find_if(*this, [of, role](tag each) { return each.in == of && each.role == role; });
         return found != end() ? *found : tag { of, 0, role };
     }
+
     /// The answer held in the category of enum E.
     template<category_enum E>
     [[nodiscard]] constexpr E get() const
     { return static_cast<E>(in(urd::category<E>) .answer); }
+
     /// Whether the tag held in `of`'s category is at least `of`.
     [[nodiscard]] constexpr bool has(tag of) const { return at_least(of.in, in(of.in, of.role).answer, of.answer); }
+
     /// Whether any of its tags about the Store itself says Field (a flag of urd::answer_says: &answer_says::stops_growth,
     /// …).
     template<auto Field>
@@ -234,6 +254,7 @@ struct property_set : fixed_list<tag, most_categories>
     {
         return std::ranges::any_of(*this, [](tag each) { return each.role == nullptr && each.in->says[each.answer].*Field; });
     }
+
     /// Calls f on every tag its tags about the Store itself list in Field (a per-answer list of detail::category_table:
     /// implies, promises, …).
     template<auto Field, typename F>
@@ -244,6 +265,7 @@ struct property_set : fixed_list<tag, most_categories>
                 for (const tag listed : (each.in->*Field)[each.answer])
                     f(listed);
     }
+
     /// Holds `of` in its category (about its role), replacing what was there (none: nothing).
     constexpr property_set& put(tag of)
     {
@@ -270,6 +292,7 @@ struct property_set : fixed_list<tag, most_categories>
 /// declares itself exact (urd/tags.hpp); anything for a category only a request answers.
 constexpr bool provided(const property_set& have, tag asked)
 { return asked.in->request_only || (asked.in->exact ? have.in(asked.in, asked.role) == asked : have.has(asked)); }
+
 /// Whether `have` answers `given`'s exact category where `want` leaves it open: the request must state that answer.
 constexpr bool unasked(const property_set& want, tag given) { return given.in->exact && !given.in->request_only && want.in(given.in, given.role).answer == 0; }
 
@@ -285,6 +308,7 @@ constexpr property_set lacking(const property_set& have, const property_set& wan
         });
     return result;
 }
+
 /// The answers `have` gives in exact categories that `want` leaves open.
 constexpr property_set unasked_of(const property_set& have, const property_set& want)
 {
@@ -297,6 +321,7 @@ constexpr property_set unasked_of(const property_set& have, const property_set& 
         });
     return result;
 }
+
 /// The promises in `needed` that `stated` does not make.
 constexpr property_set unpromised(const property_set& stated, const property_set& needed)
 {
@@ -345,6 +370,7 @@ constexpr property_set with(property_set base, const auto& listed)
         base.put(each);
     return base;
 }
+
 constexpr property_set with(property_set base, std::initializer_list<tag> listed) { return with(base, std::span<const tag>(listed.begin(), listed.size())); }
 
 template<typename P>

@@ -31,6 +31,7 @@ template<typename Q>
 class Queues : public testing::Test
 {
 };
+
 using Containers = testing::Types<urd::repr::Fifo<int>,
                                   urd::repr::RingFifo<int>,
                                   urd::repr::Lifo<int>,

@@ -26,16 +26,19 @@ struct memory_of<boost::container::flat_map<K, V, C, A>>
 {
     static std::size_t bytes(const boost::container::flat_map<K, V, C, A>& held) { return detail::flat_bytes(held); }
 };
+
 template<typename K, typename V, typename C, typename A>
 struct memory_of<boost::container::flat_multimap<K, V, C, A>>
 {
     static std::size_t bytes(const boost::container::flat_multimap<K, V, C, A>& held) { return detail::flat_bytes(held); }
 };
+
 template<typename T, typename C, typename A>
 struct memory_of<boost::container::flat_set<T, C, A>>
 {
     static std::size_t bytes(const boost::container::flat_set<T, C, A>& held) { return detail::flat_bytes(held); }
 };
+
 template<typename T, typename C, typename A>
 struct memory_of<boost::container::flat_multiset<T, C, A>>
 {

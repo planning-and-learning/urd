@@ -41,17 +41,20 @@ struct memory_of<gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>>
 {
     static std::size_t bytes(const gtl::parallel_flat_hash_set<T, H, E, A, N, M, C>& held) { return detail::sharded_table_bytes(held); }
 };
+
 /// gtl's single table: its buffer as gtl counts it, and what the elements own.
 template<typename T, typename H, typename E, typename A>
 struct memory_of<gtl::flat_hash_set<T, H, E, A>>
 {
     static std::size_t bytes(const gtl::flat_hash_set<T, H, E, A>& held) { return detail::single_table_bytes(held); }
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct memory_of<gtl::flat_hash_map<K, V, H, E, A>>
 {
     static std::size_t bytes(const gtl::flat_hash_map<K, V, H, E, A>& held) { return detail::single_table_bytes(held); }
 };
+
 template<typename T, typename H, typename E, typename A, std::size_t N, typename M, typename C>
 struct memory_of<gtl::parallel_node_hash_set<T, H, E, A, N, M, C>>
 {

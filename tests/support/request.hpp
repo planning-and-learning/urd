@@ -87,6 +87,7 @@ std::string spelling_of_stated()
 
 template<typename List>
 struct stated_spelling;
+
 template<typename... Ps>
 struct stated_spelling<boost::mp11::mp_list<Ps...>>
 {

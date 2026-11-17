@@ -15,6 +15,7 @@ class ordered_lookup
 
 public:
     [[nodiscard]] const_iterator_type lower_bound(const typename types::lookup_type& element) const { return representation().lower_bound(element); }
+
     [[nodiscard]] const_iterator_type upper_bound(const typename types::lookup_type& element) const { return representation().upper_bound(element); }
 
 private:
@@ -34,6 +35,7 @@ struct facet_condition<facet::ordered_lookup> : facet_defaults
     static constexpr bool on()
     { return has<S, sorted>; }
 };
+
 template<>
 struct facet_operations<facet::ordered_lookup>
 {

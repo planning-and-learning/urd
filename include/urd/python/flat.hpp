@@ -119,6 +119,7 @@ template<typename T>
 struct type_caster<urd::flat_optional<T>> : optional_caster<urd::flat_optional<T>>
 {
 };
+
 template<typename T>
 struct has_arg_defaults<urd::flat_optional<T>> : std::true_type
 {

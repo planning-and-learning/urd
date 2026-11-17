@@ -70,6 +70,7 @@ inline constexpr std::uint32_t unused_child = std::numeric_limits<std::uint32_t>
 struct NoLeaves
 {
     static constexpr std::size_t size() noexcept { return 0; }
+
     static void clear() noexcept {}
 };
 
@@ -83,12 +84,15 @@ struct TreeHandle
 
     /// No row's handle: an empty row is {0, 0}, and every other row has a size.
     [[nodiscard]] static constexpr TreeHandle none() noexcept { return { tree::unused_child, 0 }; }
+
     [[nodiscard]] constexpr bool is_none() const noexcept { return root == tree::unused_child && size == 0; }
 
     static constexpr std::string_view name = "TreeHandle";
 
     friend bool operator==(const TreeHandle&, const TreeHandle&) = default;
+
     static constexpr auto fields() noexcept { return Fields<field<"root", &TreeHandle::root>, field<"size", &TreeHandle::size>> {}; }
+
     static constexpr auto identifying_members() noexcept { return members_of(fields()); }
 };
 
@@ -128,6 +132,7 @@ public:
         const auto root = insert_recursive(values, stored);
         return { handle_type { root, size }, stored };
     }
+
     /// The handle insert(elements) would give, where inserting would store nothing: every node of the row is held
     /// already, as a row or as a part of a longer one (an empty or one-element row needs none). Else none.
     template<std::ranges::input_range Elements>
@@ -160,7 +165,9 @@ public:
         copy(handle, values);
         return Row(values.begin(), values.end());
     }
+
     [[nodiscard]] size_type row_size(handle_type handle) const { return handle.size; }
+
     /// The row's values into `out`, which must hold row_size(handle) of them.
     void copy(handle_type handle, std::span<T> out) const
     {
@@ -173,11 +180,14 @@ public:
 private:
     // Read by tests (urd::testing::inspect), not by a Store.
     friend struct urd::testing::inspect;
+
     [[nodiscard]] size_type num_leaves() const { return m_leaves.size(); }
+
     [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
 
 public:
     [[nodiscard]] bool empty() const { return m_leaves.size() == 0 && m_nodes.empty(); }
+
     void clear()
     {
         m_nodes.clear();
@@ -193,13 +203,16 @@ private:
         else
             return stored_at(m_leaves, m_leaves.insert(value), stored);
     }
+
     std::uint32_t insert_node(const Children& children, bool& stored) { return stored_at(m_nodes, m_nodes.insert(children), stored); }
+
     template<typename Set>
     static std::uint32_t stored_at(const Set& set, std::pair<typename Set::const_iterator, bool> inserted, bool& stored)
     {
         stored = stored || inserted.second;
         return position_of(set, inserted.first);
     }
+
     [[nodiscard]] std::optional<std::uint32_t> find_leaf(const T& value) const
     {
         if constexpr (inline_leaves)
@@ -207,8 +220,10 @@ private:
         else
             return narrow(urd::detail::indexed_access::position(m_leaves, value));
     }
+
     [[nodiscard]] static std::optional<std::uint32_t> narrow(std::optional<std::size_t> position)
     { return position ? std::optional(static_cast<std::uint32_t>(*position)) : std::nullopt; }
+
     /// The position of `it` in `set`, taken after the insert that gave `it` (which may have moved the elements).
     template<typename Set>
     [[nodiscard]] static std::uint32_t position_of(const Set& set, typename Set::const_iterator it)

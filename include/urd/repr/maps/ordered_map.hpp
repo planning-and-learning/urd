@@ -57,9 +57,13 @@ public:
     { insert(first, last); }
 
     [[nodiscard]] iterator begin() const { return iterator(this, 0); }
+
     [[nodiscard]] iterator end() const { return iterator(this, size()); }
+
     [[nodiscard]] size_type size() const { return m_values.size(); }
+
     [[nodiscard]] bool empty() const { return m_values.empty(); }
+
     void reserve(size_type count)
     {
         m_keys.reserve(count);
@@ -68,6 +72,7 @@ public:
 
     /// The keys and the values, in insertion order.
     [[nodiscard]] std::span<const K> keys() const { return { m_keys.data(), m_keys.size() }; }
+
     [[nodiscard]] std::span<const V> values() const { return m_values; }
 
     [[nodiscard]] iterator find(const K& key) const
@@ -75,14 +80,19 @@ public:
         const auto found = m_keys.find(key);
         return found == m_keys.end() ? end() : iterator(this, static_cast<size_type>(found - m_keys.begin()));
     }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
     {
         const auto found = find(key);
         return { found, found == end() ? found : std::next(found) };
     }
+
     [[nodiscard]] size_type count(const K& key) const { return m_keys.count(key); }
+
     [[nodiscard]] bool contains(const K& key) const { return m_keys.contains(key); }
+
     [[nodiscard]] const V& at(const K& key) const { return m_values[position_of(key)]; }
+
     [[nodiscard]] V& at(const K& key) { return m_values[position_of(key)]; }
 
     /// Inserts a value built from `args` unless `key` has one.
@@ -95,6 +105,7 @@ public:
             m_values.emplace_back(std::forward<Args>(args)...);
         return { iterator(this, position), inserted };
     }
+
     /// Calls update(value, held) with the value of `key`, a default one inserted last where it had none (held is then
     /// false); returns what update returns.
     template<typename Update>
@@ -104,11 +115,13 @@ public:
         const bool held = !try_emplace(key).second;
         return update(at(key), held);
     }
+
     /// f(value) where `key` has a value, else `missing`.
     template<typename F, typename Result>
         requires std::invocable<F&, const V&>
     [[nodiscard]] Result visit(const K& key, F f, Result missing) const
     { return contains(key) ? Result(f(at(key))) : missing; }
+
     /// Sets the value for `key`, inserting it last where there is none.
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
@@ -120,6 +133,7 @@ public:
         }
         return try_emplace(key, std::forward<M>(mapped));
     }
+
     /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
         requires requires(const Pair& pair) {
@@ -128,14 +142,17 @@ public:
         }
     std::pair<iterator, bool> insert(const Pair& pair)
     { return try_emplace(K(pair.first), pair.second); }
+
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
     { return insert(pair).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& pair) { this->insert(pair); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
@@ -148,6 +165,7 @@ public:
         erase(found);
         return 1;
     }
+
     /// Later entries move up to keep the order (O(n)).
     iterator erase(const_iterator pos)
     {
@@ -156,12 +174,14 @@ public:
         m_values.erase(m_values.begin() + static_cast<difference_type>(position));
         return iterator(this, position);
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         for (auto remaining = last - first; remaining > 0; --remaining)
             first = erase(first);
         return first;
     }
+
     void clear()
     {
         m_keys.clear();
@@ -200,6 +220,7 @@ struct representation_of<ordered_map_decl, S>
 {
     using type = repr::OrderedMap<repr::IndexedSet<typename S::key_type>, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<dense_ordered_map_decl, S>
 {

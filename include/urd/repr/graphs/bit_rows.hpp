@@ -44,6 +44,7 @@ public:
     explicit BitRows(const graph_data<Edge>& data) : BitRows(BitMatrix<V, Partitioned, Undirected, InRows>(data))
     {
     }
+
     /// The rows of `graph`, each distinct one stored once.
     template<typename G>
         requires rows_shaped<G, Partitioned, Undirected, InRows>
@@ -70,6 +71,7 @@ private:
     friend struct urd::detail::graph_rows;
 
     [[nodiscard]] bitset_span<const word_t> row(V v, std::size_t p) const { return m_pool[m_handles[(base::index(v) * this->num_parts()) + p]]; }
+
     [[nodiscard]] bitset_span<const word_t> in_row(V v, std::size_t p) const
         requires InRows
     { return m_pool[m_in_handles[(base::index(v) * this->num_parts()) + p]]; }
@@ -90,12 +92,14 @@ private:
                 into.push_back(m_pool.insert(row).first);
             }
     }
+
     template<typename Rows>
     void intern_in(const Rows& rows)
         requires InRows
     {
         intern(rows, m_in_handles, [](const auto& graph, V v, std::size_t p) { return urd::detail::graph_rows::in_row(graph, v, p); });
     }
+
     template<typename Rows>
     void intern_in(const Rows& /*rows*/)
         requires(!InRows)

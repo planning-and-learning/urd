@@ -60,6 +60,7 @@ struct scoped_map_decl
     static constexpr std::string_view description = "scoped map (a flat hash table, scopes undone by a log)";
     static constexpr std::string_view holds = "+ a log entry per change; pop_scope undoes them";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::ScopedMap<K, V>>
 {
@@ -85,6 +86,7 @@ struct scoped_tree_map_decl
     static constexpr std::string_view description = "scoped tree map (std::map, scopes undone by a log)";
     static constexpr std::string_view holds = "+ a log entry per change; pop_scope undoes them";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::ScopedTreeMap<K, V>>
 {
@@ -110,6 +112,7 @@ struct scoped_dense_map_decl
     static constexpr std::string_view description = "scoped dense map (a slot per index, scopes undone by a log)";
     static constexpr std::string_view holds = "+ a log entry per change; pop_scope undoes them";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::ScopedDenseMap<K, V>>
 {

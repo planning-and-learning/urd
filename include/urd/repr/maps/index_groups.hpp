@@ -90,13 +90,20 @@ public:
     }
 
     [[nodiscard]] group begin() const { return 0; }
+
     [[nodiscard]] group end() const { return m_offsets.size() - 1; }
+
     [[nodiscard]] std::size_t count() const { return m_values.size(); }
+
     [[nodiscard]] K key(group at) const { return index_of<K>::from_index(at); }
+
     [[nodiscard]] std::span<const V> row(group at) const { return std::span<const V>(m_values).subspan(m_offsets[at], m_offsets[at + 1] - m_offsets[at]); }
+
     [[nodiscard]] group find(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key), end()) : end(); }
+
     /// Keys that are no index (a negative integer) come before all.
     [[nodiscard]] group lower_bound(const K& key) const { return index_of<K>::is_index(key) ? find(key) : begin(); }
+
     [[nodiscard]] group upper_bound(const K& key) const { return index_of<K>::is_index(key) ? std::min(index_of<K>::to_index(key) + 1, end()) : begin(); }
 
     /// Equal keys with equal values in the same order, by urd::EqualTo.

@@ -53,6 +53,7 @@ template<typename T, typename V>
 struct view_mixin<data<T>, V> : view_mixin<T, V>
 {
 };
+
 template<typename T, typename V>
 struct view_mixin<builder<T>, V> : view_mixin<T, V>
 {
@@ -68,12 +69,38 @@ struct view_access
     template<typename V>
     [[nodiscard]] static auto data(const V& view) -> decltype(view.data())
     { return view.data(); }
+
+    template<auto Member, typename V>
+    [[nodiscard]] static auto read(const V& view) -> decltype(view.template read<Member>())
+    { return view.template read<Member>(); }
+};
+
+/// The record a view V reads: its stored record's type; data<T> where its context reads each field by the key
+/// and hands out no stored record (record_type<index_view<...>> below).
+template<typename V>
+struct record_type
+{
+    using type = std::remove_cvref_t<decltype(view_access::data(std::declval<const V&>()))>;
 };
 }  // namespace detail
 
 /// The record a view V reads.
 template<typename V>
-using record_of = std::remove_cvref_t<decltype(detail::view_access::data(std::declval<const V&>()))>;
+using record_of = typename detail::record_type<V>::type;
+
+namespace detail
+{
+/// A context that keeps the records of T in a layout of its own (bit-packed, a trie) hands out no stored record
+/// (context[key]): it reads each field of data<T> by the key, `context.template read<&data<T>::m>(key)`, the field as
+/// the view reads it (a value, or a range over its storage). Its views' record is data<T> all the same, whose fields()
+/// they read under its names: whatever the layout, the key is the handle and data<T> the schema.
+template<typename T, typename C, typename K>
+    requires(!requires(const C& context, const K& key) { context[key]; })
+struct record_type<index_view<T, C, K>>
+{
+    using type = data<T>;
+};
+}  // namespace detail
 
 template<typename M>
 struct resolution;
@@ -101,6 +128,7 @@ struct resolution
     template<typename C>
     static const M& of(const M& member, const C& /*context*/) noexcept
     { return member; }  // NOLINT(bugprone-return-const-ref-from-parameter)
+
     /// Written only from an M: no conversion.
     template<std::same_as<M> R>
     static M stored(const R& readout)
@@ -129,10 +157,12 @@ struct resolution<index<U>>
     template<typename C>
     static auto of(index<U> at, const C& context)
     { return context.view(at); }
+
     /// Written from the index itself, or from a view of the element (its index()).
     template<std::same_as<index<U>> R>
     static index<U> stored(const R& readout) noexcept
     { return readout; }
+
     template<typename V>
         requires std::same_as<std::remove_cvref_t<decltype(std::declval<const V&>().index())>, index<U>>
     static index<U> stored(const V& view) noexcept
@@ -164,6 +194,7 @@ struct resolution<V<Ts...>>
             },
             member);
     }
+
     /// Written from one of its alternatives, as it is; from a readout of one alternative, or from a variant of such
     /// readouts: each to its own alternative, else to the one alternative whose stored takes it, whichever its position
     /// (none or several is a compile error).
@@ -203,6 +234,7 @@ struct resolution<M>
         using resolved = std::optional<resolved_t<std::remove_cvref_t<decltype(*member)>, C>>;
         return member.has_value() ? resolved(urd::resolve(*member, context)) : resolved();
     }
+
     /// Written from an optional readout (none: none), or from a readout of its value.
     template<typename R>
     static M stored(const R& readout)
@@ -225,6 +257,7 @@ struct resolution<M>
         using resolved = std::pair<resolved_t<typename M::first_type, C>, resolved_t<typename M::second_type, C>>;
         return resolved(urd::resolve(member.first, context), urd::resolve(member.second, context));
     }
+
     /// Written from a pair of readouts, each as its member.
     template<pair_value R>
     static M stored(const R& readout)
@@ -269,29 +302,35 @@ public:
                                std::conditional_t<std::forward_iterator<base_iterator>, std::forward_iterator_tag, std::input_iterator_tag>>>;
 
         iterator() = default;
+
         iterator(base_iterator it, const F& function) : m_it(std::move(it)), m_function(function) {}
 
         [[nodiscard]] reference operator*() const { return std::invoke(m_function, *m_it); }
+
         [[nodiscard]] reference operator[](difference_type n) const
             requires std::random_access_iterator<base_iterator>
         { return *(*this + n); }
+
         iterator& operator++()
         {
             ++m_it;
             return *this;
         }
+
         iterator operator++(int)
         {
             auto old = *this;
             ++m_it;
             return old;
         }
+
         iterator& operator--()
             requires std::bidirectional_iterator<base_iterator>
         {
             --m_it;
             return *this;
         }
+
         iterator operator--(int)
             requires std::bidirectional_iterator<base_iterator>
         {
@@ -299,34 +338,43 @@ public:
             --m_it;
             return old;
         }
+
         iterator& operator+=(difference_type n)
             requires std::random_access_iterator<base_iterator>
         {
             m_it += n;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic): the base iterator, a pointer where the range read is a flat_vector
             return *this;
         }
+
         iterator& operator-=(difference_type n)
             requires std::random_access_iterator<base_iterator>
         {
             m_it -= n;
             return *this;
         }
+
         friend iterator operator+(iterator it, difference_type n)
             requires std::random_access_iterator<base_iterator>
         { return it += n; }
+
         friend iterator operator+(difference_type n, iterator it)
             requires std::random_access_iterator<base_iterator>
         { return it += n; }
+
         friend iterator operator-(iterator it, difference_type n)
             requires std::random_access_iterator<base_iterator>
         { return it -= n; }
+
         friend difference_type operator-(const iterator& lhs, const iterator& rhs)
             requires std::sized_sentinel_for<base_iterator, base_iterator>
         { return lhs.m_it - rhs.m_it; }
+
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_it == rhs.m_it; }
+
         friend bool operator==(const iterator& it, const base_sentinel& end)
             requires(!std::same_as<base_sentinel, base_iterator>)
         { return it.m_it == end; }
+
         friend auto operator<=>(const iterator& lhs, const iterator& rhs)
             requires std::random_access_iterator<base_iterator>
         { return (lhs.m_it - rhs.m_it) <=> difference_type { 0 }; }
@@ -336,22 +384,28 @@ public:
 
     /// The range read through (its elements as they are), as std's views name it, and the function.
     [[nodiscard]] const held_range& base() const noexcept { return m_range; }
+
     [[nodiscard]] const F& function() const noexcept { return m_function; }
+
     /// The context it is read through, where its function names one (urd::resolver).
     [[nodiscard]] const auto& context() const noexcept
         requires requires(const F& function) { *function.context; }
     { return *m_function.context; }
 
     [[nodiscard]] iterator begin() const { return { m_range.begin(), m_function }; }
+
     [[nodiscard]] iterator end() const
         requires std::ranges::common_range<const R>
     { return { m_range.end(), m_function }; }
+
     [[nodiscard]] base_sentinel end() const
         requires(!std::ranges::common_range<const R>)
     { return m_range.end(); }
+
     [[nodiscard]] auto size() const
         requires std::ranges::sized_range<const R>
     { return std::ranges::size(m_range); }
+
     /// The element at a position, checked as std's containers do (std::out_of_range).
     [[nodiscard]] decltype(auto) at(std::size_t position) const
         requires std::ranges::random_access_range<const R> && std::ranges::sized_range<const R>
@@ -423,6 +477,7 @@ struct resolution<M>
     template<typename C>
     static resolved_range<M, C> of(const M& member, const C& context)
     { return { member, resolver<C> { &context } }; }
+
     /// Written from a range of readouts, element by element.
     template<std::ranges::input_range R>
     static M stored(const R& readout)
@@ -450,6 +505,7 @@ public:
     using value_type = T;
 
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
+
     /// A member of the record, resolved through the context (urd::resolve). A record the context hands out by value (a
     /// stored form of another layout, holding handles only) lives for this call: what is read from it is returned by
     /// value, never as a reference into it.
@@ -457,7 +513,14 @@ public:
     [[nodiscard]] decltype(auto) member() const
     {
         const auto& view = static_cast<const V&>(*this);
-        if constexpr (std::is_reference_v<decltype(view_access::data(view))>)
+        if constexpr (requires { view_access::read<Member>(view); })
+        {
+            // Read by the key (record_type): the field as the context reads it, a value or a range over its storage.
+            const auto read = view_access::read<Member>(view);
+            using Read = std::remove_cvref_t<decltype(urd::resolve(read, *m_context))>;
+            return Read(urd::resolve(read, *m_context));
+        }
+        else if constexpr (std::is_reference_v<decltype(view_access::data(view))>)
             return urd::resolve(view_access::data(view).*Member, *m_context);
         else
         {
@@ -501,6 +564,13 @@ public:
 
 private:
     [[nodiscard]] decltype(auto) data() const { return this->context()[m_at]; }
+
+    /// A field of its record by the key, where its context reads it so (record_type).
+    template<auto Member>
+        requires requires(const C& context, const K& key) { context.template read<Member>(key); }
+    [[nodiscard]] decltype(auto) read() const
+    { return this->context().template read<Member>(m_at); }
+
     [[nodiscard]] const K& identity() const noexcept { return m_at; }
 
     K m_at;
@@ -519,6 +589,7 @@ public:
 
 private:
     [[nodiscard]] const R& data() const noexcept { return *m_record; }
+
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
     const R* m_record;
@@ -541,6 +612,7 @@ public:
 
 private:
     [[nodiscard]] const R& data() const noexcept { return m_record; }
+
     [[nodiscard]] const R& identity() const noexcept { return m_record; }
 
     R m_record;
@@ -559,6 +631,7 @@ public:
 
 private:
     [[nodiscard]] const R& data() const noexcept { return *m_record; }
+
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
     std::shared_ptr<const R> m_record;
@@ -574,6 +647,7 @@ struct resolution<data<T>>
     template<typename C>
     static borrowed_view<T, C> of(const data<T>& member, const C& context) noexcept
     { return { &member, &context }; }
+
     template<typename C>
     static void of(const data<T>&& member, const C& context) = delete;
 };
@@ -585,6 +659,7 @@ struct resolution<builder<T>>
     template<typename C>
     static borrowed_view<T, C, builder<T>> of(const builder<T>& member, const C& context) noexcept
     { return { &member, &context }; }
+
     template<typename C>
     static void of(const builder<T>&& member, const C& context) = delete;
 };

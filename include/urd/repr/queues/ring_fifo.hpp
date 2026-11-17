@@ -34,6 +34,7 @@ template<typename T>
 class RingFifo
 {
     friend struct urd::memory_of<RingFifo>;
+
     /// Reads the element at a position, for the iterator.
     struct element_at
     {
@@ -45,26 +46,35 @@ public:
     using size_type = std::size_t;
 
     [[nodiscard]] size_type size() const { return m_count; }
+
     [[nodiscard]] bool empty() const { return m_count == 0; }
+
     [[nodiscard]] const T& front() const
     {
         assert(!empty() && "urd::repr::RingFifo::front: the queue is empty");
         return at_position(0);
     }
+
     [[nodiscard]] const T& back() const
     {
         assert(!empty() && "urd::repr::RingFifo::back: the queue is empty");
         return at_position(m_count - 1);
     }
+
     /// As std::queue's: the ends changed in place.
     [[nodiscard]] T& front() { return const_cast<T&>(std::as_const(*this).front()); }  // NOLINT(cppcoreguidelines-pro-type-const-cast)
-    [[nodiscard]] T& back() { return const_cast<T&>(std::as_const(*this).back()); }    // NOLINT(cppcoreguidelines-pro-type-const-cast)
+
+    [[nodiscard]] T& back() { return const_cast<T&>(std::as_const(*this).back()); }  // NOLINT(cppcoreguidelines-pro-type-const-cast)
+
     /// The elements in the order pushed.
     [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> begin() const { return { this, 0 }; }
+
     [[nodiscard]] PositionIterator<const RingFifo, element_at, std::forward_iterator_tag> end() const { return { this, m_count }; }
 
     void push(const T& element) { emplace(element); }
+
     void push(T&& element) { emplace(std::move(element)); }
+
     template<typename... Args>
     void emplace(Args&&... args)
     {
@@ -73,6 +83,7 @@ public:
         m_ring[slot(m_count)].emplace(std::forward<Args>(args)...);
         ++m_count;
     }
+
     void pop()
     {
         assert(!empty() && "urd::repr::RingFifo::pop: the queue is empty");
@@ -80,6 +91,7 @@ public:
         m_head = slot(1);
         --m_count;
     }
+
     /// Destroys the elements; the ring stays.
     void clear()
     {
@@ -90,6 +102,7 @@ public:
         }
         m_head = 0;
     }
+
     void reserve(size_type count)
     {
         if (count > m_ring.size())
@@ -104,9 +117,12 @@ private:
         // NOLINTNEXTLINE(bugprone-unchecked-optional-access): the m_count slots from the head on each hold an element
         return *m_ring[slot(position)];
     }
+
     /// The slot `offset` elements after the head.
     [[nodiscard]] size_type slot(size_type offset) const { return (m_head + offset) & (m_ring.size() - 1); }
+
     void grow() { unroll(std::max<size_type>(4, 2 * m_ring.size())); }
+
     /// A ring of `capacity` slots (a power of two) holding the elements from slot 0 on.
     void unroll(size_type capacity)
     {

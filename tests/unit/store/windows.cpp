@@ -25,6 +25,7 @@ using Set = urd::Store<urd::set<std::uint32_t>, urd::dense>;
 using Model = std::set<std::uint32_t>;
 
 std::vector<std::uint32_t> keys_of(const Set& set) { return { set.begin(), set.end() }; }
+
 std::vector<std::uint32_t> keys_of(const Model& set) { return { set.begin(), set.end() }; }
 
 /// A set over a random window, its model, and the window's first key, filled with random keys of the window.

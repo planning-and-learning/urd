@@ -232,6 +232,7 @@ void frontier(benchmark::State& state)
         ++step;
     }
 }
+
 /// A fifo grown from empty to n, then emptied; time per element.
 template<typename Q>
 void grow(benchmark::State& state)
@@ -250,10 +251,12 @@ void grow(benchmark::State& state)
     }
     state.SetItemsProcessed(state.iterations() * count);
 }
+
 template<typename T>
 using Fifo = urd::repr::Fifo<T>;
 template<typename T>
 using RingFifo = urd::repr::RingFifo<T>;
+
 template<template<typename> class Q>
 void add_queues(const std::string& name)
 {

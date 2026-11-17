@@ -44,9 +44,11 @@ class SlotVector
 
     static constexpr bool keyed = !std::is_void_v<K>;
     static_assert(!(keyed && ThreadSafe), "urd::SlotVector: keyed slots are single-threaded");
+
     struct NoKeys
     {
     };
+
     using Key = std::conditional_t<keyed, K, char>;  ///< K, where it is a type
     using Keys = std::conditional_t<keyed, std::vector<Key>, NoKeys>;
     using FreeByKey = std::conditional_t<keyed, gtl::flat_hash_map<Key, std::vector<std::uint32_t>, urd::Hash<Key>, urd::EqualTo<Key>>, NoKeys>;
@@ -54,6 +56,7 @@ class SlotVector
     using Mutex = std::conditional_t<ThreadSafe, std::mutex, NoLock>;
     using Count = std::conditional_t<ThreadSafe, std::atomic<std::size_t>, std::size_t>;
     using Pool = std::conditional_t<ThreadSafe, std::pmr::synchronized_pool_resource, std::pmr::unsynchronized_pool_resource>;
+
     /// The pool the control blocks come from, over the heap, counting the bytes it holds of it (for memory_usage: a
     /// pool resource does not tell).
     struct Blocks final : std::pmr::memory_resource
@@ -67,11 +70,13 @@ class SlotVector
             bytes += size;
             return std::pmr::new_delete_resource()->allocate(size, alignment);
         }
+
         void do_deallocate(void* at, std::size_t size, std::size_t alignment) override
         {
             bytes -= size;
             std::pmr::new_delete_resource()->deallocate(at, size, alignment);
         }
+
         [[nodiscard]] bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
     };
 
@@ -89,13 +94,16 @@ public:
     {
         return place([&element] { return element; }, [&element](T& slot) { slot = element; });
     }
+
     handle_type insert(T&& element)
     {
         return place([&element] { return std::move(element); }, [&element](T& slot) { slot = std::move(element); });
     }
+
     template<typename... Args>
     handle_type emplace(Args&&... args)
     { return insert(T(std::forward<Args>(args)...)); }
+
     /// A slot to use as it is: an erased element, with whatever it held and the storage it kept (a scratch buffer
     /// reused without allocating), else a new default-constructed one.
     handle_type acquire()
@@ -103,6 +111,7 @@ public:
     {
         return place([] { return T(); }, [](T&) {});
     }
+
     /// A slot to use as it is, of `key`: one erased under an equal key, with whatever it held, else a new T(key, args...).
     template<typename... Args>
         requires keyed && std::constructible_from<T, const Key&, Args...>
@@ -139,6 +148,7 @@ public:
         assert((handle.value) < m_slots.size());
         return m_slots[handle.value];
     }
+
     [[nodiscard]] T& operator[](handle_type handle)
     {
         assert((handle.value) < m_slots.size());
@@ -156,7 +166,9 @@ public:
 
     /// How many elements are in use.
     [[nodiscard]] size_type size() const { return m_count; }
+
     [[nodiscard]] bool empty() const { return size() == 0; }
+
     /// Frees every slot, keeping the segments' storage. Not concurrent with anything.
     void clear()
     {
@@ -222,6 +234,7 @@ struct representation_of<slot_vector_decl, S>
 {
     using type = repr::SlotVector<typename S::element_type, false, typename S::slot_key_type>;
 };
+
 template<typename S>
 struct representation_of<thread_safe_slot_vector_decl, S>
 {

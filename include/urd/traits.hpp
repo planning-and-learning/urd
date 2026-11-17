@@ -49,6 +49,7 @@ struct traits_of
 {
     using type = container_traits<std::remove_cvref_t<X>>;
 };
+
 template<typename X>
     requires(!is_store<X>) && requires { X::urd_properties; }
 struct traits_of<X>

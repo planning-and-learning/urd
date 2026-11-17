@@ -24,6 +24,7 @@ struct CustomLeaf
     std::uint32_t second;
 
     friend bool operator==(const CustomLeaf&, const CustomLeaf&) = default;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&CustomLeaf::first, &CustomLeaf::second> {}; }
 };
 

@@ -24,15 +24,20 @@ public:
     { assert(std::ranges::is_sorted(handles)); }
 
     [[nodiscard]] std::size_t size() const noexcept { return m_handles.size(); }
+
     [[nodiscard]] bool empty() const noexcept { return m_handles.empty(); }
+
     /// The i-th row, as the pool hands it out.
     [[nodiscard]] auto operator[](std::size_t i) const
     {
         assert(i < size());
         return m_pool->at(m_handles[i]);
     }
+
     [[nodiscard]] auto begin() const { return rows().begin(); }
+
     [[nodiscard]] auto end() const { return rows().end(); }
+
     /// Whether a row equal to `key` (anything the pool finds by) is among these.
     template<typename Key>
     [[nodiscard]] bool contains(const Key& key) const

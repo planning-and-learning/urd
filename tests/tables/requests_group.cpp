@@ -29,6 +29,7 @@ consteval bool is_trivial_element()
     else
         return std::is_trivially_copyable_v<T>;
 }
+
 template<typename T>
 constexpr bool trivially = is_trivial_element<T>();
 

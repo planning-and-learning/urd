@@ -55,11 +55,17 @@ public:
     using iterator = const_iterator;
 
     [[nodiscard]] size_type size() const { return m_records.size(); }
+
     [[nodiscard]] bool empty() const { return size() == 0; }
+
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
+
     [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
+
     [[nodiscard]] const_iterator cbegin() const { return begin(); }
+
     [[nodiscard]] const_iterator cend() const { return end(); }
+
     [[nodiscard]] const T& operator[](size_type position) const { return *m_records[position]; }
 
     /// Serializes `record` into the arena and appends the record read back in place: by one writer at a time.
@@ -71,6 +77,7 @@ public:
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): cista reads a record from [begin, end) of bytes
         m_records.push_back(::cista::deserialize<const T, cista_mode>(bytes, bytes + m_scratch.size()));
     }
+
     void clear()
     {
         m_records.clear();
@@ -120,6 +127,7 @@ struct representation_of<arena_interner_decl, S>
 {
     using type = repr::ArenaInterner<typename S::element_type, false, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<thread_safe_arena_interner_decl, S>
 {

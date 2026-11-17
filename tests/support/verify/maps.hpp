@@ -31,7 +31,9 @@ struct MapModel
     std::vector<std::pair<K, V>> pairs;
 
     [[nodiscard]] auto find(const K& key) const { return std::ranges::find(pairs, key, &std::pair<K, V>::first); }
+
     [[nodiscard]] std::size_t count(const K& key) const { return static_cast<std::size_t>(std::ranges::count(pairs, key, &std::pair<K, V>::first)); }
+
     bool insert(const K& key, const V& value)
     {
         if (has<Traits, unique> && find(key) != pairs.end())
@@ -42,6 +44,7 @@ struct MapModel
             pairs.emplace_back(key, value);
         return true;
     }
+
     /// insert_or_assign: whether it inserted.
     bool assign(const K& key, const V& value)
     {
@@ -51,10 +54,12 @@ struct MapModel
         found->second = value;
         return false;
     }
+
     std::size_t erase(const K& key)
     {
         return std::erase_if(pairs, [&](const auto& pair) { return pair.first == key; });
     }
+
     void erase_one(const std::pair<K, V>& pair) { pairs.erase(std::ranges::find(pairs, pair)); }
 };
 

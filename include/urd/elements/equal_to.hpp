@@ -123,6 +123,7 @@ struct EqualTo<V<Ts...>>
                    rhs);
     }
 };
+
 /// Optionals (std's or cista's) are equal both empty, or holding equal values.
 template<optional_value M>
 struct EqualTo<M>
@@ -135,6 +136,7 @@ struct EqualTo<M>
         return !lhs.has_value() || EqualTo<optional_value_t<M>> {}(*lhs, *rhs);
     }
 };
+
 /// An identified type equals as what identifies it (detail::identity); it also compares with what identifies it given
 /// alone (detail::identity_t, or its parts by value), so that a lookup may take it in place of the element.
 namespace detail
@@ -155,14 +157,17 @@ struct EqualTo<T>
     constexpr bool operator()(const T& lhs, const T& rhs) const
         requires(detail::members_equality_comparable<T>(T::identifying_members()))
     { return detail::equal_members(lhs, rhs, T::identifying_members()); }
+
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const
         requires EqualityComparableByEqualTo<detail::identity_t<T>>
     { return EqualTo<detail::identity_t<T>> {}(detail::identity(lhs), rhs); }
+
     template<identity_of<T> U>
     constexpr bool operator()(const U& lhs, const T& rhs) const
         requires EqualityComparableByEqualTo<detail::identity_t<T>>
     { return EqualTo<detail::identity_t<T>> {}(lhs, detail::identity(rhs)); }
+
     template<identity_of<T> U, identity_of<T> V>
     constexpr bool operator()(const U& lhs, const V& rhs) const
         requires EqualityComparableByEqualTo<detail::identity_t<T>>

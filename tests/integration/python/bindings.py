@@ -42,6 +42,9 @@ assert term.get_objects() == [4, 5]
 assert term == m.term(0)
 assert hash(term) == hash(m.term(0))
 assert term.arity_plus_one() == 3
+assert not term.is_empty()
+assert term.has_more_objects_than(0)
+assert term.get_flags() == [True, False]
 # A view converts to its index wherever an index is expected: TermIndex(view), and the Data __init__'s index fields.
 assert m.TermIndex(term) == m.TermIndex(0)
 assert str(term) == repr(term) == "Term(\n    arity=2\n    objects=[\n        4\n        5\n    ]\n    weight=none\n)"

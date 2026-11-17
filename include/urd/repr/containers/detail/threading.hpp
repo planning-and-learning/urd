@@ -36,6 +36,7 @@ class Mutex<false>
 {
 public:
     void lock() noexcept {}
+
     void unlock() noexcept {}
 };
 
@@ -50,9 +51,11 @@ public:
 
     // Moving requires quiescence; the destination keeps an independent lock.
     Mutex(Mutex&&) noexcept {}
+
     Mutex& operator=(Mutex&&) noexcept { return *this; }
 
     void lock() { m_mutex.lock(); }
+
     void unlock() { m_mutex.unlock(); }
 
 private:
@@ -73,6 +76,7 @@ using Size = std::conditional_t<ThreadSafe, std::atomic_size_t, size_t>;
 template<typename T>
 T load(const std::atomic<T>& value) noexcept
 { return value.load(std::memory_order_acquire); }
+
 template<typename T>
 T load(const T& value) noexcept
 { return value; }
@@ -81,6 +85,7 @@ T load(const T& value) noexcept
 template<typename T>
 void store(std::atomic<T>& target, std::type_identity_t<T> value) noexcept
 { target.store(value, std::memory_order_release); }
+
 template<typename T>
 void store(T& target, std::type_identity_t<T> value) noexcept
 { target = value; }

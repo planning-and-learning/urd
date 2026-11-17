@@ -78,6 +78,7 @@ struct fixed_string
 
     std::array<char, N> characters {};
 };
+
 /// `prefix` then `name`, as one name.
 template<fixed_string Prefix, fixed_string Name>
 consteval auto concatenated() noexcept
@@ -102,11 +103,13 @@ struct field
     template<fixed_string Prefix>
     static constexpr auto prefixed = concatenated<Prefix, Name>();
 };
+
 /// The type of the data member `Member` points to.
 template<typename T, typename C>
 T member_type_of(T C::* /*member*/);
 template<auto Member>
 using member_type_t = decltype(member_type_of(Member));
+
 /// A record's fields, in data order: what it is, under the names it is read and written by. A record declares them
 /// once, `static constexpr auto fields() noexcept { return urd::Fields<urd::field<"lhs", &Data::lhs>, ...> {}; }`,
 /// and its identifying members are their members (urd::members_of); serialization, printing and bindings iterate them
@@ -115,13 +118,16 @@ template<typename... Fs>
 struct Fields
 {
 };
+
 /// The members of `fields`, as identifying_members gives them.
 template<typename... Fs>
 consteval auto members_of(Fields<Fs...> /*fields*/) noexcept
 { return Members<Fs::member...> {}; }
+
 /// A record that declares its fields.
 template<typename T>
 concept HasFields = requires { T::fields(); };
+
 /// Whether record T declares a field named `name`.
 template<typename T>
     requires requires { T::fields(); }
@@ -129,11 +135,47 @@ consteval bool has_field(std::string_view name)
 {
     return []<typename... Fs>(Fields<Fs...> /*fields*/, std::string_view wanted) { return ((Fs::name == wanted) || ...); }(T::fields(), name);
 }
+
 /// `f.template operator()<F>()` for each field F of record T, in order.
 template<HasFields T, typename Function>
 constexpr void for_each_field(const Function& f)
 {
     [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (f.template operator()<Fs>(), ...); }(T::fields());
+}
+
+/// A function of a view beyond its field getters: its public name and the function, a member of its mixin or a free
+/// function whose first parameter is the view.
+template<fixed_string Name, auto Function>
+struct function
+{
+    /// The name as a C string (where a function takes one).
+    static constexpr const char* c_name = Name.characters.data();
+    static constexpr auto pointer = Function;
+};
+
+/// A view's functions beyond its field getters, under the names Python calls them by. A view mixin lists every member
+/// it has besides self() and the field getters, and every free function over the view, once:
+/// `static constexpr auto functions() noexcept { return urd::Functions<urd::function<"is_ground", &view_mixin::is_ground>, ...> {}; }`.
+template<typename... Fs>
+struct Functions
+{
+};
+
+/// Two function lists as one, in order: a list extended where a condition holds (`if constexpr`), each entry named
+/// only in the branch that keeps it.
+template<typename... As, typename... Bs>
+constexpr Functions<As..., Bs...> operator+(Functions<As...> /*a*/, Functions<Bs...> /*b*/) noexcept
+{ return {}; }
+
+/// A view whose mixin lists its functions.
+template<typename V>
+concept HasFunctions = requires { V::functions(); };
+
+/// `f.template operator()<F>()` for each function F of view V, in order.
+template<HasFunctions V, typename Function>
+constexpr void for_each_function(const Function& f)
+{
+    [&]<typename... Fs>(Functions<Fs...> /*functions*/) { (f.template operator()<Fs>(), ...); }(V::functions());
 }
 
 namespace detail
@@ -147,6 +189,7 @@ inline constexpr bool is_members_v<Members<Ms...>> = true;
 /// @brief T names its members as a Members type (cista_members), so cista can serialize it.
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
+
 /// @brief Empties every member a record names for cista (Serializable), keeping the buffers they own: each by its
 /// clear(), or else set to its default. A record reused in place (a builder) is reset with it.
 template<Serializable T>
@@ -178,16 +221,19 @@ constexpr auto identity(const T& x)
     return []<auto... Ms>(const T& of, Members<Ms...> /*members*/)
     { return std::tuple<decltype(std::invoke(Ms, of))...>(std::invoke(Ms, of)...); }(x, T::identifying_members());
 }
+
 /// What member M (a data member or a getter) gives of a T: what identity() holds of it.
 template<typename T, auto M>
 using member_read_t = decltype(std::invoke(M, std::declval<const T&>()));
 template<typename T, typename Ms>
 struct identity_of_members;
+
 template<typename T, auto... Ms>
 struct identity_of_members<T, Members<Ms...>>
 {
     using type = std::tuple<member_read_t<T, Ms>...>;
 };
+
 /// The type identity() gives, named from the members: naming it instantiates neither identity() nor the tuple.
 template<Identifiable T>
 using identity_t = typename identity_of_members<T, decltype(T::identifying_members())>::type;
@@ -244,9 +290,11 @@ namespace detail
 template<typename T, auto... Ms>
 consteval bool members_hashable(Members<Ms...> /*members*/)
 { return (Hashable<member_read_t<T, Ms>> && ...); }
+
 template<typename T, auto... Ms>
 consteval bool members_equality_comparable(Members<Ms...> /*members*/)
 { return (EqualityComparableByEqualTo<member_read_t<T, Ms>> && ...); }
+
 template<typename T, auto... Ms>
 consteval bool members_ordered(Members<Ms...> /*members*/)
 { return (OrderedByLess<member_read_t<T, Ms>> && ...); }

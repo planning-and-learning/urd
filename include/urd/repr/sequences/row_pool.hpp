@@ -47,13 +47,19 @@ public:
     }
 
     [[nodiscard]] iterator begin() { return m_rows.begin(); }
+
     [[nodiscard]] iterator end() { return m_rows.begin() + static_cast<difference_type>(m_used); }
+
     [[nodiscard]] const_iterator begin() const { return m_rows.begin(); }
+
     [[nodiscard]] const_iterator end() const { return m_rows.begin() + static_cast<difference_type>(m_used); }
+
     [[nodiscard]] size_type size() const { return m_used; }
+
     [[nodiscard]] bool empty() const { return m_used == 0; }
 
     void push_back(const Inner& row) { emplace_back() = row; }
+
     void push_back(Inner&& row) { emplace_back() = std::move(row); }
 
     /// The next row: a kept one, cleared, where there is one; built from `args` where given.
@@ -72,12 +78,14 @@ public:
         assert(m_used > 0);
         m_rows[--m_used].clear();
     }
+
     void clear()
     {
         for (auto& row : *this)
             row.clear();
         m_used = 0;
     }
+
     /// `count` rows: empty ones, or copies of `row`, appended, or the rows after the first `count` removed (cleared and
     /// kept), as std::vector::resize.
     void resize(size_type count)
@@ -87,6 +95,7 @@ public:
         while (m_used < count)
             emplace_back();
     }
+
     void resize(size_type count, const Inner& row)
     {
         while (m_used > count)
@@ -94,6 +103,7 @@ public:
         while (m_used < count)
             push_back(row);
     }
+
     /// Rebuilds from rows, or as `count` copies of `row`, in the rows kept, as std::vector::assign.
     template<std::input_iterator InputIt>
     void assign(InputIt first, InputIt last)
@@ -101,14 +111,18 @@ public:
         clear();
         std::for_each(first, last, [this](const auto& row) { this->push_back(row); });
     }
+
     void assign(size_type count, const Inner& row)
     {
         clear();
         resize(count, row);
     }
+
     /// As the vector of its rows: how many fit without growing, the most it can hold, and giving back the rows kept.
     [[nodiscard]] size_type capacity() const { return m_rows.capacity(); }
+
     [[nodiscard]] size_type max_size() const { return m_rows.max_size(); }
+
     void shrink_to_fit()
     {
         m_rows.resize(m_used);
@@ -122,6 +136,7 @@ public:
         std::rotate(begin() + index, end() - 1, end());
         return begin() + index;
     }
+
     template<typename... Args>
     iterator emplace(const_iterator pos, Args&&... args)
     {
@@ -132,6 +147,7 @@ public:
     }
 
     iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
+
     /// Clears the rows and moves them past the rows in use, for reuse.
     iterator erase(const_iterator first, const_iterator last)
     {

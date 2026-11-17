@@ -28,7 +28,9 @@ struct urd::data<Bare>
     int weight = 0;
 
     data() = default;
+
     explicit data(int weight_) : weight(weight_) {}
+
     static constexpr bool copyable() noexcept
     {
         static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
@@ -36,9 +38,12 @@ struct urd::data<Bare>
     }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&data::weight> {}; }
 };
+
 template<typename V>
 struct urd::view_mixin<Bare, V>
 {
@@ -56,8 +61,11 @@ namespace
 struct Bares
 {
     std::vector<urd::data<Bare>> records;
+
     const urd::data<Bare>& operator[](urd::index<Bare> at) const { return records[at.value]; }
+
     [[nodiscard]] std::size_t layer() const noexcept { return 6; }
+
     [[nodiscard]] urd::index_view<Bare, Bares> view(urd::index<Bare> at) const { return { at, this }; }
 };
 }  // namespace

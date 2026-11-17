@@ -41,12 +41,14 @@ struct order_key_of
 {
     using type = T;
 };
+
 template<typename T, typename Compare>
     requires requires { Compare::projection; }
 struct order_key_of<T, Compare>
 {
     using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
 };
+
 template<typename T, typename Compare>
 using order_key_t = typename order_key_of<T, Compare>::type;
 
@@ -78,6 +80,7 @@ template<typename List>
 struct single_member
 {
 };
+
 template<auto M>
 struct single_member<Members<M>>
 {
@@ -107,11 +110,13 @@ struct index_of<K>
         else
             return true;
     }
+
     [[nodiscard]] static constexpr std::size_t to_index(K key) noexcept
     {
         assert(is_index(key) && "urd::index_of: a negative key is no index");
         return static_cast<std::size_t>(key);
     }
+
     [[nodiscard]] static constexpr K from_index(std::size_t index) noexcept { return static_cast<K>(index); }
 };
 
@@ -121,7 +126,9 @@ struct index_of<K>
     using underlying = std::underlying_type_t<K>;
 
     [[nodiscard]] static constexpr bool is_index(K key) noexcept { return index_of<underlying>::is_index(static_cast<underlying>(key)); }
+
     [[nodiscard]] static constexpr std::size_t to_index(K key) noexcept { return index_of<underlying>::to_index(static_cast<underlying>(key)); }
+
     [[nodiscard]] static constexpr K from_index(std::size_t index) noexcept { return static_cast<K>(index_of<underlying>::from_index(index)); }
 };
 
@@ -133,7 +140,9 @@ struct index_of<K>
     using value_type = std::remove_cvref_t<decltype(std::declval<const K&>().*member)>;
 
     [[nodiscard]] static constexpr bool is_index(const K& key) noexcept { return index_of<value_type>::is_index(key.*member); }
+
     [[nodiscard]] static constexpr std::size_t to_index(const K& key) noexcept { return index_of<value_type>::to_index(key.*member); }
+
     [[nodiscard]] static constexpr K from_index(std::size_t index) noexcept
     {
         auto key = K {};

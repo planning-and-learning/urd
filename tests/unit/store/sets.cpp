@@ -222,6 +222,7 @@ template<typename S>
 class SetAlgebra : public testing::Test
 {
 };
+
 using Sets = testing::Types<Store<set<int>>,
                             Store<set<int>, urd::sorted>,
                             Store<set<int>, urd::small>,
@@ -231,11 +232,13 @@ using Sets = testing::Types<Store<set<int>>,
                             Store<set<int>, urd::insertion_ordered>,
                             Store<set<int>, urd::dense, urd::proportional_clear>>;
 TYPED_TEST_SUITE(SetAlgebra, Sets);
+
 // Inclusion, overlap, union, intersection and difference: the Stores whose container has them (a bitset's words).
 template<typename S>
 class DenseSetAlgebra : public testing::Test
 {
 };
+
 using DenseSets = testing::Types<Store<set<int>, urd::dense>, Store<set<int>, urd::dense, urd::proportional_clear>>;
 TYPED_TEST_SUITE(DenseSetAlgebra, DenseSets);
 
@@ -310,6 +313,7 @@ TEST(Ends, SortedStoresHaveTheirLeastAndGreatest)
     EXPECT_EQ(map.front().second, 10);
     EXPECT_EQ(map.back().first, 2);
 }
+
 template<typename S>
 concept has_front = requires(const S& store) { store.front(); };
 static_assert(!has_front<Store<set<int>, urd::dense, urd::sorted>> && !has_front<Store<set<int>>>);
@@ -429,6 +433,7 @@ struct Node
     int id;
     int f;
     int g;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Node::id> {}; }
 };
 }  // namespace
@@ -487,6 +492,7 @@ TEST(OrderBy, QueueOfUnorderedElements)
         int cost;
         std::string name;
     };
+
     auto tasks = Store<queue<Task>, urd::by_priority, urd::order_by<urd::by<&Task::cost>>>();
     tasks.push(Task { 7, "b" });
     tasks.push(Task { 2, "a" });

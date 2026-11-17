@@ -175,6 +175,7 @@ struct Hash<V<Ts...>>
         return seed;
     }
 };
+
 /// An optional (std's or cista's) hashes whether it holds a value, and the value.
 template<optional_value M>
 struct Hash<M>
@@ -188,6 +189,7 @@ struct Hash<M>
         return seed;
     }
 };
+
 namespace detail
 {
 
@@ -196,9 +198,11 @@ namespace detail
 template<typename M>
 hash_t hash_identity(const std::tuple<M>& identity)
 { return Hash<std::remove_cvref_t<M>> {}(std::get<0>(identity)); }
+
 template<typename... Ms>
 hash_t hash_identity(const std::tuple<Ms...>& identity)
 { return Hash<std::tuple<Ms...>> {}(identity); }
+
 /// The same hash, read from the element's members without a tuple of them.
 template<typename T, auto... Ms>
 hash_t hash_members(const T& element, Members<Ms...> /*members*/)
@@ -225,6 +229,7 @@ struct Hash<T>
     hash_t operator()(const T& element) const
         requires(detail::members_hashable<T>(T::identifying_members()))
     { return detail::hash_members(element, T::identifying_members()); }
+
     template<identity_of<T> U>
     hash_t operator()(const U& identity) const
         requires Hashable<detail::identity_t<T>>

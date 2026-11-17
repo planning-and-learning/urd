@@ -82,6 +82,7 @@ struct indexed_set_decl
     static constexpr std::string_view description = "indexed set (a vector in insertion order, plus a hash table of positions)";
     static constexpr std::string_view holds = "n elements in order + a table of positions";
 };
+
 template<typename T>
 struct declaration_of<repr::IndexedSet<T, std::uint32_t>>
 {
@@ -107,6 +108,7 @@ struct stable_indexed_set_decl : indexed_set_decl
     static constexpr std::string_view description = "stable indexed set (segments that never move, a hash table of positions; no lock)";
     static constexpr std::string_view holds = "segments that never move + a table of positions";
 };
+
 template<typename T, typename Index>
 struct declaration_of<repr::StableIndexedSet<T, Index>>
 {
@@ -133,6 +135,7 @@ struct concurrent_indexed_set_decl : indexed_set_decl
     static constexpr std::string_view description = "concurrent indexed set (segments that never move, a concurrent table of positions)";
     static constexpr std::string_view holds = "segments that never move + a table of positions; new elements under a lock";
 };
+
 template<typename T, typename Index>
 struct declaration_of<repr::ConcurrentIndexedSet<T, Index>>
 {

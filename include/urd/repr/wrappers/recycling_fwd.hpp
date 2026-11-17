@@ -62,6 +62,7 @@ struct recycling_map_decl
     static constexpr std::string_view description = "recycling map (std::map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };
+
 template<typename K, typename V, typename C>
 struct declaration_of<repr::Recycling<std::map<K, V, C>>>
 {
@@ -88,6 +89,7 @@ struct recycling_hash_set_decl
     static constexpr std::string_view description = "recycling hash set (std::unordered_set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
+
 template<typename T>
 struct declaration_of<repr::RecyclingHashSet<T>>
 {
@@ -114,6 +116,7 @@ struct recycling_tree_set_decl
     static constexpr std::string_view description = "recycling tree set (std::set that keeps erased nodes for reuse)";
     static constexpr std::string_view holds = "erased nodes kept for reuse";
 };
+
 template<typename T>
 struct declaration_of<repr::RecyclingTreeSet<T>>
 {
@@ -140,6 +143,7 @@ struct recycling_hash_map_decl
     static constexpr std::string_view description = "recycling hash map (std::unordered_map that keeps erased nodes and their values for reuse)";
     static constexpr std::string_view holds = "erased nodes and their values kept for reuse";
 };
+
 template<typename K, typename V>
 struct declaration_of<repr::RecyclingHashMap<K, V>>
 {

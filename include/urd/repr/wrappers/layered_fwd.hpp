@@ -60,6 +60,7 @@ struct detail::declaration_of<repr::Layered<R>>
     using declaration = layered_decl<declaration_t<R>, false>;
     static constexpr auto roles = declaration_of<R>::roles;
 };
+
 template<typename R>
 struct detail::declaration_of<repr::LayeredPool<R>>
 {

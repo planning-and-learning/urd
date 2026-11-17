@@ -29,51 +29,65 @@ public:
     void push_back(const value_type& element)
         requires std::copy_constructible<value_type>
     { representation().push_back(element); }
+
     void push_back(const value_type& element)
         requires denied<"push_back(const T&): the element is move-only: move it in, push_back(std::move(x))", value_type>
     = delete;
+
     void push_back(value_type&& element) { representation().push_back(std::move(element)); }
+
     /// The new element; changeable in place only where the Store's elements are.
     template<typename... Args>
     typename iterator_types<R, S>::reference emplace_back(Args&&... args)
     { return representation().emplace_back(std::forward<Args>(args)...); }
+
     iterator_type insert(const_iterator_type pos, const value_type& element)
         requires changes_in_the_middle<S> && std::copy_constructible<value_type>
     { return representation().insert(pos, element); }
+
     iterator_type insert(const_iterator_type pos, const value_type& element)
         requires changes_in_the_middle<S> && denied<"insert(pos, const T&): the element is move-only: move it in, insert(pos, std::move(x))", value_type>
     = delete;
+
     iterator_type insert(const_iterator_type pos, value_type&& element)
         requires changes_in_the_middle<S>
     { return representation().insert(pos, std::move(element)); }
+
     /// Copies of [first, last) before `pos`, as std::vector::insert.
     template<std::input_iterator InputIt>
     iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
         requires changes_in_the_middle<S> && std::copy_constructible<value_type>
     { return representation().insert(pos, first, last); }
+
     template<std::input_iterator InputIt,
              urd::fixed_string Reason = "insert(pos, first, last): the element is move-only: move each in, insert(pos, std::move(x))">
     iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
         requires changes_in_the_middle<S> && denied<Reason, value_type>
     = delete;
+
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
         requires changes_in_the_middle<S>
     { return representation().emplace(pos, std::forward<Args>(args)...); }
+
     void pop_back()
         requires shrinks<S>
     { representation().pop_back(); }
+
     /// Grows to `count` elements, value-initialized or copies of `value`, or removes those after the first `count`, as
     /// std::vector::resize.
     void resize(std::size_t count)
         requires shrinks<S>
     { representation().resize(count); }
+
     void resize(std::size_t count, const value_type& value)
         requires shrinks<S> && std::copy_constructible<value_type>
     { representation().resize(count, value); }
+
     void resize(std::size_t count, const value_type& value)
         requires shrinks<S> && denied<"resize(n, const T&): the element is move-only: resize(n) value-initializes", value_type>
     = delete;
+
     /// Every element equal to `element` (urd::EqualTo, as the Store's ==); how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)
         requires changes_in_the_middle<S>
@@ -98,6 +112,7 @@ struct facet_condition<facet::appending> : facet_defaults
     static constexpr bool on()
     { return grows<S>; }
 };
+
 template<>
 struct facet_operations<facet::appending>
 {

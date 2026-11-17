@@ -48,6 +48,7 @@ struct shape_below
 {
     using type = std::vector<std::size_t>;
 };
+
 template<typename Inner, bool TrackRows>
 struct shape_below<Jagged<Inner, TrackRows>>
 {
@@ -108,6 +109,7 @@ public:
         }
         m_data.resize(m_offsets.back());
     }
+
     /// Rows of rows, at any depth: for each row, the shape of its rows.
     explicit Jagged(const shape_type& shape)
         requires(writable && !leaf)
@@ -134,6 +136,7 @@ private:
     // Reached by the Jagged that holds these rows (its reset), not by a Store.
     template<typename, bool>
     friend class Jagged;
+
     /// Rows [from, to) back to their defaults.
     void reset_rows(size_type from, size_type to)
         requires writable
@@ -148,17 +151,23 @@ private:
 
 public:
     [[nodiscard]] const_iterator begin() const { return const_iterator(this, 0); }
+
     [[nodiscard]] const_iterator end() const { return const_iterator(this, size()); }
+
     [[nodiscard]] iterator begin()
         requires writable
     { return iterator(this, 0); }
+
     [[nodiscard]] iterator end()
         requires writable
     { return iterator(this, size()); }
+
     [[nodiscard]] size_type size() const { return m_offsets.size() - 1; }
+
     [[nodiscard]] bool empty() const { return size() == 0; }
 
     [[nodiscard]] const_row operator[](size_type pos) const { return row_at<const_row>(*this, pos); }
+
     [[nodiscard]] row operator[](size_type pos)
         requires writable
     {
@@ -171,20 +180,24 @@ public:
     template<std::ranges::input_range Row>
     void push_back(const Row& elements)
     { insert(end(), elements); }
+
     template<std::ranges::input_range Row>
     row emplace_back(const Row& elements)
     {
         push_back(elements);
         return (*this)[size() - 1];
     }
+
     void pop_back()
     {
         assert(size() > 0);
         erase(end() - 1);
     }
+
     /// `count` rows: empty ones, or copies of `elements`, appended, or the rows after the first `count` removed, as
     /// std::vector::resize.
     void resize(size_type count) { resize(count, std::ranges::empty_view<T>()); }
+
     template<std::ranges::input_range Row>
     void resize(size_type count, const Row& elements)
     {
@@ -193,6 +206,7 @@ public:
         while (size() < count)
             push_back(elements);
     }
+
     /// `count` rows, each a copy of `elements`, as std::vector::assign.
     template<std::ranges::input_range Row>
     void assign(size_type count, const Row& elements)
@@ -200,6 +214,7 @@ public:
         clear();
         resize(count, elements);
     }
+
     void clear()
     {
         m_data.clear();
@@ -226,11 +241,13 @@ public:
             m_offsets[later] += added;
         return begin() + static_cast<difference_type>(index);
     }
+
     template<std::ranges::input_range Row>
     iterator emplace(const_iterator pos, const Row& elements)
     { return insert(pos, elements); }
 
     iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         const auto from = static_cast<size_type>(first - begin());
@@ -316,11 +333,13 @@ struct representation_of<jagged_decl, S>
 {
     using type = repr::Jagged<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<fixed_jagged_decl, S>
 {
     using type = repr::Jagged<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<tracked_jagged_decl, S>
 {

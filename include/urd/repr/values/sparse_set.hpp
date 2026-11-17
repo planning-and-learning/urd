@@ -56,14 +56,20 @@ public:
     }
 
     [[nodiscard]] iterator begin() const { return m_members.begin(); }
+
     [[nodiscard]] iterator end() const { return m_members.end(); }
+
     [[nodiscard]] size_type size() const { return m_members.size(); }
+
     [[nodiscard]] bool empty() const { return m_members.empty(); }
+
     [[nodiscard]] const K* data() const { return m_members.data(); }
 
     /// As the vector of its members: how many fit without growing, the most it can hold, and giving back unused room.
     [[nodiscard]] size_type capacity() const { return m_members.capacity(); }
+
     [[nodiscard]] size_type max_size() const { return m_members.max_size(); }
+
     void shrink_to_fit() { m_members.shrink_to_fit(); }
 
     /// Room for keys below `count`.
@@ -75,12 +81,15 @@ public:
 
     [[nodiscard]] iterator find(const K& key) const
     { return contains(key) ? begin() + static_cast<difference_type>(m_places[index_of<K>::to_index(key)]) : end(); }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
     {
         const auto found = find(key);
         return { found, found == end() ? found : std::next(found) };
     }
+
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
+
     [[nodiscard]] bool contains(const K& key) const
     {
         if (!index_of<K>::is_index(key))
@@ -100,12 +109,15 @@ public:
         m_members.push_back(key);
         return { end() - 1, true };
     }
+
     iterator insert(const_iterator /*hint*/, const K& key) { return insert(key).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& key) { this->insert(K(key)); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(K(std::forward<Args>(args)...)); }
@@ -117,12 +129,14 @@ public:
         erase_at(m_places[index_of<K>::to_index(key)]);
         return 1;
     }
+
     /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
     void merge(SparseSet& source)
     {
         for (auto it = source.begin(); it != source.end();)
             it = insert(*it).second ? source.erase(it) : std::next(it);
     }
+
     /// The member after `pos` takes its place, so the returned iterator is `pos` again.
     iterator erase(const_iterator pos)
     {
@@ -130,6 +144,7 @@ public:
         erase_at(place);
         return begin() + static_cast<difference_type>(place);
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         const auto from = static_cast<std::size_t>(first - begin());
@@ -137,6 +152,7 @@ public:
             erase_at(place - 1);
         return begin() + static_cast<difference_type>(from);
     }
+
     void clear() { m_members.clear(); }
 
     [[nodiscard]] friend bool operator==(const SparseSet& lhs, const SparseSet& rhs)
@@ -189,6 +205,7 @@ struct representation_of<sparse_set_decl, S>
 {
     using type = repr::SparseSet<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<ordered_sparse_set_decl, S>
 {

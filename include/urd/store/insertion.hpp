@@ -31,50 +31,63 @@ public:
     insert_result insert(const value_type& element)
         requires std::copy_constructible<value_type>
     { return representation().insert(element); }
+
     insert_result insert(const value_type& element)
         requires denied<"insert(const T&): the element is move-only: move it in, insert(std::move(x))", value_type>
     = delete;
+
     insert_result insert(value_type&& element)
         requires std::move_constructible<value_type>
     { return representation().insert(std::move(element)); }
+
     /// A map's element holds its key const: a move-only key cannot be moved out of one.
     insert_result insert(value_type&& element)
         requires(!std::move_constructible<value_type>)
                     && denied<"insert(std::pair&&): the key is move-only, and a map's element holds it const: move it in, try_emplace(std::move(k), v)",
                               value_type>
     = delete;
+
     /// A copy of the key where it is new, by a key with its hash (urd/elements/prehashed.hpp), which is not hashed
     /// again: another form of a key, forwarded as it is (a representation that inserts by none does not compile).
     insert_result insert(const prehashed<value_type>& key)
         requires std::copy_constructible<value_type>
     { return representation().insert(key); }
+
     insert_result insert(const prehashed<value_type>& key)
         requires denied<"insert(prehashed<T>): the element is move-only: it is copied; move it in, insert(std::move(x))", value_type>
     = delete;
+
     /// With a hint where the element goes.
     iterator_type insert(const_iterator_type hint, const value_type& element)
         requires std::copy_constructible<value_type>
     { return representation().insert(hint, element); }
+
     iterator_type insert(const_iterator_type hint, const value_type& element)
         requires denied<"insert(hint, const T&): the element is move-only: move it in, insert(hint, std::move(x))", value_type>
     = delete;
+
     iterator_type insert(const_iterator_type hint, value_type&& element)
         requires std::move_constructible<value_type>
     { return representation().insert(hint, std::move(element)); }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
         requires std::copy_constructible<value_type>
     { representation().insert(first, last); }
+
     template<std::input_iterator InputIt, urd::fixed_string Reason = "insert(first, last): the element is move-only: move each in, insert(std::move(x))">
     void insert(InputIt first, InputIt last)
         requires denied<Reason, value_type>
     = delete;
+
     void insert(std::initializer_list<value_type> elements)
         requires std::copy_constructible<value_type>
     { insert(elements.begin(), elements.end()); }
+
     void insert(std::initializer_list<value_type> elements)
         requires denied<"insert({...}): the element is move-only: an initializer_list is copied; move each in, insert(std::move(x))", value_type>
     = delete;
+
     template<typename... Args>
     insert_result emplace(Args&&... args)
     { return representation().emplace(std::forward<Args>(args)...); }
@@ -96,6 +109,7 @@ struct facet_condition<facet::insertion> : facet_defaults
     static constexpr bool on()
     { return grows<S>; }
 };
+
 template<>
 struct facet_operations<facet::insertion>
 {

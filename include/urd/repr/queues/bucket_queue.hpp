@@ -46,11 +46,15 @@ public:
     using size_type = std::size_t;
 
     [[nodiscard]] size_type size() const { return m_size; }
+
     [[nodiscard]] bool empty() const { return m_size == 0; }
+
     [[nodiscard]] const T& top() const { return m_buckets[m_least].back(); }
 
     void push(const T& element) { emplace(element); }
+
     void push(T&& element) { emplace(std::move(element)); }
+
     template<typename... Args>
     void emplace(Args&&... args)
     {
@@ -63,6 +67,7 @@ public:
             m_least = priority;
         ++m_size;
     }
+
     void pop()
     {
         m_buckets[m_least].pop_back();
@@ -70,6 +75,7 @@ public:
             while (m_buckets[m_least].empty())
                 ++m_least;
     }
+
     void clear()
     {
         for (auto& bucket : m_buckets)

@@ -47,15 +47,19 @@ struct element_rows
         const auto row = Row(std::ranges::begin(elements), std::ranges::end(elements));
         return stored_row(row.begin(), row.end());
     }
+
     /// A stored row as its elements: a row of column widths read as them, column by column; any other as it is.
     template<bool ThreadSafe>
     [[nodiscard]] static auto elements(const SchemaRow<ThreadSafe>& row)
     { return row.template as<element>(); }
+
     template<typename Stored>
     [[nodiscard]] static auto elements(const Stored& row)
     { return std::ranges::subrange(std::ranges::begin(row), std::ranges::end(row)); }
+
     /// What a stored row is handed out as: a vector's elements as a span, any other (a span, decoding rows) as it is.
     [[nodiscard]] static std::span<const element> view(const stored_row& row) noexcept { return row; }
+
     template<typename Stored>
     [[nodiscard]] static Stored view(const Stored& row)
     { return row; }
@@ -66,6 +70,7 @@ struct element_rows
         const auto held = elements(row);
         return stored_row(held.begin(), held.end());
     }
+
     template<typename Stored>
     [[nodiscard]] static stored_row changed(const Stored& row, std::span<const element> added, std::span<const element> removed)
     {
@@ -74,15 +79,19 @@ struct element_rows
         std::erase_if(held, [&removed](const element& each) { return std::ranges::find(removed, each) != removed.end(); });
         return canonical(held);
     }
+
     template<typename Stored>
     [[nodiscard]] static std::size_t size(const Stored& row)
     { return std::ranges::size(row); }
+
     template<typename Stored>
     [[nodiscard]] static bool contains(const Stored& row, const element& value)
     { return std::ranges::find(elements(row), value) != std::ranges::end(elements(row)); }
+
     template<typename Stored>
     static void read(const Stored& row, std::span<element> out)
     { std::ranges::copy(elements(row), out.begin()); }
+
     /// A stored row as the Row it was given as, built from its elements where they lie.
     template<typename Stored>
     [[nodiscard]] static Row row(const Stored& stored)
@@ -107,6 +116,7 @@ struct word_rows
             set(bits, index_of<element>::to_index(each));
         return bits;
     }
+
     /// A row given as a dense set: its words as they are, a word at a time, not a key at a time.
     [[nodiscard]] static stored_row canonical(const Row& row)
         requires requires { row.significant_words(); }
@@ -114,6 +124,7 @@ struct word_rows
         const auto words = row.significant_words();
         return stored_row(words.begin(), words.end());
     }
+
     [[nodiscard]] static bits_view view(const stored_row& row) noexcept { return bits_view(row.data(), row.size() * bits_view::Digits); }
 
     [[nodiscard]] static stored_row changed(stored_row bits, std::span<const element> added, std::span<const element> removed)
@@ -127,12 +138,15 @@ struct word_rows
             bits.pop_back();
         return bits;
     }
+
     [[nodiscard]] static std::size_t size(const stored_row& row) noexcept { return view(row).count(); }
+
     [[nodiscard]] static bool contains(const stored_row& row, const element& value)
     {
         const auto at = index_of<element>::to_index(value);
         return at < view(row).size() && view(row).test(at);
     }
+
     static void read(const stored_row& row, std::span<element> out)
     {
         const auto bits = view(row);
@@ -140,6 +154,7 @@ struct word_rows
         for (auto at = bits.find_first(); at != bits_view::npos; at = bits.find_next(at))
             *next++ = index_of<element>::from_index(at);
     }
+
     /// A stored row as the Row it was given as: its set bits read out first.
     [[nodiscard]] static Row row(const stored_row& stored)
     {
@@ -226,6 +241,7 @@ public:
     RowInterner()
         requires(!Bits && !by_column_widths)
     = default;
+
     /// With Bits, elements of any width (a word's bits): what a slot holds before its value is built with its width (a map
     /// of layered pools, Layered::try_emplace).
     RowInterner()
@@ -233,18 +249,21 @@ public:
         : RowInterner(urd::bit_width { static_cast<std::uint8_t>(word_bits) })
     {
     }
+
     /// Rows whose elements each fit in `width` (urd::bit).
     explicit RowInterner(urd::bit_width width)
         requires Bits
         : m_rows(width)
     {
     }
+
     /// With by_column_widths, no columns: what a slot holds before its value is built with its widths.
     RowInterner()
         requires(by_column_widths)
         : RowInterner(urd::column_widths())
     {
     }
+
     /// Rows of these columns (urd::by_column_widths).
     explicit RowInterner(const urd::column_widths& columns)
         requires(by_column_widths)
@@ -263,6 +282,7 @@ public:
         encode(key, values);
         return intern(key.row());
     }
+
     /// By values with their hash (urd::hash_range of them as unsigned integers), which is not computed again.
     template<std::ranges::input_range Values>
         requires by_column_widths
@@ -272,6 +292,7 @@ public:
         encode(key, values.key);
         return intern(prehashed<SchemaKey> { key.row(), values.hash });
     }
+
     /// The handle of the row with these values, or none (also where they do not fit the columns); no row is built for it.
     template<std::ranges::input_range Values>
         requires by_column_widths
@@ -280,6 +301,7 @@ public:
         const auto key = unsigned_values(values);
         return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, hash_range(key) }));
     }
+
     template<std::ranges::input_range Values>
         requires by_column_widths
     [[nodiscard]] handle_type find(const prehashed<Values>& values) const
@@ -287,6 +309,7 @@ public:
         const auto key = unsigned_values(values.key);
         return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, values.hash }));
     }
+
     /// The column widths its rows are stored by (urd::by_column_widths).
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
         requires by_column_widths
@@ -298,25 +321,30 @@ public:
         requires(!by_column_widths && !given<Elements>)
     std::pair<handle_type, bool> insert(const Elements& elements)
     { return intern(canonical(elements)); }
+
     template<std::ranges::input_range Elements>
         requires(!by_column_widths && given<Elements>)
     std::pair<handle_type, bool> insert(const Elements& elements)
     { return intern(elements); }
+
     /// The handle of the row with these elements, or none.
     template<std::ranges::input_range Elements>
         requires(!by_column_widths && !given<Elements>)
     [[nodiscard]] handle_type find(const Elements& elements) const
     { return handle_of(urd::detail::indexed_access::position(m_rows, canonical(elements))); }
+
     template<std::ranges::input_range Elements>
         requires(!by_column_widths && given<Elements>)
     [[nodiscard]] handle_type find(const Elements& elements) const
     { return handle_of(urd::detail::indexed_access::position(m_rows, elements)); }
+
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), which is not hashed
     /// again: a row of a sequence, stored flat, as its contiguous elements.
     template<typename Elements>
         requires(!by_column_widths && given<Elements>)
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return intern(key); }
+
     template<typename Elements>
         requires(!by_column_widths && given<Elements>)
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
@@ -324,12 +352,15 @@ public:
         const auto found = urd::detail::indexed_access::position(m_rows, key);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
+
     /// The bit width of the rows' elements (Bits: urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
         requires Bits
     { return urd::detail::indexed_access::built_with(m_rows); }
+
     /// How many distinct rows are stored.
     [[nodiscard]] size_type size() const { return m_rows.size(); }
+
     [[nodiscard]] bool empty() const { return m_rows.empty(); }
 
     /// The row `base` with `writes` applied (sorted, unique positions within it), stored in full.
@@ -345,6 +376,7 @@ public:
     /// The row `base` with `added` put in and then `removed` taken out (rows that are sets), stored in full.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const element> added, std::span<const element> removed)
     { return insert_canonical(Form::changed(stored(base), added, removed)); }
+
     /// Whether the row of `handle` holds `element` (rows that are sets).
     [[nodiscard]] bool contains(handle_type handle, const element& value) const { return Form::contains(stored(handle), value); }
 
@@ -352,7 +384,9 @@ public:
     [[nodiscard]] auto at(handle_type handle) const { return Form::view(stored(handle)); }
 
     [[nodiscard]] Row get(handle_type handle) const { return Form::row(stored(handle)); }
+
     [[nodiscard]] size_type row_size(handle_type handle) const { return Form::size(stored(handle)); }
+
     /// Copies the row's elements into `out`, which must hold row_size(handle) of them.
     void copy(handle_type handle, std::span<element> out) const
     {
@@ -362,7 +396,9 @@ public:
     }
 
     void reserve(size_type count) { m_rows.reserve(count); }
+
     void clear() { m_rows.clear(); }
+
     /// Erases the row of `handle` by moving the last row into its place, which then has `handle`: O(1) expected.
     /// Gives the handle the moved row had, or none where `handle` was the last. Views of the moved row stay valid.
     handle_type erase(handle_type handle)
@@ -379,19 +415,23 @@ private:
     template<std::ranges::input_range Elements>
     [[nodiscard]] static stored_row canonical(const Elements& elements)
     { return Form::canonical(elements); }
+
     /// A row in its stored form, stored where it is new: encoded by the columns' widths, or as it is.
     std::pair<handle_type, bool> insert_canonical(const stored_row& row)
         requires by_column_widths
     { return insert(row); }
+
     std::pair<handle_type, bool> insert_canonical(stored_row&& row)
         requires(!by_column_widths)
     { return intern(std::move(row)); }
+
     /// The stored row: its vector, or where flat, the span of its elements.
     [[nodiscard]] decltype(auto) stored(handle_type handle) const
     {
         assert((handle.value) < m_rows.size());
         return urd::detail::indexed_access::element(m_rows, handle.value);
     }
+
     /// Values (unsigned integers or indices, index_of) as the unsigned values a stored row holds: what a row is looked up by.
     template<typename Values>
     [[nodiscard]] static auto unsigned_values(const Values& values)
@@ -399,8 +439,10 @@ private:
         return values
                | std::views::transform([](const auto& value) { return static_cast<word_t>(index_of<std::ranges::range_value_t<Values>>::to_index(value)); });
     }
+
     [[nodiscard]] static handle_type handle_of(std::optional<std::size_t> found)
     { return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type(); }
+
     /// The values into `key`, by its widths: std::invalid_argument where they are not one per column, std::out_of_range
     /// where one does not fit.
     template<typename Values>
@@ -411,6 +453,7 @@ private:
         if (!key.assign(values))
             throw std::out_of_range("urd::by_column_widths: a value does not fit in the bits of its column");
     }
+
     template<typename Elements>
     std::pair<handle_type, bool> intern(Elements&& row)
     {
@@ -445,16 +488,19 @@ struct representation_of<row_interner_decl, S>
 {
     using type = repr::RowInterner<typename S::element_type, false, urd::width::word, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<thread_safe_row_interner_decl, S>
 {
     using type = repr::RowInterner<typename S::element_type, true, urd::width::word, typename S::handle_type>;
 };
+
 template<typename S, bool ThreadSafe>
 struct representation_of<bit_row_interner_decl<ThreadSafe>, S>
 {
     using type = repr::RowInterner<typename S::element_type, ThreadSafe, urd::width::bit, typename S::handle_type>;
 };
+
 template<typename S, bool ThreadSafe>
 struct representation_of<schema_row_interner_decl<ThreadSafe>, S>
 {

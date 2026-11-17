@@ -66,6 +66,7 @@ template<typename R>
 struct complete_representation
 {
 };
+
 template<typename S, fixed_string Container, typename Missing>
 struct complete_representation<missing_container<S, Container, Missing>>
 {
@@ -91,11 +92,13 @@ struct representation_over
         "urd::Store: over<R>: R does not serve the request");
     using type = Forced;
 };
+
 template<typename S>
 struct representation_over<S, void>
 {
     using type = container_for<S>;
 };
+
 template<typename Kind, typename... Tags>
 struct store_parts
 {
@@ -151,6 +154,7 @@ public:
         requires std::constructible_from<R, InputIt, InputIt> && std::copy_constructible<value_type>
     Store(InputIt first, InputIt last) : m_representation(first, last)
     { check_holds_one(); }
+
     template<std::input_iterator InputIt, urd::fixed_string Reason = "Store(first, last): the element is move-only: build the Store empty and move each in">
         requires detail::denied<Reason, value_type>
     Store(InputIt first, InputIt last) = delete;
@@ -164,6 +168,7 @@ public:
     Store(std::initializer_list<value_type> elements) : Store(elements.begin(), elements.end())
     {
     }
+
     template<typename Deferred = void,
              urd::fixed_string Reason = "Store({...}): the element is move-only: an initializer_list is copied; build the Store empty and move each in">
         requires detail::denied<Reason, value_type>
@@ -174,11 +179,13 @@ public:
         requires std::same_as<typename S::kind, sequence_kind> && std::constructible_from<R, std::size_t>
         : m_representation(count)
     { check_holds_one(); }
+
     Store(std::size_t count, const value_type& value)
         requires std::same_as<typename S::kind, sequence_kind> && std::constructible_from<R, std::size_t, const value_type&>
                  && std::copy_constructible<value_type>
         : m_representation(count, value)
     { check_holds_one(); }
+
     Store(std::size_t count, const value_type& value)
         requires std::same_as<typename S::kind, sequence_kind>
                      && detail::denied<"Store(n, const T&): the element is move-only: it is copied n times", value_type>
@@ -191,10 +198,12 @@ public:
         : m_representation(bits)
     {
     }
+
     explicit Store(urd::bit_width /*bits*/)
         requires detail::store_types<S>::built_with_width && (!std::constructible_from<R, urd::bit_width>) && std::default_initializable<R>
     {
     }
+
     /// A Store of urd::by_column_widths is built with the column widths its rows are stored by.
     explicit Store(const urd::column_widths& columns)
         requires detail::store_types<S>::built_with_column_widths && std::constructible_from<R, const urd::column_widths&>
@@ -208,6 +217,7 @@ public:
         requires std::constructible_from<R, urd::layer, Args...>
     explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
     { check_holds_one(); }
+
     Store(urd::layer number, std::initializer_list<value_type> elements)
         requires std::constructible_from<R,
                                          urd::layer,
@@ -231,6 +241,7 @@ public:
         using std::swap;
         swap(m_representation, other.m_representation);
     }
+
     friend void swap(Store& lhs, Store& rhs) noexcept { lhs.swap(rhs); }
 
 private:
@@ -251,6 +262,7 @@ template<typename Kind, typename... Tags>
 struct container_traits<Store<Kind, Tags...>> : detail::to_spec<Kind, Tags...>::type
 {
 };
+
 template<typename Kind, typename... Tags>
 inline constexpr bool is_store<Store<Kind, Tags...>> = true;
 

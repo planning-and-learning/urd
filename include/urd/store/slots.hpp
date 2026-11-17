@@ -42,6 +42,7 @@ public:
             store->erase(handle);
         }
     };
+
     /// A releaser that also holds `keep` while the slot is in use (an owner of the Store, say), and drops it after the
     /// slot is back: so the Store is still there to take it.
     struct keeping_releaser : releaser
@@ -54,12 +55,14 @@ public:
             keep.reset();
         }
     };
+
     /// The control block's allocator where a shared owner holds `keep`: the control block deallocates through a copy of
     /// its allocator and destroys that copy after (libstdc++, libc++), so `keep`, and with it the pool, outlives the block.
     template<typename T>
     struct keeping_allocator
     {
         using value_type = T;
+
         template<typename U>
         struct rebind
         {
@@ -73,9 +76,11 @@ public:
         keeping_allocator(const keeping_allocator<U>& other) noexcept : blocks(other.blocks), keep(other.keep)  // NOLINT(google-explicit-constructor)
         {
         }
+
         keeping_allocator(std::pmr::memory_resource* resource, std::shared_ptr<const void> held) noexcept : blocks(resource), keep(std::move(held)) {}
 
         [[nodiscard]] T* allocate(std::size_t count) { return blocks.allocate(count); }
+
         void deallocate(T* block, std::size_t count) noexcept { blocks.deallocate(block, count); }
 
         template<typename U>
@@ -86,16 +91,20 @@ public:
     handle_type insert(const value_type& element)
         requires unkeyed && std::copy_constructible<value_type>
     { return representation().insert(element); }
+
     handle_type insert(const value_type& element)
         requires unkeyed && denied<"insert(const T&): the element is move-only: move it in, insert(std::move(x))", value_type>
     = delete;
+
     handle_type insert(value_type&& element)
         requires unkeyed
     { return representation().insert(std::move(element)); }
+
     template<typename... Args>
         requires unkeyed
     handle_type emplace(Args&&... args)
     { return representation().emplace(std::forward<Args>(args)...); }
+
     /// A slot to use as it is (an erased element with what it held and the storage it kept, else a new one), owned as
     /// std::unique_ptr does: it goes back when the owner goes. No allocation once the slots in use have been so many.
     /// The Store must outlive its owners and stay where it is.
@@ -105,6 +114,7 @@ public:
         const auto handle = representation().acquire();
         return std::unique_ptr<value_type, releaser>(&representation()[handle], releaser { &self(), handle });
     }
+
     /// As make_unique(), holding `keep` while the slot is in use and dropping it once the slot is back: pass the
     /// owner of the Store (std::enable_shared_from_this) and the Store outlives the owner of its slot. A free slot
     /// holds nothing.
@@ -114,6 +124,7 @@ public:
         const auto handle = representation().acquire();
         return std::unique_ptr<value_type, keeping_releaser>(&representation()[handle], keeping_releaser { { &self(), handle }, std::move(keep) });
     }
+
     /// Such a slot owned as std::shared_ptr does: it goes back when the last owner goes. Every owner (unique or
     /// shared, weak ones too) returns its slot or its control block to this Store, so all must be back before the Store
     /// is moved or destroyed, unless `keep` holds what owns it. The control block comes from a pool the Store keeps
@@ -127,6 +138,7 @@ public:
                                            releaser { &self(), handle },
                                            std::pmr::polymorphic_allocator<value_type>(representation().blocks()));
     }
+
     /// As make_shared(), holding `keep` while the slot is in use and dropping it once the slot and its control block
     /// are back: pass the owner of the Store (std::enable_shared_from_this) and the Store outlives the slot's last owner.
     /// A free slot holds nothing.
@@ -153,19 +165,23 @@ public:
     }
 
     [[nodiscard]] const value_type& operator[](handle_type handle) const { return representation()[handle]; }
+
     [[nodiscard]] value_type& operator[](handle_type handle) { return representation()[handle]; }
 
     /// Frees the slot for reuse; the handle and references to the element mean nothing after.
     void erase(handle_type handle)
         requires shrinks<S>
     { representation().erase(handle); }
+
     void clear()
         requires clears<S>
     { representation().clear(); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
 };
 

@@ -43,11 +43,13 @@ public:
     };
 
     column_widths() = default;
+
     column_widths(std::initializer_list<std::uint8_t> widths)
     {
         for (const auto bits : widths)
             push_back(bits);
     }
+
     /// `count` columns of `bits` bits each.
     column_widths(std::size_t count, std::uint8_t bits)
     {
@@ -63,6 +65,7 @@ public:
         m_fields.push_back(field { bits, static_cast<std::uint32_t>(m_bits) });
         m_bits += bits;
     }
+
     void clear() noexcept
     {
         m_fields.clear();
@@ -70,14 +73,18 @@ public:
     }
 
     [[nodiscard]] std::size_t size() const noexcept { return m_fields.size(); }
+
     [[nodiscard]] bool empty() const noexcept { return m_fields.empty(); }
+
     /// The bits of column i.
     [[nodiscard]] std::uint8_t operator[](std::size_t i) const noexcept { return m_fields[i].bits; }
+
     [[nodiscard]] const field& at(std::size_t i) const noexcept
     {
         assert(i < size());
         return m_fields[i];
     }
+
     /// The bits of a row.
     [[nodiscard]] std::size_t bits() const noexcept { return m_bits; }
 
@@ -125,36 +132,50 @@ public:
     using iterator_concept = std::random_access_iterator_tag;
 
     column_iterator() = default;
+
     column_iterator(const SchemaRow<ThreadSafe>& row, std::size_t pos) noexcept : m_row(row), m_pos(pos) {}
 
     reference operator*() const { return m_row.template get<T>(m_pos); }
+
     reference operator[](difference_type n) const { return *(*this + n); }
+
     column_iterator& operator++() noexcept { return *this += 1; }
+
     column_iterator operator++(int) noexcept
     {
         auto copy = *this;
         ++*this;
         return copy;
     }
+
     column_iterator& operator--() noexcept { return *this -= 1; }
+
     column_iterator operator--(int) noexcept
     {
         auto copy = *this;
         --*this;
         return copy;
     }
+
     column_iterator& operator+=(difference_type n) noexcept
     {
         m_pos = static_cast<std::size_t>(static_cast<difference_type>(m_pos) + n);
         return *this;
     }
+
     column_iterator& operator-=(difference_type n) noexcept { return *this += -n; }
+
     friend column_iterator operator+(column_iterator it, difference_type n) noexcept { return it += n; }
+
     friend column_iterator operator+(difference_type n, column_iterator it) noexcept { return it += n; }
+
     friend column_iterator operator-(column_iterator it, difference_type n) noexcept { return it -= n; }
+
     friend difference_type operator-(const column_iterator& lhs, const column_iterator& rhs) noexcept
     { return static_cast<difference_type>(lhs.m_pos) - static_cast<difference_type>(rhs.m_pos); }
+
     friend bool operator==(const column_iterator& lhs, const column_iterator& rhs) noexcept { return lhs.m_pos == rhs.m_pos; }
+
     friend auto operator<=>(const column_iterator& lhs, const column_iterator& rhs) noexcept { return lhs.m_pos <=> rhs.m_pos; }
 
 private:
@@ -182,15 +203,20 @@ public:
     using iterator = const_iterator;
 
     SchemaRow() = default;
+
     SchemaRow(const word* words, std::size_t first_bit, const urd::column_widths& widths) noexcept : m_words(words), m_first_bit(first_bit), m_widths(&widths)
     {
     }
 
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept { return *m_widths; }
+
     [[nodiscard]] size_type size() const noexcept { return m_widths == nullptr ? 0 : m_widths->size(); }
+
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
+
     /// Where the row lies: the words and its first bit there (equal for the same stored row).
     [[nodiscard]] const word* data() const noexcept { return m_words; }
+
     [[nodiscard]] std::size_t first_bit() const noexcept { return m_first_bit; }
 
     /// The value of column i.
@@ -199,17 +225,21 @@ public:
         const auto& field = m_widths->at(i);
         return detail::packed_words<ThreadSafe>::get(m_words, m_first_bit + field.at, field.bits);
     }
+
     /// The value of column i as T: an unsigned integer or an index (index_of).
     template<typename T>
     [[nodiscard]] T get(size_type i) const noexcept
     { return index_of<T>::from_index(static_cast<std::size_t>(get(i))); }
+
     [[nodiscard]] word_t operator[](size_type i) const noexcept { return get(i); }
+
     /// Its columns, each read as T (get<T>): a borrowed random-access range.
     template<typename T>
     [[nodiscard]] std::ranges::subrange<detail::column_iterator<ThreadSafe, T>> as() const noexcept
     { return { detail::column_iterator<ThreadSafe, T>(*this, 0), detail::column_iterator<ThreadSafe, T>(*this, size()) }; }
 
     [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(*this, 0); }
+
     [[nodiscard]] const_iterator end() const noexcept { return const_iterator(*this, size()); }
 
 private:
@@ -227,6 +257,7 @@ class EncodedRow
 
 public:
     EncodedRow() = default;
+
     explicit EncodedRow(const urd::column_widths& widths) { reset(widths); }
 
     /// Every column zero, of `widths`.
@@ -235,6 +266,7 @@ public:
         m_widths = &widths;
         m_words.assign(bit::packed_blocks<word>(widths.bits()), 0);  // a word of room, as rows have
     }
+
     /// Column i takes `value`: false where it does not fit the column's bits.
     bool set(std::size_t i, word_t value) noexcept
     {
@@ -244,6 +276,7 @@ public:
         detail::packed_words<false>::set(m_words.data(), field.at, field.bits, value);
         return true;
     }
+
     /// Column i takes the value of column j of `row`, whose column must be as wide.
     template<bool OtherThreadSafe>
     void copy(std::size_t i, const SchemaRow<OtherThreadSafe>& row, std::size_t j) noexcept
@@ -252,6 +285,7 @@ public:
         assert(row.column_widths()[j] == field.bits && "urd::repr::EncodedRow::copy: columns alike");
         detail::packed_words<false>::set(m_words.data(), field.at, field.bits, row.get(j));
     }
+
     /// Every column from `values` (unsigned integers or indices, index_of), in order: false where they are not one
     /// per column or one does not fit. Each column's bits are overwritten, so nothing is zeroed first.
     template<std::ranges::input_range R>
@@ -290,8 +324,10 @@ struct SchemaCodec
 
     /// The words of the rows' bits, and a word of room so that a read of the last column's bits never leaves them.
     [[nodiscard]] std::size_t units(std::size_t rows, std::size_t /*length*/) const noexcept { return bit::packed_blocks<unit>(rows * widths.bits()); }
+
     [[nodiscard]] value_type read(const unit* data, std::size_t at, std::size_t /*length*/) const noexcept
     { return value_type(data, at * widths.bits(), widths); }
+
     template<bool OtherThreadSafe>
     void write(unit* data, std::size_t at, const SchemaRow<OtherThreadSafe>& row) const noexcept
     {
@@ -301,6 +337,7 @@ struct SchemaCodec
             detail::packed_words<ThreadSafe>::set(data, (at * widths.bits()) + field.at, field.bits, row.get(i));
         }
     }
+
     template<bool OtherThreadSafe>
     void check([[maybe_unused]] const SchemaRow<OtherThreadSafe>& row) const noexcept
     { assert(row.column_widths() == widths && "urd::repr::SchemaCodec: a row of its widths"); }

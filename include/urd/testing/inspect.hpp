@@ -15,12 +15,15 @@ struct inspect
     template<typename R>
     [[nodiscard]] static auto num_nodes(const R& held)
     { return held.num_nodes(); }
+
     template<typename R>
     [[nodiscard]] static auto num_leaves(const R& held)
     { return held.num_leaves(); }
+
     template<typename R>
     [[nodiscard]] static auto parent(const R& held)
     { return held.parent(); }
+
     /// A segmented vector's append that hands the factory the index reserved (what slots number their elements by).
     template<typename R, typename Factory>
     static auto emplace_back_with_index(R& held, Factory&& factory, std::size_t max_index)

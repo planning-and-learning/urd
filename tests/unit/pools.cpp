@@ -57,6 +57,7 @@ template<typename P>
 class Pools : public testing::Test
 {
 };
+
 using Containers = testing::Types<urd::repr::RowInterner<std::vector<int>>,
                                   Store<pool<Store<sequence<int>, urd::frozen>>>,
                                   Store<pool<Store<set<int>, urd::dense, urd::frozen>>>,
@@ -83,10 +84,14 @@ struct Point
     int y = 0;
 
     Point() = default;
+
     explicit Point(int drawn) : x(drawn % 5), y(drawn / 5) {}
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Point::x, &Point::y> {}; }
 };
+
 /// A record with a string: serialized by cista into the arena.
 struct Named
 {
@@ -94,25 +99,33 @@ struct Named
     std::uint32_t arity = 0;
 
     Named() = default;
+
     explicit Named(int drawn) : name(std::string_view(std::string(static_cast<std::size_t>(drawn % 4), 'a'))), arity(static_cast<std::uint32_t>(drawn / 4)) {}
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Named::name, &Named::arity> {}; }
 };
+
 /// A trivially copyable record without cista_members: only the in-memory interners store it.
 struct Plain
 {
     int x = 0;
 
     Plain() = default;
+
     explicit Plain(int drawn) : x(drawn) {}
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Plain::x> {}; }
 };
+
 static_assert(std::is_trivially_copyable_v<Point> && !std::is_trivially_copyable_v<Named>);
 
 template<typename P>
 class Records : public testing::Test
 {
 };
+
 using RecordPools = testing::Types<urd::repr::RecordInterner<Point>,
                                    urd::repr::RecordInterner<Point, false, true>,
                                    urd::repr::RecordInterner<Point, true>,
@@ -214,6 +227,7 @@ TEST(Pools, EraseMovesTheLastRowIn)
     EXPECT_EQ(rows.size(), 1U);
     EXPECT_EQ(rows.insert({ 2 }), std::pair(b, true));  // stored again, at the next handle
 }
+
 template<typename P>
 concept erasable = requires(P pool, typename P::handle_type handle) { pool.erase(handle); };
 static_assert(erasable<Store<pool<Store<sequence<int>, urd::frozen>>>> && !erasable<Store<pool<Store<sequence<int>, urd::frozen>>, urd::monotone>>
@@ -292,6 +306,7 @@ template<typename P>
 class Slots : public testing::Test
 {
 };
+
 using SlotContainers = testing::Types<urd::repr::SlotVector<int>, urd::repr::SlotVector<int, true>, Store<slots<int>>, Store<slots<int>, urd::concurrent>>;
 TYPED_TEST_SUITE(Slots, SlotContainers, urd::test::Names);
 
@@ -369,28 +384,39 @@ namespace
 struct Owner
 {
     urd::flat_string name;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Owner::name> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Owner::name> {}; }
 };
+
 struct Item
 {
     urd::flat_string name;
     urd::flat_vector<urd::index<Owner>> owners;
     urd::flat_variant<urd::index<Owner>, int> alternative;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Item::name, &Item::owners, &Item::alternative> {}; }
 };
+
 using Owners = Store<pool<Owner>, urd::flat, urd::monotone>;
 using Items = Store<pool<Item>, urd::flat, urd::monotone>;
+
 struct Shop
 {
     Owners owners { urd::layer { 0 } };
     Items items { urd::layer { 0 } };
 
     [[nodiscard]] const Owner& operator[](urd::index<Owner> at) const { return owners[at]; }
+
     [[nodiscard]] const Item& operator[](urd::index<Item> at) const { return items[at]; }
+
     [[nodiscard]] std::size_t layer() const { return owners.layer(); }
+
     [[nodiscard]] urd::index_view<Owner, Shop> view(urd::index<Owner> at) const { return { at, this }; }
+
     [[nodiscard]] urd::index_view<Item, Shop> view(urd::index<Item> at) const { return { at, this }; }
 };
 
@@ -487,7 +513,9 @@ struct urd::data<Symbol>
     int id = 0;
 
     data() = default;
+
     explicit data(int id_) : id(id_) {}
+
     static constexpr bool copyable() noexcept
     {
         static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
@@ -495,9 +523,12 @@ struct urd::data<Symbol>
     }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"id", &data::id>> {}; }
+
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&data::id> {}; }
 };
+
 template<typename V>
 struct urd::view_mixin<Symbol, V>
 {

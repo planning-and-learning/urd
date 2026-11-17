@@ -23,12 +23,14 @@ enum class tallying : std::uint8_t
     none,
     tallied,
 };
+
 struct any_tallying : urd::tag_defaults
 {
     using root = any_tallying;
     static constexpr auto value = tallying::none;
     static constexpr std::string_view name = "any_tallying";
 };
+
 struct tallied : any_tallying
 {
     static constexpr auto value = tallying::tallied;
@@ -55,6 +57,7 @@ struct add
     static constexpr std::string_view name = "add";
     static constexpr std::string_view description = "adds a value once more";
 };
+
 /// Its operation `count`: how often a value was added; a container states its cost by an entry for it.
 struct count
 {
@@ -73,6 +76,7 @@ struct tally_kind : urd::detail::any_kind
     static constexpr std::string_view name = "tally";
     using format = urd::detail::request_format<tallying>;
     using facets = urd::detail::facet_list<counting>;
+
     static constexpr urd::detail::property_set meaning(urd::detail::property_set stated) { return any_kind::meaning(stated.put(tallying::tallied)); }
 };
 
@@ -101,6 +105,7 @@ class Tally
 {
 public:
     void add(const T& value) { ++m_counts[value]; }
+
     [[nodiscard]] std::size_t count(const T& value) const
     {
         const auto found = m_counts.find(value);
@@ -116,6 +121,7 @@ class counting
 {
 public:
     void add(const typename S::element_type& value) { urd::detail::store_access::representation(static_cast<Derived&>(*this)).add(value); }
+
     [[nodiscard]] std::size_t count(const typename S::element_type& value) const
     { return urd::detail::store_access::representation(static_cast<const Derived&>(*this)).count(value); }
 };
@@ -145,21 +151,25 @@ struct urd::detail::facet_condition<tally::counting> : facet_defaults
     static constexpr bool on()
     { return true; }
 };
+
 template<>
 struct urd::detail::facet_operations<tally::counting>
 {
     using offered = urd::operation_list<tally::add, tally::count>;
 };
+
 template<>
 struct urd::detail::declarations_of<tally::tally_kind>
 {
     using type = boost::mp11::mp_list<tally::tally_decl>;
 };
+
 template<typename S>
 struct urd::detail::representation_of<tally::tally_decl, S>
 {
     using type = tally::Tally<typename S::element_type>;
 };
+
 template<>
 struct urd::include<"tests/unit/store/outside_kind.cpp">
 {

@@ -39,33 +39,44 @@ public:
     using size_type = std::size_t;
 
     [[nodiscard]] size_type size() const { return m_elements.size(); }
+
     [[nodiscard]] bool empty() const { return m_elements.empty(); }
+
     // As std::queue and std::stack: the ends a first-in or last-in queue gives may be changed in place (moved from
     // before a pop); a heap's top may not, as std::priority_queue's, its place depends on it.
     [[nodiscard]] const T& front() const
         requires fifo
     { return m_elements.front(); }
+
     [[nodiscard]] T& front()
         requires fifo
     { return m_elements.front(); }
+
     [[nodiscard]] const T& back() const
         requires fifo
     { return m_elements.back(); }
+
     [[nodiscard]] T& back()
         requires fifo
     { return m_elements.back(); }
+
     /// The elements in the order pushed (first in, last in), or in no particular order (the least first).
     [[nodiscard]] auto begin() const { return m_elements.cbegin(); }
+
     [[nodiscard]] auto end() const { return m_elements.cend(); }
+
     [[nodiscard]] const T& top() const
         requires(!fifo)
     { return Order == leaving::last_in ? m_elements.back() : m_elements.front(); }
+
     [[nodiscard]] T& top()
         requires(Order == leaving::last_in)
     { return m_elements.back(); }
 
     void push(const T& element) { emplace(element); }
+
     void push(T&& element) { emplace(std::move(element)); }
+
     template<typename... Args>
     void emplace(Args&&... args)
     {
@@ -73,6 +84,7 @@ public:
         if constexpr (Order == leaving::least)
             std::ranges::push_heap(m_elements, greater);
     }
+
     void pop()
     {
         if constexpr (fifo)
@@ -84,7 +96,9 @@ public:
             m_elements.pop_back();
         }
     }
+
     void clear() { m_elements.clear(); }
+
     void reserve(size_type count)
         requires(!fifo)
     { m_elements.reserve(count); }
@@ -115,11 +129,13 @@ struct representation_of<fifo_decl, S>
 {
     using type = repr::Fifo<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<lifo_decl, S>
 {
     using type = repr::Lifo<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<heap_decl, S>
 {

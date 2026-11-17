@@ -15,6 +15,7 @@ struct queue_handle
 {
     using type = void;
 };
+
 template<typename R>
 struct queue_handle<R, true>
 {
@@ -35,15 +36,20 @@ public:
     decltype(auto) push(const value_type& element)
         requires std::copy_constructible<value_type>
     { return representation().push(element); }
+
     decltype(auto) push(const value_type& element)
         requires denied<"push(const T&): the element is move-only: move it in, push(std::move(x))", value_type>
     = delete;
+
     decltype(auto) push(value_type&& element) { return representation().push(std::move(element)); }
+
     template<typename... Args>
     decltype(auto) emplace(Args&&... args)
     { return representation().emplace(std::forward<Args>(args)...); }
+
     /// Removes the next element; the Store must not be empty.
     void pop() { representation().pop(); }
+
     /// Removes every element; a monotone queue never empties but by pop (monotone_until_clear: by clear too).
     void clear()
         requires clears<S>
@@ -55,16 +61,19 @@ public:
     void update(const Handle& handle, const value_type& element)
         requires std::copy_constructible<value_type>
     { representation().update(handle, element); }
+
     template<typename Handle = handle_type,
              urd::fixed_string Reason = "update(handle, const T&): the element is move-only: move it in, update(handle, std::move(x))">
         requires has<S, handles>
     void update(const Handle& handle, const value_type& element)
         requires denied<Reason, value_type>
     = delete;
+
     template<typename Handle = handle_type>
         requires has<S, handles>
     void update(const Handle& handle, value_type&& element)
     { representation().update(handle, std::move(element)); }
+
     /// Removes the element of `handle`, wherever it is in the order.
     template<typename Handle = handle_type>
         requires has<S, handles>
@@ -74,24 +83,30 @@ public:
     [[nodiscard]] const value_type& front() const
         requires has<S, fifo>
     { return representation().front(); }
+
     [[nodiscard]] const value_type& top() const
         requires(!has<S, fifo>)
     { return representation().top(); }
+
     /// The last element in: where the first in leaves first, the other end of the queue.
     [[nodiscard]] const value_type& back() const
         requires has<S, fifo>
     { return representation().back(); }
+
     /// As std::queue's and std::stack's, the ends changed in place (moved from before a pop): first in or last in.
     /// A queue by priority keeps its top const, as std::priority_queue's, its place depends on it.
     [[nodiscard]] value_type& front()
         requires has<S, fifo>
     { return representation().front(); }
+
     [[nodiscard]] value_type& back()
         requires has<S, fifo>
     { return representation().back(); }
+
     [[nodiscard]] value_type& top()
         requires has<S, lifo>
     { return representation().top(); }
+
     /// The element of `handle`, wherever it is in the order: O(1).
     template<typename Handle = handle_type>
         requires has<S, handles>
@@ -100,6 +115,7 @@ public:
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 

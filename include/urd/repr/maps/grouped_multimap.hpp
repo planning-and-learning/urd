@@ -52,8 +52,11 @@ public:
     }
 
     [[nodiscard]] iterator begin() const { return iterator(&m_groups, m_groups.begin(), 0).normalized(); }
+
     [[nodiscard]] iterator end() const { return iterator(&m_groups, m_groups.end(), 0); }
+
     [[nodiscard]] size_type size() const { return m_groups.count(); }
+
     [[nodiscard]] bool empty() const { return size() == 0; }
 
     /// The values of `key`, in the order they were given.
@@ -64,8 +67,11 @@ public:
     }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(&m_groups, m_groups.find(key), 0) : end(); }
+
     [[nodiscard]] size_type count(const K& key) const { return values(key).size(); }
+
     [[nodiscard]] bool contains(const K& key) const { return !values(key).empty(); }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
     {
         if constexpr (Groups::ordered)
@@ -82,9 +88,11 @@ public:
         auto after = found;
         return { iterator(&m_groups, found, 0), iterator(&m_groups, ++after, 0).normalized() };
     }
+
     [[nodiscard]] iterator lower_bound(const K& key) const
         requires Groups::ordered
     { return iterator(&m_groups, m_groups.lower_bound(key), 0).normalized(); }
+
     [[nodiscard]] iterator upper_bound(const K& key) const
         requires Groups::ordered
     { return iterator(&m_groups, m_groups.upper_bound(key), 0).normalized(); }
@@ -100,16 +108,19 @@ public:
         const auto [at, index] = m_groups.append(K(pair.first), V(pair.second));
         return iterator(&m_groups, at, index);
     }
+
     template<typename Pair>
         requires Groups::changes
     iterator insert(const_iterator /*hint*/, const Pair& pair)
     { return insert(pair); }
+
     template<std::input_iterator InputIt>
         requires Groups::changes
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& pair) { this->insert(pair); });
     }
+
     template<typename... Args>
         requires Groups::changes
     iterator emplace(Args&&... args)
@@ -118,6 +129,7 @@ public:
     size_type erase(const K& key)
         requires Groups::changes
     { return m_groups.erase(key); }
+
     /// The values after `pos` move up within its key; where it was the key's last, the key leaves.
     iterator erase(const_iterator pos)
         requires Groups::changes
@@ -125,6 +137,7 @@ public:
         const auto [at, index] = m_groups.erase(pos.settled(), pos.m_index);
         return iterator(&m_groups, at, index).normalized();
     }
+
     iterator erase(const_iterator first, const_iterator last)
         requires Groups::changes
     {
@@ -132,6 +145,7 @@ public:
             first = erase(first);
         return first;
     }
+
     void clear()
         requires Groups::changes
     { m_groups.clear(); }
@@ -155,6 +169,7 @@ public:
         struct arrow
         {
             value_type pair;
+
             const value_type* operator->() const { return &pair; }
         };
 
@@ -165,7 +180,9 @@ public:
             const auto at = settled();
             return { m_groups->key(at), m_groups->row(at)[m_index] };
         }
+
         arrow operator->() const { return { **this }; }
+
         /// To the next value of its key, else to the next key's place: in constant time, whatever follows.
         iterator& operator++()
         {
@@ -177,12 +194,14 @@ public:
             }
             return *this;
         }
+
         iterator operator++(int)
         {
             auto copy = *this;
             ++*this;
             return copy;
         }
+
         /// The previous value: in this group, else the last of the nearest group before with any.
         iterator& operator--()
             requires Groups::ordered
@@ -198,6 +217,7 @@ public:
             }
             return *this;
         }
+
         iterator operator--(int)
             requires Groups::ordered
         {
@@ -205,12 +225,14 @@ public:
             --*this;
             return copy;
         }
+
         /// At the same value, or both at the end: a key's place without values is the next value's.
         friend bool operator==(const iterator& lhs, const iterator& rhs)
         { return lhs.m_index == rhs.m_index && (lhs.m_group == rhs.m_group || (lhs.m_index == 0 && lhs.settled() == rhs.settled())); }
 
     private:
         friend class GroupedMultiMap;
+
         iterator(const Groups* groups, group at, std::size_t index) : m_groups(groups), m_group(at), m_index(index) {}
 
         /// The group of the value it is at: its own, or from a key's place without values, the next with any (the
@@ -222,6 +244,7 @@ public:
                 ++at;
             return at;
         }
+
         /// Moves past groups whose values end at or before the index: to the value there, or to the end.
         iterator& normalized()
         {

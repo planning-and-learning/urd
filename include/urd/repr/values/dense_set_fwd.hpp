@@ -55,6 +55,7 @@ struct dense_set_decl
     static constexpr std::string_view description = "dense set (a bitset over indices)";
     static constexpr std::string_view holds = "U bits";
 };
+
 template<typename K>
 struct declaration_of<repr::DenseSet<K, false>>
 {
@@ -82,6 +83,7 @@ struct tracked_dense_set_decl : dense_set_decl
     static constexpr std::string_view description = "dense set tracking its words (a bitset over indices, cleared by the words it touched)";
     static constexpr std::string_view holds = "U bits + the indices of the words in use";
 };
+
 template<typename K>
 struct declaration_of<repr::DenseSet<K, true>>
 {
@@ -113,6 +115,7 @@ struct sparse_set_decl
     static constexpr std::string_view description = "sparse set (members array plus index positions, O(1) clear)";
     static constexpr std::string_view holds = "n members + U positions";
 };
+
 template<typename K>
 struct declaration_of<repr::SparseSet<K, false>>
 {
@@ -145,6 +148,7 @@ struct ordered_sparse_set_decl : sparse_set_decl
     static constexpr std::string_view description = "sparse set keeping insertion order (erase shifts the members after it)";
     static constexpr std::string_view holds = "n members in insertion order + U positions";
 };
+
 template<typename K>
 struct declaration_of<repr::SparseSet<K, true>>
 {

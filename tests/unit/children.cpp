@@ -20,12 +20,14 @@ namespace
 struct Leaf
 {
 };
+
 using LeafIndex = urd::index<Leaf>;
 
 struct Pair
 {
     LeafIndex first;
     LeafIndex second;
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Pair::first, &Pair::second> {}; }
 };
 
@@ -41,6 +43,7 @@ struct Node
     urd::flat_optional<LeafIndex> absent;
     urd::flat_pair<LeafIndex, urd::index<Node>> link;
     int unrelated = 0;
+
     static constexpr auto cista_members() noexcept
     {
         return urd::Members<&Node::self,

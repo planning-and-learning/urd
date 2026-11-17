@@ -29,6 +29,7 @@ struct vector_decl
     static constexpr std::string_view description = "std::vector";
     static constexpr std::string_view holds = "one array; retains";
 };
+
 template<typename T, typename A>
 struct declaration_of<std::vector<T, A>>
 {

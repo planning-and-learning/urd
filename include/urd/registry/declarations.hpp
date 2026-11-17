@@ -75,11 +75,13 @@ using values_declarations = boost::mp11::mp_list<unordered_flat_set_decl,
                                                  parallel_hash_set_decl,
                                                  parallel_node_hash_set_decl,
                                                  concurrent_indexed_set_decl>;
+
 template<>
 struct declarations_of<set_kind>
 {
     using type = values_declarations;
 };
+
 template<>
 struct declarations_of<multiset_kind>
 {

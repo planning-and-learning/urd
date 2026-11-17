@@ -43,6 +43,7 @@ template<typename R>
 class Properties : public testing::Test
 {
 };
+
 TYPED_TEST_SUITE_P(Properties);
 
 template<typename R, typename Tag>
@@ -79,6 +80,7 @@ struct representation_of
 {
     using type = T;
 };
+
 template<typename Kind, typename... Tags>
 struct representation_of<urd::Store<Kind, Tags...>>
 {

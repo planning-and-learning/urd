@@ -25,6 +25,7 @@ struct store_facts<traits_of_role<role::element>::type, T>
         return result;
     }();
 };
+
 /// What an order C over Stores is: by urd::Less, they order by their contents where those come in an order their
 /// request fixes and their elements order; a given comparator orders them as it would any type.
 template<typename T, typename C>

@@ -61,6 +61,7 @@ struct parallel_hash_set_decl
     static constexpr std::string_view description = "parallel hash set (gtl: shards, each behind its mutex)";
     static constexpr std::string_view holds = "16 shards of open addressing, a lock each";
 };
+
 template<typename T>
 struct declaration_of<repr::ParallelHashSet<T>>
 {
@@ -91,6 +92,7 @@ struct parallel_node_hash_set_decl
     static constexpr std::string_view description = "parallel node hash set (gtl: shards behind mutexes, a node per element that never moves)";
     static constexpr std::string_view holds = "16 shards, a node per element; stable references";
 };
+
 template<typename T>
 struct declaration_of<repr::ParallelNodeHashSet<T>>
 {

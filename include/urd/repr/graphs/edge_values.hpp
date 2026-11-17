@@ -21,6 +21,7 @@ class Values
 {
 public:
     void push(T value) { m_values.push_back(std::move(value)); }
+
     /// The values of `count` vertices or edges, one each.
     void assign(std::size_t count, std::span<const T> values)
     {
@@ -28,8 +29,11 @@ public:
             throw std::invalid_argument("urd::graph: data for every vertex");
         m_values.assign(values.begin(), values.end());
     }
+
     [[nodiscard]] const T& operator[](std::size_t at) const { return m_values[at]; }
+
     void reserve(std::size_t count) { m_values.reserve(count); }
+
     void clear() { m_values.clear(); }
 
     friend bool operator==(const Values&, const Values&) = default;
@@ -46,10 +50,14 @@ class Values<T>
 {
 public:
     void push(const T& /*value*/) {}
+
     /// Values of a unit carry nothing: however many are given.
     void assign(std::size_t /*count*/, std::span<const T> /*values*/) {}
+
     [[nodiscard]] const T& operator[](std::size_t /*at*/) const { return value; }
+
     void reserve(std::size_t /*count*/) {}
+
     void clear() {}
 
     friend bool operator==(const Values&, const Values&) = default;

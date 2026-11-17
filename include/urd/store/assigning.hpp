@@ -27,11 +27,13 @@ public:
         representation().assign(first, last);
         assert(holds_one() && "urd::Store: a nonempty Store needs an element");
     }
+
     template<std::input_iterator InputIt,
              urd::fixed_string Reason = "assign(first, last): the element is move-only: build a Store of the elements moved in and move-assign it">
     void assign(InputIt first, InputIt last)
         requires denied<Reason, value_type>
     = delete;
+
     /// `count` copies of `value`.
     void assign(std::size_t count, const value_type& value)
         requires std::copy_constructible<value_type>
@@ -39,12 +41,14 @@ public:
         representation().assign(count, value);
         assert(holds_one() && "urd::Store: a nonempty Store needs an element");
     }
+
     void assign(std::size_t count, const value_type& value)
         requires denied<"assign(n, const T&): the element is move-only: it is copied n times", value_type>
     = delete;
 
 private:
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
+
     /// A nonempty Store holds an element still.
     [[nodiscard]] bool holds_one() { return !store_types<S>::needs_an_element || !std::ranges::empty(representation()); }
 };

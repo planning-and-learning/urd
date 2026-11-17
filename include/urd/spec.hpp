@@ -38,6 +38,7 @@ struct tag_in
 {
     using type = void;
 };
+
 template<typename Root, typename Tag, typename... Tags>
 struct tag_in<Root, Tag, Tags...> : std::conditional_t<std::is_same_v<typename Tag::root, Root>, std::type_identity<Tag>, tag_in<Root, Tags...>>
 {
@@ -49,6 +50,7 @@ struct key_of
 {
     using type = typename Keyed::key_type;
 };
+
 template<>
 struct key_of<void>
 {
@@ -61,6 +63,7 @@ struct comparator_of
 {
     using type = typename Order::compare;
 };
+
 template<typename Ordered>
 struct comparator_of<void, Ordered>
 {
@@ -189,6 +192,7 @@ template<typename R>
 struct over
 {
 };
+
 template<typename T>
 inline constexpr bool is_over = false;
 template<typename R>
@@ -202,11 +206,13 @@ struct over_in
 {
     using type = void;
 };
+
 template<typename R, typename... Tags>
 struct over_in<over<R>, Tags...>
 {
     using type = R;
 };
+
 template<typename T, typename... Tags>
 struct over_in<T, Tags...> : over_in<Tags...>
 {

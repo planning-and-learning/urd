@@ -51,6 +51,7 @@ namespace urd::repr
 
 template<typename T, bool ThreadSafe, typename K>
 class SlotVector;
+
 /// ThreadSafe permits concurrent appends, resize growth, size queries, and reads
 /// after publication was observed through size() or external synchronization.
 /// Clear, resize shrink, pop_back, iteration, memory inspection, move,
@@ -203,6 +204,7 @@ public:
 
     SegmentedVector(const SegmentedVector&) = delete;
     SegmentedVector& operator=(const SegmentedVector&) = delete;
+
     SegmentedVector(SegmentedVector&& other) noexcept : SegmentedVector() { take(other); }
 
     SegmentedVector& operator=(SegmentedVector&& other) noexcept
@@ -250,6 +252,7 @@ public:
         clear();
         resize(count, value);
     }
+
     template<std::input_iterator InputIt>
     void assign(InputIt first, InputIt last)
     {
@@ -263,6 +266,7 @@ private:
     template<typename, bool, typename>
     friend class SlotVector;
     friend struct urd::testing::inspect;
+
     /// Checks the bound and prepares storage, then runs the factory inside the append transaction with the reserved index and publishes.
     /// ThreadSafe holds the writer lock; the factory must not access this vector.
     template<typename Factory>
@@ -340,12 +344,17 @@ public:
     }
 
     iterator begin() noexcept { return iterator(this, 0); }
+
     iterator end() noexcept { return iterator(this, size()); }
+
     [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(this, 0); }
+
     [[nodiscard]] const_iterator end() const noexcept { return const_iterator(this, size()); }
 
     [[nodiscard]] size_t capacity() const noexcept { return detail::load(m_capacity); }
+
     [[nodiscard]] size_t size() const noexcept { return detail::load(m_size); }
+
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
 private:

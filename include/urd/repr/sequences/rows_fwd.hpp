@@ -36,6 +36,7 @@ struct rows_flatten
 {
     static constexpr std::string_view name = "rows_flatten";
     static constexpr std::string_view description = "rows frozen, holding elements or rows kept in order: stored flattened";
+
     /// Frozen rows, whose elements are no rows or which keep their rows where they are put (a sequence of rows).
     template<typename T>
     static consteval bool holds()
@@ -49,10 +50,12 @@ struct rows_flatten
             return row::properties.has(change::frozen) && detail::appends<typename row::kind>;
     }
 };
+
 struct rows_in_place
 {
     static constexpr std::string_view name = "rows_in_place";
     static constexpr std::string_view description = "rows changed in place: sequences, dense sets' bits, or fixed-shape rows of such rows";
+
     /// Rows not frozen that change in place by their kind, or of a fixed shape over such rows, at any depth.
     template<typename T>
     static consteval bool holds()
@@ -66,10 +69,12 @@ struct rows_in_place
             return !row::properties.has(change::frozen) && row::properties.has(shape::fixed_shape) && holds<typename row::elements>();
     }
 };
+
 struct rows_reused
 {
     static constexpr std::string_view name = "rows_reused";
     static constexpr std::string_view description = "rows that may shrink, so emptied ones can be kept for reuse";
+
     template<typename T>
     static consteval bool holds()
     {
@@ -119,6 +124,7 @@ struct fixed_jagged_decl : jagged_decl
     using operation_costs = cost_table<cost_entry<operation::iterate, costs::lin_n>, cost_entry<operation::access, costs::one>>;
     static constexpr std::string_view description = "jagged array of rows changed in place (fixed shape: offsets + one data array)";
 };
+
 template<typename Inner>
 struct declaration_of<repr::Jagged<Inner>>
 {
@@ -148,6 +154,7 @@ struct row_pool_decl
     static constexpr std::string_view description = "row pool (cleared rows are kept for reuse)";
     static constexpr std::string_view holds = "rows kept with their storage";
 };
+
 template<typename Inner>
 struct declaration_of<repr::RowPool<Inner>>
 {
@@ -168,6 +175,7 @@ struct tracked_jagged_decl : fixed_jagged_decl
     static constexpr std::string_view description = "jagged rows that track the rows handed out to change";
     static constexpr std::string_view holds = "one array, + the rows handed out to change";
 };
+
 template<typename Inner>
 struct declaration_of<repr::Jagged<Inner, true>>
 {

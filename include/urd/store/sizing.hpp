@@ -16,6 +16,7 @@ public:
     using size_type = typename store_types<S>::size_type;
 
     [[nodiscard]] size_type size() const { return store_access::of<Derived>(*this).size(); }
+
     [[nodiscard]] bool empty() const { return store_access::of<Derived>(*this).empty(); }
 
     // Of contiguous storage (urd::contiguous), as std::vector's.
@@ -23,10 +24,12 @@ public:
     [[nodiscard]] std::size_t max_size() const
         requires has<R, urd::contiguous>
     { return store_access::of<Derived>(*this).max_size(); }
+
     /// How many elements fit without growing.
     [[nodiscard]] std::size_t capacity() const
         requires has<R, urd::contiguous>
     { return store_access::of<Derived>(*this).capacity(); }
+
     /// Gives back unused room.
     void shrink_to_fit()
         requires has<R, urd::contiguous>

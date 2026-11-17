@@ -320,6 +320,7 @@ void for_each_group(F f)
 
 template<std::size_t P, typename List>
 struct nth_request;
+
 template<std::size_t P, typename... Rs>
 struct nth_request<P, requests<Rs...>>
 {
@@ -339,6 +340,7 @@ struct serving_named
                 return serving.held[each];
         return urd::detail::no_entry;
     }
+
     static_assert(at() != urd::detail::no_entry, "serving_named: the container named serves no such request");
     using declaration = boost::mp11::mp_at_c<urd::detail::declarations_t<typename S::kind>, at()>;
     using type = typename urd::detail::representation_of<declaration, S>::type;
@@ -351,6 +353,7 @@ struct tag_of
 {
     using type = boost::mp11::mp_at_c<typename urd::tags_of<decltype(A)>::type, static_cast<std::size_t>(A)>;
 };
+
 // Specialized by the answer's type and a requirement on its value, not by the value alone: Clang 18 matches an answer
 // of another enumeration that has the same underlying value against a value written here.
 template<typename Compare, typename Key, urd::comparison A>
@@ -359,6 +362,7 @@ struct tag_of<Compare, Key, A>
 {
     using type = urd::order_by<Compare>;
 };
+
 template<typename Compare, typename Key, urd::keying A>
     requires(A == urd::keying::keyed)
 struct tag_of<Compare, Key, A>
@@ -369,6 +373,7 @@ struct tag_of<Compare, Key, A>
 /// The Store for spec S over container R (which must serve S): its request, written back from S, with over<R>.
 template<typename S, typename R>
 struct store_over_of;
+
 template<typename Kind, typename Compare, typename Key, auto... As, typename R>
 struct store_over_of<urd::spec<Kind, Compare, Key, As...>, R>
 {
@@ -376,6 +381,7 @@ struct store_over_of<urd::spec<Kind, Compare, Key, As...>, R>
     static_assert(std::same_as<typename urd::detail::to_spec<Kind, typename tag_of<Compare, Key, As>::type...>::type, urd::spec<Kind, Compare, Key, As...>>,
                   "store_over: the request written back from the spec resolves to another spec");
 };
+
 template<typename S, typename R>
 using store_over = typename store_over_of<S, R>::type;
 

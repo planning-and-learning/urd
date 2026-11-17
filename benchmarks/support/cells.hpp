@@ -37,23 +37,27 @@ struct key_of
 {
     using type = void;
 };
+
 template<typename S>
     requires requires { typename S::key_type; }
 struct key_of<S>
 {
     using type = typename S::key_type;
 };
+
 template<typename S>
 struct value_of
 {
     using type = void;
 };
+
 template<typename S>
     requires requires { typename S::value_type; }
 struct value_of<S>
 {
     using type = typename S::value_type;
 };
+
 template<typename S>
     requires requires { typename S::mapped_type; }
 struct value_of<S>

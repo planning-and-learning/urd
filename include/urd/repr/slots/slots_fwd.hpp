@@ -55,6 +55,7 @@ struct slot_vector_decl
     static constexpr std::string_view description = "slot vector (slots that never move, freed ones reused)";
     static constexpr std::string_view holds = "stable slots; freed slots reused first (with keyed<K>, under an equal key)";
 };
+
 template<typename T, typename K>
 struct declaration_of<repr::SlotVector<T, false, K>>
 {
@@ -74,6 +75,7 @@ struct thread_safe_slot_vector_decl : slot_vector_decl
     static constexpr double words = 1.6;
     static constexpr std::string_view holds = "stable slots; freed slots reused first, under a lock";
 };
+
 template<typename T>
 struct declaration_of<repr::SlotVector<T, true>>
 {

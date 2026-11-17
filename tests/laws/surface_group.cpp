@@ -48,6 +48,7 @@ void compile_moves()
         if constexpr (urd::detail::facet_condition<F>::template on<R, S>() && urd::test::takes<F>::template offered<T, R, S>) [[maybe_unused]]
             constexpr auto move = &urd::test::takes<F>::template move<F<T, R, S>, S>;
 }
+
 template<typename T, typename R, typename S, template<typename, typename, typename> class... Fs>
 void compile_all_moves(urd::detail::facet_list<Fs...> /*facets*/)
 { (compile_moves<T, R, S, Fs>(), ...); }
@@ -56,6 +57,7 @@ void compile_all_moves(urd::detail::facet_list<Fs...> /*facets*/)
 /// differently while evaluating an immediate function.
 template<typename T, typename R, typename S, typename List>
 struct all_agree;
+
 template<typename T, typename R, typename S, template<typename, typename, typename> class... Fs>
 struct all_agree<T, R, S, urd::detail::facet_list<Fs...>>
 {
@@ -94,6 +96,7 @@ struct Moved
     ~Moved() = default;
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&Moved::id> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Moved::id> {}; }
 };
 

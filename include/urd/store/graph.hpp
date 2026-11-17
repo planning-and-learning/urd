@@ -31,20 +31,27 @@ public:
     using size_type = std::size_t;
 
     [[nodiscard]] size_type num_vertices() const { return representation().num_vertices(); }
+
     /// The vertices, in increasing order.
     [[nodiscard]] auto vertices() const { return representation().vertices(); }
+
     /// The targets of the edges leaving `u`, a target once per edge.
     [[nodiscard]] auto neighbours(vertex u) const { return representation().neighbours(u); }
+
     [[nodiscard]] size_type out_degree(vertex u) const { return representation().out_degree(u); }
+
     /// Whether an edge leads from `u` to `v`.
     [[nodiscard]] bool adjacent(vertex u, vertex v) const { return representation().adjacent(u, v); }
+
     /// The sources of the edges entering `v`, a source once per edge.
     [[nodiscard]] auto in_neighbours(vertex v) const
         requires(has<S, bidirectional> || has<S, undirected>)
     { return representation().in_neighbours(v); }
+
     [[nodiscard]] size_type in_degree(vertex v) const
         requires(has<S, bidirectional> || has<S, undirected>)
     { return representation().in_degree(v); }
+
     /// The data of `v` (D: std::monostate where it carries none).
     [[nodiscard]] decltype(auto) vertex_value(vertex v) const { return representation().vertex_value(v); }
 
@@ -70,21 +77,25 @@ public:
     vertex add_vertex(Value&&... value)
         requires(!has<S, partitioned> && !has<S, constant_adjacency> && (taken<Value> && ...))
     { return representation().add_vertex(std::forward<Value>(value)...); }
+
     template<typename... Value, urd::fixed_string Reason = "add_vertex(const D&): the vertex data is move-only: move it in, add_vertex(std::move(d))">
     vertex add_vertex(Value&&... value)
         requires(!has<S, partitioned> && !has<S, constant_adjacency>
                  && (... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) ))
     = delete;
+
     /// A new edge from `u` to `v`, with its data (left out where it is a unit): its number, or for rows of bits whether
     /// it is new.
     template<typename... Value>
     decltype(auto) add_edge(vertex u, vertex v, Value&&... value)
         requires(taken<Value> && ...)
     { return representation().add_edge(u, v, std::forward<Value>(value)...); }
+
     template<typename... Value, urd::fixed_string Reason = "add_edge(u, v, const E&): the edge data is move-only: move it in, add_edge(u, v, std::move(e))">
     decltype(auto) add_edge(vertex u, vertex v, Value&&... value)
         requires(... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) )
     = delete;
+
     void clear()
         requires clears<S>
     { representation().clear(); }
@@ -102,6 +113,7 @@ class graph_removal
 public:
     /// Removes the edge numbered `e`.
     void remove_edge(std::size_t e) { representation().remove_edge(e); }
+
     /// Removes `v` and its edges.
     void remove_vertex(vertex v) { representation().remove_vertex(v); }
 
@@ -119,24 +131,33 @@ class graph_edges
 
 public:
     [[nodiscard]] std::size_t num_edges() const { return representation().num_edges(); }
+
     /// The numbers of every edge, in increasing order.
     [[nodiscard]] auto edges() const { return representation().edges(); }
+
     /// The numbers of the edges leaving `u`.
     [[nodiscard]] auto out_edges(vertex u) const { return representation().out_edges(u); }
+
     /// The numbers of the edges entering `v`.
     [[nodiscard]] auto in_edges(vertex v) const
         requires has<S, bidirectional>
     { return representation().in_edges(v); }
+
     /// The number of an edge from `u` to `v`, if there is one (with multi, the first given).
     [[nodiscard]] std::optional<std::size_t> edge(vertex u, vertex v) const { return representation().edge(u, v); }
+
     /// The numbers of every edge from `u` to `v`.
     [[nodiscard]] auto edges_between(vertex u, vertex v) const
         requires has<S, multi>
     { return representation().edges_between(u, v); }
+
     [[nodiscard]] vertex source(std::size_t e) const { return representation().source(e); }
+
     [[nodiscard]] vertex target(std::size_t e) const { return representation().target(e); }
+
     /// The data of the edge numbered `e` (E: std::monostate where it carries none); operator[] reads it too.
     [[nodiscard]] decltype(auto) edge_value(std::size_t e) const { return representation().edge_value(e); }
+
     [[nodiscard]] decltype(auto) operator[](std::size_t e) const { return representation().edge_value(e); }
 
 private:
@@ -152,7 +173,9 @@ class graph_parts
 
 public:
     [[nodiscard]] std::size_t num_parts() const { return representation().num_parts(); }
+
     [[nodiscard]] std::size_t part_of(vertex v) const { return representation().part_of(v); }
+
     /// The vertices of part `p`, in increasing order.
     [[nodiscard]] auto part(std::size_t p) const { return representation().part(p); }
 
@@ -178,6 +201,7 @@ struct facet_condition<facet::graph_building> : facet_defaults
     static constexpr bool on()
     { return grows<S>; }
 };
+
 template<>
 struct facet_operations<facet::graph_building>
 {
@@ -191,6 +215,7 @@ struct facet_condition<facet::graph_removal> : facet_defaults
     static constexpr bool on()
     { return shrinks<S>; }
 };
+
 template<>
 struct facet_operations<facet::graph_removal>
 {
@@ -205,6 +230,7 @@ struct facet_condition<facet::graph_edges> : facet_defaults
     static constexpr bool on()
     { return !has<S, constant_adjacency>; }
 };
+
 template<>
 struct facet_operations<facet::graph_edges>
 {

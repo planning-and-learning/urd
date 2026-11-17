@@ -80,6 +80,7 @@ struct kind_group
                                                 "reached: the first decision, which every other changes with.";
     static constexpr std::string_view literature = "Abstract data types: a type is the operations it offers (Liskov and Zilles, 1974).";
 };
+
 struct semantics_group
 {
     static constexpr std::string_view id = "semantics";
@@ -89,6 +90,7 @@ struct semantics_group
         "What holds of the elements: guaranteed by the container (sorted, stable_refs), or promised by the caller about its data (dense).";
     static constexpr std::string_view literature = "Design by contract: guarantees the supplier keeps, preconditions the client keeps (Meyer, 1992).";
 };
+
 struct costs_group
 {
     static constexpr std::string_view id = "costs";
@@ -98,6 +100,7 @@ struct costs_group
     static constexpr std::string_view literature =
         "Complexity requirements as part of an interface, as the C++ standard library states them (Stepanov and Lee, 1995).";
 };
+
 struct hints_group
 {
     static constexpr std::string_view id = "hints";
@@ -116,16 +119,19 @@ struct promise_heading
     static constexpr std::string_view id = "promise";
     static constexpr std::string_view title = "What you promise about your data";
 };
+
 struct holds_heading
 {
     static constexpr std::string_view id = "holds";
     static constexpr std::string_view title = "What holds";
 };
+
 struct more_heading
 {
     static constexpr std::string_view id = "more";
     static constexpr std::string_view title = "What more it can do";
 };
+
 struct memory_heading
 {
     static constexpr std::string_view id = "memory";
@@ -163,6 +169,7 @@ enum class order : std::uint8_t
     sorted,
     insertion_ordered,
 };
+
 struct any_order : tag_defaults
 {
     using root = any_order;
@@ -172,6 +179,7 @@ struct any_order : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "In which order is it iterated?";
 };
+
 /// Ascending by urd::Less: operator< for numbers, member by member for identified types.
 struct sorted : any_order
 {
@@ -183,6 +191,7 @@ struct sorted : any_order
     static constexpr std::array<std::string_view, 4> phrases { "sorted", "in order", "ordered by key", "range queries" };
     static constexpr answer_says says { .fixes_iteration_order = true, .fixes_hash_order = true };
 };
+
 /// In the order they were inserted: a new element goes last, and the others keep their places.
 struct insertion_ordered : any_order
 {
@@ -219,6 +228,7 @@ struct duplicates : tag_defaults
     /// break a set).
     static constexpr bool exact = true;
 };
+
 /// No two elements are equal.
 struct unique : duplicates
 {
@@ -251,6 +261,7 @@ struct any_keys : tag_defaults
     using heading = promise_heading;
     static constexpr std::string_view question = "Which keys?";
 };
+
 /// The keys are 0..n-1, or nearly so.
 struct dense : any_keys
 {
@@ -263,6 +274,7 @@ struct dense : any_keys
     /// promise (its storage grows with the largest key, and a negative key is no index at all).
     static constexpr answer_says says { .demanded = true, .costly = true };
 };
+
 /// The keys are few compared to their range.
 struct sparse : any_keys
 {
@@ -294,6 +306,7 @@ struct moving_refs : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Do references stay valid?";
 };
+
 /// A reference to a stored element stays valid until that element is removed, by whichever path the container
 /// hands it out: the element behind an iterator where iteration yields references; a map's value, by at,
 /// operator[], the argument of update and the .second of an iterated entry (not the entry a dense map builds on
@@ -332,6 +345,7 @@ struct any_layout : tag_defaults
     using heading = memory_heading;
     static constexpr std::string_view question = "One array?";
 };
+
 /// The elements lie next to each other in memory.
 struct contiguous : any_layout
 {
@@ -363,6 +377,7 @@ struct any_representation : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Same contents, same bytes?";
 };
+
 /// Equal contents have equal representations.
 struct canonical : any_representation
 {
@@ -396,6 +411,7 @@ struct single_threaded : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Shared between threads?";
 };
+
 /// Threads share the container, per kind: sets and sequences take inserts from threads at once, and reads of
 /// published elements (lookups, a position) beside them; maps take insert, try_emplace, insert_or_assign and
 /// update from threads at once on any keys, and read beside them, each key's value under its own lock, so at()
@@ -437,6 +453,7 @@ struct any_memory : tag_defaults
     using group = costs_group;
     static constexpr std::string_view question = "What happens to freed memory?";
 };
+
 /// Storage that erase and clear free is kept for reuse: refilling up to an earlier size allocates nothing.
 struct retains : any_memory
 {
@@ -448,6 +465,7 @@ struct retains : any_memory
     static constexpr answer_says says { .costly = true };
     static constexpr std::array<std::string_view, 3> phrases { "no reallocation when refilled", "reuse memory", "keeps capacity" };
 };
+
 /// Erase and clear return the storage of what they remove.
 struct reclaims : any_memory
 {
@@ -479,6 +497,7 @@ struct any_clear : tag_defaults
     using group = costs_group;
     static constexpr std::string_view question = "How is it cleared?";
 };
+
 /// Clear takes time in proportion to the elements present, not to the keys or capacity seen before.
 struct proportional_clear : any_clear
 {
@@ -488,6 +507,7 @@ struct proportional_clear : any_clear
     static constexpr std::string_view description = "Clear takes time in proportion to the elements present.";
     static constexpr std::array<std::string_view, 2> phrases { "cheap clear", "cleared often" };
 };
+
 /// Clear takes constant time, as with a generation counter.
 struct constant_clear : proportional_clear
 {
@@ -521,6 +541,7 @@ struct any_access : tag_defaults
     using group = kind_group;
     static constexpr std::string_view question = "How are elements taken out?";
 };
+
 /// A queue: elements leave in the order they came (front, push, pop).
 struct fifo : any_access
 {
@@ -530,6 +551,7 @@ struct fifo : any_access
     static constexpr std::string_view description = "A queue: elements leave in the order they came.";
     static constexpr std::array<std::string_view, 4> phrases { "queue", "fifo", "breadth first", "worklist" };
 };
+
 /// A stack: the last element pushed leaves first (top, push, pop).
 struct lifo : any_access
 {
@@ -539,6 +561,7 @@ struct lifo : any_access
     static constexpr std::string_view description = "A stack: the last element pushed leaves first.";
     static constexpr std::array<std::string_view, 3> phrases { "stack", "lifo", "depth first" };
 };
+
 /// A priority queue: the least element by urd::Less leaves first (top, push, pop).
 struct by_priority : any_access
 {
@@ -570,6 +593,7 @@ struct any_scope : tag_defaults
     using heading = more_heading;
     static constexpr std::string_view question = "Nested scopes?";
 };
+
 /// Offers push_scope and pop_scope: popping undoes every change since the matching push.
 struct scoped : any_scope
 {
@@ -602,6 +626,7 @@ struct any_layering : tag_defaults
     using heading = more_heading;
     static constexpr std::string_view question = "Layered over a parent?";
 };
+
 /// Offers layer_over(parent): lookups find the parent's elements too, which it neither owns nor changes.
 struct layered : any_layering
 {
@@ -635,6 +660,7 @@ struct any_handle : tag_defaults
     /// Exact: a container must hold what the request holds here, no more (handles make a pool, or give a priority queue update and erase by handle).
     static constexpr bool exact = true;
 };
+
 /// A pool: each element is identified by a handle that insert gives, with whether it was new, and equal elements get
 /// equal handles. Not iterated; counted, with handles 0..size()-1, unless it has structural_sharing (handles name
 /// shared nodes there).
@@ -668,6 +694,7 @@ struct any_sharing : tag_defaults
     using group = costs_group;
     static constexpr std::string_view question = "Rows share structure?";
 };
+
 /// Parts that are equal across elements (rows) are stored once.
 struct structural_sharing : any_sharing
 {
@@ -700,6 +727,7 @@ struct any_direction : tag_defaults
     using heading = more_heading;
     static constexpr std::string_view question = "Looked up both ways?";
 };
+
 /// A map that answers by value too: keys(v) gives the keys that map to v, as a graph gives a vertex's predecessors.
 struct bidirectional : any_direction
 {
@@ -732,6 +760,7 @@ struct any_symmetry : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Is every edge read both ways?";
 };
+
 /// A graph whose edges have no direction: an edge between u and v makes each a neighbour of the other, stored once.
 struct undirected : any_symmetry
 {
@@ -762,6 +791,7 @@ struct any_adjacency : tag_defaults
     using group = costs_group;
     static constexpr std::string_view question = "How fast is adjacency answered?";
 };
+
 /// Whether two vertices are adjacent is answered in constant time, and a vertex's neighbours in a part are a row of bits,
 /// so that rows are intersected a word at a time (cliques in a k-partite graph).
 struct constant_adjacency : any_adjacency
@@ -795,6 +825,7 @@ struct any_endpoints : tag_defaults
     using group = costs_group;
     static constexpr std::string_view question = "How fast is an edge's source found from its number?";
 };
+
 /// An edge's source is read from its number in constant time: a frozen graph keeps a source per edge instead of
 /// searching its rows.
 struct constant_endpoints : any_endpoints
@@ -828,6 +859,7 @@ struct any_shape : tag_defaults
     using heading = more_heading;
     static constexpr std::string_view question = "Rows of a fixed shape?";
 };
+
 /// Rows of a fixed shape: how many there are and how long each is is set at construction (urd::row_lengths); only
 /// their contents change.
 struct fixed_shape : any_shape
@@ -862,6 +894,7 @@ struct any_packing : tag_defaults
     using heading = memory_heading;
     static constexpr std::string_view question = "Records packed flat?";
 };
+
 /// Each element is one self-contained block of bytes, with no part of its own on the heap: trivially copyable, or
 /// serialized as a whole. Such elements are frozen once stored, and are read by index.
 struct flat : any_packing
@@ -897,6 +930,7 @@ struct word : tag_defaults
     using heading = memory_heading;
     static constexpr std::string_view question = "Elements stored whole, or in fewer bits?";
 };
+
 /// Every element fits in the bit width given at construction (urd::bit_width): a representation may store each in
 /// that many bits, and the Store hands out values, not references, to them. Every word representation still serves
 /// the request, not using the promise.
@@ -939,6 +973,7 @@ struct bit_width
     /// The width that holds every value below `bound` (at least one bit).
     [[nodiscard]] static constexpr bit_width for_bound(word_t bound) noexcept
     { return bit_width { static_cast<std::uint8_t>(bound <= 1 ? 1 : std::bit_width(static_cast<word_t>(bound - 1))) }; }
+
     friend constexpr bool operator==(bit_width, bit_width) noexcept = default;
 };
 
@@ -956,6 +991,7 @@ struct any_grouping : tag_defaults
     using group = kind_group;
     static constexpr std::string_view question = "Groups of keys?";
 };
+
 /// A partition: its elements fall into disjoint classes; merge joins two classes, find names an element's class. What
 /// a partition<K> means (urd/kinds.hpp), not stated.
 struct partitioned : any_grouping
@@ -988,6 +1024,7 @@ struct any_keying : tag_defaults
     using group = kind_group;
     static constexpr std::string_view question = "Freed slots kept by a key?";
 };
+
 /// Slots acquired by a key (keyed<K>): make_shared(key, args...) reuses a slot freed under an equal key, else makes
 /// one from (key, args...); the slot keeps its key. The words of the answer.
 struct keyed_slots : any_keying
@@ -1030,6 +1067,7 @@ struct any_room : tag_defaults
     using group = kind_group;
     static constexpr std::string_view question = "Is room made ahead?";
 };
+
 /// Offers reserve(n): room for n elements before they come, as std::vector's.
 struct reservable : any_room
 {
@@ -1055,6 +1093,7 @@ enum class change : std::uint8_t
     monotone,
     frozen,
 };
+
 struct may_change : tag_defaults
 {
     using root = may_change;
@@ -1065,6 +1104,7 @@ struct may_change : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Does it change after building?";
 };
+
 /// Only grows until cleared: elements are only added; the only removal is clear(), which empties the Store at once.
 struct monotone_until_clear : may_change
 {
@@ -1076,6 +1116,7 @@ struct monotone_until_clear : may_change
     static constexpr std::array<std::string_view, 3> phrases { "append only until cleared", "cleared, never erased", "refilled after clear" };
     static constexpr answer_says says { .stops_shrinking = true };
 };
+
 /// Only grows: nothing is ever removed, not even by clear().
 struct monotone : monotone_until_clear
 {
@@ -1087,6 +1128,7 @@ struct monotone : monotone_until_clear
     static constexpr std::array<std::string_view, 3> phrases { "append only", "only grows", "never erased" };
     static constexpr answer_says says { .stops_shrinking = true, .stops_clearing = true };
 };
+
 /// No change after construction (assign rebuilds it whole): any number of threads may read it between rebuilds,
 /// so concurrent, which is about inserts from threads at once, is not asked of it.
 struct frozen : monotone
@@ -1126,6 +1168,7 @@ struct maybe_empty : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Can it be empty?";
 };
+
 /// At least one element.
 struct nonempty : maybe_empty
 {
@@ -1161,6 +1204,7 @@ struct any_multiplicity : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Values per key?";
 };
+
 /// Any number of values per key (a multimap).
 struct multi : any_multiplicity
 {
@@ -1192,6 +1236,7 @@ struct by_key : tag_defaults
     using heading = holds_heading;
     static constexpr std::string_view question = "Reached by position?";
 };
+
 /// Identified by position 0..n-1, in order (a sequence).
 struct positional : by_key
 {
@@ -1217,6 +1262,7 @@ enum class workload : std::uint8_t
     none,
     small,
 };
+
 struct general : tag_defaults
 {
     using root = general;
@@ -1226,6 +1272,7 @@ struct general : tag_defaults
     using group = hints_group;
     static constexpr std::string_view question = "How many elements?";
 };
+
 /// A few elements, or a few at a time.
 struct small : general
 {
@@ -1260,6 +1307,7 @@ struct any_priority : tag_defaults
     using heading = promise_heading;
     static constexpr std::string_view question = "How do priorities move?";
 };
+
 /// A priority queue whose pushes are never below the last popped (shortest paths with non-negative lengths, event
 /// simulation): with integral priorities, a bucket queue serves it.
 struct monotone_priority : any_priority
@@ -1293,6 +1341,7 @@ struct any_comparison : tag_defaults
     using heading = promise_heading;
     static constexpr std::string_view question = "What compares the elements?";
 };
+
 /// Compared by a comparator the request gives (order_by<C>), not by urd::Less: the words of the answer.
 struct given_comparison : any_comparison
 {

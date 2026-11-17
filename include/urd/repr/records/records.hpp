@@ -35,14 +35,18 @@ public:
 
     // Each lookup and insert takes the record or a prehashed<T> of it (urd/elements/prehashed.hpp), not hashed again.
     std::pair<handle_type, bool> insert(const T& record) { return inserted(m_records.insert(record)); }
+
     /// Handed over: moved in where it is new (serialized from by the arena); one already held leaves `record` as it was.
     std::pair<handle_type, bool> insert(T&& record) { return inserted(m_records.insert(std::move(record))); }
+
     std::pair<handle_type, bool> insert(const prehashed<T>& key) { return inserted(m_records.insert(key)); }
+
     /// The index `key` gets, built where new from `make(index)`, which must give a record equal to `key` and must not
     /// touch this pool.
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
     { return insert(prehash(key), std::move(make)); }
+
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
     {
@@ -51,17 +55,25 @@ public:
                                                                  [&make](std::size_t position) -> decltype(auto)
                                                                  { return make(handle_type(static_cast<std::uint32_t>(position))); }));
     }
+
     [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
+
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
     {
         const auto found = urd::detail::indexed_access::position(m_records, key);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
+
     [[nodiscard]] bool contains(const T& record) const { return m_records.contains(record); }
+
     [[nodiscard]] bool contains(const prehashed<T>& key) const { return m_records.contains(key); }
+
     [[nodiscard]] const T& operator[](handle_type at) const { return urd::detail::indexed_access::element(m_records, at.value); }
+
     [[nodiscard]] size_type size() const { return m_records.size(); }
+
     [[nodiscard]] bool empty() const { return m_records.empty(); }
+
     void clear() { m_records.clear(); }
 
 private:
@@ -107,26 +119,31 @@ struct representation_of<record_interner_decl, S>
 {
     using type = repr::RecordInterner<typename S::element_type, false, false, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<stable_record_interner_decl, S>
 {
     using type = repr::RecordInterner<typename S::element_type, false, true, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<thread_safe_record_interner_decl, S>
 {
     using type = repr::RecordInterner<typename S::element_type, true, true, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<value_interner_decl, S>
 {
     using type = repr::ValueInterner<typename S::element_type, false, false, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<stable_value_interner_decl, S>
 {
     using type = repr::ValueInterner<typename S::element_type, false, true, typename S::handle_type>;
 };
+
 template<typename S>
 struct representation_of<thread_safe_value_interner_decl, S>
 {

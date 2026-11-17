@@ -18,7 +18,9 @@ struct row_lengths
     std::vector<std::size_t> lengths;
 
     row_lengths(std::initializer_list<std::size_t> each) : lengths(each) {}
+
     explicit row_lengths(std::vector<std::size_t> each) : lengths(std::move(each)) {}
+
     operator const std::vector<std::size_t>&() const { return lengths; }  // NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
 };
 
@@ -50,6 +52,7 @@ struct facet_condition<facet::shape> : facet_defaults
     static constexpr bool on()
     { return has<S, fixed_shape>; }
 };
+
 template<>
 struct facet_operations<facet::shape>
 {

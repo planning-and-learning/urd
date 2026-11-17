@@ -25,17 +25,20 @@ public:
         assert(!self().empty());
         return *self().begin();
     }
+
     [[nodiscard]] reference_type front()
         requires writable
     {
         assert(!self().empty());
         return *self().begin();
     }
+
     [[nodiscard]] const_reference_type back() const
     {
         assert(!self().empty());
         return *std::prev(self().end());
     }
+
     [[nodiscard]] reference_type back()
         requires writable
     {
@@ -45,6 +48,7 @@ public:
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }
+
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
 };
 

@@ -85,6 +85,7 @@ void check_gaps()
     EXPECT_EQ(map.equal_range(3).first, map.equal_range(3).second);
     EXPECT_EQ(map.equal_range(6).second, map.end());
 }
+
 TEST(MultiValues, EqualRangeOverKeysWithoutValues)
 {
     check_gaps<Store<map<int, int>, urd::multi, urd::dense>>();

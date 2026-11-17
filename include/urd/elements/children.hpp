@@ -79,6 +79,7 @@ void walk_members(R& record, F f)
                                   walk(member, f);
                           });
 }
+
 /// Assigns source's members to scratch's, all but scratch's own handle (a direct member of type index<T>, which stays as
 /// it is: none in a checked-out scratch). A flat vector keeps the memory it has (set), so a scratch reused across calls
 /// allocates only where a member grows beyond what it held before; every other member is assigned.

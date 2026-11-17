@@ -44,7 +44,9 @@ namespace
 struct Note
 {
     std::string text;
+
     static constexpr auto identifying_members() noexcept { return urd::Members<&Note::text> {}; }
+
     static constexpr auto cista_members() noexcept { return urd::Members<&Note::text> {}; }
 };
 

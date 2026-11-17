@@ -57,10 +57,12 @@ inline Counters& counters() noexcept
 struct Counted
 {
     Counted() noexcept { detail::counters() = { .on = true, .counts = {} }; }
+
     Counted(const Counted&) = delete;
     Counted(Counted&&) = delete;
     Counted& operator=(const Counted&) = delete;
     Counted& operator=(Counted&&) = delete;
+
     ~Counted() { detail::counters().on = false; }
 };
 
@@ -86,6 +88,7 @@ inline void deallocate(void* memory) noexcept
         ++detail::counters().counts.deallocations;
     std::free(memory);
 }
+
 // NOLINTEND(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
 
 }  // namespace urd::testing

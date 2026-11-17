@@ -24,6 +24,7 @@ namespace urd
 // it is not canonical.
 
 }  // namespace urd
+
 namespace urd
 {
 
@@ -56,6 +57,7 @@ struct flat_map_decl
     static constexpr std::string_view description = "boost::container::flat_map (sorted vector)";
     static constexpr std::string_view holds = "n entries in one array; retains";
 };
+
 template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_map<K, V, C, A>>
 {
@@ -75,6 +77,7 @@ struct flat_multimap_decl : flat_map_decl
         { order::sorted, multiplicity::multi, position::positional, layout::contiguous, memory::retains, clearing::proportional_clear, room::reservable });
     static constexpr std::string_view description = "boost::container::flat_multimap (sorted vector)";
 };
+
 template<typename K, typename V, typename C, typename A>
 struct declaration_of<boost::container::flat_multimap<K, V, C, A>>
 {

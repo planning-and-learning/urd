@@ -18,6 +18,7 @@ namespace urd
 // forward header; defined by urd/repr/values/unordered_flat_set.hpp and urd/repr/maps/unordered_flat_map.hpp.
 
 }  // namespace urd
+
 namespace urd::detail
 {
 
@@ -39,6 +40,7 @@ struct unordered_flat_map_decl
     static constexpr std::string_view description = "gtl::flat_hash_map (open-addressing hash table)";
     static constexpr std::string_view holds = "~n/0.875 slots + 1 byte each; retains";
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<gtl::flat_hash_map<K, V, H, E, A>>
 {

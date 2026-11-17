@@ -26,11 +26,14 @@ public:
 
     [[nodiscard]] typename iterator_types<R, S>::const_iterator find(const typename types::lookup_type& element) const
     { return representation().find(element); }
+
     /// In a map, the entry found with its value changeable, as the standard's maps give it.
     [[nodiscard]] iterator_type find(const typename types::lookup_type& element)
         requires(!std::same_as<iterator_type, const_iterator_type>)
     { return representation().find(element); }
+
     [[nodiscard]] typename types::size_type count(const typename types::lookup_type& element) const { return representation().count(element); }
+
     [[nodiscard]] bool contains(const typename types::lookup_type& element) const { return representation().contains(element); }
     /// Lookups by another form of a key: forwarded as they are, so what the Store's Hash and EqualTo (or its order)
     /// compare with a key decides what K may be, as with the standard's associative containers (a key with its hash,
@@ -40,6 +43,7 @@ public:
     [[nodiscard]] const_iterator_type find(const K& key) const
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal key decays to the pointer the lookup takes
     { return representation().find(key); }
+
     template<typename K>
         requires(!std::same_as<std::remove_cvref_t<K>, key_type>) && (!std::same_as<iterator_type, const_iterator_type>)
     [[nodiscard]] iterator_type find(const K& key)
@@ -54,12 +58,14 @@ public:
     [[nodiscard]] bool contains(const K& key) const
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal key decays to the pointer the lookup takes
     { return representation().contains(key); }
+
     /// The elements equal to `element` (in a map, with that key), as a pair of iterators.
     [[nodiscard]] std::pair<const_iterator_type, const_iterator_type> equal_range(const typename types::lookup_type& element) const
     { return representation().equal_range(element); }
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 

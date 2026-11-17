@@ -28,6 +28,7 @@ public:
     [[nodiscard]] bool includes(const Derived& other) const
         requires by_words
     { return representation().includes(store_access::representation(other)); }
+
     /// Whether this set and `other` share an element.
     [[nodiscard]] bool intersects(const Derived& other) const
         requires by_words
@@ -39,22 +40,26 @@ public:
         representation() |= store_access::representation(other);
         return self();
     }
+
     Derived& operator&=(const Derived& other)
         requires(shrinks<S> && by_words)
     {
         representation() &= store_access::representation(other);
         return self();
     }
+
     Derived& operator-=(const Derived& other)
         requires(shrinks<S> && by_words)
     {
         representation() -= store_access::representation(other);
         return self();
     }
+
     /// As std::set::merge: moves into this set each element of `source` it lacks; `source` keeps the others.
     void merge(Derived& source)
         requires grows<S> && shrinks<S>
     { representation().merge(store_access::representation(source)); }
+
     // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): as std::set::merge(set&&), it moves elements out of the set, not the set
     void merge(Derived&& source)
         requires grows<S> && shrinks<S>
@@ -67,11 +72,13 @@ public:
     [[nodiscard]] std::span<const word_t> significant_words() const
         requires by_words
     { return representation().significant_words(); }
+
     /// Makes this the set whose bits `words` set, its storage reused: a whole assignment, as operator= is (a frozen
     /// set takes it too).
     void assign_words(std::span<const word_t> words)
         requires by_words
     { representation().assign_words(words); }
+
     /// Makes this the set whose bits fill(words) sets in `count` words, zeroed first, written in place.
     template<typename Fill>
         requires std::invocable<Fill&, std::span<word_t>>
@@ -81,8 +88,11 @@ public:
 
 private:
     [[nodiscard]] const Derived& self() const { return static_cast<const Derived&>(*this); }
+
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
+
     [[nodiscard]] const R& representation() const { return store_access::representation(self()); }
+
     [[nodiscard]] R& representation() { return store_access::representation(self()); }
 };
 

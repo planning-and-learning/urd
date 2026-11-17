@@ -49,9 +49,13 @@ public:
     }
 
     [[nodiscard]] iterator begin() const { return m_table.begin(); }
+
     [[nodiscard]] iterator end() const { return m_table.end(); }
+
     [[nodiscard]] size_type size() const { return m_table.size(); }
+
     [[nodiscard]] bool empty() const { return m_table.empty(); }
+
     /// Equal bindings in force: the table decides, whatever order it iterates in and whatever scopes are open.
     [[nodiscard]] friend bool operator==(const Scoped& lhs, const Scoped& rhs)
         requires std::equality_comparable<Table>
@@ -59,6 +63,7 @@ public:
 
     /// Opens a scope: the changes from here on are undone by the matching pop_scope.
     void push_scope() { m_scopes.push_back(m_log.size()); }
+
     /// Undoes every change since the matching push_scope, latest first.
     void pop_scope()
     {
@@ -73,8 +78,10 @@ public:
         }
         m_scopes.pop_back();
     }
+
     /// How many scopes are open.
     [[nodiscard]] size_type depth() const { return m_scopes.size(); }
+
     /// Whether `key` is bound and was bound in the innermost open scope (any scope being open); with none open,
     /// whether it is bound at all. A redeclaration check: the log since the last push_scope names the keys changed.
     [[nodiscard]] bool bound_in_scope(const K& key) const
@@ -89,19 +96,26 @@ public:
     }
 
     [[nodiscard]] iterator find(const K& key) const { return m_table.find(key); }
+
     [[nodiscard]] size_type count(const K& key) const { return m_table.count(key); }
+
     [[nodiscard]] bool contains(const K& key) const { return m_table.contains(key); }
+
     // The bounds, where Map is sorted.
     [[nodiscard]] iterator lower_bound(const K& key) const
         requires requires(const Table& table) { table.lower_bound(key); }
     { return m_table.lower_bound(key); }
+
     [[nodiscard]] iterator upper_bound(const K& key) const
         requires requires(const Table& table) { table.upper_bound(key); }
     { return m_table.upper_bound(key); }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
         requires requires(const Table& table) { table.equal_range(key); }
     { return m_table.equal_range(key); }
+
     [[nodiscard]] const V& at(const K& key) const { return m_table.at(key); }
+
     /// The value, to change in place: logged first, as any change.
     [[nodiscard]] V& at(const K& key)
     {
@@ -111,15 +125,19 @@ public:
     }
 
     std::pair<iterator, bool> insert(const value_type& pair) { return try_emplace(pair.first, pair.second); }
+
     iterator insert(const_iterator /*hint*/, const value_type& pair) { return insert(pair).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& pair) { this->insert(value_type(pair)); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(value_type(std::forward<Args>(args)...)); }
+
     template<typename... Args>
     std::pair<iterator, bool> try_emplace(const K& key, Args&&... args)
     {
@@ -127,6 +145,7 @@ public:
             log(key);
         return m_table.try_emplace(key, std::forward<Args>(args)...);
     }
+
     /// Calls update(value, held) with the value of `key`, a default one made first where it had none (held is then
     /// false): logged first, as any change. Returns what update returns.
     template<typename Update>
@@ -136,11 +155,13 @@ public:
         const bool held = !try_emplace(key).second;
         return update(at(key), held);
     }
+
     /// f(value) where `key` has a value, else `missing`.
     template<typename F, typename Result>
         requires std::invocable<F&, const V&>
     [[nodiscard]] Result visit(const K& key, F f, Result missing) const
     { return contains(key) ? Result(f(at(key))) : missing; }
+
     template<typename M>
     std::pair<iterator, bool> insert_or_assign(const K& key, M&& mapped)
     {
@@ -155,17 +176,20 @@ public:
         log(key);
         return m_table.erase(key);
     }
+
     iterator erase(const_iterator pos)
     {
         log(pos->first);
         return m_table.erase(pos);
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         for (auto remaining = std::distance(first, last); remaining > 0; --remaining)
             first = erase(first);
         return first;
     }
+
     /// Removes every binding and closes every scope.
     void clear()
     {
@@ -213,11 +237,13 @@ struct representation_of<scoped_map_decl, S>
 {
     using type = repr::ScopedMap<typename S::key_type, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<scoped_tree_map_decl, S>
 {
     using type = repr::ScopedTreeMap<typename S::key_type, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<scoped_dense_map_decl, S>
 {

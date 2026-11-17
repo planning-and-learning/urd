@@ -48,10 +48,15 @@ public:
     }
 
     [[nodiscard]] group begin() const { return m_table.begin(); }
+
     [[nodiscard]] group end() const { return m_table.end(); }
+
     [[nodiscard]] std::size_t count() const { return m_count; }
+
     [[nodiscard]] const K& key(group at) const { return at->first; }
+
     [[nodiscard]] std::span<const V> row(group at) const { return at->second; }
+
     [[nodiscard]] group find(const K& key) const { return m_table.find(key); }
 
     /// The group of `key` and the position of the value appended to it.
@@ -62,6 +67,7 @@ public:
         ++m_count;
         return { found, found->second.size() - 1 };
     }
+
     std::size_t erase(const K& key)
     {
         const auto found = m_table.find(key);
@@ -72,6 +78,7 @@ public:
         m_count -= erased;
         return erased;
     }
+
     /// Where the value after the erased one is.
     std::pair<group, std::size_t> erase(group at, std::size_t index)
     {
@@ -85,6 +92,7 @@ public:
         m_table.erase(at);
         return { next, 0 };
     }
+
     void clear()
     {
         m_table.clear();
@@ -114,11 +122,13 @@ class ChainedPostingMap
         std::optional<V> value;  ///< Empty only while the slot is free.
         std::size_t next;
     };
+
     struct Chain
     {
         std::size_t first;
         std::size_t count;
     };
+
     using Table = gtl::flat_hash_map<K, Chain, Hash<K>, EqualTo<K>>;
     using entry = typename Table::const_iterator;
 
@@ -144,23 +154,29 @@ public:
         using iterator_category = std::forward_iterator_tag;
 
         value_iterator() = default;
+
         reference operator*() const { return *(*m_slots)[m_slot].value; }
+
         const V* operator->() const { return std::addressof(**this); }
+
         value_iterator& operator++()
         {
             m_slot = (*m_slots)[m_slot].next;
             return *this;
         }
+
         value_iterator operator++(int)
         {
             auto copy = *this;
             ++*this;
             return copy;
         }
+
         friend bool operator==(const value_iterator& lhs, const value_iterator& rhs) { return lhs.m_slot == rhs.m_slot; }
 
     private:
         friend class ChainedPostingMap;
+
         value_iterator(const std::vector<Slot>* slots, std::size_t slot) : m_slots(slots), m_slot(slot) {}
 
         const std::vector<Slot>* m_slots = nullptr;
@@ -175,8 +191,11 @@ public:
     { insert(first, last); }
 
     [[nodiscard]] iterator begin() const { return iterator(this, m_table.begin()); }
+
     [[nodiscard]] iterator end() const { return iterator(this, m_table.end()); }
+
     [[nodiscard]] size_type size() const { return m_size; }
+
     [[nodiscard]] bool empty() const { return m_size == 0; }
 
     /// The values of `key`, newest first.
@@ -187,12 +206,15 @@ public:
     }
 
     [[nodiscard]] iterator find(const K& key) const { return iterator(this, m_table.find(key)); }
+
     [[nodiscard]] size_type count(const K& key) const
     {
         const auto found = m_table.find(key);
         return found == m_table.end() ? 0 : found->second.count;
     }
+
     [[nodiscard]] bool contains(const K& key) const { return m_table.contains(key); }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
     {
         const auto found = m_table.find(key);
@@ -238,14 +260,17 @@ public:
             throw;
         }
     }
+
     template<typename Pair>
     iterator insert(const_iterator /*hint*/, const Pair& pair)
     { return insert(pair); }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& pair) { this->insert(pair); });
     }
+
     template<typename... Args>
     iterator emplace(Args&&... args)
     { return insert(std::pair<K, V>(std::forward<Args>(args)...)); }
@@ -262,6 +287,7 @@ public:
         m_size -= erased;
         return erased;
     }
+
     /// The slot goes to the free list; where it held the key's last value, the key leaves.
     iterator erase(const_iterator pos)
     {
@@ -279,12 +305,14 @@ public:
         m_table.erase(pos.m_entry);
         return iterator(this, after);
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         for (auto remaining = std::distance(first, last); remaining > 0; --remaining)
             first = erase(first);
         return first;
     }
+
     /// Destroys the values, keeping the table's and the pool's storage.
     void clear()
     {
@@ -297,6 +325,7 @@ public:
         m_free = m_slots.empty() ? npos : 0;
         m_size = 0;
     }
+
     /// Room for `count` values and as many keys.
     void reserve(std::size_t count)
     {
@@ -320,6 +349,7 @@ public:
         struct arrow
         {
             value_type pair;
+
             const value_type* operator->() const { return &pair; }
         };
 
@@ -327,7 +357,9 @@ public:
 
         // NOLINTNEXTLINE(bugprone-unchecked-optional-access): a slot in a key's chain holds a value (Slot: empty only while free)
         reference operator*() const { return { m_entry->first, *m_map->m_slots[m_slot].value }; }
+
         arrow operator->() const { return { **this }; }
+
         iterator& operator++()
         {
             m_previous = m_slot;
@@ -336,18 +368,22 @@ public:
                 *this = iterator(m_map, std::next(m_entry));
             return *this;
         }
+
         iterator operator++(int)
         {
             auto copy = *this;
             ++*this;
             return copy;
         }
+
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_entry == rhs.m_entry && lhs.m_slot == rhs.m_slot; }
 
     private:
         friend class ChainedPostingMap;
+
         /// The first value of an entry, or the end.
         iterator(const ChainedPostingMap* map, entry at) : m_map(map), m_entry(at), m_slot(at == map->m_table.end() ? npos : at->second.first) {}
+
         iterator(const ChainedPostingMap* map, entry at, std::size_t slot, std::size_t previous) : m_map(map), m_entry(at), m_slot(slot), m_previous(previous)
         {
         }
@@ -394,6 +430,7 @@ struct representation_of<posting_map_decl, S>
 {
     using type = repr::PostingMap<typename S::key_type, typename S::mapped_type>;
 };
+
 template<typename S>
 struct representation_of<chained_posting_map_decl, S>
 {

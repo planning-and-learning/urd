@@ -24,6 +24,7 @@ namespace urd
 // it is not canonical.
 
 }  // namespace urd
+
 namespace urd
 {
 
@@ -57,6 +58,7 @@ struct flat_set_decl
     static constexpr std::string_view description = "boost::container::flat_set (sorted vector)";
     static constexpr std::string_view holds = "n elements in one array; retains";
 };
+
 template<typename T, typename C, typename A>
 struct declaration_of<boost::container::flat_set<T, C, A>>
 {
@@ -82,6 +84,7 @@ struct flat_multiset_decl : flat_set_decl
                                                                 room::reservable });
     static constexpr std::string_view description = "boost::container::flat_multiset (sorted vector)";
 };
+
 template<typename T, typename C, typename A>
 struct declaration_of<boost::container::flat_multiset<T, C, A>>
 {

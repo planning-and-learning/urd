@@ -38,6 +38,7 @@ struct disjoint_sets_decl
     static constexpr std::string_view description = "disjoint sets (union-find by size, path halving)";
     static constexpr std::string_view holds = "a parent and a size per element";
 };
+
 template<typename K>
 struct declaration_of<repr::DisjointSets<K>>
 {

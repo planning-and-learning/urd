@@ -155,18 +155,21 @@ struct declaration_of<repr::AdjacencyLists<V, E, D>>
     using declaration = adjacency_lists_decl;
     static constexpr property_set roles = roles_of<urd::graph<V, E, D>>();
 };
+
 template<typename V, typename E, typename D, bool InEdges>
 struct declaration_of<repr::CsrGraph<V, E, D, InEdges>>
 {
     using declaration = csr_graph_decl<InEdges>;
     static constexpr property_set roles = roles_of<urd::graph<V, E, D>>();
 };
+
 template<typename V, bool Partitioned, bool Undirected, bool InRows>
 struct declaration_of<repr::BitMatrix<V, Partitioned, Undirected, InRows>>
 {
     using declaration = bit_matrix_decl<Partitioned, Undirected, InRows>;
     static constexpr property_set roles = roles_of<urd::graph<V>>();
 };
+
 template<typename V, bool Partitioned, bool Undirected, bool InRows>
 struct declaration_of<repr::BitRows<V, Partitioned, Undirected, InRows>>
 {

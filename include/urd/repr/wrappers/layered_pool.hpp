@@ -43,17 +43,20 @@ struct write_of
 {
     using type = void;
 };
+
 template<typename R>
     requires requires { typename R::write_type; }
 struct write_of<R>
 {
     using type = typename R::write_type;
 };
+
 template<typename R>
 struct row_builder_of
 {
     using type = void;
 };
+
 template<typename R>
     requires requires { typename R::row_builder_type; }
 struct row_builder_of<R>
@@ -85,6 +88,7 @@ public:
     using size_type = std::size_t;
 
     LayeredPool() = default;
+
     /// A root whose own pool is built from `args` (a bit row interner from its urd::bit_width, a schema row interner
     /// from its urd::column_widths).
     template<typename... Args>
@@ -105,6 +109,7 @@ public:
 private:
     // Read by tests (urd::testing::inspect), not by a Store.
     friend struct urd::testing::inspect;
+
     [[nodiscard]] const LayeredPool* parent() const noexcept { return m_parent; }
 
 public:
@@ -119,14 +124,17 @@ private:
 public:
     // NOLINTNEXTLINE(bugprone-exception-escape): the own pool counts an indexed set's elements; an empty set's shared storage is made without allocating
     [[nodiscard]] size_type size() const noexcept { return m_base + m_own.size(); }
+
     /// The bit width its own pool was built with (urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
         requires requires(const R& own) { own.width(); }
     { return m_own.width(); }
+
     /// The column widths its own pool was built with (urd::by_column_widths).
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
         requires requires(const R& own) { own.column_widths(); }
     { return m_own.column_widths(); }
+
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
 
     // Records. A record is hashed once (urd::prehash) and found by that hash in every layer of the chain.
@@ -134,11 +142,13 @@ public:
     std::pair<handle_type, bool> insert(const T& record)
         requires(!row_pool)
     { return insert(prehash(record)); }
+
     std::pair<handle_type, bool> insert(const prehashed<T>& key)
         requires(!row_pool)
     {
         return insert(key, [&key](handle_type) -> const T& { return key.key; });
     }
+
     /// Handed over: moved in where it is new to the chain; one already held leaves `record` as it was.
     std::pair<handle_type, bool> insert(T&& record)
         requires(!row_pool)
@@ -146,10 +156,12 @@ public:
         const auto key = prehash(record);
         return insert(key, [&record](handle_type) -> T&& { return std::move(record); });
     }
+
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const T& key, Factory make)
         requires(!row_pool)
     { return insert(prehash(key), std::move(make)); }
+
     template<std::invocable<handle_type> Factory>
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
         requires(!row_pool)
@@ -161,18 +173,23 @@ public:
         const auto [local_at, inserted] = m_own.insert(key, [this, &make](handle_type at) -> decltype(auto) { return make(global(at)); });
         return { global(local_at), inserted };
     }
+
     [[nodiscard]] handle_type find(const T& record) const
         requires(!row_pool)
     { return find(prehash(record)); }
+
     [[nodiscard]] handle_type find(const prehashed<T>& key) const
         requires(!row_pool)
     { return find_in_chain(key); }
+
     [[nodiscard]] bool contains(const T& record) const
         requires(!row_pool)
     { return !find(record).is_none(); }
+
     [[nodiscard]] bool contains(const prehashed<T>& key) const
         requires(!row_pool)
     { return !find(key).is_none(); }
+
     [[nodiscard]] const T& operator[](handle_type at) const
         requires(!row_pool)
     {
@@ -187,12 +204,14 @@ public:
     std::pair<handle_type, bool> insert(const Elements& elements)
         requires row_pool
     { return insert_row(elements); }
+
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), where the parent pool
     /// takes one: hashed once for the whole chain, where a row given as it is is hashed again in every layer.
     template<typename Elements>
         requires row_pool && requires(R& own, const prehashed<Elements>& key) { own.insert(key); }
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return insert_row(key); }
+
     /// The row `base` with `writes` applied, stored here where new.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
         requires row_pool && requires(R& own, handle_type at, std::span<const write_type> some) { own.insert(at, some); }
@@ -202,6 +221,7 @@ public:
             row.at(write.position) = write.value;
         return insert(row);
     }
+
     /// The row `base` with `added` put in and `removed` taken out, stored here where new.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const element> added, std::span<const element> removed)
         requires row_pool
@@ -211,38 +231,45 @@ public:
         std::erase_if(row, [&removed](const element& each) { return std::ranges::find(removed, each) != removed.end(); });
         return insert(row);
     }
+
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
         requires row_pool
     { return find_in_chain(elements); }
+
     template<typename Elements>
         requires row_pool && requires(const R& own, const prehashed<Elements>& key) { own.find(key); }
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
     { return find_in_chain(key); }
+
     [[nodiscard]] bool contains(handle_type at, const element& value) const
         requires row_pool
     {
         const auto& layer = owner(at);
         return layer.m_own.contains(layer.local(at), value);
     }
+
     [[nodiscard]] auto at(handle_type handle) const
         requires row_pool
     {
         const auto& layer = owner(handle);
         return layer.m_own.at(layer.local(handle));
     }
+
     [[nodiscard]] T get(handle_type at) const
         requires row_pool
     {
         const auto& layer = owner(at);
         return layer.m_own.get(layer.local(at));
     }
+
     [[nodiscard]] size_type row_size(handle_type at) const
         requires row_pool
     {
         const auto& layer = owner(at);
         return layer.m_own.row_size(layer.local(at));
     }
+
     void copy(handle_type at, std::span<element> out) const
         requires row_pool
     {
@@ -267,6 +294,7 @@ private:
                 return layer->global(at);
         return handle_type();
     }
+
     /// The row `key` (its elements, or them prehashed) found in the chain, else stored here.
     template<typename K>
     std::pair<handle_type, bool> insert_row(const K& key)
@@ -278,6 +306,7 @@ private:
         const auto [own, stored] = m_own.insert(key);
         return { global(own), stored };
     }
+
     /// The layer that holds `at`: this one, or the ancestor whose range it lies in.
     [[nodiscard]] const LayeredPool& owner(handle_type at) const
     {
@@ -288,8 +317,11 @@ private:
         assert((at.value) < layer->size() && "urd::repr::LayeredPool: no element at this index");
         return *layer;
     }
+
     [[nodiscard]] handle_type global(handle_type local_at) const noexcept { return handle_type(m_base + local_at.value); }
+
     [[nodiscard]] handle_type local(handle_type at) const noexcept { return handle_type(at.value - m_base); }
+
     /// A row's elements as a vector, from whichever layer holds it.
     [[nodiscard]] std::vector<element> elements_of(handle_type at) const
         requires row_pool

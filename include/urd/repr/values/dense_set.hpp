@@ -66,6 +66,7 @@ public:
     using difference_type = std::ptrdiff_t;
 
     DenseSet() = default;
+
     /// Keys from `range.first` on, with room for those below `range.last`.
     explicit DenseSet(const key_range<K>& range) : m_first(index_of<K>::to_index(range.first)) { reserve(index_of<K>::to_index(range.last)); }
 
@@ -76,15 +77,20 @@ public:
     }
 
     [[nodiscard]] iterator begin() const { return iterator(this, next_from(0)); }
+
     [[nodiscard]] iterator end() const { return iterator(this, npos); }
+
     [[nodiscard]] size_type size() const { return m_count; }
+
     [[nodiscard]] bool empty() const { return m_count == 0; }
 
     /// Room for keys below `count`.
     void reserve(size_type count) { m_words.reserve(Bits::num_blocks(count > m_first ? count - m_first : 0)); }
 
     [[nodiscard]] iterator find(const K& key) const { return contains(key) ? iterator(this, index_of<K>::to_index(key) - m_first) : end(); }
+
     [[nodiscard]] size_type count(const K& key) const { return contains(key) ? 1 : 0; }
+
     [[nodiscard]] bool contains(const K& key) const
     {
         if (!index_of<K>::is_index(key) || index_of<K>::to_index(key) < m_first)
@@ -92,8 +98,11 @@ public:
         const auto index = index_of<K>::to_index(key) - m_first;
         return index < bits().size() && bits().test(index);
     }
+
     [[nodiscard]] iterator lower_bound(const K& key) const { return iterator(this, next_from(position_from(key, 0))); }
+
     [[nodiscard]] iterator upper_bound(const K& key) const { return iterator(this, next_from(position_from(key, 1))); }
+
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const { return { lower_bound(key), upper_bound(key) }; }
 
     /// Inserts `key`; a key below the window's first throws std::out_of_range.
@@ -111,12 +120,15 @@ public:
         m_count += inserted ? 1 : 0;
         return { iterator(this, index), inserted };
     }
+
     iterator insert(const_iterator /*hint*/, const K& key) { return insert(key).first; }
+
     template<std::input_iterator InputIt>
     void insert(InputIt first, InputIt last)
     {
         std::for_each(first, last, [this](const auto& key) { this->insert(K(key)); });
     }
+
     template<typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args)
     { return insert(K(std::forward<Args>(args)...)); }
@@ -128,18 +140,21 @@ public:
         remove(index_of<K>::to_index(key) - m_first);
         return 1;
     }
+
     iterator erase(const_iterator pos)
     {
         const auto next = next_from(pos.m_index + 1);
         remove(pos.m_index);
         return iterator(this, next);
     }
+
     iterator erase(const_iterator first, const_iterator last)
     {
         while (first != last)
             first = erase(first);
         return last;
     }
+
     void clear()
     {
         m_touched.reset(
@@ -161,6 +176,7 @@ public:
         const auto common = std::min(m_words.size(), other.m_words.size());
         return other.words_from(common).none() && other.words(common).is_subset_of(words(common));
     }
+
     [[nodiscard]] bool intersects(const DenseSet& other) const
     {
         if (m_first != other.m_first)
@@ -168,6 +184,7 @@ public:
         const auto common = std::min(m_words.size(), other.m_words.size());
         return words(common).intersects(other.words(common));
     }
+
     DenseSet& operator|=(const DenseSet& other)
     {
         if (m_first != other.m_first)
@@ -178,6 +195,7 @@ public:
             put_word(at, m_words[at] | other.m_words[at]);
         return *this;
     }
+
     DenseSet& operator&=(const DenseSet& other)
     {
         if (m_first != other.m_first)
@@ -186,6 +204,7 @@ public:
             put_word(at, at < other.m_words.size() ? m_words[at] & other.m_words[at] : word { 0 });
         return *this;
     }
+
     DenseSet& operator-=(const DenseSet& other)
     {
         if (m_first != other.m_first)
@@ -223,6 +242,7 @@ public:
         m_words.assign(words.begin(), words.end());
         recount();
     }
+
     /// Makes this the set whose bits fill(words) sets in `count` words, zeroed first, written in place: its storage
     /// reused, nothing copied.
     template<typename Fill>
@@ -258,32 +278,38 @@ public:
         iterator() = default;
 
         K operator*() const { return index_of<K>::from_index(m_set->m_first + m_index); }
+
         iterator& operator++()
         {
             m_index = m_set->next_from(m_index + 1);
             return *this;
         }
+
         iterator operator++(int)
         {
             auto copy = *this;
             ++*this;
             return copy;
         }
+
         iterator& operator--()
         {
             m_index = m_set->previous_from(m_index == npos ? m_set->bits().size() : m_index);
             return *this;
         }
+
         iterator operator--(int)
         {
             auto copy = *this;
             --*this;
             return copy;
         }
+
         friend bool operator==(const iterator& lhs, const iterator& rhs) { return lhs.m_index == rhs.m_index; }
 
     private:
         friend class DenseSet;
+
         iterator(const DenseSet* set, std::size_t index) : m_set(set), m_index(index) {}
 
         const DenseSet* m_set = nullptr;
@@ -302,6 +328,7 @@ private:
         clear();
         return unite(given, first, bits);
     }
+
     /// Adds the given bitset's keys; one below the window's first throws std::out_of_range.
     DenseSet& unite(std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -314,6 +341,7 @@ private:
             put_word(at, m_words[at] | window(given, first, bits, at));
         return *this;
     }
+
     /// Makes this the keys of `from` the given bitset has: in one pass where both sets share a window, else from a copy.
     DenseSet& assign_common(const DenseSet& from, std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -326,6 +354,7 @@ private:
         }
         return assign_each(from.m_words.size(), [&](std::size_t at) { return from.m_words[at] & window(given, first, bits, at); });
     }
+
     /// Makes this the keys `lhs` and `rhs` share: in one pass where all three share a window, else from a copy.
     DenseSet& assign_intersection(const DenseSet& lhs, const DenseSet& rhs)
     {
@@ -340,6 +369,7 @@ private:
         }
         return assign_each(std::min(lhs.m_words.size(), rhs.m_words.size()), [&](std::size_t at) { return lhs.m_words[at] & rhs.m_words[at]; });
     }
+
     /// Makes word `at` word(at), for `count` words: each written once and counted once, whatever it held.
     template<typename Word>
     DenseSet& assign_each(std::size_t count, Word word_at)
@@ -360,6 +390,7 @@ private:
         }
         return *this;
     }
+
     /// Keeps the keys the given bitset has.
     DenseSet& intersect(std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -367,6 +398,7 @@ private:
             put_word(at, m_words[at] & window(given, first, bits, at));
         return *this;
     }
+
     /// Keeps, of its keys from `first` to before `first` + `bits`, those the given bitset has; the others stay.
     DenseSet& intersect_within(std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -374,6 +406,7 @@ private:
             put_word(at, m_words[at] & (window(given, first, bits, at) | ~range_mask(first, bits, at)));
         return *this;
     }
+
     /// Removes the keys the given bitset has.
     DenseSet& subtract(std::span<const word> given, std::size_t first, std::size_t bits)
     {
@@ -381,6 +414,7 @@ private:
             put_word(at, m_words[at] & ~window(given, first, bits, at));
         return *this;
     }
+
     /// How many keys this set and the given bitset share.
     [[nodiscard]] std::size_t count_common(std::span<const word> given, std::size_t first, std::size_t bits) const
     {
@@ -389,6 +423,7 @@ private:
             result += static_cast<std::size_t>(std::popcount(m_words[at] & window(given, first, bits, at)));
         return result;
     }
+
     /// Calls f on each key this set and the given bitset share, in key order.
     template<typename F>
     void for_each_common(std::span<const word> given, std::size_t first, std::size_t bits, F f) const
@@ -399,12 +434,17 @@ private:
     }
 
     [[nodiscard]] Bits bits() { return Bits(m_words.data(), m_words.size() * Bits::Digits); }
+
     [[nodiscard]] ConstBits bits() const { return ConstBits(m_words.data(), m_words.size() * Bits::Digits); }
+
     /// The first `count` words, as a bitset.
     [[nodiscard]] Bits words(std::size_t count) { return Bits(m_words.data(), count * Bits::Digits); }
+
     [[nodiscard]] ConstBits words(std::size_t count) const { return ConstBits(m_words.data(), count * Bits::Digits); }
+
     /// The words from `first` on, as a bitset.
     [[nodiscard]] Bits words_from(std::size_t first) { return Bits(std::span<word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
+
     [[nodiscard]] ConstBits words_from(std::size_t first) const
     { return ConstBits(std::span<const word>(m_words).subspan(first).data(), (m_words.size() - first) * Bits::Digits); }
 
@@ -415,6 +455,7 @@ private:
             return 0;
         return index_of<K>::to_index(key) - m_first + past;
     }
+
     /// Whether any of the first `bits` bits of `given` is set.
     [[nodiscard]] static bool has_any(std::span<const word> given, std::size_t bits)
     {
@@ -426,19 +467,23 @@ private:
         }
         return false;
     }
+
     void check_from_zero() const
     {
         if (m_first != 0)
             throw std::logic_error("urd: a dense set built over a window of keys keeps no words from key 0");
     }
+
     /// The word of this set that holds key `key`, or 0 where it is below the window; and one past the last word that
     /// holds a key below `first` + `bits`, at most its words.
     [[nodiscard]] std::size_t first_word_of(std::size_t key) const { return key > m_first ? Bits::block_index(key - m_first) : 0; }
+
     [[nodiscard]] std::size_t last_word_of(std::size_t first, std::size_t bits) const
     {
         const auto end = first + bits;
         return end > m_first ? std::min(m_words.size(), Bits::num_blocks(end - m_first)) : 0;
     }
+
     /// The bits of `given` (`bits` of them, bit j for key `first` + j) for the keys of this set's word `at`: bit j for key
     /// m_first + at * Digits + j, 0 where `given` has none.
     [[nodiscard]] word window(std::span<const word> given, std::size_t first, std::size_t bits, std::size_t at) const
@@ -469,6 +514,7 @@ private:
             return 0;
         return room < digits ? result & bit::lo_set<word>[static_cast<std::size_t>(room)] : result;
     }
+
     /// The bits of word `at` whose keys lie from `first` to before `first` + `bits`.
     [[nodiscard]] word range_mask(std::size_t first, std::size_t bits, std::size_t at) const
     {
@@ -480,6 +526,7 @@ private:
         const auto upto = end - low == Bits::Digits ? ~word { 0 } : bit::lo_set<word>[end - low];
         return upto & ~bit::lo_set<word>[begin - low];
     }
+
     /// Sets word `at`, keeping the count and the words not zero.
     void put_word(std::size_t at, word value)
     {
@@ -508,6 +555,7 @@ private:
                 m_touched.insert(block);
         return *this;
     }
+
     void remove(std::size_t index)
     {
         bits().reset(index);
@@ -515,6 +563,7 @@ private:
         if (m_words[Bits::block_index(index)] == 0)
             m_touched.erase(Bits::block_index(index));
     }
+
     /// The first key at or after `index`, else npos.
     [[nodiscard]] std::size_t next_from(std::size_t index) const
     {
@@ -522,6 +571,7 @@ private:
             return npos;
         return bits().test(index) ? index : bits().find_next(index);
     }
+
     /// The last key before `index`, else npos. BitsetSpan searches forward only, so this one goes by words.
     [[nodiscard]] std::size_t previous_from(std::size_t index) const
     {
@@ -559,27 +609,35 @@ struct dense_words
     template<typename K, bool T>
     static void assign(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.assign(given, first, bits); }
+
     template<typename K, bool T>
     static void unite(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.unite(given, first, bits); }
+
     template<typename K, bool T>
     static void intersect(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.intersect(given, first, bits); }
+
     template<typename K, bool T>
     static void assign_common(repr::DenseSet<K, T>& set, const repr::DenseSet<K, T>& from, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.assign_common(from, given, first, bits); }
+
     template<typename K, bool T>
     static void assign_intersection(repr::DenseSet<K, T>& set, const repr::DenseSet<K, T>& lhs, const repr::DenseSet<K, T>& rhs)
     { set.assign_intersection(lhs, rhs); }
+
     template<typename K, bool T>
     static void intersect_within(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.intersect_within(given, first, bits); }
+
     template<typename K, bool T>
     static void subtract(repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { set.subtract(given, first, bits); }
+
     template<typename K, bool T>
     [[nodiscard]] static std::size_t count_common(const repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits)
     { return set.count_common(given, first, bits); }
+
     template<typename K, bool T, typename F>
     static void for_each_common(const repr::DenseSet<K, T>& set, std::span<const word_t> given, std::size_t first, std::size_t bits, F f)
     { set.for_each_common(given, first, bits, std::move(f)); }
@@ -605,6 +663,7 @@ struct representation_of<dense_set_decl, S>
 {
     using type = repr::DenseSet<typename S::element_type>;
 };
+
 template<typename S>
 struct representation_of<tracked_dense_set_decl, S>
 {

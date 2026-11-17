@@ -29,6 +29,7 @@ public:
 
     /// Its number, as it was given.
     [[nodiscard]] std::size_t layer() const noexcept { return m_number.number; }
+
     /// Identified by its container alone (urd::EqualTo, Hash, Less): the number names the Store, not its contents.
     static constexpr auto identifying_members() noexcept { return Members<&Numbered::container> {}; }
 

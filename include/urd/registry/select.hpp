@@ -34,6 +34,7 @@ inline constexpr property_set relied_on_v = []
         result = with(result, facts_where(each.relies_on, true));
     return result;
 }();
+
 /// Asks the traits a container of Kind relies on, and no other: what a request's data is asked. A sequence's
 /// containers rely on none of their elements', so a sequence may be held of an incomplete type.
 template<typename Kind>
@@ -104,6 +105,7 @@ struct container_of_declaration
 {
     using type = missing_container<S, fixed_string<Decl::id.size() + 1>(Decl::id), Missing>;
 };
+
 template<typename S, typename Decl>
 struct container_of_declaration<S, Decl, boost::mp11::mp_list<>>
 {

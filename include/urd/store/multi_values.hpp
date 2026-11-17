@@ -30,6 +30,7 @@ struct facet_condition<facet::multi_values> : facet_defaults
     static constexpr bool on()
     { return !has<S, unique>; }
 };
+
 template<>
 struct facet_operations<facet::multi_values>
 {

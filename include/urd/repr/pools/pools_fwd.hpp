@@ -61,6 +61,7 @@ struct row_interner_decl
     static constexpr std::string_view description = "row interner (each row once, in full)";
     static constexpr std::string_view holds = "each distinct row once, in full";
 };
+
 template<typename Row, typename H>
 struct declaration_of<repr::RowInterner<Row, false, urd::width::word, H>>
 {
@@ -84,6 +85,7 @@ struct bit_row_interner_decl : row_interner_decl
     static constexpr std::string_view description = "bit row interner (rows of indices, each element in a bit width given at construction)";
     static constexpr std::string_view holds = "each distinct row once, its elements in the given bits, rows of one length back to back";
 };
+
 template<typename Row, bool ThreadSafe, typename H>
 struct declaration_of<repr::RowInterner<Row, ThreadSafe, urd::width::bit, H>>
 {
@@ -102,6 +104,7 @@ struct schema_row_interner_decl : bit_row_interner_decl<ThreadSafe>
         "schema row interner (rows of unsigned columns, each column in the bits the widths given at construction give it)";
     static constexpr std::string_view holds = "each distinct row once, its columns in their widths' bits, rows back to back";
 };
+
 template<typename Row, bool ThreadSafe, typename H>
 struct declaration_of<repr::RowInterner<Row, ThreadSafe, urd::width::by_column_widths, H>>
 {
@@ -142,12 +145,14 @@ struct tree_pool_decl
     static constexpr std::string_view holds =
         Bits ? "nodes shared across rows; all-zero subtrees take nothing" : "nodes shared across rows: a delta adds about k log r nodes";
 };
+
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeBitsetSet<Row, Arity, ThreadSafe>>
 {
     using declaration = tree_pool_decl<true, ThreadSafe>;
     static constexpr property_set roles = roles_of<urd::pool<Row>>();
 };
+
 template<typename Row, std::size_t Arity, bool ThreadSafe>
 struct declaration_of<repr::TreeVectorSet<Row, Arity, ThreadSafe>>
 {
@@ -169,6 +174,7 @@ struct thread_safe_row_interner_decl : row_interner_decl
     static constexpr std::string_view description = "row interner, thread-safe";
     static constexpr std::string_view holds = "each distinct row once, in full; inserts under a lock";
 };
+
 template<typename Row, typename H>
 struct declaration_of<repr::RowInterner<Row, true, urd::width::word, H>>
 {

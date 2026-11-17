@@ -68,26 +68,31 @@ struct type_spelling<unsigned>
 {
     static std::string spelled() { return "unsigned"; }
 };
+
 template<>
 struct type_spelling<std::size_t>
 {
     static std::string spelled() { return "std::size_t"; }
 };
+
 template<>
 struct type_spelling<std::string>
 {
     static std::string spelled() { return "std::string"; }
 };
+
 template<typename T>
 struct type_spelling<index<T>>
 {
     static std::string spelled() { return fmt::format("index<{}>", spelling<T>()); }
 };
+
 template<typename T, typename A>
 struct type_spelling<std::vector<T, A>>
 {
     static std::string spelled() { return fmt::format("std::vector<{}>", spelling<T>()); }
 };
+
 template<typename Kind, typename... Tags>
 struct type_spelling<Store<Kind, Tags...>>
 {
@@ -119,6 +124,7 @@ struct name_of
 {
     static std::string named() { return std::string(T::name); }
 };
+
 template<template<typename...> class X, typename... Arguments>
 struct name_of<X<Arguments...>>
 {
@@ -138,6 +144,7 @@ inline int& indent_level() noexcept
     thread_local int level = 0;
     return level;
 }
+
 /// A new line at the current indentation.
 inline std::string new_line() { return "\n" + std::string(static_cast<std::size_t>(4 * indent_level()), ' '); }
 
@@ -154,10 +161,12 @@ class scoped_indent
 {
 public:
     scoped_indent() noexcept { ++detail::indent_level(); }
+
     scoped_indent(const scoped_indent&) = delete;
     scoped_indent& operator=(const scoped_indent&) = delete;
     scoped_indent(scoped_indent&&) = delete;
     scoped_indent& operator=(scoped_indent&&) = delete;
+
     ~scoped_indent() { --detail::indent_level(); }
 };
 
@@ -219,16 +228,19 @@ struct named
 {
     using type = V;
 };
+
 template<typename T>
 struct named<data<T>>
 {
     using type = T;
 };
+
 template<typename T>
 struct named<builder<T>>
 {
     using type = T;
 };
+
 template<typename V>
 using named_t = typename named<V>::type;
 
@@ -237,6 +249,7 @@ template<typename V>
 struct view_formatter
 {
     constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
     auto format(const V& view, fmt::format_context& context) const
     {
         return fmt::format_to(
@@ -257,6 +270,7 @@ template<typename V>
 struct fmt::formatter<V>
 {
     constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
     auto format(const V& value, fmt::format_context& context) const
     {
         return fmt::format_to(context.out(),
@@ -272,16 +286,19 @@ template<typename T, typename C, typename K>
 struct fmt::formatter<urd::index_view<T, C, K>> : urd::detail::view_formatter<urd::index_view<T, C, K>>
 {
 };
+
 template<typename T, typename C, typename R>
     requires urd::HasFields<R>
 struct fmt::formatter<urd::borrowed_view<T, C, R>> : urd::detail::view_formatter<urd::borrowed_view<T, C, R>>
 {
 };
+
 template<typename T, typename C, typename R>
     requires urd::HasFields<R>
 struct fmt::formatter<urd::owning_view<T, C, R>> : urd::detail::view_formatter<urd::owning_view<T, C, R>>
 {
 };
+
 template<typename T, typename C, typename R>
     requires urd::HasFields<R>
 struct fmt::formatter<urd::shared_view<T, C, R>> : urd::detail::view_formatter<urd::shared_view<T, C, R>>

@@ -28,6 +28,7 @@ struct prehashed
 template<typename T>
 [[nodiscard]] prehashed<T> prehash(const T& key) noexcept(noexcept(Hash<T> {}(key)))
 { return { key, Hash<T> {}(key) }; }
+
 /// Not of a temporary: the prehashed key would refer to it after it is gone (as std::ref refuses one).
 template<typename T>
 void prehash(const T&&) = delete;
@@ -60,6 +61,7 @@ struct prehash_equal : EqualTo<T>
     using EqualTo<T>::operator();
 
     [[nodiscard]] constexpr bool operator()(const prehashed<T>& lhs, const T& rhs) const { return EqualTo<T>::operator()(lhs.key, rhs); }
+
     [[nodiscard]] constexpr bool operator()(const T& lhs, const prehashed<T>& rhs) const { return EqualTo<T>::operator()(lhs, rhs.key); }
 };
 

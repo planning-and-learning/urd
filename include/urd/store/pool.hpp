@@ -23,6 +23,7 @@ struct row_blocks_of
     using block_type = void;
     using flip_type = void;
 };
+
 template<typename R>
     requires requires {
         typename R::block_type;
@@ -33,28 +34,33 @@ struct row_blocks_of<R>
     using block_type = typename R::block_type;
     using flip_type = typename R::flip_type;
 };
+
 /// Whether a pool keeps each row in full: then a row is viewed in place (at(h)) and looked up by its hash. A pool with
 /// structural_sharing keeps a row as a tree of shared nodes, which has neither.
 template<typename R>
 inline constexpr bool keeps_rows_whole = !std::is_void_v<R> && !has<R, urd::structural_sharing>;
+
 /// What a pool's representation hands out as a stored row (at(h)), else void.
 template<typename R>
 struct row_of
 {
     using type = void;
 };
+
 template<typename R>
     requires keeps_rows_whole<R>
 struct row_of<R>
 {
     using type = decltype(std::declval<const R&>().at(std::declval<typename R::handle_type>()));
 };
+
 /// What a pool's representation builds a row as before it goes in (by_column_widths), else void.
 template<typename R>
 struct row_builder_of
 {
     using type = void;
 };
+
 template<typename R>
     requires requires { typename R::row_builder_type; }
 struct row_builder_of<R>
@@ -101,7 +107,9 @@ public:
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
     { return representation().insert(elements); }
+
     std::pair<handle_type, bool> insert(std::initializer_list<row_element> elements) { return representation().insert(elements); }
+
     /// The row `base` with `writes` applied: sorted by position, each position once and within the row. A pool that
     /// shares structure stores only what changed.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const Write<row_element>> writes)
@@ -118,6 +126,7 @@ public:
     std::pair<handle_type, bool> insert(handle_type base, std::span<const row_element> added, std::span<const row_element> removed)
         requires(!sequence_rows)
     { return representation().insert(base, added, removed); }
+
     /// Whether the row of `handle` holds `element` (rows that are sets); a tree pool reads one path, not the row.
     [[nodiscard]] bool contains(handle_type handle, const row_element& element) const
         requires(!sequence_rows)
@@ -132,44 +141,56 @@ public:
         requires keeps_rows_whole<R>
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return representation().insert(key); }
+
     template<typename Elements>
         requires keeps_rows_whole<R>
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
     { return representation().find(key); }
+
     template<typename Elements>
         requires keeps_rows_whole<R>
     [[nodiscard]] bool contains(const prehashed<Elements>& key) const
     { return !find(key).is_none(); }
+
     /// The bit width it was built with (urd::bit), where its representation stores elements in it.
     [[nodiscard]] urd::bit_width width() const noexcept
         requires has<S, urd::bit>
     { return representation().width(); }
+
     /// The column widths it was built with (urd::by_column_widths): its rows' columns.
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
         requires has<S, urd::by_column_widths>
     { return representation().column_widths(); }
+
     /// Whether a row with these elements is stored, as a set's contains.
     template<std::ranges::input_range Elements>
     [[nodiscard]] bool contains(const Elements& elements) const
     { return !find(elements).is_none(); }
+
     template<std::ranges::input_range Elements>
     [[nodiscard]] handle_type find(const Elements& elements) const
     { return representation().find(elements); }
+
     [[nodiscard]] handle_type find(std::initializer_list<row_element> elements) const
     { return find(std::span<const row_element>(elements.begin(), elements.size())); }
 
     [[nodiscard]] row get(handle_type handle) const { return representation().get(handle); }
+
     /// The stored row without copying, where the pool keeps rows in full: a span of the elements, or for a dense set
     /// its bits. Valid until the pool is cleared.
     [[nodiscard]] auto at(handle_type handle) const
         requires keeps_rows_whole<R>
     { return representation().at(handle); }
+
     [[nodiscard]] auto operator[](handle_type handle) const
         requires keeps_rows_whole<R>
     { return representation().at(handle); }
+
     [[nodiscard]] std::size_t row_size(handle_type handle) const { return representation().row_size(handle); }
+
     /// The row's elements into `out`, which must hold row_size(handle) of them; allocates nothing.
     void copy(handle_type handle, std::span<row_element> out) const { representation().copy(handle, out); }
+
     /// The row into `out`, whose storage is reused, where the pool writes a row whole (a tree bitset into a dense set,
     /// word by word): allocates nothing where `out` holds the row's words already.
     void copy(handle_type handle, row& out) const
@@ -183,20 +204,24 @@ public:
     handle_type insert_blocks(std::span<const block_type> blocks)
         requires(!std::is_void_v<block_type>)
     { return representation().insert_blocks(blocks); }
+
     /// The row `base` with `flips` applied (sorted by unique position).
     handle_type insert_flips(handle_type base, std::span<const flip_type> flips)
         requires(!std::is_void_v<flip_type>)
     { return representation().insert_flips(base, flips); }
+
     /// The row's blocks into `blocks`, which must hold as many as the handle counts.
     void read_blocks(handle_type handle, std::span<block_type> blocks) const
         requires(!std::is_void_v<block_type>)
     { representation().read_blocks(handle, blocks); }
+
     /// Erases the row of `handle`: the last row moves into its place and takes `handle`. Gives the handle the moved
     /// row had, for whatever keeps handles to follow it, or none where `handle` was the last. O(1) expected; the moved
     /// row's views stay valid, the erased row's do not.
     handle_type erase(handle_type handle)
         requires(erasable)
     { return representation().erase(handle); }
+
     /// Forgets every row; the handles given so far mean nothing after. A layered pool forgets its own layer's rows.
     void clear()
         requires clears<S>
@@ -204,6 +229,7 @@ public:
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
+
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 };
 
@@ -220,6 +246,7 @@ struct facet_condition<facet::pool> : facet_defaults
     static constexpr bool on()
     { return held_as<typename S::element_type>::row; }
 };
+
 template<>
 struct facet_operations<facet::pool>
 {

@@ -46,6 +46,7 @@ struct map_decl
     static constexpr std::string_view description = "std::map (balanced tree)";
     static constexpr std::string_view holds = "a node per entry; reclaims";
 };
+
 template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::map<K, V, C, A>>
 {
@@ -77,6 +78,7 @@ struct multimap_decl
     static constexpr std::string_view description = "std::multimap (balanced tree)";
     static constexpr std::string_view holds = "a node per entry; reclaims";
 };
+
 template<typename K, typename V, typename C, typename A>
 struct declaration_of<std::multimap<K, V, C, A>>
 {
@@ -106,6 +108,7 @@ struct unordered_map_decl
     static constexpr std::string_view description = "std::unordered_map (hash table)";
     static constexpr std::string_view holds = "a node per entry + buckets; stable references";
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_map<K, V, H, E, A>>
 {
@@ -135,6 +138,7 @@ struct unordered_multimap_decl
     static constexpr std::string_view description = "std::unordered_multimap (hash table)";
     static constexpr std::string_view holds = "a node per entry + buckets; stable references";
 };
+
 template<typename K, typename V, typename H, typename E, typename A>
 struct declaration_of<std::unordered_multimap<K, V, H, E, A>>
 {
@@ -159,16 +163,19 @@ struct representation_of<unordered_map_decl, S>
 {
     using type = std::unordered_map<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>;
 };
+
 template<typename S>
 struct representation_of<unordered_multimap_decl, S>
 {
     using type = std::unordered_multimap<typename S::key_type, typename S::mapped_type, urd::Hash<typename S::key_type>, urd::EqualTo<typename S::key_type>>;
 };
+
 template<typename S>
 struct representation_of<map_decl, S>
 {
     using type = std::map<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
+
 template<typename S>
 struct representation_of<multimap_decl, S>
 {
