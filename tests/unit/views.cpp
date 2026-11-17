@@ -815,7 +815,6 @@ namespace
 {
 struct Keyed
 {
-    static constexpr std::string_view name = "Keyed";
 };
 }  // namespace
 

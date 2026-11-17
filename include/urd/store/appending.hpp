@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/store/types.hpp"
@@ -32,7 +33,7 @@ public:
 
     void push_back(const value_type& element)
         requires denied<"push_back(const T&): the element is move-only: move it in, push_back(std::move(x))", value_type>
-    = delete;
+    URD_DENY("push_back(const T&): the element is move-only: move it in, push_back(std::move(x))");
 
     void push_back(value_type&& element) { representation().push_back(std::move(element)); }
 
@@ -47,7 +48,7 @@ public:
 
     iterator_type insert(const_iterator_type pos, const value_type& element)
         requires changes_in_the_middle<S> && denied<"insert(pos, const T&): the element is move-only: move it in, insert(pos, std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert(pos, const T&): the element is move-only: move it in, insert(pos, std::move(x))");
 
     iterator_type insert(const_iterator_type pos, value_type&& element)
         requires changes_in_the_middle<S>
@@ -63,7 +64,7 @@ public:
              urd::fixed_string Reason = "insert(pos, first, last): the element is move-only: move each in, insert(pos, std::move(x))">
     iterator_type insert(const_iterator_type pos, InputIt first, InputIt last)
         requires changes_in_the_middle<S> && denied<Reason, value_type>
-    = delete;
+    URD_DENY("insert(pos, first, last): the element is move-only: move each in, insert(pos, std::move(x))");
 
     template<typename... Args>
     iterator_type emplace(const_iterator_type pos, Args&&... args)
@@ -86,7 +87,7 @@ public:
 
     void resize(std::size_t count, const value_type& value)
         requires shrinks<S> && denied<"resize(n, const T&): the element is move-only: resize(n) value-initializes", value_type>
-    = delete;
+    URD_DENY("resize(n, const T&): the element is move-only: resize(n) value-initializes");
 
     /// Every element equal to `element` (urd::EqualTo, as the Store's ==); how many. As std::erase.
     friend std::size_t erase(Derived& store, const value_type& element)

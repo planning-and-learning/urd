@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/requirements.hpp"
@@ -45,7 +46,7 @@ public:
     mapped_type& operator[](const map_key& key)
         requires(grows<S> && std::default_initializable<mapped_type>
                  && denied<"operator[](const K&): the key is move-only: move it in, store[std::move(k)]", map_key>)
-    = delete;
+    URD_DENY("operator[](const K&): the key is move-only: move it in, store[std::move(k)]");
 
     mapped_type& operator[](map_key&& key)
         requires(grows<S> && std::default_initializable<mapped_type>)
@@ -65,7 +66,7 @@ public:
              urd::fixed_string Reason = "try_emplace(const K&, args...): the key is move-only: move it in, try_emplace(std::move(k), args...)">
     std::pair<iterator_type, bool> try_emplace(const map_key& key, Args&&... args)
         requires grows<S> && denied<Reason, map_key>
-    = delete;
+    URD_DENY("try_emplace(const K&, args...): the key is move-only: move it in, try_emplace(std::move(k), args...)");
 
     template<typename... Args>
     std::pair<iterator_type, bool> try_emplace(map_key&& key, Args&&... args)
@@ -81,7 +82,7 @@ public:
     template<typename M, urd::fixed_string Reason = "insert_or_assign(const K&, v): the key is move-only: move it in, insert_or_assign(std::move(k), v)">
     std::pair<iterator_type, bool> insert_or_assign(const map_key& key, M&& value)
         requires grows<S> && denied<Reason, map_key>
-    = delete;
+    URD_DENY("insert_or_assign(const K&, v): the key is move-only: move it in, insert_or_assign(std::move(k), v)");
 
     template<typename M>
     std::pair<iterator_type, bool> insert_or_assign(map_key&& key, M&& value)
@@ -104,7 +105,7 @@ public:
         requires std::invocable<Update&, mapped_type&, bool>
     decltype(auto) update(const map_key& key, Update update)
         requires(grows<S> && std::default_initializable<mapped_type> && (has<R, urd::dense> || has<R, urd::concurrent>) && denied<Reason, map_key>)
-    = delete;
+    URD_DENY("update(key, f): the key is move-only: it is copied where it is new; insert it first, try_emplace(std::move(k))");
 
     /// f(value) where `key` has a value, else `missing`: the visit of Boost's concurrent maps, giving what f gives. With
     /// concurrent, safe while others update.
@@ -136,7 +137,7 @@ public:
         requires std::invocable<Combine&, const mapped_type&, const mapped_type&>
     bool insert_or_combine(const map_key& key, const mapped_type& value, Combine combine)
         requires grows<S> && (denied<Reason, map_key> || denied<Reason, mapped_type>)
-    = delete;
+    URD_DENY("insert_or_combine(key, value, combine): the key or the value is move-only: both are copied where the key is new");
 
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }

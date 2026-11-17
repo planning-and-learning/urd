@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/cost.hpp"
 #include "urd/store/types.hpp"
 
@@ -39,7 +40,7 @@ public:
 
     decltype(auto) push(const value_type& element)
         requires denied<"push(const T&): the element is move-only: move it in, push(std::move(x))", value_type>
-    = delete;
+    URD_DENY("push(const T&): the element is move-only: move it in, push(std::move(x))");
 
     decltype(auto) push(value_type&& element) { return representation().push(std::move(element)); }
 
@@ -67,7 +68,7 @@ public:
         requires has<S, handles>
     void update(const Handle& handle, const value_type& element)
         requires denied<Reason, value_type>
-    = delete;
+    URD_DENY("update(handle, const T&): the element is move-only: move it in, update(handle, std::move(x))");
 
     template<typename Handle = handle_type>
         requires has<S, handles>

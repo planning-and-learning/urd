@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/index.hpp"
@@ -157,7 +158,7 @@ public:
 
     template<std::input_iterator InputIt, urd::fixed_string Reason = "Store(first, last): the element is move-only: build the Store empty and move each in">
         requires detail::denied<Reason, value_type>
-    Store(InputIt first, InputIt last) = delete;
+    Store(InputIt first, InputIt last) URD_DENY("Store(first, last): the element is move-only: build the Store empty and move each in");
 
     /// A template, so that its constraint is asked only of a list of elements: asked of a Store to copy or move, it
     /// would ask whether the element is constructible while the element's own constructors are being declared (a type
@@ -172,7 +173,8 @@ public:
     template<typename Deferred = void,
              urd::fixed_string Reason = "Store({...}): the element is move-only: an initializer_list is copied; build the Store empty and move each in">
         requires detail::denied<Reason, value_type>
-    Store(std::initializer_list<value_type> elements) = delete;
+    Store(std::initializer_list<value_type> elements)
+        URD_DENY("Store({...}): the element is move-only: an initializer_list is copied; build the Store empty and move each in");
 
     /// A sequence of `count` elements, value-initialized or copies of `value`, as std::vector(count[, value]).
     explicit Store(std::size_t count)
@@ -188,8 +190,8 @@ public:
 
     Store(std::size_t count, const value_type& value)
         requires std::same_as<typename S::kind, sequence_kind>
-                     && detail::denied<"Store(n, const T&): the element is move-only: it is copied n times", value_type>
-    = delete;
+                 && detail::denied<"Store(n, const T&): the element is move-only: it is copied n times", value_type>
+    URD_DENY("Store(n, const T&): the element is move-only: it is copied n times");
 
     /// A Store of urd::bit is built with the bit width every element fits in; a representation that stores elements
     /// whole (which serves the request too) is built as it is, without it.

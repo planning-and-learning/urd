@@ -43,10 +43,10 @@ inline constexpr bool changes_in_the_middle =
 
 /// Whether a facet's member that would copy a T in is denied: T is move-only. Every member that puts an element (or a
 /// key) in has a form that moves it; one that copies it (a const T&, a range of iterators, an initializer_list, copies of
-/// one value) is declared twice, constrained by std::copy_constructible<T>, and deleted, constrained by this, so that a
-/// call that would copy a move-only T fails at overload resolution, naming Reason: what to call instead. A deleted
-/// template takes Reason as its last template parameter, defaulted, so that the error, which names a template's
-/// arguments and not its constraints, names it too.
+/// one value) is declared twice, constrained by std::copy_constructible<T>, and denied (URD_DENY), constrained by this,
+/// so that a call that would copy a move-only T fails at overload resolution, naming Reason: what to call instead. A
+/// denied template takes Reason as its last template parameter, defaulted, so that the error, which names a template's
+/// arguments and not its constraints, names it too. URD_DENY names the same reason where the compiler prints neither.
 template<urd::fixed_string Reason, typename T>
 concept denied = !std::copy_constructible<T>;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/store/types.hpp"
@@ -34,7 +35,7 @@ public:
 
     insert_result insert(const value_type& element)
         requires denied<"insert(const T&): the element is move-only: move it in, insert(std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert(const T&): the element is move-only: move it in, insert(std::move(x))");
 
     insert_result insert(value_type&& element)
         requires std::move_constructible<value_type>
@@ -43,9 +44,8 @@ public:
     /// A map's element holds its key const: a move-only key cannot be moved out of one.
     insert_result insert(value_type&& element)
         requires(!std::move_constructible<value_type>)
-                    && denied<"insert(std::pair&&): the key is move-only, and a map's element holds it const: move it in, try_emplace(std::move(k), v)",
-                              value_type>
-    = delete;
+                && denied<"insert(std::pair&&): the key is move-only, and a map's element holds it const: move it in, try_emplace(std::move(k), v)", value_type>
+    URD_DENY("insert(std::pair&&): the key is move-only, and a map's element holds it const: move it in, try_emplace(std::move(k), v)");
 
     /// A copy of the key where it is new, by a key with its hash (urd/elements/prehashed.hpp), which is not hashed
     /// again: another form of a key, forwarded as it is (a representation that inserts by none does not compile).
@@ -55,7 +55,7 @@ public:
 
     insert_result insert(const prehashed<value_type>& key)
         requires denied<"insert(prehashed<T>): the element is move-only: it is copied; move it in, insert(std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert(prehashed<T>): the element is move-only: it is copied; move it in, insert(std::move(x))");
 
     /// With a hint where the element goes.
     iterator_type insert(const_iterator_type hint, const value_type& element)
@@ -64,7 +64,7 @@ public:
 
     iterator_type insert(const_iterator_type hint, const value_type& element)
         requires denied<"insert(hint, const T&): the element is move-only: move it in, insert(hint, std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert(hint, const T&): the element is move-only: move it in, insert(hint, std::move(x))");
 
     iterator_type insert(const_iterator_type hint, value_type&& element)
         requires std::move_constructible<value_type>
@@ -78,7 +78,7 @@ public:
     template<std::input_iterator InputIt, urd::fixed_string Reason = "insert(first, last): the element is move-only: move each in, insert(std::move(x))">
     void insert(InputIt first, InputIt last)
         requires denied<Reason, value_type>
-    = delete;
+    URD_DENY("insert(first, last): the element is move-only: move each in, insert(std::move(x))");
 
     void insert(std::initializer_list<value_type> elements)
         requires std::copy_constructible<value_type>
@@ -86,7 +86,7 @@ public:
 
     void insert(std::initializer_list<value_type> elements)
         requires denied<"insert({...}): the element is move-only: an initializer_list is copied; move each in, insert(std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert({...}): the element is move-only: an initializer_list is copied; move each in, insert(std::move(x))");
 
     template<typename... Args>
     insert_result emplace(Args&&... args)

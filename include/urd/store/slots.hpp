@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/cost.hpp"
 #include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/store/types.hpp"
@@ -94,7 +95,7 @@ public:
 
     handle_type insert(const value_type& element)
         requires unkeyed && denied<"insert(const T&): the element is move-only: move it in, insert(std::move(x))", value_type>
-    = delete;
+    URD_DENY("insert(const T&): the element is move-only: move it in, insert(std::move(x))");
 
     handle_type insert(value_type&& element)
         requires unkeyed

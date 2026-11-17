@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/config.hpp"
 #include "urd/store/types.hpp"
 
 #include <cassert>
@@ -32,7 +33,7 @@ public:
              urd::fixed_string Reason = "assign(first, last): the element is move-only: build a Store of the elements moved in and move-assign it">
     void assign(InputIt first, InputIt last)
         requires denied<Reason, value_type>
-    = delete;
+    URD_DENY("assign(first, last): the element is move-only: build a Store of the elements moved in and move-assign it");
 
     /// `count` copies of `value`.
     void assign(std::size_t count, const value_type& value)
@@ -44,7 +45,7 @@ public:
 
     void assign(std::size_t count, const value_type& value)
         requires denied<"assign(n, const T&): the element is move-only: it is copied n times", value_type>
-    = delete;
+    URD_DENY("assign(n, const T&): the element is move-only: it is copied n times");
 
 private:
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }

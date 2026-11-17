@@ -82,7 +82,7 @@ public:
     vertex add_vertex(Value&&... value)
         requires(!has<S, partitioned> && !has<S, constant_adjacency>
                  && (... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) ))
-    = delete;
+    URD_DENY("add_vertex(const D&): the vertex data is move-only: move it in, add_vertex(std::move(d))");
 
     /// A new edge from `u` to `v`, with its data (left out where it is a unit): its number, or for rows of bits whether
     /// it is new.
@@ -94,7 +94,7 @@ public:
     template<typename... Value, urd::fixed_string Reason = "add_edge(u, v, const E&): the edge data is move-only: move it in, add_edge(u, v, std::move(e))">
     decltype(auto) add_edge(vertex u, vertex v, Value&&... value)
         requires(... || (std::is_lvalue_reference_v<Value> && denied<Reason, std::remove_cvref_t<Value>>) )
-    = delete;
+    URD_DENY("add_edge(u, v, const E&): the edge data is move-only: move it in, add_edge(u, v, std::move(e))");
 
     void clear()
         requires clears<S>

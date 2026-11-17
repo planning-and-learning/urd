@@ -44,4 +44,16 @@ inline constexpr std::size_t word_bits = std::numeric_limits<word_t>::digits;
 #ifndef URD_LIFETIMEBOUND
 #define URD_LIFETIMEBOUND
 #endif
+/// Denies a declared overload, in place of `= delete`, naming `reason` (a string literal: what to call instead) in the
+/// error of a call that selects it, on every compiler: C++26's `= delete(reason)` where the compiler has it; else, on
+/// Clang, its unavailable attribute, which names the reason in full and fails the call in a requires-expression as a
+/// deleted function does (a deleted function's note names neither its constraints nor a long template argument in
+/// full); else `= delete`, the reason then named by the constraint the compiler prints (urd::detail::denied).
+#if defined(__cpp_deleted_function)
+#define URD_DENY(reason) = delete (reason)
+#elif defined(__clang__)
+#define URD_DENY(reason) __attribute__((unavailable(reason)))
+#else
+#define URD_DENY(reason) = delete
+#endif
 // NOLINTEND(cppcoreguidelines-macro-usage)
