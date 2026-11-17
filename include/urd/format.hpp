@@ -132,15 +132,15 @@ inline int& indent_level() noexcept
     return level;
 }
 
-/// A new line at the current indentation.
-inline std::string new_line() { return "\n" + std::string(static_cast<std::size_t>(4 * indent_level()), ' '); }
-
 /// A value as a record's field writes it: an optional as its value or `none`, a variant as its alternative, a string as
 /// its characters, a range as `[`, each element written so on a line of its own one level deeper, `]` (`[]` empty), and
 /// anything else as fmt writes it.
 template<typename V>
 std::string field_written(const V& value);
 }  // namespace detail
+
+/// A new line at the current indentation (scoped_indent): what a formatter writes to begin a line of its own.
+inline std::string new_line() { return "\n" + std::string(static_cast<std::size_t>(4 * detail::indent_level()), ' '); }
 
 /// Indentation one level deeper while it lives: what urd writes inside it (a record's fields, a list's elements) is
 /// indented by 4 more spaces, on this thread.
@@ -202,9 +202,9 @@ std::string record_written(Read read)
         auto out = name<T>() + "(";
         {
             const auto deeper = scoped_indent();
-            for_each_field<Record>([&]<typename F>() { out += detail::new_line() + F::c_name + "=" + detail::field_written(read.template operator()<F>()); });
+            for_each_field<Record>([&]<typename F>() { out += new_line() + F::c_name + "=" + detail::field_written(read.template operator()<F>()); });
         }
-        return out + detail::new_line() + ")";
+        return out + new_line() + ")";
     }
 }
 

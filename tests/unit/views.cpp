@@ -805,6 +805,20 @@ TEST(Format, WritesARecordFieldByField)
     EXPECT_EQ(fmt::format("{}", std::array { urd::data<Empty>() }), "[Empty()]");
 }
 
+TEST(Format, BeginsALineAtTheIndentationOfItsScope)
+{
+    EXPECT_EQ(urd::new_line(), "\n");
+    {
+        const auto deeper = urd::scoped_indent();
+        EXPECT_EQ(urd::new_line(), "\n    ");
+        {
+            const auto deepest = urd::scoped_indent();
+            EXPECT_EQ(urd::new_line(), "\n        ");
+        }
+    }
+    EXPECT_EQ(urd::new_line(), "\n");
+}
+
 TEST(Format, NamesATagAsItDeclares)
 {
     EXPECT_EQ(urd::name<Shown>(), "Shown");
