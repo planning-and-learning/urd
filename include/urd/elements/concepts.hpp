@@ -18,6 +18,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -88,6 +89,30 @@ consteval auto concatenated() noexcept
     std::ranges::copy(name, std::ranges::copy(prefix, result.begin()).out);
     return result;
 }
+
+namespace detail
+{
+/// The characters of Head followed by those of each of Parts, null-terminated.
+template<fixed_string Head, const auto&... Parts>
+struct joined_characters
+{
+    static constexpr auto characters = []
+    {
+        constexpr auto head = Head.view();
+        auto result = std::array<char, (head.size() + ... + std::string_view(Parts).size()) + 1> {};
+        auto out = std::ranges::copy(head, result.begin()).out;
+        ((out = std::ranges::copy(std::string_view(Parts), out).out), ...);
+        return result;
+    }();
+};
+}  // namespace detail
+
+/// A name made of `Head` and the names `Parts` (each a tag's name: a string literal, a C string or a string_view), as
+/// one name. A tag that is named after the tags it is made of declares so:
+/// `static constexpr std::string_view name = urd::joined_name<"Atom", T::name, F::name>;`.
+template<fixed_string Head, const auto&... Parts>
+inline constexpr std::string_view joined_name { detail::joined_characters<Head, Parts...>::characters.data(),
+                                                detail::joined_characters<Head, Parts...>::characters.size() - 1 };
 
 /// A field of a record: its public name and the data member that holds it.
 template<fixed_string Name, auto Member>

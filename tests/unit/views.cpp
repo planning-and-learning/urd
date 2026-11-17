@@ -654,7 +654,7 @@ struct Empty
 template<typename A, typename B>
 struct Twin
 {
-    static constexpr std::string_view name = "Twin";
+    static constexpr std::string_view name = urd::joined_name<"Twin", A::name, B::name>;
 };
 }  // namespace
 
@@ -805,7 +805,7 @@ TEST(Format, WritesARecordFieldByField)
     EXPECT_EQ(fmt::format("{}", std::array { urd::data<Empty>() }), "[Empty()]");
 }
 
-TEST(Format, NamesATagByItsNameAndItsArguments)
+TEST(Format, NamesATagAsItDeclares)
 {
     EXPECT_EQ(urd::name<Shown>(), "Shown");
     EXPECT_EQ((urd::name<Twin<Inner, Twin<Shown, Empty>>>()), "TwinInnerTwinShownEmpty");

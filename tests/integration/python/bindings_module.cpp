@@ -32,11 +32,11 @@ struct Term
     static constexpr std::string_view name = "Term";
 };
 
-/// A tag of tags: its name is composed of theirs (urd::name).
+/// A tag of tags: its name is composed of theirs, as it declares (urd::joined_name).
 template<typename A, typename B>
 struct Pair
 {
-    static constexpr std::string_view name = "Pair";
+    static constexpr std::string_view name = urd::joined_name<"Pair", A::name, B::name>;
 };
 
 struct Context;

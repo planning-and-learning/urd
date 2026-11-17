@@ -116,25 +116,12 @@ std::string spelling_of_spec()
     return fmt::format("Store<{}>", fmt::join(parts, ", "));
 }
 
-/// The name of tag T: its `name` (a static constexpr std::string_view), followed by the names of its template arguments,
-/// so that Condition<AndTag> is "ConditionAnd" and Atom<LiftedTag, FluentTag> is "AtomLiftedFluent". Each tag declares
-/// its name; specialize it for a tag named otherwise. A record is written (fmt) and bound in Python under it.
-template<typename T>
-struct name_of
-{
-    static std::string named() { return std::string(T::name); }
-};
-
-template<template<typename...> class X, typename... Arguments>
-struct name_of<X<Arguments...>>
-{
-    static std::string named() { return (std::string(X<Arguments...>::name) + ... + name_of<Arguments>::named()); }
-};
-
-/// The name of tag T (name_of).
+/// The name of tag T: its `name` (a static constexpr std::string_view), as the tag declares it. A tag of a family that is
+/// named after its template arguments says so itself (urd::joined_name: Atom<LiftedTag, FluentTag> as
+/// "AtomLiftedFluent"); urd adds nothing. A record is written (fmt) and bound in Python under it.
 template<typename T>
 std::string name()
-{ return name_of<T>::named(); }
+{ return std::string(T::name); }
 
 namespace detail
 {

@@ -42,3 +42,10 @@ jobs:
           prepare: |
             cmake -S . -B build/peachycheck -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                   -DURD_BUILD_BENCHMARKS=ON -DURD_NATIVE_PREFIX="$HOME/urd-deps"
+      # The schema rules (brokkr's docs/schema_rules.rst, S1 to S4), parsed with clang over the compile database the
+      # lint configured.
+      - name: Schema rules
+        run: |
+          python3 -m venv "$RUNNER_TEMP/rules"
+          "$RUNNER_TEMP/rules/bin/python" -m pip install --quiet "pybrokkr[fallbacks]>=0.2.0,<0.3"
+          "$RUNNER_TEMP/rules/bin/python" -m pybrokkr.rules S --compile-commands build/peachycheck/compile_commands.json -j 4
