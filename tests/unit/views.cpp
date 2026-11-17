@@ -96,7 +96,8 @@ public:
 
     [[nodiscard]] std::size_t part(std::size_t at) const { return self().template member<&Rec::parts>().at(at).index().value; }
 
-    static constexpr auto functions() noexcept { return urd::Functions<urd::function<"name", &view_mixin::name>, urd::function<"part", &view_mixin::part>> {}; }
+    static constexpr auto functions() noexcept
+    { return urd::Functions<urd::function<"name", &view_mixin::name>, urd::function<"part", &view_mixin::part, urd::arg<"at">>> {}; }
 };
 
 namespace
@@ -839,6 +840,18 @@ struct urd::data<Keyed>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::number, &data::values> {}; }
+};
+
+template<typename V>
+struct urd::view_mixin<Keyed, V>
+{
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_number() const { return self().template member<&urd::record_of<V>::number>(); }
+
+    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
 };
 
 namespace

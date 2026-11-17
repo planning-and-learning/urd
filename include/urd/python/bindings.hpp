@@ -185,10 +185,15 @@ void bind_functions(nb::class_<View>& cls)
             [&]<typename F>()
             {
                 constexpr auto bound = detail::method<View, F::pointer>(F::pointer);
-                if constexpr (std::is_lvalue_reference_v<decltype(detail::returned(bound))>)
-                    cls.def(F::c_name, bound, nb::rv_policy::reference_internal);
-                else
-                    cls.def(F::c_name, bound);
+                // Each parameter under its C++ name (urd::arg), so that Python passes it by keyword too.
+                F::with_arguments(
+                    [&]<typename... Args>()
+                    {
+                        if constexpr (std::is_lvalue_reference_v<decltype(detail::returned(bound))>)
+                            cls.def(F::c_name, bound, nb::arg(Args::c_name)..., nb::rv_policy::reference_internal);
+                        else
+                            cls.def(F::c_name, bound, nb::arg(Args::c_name)...);
+                    });
             });
 }
 

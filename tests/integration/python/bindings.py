@@ -44,6 +44,7 @@ assert hash(term) == hash(m.term(0))
 assert term.arity_plus_one() == 3
 assert not term.is_empty()
 assert term.has_more_objects_than(0)
+assert not term.has_more_objects_than(count=99)  # by keyword: urd::arg
 assert term.get_flags() == [True, False]
 # A view converts to its index wherever an index is expected: TermIndex(view), and the Data __init__'s index fields.
 assert m.TermIndex(term) == m.TermIndex(0)

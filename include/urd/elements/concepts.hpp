@@ -18,7 +18,6 @@
 #pragma once
 
 #include <algorithm>
-#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -143,14 +142,28 @@ constexpr void for_each_field(const Function& f)
     [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (f.template operator()<Fs>(), ...); }(T::fields());
 }
 
-/// A function of a view beyond its field getters: its public name and the function, a member of its mixin or a free
-/// function whose first parameter is the view.
-template<fixed_string Name, auto Function>
+/// The name of a parameter of a function beside its view (a member's this), as C++ names it: what Python calls it by
+/// (urd::python::bind_functions), as nanobind's nb::arg.
+template<fixed_string Name>
+struct arg
+{
+    /// The name as a C string.
+    static constexpr const char* c_name = Name.characters.data();
+};
+
+/// A function of a view beyond its field getters: its public name, the function (a member of its mixin, or a free
+/// function whose sole parameter is the view), and an arg per parameter, in order.
+template<fixed_string Name, auto Function, typename... Args>
 struct function
 {
     /// The name as a C string (where a function takes one).
     static constexpr const char* c_name = Name.characters.data();
     static constexpr auto pointer = Function;
+
+    /// Calls f with each arg, in order (urd::python::bind_functions: one nb::arg each).
+    template<typename F>
+    static constexpr decltype(auto) with_arguments(F&& f)
+    { return std::forward<F>(f).template operator()<Args...>(); }
 };
 
 /// A view's functions beyond its field getters, under the names Python calls them by. A view mixin lists every member

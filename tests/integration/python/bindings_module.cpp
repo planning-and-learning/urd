@@ -119,7 +119,7 @@ public:
     static constexpr auto functions() noexcept
     {
         return urd::Functions<urd::function<"is_empty", &view_mixin::is_empty>,
-                              urd::function<"has_more_objects_than", &view_mixin::has_more_objects_than>,
+                              urd::function<"has_more_objects_than", &view_mixin::has_more_objects_than, urd::arg<"count">>,
                               urd::function<"arity_plus_one", &view_mixin::arity_plus_one>,
                               urd::function<"get_flags", &view_mixin::get_flags>> {};
     }
