@@ -59,46 +59,35 @@ struct view_mixin<builder<T>, V> : view_mixin<T, V>
 {
 };
 
+/// The record a view V reads, as V declares it (record_type): an index_view's data<T>, or T where T has no stored record
+/// (a Store of plain values); a borrowed, owning or shared view's R. A view whose context keeps its records in a layout
+/// of its own (bit-packed, a trie) reads data<T> all the same, field by field: whatever the layout, the key is the
+/// handle and data<T> the schema.
+template<typename V>
+using record_of = typename std::remove_cvref_t<V>::record_type;
+
+/// Whether a context C hands out the record of a key K whole: context[key].
+template<typename C, typename K>
+concept HandsOutRecords = requires(const C& context, const K& key) { context[key]; };
+
+/// Whether a context C reads the field Member of the record of a key K by the key: context.field<Member>(key), where
+/// it keeps its records in a layout of its own. It hands the field out as its views read it: resolved through itself
+/// (urd::resolve), by value.
+template<typename C, typename K, auto Member>
+concept ReadsFieldsByKey = requires(const C& context, const K& key) { context.template field<Member>(key); };
+
 namespace detail
 {
-/// The one way to a view's stored record, for urd itself: resolving its members (member<>), naming its record type
-/// (record_of), copying it into another context (map_children). A view hands out its members resolved; its stored form,
-/// with indices where records are and the layout of its fields, stays inside urd.
+/// The way to a view's record whole, for urd itself (member<>, map_children): private to the views, whose friend this
+/// is. A view hands out its members resolved; its stored form, with indices where records are and the layout of its
+/// fields, stays inside urd.
 struct view_access
 {
+    /// The whole record: an index_view's in its context, where it hands it out (HandsOutRecords: data<T>, or a plain
+    /// T); a borrowed, owning or shared view's own (data<T>, builder<T>, or a plain T).
     template<typename V>
-    [[nodiscard]] static auto data(const V& view) -> decltype(view.data())
-    { return view.data(); }
-
-    template<auto Member, typename V>
-    [[nodiscard]] static auto read(const V& view) -> decltype(view.template read<Member>())
-    { return view.template read<Member>(); }
-};
-
-/// The record a view V reads: its stored record's type; data<T> where its context reads each field by the key
-/// and hands out no stored record (record_type<index_view<...>> below).
-template<typename V>
-struct record_type
-{
-    using type = std::remove_cvref_t<decltype(view_access::data(std::declval<const V&>()))>;
-};
-}  // namespace detail
-
-/// The record a view V reads.
-template<typename V>
-using record_of = typename detail::record_type<V>::type;
-
-namespace detail
-{
-/// A context that keeps the records of T in a layout of its own (bit-packed, a trie) hands out no stored record
-/// (context[key]): it reads each field of data<T> by the key, `context.template read<&data<T>::m>(key)`, the field as
-/// the view reads it (a value, or a range over its storage). Its views' record is data<T> all the same, whose fields()
-/// they read under its names: whatever the layout, the key is the handle and data<T> the schema.
-template<typename T, typename C, typename K>
-    requires(!requires(const C& context, const K& key) { context[key]; })
-struct record_type<index_view<T, C, K>>
-{
-    using type = data<T>;
+    [[nodiscard]] static const typename V::record_type& record(const V& view)
+    { return view.record(); }
 };
 }  // namespace detail
 
@@ -495,9 +484,10 @@ struct resolution<M>
 namespace detail
 {
 /// What the four views share (V: the view; K: the key of its mixin): the context, a const C* the context must outlive;
-/// the record, V's data() (private: urd reads it through detail::view_access); its members resolved through the context, member<&T::m>(); the mixin's
-/// accessors; and the identity: what V identifies its record by (V's identity()) and the number of its context (urd::layer), so that equal views are the same
-/// element wherever they were made.
+/// the record, V's record() (private: urd reads it through detail::view_access); its members resolved through the
+/// context, member<&T::m>() (an index_view reads its own, by its key where its context reads so); the mixin's
+/// accessors; and the identity: what V identifies its record by (V's identity()) and the number of its context
+/// (urd::layer), so that equal views are the same element wherever they were made.
 template<typename V, typename T, typename C, typename K>
 class view_base : public view_mixin<K, V>, public compared_by_identity<V>
 {
@@ -506,29 +496,11 @@ public:
 
     [[nodiscard]] const C& context() const noexcept { return *m_context; }
 
-    /// A member of the record, resolved through the context (urd::resolve). A record the context hands out by value (a
-    /// stored form of another layout, holding handles only) lives for this call: what is read from it is returned by
-    /// value, never as a reference into it.
+    /// A member of the record, resolved in place through the context (urd::resolve): the record is held (borrowed,
+    /// owning and shared views); an index_view reads its own (index_view::member).
     template<auto Member>
     [[nodiscard]] decltype(auto) member() const
-    {
-        const auto& view = static_cast<const V&>(*this);
-        if constexpr (requires { view_access::read<Member>(view); })
-        {
-            // Read by the key (record_type): the field as the context reads it, a value or a range over its storage.
-            const auto read = view_access::read<Member>(view);
-            using Read = std::remove_cvref_t<decltype(urd::resolve(read, *m_context))>;
-            return Read(urd::resolve(read, *m_context));
-        }
-        else if constexpr (std::is_reference_v<decltype(view_access::data(view))>)
-            return urd::resolve(view_access::data(view).*Member, *m_context);
-        else
-        {
-            const auto record = view_access::data(view);
-            using Read = std::remove_cvref_t<decltype(urd::resolve(record.*Member, *m_context))>;
-            return Read(urd::resolve(record.*Member, *m_context));
-        }
-    }
+    { return urd::resolve(view_access::record(static_cast<const V&>(*this)).*Member, *m_context); }
 
     /// The identity: what identifies the record, and the number of the context (a context without a number gives
     /// none).
@@ -558,18 +530,32 @@ class index_view : public detail::view_base<index_view<T, C, K>, T, C, T>
     friend detail::view_access;
 
 public:
+    /// Its record: data<T>, or T where T has no stored record (a Store of plain values).
+    using record_type = std::conditional_t<stored_record<T>, data<T>, T>;
+
     index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
 
     [[nodiscard]] K index() const noexcept { return m_at; }
 
-private:
-    [[nodiscard]] decltype(auto) data() const { return this->context()[m_at]; }
-
-    /// A field of its record by the key, where its context reads it so (record_type).
+    /// A member of its record, resolved through its context: in place, where the context hands out the record of its
+    /// key (HandsOutRecords); as the context reads it by the key, resolved and by value, where it keeps its records in a
+    /// layout of its own (ReadsFieldsByKey).
     template<auto Member>
-        requires requires(const C& context, const K& key) { context.template read<Member>(key); }
-    [[nodiscard]] decltype(auto) read() const
-    { return this->context().template read<Member>(m_at); }
+    [[nodiscard]] decltype(auto) member() const
+    {
+        if constexpr (HandsOutRecords<C, K>)
+            return urd::resolve(this->context()[m_at].*Member, this->context());
+        else if constexpr (ReadsFieldsByKey<C, K, Member>)
+            return this->context().template field<Member>(m_at);
+        else
+            static_assert(false, "urd: a context hands out a key's record (context[key]) or reads its fields by the key (context.field<Member>(key))");
+    }
+
+private:
+    /// Its record whole, where its context hands it out (context[key]).
+    [[nodiscard]] const record_type& record() const
+        requires HandsOutRecords<C, K>
+    { return this->context()[m_at]; }
 
     [[nodiscard]] const K& identity() const noexcept { return m_at; }
 
@@ -585,10 +571,12 @@ class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
     friend detail::view_access;
 
 public:
+    using record_type = R;
+
     borrowed_view(const R* record, const C* context) noexcept : detail::view_base<borrowed_view, T, C, R>(context), m_record(record) {}
 
 private:
-    [[nodiscard]] const R& data() const noexcept { return *m_record; }
+    [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
 
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
@@ -604,6 +592,8 @@ class owning_view : public detail::view_base<owning_view<T, C, R>, T, C, R>
     friend detail::view_access;
 
 public:
+    using record_type = R;
+
     owning_view(R record, const C* context) noexcept(std::is_nothrow_move_constructible_v<R>) :
         detail::view_base<owning_view, T, C, R>(context),
         m_record(std::move(record))
@@ -611,7 +601,7 @@ public:
     }
 
 private:
-    [[nodiscard]] const R& data() const noexcept { return m_record; }
+    [[nodiscard]] const record_type& record() const noexcept { return m_record; }
 
     [[nodiscard]] const R& identity() const noexcept { return m_record; }
 
@@ -627,10 +617,12 @@ class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
     friend detail::view_access;
 
 public:
+    using record_type = R;
+
     shared_view(std::shared_ptr<const R> record, const C* context) noexcept : detail::view_base<shared_view, T, C, R>(context), m_record(std::move(record)) {}
 
 private:
-    [[nodiscard]] const R& data() const noexcept { return *m_record; }
+    [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
 
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 

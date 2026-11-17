@@ -306,7 +306,7 @@ TEST(View, ReadsTheStoredRecordOfItsTag)
     items.records.emplace_back(3, owner);
 
     const auto item = items.view(urd::index<Item>(0));
-    static_assert(std::same_as<decltype(urd::detail::view_access::data(item)), const urd::data<Item>&>);
+    static_assert(std::same_as<decltype(urd::detail::view_access::record(item)), const urd::data<Item>&>);
     EXPECT_EQ(item.member<&urd::data<Item>::weight>(), 3);
     EXPECT_EQ(item.member<&urd::data<Item>::owner>().member<&Owner::name>(), "ada");
     const auto held = urd::resolve(items.records[0], items);
@@ -345,7 +345,7 @@ TEST(View, BorrowsARecordNotInserted)
     const auto both = make_both();
     const auto record = Rec { "offered", { urd::index<Owner>(1), urd::index<Owner>(0) }, urd::index<Owner>(0), 3 };
     const auto offered = both.view(record);
-    EXPECT_EQ(&urd::detail::view_access::data(offered), &record);
+    EXPECT_EQ(&urd::detail::view_access::record(offered), &record);
     EXPECT_EQ(offered.member<&Rec::owner>().member<&Owner::name>(), "a");
     auto names = std::vector<std::string_view>();
     for (const auto part : offered.member<&Rec::parts>())
@@ -466,7 +466,7 @@ TEST(View, ResolvesMembersThroughItsContext)
     const auto both = make_both();
     const auto whole = index_view<Rec>(urd::index<Rec>(0), &both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
-    EXPECT_EQ(whole.part(1), urd::detail::view_access::data(whole).parts[1].value);
+    EXPECT_EQ(whole.part(1), urd::detail::view_access::record(whole).parts[1].value);
     EXPECT_EQ(whole.member<&Rec::owner>().member<&Owner::name>(), "b");
     auto names = std::vector<std::string_view>();
     for (const auto part : whole.member<&Rec::parts>())
@@ -526,9 +526,9 @@ TEST(View, BorrowsAHeldRecord)
     static_assert(!views_a_temporary<Both>);
     const auto both = make_both();
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
-    EXPECT_EQ(&urd::detail::view_access::data(both.view(record)), &record);
+    EXPECT_EQ(&urd::detail::view_access::record(both.view(record)), &record);
     const auto by_index = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
-    EXPECT_EQ(&urd::detail::view_access::data(by_index), &both[urd::index<Owner>(1)]);
+    EXPECT_EQ(&urd::detail::view_access::record(by_index), &both[urd::index<Owner>(1)]);
 }
 
 namespace
@@ -553,8 +553,8 @@ TEST(View, SharesARecord)
     EXPECT_FALSE(weak.expired());
     EXPECT_EQ(shared.name(), "shared");
     EXPECT_EQ(shared.member<&Rec::owner>().member<&Owner::name>(), "a");
-    const auto equal = Shared(std::make_shared<const Rec>(urd::detail::view_access::data(shared)), &both);
-    EXPECT_NE(&urd::detail::view_access::data(equal), &urd::detail::view_access::data(shared));
+    const auto equal = Shared(std::make_shared<const Rec>(urd::detail::view_access::record(shared)), &both);
+    EXPECT_NE(&urd::detail::view_access::record(equal), &urd::detail::view_access::record(shared));
     EXPECT_EQ(equal, shared);
 }
 
@@ -566,14 +566,14 @@ TEST(View, OwnsACopyOfARecord)
     const auto both = make_both();
     auto record = Rec { "computed", { urd::index<Owner>(1) }, urd::index<Owner>(1), 3 };
     const auto owning = Owning(record, &both);
-    EXPECT_NE(&urd::detail::view_access::data(owning), &record);
+    EXPECT_NE(&urd::detail::view_access::record(owning), &record);
     record.name = "changed";
     EXPECT_EQ(owning.name(), "computed");
     EXPECT_EQ(owning.member<&Rec::owner>().member<&Owner::name>(), "b");
     EXPECT_EQ(owning.member<&Rec::parts>()[0].member<&Owner::name>(), "b");
-    EXPECT_EQ(owning, Owning(urd::detail::view_access::data(owning), &both));
+    EXPECT_EQ(owning, Owning(urd::detail::view_access::record(owning), &both));
     const auto other = make_both(urd::layer { 1 });
-    EXPECT_NE(owning, Owning(urd::detail::view_access::data(owning), &other));
+    EXPECT_NE(owning, Owning(urd::detail::view_access::record(owning), &other));
 }
 
 TEST(TransformedRange, ItsIteratorsOutliveIt)
@@ -812,37 +812,65 @@ TEST(Format, NamesATagByItsNameAndItsArguments)
 
 namespace
 {
-// A context that hands out its records by value, in another layout than data<Shown>: a value with handles only.
-struct Packed
+struct Keyed
 {
-    static constexpr std::string_view name = "Packed";
+    static constexpr std::string_view name = "Keyed";
+};
+}  // namespace
 
+template<>
+struct urd::data<Keyed>
+{
     int number = 0;
-    std::span<const int> values;
+    urd::flat_vector<int> values;
 
-    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"number", &Packed::number>, urd::field<"values", &Packed::values>> {}; }
+    data() = default;
+
+    data(int number_, urd::flat_vector<int> values_) : number(number_), values(std::move(values_)) {}
+
+    data(const data& other) = delete;
+    data& operator=(const data& other) = delete;
+    data(data&& other) = default;
+    data& operator=(data&& other) = default;
+    ~data() = default;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"number", &data::number>, urd::field<"values", &data::values>> {}; }
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::number, &data::values> {}; }
 };
 
-struct ByValue
+namespace
+{
+// A context that keeps its records in a layout of its own: no data<Keyed> to hand out, each field read by the key.
+struct ByKey
 {
     std::array<int, 3> storage { 4, 5, 6 };
 
-    [[nodiscard]] Packed operator[](urd::index<Shown> /*at*/) const { return { 2, storage }; }
+    template<auto Member>
+    [[nodiscard]] auto field(urd::index<Keyed> /*at*/) const
+    {
+        if constexpr (std::same_as<decltype(Member), int urd::data<Keyed>::*>)
+            return 2;
+        else
+            return std::span<const int>(storage);
+    }
 
     [[nodiscard]] std::size_t layer() const noexcept { return 9; }
 };
 }  // namespace
 
-TEST(View, ReadsOfARecordHandedOutByValueAreValues)
+TEST(View, AViewReadsByTheKeyWhereItsContextHandsOutNoRecord)
 {
-    const auto context = ByValue();
-    const auto view = urd::index_view<Shown, ByValue>(urd::index<Shown>(0), &context);
-    // The record lives for the read only: what is read from it is a value, never a reference into it.
-    static_assert(!std::is_reference_v<decltype(view.template member<&Packed::values>())>);
-    const auto values = view.template member<&Packed::values>();
+    const auto context = ByKey();
+    const auto view = urd::index_view<Keyed, ByKey>(urd::index<Keyed>(0), &context);
+    static_assert(urd::ReadsFieldsByKey<ByKey, urd::index<Keyed>, &urd::data<Keyed>::values> && !urd::HandsOutRecords<ByKey, urd::index<Keyed>>);
+    static_assert(std::same_as<urd::record_of<decltype(view)>, urd::data<Keyed>>);
+    // A field read by the key lives for the read only: what is read from it is a value, never a reference into it.
+    static_assert(!std::is_reference_v<decltype(view.template member<&urd::data<Keyed>::values>())>);
+    const auto values = view.template member<&urd::data<Keyed>::values>();
     ASSERT_EQ(values.size(), 3U);
     EXPECT_EQ(values[2], 6);
-    EXPECT_EQ(view.template member<&Packed::number>(), 2);
+    EXPECT_EQ(view.template member<&urd::data<Keyed>::number>(), 2);
 }

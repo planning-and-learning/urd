@@ -160,7 +160,7 @@ Indices and views
 
 A ``T`` is read through a context ``C`` that resolves the indices in its record (:cpp:concept:`resolves`), by one of
 four views (``urd/elements/view.hpp``), which differ only in how they hold the record. Each borrows its context as a
-``const C*``, which must outlive it, and has the same surface: ``context()``, ``data()``, ``member<&T::m>()``, the
+``const C*``, which must outlive it, and has the same surface: ``context()``, ``member<&T::m>()``, the
 accessors of its :cpp:struct:`view_mixin`, ``value_type`` (``T``), and an identity (what identifies the record, and
 the context's number) that ``==``, ``<=>``, ``EqualTo``, ``Hash`` and ``Less`` compare by. A positional set and a pool
 of records resolve their own type; any type that gives the record, its number and the view of an index serves.
@@ -200,9 +200,12 @@ of records resolve their own type; any type that gives the record, its number an
 What all four give:
 
    .. cpp:function:: const C& context() const noexcept
-   .. cpp:function:: decltype(auto) data() const
-
-      The record: for an index_view as the context holds it, else the record held.
+   Each reads its record (:cpp:type:`record_of`) whole, by reference to where it lies: a borrowed, owning or shared
+   view the record it holds; an index_view the record its context hands out, ``context[index]``
+   (``HandsOutRecords``). A context that keeps its records in a layout of its own, bit-packed or a trie, hands out
+   none: an index_view through it reads each field by its key, ``context.field<&data<T>::m>(key)``, resolved and by
+   value (``ReadsFieldsByKey``). Its record is ``data<T>`` all the same: whatever the layout, the key is the handle
+   and ``data<T>`` the schema.
 
    .. cpp:function:: template<auto Member> decltype(auto) get() const
 

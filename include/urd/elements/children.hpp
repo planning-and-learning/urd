@@ -117,7 +117,7 @@ void for_each_child(const R& record, const C& context, F f)
 /// handing its stored form out of urd (detail::view_access).
 template<typename Types, typename T, typename V, typename F>
 void for_each_child(const V& source, F f)
-{ urd::for_each_child<Types, T>(detail::view_access::data(source), source.context(), std::move(f)); }
+{ urd::for_each_child<Types, T>(detail::view_access::record(source), source.context(), std::move(f)); }
 
 /// source with every child c replaced by what f(context.view(c)) reads, stored as c (urd::store), in member order, written into scratch, which
 /// it returns: f returns an index of c's type, or a view of one. source is read, not copied (a record is move-only):
@@ -137,7 +137,7 @@ R& map_children(const R& source, R& scratch, const C& context, F f)
 /// handing its stored form out of urd (detail::view_access).
 template<typename Types, typename T, typename V, typename R, typename F>
 R& map_children(const V& source, R& scratch, F f)
-{ return urd::map_children<Types, T>(detail::view_access::data(source), scratch, source.context(), std::move(f)); }
+{ return urd::map_children<Types, T>(detail::view_access::record(source), scratch, source.context(), std::move(f)); }
 
 /// map_children, but every flat_variant slot (one not inside another variant; any alternatives, children or not) is
 /// replaced whole, in scratch: by f(urd::resolve(slot, context)) stored as the slot (urd::store), f called with the std::variant of the slot's
@@ -160,6 +160,6 @@ R& map_variant_children(const R& source, R& scratch, const C& context, F f)
 /// map_variant_children of the record a view reads, through its own context (detail::view_access).
 template<typename Types, typename T, typename V, typename R, typename F>
 R& map_variant_children(const V& source, R& scratch, F f)
-{ return urd::map_variant_children<Types, T>(detail::view_access::data(source), scratch, source.context(), std::move(f)); }
+{ return urd::map_variant_children<Types, T>(detail::view_access::record(source), scratch, source.context(), std::move(f)); }
 
 }  // namespace urd
