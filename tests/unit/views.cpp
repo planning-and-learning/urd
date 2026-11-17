@@ -466,7 +466,7 @@ TEST(View, ResolvesMembersThroughItsContext)
     const auto both = make_both();
     const auto whole = index_view<Rec>(urd::index<Rec>(0), &both);  // Both resolves owners too
     EXPECT_EQ(whole.name(), "first");
-    EXPECT_EQ(whole.part(1), urd::detail::view_access::record(whole).parts[1].value);
+    EXPECT_EQ(whole.part(1), both[urd::index<Rec>(0)].parts[1].value);
     EXPECT_EQ(whole.member<&Rec::owner>().member<&Owner::name>(), "b");
     auto names = std::vector<std::string_view>();
     for (const auto part : whole.member<&Rec::parts>())
@@ -528,7 +528,7 @@ TEST(View, BorrowsAHeldRecord)
     const auto record = Rec { "offered", {}, urd::index<Owner>(0), 3 };
     EXPECT_EQ(&urd::detail::view_access::record(both.view(record)), &record);
     const auto by_index = urd::index_view<Owner, Both>(urd::index<Owner>(1), &both);
-    EXPECT_EQ(&urd::detail::view_access::record(by_index), &both[urd::index<Owner>(1)]);
+    EXPECT_EQ(&by_index.member<&Owner::name>(), &both[urd::index<Owner>(1)].name);  // read in place, in its context
 }
 
 namespace

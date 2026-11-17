@@ -530,8 +530,8 @@ class index_view : public detail::view_base<index_view<T, C, K>, T, C, T>
     friend detail::view_access;
 
 public:
-    /// Its record: data<T>, or T where T has no stored record (a Store of plain values).
-    using record_type = std::conditional_t<stored_record<T>, data<T>, T>;
+    /// Its record: data<T> (named only here, so that a view of a record not yet complete may be declared).
+    using record_type = data<T>;
 
     index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
 
