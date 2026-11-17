@@ -201,22 +201,24 @@ std::string field_written(const V& value)
 
 /// A record of tag T as urd writes one: `Name(`, each field of Record (data<T>, or builder<T>) on a line of its own one
 /// level deeper, `name=value`, its value read by read.template operator()<F>() and written as a field's (an optional, a
-/// variant, a list), then `)`. A library calls it for a view that reads its fields otherwise (a packed record).
+/// variant, a list), then `)`; `Name()` without fields. A library calls it for a view that reads its fields otherwise (a
+/// packed record).
 template<typename T, typename Record, typename Read>
 std::string record_written(Read read)
 {
-    auto out = name<T>() + "(";
-    auto any = false;
+    // Without fields the per-field lambda is never called: GCC 13 under LTO then streams it so that it cannot read it
+    // back (an ICE in lto_tag_to_tree_code at the link, or in its modref pass compiling).
+    if constexpr (std::same_as<decltype(Record::fields()), Fields<>>)
+        return name<T>() + "()";
+    else
     {
-        const auto deeper = scoped_indent();
-        for_each_field<Record>(
-            [&]<typename F>()
-            {
-                out += detail::new_line() + F::c_name + "=" + detail::field_written(read.template operator()<F>());
-                any = true;
-            });
+        auto out = name<T>() + "(";
+        {
+            const auto deeper = scoped_indent();
+            for_each_field<Record>([&]<typename F>() { out += detail::new_line() + F::c_name + "=" + detail::field_written(read.template operator()<F>()); });
+        }
+        return out + detail::new_line() + ")";
     }
-    return out + (any ? detail::new_line() + ")" : ")");
 }
 
 namespace detail
