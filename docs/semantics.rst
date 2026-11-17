@@ -197,15 +197,16 @@ of records resolve their own type; any type that gives the record, its number an
 
    .. cpp:function:: shared_view(std::shared_ptr<const R> record, const C* context)
 
+Each reads its record (:cpp:type:`record_of`) whole, by reference to where it lies: a borrowed, owning or shared
+view the record it holds; an index_view the record its context hands out, ``context[index]``
+(``HandsOutRecords``). A context that keeps its records in a layout of its own, bit-packed or a trie, hands out
+none: an index_view through it reads each field by its key, ``context.field<&data<T>::m>(key)``, resolved and by
+value (``ReadsFieldsByKey``). Its record is ``data<T>`` all the same: whatever the layout, the key is the handle
+and ``data<T>`` the schema.
+
 What all four give:
 
    .. cpp:function:: const C& context() const noexcept
-   Each reads its record (:cpp:type:`record_of`) whole, by reference to where it lies: a borrowed, owning or shared
-   view the record it holds; an index_view the record its context hands out, ``context[index]``
-   (``HandsOutRecords``). A context that keeps its records in a layout of its own, bit-packed or a trie, hands out
-   none: an index_view through it reads each field by its key, ``context.field<&data<T>::m>(key)``, resolved and by
-   value (``ReadsFieldsByKey``). Its record is ``data<T>`` all the same: whatever the layout, the key is the handle
-   and ``data<T>`` the schema.
 
    .. cpp:function:: template<auto Member> decltype(auto) get() const
 

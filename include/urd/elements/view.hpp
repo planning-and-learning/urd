@@ -473,8 +473,9 @@ struct resolution<M>
     {
         using E = std::ranges::range_value_t<M>;
         auto result = M();
-        if constexpr (std::ranges::sized_range<const R> && requires(M& stored) { stored.reserve(std::size_t {}); })
-            result.reserve(std::ranges::size(readout));
+        if constexpr (std::ranges::sized_range<const R> && std::ranges::sized_range<M>
+                      && requires(M& stored) { stored.reserve(std::ranges::range_size_t<M> {}); })
+            result.reserve(static_cast<std::ranges::range_size_t<M>>(std::ranges::size(readout)));
         for (const auto& element : readout)
             result.push_back(resolution<E>::stored(element));
         return result;
