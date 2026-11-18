@@ -38,15 +38,28 @@ complexity of each operation per representation.
 
 .. toctree::
    :maxdepth: 2
-   :caption: The request language
+   :caption: The Request Language
 
    requests
    language/index
-   semantics
 
 .. toctree::
    :maxdepth: 2
-   :caption: Kinds of Store
+   :caption: Elements
+
+   elements/identity
+   elements/hashing
+   elements/order
+   elements/indices
+   elements/records
+   elements/views
+   elements/builders
+   elements/children
+   elements/copying
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Kinds Of Store
 
    kinds/sets
    kinds/maps

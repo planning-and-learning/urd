@@ -1,5 +1,5 @@
-Records, repositories, views
-============================
+Records
+=======
 
 .. cpp:namespace:: urd
 
@@ -24,9 +24,9 @@ A pool of records stored ``flat`` interns whole records: each distinct record on
 bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it (or the index the request names,
 ``pool<urd::data<T>, index<T>>``: the record a Store holds for an ``index<T>``, whose views are ``index_view<T, Store>``);
 read back by index, looked up by record, counted.
-A record names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names its members for cista
-(``cista_members()``) and holds its sequences, text and variants as the flat containers of ``urd/elements/flat.hpp``. The
-records are frozen once stored.
+A record (:doc:`/elements/records`) names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names
+its members for cista (``cista_members()``) and holds its sequences, text and variants as the flat containers of
+``urd/elements/flat.hpp``. The records are frozen once stored.
 
 .. list-table::
    :header-rows: 1
@@ -60,51 +60,6 @@ interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a
        static constexpr auto identifying_members() noexcept { return urd::Members<&Predicate::name, &Predicate::arity> {}; }
        static constexpr auto cista_members() noexcept { return urd::Members<&Predicate::name, &Predicate::arity> {}; }
    };
-
-Fields
-------
-
-A record may name its fields once: each a public name and the data member that holds it, in data order. Its
-identifying members are then their members, and whatever reads a record field by field (serialization, printing,
-Python bindings, a walk over its children) iterates the declaration instead of asking for each member, so that a field
-is never left out.
-
-.. code-block:: cpp
-
-   struct Atom
-   {
-       urd::index<Predicate> predicate;
-       urd::flat_vector<urd::index<Object>> objects;
-       static constexpr auto fields() noexcept
-       {
-           return urd::Fields<urd::field<"predicate", &Atom::predicate>, urd::field<"objects", &Atom::objects>> {};
-       }
-       static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
-   };
-
-.. cpp:struct:: template<fixed_string Name, auto Member> field
-
-   ``name`` (a ``std::string_view``, null-terminated), ``member``, and ``prefixed<"get_">``, the name after a prefix.
-
-.. cpp:function:: template<HasFields T, typename F> constexpr void for_each_field(F&& f)
-
-   ``f.template operator()<Field>()`` for each field, in order. A field is read through a view as
-   ``view.template member<Field::member>()``: resolved through the view's context, like any member.
-
-Flat containers
----------------
-
-.. cpp:type:: template<typename T> flat_vector = cista::offset::vector<T>
-.. cpp:type:: flat_string = cista::offset::string
-.. cpp:type:: template<typename... Ts> flat_variant = cista::offset::variant<Ts...>
-.. cpp:type:: template<typename T> flat_optional = cista::optional<T>
-.. cpp:type:: template<typename T1, typename T2> flat_pair = cista::pair<T1, T2>
-
-   ``is_flat_vector<T>``, ``is_flat_variant<T>``, ``is_flat_optional<T>`` and ``is_flat_pair<T>`` say whether a type is
-   one of them.
-
-   With :cpp:struct:`Hash` and :cpp:struct:`EqualTo` (the same byte hash as ``std::string``, so equal text hashes
-   alike), and resolved by views like their standard counterparts.
 
 Member types
 ------------

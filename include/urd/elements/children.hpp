@@ -26,7 +26,7 @@
 /// raw indices. urd::map_variant_children instead hands out each variant slot whole (urd::resolve of it), so that a
 /// callback may replace it by another alternative.
 ///
-/// A builder's children are its urd::child members (an index, a built builder, or a record held elsewhere), found in the
+/// A builder's children are its urd::child members (an index, a built builder, or a record not interned yet), found in the
 /// same shapes as std's containers and builders held in place: urd::map_children of a builder writes its record with
 /// each child replaced by an index, and urd::intern interns a builder so (its built children first).
 namespace urd
@@ -239,7 +239,7 @@ R& map_children(const R& source, R& scratch, const C& context, F f)
 
 /// The record of a builder, written into scratch (a reused record: its buffers kept, its own handle as it is): each
 /// field in step with the builder's (urd::builder: the same names, in the same order), each child (urd::child: an index,
-/// a built builder, or a record held elsewhere) replaced by the index f gives it (f returns an index, a view of one, or
+/// a built builder, or a record not interned yet) replaced by the index f gives it (f returns an index, a view of one, or
 /// the pair a repository's insert returns), builders held in place as their records, std's containers as the flat ones.
 template<typename T, typename C, typename F>
 data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
@@ -249,7 +249,7 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
 }
 
 /// Interns a builder: its record written into scratch (map_children), each child as its index (an interned one as it
-/// is; a built one's builder and a record held elsewhere inserted, so built children first), then the record inserted.
+/// is; a built one's builder and a record not interned yet inserted, so built children first), then the record inserted.
 /// `insert` takes a record (data<X>) or a builder (builder<X, C>) of every kind the builder holds and inserts it into the
 /// repository that holds its kind (a builder: urd::intern again, with a scratch record of its own); returns what
 /// insert(scratch) returns.

@@ -26,7 +26,7 @@ A Store is a request: its kind with its element types, then a list of property t
 
    The kinds (``urd/kinds.hpp``), each with its element types: keys ``K`` identify elements, values ``V`` are
    carried. ``K`` must be :cpp:concept:`hashable` (the default), :cpp:concept:`orderable` (with ``sorted``) or
-   :cpp:concept:`indexable` (with ``dense``); see :doc:`semantics`. ``V`` has no requirements of its own.
+   :cpp:concept:`indexable` (with ``dense``); see :doc:`elements/indices`. ``V`` has no requirements of its own.
 
 .. cpp:class:: template<typename Compare> order_by
 

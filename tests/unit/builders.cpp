@@ -1,6 +1,6 @@
 // A builder: its record's members in another memory organization (urd/elements/builder.hpp). A node has a
-// leaf and a list of leaves; its builder holds each as a child, interned (its index), built (a builder of its own,
-// held by its handle) or a record held elsewhere (its pointer), and reads as the node does.
+// leaf and a list of leaves; its builder holds each as a child, interned (its index), built (a builder of its own) or
+// a record not interned yet (both held by their handles), and reads as the node does.
 #include "urd/elements/builder.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
@@ -103,8 +103,9 @@ using LeafBuilder = urd::builder<Leaf, Nodes>;
 using NodeBuilder = urd::builder<Node, Nodes>;
 
 using LeafPool = urd::Store<urd::slots<LeafBuilder>>;
+using LeafRecords = urd::Store<urd::slots<urd::data<Leaf>>>;
 
-/// Inserts leaves (built, or records held elsewhere) and nodes into Nodes, each a new index.
+/// Inserts leaves (built, or records not interned yet) and nodes into Nodes, each a new index.
 struct InsertIntoNodes
 {
     Nodes* nodes;
@@ -148,7 +149,9 @@ TEST(Builder, ReadsItsChildrenInEachForm)
 {
     auto nodes = Nodes {};
     nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
-    const auto elsewhere = urd::data<Leaf> { urd::index<Leaf>(), 11 };
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
 
     auto pool = LeafPool {};
     auto built = pool.make_handle();
@@ -157,7 +160,7 @@ TEST(Builder, ReadsItsChildrenInEachForm)
     node.first = urd::index<Leaf>(0);
     node.rest.emplace_back(std::move(built));
     node.rest.emplace_back(urd::index<Leaf>(0));
-    node.rest.emplace_back(&elsewhere);
+    node.rest.emplace_back(std::move(leaf_record));
 
     const auto view = urd::resolve(node, nodes);
     static_assert(std::same_as<decltype(view), const urd::borrowed_view<Node, Nodes, NodeBuilder>>);
@@ -196,14 +199,16 @@ TEST(Builder, InternsItsChildrenFirst)
 {
     auto nodes = Nodes {};
     nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
-    const auto elsewhere = urd::data<Leaf> { urd::index<Leaf>(), 11 };
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
     auto pool = LeafPool {};
     auto built = pool.make_handle();
     built->weight = 7;
     auto node = NodeBuilder {};
     node.first = urd::index<Leaf>(0);
     node.rest.emplace_back(std::move(built));
-    node.rest.emplace_back(&elsewhere);
+    node.rest.emplace_back(std::move(leaf_record));
     node.depth = 2;
 
     auto stored = std::vector<urd::data<Node>> {};

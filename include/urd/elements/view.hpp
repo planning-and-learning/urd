@@ -630,16 +630,22 @@ private:
     std::shared_ptr<const R> m_record;
 };
 
-/// A stored record held in place (inside a composition, or given to urd::resolve): its borrowed_view. Never a
-/// temporary.
+/// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it,
+/// where it makes one (context.view(record): a record read through a context of its own, reached from the context of
+/// its parent), else its borrowed_view through the context. Never a temporary.
 template<typename T>
 struct resolution<data<T>>
 {
     static_assert(stored_record<T>, "urd::data<T> must be Serializable: cista_members() returning urd::Members<...>");
 
     template<typename C>
-    static borrowed_view<T, C> of(const data<T>& member, const C& context) noexcept
-    { return { &member, &context }; }
+    static auto of(const data<T>& member, const C& context) noexcept
+    {
+        if constexpr (requires { context.view(member); })
+            return context.view(member);
+        else
+            return borrowed_view<T, C> { &member, &context };
+    }
 
     template<typename C>
     static void of(const data<T>&& member, const C& context) = delete;
@@ -664,20 +670,16 @@ struct resolution<builder<T, C>>
     static void of(const builder<T, C>&& member, const P& context) = delete;
 };
 
-/// A child's record held elsewhere (urd::child), by its pointer: the view its context makes of it (context.view(record):
-/// a record read through a context of its own, reached from the context of its parent), else its borrowed_view through
-/// the context.
+/// A child's record not interned yet (urd::child), held by its handle: its record resolved. Never a temporary.
 template<typename T>
-struct resolution<const data<T>*>
+struct resolution<handle<data<T>>>
 {
     template<typename P>
-    static auto of(const data<T>* member, const P& context)
-    {
-        if constexpr (requires { context.view(*member); })
-            return context.view(*member);
-        else
-            return borrowed_view<T, P> { member, &context };
-    }
+    static auto of(const handle<data<T>>& member, const P& context)
+    { return resolution<data<T>>::of(*member, context); }
+
+    template<typename P>
+    static void of(const handle<data<T>>&& member, const P& context) = delete;
 };
 
 /// A built child (urd::child) held by its handle: its builder resolved. Never a temporary.
