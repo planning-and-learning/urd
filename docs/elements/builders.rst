@@ -13,24 +13,32 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
    in the builder; a ``data<X>`` held in place is a ``builder<X, C>``; a flat container is std's of the members it
    holds; an index of a record is a *child*. ``C`` is the context the builder's children are read through.
 
-   A builder only mutates. It reads nothing itself, not even its own children: an interned child is an index, which
-   only a context can resolve. It is read through a view, as a record is (``borrowed_view<T, C, builder<T, C>>``,
+   A builder only mutates. It is read through a view, as a record is (``borrowed_view<T, C, builder<T, C>>``,
    :cpp:func:`resolve` ``(builder, context)``), with its record's mixin.
 
-.. cpp:type:: template<typename T, typename C> child = std::variant<index<T>, handle<builder<T, C>>, handle<data<T>>>
+.. cpp:type:: template<typename T, typename C, typename K = index<T>> child = std::variant<index_view<T, C, K>, pooled_view<T, C, builder<T, C>>, pooled_view<T, C, data<T>>>
 
-   A child of a builder, in one of three forms:
+   A child of a builder, a view through its own context in one of three forms:
 
-   - interned: its ``index<T>`` (the none index: a child default-constructs empty);
-   - built: a builder of its own, held by its :cpp:type:`handle`;
-   - a record not interned yet, held by its :cpp:type:`handle`.
+   - interned: its :cpp:class:`index_view`, whose key ``K`` is ``index<T>`` or a key of its own (a row's: its pool and
+     its id); the none view (no key, no context): a child default-constructs empty;
+   - built: a builder of its own, owned by its :cpp:class:`pooled_view`;
+   - a record not interned yet, owned by its :cpp:class:`pooled_view`.
 
-   The two handles hold pooled temporaries the child owns: they go back to their pools when the child drops them, and
-   become interned only when their parent is (:cpp:func:`intern`). It is read as any variant member is
-   (:cpp:struct:`resolution` of a variant: each alternative resolved): the view the context makes of the index
-   (``context.view(index)``), the builder's borrowed view, or the record's view (``context.view(record)`` where the
-   context makes one, else its ``borrowed_view``), as a builder or a record held in place is read. ``EqualTo`` and
-   ``Hash`` are the variant's: a handle compares by the record it holds.
+   Every form carries its context, so a child reads as it is, whoever reads it: it is resolved as any variant member is
+   (:cpp:struct:`resolution` of a variant), the index_view as it is, a pooled view as its record's ``borrowed_view``
+   through its own context. The pooled temporaries go back to their pools when the child drops them, and become interned
+   only when their parent is (:cpp:func:`intern`). ``EqualTo`` and ``Hash`` are the variant's: each view's identity.
+
+.. cpp:class:: template<typename T, typename C = typename context_of<T>::type, typename R = data<T>> pooled_view
+
+   Owns a record ``R`` (``data<T>`` or ``builder<T, C>``) by its pooled :cpp:type:`handle`: a child's temporary.
+   Move-only. Read and identified by the record, through its own context.
+
+   .. cpp:function:: pooled_view(handle<R> record, const C* context)
+   .. cpp:function:: R& held() const
+
+      The record it owns, to write: a builder being built, a record not interned yet.
 
 .. cpp:type:: template<typename R> handle = std::unique_ptr<R, release>
 
@@ -38,6 +46,7 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
    its buffers kept, when the handle goes. :cpp:struct:`release` names no Store, so that a record may hold handles of
    its own kind and a library may keep its pools out of its headers.
 
-.. cpp:function:: template<typename T, typename C, typename Pool> builder<T, C>& builder_of(child<T, C>& held, Pool& pool)
+.. cpp:function:: template<typename T, typename C, typename K, typename Pool> builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool, const C& context)
 
-   The builder a child holds, to fill: a new one from ``pool`` where it holds none (it is interned, or a record).
+   The builder a child holds, to fill: a new one from ``pool``, read through ``context``, where it holds none (it is
+   interned, or a record).

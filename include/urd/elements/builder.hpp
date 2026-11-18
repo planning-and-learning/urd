@@ -19,21 +19,23 @@ namespace urd
 template<typename T, typename C>
 struct builder;
 
-/// A child record T of a builder, read through the context C, in one of three forms: interned (its index; the none
-/// index until one is given: a child default-constructs empty), built (a builder of its own), or a record of its own not
-/// interned yet; the last two owned by the child, each held by its handle from a pool. urd resolves it as any variant
-/// member: the view the context makes of the index, the builder's borrowed view, the record's view.
-template<typename T, typename C>
-using child = std::variant<index<T>, handle<builder<T, C>>, handle<data<T>>>;
+/// A child record T of a builder, as a view through its own context C, in one of three forms: interned (its index_view;
+/// the none view until one is given: a child default-constructs empty), built (a builder of its own), or a record of
+/// its own not interned yet; the last two owned by the child (pooled_view: held by its handle from a pool). Every form
+/// carries its context, so that a child reads as it is, whoever reads it: urd resolves it as any variant member, the
+/// index_view as it is, a pooled view as its record's borrowed view through its own context. K is the key of the
+/// interned form, as index_view's: index<T>, or a key of its own (a row's: its pool and its id).
+template<typename T, typename C, typename K = index<T>>
+using child = std::variant<index_view<T, C, K>, pooled_view<T, C, builder<T, C>>, pooled_view<T, C, data<T>>>;
 
-/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>) where it holds no
-/// builder (it is interned, or a record).
-template<typename T, typename C, typename Pool>
-builder<T, C>& builder_of(child<T, C>& held, Pool& pool)
+/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>), read through
+/// `context`, where it holds no builder (it is interned, or a record).
+template<typename T, typename C, typename K, typename Pool>
+builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool, const C& context)
 {
-    if (held.index() != 1 || std::get<1>(held) == nullptr)
-        held = pool.make_handle();
-    return *std::get<1>(held);
+    if (held.index() != 1)
+        held.template emplace<1>(pool.make_handle(), &context);
+    return std::get<1>(held).held();
 }
 
 /// Whether R is a builder.

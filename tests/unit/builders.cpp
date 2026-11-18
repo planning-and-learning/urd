@@ -20,6 +20,14 @@ namespace
 struct Leaf;
 struct Node;
 struct Nodes;
+
+/// A key of its own for a leaf (as a row's is its pool and its id): its slot in Nodes.
+struct LeafKey
+{
+    std::uint32_t slot = 0;
+
+    friend bool operator==(const LeafKey&, const LeafKey&) = default;
+};
 }  // namespace
 
 template<>
@@ -97,6 +105,10 @@ struct Nodes
     const urd::data<Leaf>& operator[](urd::index<Leaf> at) const { return leaves[at.value]; }
 
     [[nodiscard]] urd::index_view<Leaf, Nodes> view(urd::index<Leaf> at) const { return { at, this }; }
+
+    const urd::data<Leaf>& operator[](LeafKey key) const { return leaves[key.slot]; }
+
+    [[nodiscard]] urd::index_view<Leaf, Nodes, LeafKey> view(LeafKey key) const { return { key, this }; }
 };
 
 using LeafBuilder = urd::builder<Leaf, Nodes>;
@@ -105,11 +117,14 @@ using NodeBuilder = urd::builder<Node, Nodes>;
 using LeafPool = urd::Store<urd::slots<LeafBuilder>>;
 using LeafRecords = urd::Store<urd::slots<urd::data<Leaf>>>;
 
-/// Inserts leaves (built, or records not interned yet) and nodes into Nodes, each a new index.
+/// Inserts leaves (built, or records not interned yet) and nodes into Nodes, each a new index; an interned leaf is
+/// Nodes' already.
 struct InsertIntoNodes
 {
     Nodes* nodes;
     std::vector<urd::data<Node>>* stored;
+
+    urd::index<Leaf> operator()(const urd::index_view<Leaf, Nodes>& leaf) const { return leaf.index(); }
 
     urd::index<Leaf> operator()(const LeafBuilder& leaf) const
     {
@@ -145,6 +160,15 @@ int weight_of(const auto& child)
 
 }  // namespace
 
+/// A leaf's key resolved as any key: the view its context makes of it.
+template<>
+struct urd::resolution<LeafKey>
+{
+    template<typename C>
+    static auto of(LeafKey key, const C& context)
+    { return context.view(key); }
+};
+
 TEST(Builder, ReadsItsChildrenInEachForm)
 {
     auto nodes = Nodes {};
@@ -154,13 +178,11 @@ TEST(Builder, ReadsItsChildrenInEachForm)
     leaf_record->weight = 11;
 
     auto pool = LeafPool {};
-    auto built = pool.make_handle();
-    built->weight = 7;
     auto node = NodeBuilder {};
-    node.first = urd::index<Leaf>(0);
-    node.rest.emplace_back(std::move(built));
-    node.rest.emplace_back(urd::index<Leaf>(0));
-    node.rest.emplace_back(std::move(leaf_record));
+    node.first = nodes.view(urd::index<Leaf>(0));
+    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
+    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
 
     const auto view = urd::resolve(node, nodes);
     static_assert(std::same_as<decltype(view), const urd::borrowed_view<Node, Nodes, NodeBuilder>>);
@@ -189,10 +211,11 @@ TEST(Builder, AChildIsBuiltFromItsPool)
 {
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
-    urd::builder_of(node.first, pool).weight = 5;
+    auto nodes = Nodes {};
+    urd::builder_of(node.first, pool, nodes).weight = 5;
     ASSERT_EQ(node.first.index(), 1U);
-    EXPECT_EQ(std::get<1>(node.first)->weight, 5);
-    EXPECT_EQ(&urd::builder_of(node.first, pool), std::get<1>(node.first).get());
+    EXPECT_EQ(std::get<1>(node.first).held().weight, 5);
+    EXPECT_EQ(&urd::builder_of(node.first, pool, nodes), &std::get<1>(node.first).held());
 }
 
 TEST(Builder, InternsItsChildrenFirst)
@@ -203,12 +226,10 @@ TEST(Builder, InternsItsChildrenFirst)
     auto leaf_record = records.make_handle();
     leaf_record->weight = 11;
     auto pool = LeafPool {};
-    auto built = pool.make_handle();
-    built->weight = 7;
     auto node = NodeBuilder {};
-    node.first = urd::index<Leaf>(0);
-    node.rest.emplace_back(std::move(built));
-    node.rest.emplace_back(std::move(leaf_record));
+    node.first = nodes.view(urd::index<Leaf>(0));
+    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
     node.depth = 2;
 
     auto stored = std::vector<urd::data<Node>> {};
@@ -221,4 +242,14 @@ TEST(Builder, InternsItsChildrenFirst)
     EXPECT_EQ(nodes.leaves[interned.rest[0].value].weight, 7);
     EXPECT_EQ(nodes.leaves[interned.rest[1].value].weight, 11);
     EXPECT_EQ(interned.depth, 2);
+}
+
+TEST(Builder, AChildsKeyIsTheOneItsViewNames)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    const auto keyed = urd::child<Leaf, Nodes, LeafKey>(nodes.view(LeafKey { 0 }));
+    const auto read = urd::resolve(keyed, nodes);
+    EXPECT_EQ(weight_of(read), 3);
+    EXPECT_EQ(urd::inserted_index(nodes.view(LeafKey { 0 })), LeafKey { 0 });
 }

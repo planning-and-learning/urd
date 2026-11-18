@@ -536,6 +536,10 @@ public:
 
     index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
 
+    /// The none view: the none key, no context (an empty urd::child). Only assigned to and compared by its key: it has no
+    /// record to read.
+    index_view() noexcept : detail::view_base<index_view, T, C, T>(nullptr), m_at() {}
+
     [[nodiscard]] K index() const noexcept { return m_at; }
 
     /// A member of its record, resolved through its context: in place, where the context hands out the record of its
@@ -630,6 +634,44 @@ private:
     std::shared_ptr<const R> m_record;
 };
 
+/// A T through a context C, owning its record R (data<T>, or builder<T, C>) by its pooled handle (urd::handle): a
+/// child's temporary (urd::child), given back to its pool with the view. Move-only. Read and identified by the record,
+/// through its own context; its owner writes the record (held()).
+template<typename T, typename C, typename R>
+class pooled_view : public detail::view_base<pooled_view<T, C, R>, T, C, R>
+{
+    friend detail::view_base<pooled_view, T, C, R>;
+    friend detail::view_access;
+
+public:
+    using record_type = R;
+
+    pooled_view(handle<R> record, const C* context) noexcept : detail::view_base<pooled_view, T, C, R>(context), m_record(std::move(record)) {}
+
+    /// The record it owns, to write: a builder being built, a record not interned yet.
+    [[nodiscard]] R& held() const noexcept { return *m_record; }
+
+private:
+    [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
+
+    [[nodiscard]] const R& identity() const noexcept { return *m_record; }
+
+    handle<R> m_record;
+};
+
+/// A pooled view read in place: its record borrowed, through its own context (the reader's is not needed). Never a
+/// temporary.
+template<typename T, typename C, typename R>
+struct resolution<pooled_view<T, C, R>>
+{
+    template<typename P>
+    static borrowed_view<T, C, R> of(const pooled_view<T, C, R>& member, const P& /*context*/) noexcept
+    { return { &member.held(), &member.context() }; }
+
+    template<typename P>
+    static void of(const pooled_view<T, C, R>&& member, const P& context) = delete;
+};
+
 /// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it,
 /// where it makes one (context.view(record): a record read through a context of its own, reached from the context of
 /// its parent), else its borrowed_view through the context. Never a temporary.
@@ -668,30 +710,6 @@ struct resolution<builder<T, C>>
 
     template<typename P>
     static void of(const builder<T, C>&& member, const P& context) = delete;
-};
-
-/// A child's record not interned yet (urd::child), held by its handle: its record resolved. Never a temporary.
-template<typename T>
-struct resolution<handle<data<T>>>
-{
-    template<typename P>
-    static auto of(const handle<data<T>>& member, const P& context)
-    { return resolution<data<T>>::of(*member, context); }
-
-    template<typename P>
-    static void of(const handle<data<T>>&& member, const P& context) = delete;
-};
-
-/// A built child (urd::child) held by its handle: its builder resolved. Never a temporary.
-template<typename T, typename C>
-struct resolution<handle<builder<T, C>>>
-{
-    template<typename P>
-    static auto of(const handle<builder<T, C>>& member, const P& context)
-    { return resolution<builder<T, C>>::of(*member, context); }
-
-    template<typename P>
-    static void of(const handle<builder<T, C>>&& member, const P& context) = delete;
 };
 
 }  // namespace urd

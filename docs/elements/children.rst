@@ -39,9 +39,10 @@ held in place hold them.
 
 .. cpp:function:: template<typename T, typename C, typename Insert> decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert&& insert)
 
-   Interns a builder: its record written into ``scratch`` (``map_children``), an interned child as its index, a
-   built child's builder and a record not interned yet inserted through ``insert`` (so built children first), then
-   ``insert(scratch)``, whose result it returns. ``insert`` is the caller's: it takes a record or a builder of every
-   kind the builder holds, inserts it into the repository that holds its kind (a library canonicalizes there; a
-   builder is interned again, with a scratch record of its own), and returns the inserted record's index, its
+   Interns a builder: its record written into ``scratch`` (``map_children``), each child as the key ``insert`` gives
+   it (so built children first), then ``insert(scratch)``, whose result it returns. ``insert`` is the caller's: it
+   takes every form a child holds, of every kind the builder holds: an interned child's ``index_view`` (its key, where
+   the repository interned into holds it; else the record interned there from the view, or an error), a built child's
+   builder (interned again, with a scratch record of its own) and a record not interned yet (inserted into the
+   repository that holds its kind; a library canonicalizes there). It returns the key, the inserted record's index, its
    ``index_view``, or the ``(view or index, created)`` pair (:cpp:func:`inserted_index`).

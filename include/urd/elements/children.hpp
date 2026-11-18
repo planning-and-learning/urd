@@ -134,9 +134,19 @@ template<typename M, typename F>
 void assign_member(M& target, const M& source, F& /*f*/)
 { target = source; }
 
-template<typename U, typename C, typename F>
-void assign_member(index<U>& target, const child<U, C>& source, F& f)
-{ target = urd::inserted_index(f(source)); }
+/// What an insert gave, as the key K: the key itself, or the index an insert's result names (urd::inserted_index).
+template<typename K, typename R>
+K as_key(R&& inserted)
+{
+    if constexpr (std::same_as<std::remove_cvref_t<R>, K>)
+        return inserted;
+    else
+        return urd::inserted_index(inserted);
+}
+
+template<typename K, typename U, typename C, typename F>
+void assign_member(K& target, const child<U, C, K>& source, F& f)
+{ target = detail::as_key<K>(f(source)); }
 
 template<typename U, typename C, typename F>
 void assign_built(data<U>& target, const builder<U, C>& source, F& f);
@@ -248,23 +258,23 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
     return scratch;
 }
 
-/// Interns a builder: its record written into scratch (map_children), each child as its index (an interned one as it
-/// is; a built one's builder and a record not interned yet inserted, so built children first), then the record inserted.
-/// `insert` takes a record (data<X>) or a builder (builder<X, C>) of every kind the builder holds and inserts it into the
-/// repository that holds its kind (a builder: urd::intern again, with a scratch record of its own); returns what
-/// insert(scratch) returns.
+/// Interns a builder: its record written into scratch (map_children), each child as the key `insert` gives it, then the
+/// record inserted. `insert` takes every form a child holds: an interned child's index_view (its key, where the
+/// repository interned into holds it; else interned there from the view), a built one's builder (urd::intern again, with
+/// a scratch record of its own) and a record not interned yet, of every kind the builder holds, and inserts it into the
+/// repository that holds its kind; so built children first. Returns what insert(scratch) returns.
 template<typename T, typename C, typename Insert>
 decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert&& insert)
 {
     urd::map_children(built,
                       scratch,
-                      [&]<typename U, typename Cx>(const child<U, Cx>& held) -> index<U>
+                      [&]<typename U, typename Cx, typename K>(const child<U, Cx, K>& held) -> K
                       {
                           if (const auto* interned = std::get_if<0>(&held))
-                              return *interned;
-                          if (const auto* handle = std::get_if<1>(&held))
-                              return urd::inserted_index(insert(**handle));
-                          return urd::inserted_index(insert(*std::get<2>(held)));
+                              return detail::as_key<K>(insert(*interned));
+                          if (const auto* pooled = std::get_if<1>(&held))
+                              return detail::as_key<K>(insert(std::as_const(pooled->held())));
+                          return detail::as_key<K>(insert(std::get<2>(held).held()));
                       });
     return insert(scratch);
 }

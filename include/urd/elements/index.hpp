@@ -100,5 +100,7 @@ template<typename T, typename C = typename context_of<T>::type, typename R = dat
 class owning_view;
 template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
 class shared_view;
+template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
+class pooled_view;
 
 }  // namespace urd
