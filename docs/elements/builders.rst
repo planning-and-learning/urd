@@ -16,7 +16,13 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
    A builder only mutates. It is read through a view, as a record is (``borrowed_view<T, C, builder<T, C>>``,
    :cpp:func:`resolve` ``(builder, context)``), with its record's mixin.
 
-.. cpp:type:: template<typename T, typename C, typename K = index<T>> child = std::variant<index_view<T, C, K>, pooled_view<T, C, builder<T, C>>, pooled_view<T, C, data<T>>>
+.. cpp:type:: template<typename T, typename C, typename K = index<T>> interned_child = index_view<T, C, K>
+.. cpp:type:: template<typename T, typename C> built_child = pooled_view<T, C, builder<T, C>>
+.. cpp:type:: template<typename T, typename C> held_child = pooled_view<T, C, data<T>>
+
+   A child's three forms, by name: code that takes one form apart (``std::get_if<built_child<T, C>>``) says which.
+
+.. cpp:type:: template<typename T, typename C, typename K = index<T>> child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>
 
    A child of a builder, a view through its own context in one of three forms:
 

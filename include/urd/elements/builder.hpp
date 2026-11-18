@@ -26,16 +26,23 @@ struct builder;
 /// index_view as it is, a pooled view as its record's borrowed view through its own context. K is the key of the
 /// interned form, as index_view's: index<T>, or a key of its own (a row's: its pool and its id).
 template<typename T, typename C, typename K = index<T>>
-using child = std::variant<index_view<T, C, K>, pooled_view<T, C, builder<T, C>>, pooled_view<T, C, data<T>>>;
+using interned_child = index_view<T, C, K>;  ///< A child's interned form.
+template<typename T, typename C>
+using built_child = pooled_view<T, C, builder<T, C>>;  ///< A child's built form.
+template<typename T, typename C>
+using held_child = pooled_view<T, C, data<T>>;  ///< A child's form of a record of its own, not interned yet.
+
+template<typename T, typename C, typename K = index<T>>
+using child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>;
 
 /// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>), read through
 /// `context`, where it holds no builder (it is interned, or a record).
 template<typename T, typename C, typename K, typename Pool>
 builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool, const C& context)
 {
-    if (held.index() != 1)
-        held.template emplace<1>(pool.make_handle(), &context);
-    return std::get<1>(held).held();
+    if (!std::holds_alternative<built_child<T, C>>(held))
+        held.template emplace<built_child<T, C>>(pool.make_handle(), &context);
+    return std::get<built_child<T, C>>(held).held();
 }
 
 /// Whether R is a builder.

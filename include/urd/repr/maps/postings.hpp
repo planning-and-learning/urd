@@ -3,6 +3,7 @@
 // Postings: multimaps whose values are found per key in a flat hash table. The grouped multimap over hashed groups,
 // and chained postings, whose values share one pool of slots; the containers here pull in gtl.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
@@ -226,10 +227,7 @@ public:
     /// Prepends a value to its key's, from any pair (std::pair<const K, V>, or what iterating another map gives); takes
     /// a free slot before the pool grows.
     template<typename Pair>
-        requires requires(const Pair& pair) {
-            K(pair.first);
-            V(pair.second);
-        }
+        requires KeyValuePair<Pair, K, V>
     iterator insert(const Pair& pair)
     {
         auto value = V(pair.second);

@@ -33,6 +33,15 @@
 namespace urd
 {
 
+namespace detail
+{
+/// Whether T has its own operator< (what std::less uses).
+template<typename T>
+concept OperatorLess = requires(const T& lhs, const T& rhs) {
+    { lhs < rhs } -> std::convertible_to<bool>;
+};
+}  // namespace detail
+
 /// @brief `Less` is our custom less-than comparator, like std::less.
 ///
 /// Forwards to std::less by default.
@@ -43,9 +52,7 @@ template<typename T>
 struct Less
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::less<T> {}(lhs, rhs)))
-        requires requires {
-            { lhs < rhs } -> std::convertible_to<bool>;
-        }
+        requires detail::OperatorLess<T>
     { return std::less<T> {}(lhs, rhs); }
 };
 
@@ -232,40 +239,7 @@ template<typename T, typename U>
 using order_of = Less<std::conditional_t<std::is_void_v<T>, std::remove_cvref_t<U>, T>>;
 }  // namespace detail
 
-/// The other order predicates and a three-way comparison, all from Less, so that every predicate shares its order.
-template<typename T = void>
-struct LessEqual
-{
-    using is_transparent = void;
-
-    template<typename U = T, typename V = T>
-        requires LessFor<detail::order_of<T, U>, V, U>
-    constexpr bool operator()(const U& lhs, const V& rhs) const
-    { return !detail::order_of<T, U> {}(rhs, lhs); }
-};
-
-template<typename T = void>
-struct Greater
-{
-    using is_transparent = void;
-
-    template<typename U = T, typename V = T>
-        requires LessFor<detail::order_of<T, U>, V, U>
-    constexpr bool operator()(const U& lhs, const V& rhs) const
-    { return detail::order_of<T, U> {}(rhs, lhs); }
-};
-
-template<typename T = void>
-struct GreaterEqual
-{
-    using is_transparent = void;
-
-    template<typename U = T, typename V = T>
-        requires LessFor<detail::order_of<T, U>, U, V>
-    constexpr bool operator()(const U& lhs, const V& rhs) const
-    { return !detail::order_of<T, U> {}(lhs, rhs); }
-};
-
+/// A three-way comparison from Less, so that it shares its order.
 template<typename T = void>
 struct ThreeWayCompare
 {
@@ -283,15 +257,6 @@ struct ThreeWayCompare
         return std::strong_ordering::equal;
     }
 };
-
-/// Whether `lhs` comes before `rhs` element by element (by Less), as std::lexicographical_compare.
-template<std::ranges::input_range LhsRange, std::ranges::input_range RhsRange>
-    requires OrderedByLess<std::ranges::range_value_t<LhsRange>>
-constexpr bool less_range(LhsRange&& lhs, RhsRange&& rhs)
-{
-    using Value = std::remove_cvref_t<std::ranges::range_value_t<LhsRange>>;
-    return std::ranges::lexicographical_compare(std::forward<LhsRange>(lhs), std::forward<RhsRange>(rhs), Less<Value> {});
-}
 
 /// Gives Derived `==` and `<=>` by what identifies it (its identifying_members(), through EqualTo and ThreeWayCompare):
 /// `struct Key : urd::compared_by_identity<Key> { … identifying_members() … };`.

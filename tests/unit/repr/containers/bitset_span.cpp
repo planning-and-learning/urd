@@ -60,8 +60,6 @@ TEST(BitsetSpan, ReadsAndWritesBits)
     EXPECT_TRUE(lhs.intersects(rhs));
     EXPECT_TRUE(lhs.is_subset_of(rhs));
     EXPECT_TRUE(lhs.is_proper_subset_of(rhs));
-    EXPECT_TRUE(rhs.is_superset_of(lhs));
-    EXPECT_TRUE(rhs.is_proper_superset_of(lhs));
     EXPECT_FALSE(rhs.is_subset_of(lhs));
 
     lhs[2].flip();
@@ -122,18 +120,14 @@ TEST(BitsetSpan, FindNextHandlesSentinelAndEndPositions)
 
     EXPECT_EQ(bitset.find_first(), urd::repr::BitsetSpan<std::uint64_t>::npos);
     EXPECT_EQ(bitset.find_next(urd::repr::BitsetSpan<std::uint64_t>::npos), urd::repr::BitsetSpan<std::uint64_t>::npos);
-    EXPECT_EQ(bitset.find_next_zero(urd::repr::BitsetSpan<std::uint64_t>::npos), urd::repr::BitsetSpan<std::uint64_t>::npos);
 
     bitset.set(69);
     EXPECT_EQ(bitset.find_first(), 69);
     EXPECT_EQ(bitset.find_next(68), 69);
     EXPECT_EQ(bitset.find_next(69), urd::repr::BitsetSpan<std::uint64_t>::npos);
-    EXPECT_EQ(bitset.find_next_zero(68), urd::repr::BitsetSpan<std::uint64_t>::npos);
 
     bitset.reset();
     bitset.set();
-    EXPECT_EQ(bitset.find_first_zero(), urd::repr::BitsetSpan<std::uint64_t>::npos);
-    EXPECT_EQ(bitset.find_next_zero(69), urd::repr::BitsetSpan<std::uint64_t>::npos);
 }
 
 TEST(BitsetSpan, RejectsMismatchedSpanSizes)
@@ -149,10 +143,7 @@ TEST(BitsetSpan, RejectsMismatchedSpanSizes)
     EXPECT_THROW((void) lhs.count_intersection(rhs), std::invalid_argument);
     EXPECT_THROW((void) lhs.is_subset_of(rhs), std::invalid_argument);
     EXPECT_THROW((void) lhs.is_proper_subset_of(rhs), std::invalid_argument);
-    EXPECT_THROW((void) lhs.is_superset_of(rhs), std::invalid_argument);
-    EXPECT_THROW((void) lhs.is_proper_superset_of(rhs), std::invalid_argument);
     EXPECT_THROW(lhs.copy_from(rhs), std::invalid_argument);
-    EXPECT_THROW(lhs.diff_from(rhs), std::invalid_argument);
     EXPECT_THROW(lhs &= rhs, std::invalid_argument);
     EXPECT_THROW(lhs |= rhs, std::invalid_argument);
     EXPECT_THROW(lhs ^= rhs, std::invalid_argument);

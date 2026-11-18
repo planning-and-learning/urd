@@ -2,7 +2,8 @@
 
 // A sorted set in blocks: a sequence of sorted blocks of at most 2 * Block elements each, every element of a block
 // before every element of the next, and a Fenwick tree over the blocks' sizes. Insert, erase and lookup are a binary
-// search over the blocks' last elements and one within a block, plus a move of at most a block's elements: O(log n),
+// search over the blocks' last elements and one within a block, plus a move of at most a block's elements: O(log n);
+// an insert after every element (input in order) appends to the last block without a search, O(1) amortized;
 // with a block's move as its constant (Python's sortedcontainers.SortedList is built so). The elements have positions:
 // an iterator is random-access, reaching a position in O(log n) through the tree. Blocks emptied or left by clear()
 // are kept for the next elements (retains).
@@ -45,8 +46,6 @@ class SortedBlockSet
 public:
     using value_type = T;
     using key_type = T;
-    using key_compare = Compare;
-    using value_compare = Compare;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using reference = const T&;
@@ -184,8 +183,6 @@ public:
 
     [[nodiscard]] size_type size() const noexcept { return m_size; }
     [[nodiscard]] bool empty() const noexcept { return m_size == 0; }
-    [[nodiscard]] key_compare key_comp() const { return m_compare; }
-    [[nodiscard]] value_compare value_comp() const { return m_compare; }
 
     /// The element at a position (0 ≤ position < size()).
     [[nodiscard]] const_reference nth_element(size_type position) const { return *at_position(position); }
@@ -280,13 +277,18 @@ public:
         return located(block, offset);
     }
 
+    /// The first element after `element`: past every element equivalent to it (with a transparent order, many may be: the
+    /// elements that start with a prefix, say).
     template<typename K = T>
     [[nodiscard]] const_iterator upper_bound(const K& element) const
     {
-        auto it = lower_bound(element);
-        if (it != end() && !m_compare(element, *it))
-            ++it;
-        return it;
+        const auto found = std::partition_point(m_blocks.begin(), m_blocks.end(), [&](const Block_ptr& block) { return !m_compare(element, block->back()); });
+        const auto block = static_cast<size_type>(found - m_blocks.begin());
+        if (block == m_blocks.size())
+            return end();
+        const auto& held = *m_blocks[block];
+        const auto offset = static_cast<size_type>(std::upper_bound(held.begin(), held.end(), element, m_compare) - held.begin());
+        return located(block, offset);
     }
 
     template<typename K = T>
@@ -350,6 +352,19 @@ private:
             ++m_size;
             return { located(0, 0), true };
         }
+        if (auto& last = *m_blocks.back(); m_compare(last.back(), element))
+        {
+            // After every element (input that arrives in order): appended to the last block, without a search.
+            const auto block = m_blocks.size() - 1;
+            const auto position = m_size;
+            last.push_back(make());
+            ++m_size;
+            if (last.size() > 2 * Block)
+                split(block);
+            else
+                add_to_tree(block, 1);
+            return { at_position(position), true };
+        }
         auto block = block_of(element);
         if (block == m_blocks.size())
             block = m_blocks.size() - 1;  // after every element: at the end of the last block
@@ -394,8 +409,16 @@ private:
     Block_ptr take_block()
     {
         if (m_spare.empty())
+        {
+            // Room for every block ever made among the spare ones, so that clear() moves them there without allocating.
+            m_spare.reserve(m_blocks.size() + 1);
             return std::make_unique<std::vector<T>>();  // it grows as it fills, so a small set holds little
-        auto block = std::move(m_spare.back());
+        }
+        // The kept block of the largest capacity, so that a set filled again reuses the buffers it had before growing new
+        // ones (a block is taken only when one fills up or the set is refilled).
+        const auto largest = std::ranges::max_element(m_spare, {}, [](const Block_ptr& kept) { return kept->capacity(); });
+        auto block = std::move(*largest);
+        *largest = std::move(m_spare.back());
         m_spare.pop_back();
         return block;
     }

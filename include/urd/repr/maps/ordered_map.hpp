@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements/concepts.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/position_iterator.hpp"
@@ -136,10 +137,7 @@ public:
 
     /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
-        requires requires(const Pair& pair) {
-            K(pair.first);
-            V(pair.second);
-        }
+        requires KeyValuePair<Pair, K, V>
     std::pair<iterator, bool> insert(const Pair& pair)
     { return try_emplace(K(pair.first), pair.second); }
 

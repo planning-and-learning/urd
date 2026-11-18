@@ -2,6 +2,7 @@
 
 // A map over a parent: its own values, and lookups that fall through to the parent's.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/memory.hpp"
 #include "urd/registry/declaration.hpp"
@@ -25,6 +26,21 @@
 
 namespace urd::repr
 {
+
+namespace detail
+{
+/// Whether a pool V was built with a bit width an Arg gives (width()).
+template<typename V, typename Arg>
+concept BuiltWithWidth = requires(const V& value, const Arg& arg) {
+    { value.width() == arg } -> std::convertible_to<bool>;
+};
+
+/// Whether a pool V was built with the column widths an Arg gives (column_widths()).
+template<typename V, typename Arg>
+concept BuiltWithColumnWidths = requires(const V& value, const Arg& arg) {
+    { value.column_widths() == arg } -> std::convertible_to<bool>;
+};
+}  // namespace detail
 
 /// A map with dense keys (an IndexMap) that answers lookups from its own values, then from a parent's, which it does
 /// not own and never changes: a layer over a repository built earlier. It holds, iterates and erases only its own
@@ -240,7 +256,7 @@ private:
     /// Whether `value` was cleared for reuse: where its Store offers clear() (monotone_until_clear, or one that
     /// shrinks) and it was built alike.
     template<typename... Args>
-        requires requires(mapped_type& value) { value.clear(); }
+        requires Clearable<mapped_type>
     static bool reused(mapped_type& value, const Args&... args)
     {
         if (!built_alike(value, args...))
@@ -258,16 +274,12 @@ private:
     static bool built_alike(const mapped_type& /*value*/) { return true; }
 
     template<typename Arg>
-        requires requires(const mapped_type& value, const Arg& arg) {
-            { value.width() == arg } -> std::convertible_to<bool>;
-        }
+        requires detail::BuiltWithWidth<mapped_type, Arg>
     static bool built_alike(const mapped_type& value, const Arg& arg)
     { return value.width() == arg; }
 
     template<typename Arg>
-        requires requires(const mapped_type& value, const Arg& arg) {
-            { value.column_widths() == arg } -> std::convertible_to<bool>;
-        }
+        requires detail::BuiltWithColumnWidths<mapped_type, Arg>
     static bool built_alike(const mapped_type& value, const Arg& arg)
     { return value.column_widths() == arg; }
 

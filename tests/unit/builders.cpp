@@ -6,6 +6,8 @@
 #include "urd/elements/flat.hpp"
 #include "urd/elements/children.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/memory.hpp"
+#include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/slots/slots.hpp"
 #include "urd/store.hpp"
 
@@ -13,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <type_traits>
 #include <variant>
+#include <string>
 #include <vector>
 
 namespace
@@ -254,3 +257,46 @@ TEST(Builder, AChildsKeyIsTheOneItsViewNames)
     EXPECT_EQ(urd::inserted_index(nodes.view(LeafKey { 0 })), LeafKey { 0 });
     EXPECT_EQ(weight_of(nodes.view(LeafKey { 0 })), 3);  // a view as it is
 }
+
+// A child owns no memory of its own: a pooled form's record belongs to its pool. A variant owns what it holds.
+TEST(Builder, AChildOwnsNoMemoryOfItsOwn)
+{
+    auto nodes = Nodes {};
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    urd::builder_of(node.first, pool, nodes).weight = 5;
+    EXPECT_EQ(urd::memory_usage(node.first), 0U);
+    const auto text = std::variant<int, std::string>(std::string(200, 'x'));
+    EXPECT_GE(urd::memory_usage(text), 200U);
+}
+
+namespace
+{
+/// A value made for a key (its width, say), as a keyed Store of slots makes one.
+struct Sized
+{
+    explicit Sized(int width_) : width(width_) {}
+
+    int width = 0;
+    int uses = 0;
+};
+}  // namespace
+
+// A keyed Store of slots hands out handles too: a slot given back under its key is handed out again for that key only.
+TEST(Builder, AKeyedHandleGoesBackUnderItsKey)
+{
+    auto sized = urd::Store<urd::slots<Sized>, urd::keyed<int>>();
+    const Sized* two = nullptr;
+    {
+        auto held = sized.make_handle(2);
+        held->uses = 1;
+        two = held.get();
+    }
+    auto other = sized.make_handle(3);
+    EXPECT_NE(other.get(), two);
+    EXPECT_EQ(other->width, 3);
+    const auto again = sized.make_handle(2);
+    EXPECT_EQ(again.get(), two);
+    EXPECT_EQ(again->uses, 1);  // as it was given back
+}
+

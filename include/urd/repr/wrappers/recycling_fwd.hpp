@@ -28,8 +28,8 @@ template<typename Set>
 class RecyclingSet;
 
 /// A sorted map that keeps erased values for reuse.
-template<typename K, typename V>
-using RecyclingMap = Recycling<std::map<K, V, Less<K>>>;
+template<typename K, typename V, typename Order = Less<K>>
+using RecyclingMap = Recycling<std::map<K, V, Order>>;
 /// A hash map that keeps erased values for reuse.
 template<typename K, typename V>
 using RecyclingHashMap = Recycling<std::unordered_map<K, V, Hash<K>, EqualTo<K>>>;

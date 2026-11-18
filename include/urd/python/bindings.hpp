@@ -126,7 +126,7 @@ template<typename T>
 nb::class_<urd::data<T>> bind_data(nb::module_& m)
 {
     const auto name = urd::name<T>();
-    if constexpr (requires(const urd::data<T>& record) { requires std::same_as<decltype(record.index), urd::index<T>>; })
+    if constexpr (urd::SelfIndexed<T>)
         bind_index<urd::index<T>>(m, name + "Index");
     auto data = nb::class_<urd::data<T>>(m, (name + "Data").c_str()).def(nb::init<>());
     bind_fields(data);
@@ -236,7 +236,7 @@ nb::class_<View> bind_view(nb::module_& m)
     add_hash(view);
     static_assert(fmt::is_formattable<View>::value, "urd::python::bind_view: a view is written with fmt: specialize fmt::formatter for it");
     view.def("__str__", [](const View& v) { return fmt::format("{}", v); }).def("__repr__", [](const View& v) { return fmt::format("{}", v); });
-    if constexpr (requires(const View& v) { v.index(); })
+    if constexpr (urd::Indexed<View>)
     {
         using Handle = std::remove_cvref_t<decltype(std::declval<const View&>().index())>;
         view.def("index", &View::index);

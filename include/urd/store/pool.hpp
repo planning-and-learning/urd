@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/cost.hpp"
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/store/types.hpp"
@@ -24,11 +25,14 @@ struct row_blocks_of
     using flip_type = void;
 };
 
+/// Whether a representation R keeps its rows in blocks it names (block_type, flip_type).
 template<typename R>
-    requires requires {
-        typename R::block_type;
-        typename R::flip_type;
-    }
+concept NamesRowBlocks = requires {
+    typename R::block_type;
+    typename R::flip_type;
+};
+
+template<NamesRowBlocks R>
 struct row_blocks_of<R>
 {
     using block_type = typename R::block_type;
@@ -61,8 +65,7 @@ struct row_builder_of
     using type = void;
 };
 
-template<typename R>
-    requires requires { typename R::row_builder_type; }
+template<NamesRowBuilder R>
 struct row_builder_of<R>
 {
     using type = typename R::row_builder_type;

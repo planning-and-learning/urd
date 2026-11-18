@@ -3,6 +3,7 @@
 // A map from indices to values, a slot per index, for dense keys: stored by position, not hashed.
 
 #include "urd/config.hpp"
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
@@ -206,10 +207,7 @@ public:
 
     /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
-        requires requires(const Pair& pair) {
-            K(pair.first);
-            V(pair.second);
-        }
+        requires KeyValuePair<Pair, K, V>
     std::pair<iterator, bool> insert(const Pair& pair)
     { return try_emplace(K(pair.first), pair.second); }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/std_memory.hpp"
@@ -53,24 +54,24 @@ public:
     // What only some of the std maps and sets have: the ordered ones bounds, the hashed ones room, the maps at.
     template<typename Key>
     [[nodiscard]] auto lower_bound(const Key& key) const
-        requires requires(const Container& held) { held.lower_bound(key); }
+        requires OrderedLookup<Container, Key>
     { return Container::lower_bound(key); }
 
     template<typename Key>
     [[nodiscard]] auto upper_bound(const Key& key) const
-        requires requires(const Container& held) { held.upper_bound(key); }
+        requires OrderedLookup<Container, Key>
     { return Container::upper_bound(key); }
 
     void reserve(size_type room)
-        requires requires(Container& held) { held.reserve(room); }
+        requires Reserving<Container>
     { Container::reserve(room); }
 
     [[nodiscard]] const auto& at(const key_type& key) const
-        requires requires(const Container& held) { held.at(key); }
+        requires KeyedAccess<const Container, key_type>
     { return Container::at(key); }
 
     auto& at(const key_type& key)
-        requires requires(Container& held) { held.at(key); }
+        requires KeyedAccess<Container, key_type>
     { return Container::at(key); }
 
     friend bool operator==(const Recycled& lhs, const Recycled& rhs) { return static_cast<const Container&>(lhs) == static_cast<const Container&>(rhs); }
@@ -108,11 +109,10 @@ public:
     }
 
 protected:
-    template<typename Node>
-        requires requires(Node& node) { node.mapped(); }
+    template<MapNode Node>
     static void reset(Node& node)
     {
-        if constexpr (requires { node.mapped().clear(); })
+        if constexpr (Clearable<typename Node::mapped_type>)
             node.mapped().clear();
         else
             node.mapped() = typename Node::mapped_type();
@@ -186,10 +186,7 @@ public:
 
     /// A key and its value, as any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
-        requires requires(const Pair& pair) {
-            K(pair.first);
-            V(pair.second);
-        }
+        requires KeyValuePair<Pair, K, V>
     std::pair<iterator, bool> insert(const Pair& pair)
     { return try_emplace(K(pair.first), pair.second); }
 
@@ -299,7 +296,7 @@ std::size_t kept_bytes(const Free& free)
     auto result = (free.capacity() * sizeof(Handle)) + (free.size() * kept_node<Handle>::bytes);
     for (const auto& node : free)
     {
-        if constexpr (requires { node.mapped(); })
+        if constexpr (MapNode<Handle>)
             result += memory_usage(node.key()) + memory_usage(node.mapped());
         else
             result += memory_usage(node.value());
@@ -354,7 +351,7 @@ struct representation_of<recycling_hash_map_decl, S>
 template<typename S>
 struct representation_of<recycling_map_decl, S>
 {
-    using type = repr::Recycling<std::map<typename S::key_type, typename S::mapped_type, typename S::order_type>>;
+    using type = repr::RecyclingMap<typename S::key_type, typename S::mapped_type, typename S::order_type>;
 };
 
 }  // namespace urd::detail

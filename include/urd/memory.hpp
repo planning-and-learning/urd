@@ -15,6 +15,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace urd
@@ -36,10 +37,17 @@ template<typename T>
 [[nodiscard]] std::size_t memory_usage(const T& held)
 { return memory_of<std::remove_cv_t<T>>::bytes(held); }
 
+/// A variant owns what the alternative it holds owns.
+template<typename... Ts>
+struct memory_of<std::variant<Ts...>>
+{
+    static std::size_t bytes(const std::variant<Ts...>& held)
+    { return std::visit([](const auto& alternative) { return memory_usage(alternative); }, held); }
+};
+
 /// A type that names the members it owns memory through, as a urd::Members list
 /// (`static constexpr auto memory_members() noexcept { return Members<&C::m_a, &C::m_b> {}; }`), owns what they own.
-template<typename T>
-    requires requires { T::memory_members(); }
+template<DeclaresMemoryMembers T>
 struct memory_of<T>
 {
     static std::size_t bytes(const T& held)

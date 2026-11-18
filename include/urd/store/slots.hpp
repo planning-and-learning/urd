@@ -175,6 +175,16 @@ public:
                                            std::pmr::polymorphic_allocator<value_type>(representation().blocks()));
     }
 
+    /// As make_handle(), of a Store of keyed slots (urd::keyed<K>): a slot given back under an equal key, as it is, else a
+    /// new value_type(key, args...), held by a handle that gives it back under its key.
+    template<typename Key, typename... Args>
+        requires(!unkeyed) && std::same_as<Key, key_type> && std::constructible_from<value_type, const Key&, Args...> && shrinks<S>
+    [[nodiscard]] handle<value_type> make_handle(const Key& key, Args&&... args)
+    {
+        const auto slot = representation().acquire(key, std::forward<Args>(args)...);
+        return handle<value_type>(&representation()[slot], release { &self(), slot.value, &give_back });
+    }
+
     [[nodiscard]] const value_type& operator[](handle_type handle) const { return representation()[handle]; }
 
     [[nodiscard]] value_type& operator[](handle_type handle) { return representation()[handle]; }

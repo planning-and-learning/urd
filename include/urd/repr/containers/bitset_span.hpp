@@ -156,13 +156,6 @@ public:
         return result;
     }
 
-    [[nodiscard]] std::size_t count_zeros() const noexcept
-    {
-        assert(trailing_bits_zero());
-
-        return m_num_bits - count();
-    }
-
     [[nodiscard]] std::size_t size() const noexcept { return m_num_bits; }
 
     [[nodiscard]] bool empty() const noexcept { return m_num_bits == 0; }
@@ -247,16 +240,6 @@ public:
         return proper;
     }
 
-    template<std::unsigned_integral OtherBlock>
-        requires SameAsIgnoringConst<OtherBlock, U>
-    [[nodiscard]] bool is_superset_of(const BitsetSpan<OtherBlock>& other) const
-    { return other.is_subset_of(*this); }
-
-    template<std::unsigned_integral OtherBlock>
-        requires SameAsIgnoringConst<OtherBlock, U>
-    [[nodiscard]] bool is_proper_superset_of(const BitsetSpan<OtherBlock>& other) const
-    { return other.is_proper_subset_of(*this); }
-
     /**
      * Modifiers
      */
@@ -332,10 +315,6 @@ public:
         return pos >= m_num_bits ? npos : find_from(pos + 1, U { 0 });
     }
 
-    [[nodiscard]] std::size_t find_first_zero() const noexcept { return find_from(0, full_mask()); }
-
-    [[nodiscard]] std::size_t find_next_zero(std::size_t pos) const noexcept { return pos >= m_num_bits ? npos : find_from(pos + 1, full_mask()); }
-
     /**
      * Operators
      */
@@ -352,22 +331,6 @@ public:
         const std::size_t n = num_blocks(m_num_bits);
         for (std::size_t i = 0; i < n; ++i)
             blocks()[i] = other.blocks()[i];
-
-        return *this;
-    }
-
-    template<std::unsigned_integral OtherBlock>
-        requires SameAsIgnoringConst<OtherBlock, U>
-    BitsetSpan& diff_from(const BitsetSpan<OtherBlock>& other)
-        requires(!std::is_const_v<Block>)
-    {
-        check_same_size(other);
-        assert(trailing_bits_zero());
-        assert(other.trailing_bits_zero());
-
-        const std::size_t n = num_blocks(m_num_bits);
-        for (std::size_t i = 0; i < n; ++i)
-            blocks()[i] = other.blocks()[i] & ~blocks()[i];
 
         return *this;
     }

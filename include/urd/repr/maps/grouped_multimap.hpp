@@ -2,6 +2,7 @@
 
 // A multimap whose values are grouped by key, each key's values one span, over a grouping policy.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
 #include "urd/repr/maps/grouped_fwd.hpp"
@@ -99,10 +100,7 @@ public:
 
     /// Appends a value to its key's, from any pair (std::pair<const K, V>, or what iterating another map gives).
     template<typename Pair>
-        requires Groups::changes && requires(const Pair& pair) {
-            K(pair.first);
-            V(pair.second);
-        }
+        requires Groups::changes && KeyValuePair<Pair, K, V>
     iterator insert(const Pair& pair)
     {
         const auto [at, index] = m_groups.append(K(pair.first), V(pair.second));

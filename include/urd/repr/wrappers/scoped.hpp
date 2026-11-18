@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/core/gtl_memory.hpp"
@@ -103,15 +104,15 @@ public:
 
     // The bounds, where Map is sorted.
     [[nodiscard]] iterator lower_bound(const K& key) const
-        requires requires(const Table& table) { table.lower_bound(key); }
+        requires OrderedLookup<Table, K>
     { return m_table.lower_bound(key); }
 
     [[nodiscard]] iterator upper_bound(const K& key) const
-        requires requires(const Table& table) { table.upper_bound(key); }
+        requires OrderedLookup<Table, K>
     { return m_table.upper_bound(key); }
 
     [[nodiscard]] std::pair<iterator, iterator> equal_range(const K& key) const
-        requires requires(const Table& table) { table.equal_range(key); }
+        requires RangeLookup<Table, K>
     { return m_table.equal_range(key); }
 
     [[nodiscard]] const V& at(const K& key) const { return m_table.at(key); }

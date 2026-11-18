@@ -150,8 +150,11 @@ struct shared_table
 };
 
 /// Moves the last element into `position` and drops the last: a storage's own swap_erase, or a vector's.
+/// Whether a storage moves its last element into a position itself (swap_erase(position)).
 template<typename Elements>
-    requires requires(Elements& elements, std::size_t position) { elements.swap_erase(position); }
+concept SwapErasing = requires(Elements& elements, std::size_t position) { elements.swap_erase(position); };
+
+template<SwapErasing Elements>
 void swap_erase(Elements& elements, std::size_t position)
 { elements.swap_erase(position); }
 
@@ -170,8 +173,11 @@ struct parameter_of
     using type = std::monostate;
 };
 
+/// Whether a storage names the parameter it was built with (parameter).
 template<typename Storage>
-    requires requires { typename Storage::parameter; }
+concept NamesParameter = requires { typename Storage::parameter; };
+
+template<NamesParameter Storage>
 struct parameter_of<Storage>
 {
     using type = typename Storage::parameter;
@@ -188,6 +194,10 @@ template<typename X, typename Stored>
 concept row_input = row_of<X, Stored> || (is_prehashed<X> && row_of<std::remove_cvref_t<decltype(std::declval<const X&>().key)>, Stored>);
 
 }  // namespace detail
+
+/// Whether a storage erases a range of its elements (erase(first, last)).
+template<typename Elements>
+concept RangeErasing = requires(Elements& elements) { elements.erase(elements.begin(), elements.begin()); };
 
 /// A set kept in insertion order: the elements in a vector, and a hash table of their positions that hashes and
 /// compares through the vector, so each element is stored once. An element's position is its index, which never
@@ -570,7 +580,7 @@ private:
     /// Erases the elements at [from, to) of a storage that erases in place (a vector), which keeps its capacity: the
     /// elements that move leave the table before they do (it hashes a position by the element there) and go back in after.
     void erase_positions(Index from, Index to)
-        requires requires(Elements& elements) { elements.erase(elements.begin(), elements.begin()); }
+        requires RangeErasing<Elements>
     {
         auto& [elements, positions] = writable_state();
         for (auto position = from; position < size(); ++position)

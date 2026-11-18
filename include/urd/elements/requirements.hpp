@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/less.hpp"
@@ -42,8 +43,7 @@ struct order_key_of
     using type = T;
 };
 
-template<typename T, typename Compare>
-    requires requires { Compare::projection; }
+template<typename T, ProjectingOrder Compare>
 struct order_key_of<T, Compare>
 {
     using type = std::remove_cvref_t<std::invoke_result_t<decltype(Compare::projection), const T&>>;
@@ -51,6 +51,10 @@ struct order_key_of<T, Compare>
 
 template<typename T, typename Compare>
 using order_key_t = typename order_key_of<T, Compare>::type;
+
+/// Whether the order Compare gives T a key it compares (order_key_t: a projection's result invocable on T, or T).
+template<typename T, typename Compare>
+concept HasOrderKey = requires { typename order_key_t<T, Compare>; };
 
 }  // namespace detail
 
@@ -133,11 +137,11 @@ struct index_of<K>
 };
 
 template<detail::single_member_identified K>
-    requires std::integral<std::remove_cvref_t<decltype(std::declval<const K&>().*detail::single_member<decltype(K::identifying_members())>::pointer)>>
+    requires std::integral<std::remove_cv_t<member_type_t<detail::single_member<decltype(K::identifying_members())>::pointer>>>
 struct index_of<K>
 {
     static constexpr auto member = detail::single_member<decltype(K::identifying_members())>::pointer;
-    using value_type = std::remove_cvref_t<decltype(std::declval<const K&>().*member)>;
+    using value_type = std::remove_cv_t<member_type_t<member>>;
 
     [[nodiscard]] static constexpr bool is_index(const K& key) noexcept { return index_of<value_type>::is_index(key.*member); }
 

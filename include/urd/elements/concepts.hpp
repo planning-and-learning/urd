@@ -153,8 +153,7 @@ template<typename T>
 concept HasFields = requires { T::fields(); };
 
 /// Whether record T declares a field named `name`.
-template<typename T>
-    requires requires { T::fields(); }
+template<HasFields T>
 consteval bool has_field(std::string_view name)
 {
     return []<typename... Fs>(Fields<Fs...> /*fields*/, std::string_view wanted) { return ((Fs::name == wanted) || ...); }(T::fields(), name);
@@ -224,6 +223,46 @@ template<auto... Ms>
 inline constexpr bool is_members_v<Members<Ms...>> = true;
 }  // namespace detail
 
+/// Whether T empties itself in place, keeping what it owns (clear()).
+template<typename T>
+concept Clearable = requires(T& value) { value.clear(); };
+
+/// Whether C reserves room for elements ahead (reserve(n)).
+template<typename C>
+concept Reserving = requires(C& container, std::size_t room) { container.reserve(room); };
+
+/// Whether C gives the value of a key K (at(key)); C const for the const lookup.
+template<typename C, typename K>
+concept KeyedAccess = requires(C& container, const K& key) { container.at(key); };
+
+/// Whether C gives the range of its elements equivalent to a key K (equal_range(key)), sorted or hashed.
+template<typename C, typename K>
+concept RangeLookup = requires(const C& container, const K& key) { container.equal_range(key); };
+
+/// Whether Pair converts to a key K and a value V (pair.first, pair.second): std::pair<const K, V>, or what iterating
+/// another map gives.
+template<typename Pair, typename K, typename V>
+concept KeyValuePair = requires(const Pair& pair) {
+    K(pair.first);
+    V(pair.second);
+};
+
+/// Whether a node handle holds a key and its value (a map's: mapped()), not a set's element.
+template<typename Node>
+concept MapNode = requires(Node& node) { node.mapped(); };
+
+/// Whether a representation R names the builder of its rows (row_builder_type).
+template<typename R>
+concept NamesRowBuilder = requires { typename R::row_builder_type; };
+
+/// Whether an order Compare compares a projection of its elements (Compare::projection).
+template<typename Compare>
+concept ProjectingOrder = requires { Compare::projection; };
+
+/// Whether T names the members that own its memory (memory_members()), so that memory_of sums theirs.
+template<typename T>
+concept DeclaresMemoryMembers = requires { T::memory_members(); };
+
 /// @brief T names its members as a Members type (cista_members), so cista can serialize it.
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
@@ -233,12 +272,12 @@ concept Serializable = requires { T::cista_members(); } && detail::is_members_v<
 template<Serializable T>
 void clear_members(T& record)
 {
-    const auto clear = [](auto& member)
+    const auto clear = []<typename M>(M& member)
     {
-        if constexpr (requires { member.clear(); })
+        if constexpr (Clearable<M>)
             member.clear();
         else
-            member = std::remove_cvref_t<decltype(member)> {};
+            member = M {};
     };
     [&]<auto... Ms>(Members<Ms...> /*members*/) { (clear(record.*Ms), ...); }(T::cista_members());
 }
@@ -262,7 +301,7 @@ constexpr auto identity(const T& x)
 
 /// What member M (a data member or a getter) gives of a T: what identity() holds of it.
 template<typename T, auto M>
-using member_read_t = decltype(std::invoke(M, std::declval<const T&>()));
+using member_read_t = decltype(std::invoke(M, std::declval<const T&>()));  // not invoke_result_t: T may be incomplete (a record naming itself)
 template<typename T, typename Ms>
 struct identity_of_members;
 
@@ -367,10 +406,13 @@ concept variant_value = requires(const M& member) {
     visit([](const auto&) {}, member);
 };
 
-/// Whether R looks up a key K by its order (lower_bound(key)): a sorted container whose order takes K, or a range
-/// read from one (urd::transformed_range of a container).
+/// Whether R looks up a key K by its order (lower_bound(key), upper_bound(key): the range of elements equivalent to
+/// it): a sorted container whose order takes K, or a range read from one (urd::transformed_range of a container).
 template<typename R, typename K>
-concept OrderedLookup = requires(const R& range, const K& key) { range.lower_bound(key); };
+concept OrderedLookup = requires(const R& range, const K& key) {
+    range.lower_bound(key);
+    range.upper_bound(key);
+};
 
 /// The value type of an optional value.
 template<optional_value M>

@@ -2,6 +2,7 @@
 
 // A pool over a parent pool: its own rows, numbered after the parent's.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/memory.hpp"
@@ -45,7 +46,9 @@ struct write_of
 };
 
 template<typename R>
-    requires requires { typename R::write_type; }
+concept NamesWriteType = requires { typename R::write_type; };
+
+template<NamesWriteType R>
 struct write_of<R>
 {
     using type = typename R::write_type;
@@ -57,13 +60,34 @@ struct row_builder_of
     using type = void;
 };
 
-template<typename R>
-    requires requires { typename R::row_builder_type; }
+template<NamesRowBuilder R>
 struct row_builder_of<R>
 {
     using type = typename R::row_builder_type;
 };
 
+}  // namespace detail
+
+namespace detail
+{
+/// Whether a pool R was built with a bit width (width()).
+template<typename R>
+concept HasWidth = requires(const R& pool) { pool.width(); };
+
+/// Whether a pool R was built with column widths (column_widths()).
+template<typename R>
+concept HasColumnWidths = requires(const R& pool) { pool.column_widths(); };
+
+/// Whether a pool R inserts and finds a row by its hashed elements (prehashed<Elements>).
+template<typename R, typename Elements>
+concept InsertsPrehashed = requires(R& pool, const prehashed<Elements>& key) { pool.insert(key); };
+
+template<typename R, typename Elements>
+concept FindsPrehashed = requires(const R& pool, const prehashed<Elements>& key) { pool.find(key); };
+
+/// Whether a pool R inserts a row as another row with some of its elements written (insert(base, writes)).
+template<typename R, typename Handle, typename Write>
+concept InsertsWrites = requires(R& pool, Handle base, std::span<const Write> writes) { pool.insert(base, writes); };
 }  // namespace detail
 
 /// A pool over a parent pool it neither owns nor changes: a layer. Indices continue after the parent's size at the
@@ -127,12 +151,12 @@ public:
 
     /// The bit width its own pool was built with (urd::bit).
     [[nodiscard]] urd::bit_width width() const noexcept
-        requires requires(const R& own) { own.width(); }
+        requires detail::HasWidth<R>
     { return m_own.width(); }
 
     /// The column widths its own pool was built with (urd::by_column_widths).
     [[nodiscard]] const urd::column_widths& column_widths() const noexcept
-        requires requires(const R& own) { own.column_widths(); }
+        requires detail::HasColumnWidths<R>
     { return m_own.column_widths(); }
 
     [[nodiscard]] bool empty() const noexcept { return size() == 0; }
@@ -208,13 +232,13 @@ public:
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), where the parent pool
     /// takes one: hashed once for the whole chain, where a row given as it is is hashed again in every layer.
     template<typename Elements>
-        requires row_pool && requires(R& own, const prehashed<Elements>& key) { own.insert(key); }
+        requires row_pool && detail::InsertsPrehashed<R, Elements>
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return insert_row(key); }
 
     /// The row `base` with `writes` applied, stored here where new.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
-        requires row_pool && requires(R& own, handle_type at, std::span<const write_type> some) { own.insert(at, some); }
+        requires row_pool && detail::InsertsWrites<R, handle_type, write_type>
     {
         auto row = elements_of(base);
         for (const auto& write : writes)
@@ -238,7 +262,7 @@ public:
     { return find_in_chain(elements); }
 
     template<typename Elements>
-        requires row_pool && requires(const R& own, const prehashed<Elements>& key) { own.find(key); }
+        requires row_pool && detail::FindsPrehashed<R, Elements>
     [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
     { return find_in_chain(key); }
 

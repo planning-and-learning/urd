@@ -31,6 +31,15 @@
 namespace urd
 {
 
+namespace detail
+{
+/// Whether T has its own operator== (what std::equal_to uses).
+template<typename T>
+concept OperatorEquals = requires(const T& lhs, const T& rhs) {
+    { lhs == rhs } -> std::convertible_to<bool>;
+};
+}  // namespace detail
+
 /// @brief `EqualTo` is our custom equality comparator, like std::equal_to.
 ///
 /// Forwards to std::equal_to by default.
@@ -39,9 +48,7 @@ template<typename T>
 struct EqualTo
 {
     constexpr bool operator()(const T& lhs, const T& rhs) const noexcept(noexcept(std::equal_to<T> {}(lhs, rhs)))
-        requires requires {
-            { lhs == rhs } -> std::convertible_to<bool>;
-        }
+        requires detail::OperatorEquals<T>
     { return std::equal_to<T> {}(lhs, rhs); }
 };
 

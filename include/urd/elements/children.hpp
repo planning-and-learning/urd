@@ -281,11 +281,11 @@ decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert&& ins
                       scratch,
                       [&]<typename U, typename Cx, typename K>(const child<U, Cx, K>& held) -> K
                       {
-                          if (const auto* interned = std::get_if<0>(&held))
+                          if (const auto* interned = std::get_if<interned_child<U, Cx, K>>(&held))
                               return detail::as_key<K>(insert(*interned));
-                          if (const auto* pooled = std::get_if<1>(&held))
-                              return detail::as_key<K>(insert(std::as_const(pooled->held())));
-                          return detail::as_key<K>(insert(std::get<2>(held).held()));
+                          if (const auto* built = std::get_if<built_child<U, Cx>>(&held))
+                              return detail::as_key<K>(insert(std::as_const(built->held())));
+                          return detail::as_key<K>(insert(std::get<held_child<U, Cx>>(held).held()));
                       });
     return insert(scratch);
 }

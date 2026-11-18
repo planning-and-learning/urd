@@ -83,12 +83,13 @@ concept edge_list_graph = vertex_list_graph<G> && requires(const G& graph, std::
     { graph.source(e) } -> std::convertible_to<typename G::vertex_type>;
     { graph.target(e) } -> std::convertible_to<typename G::vertex_type>;
 };
+/// A graph that takes edges between its vertices (add_edge).
+template<typename G>
+concept edge_adding = requires(G& graph, typename G::vertex_type u) { graph.add_edge(u, u); };
+
 /// A graph that grows: vertices and edges added.
 template<typename G>
-concept mutable_graph = vertex_list_graph<G> && requires(G& graph, typename G::vertex_type u) {
-    graph.add_vertex();
-    graph.add_edge(u, u);
-};
+concept mutable_graph = vertex_list_graph<G> && edge_adding<G> && requires(G& graph) { graph.add_vertex(); };
 /// A graph whose vertices fall into parts, numbered part after part.
 template<typename G>
 concept partitioned_graph = graph_like<G> && requires(const G& graph, typename G::vertex_type v, std::size_t p) {
@@ -517,7 +518,7 @@ void connect_parts(G& graph, std::size_t p, std::size_t q)
 }
 
 template<partitioned_graph G>
-    requires(has<G, constant_adjacency> && requires(G& graph, typename G::vertex_type v) { graph.add_edge(v, v); })
+    requires(has<G, constant_adjacency> && edge_adding<G>)
 void connect_parts(G& graph, std::size_t p, std::size_t q)
 { detail::graph_rows::connect_parts(repr::graphs::rows_of(graph), p, q); }
 

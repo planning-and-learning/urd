@@ -60,6 +60,10 @@ using block_flip = repr::BlockFlip;
 namespace urd::repr
 {
 
+/// Whether a row takes its words from a function that fills them in place (assign_words(count, fill)).
+template<typename Row, typename Word>
+concept FilledByWords = requires(Row& row, void (*fill)(std::span<Word>)) { row.assign_words(std::size_t {}, fill); };
+
 /// A pool of rows that are sets of indices (Row: a dense Store of keys), each a tree of 32-bit blocks with Arity
 /// children per node. Block i always sits at position i, so changing a block only changes its path to the root; a
 /// handle names the root and the number of blocks up to the last nonzero one, so equal sets have equal handles. With
@@ -205,7 +209,7 @@ public:
     /// The row into `out`, a row that takes its bits as words (a dense set: assign_words), word by word into its
     /// storage, which is reused: allocates nothing where `out` holds as many words already.
     void copy(handle_type handle, Row& out) const
-        requires requires(Row& row, void (*fill)(std::span<word_t>)) { row.assign_words(std::size_t {}, fill); }
+        requires FilledByWords<Row, word_t>
     {
         out.assign_words(bit::ceil_div<std::size_t>(handle.size, blocks_per_word),
                          [this, handle](std::span<word_t> words)

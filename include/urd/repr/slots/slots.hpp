@@ -124,6 +124,9 @@ public:
             ++m_count;
             return handle_type { slot };
         }
+        // Room in its key's free list for every slot of its key, so that erase() gives a slot back without allocating.
+        auto& free = m_free_by_key[key];
+        free.reserve(free.capacity() + 1);
         const auto index =
             m_slots.emplace_back_with_index([&](std::size_t) { return T(key, std::forward<Args>(args)...); }, std::numeric_limits<std::uint32_t>::max() - 1);
         m_keys.push_back(key);
@@ -202,6 +205,11 @@ private:
         {
             reuse(m_slots[slot]);
             return handle_type { slot };
+        }
+        {
+            // Room in the free list for every slot, so that erase() gives a slot back without allocating.
+            const auto lock = std::scoped_lock(m_mutex);
+            m_free.reserve(m_slots.size() + 1);
         }
         const auto index = m_slots.emplace_back_with_index([&make](std::size_t) { return make(); }, std::numeric_limits<std::uint32_t>::max() - 1);
         return handle_type { static_cast<std::uint32_t>(index) };

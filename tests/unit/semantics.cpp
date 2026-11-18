@@ -210,13 +210,10 @@ struct Named
 
 }  // namespace
 
-// The derived order predicates agree with Less; an identified type is looked up by its identity.
+// The three-way comparison agrees with Less; an identified type is looked up by its identity.
 TEST(Predicates, DerivedOrdersAndTransparentIdentityAgreeWithLess)
 {
     static_assert(urd::Identifiable<Named> && urd::identity_of<std::tuple<const std::string&, const int&>, Named>);
-    EXPECT_TRUE(urd::Greater<int> {}(3, 2));
-    EXPECT_TRUE(urd::GreaterEqual<int> {}(2, 2));
-    EXPECT_TRUE(urd::LessEqual<> {}(2, 3));
     EXPECT_EQ(urd::ThreeWayCompare<double> {}(1.0, 2.0), std::strong_ordering::less);
     EXPECT_TRUE(urd::Less<> {}(std::string("a"), std::string("b")));
     EXPECT_TRUE(urd::EqualTo<> {}(4, 4));
@@ -234,7 +231,6 @@ TEST(Predicates, DerivedOrdersAndTransparentIdentityAgreeWithLess)
     EXPECT_FALSE(urd::Less<Named> {}(record, identity));
     EXPECT_TRUE(urd::Less<Named> {}(record, std::tie(name, other_arity)));
     EXPECT_TRUE(urd::equal_elements(std::vector<int> { 1, 2 }, std::array<int, 2> { 1, 2 }));
-    EXPECT_TRUE(urd::less_range(std::vector<int> { 1, 2 }, std::vector<int> { 1, 3 }));
 }
 
 namespace
@@ -271,7 +267,7 @@ struct InvalidPredicate
 
 template<typename T>
 concept OrderedByAllPredicates =
-    urd::LessFor<urd::Less<T>, T> && urd::LessFor<urd::LessEqual<T>, T> && urd::LessFor<urd::Greater<T>, T> && urd::LessFor<urd::GreaterEqual<T>, T>
+    urd::LessFor<urd::Less<T>, T>
     && urd::Hashable<T> && urd::EqualityComparableByEqualTo<T> && requires(const T& lhs, const T& rhs) {
            { urd::ThreeWayCompare<T> {}(lhs, rhs) } -> std::same_as<std::strong_ordering>;
        };
@@ -316,8 +312,6 @@ TEST(Predicates, CapabilitiesCoverTheVocabularyAndRejectUnsupportedValues)
     static_assert(rejected.operator()<urd::flat_optional<Unsupported>>());
     static_assert(rejected.operator()<urd::flat_variant<int, Unsupported>>());
     static_assert(!urd::HashFor<urd::Hash<>, Unsupported> && !urd::EqualToFor<urd::EqualTo<>, Unsupported> && !urd::LessFor<urd::Less<>, Unsupported>);
-    static_assert(!urd::LessFor<urd::LessEqual<Unsupported>, Unsupported> && !urd::LessFor<urd::Greater<Unsupported>, Unsupported>
-                  && !urd::LessFor<urd::GreaterEqual<Unsupported>, Unsupported>);
     // Addresses and long double have no portable hash.
     static_assert(!urd::Hashable<int*> && !urd::Hashable<std::shared_ptr<int>> && !urd::Hashable<std::unique_ptr<int>> && !urd::Hashable<std::weak_ptr<int>>
                   && !urd::Hashable<long double>);
@@ -462,7 +456,6 @@ TEST(Predicates, DistinguishAlternativesEngagementAndReferencedValues)
     EXPECT_TRUE(urd::EqualTo<double> {}(nan, std::numeric_limits<double>::signaling_NaN()));
     EXPECT_TRUE(urd::Less<double> {}(1.0, nan));
     EXPECT_FALSE(urd::Less<double> {}(nan, 1.0));
-    EXPECT_TRUE(urd::less_range(std::array { nan, 1.0 }, std::array { nan, 2.0 }));
     EXPECT_TRUE(urd::equal_elements(std::array { nan }, std::array { nan }));
 }
 
@@ -496,30 +489,22 @@ TEST(Predicates, ForeignContainersCompareAndHashByTheirValues)
     EXPECT_FALSE(urd::EqualTo<Bits> {}(Bits(lhs_blocks.data(), 4), Bits(other_blocks.data(), 4)));
 }
 
-// equal_elements and less_range: by element EqualTo and Less, over any input range (adaptors, move-only views, proxy
-// references), with sizes and prefixes; the transparent and derived predicates take an identity for a record.
+// equal_elements: by element EqualTo, over any input range (adaptors, move-only views, proxy
+// references), with sizes and prefixes; the transparent predicates take an identity for a record.
 TEST(Predicates, RangeComparisonsTakeAnyInputRange)
 {
     const auto values = urd::Store<urd::sequence<int>> { 1, 2, 3, 4 };
     auto even_squares = values | std::views::filter([](int value) { return value % 2 == 0; }) | std::views::transform([](int value) { return value * value; });
     EXPECT_TRUE(urd::equal_elements(even_squares, std::array { 4, 16 }));
     EXPECT_FALSE(urd::equal_elements(even_squares, std::array { 4, 9 }));
-    EXPECT_TRUE(urd::less_range(even_squares, std::array { 4, 17 }));
-    EXPECT_FALSE(urd::less_range(even_squares, std::array { 4, 16 }));
     EXPECT_FALSE(urd::equal_elements(std::array { 1, 2 }, std::array { 1, 2, 3 }));
-    EXPECT_TRUE(urd::less_range(std::array { 1, 2 }, std::array { 1, 2, 3 }));
-    EXPECT_FALSE(urd::less_range(std::array { 1, 2, 3 }, std::array { 1, 2 }));
 
     const auto first_two = std::views::take(urd::Store<urd::sequence<int>> { 1, 2, 3 }, 2);  // an owning_view: moves only
     EXPECT_TRUE(urd::equal_elements(first_two, std::array { 1, 2 }));
-    EXPECT_TRUE(urd::less_range(first_two, std::array { 1, 3 }));
 
     auto proxies = std::vector<bool> { false, true };
     EXPECT_TRUE(urd::equal_elements(proxies, std::array { false, true }));
     EXPECT_TRUE(urd::equal_elements(std::array { false, true }, proxies));
-    EXPECT_TRUE(urd::less_range(proxies, std::array { true }));
-    EXPECT_FALSE(urd::less_range(std::array { true }, proxies));
-    EXPECT_TRUE(urd::less_range(std::array { false }, proxies));
 
     struct Pinned
     {
@@ -542,9 +527,6 @@ TEST(Predicates, RangeComparisonsTakeAnyInputRange)
     const auto arity = 3;
     const auto rhs = std::tie(name, arity);
     EXPECT_FALSE(urd::Less<Named> {}(rhs, lhs));
-    EXPECT_TRUE(urd::LessEqual<Named> {}(lhs, rhs));
-    EXPECT_TRUE(urd::Greater<Named> {}(rhs, lhs));
-    EXPECT_TRUE(urd::GreaterEqual<Named> {}(rhs, lhs));
     EXPECT_EQ(urd::ThreeWayCompare<Named> {}(lhs, rhs), std::strong_ordering::less);
     EXPECT_EQ(urd::ThreeWayCompare<> {}(lhs, rhs), std::strong_ordering::less);
 }
@@ -567,8 +549,6 @@ TEST(Predicates, FailuresOfUserOperationsPropagate)
     const auto values = std::array { 1U, 2U, 3U };
     auto decoded =
         values | std::views::transform([](unsigned element) -> unsigned { return element == 2 ? throw std::runtime_error("dereference") : element; });
-    static_assert(!noexcept(urd::less_range(decoded, values)));
-    EXPECT_THROW(urd::less_range(decoded, values), std::runtime_error);
     EXPECT_THROW(urd::equal_elements(decoded, values), std::runtime_error);
     EXPECT_THROW(urd::equal_elements(values, decoded), std::runtime_error);
     EXPECT_THROW(urd::hash_range(decoded), std::runtime_error);

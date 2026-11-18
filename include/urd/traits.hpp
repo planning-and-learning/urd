@@ -50,8 +50,12 @@ struct traits_of
     using type = container_traits<std::remove_cvref_t<X>>;
 };
 
+/// Whether X states its own properties (urd_properties): a representation urd chooses from.
 template<typename X>
-    requires(!is_store<X>) && requires { X::urd_properties; }
+concept DeclaresProperties = requires { X::urd_properties; };
+
+template<typename X>
+    requires(!is_store<X>) && DeclaresProperties<X>
 struct traits_of<X>
 {
     using type = X;

@@ -155,7 +155,7 @@ struct integral_priority
     template<typename Ordered, typename C>
     static consteval bool holds()
     {
-        if constexpr (requires { typename detail::order_key_t<Ordered, C>; })
+        if constexpr (detail::HasOrderKey<Ordered, C>)
             return std::integral<detail::order_key_t<Ordered, C>>;
         else
             return false;

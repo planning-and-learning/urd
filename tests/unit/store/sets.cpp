@@ -646,4 +646,55 @@ TEST(SortedBlockSet, LooksUpByAnyKeyItsOrderCompares)
     static_assert(urd::OrderedLookup<decltype(seconds), int>);
     EXPECT_EQ(*seconds.lower_bound(501), -502);
     EXPECT_EQ(seconds.lower_bound(501) - seconds.begin(), 251);
+    EXPECT_EQ(seconds.upper_bound(500) - seconds.begin(), 251);  // with lower_bound: the elements equivalent to a key
+    EXPECT_EQ(seconds.upper_bound(500) - seconds.lower_bound(500), 1);
+}
+
+// Elements arriving in order are appended without a search, across splits, and keep their positions.
+TEST(SortedBlockSet, AppendsElementsArrivingInOrder)
+{
+    auto blocks = urd::repr::SortedBlockSet<int, urd::Less<int>, 4>();
+    for (int value = 0; value < 100; ++value)
+    {
+        const auto [it, inserted] = blocks.insert(value);
+        ASSERT_TRUE(inserted);
+        ASSERT_EQ(blocks.index_of(it), static_cast<std::size_t>(value));
+    }
+    EXPECT_FALSE(blocks.insert(99).second);
+    for (int value = 0; value < 100; ++value)
+        ASSERT_EQ(blocks.nth_element(static_cast<std::size_t>(value)), value);
+    blocks.insert(-1);  // and one before all of them, searched for
+    EXPECT_EQ(blocks.nth_element(0), -1);
+    EXPECT_EQ(blocks.size(), 101U);
+}
+
+namespace
+{
+/// Orders pairs by their first member; a bare first member is equivalent to every pair that has it (a prefix).
+struct ByFirstOnly
+{
+    using is_transparent = void;
+    bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const { return lhs < rhs; }
+    bool operator()(const std::pair<int, int>& lhs, int rhs) const { return lhs.first < rhs; }
+    bool operator()(int lhs, const std::pair<int, int>& rhs) const { return lhs < rhs.first; }
+};
+}  // namespace
+
+// A key many elements are equivalent to (a prefix): lower_bound and upper_bound give all of them, across blocks.
+TEST(SortedBlockSet, BoundsAKeyManyElementsAreEquivalentTo)
+{
+    auto pairs = urd::repr::SortedBlockSet<std::pair<int, int>, ByFirstOnly, 4>();
+    for (int first = 0; first < 10; ++first)
+        for (int second = 0; second < 7; ++second)
+            pairs.insert({ first, second });
+    for (int first = 0; first < 10; ++first)
+    {
+        const auto begin = pairs.lower_bound(first);
+        const auto end = pairs.upper_bound(first);
+        ASSERT_EQ(end - begin, 7);
+        ASSERT_EQ(begin->first, first);
+        ASSERT_EQ(begin->second, 0);
+    }
+    EXPECT_EQ(pairs.upper_bound(9), pairs.end());
+    EXPECT_EQ(pairs.lower_bound(10), pairs.end());
 }

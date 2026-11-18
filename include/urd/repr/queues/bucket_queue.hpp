@@ -2,6 +2,7 @@
 
 // The least first, for integral priorities: a vector of elements per priority.
 
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/less.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/memory.hpp"
@@ -28,7 +29,7 @@ namespace urd::repr
 template<typename T, typename Compare>
 [[nodiscard]] constexpr urd::detail::order_key_t<T, Compare> bucket_priority(const T& element)
 {
-    if constexpr (requires { Compare::projection; })
+    if constexpr (urd::ProjectingOrder<Compare>)
         return std::invoke(Compare::projection, element);
     else
         return element;

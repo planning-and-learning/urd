@@ -101,6 +101,10 @@ struct element_rows
     }
 };
 
+/// Whether a row gives its significant words (significant_words()): a dense set.
+template<typename Row>
+concept WordRow = requires(const Row& row) { row.significant_words(); };
+
 template<typename Row>
 struct word_rows
 {
@@ -119,7 +123,7 @@ struct word_rows
 
     /// A row given as a dense set: its words as they are, a word at a time, not a key at a time.
     [[nodiscard]] static stored_row canonical(const Row& row)
-        requires requires { row.significant_words(); }
+        requires WordRow<Row>
     {
         const auto words = row.significant_words();
         return stored_row(words.begin(), words.end());

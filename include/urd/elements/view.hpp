@@ -5,12 +5,14 @@
 #include "urd/elements/data.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/less.hpp"
+#include "urd/memory.hpp"
 
 #include <algorithm>
 #include <array>
 #include <boost/mp11.hpp>
 #include <compare>
 #include <concepts>
+#include <cstdint>
 #include <cstddef>
 #include <functional>
 #include <iterator>
@@ -130,6 +132,16 @@ template<typename M, typename C>
 [[nodiscard]] decltype(auto) resolve(M&& member, const C& context)
 { return resolution<std::remove_cvref_t<M>>::of(std::forward<M>(member), context); }
 
+/// Whether a view names its element by a key (index()): a view of an interned element (index_view), whatever its key.
+template<typename V>
+concept Indexed = requires(const V& view) { view.index(); };
+
+/// Whether a view names its element by a key of type K (index()).
+template<typename V, typename K>
+concept IndexedBy = requires(const V& view) {
+    { view.index() } -> std::same_as<K>;
+};
+
 /// Whether resolving changes M: an index, or a composition holding one (urd::resolution below).
 template<typename M>
 concept resolving = !requires { resolution<M>::identity; };
@@ -152,8 +164,7 @@ struct resolution<index<U>>
     static index<U> stored(const R& readout) noexcept
     { return readout; }
 
-    template<typename V>
-        requires std::same_as<std::remove_cvref_t<decltype(std::declval<const V&>().index())>, index<U>>
+    template<IndexedBy<index<U>> V>
     static index<U> stored(const V& view) noexcept
     { return view.index(); }
 };
@@ -252,6 +263,21 @@ struct resolution<M>
     static M stored(const R& readout)
     { return M { resolution<typename M::first_type>::stored(readout.first), resolution<typename M::second_type>::stored(readout.second) }; }
 };
+
+namespace detail
+{
+/// Whether a range's function names the context it reads through (*function.context: urd::resolver).
+template<typename F>
+concept NamesContext = requires(const F& function) { *function.context; };
+
+/// Whether a context C has layers (layer()): a view through it is identified by its record and its layer.
+template<typename C>
+concept HasLayers = requires(const C& context) { context.layer(); };
+
+/// Whether a context C makes its own view of a record of T (view(record)).
+template<typename C, typename T>
+concept ViewsRecords = requires(const C& context, const data<T>& record) { context.view(record); };
+}  // namespace detail
 
 /// A range R read through a function F: each element x read as f(x). Held are R's iterators (a container's, or a
 /// borrowed view's: a span, iota, the set bits of a bitset) and the function, so that, unlike std::views::transform,
@@ -386,6 +412,14 @@ public:
     [[nodiscard]] iterator lower_bound(const K& key) const
     { return { m_source->lower_bound(key), m_function }; }
 
+    /// The first element after `key` in its source's order, read through its function: where its source looks up K by its
+    /// order (with lower_bound, the range of elements equivalent to `key`: a prefix's, with a transparent order that
+    /// compares one).
+    template<typename K>
+        requires(!std::ranges::view<R>) && OrderedLookup<R, K>
+    [[nodiscard]] iterator upper_bound(const K& key) const
+    { return { m_source->upper_bound(key), m_function }; }
+
     /// The range read through (its elements as they are), as std's views name it, and the function.
     [[nodiscard]] const held_range& base() const noexcept { return m_range; }
 
@@ -393,7 +427,7 @@ public:
 
     /// The context it is read through, where its function names one (urd::resolver).
     [[nodiscard]] const auto& context() const noexcept
-        requires requires(const F& function) { *function.context; }
+        requires detail::NamesContext<F>
     { return *m_function.context; }
 
     [[nodiscard]] iterator begin() const { return { m_range.begin(), m_function }; }
@@ -488,8 +522,7 @@ struct resolution<M>
     {
         using E = std::ranges::range_value_t<M>;
         auto result = M();
-        if constexpr (std::ranges::sized_range<const R> && std::ranges::sized_range<M>
-                      && requires(M& stored) { stored.reserve(std::ranges::range_size_t<M> {}); })
+        if constexpr (std::ranges::sized_range<const R> && std::ranges::sized_range<M> && Reserving<M>)
             result.reserve(static_cast<std::ranges::range_size_t<M>>(std::ranges::size(readout)));
         for (const auto& element : readout)
             result.push_back(resolution<E>::stored(element));
@@ -521,7 +554,7 @@ public:
     /// The identity: what identifies the record, and the number of the context (a context without a number gives
     /// none).
     static constexpr auto identifying_members() noexcept
-        requires requires(const C& context) { context.layer(); }
+        requires detail::HasLayers<C>
     {
         return Members<[](const V& v) -> decltype(auto) { return v.identity(); }, [](const V& v) { return v.context().layer(); }> {};
     }
@@ -666,12 +699,37 @@ public:
     /// The record it owns, to write: a builder being built, a record not interned yet.
     [[nodiscard]] R& held() const noexcept { return *m_record; }
 
+    /// The slot of its record in the pool it was drawn from: an identity that stays while it holds its record, a number
+    /// that is no address (a dense index of the pool's slots).
+    [[nodiscard]] std::uint64_t slot() const noexcept { return m_record.get_deleter().slot; }
+
 private:
     [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
 
     [[nodiscard]] const R& identity() const noexcept { return *m_record; }
 
     handle<R> m_record;
+};
+
+/// A pooled view owns no memory of its own: its record belongs to the pool it was drawn from, which counts it.
+template<typename T, typename C, typename R>
+struct memory_of<pooled_view<T, C, R>>
+{
+    static constexpr std::size_t bytes(const pooled_view<T, C, R>& /*held*/) { return 0; }
+};
+
+/// A shared view owns no memory of its own: its record is shared.
+template<typename T, typename C, typename R>
+struct memory_of<shared_view<T, C, R>>
+{
+    static constexpr std::size_t bytes(const shared_view<T, C, R>& /*held*/) { return 0; }
+};
+
+/// An owning view owns what its record owns.
+template<typename T, typename C, typename R>
+struct memory_of<owning_view<T, C, R>>
+{
+    static std::size_t bytes(const owning_view<T, C, R>& held) { return memory_usage(detail::view_access::record(held)); }
 };
 
 /// A pooled view read in place: its record borrowed, through its own context (the reader's is not needed). Never a
@@ -727,7 +785,7 @@ struct resolution<data<T>>
     template<typename C>
     static auto of(const data<T>& member, const C& context) noexcept
     {
-        if constexpr (requires { context.view(member); })
+        if constexpr (detail::ViewsRecords<C, T>)
             return context.view(member);
         else
             return borrowed_view<T, C> { &member, &context };

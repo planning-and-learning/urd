@@ -95,6 +95,10 @@ struct trait_where<false>
     { return false; }
 };
 
+/// Whether a store states its facts for itself (store_facts<Traits, Args...>::value).
+template<typename Traits, typename... Args>
+concept StatesFacts = requires { store_facts<Traits, Args...>::value; };
+
 /// The facts of role Role for the types that play it (Args), about no role: none where an argument is void (a kind
 /// without values has no value type) or Asked asks none of the role's traits; a Store's own facts where it answers
 /// for itself (store_facts); else the role's traits that are asked and hold (Trait::holds<Args…>()). A role whose
@@ -108,7 +112,7 @@ struct role_facts
         using traits = typename traits_of_role<Role>::type;
         if constexpr ((std::is_void_v<Args> || ...) || !asks_any<Asked, Role>(traits {}))
             return property_set::roots();
-        else if constexpr (requires { store_facts<traits, Args...>::value; })
+        else if constexpr (StatesFacts<traits, Args...>)
             return store_facts<traits, Args...>::value;
         else
             return []<typename... Traits>(boost::mp11::mp_list<Traits...> /*traits*/)

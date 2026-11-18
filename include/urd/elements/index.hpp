@@ -88,6 +88,12 @@ struct context_of;
 template<typename T>
 struct data;
 
+/// Whether a record of T carries its own index (a field index of urd::index<T>), as an interned record does.
+template<typename T>
+concept SelfIndexed = requires(const data<T>& record) {
+    { record.index } -> std::same_as<const index<T>&>;
+};
+
 /// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index K (index<T>, or a
 /// handle of another shape the context resolves) and reads it through the context; borrowed_view, owning_view and
 /// shared_view hold a record R (data<T>, or builder<T, C>) outside the context: a pointer to it, it by value, a shared

@@ -34,7 +34,7 @@ class PositionIterator
     static constexpr bool random_access = std::derived_from<Concept, std::random_access_iterator_tag>;
 
 public:
-    using reference = decltype(Read {}(std::declval<Owner&>(), std::size_t {}));
+    using reference = std::invoke_result_t<Read, Owner&, std::size_t>;
     using value_type = std::remove_cvref_t<reference>;
     using difference_type = std::ptrdiff_t;
     using iterator_concept = Concept;

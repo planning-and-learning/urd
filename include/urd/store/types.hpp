@@ -89,6 +89,7 @@ struct store_types
 template<typename R, typename S>
 struct iterator_types
 {
+    // Not std::ranges::iterator_t: its range concepts need the elements complete, and a Store holds incomplete ones.
     using const_iterator = decltype(std::declval<const R&>().begin());
     using iterator = std::conditional_t<store_types<S>::values_writable, decltype(std::declval<R&>().begin()), const_iterator>;
     // A row of a nested Store may come as a view of flattened storage, so the references are the representation's.
