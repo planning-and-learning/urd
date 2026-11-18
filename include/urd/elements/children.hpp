@@ -5,6 +5,7 @@
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/traits.hpp"
 
 #include <boost/mp11/algorithm.hpp>
 #include <concepts>
@@ -161,6 +162,16 @@ void assign_member(flat_vector<M>& target, const std::vector<B>& source, F& f)
     target.resize(source.size());
     for (std::size_t i = 0; i < source.size(); ++i)
         detail::assign_member(target[i], source[i], f);
+}
+
+/// A Store of children (a builder's set of them, say) as the record's flat vector, in the Store's order.
+template<typename M, typename Kind, typename... Tags, typename F>
+void assign_member(flat_vector<M>& target, const Store<Kind, Tags...>& source, F& f)
+{
+    target.resize(source.size());
+    auto at = std::size_t { 0 };
+    for (const auto& element : source)
+        detail::assign_member(target[at++], element, f);
 }
 
 template<typename M, typename B, typename F>

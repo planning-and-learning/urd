@@ -198,7 +198,7 @@ registry moves containers with stable storage last and the two are level.
 
 ## The registry's choices, measured
 
-Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, unknown). Each container is measured on its own (`benchmarks/suites/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 610 not compared, as the other gives a costly guarantee the request did not ask for; 89 settled by their costs; 97 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
+Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, unknown). Each container is measured on its own (`benchmarks/suites/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 618 not compared, as the other gives a costly guarantee the request did not ask for; 105 settled by their costs; 106 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
 
 ### Choices that fail
 
@@ -207,7 +207,10 @@ None.
 ### Slower at a smaller size only
 
 - flat_set > set / ordered_lookup,iterate,lookup / int;-: at 1000, 51.6 against 43.9 ns per element (Store<set<int>, sorted, frozen>)
+- flat_set > sorted_block_set / ordered_lookup,iterate,lookup / int;-: at 1000, 51.6 against 39.2 ns per element (Store<set<int>, sorted, frozen>)
 - unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.6 against 26.0 ns per element (Store<set<int>, small>)
+- unordered_flat_set > sorted_block_set / iterate,lookup,insert,erase,clear / int;- / small: at 8, 47.6 against 40.9 ns per element (Store<set<int>, small>)
+- sorted_block_set > flat_set / ordered_lookup,access,iterate,lookup,insert,erase,clear / std::string;-: at 1000, 1224.1 against 1055.3 ns per element (Store<set<std::string>, positional, sorted>)
 - unordered_flat_set > flat_set / iterate,lookup,insert,erase,clear / Id;- / small: at 8, 47.3 against 26.7 ns per element (Store<set<Id>, small>)
 - layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 16, 248.4 against 213.7 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
 - layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 256, 4026.9 against 3545.5 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
@@ -220,6 +223,7 @@ None.
 ### Slower for less memory
 
 - flat_set > set / ordered_lookup,iterate,lookup / std::string;-: at 100000, 560.9 against 478.0 ns per element (Store<set<std::string>, sorted, frozen>)
+- flat_set > sorted_block_set / ordered_lookup,iterate,lookup / std::string;-: at 100000, 560.9 against 388.1 ns per element (Store<set<std::string>, sorted, frozen>)
 - flat_set > recycling_tree_set / ordered_lookup,iterate,lookup / std::string;-: at 100000, 560.9 against 476.3 ns per element (Store<set<std::string>, sorted, frozen>)
 - unordered_flat_set > indexed_set / iterate,lookup / std::string;-: at 100000, 88.1 against 74.7 ns per element (Store<set<std::string>, frozen>)
 - layered_bit_row_interner > layered_row_interner / access,insert_row,find_row / -;Store<sequence<index<Id>>, stable_refs, frozen, positional>: at 4096, 70309.4 against 62575.4 ns per element (Store<pool<Store<sequence<index<Id>>, stable_refs, frozen, positional>>, monotone, bit, layered>)
@@ -304,6 +308,7 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `segmented_vector` | O(n), 1.5 words | 1.01 | 0.0% |
 | `set` | O(n), 5 words | 5.00 | 0.0% |
 | `slot_vector` | O(n), 1.5 words | 0.45 | 0.0% |
+| `sorted_block_set` | O(n), 1.5 words | 0.88 | 0.0% |
 | `sparse_set` | O(U), 2.7 words | 2.69 | 0.0% |
 | `stable_dense_map` | O(U), 2.1 words | 2.02 | 0.0% |
 | `stable_generation_map` | O(U), 4.1 words | 4.03 | 0.0% |

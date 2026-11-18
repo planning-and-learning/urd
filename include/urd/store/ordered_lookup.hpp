@@ -18,6 +18,18 @@ public:
 
     [[nodiscard]] const_iterator_type upper_bound(const typename types::lookup_type& element) const { return representation().upper_bound(element); }
 
+    /// By another form of a key: forwarded as it is, so what the Store's order compares with an element decides what K
+    /// may be (a transparent order: the standard's heterogeneous lookup). A K it does not take does not compile.
+    template<typename K>
+        requires(!std::same_as<std::remove_cvref_t<K>, typename types::lookup_type>)
+    [[nodiscard]] const_iterator_type lower_bound(const K& key) const
+    { return representation().lower_bound(key); }
+
+    template<typename K>
+        requires(!std::same_as<std::remove_cvref_t<K>, typename types::lookup_type>)
+    [[nodiscard]] const_iterator_type upper_bound(const K& key) const
+    { return representation().upper_bound(key); }
+
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 };

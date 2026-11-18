@@ -31,6 +31,7 @@
 #include "urd/repr/values/dense_set_fwd.hpp"
 #include "urd/repr/values/flat_set_fwd.hpp"
 #include "urd/repr/values/indexed_fwd.hpp"
+#include "urd/repr/values/sorted_block_set_fwd.hpp"
 #include "urd/repr/values/parallel_hash_set_fwd.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set_fwd.hpp"
@@ -64,6 +65,7 @@ using values_declarations = boost::mp11::mp_list<unordered_flat_set_decl,
                                                  set_decl,
                                                  flat_multiset_decl,
                                                  indexed_set_decl,
+                                                 sorted_block_set_decl,
                                                  flat_set_decl,
                                                  recycling_hash_set_decl,
                                                  recycling_tree_set_decl,

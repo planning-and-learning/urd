@@ -1,6 +1,9 @@
 // Sets and maps: random use against the standard's containers, set algebra, positions, ends, entries, Stores as keys, and orders by a projection. Each family
 // header a Store here needs is included, and no other.
 
+#include <memory>
+#include "urd/elements/view.hpp"
+#include "urd/repr/values/sorted_block_set.hpp"
 #include "names.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -500,3 +503,147 @@ TEST(OrderBy, QueueOfUnorderedElements)
 }
 
 }  // namespace
+
+// Unique values in order that change: a sorted multiset in blocks, which inserts and erases in O(log n) and keeps their
+// positions; not where duplicates are kept, nor where it is frozen or small (one array serves those best).
+using LargeSorted = Store<multiset<int>, urd::sorted, urd::unique>;
+using Blocks512 = urd::repr::SortedBlockSet<int, urd::Less<int>, 512>;
+static_assert(std::same_as<LargeSorted::representation, Blocks512>);
+static_assert(!std::same_as<Store<multiset<int>, urd::sorted>::representation, Blocks512>);
+static_assert(!std::same_as<Store<multiset<int>, urd::sorted, urd::unique, urd::frozen>::representation, Blocks512>);
+static_assert(!std::same_as<Store<multiset<int>, urd::sorted, urd::unique, urd::small>::representation, Blocks512>);
+
+TEST(SortedBlockSet, IsASortedMultisetOfUniqueValuesWithPositions)
+{
+    auto random = std::mt19937(59);
+    auto values = LargeSorted();
+    auto model = std::set<int>();
+    for (int step = 0; step < 3000; ++step)
+    {
+        const auto value = static_cast<int>(random() % 1500);
+        if (random() % 4 == 0)
+        {
+            ASSERT_EQ(values.erase(value), model.erase(value));
+            continue;
+        }
+        values.insert(value);
+        model.insert(value);
+    }
+    ASSERT_EQ(values.size(), model.size());
+    auto expected = model.begin();
+    for (std::size_t i = 0; i < model.size(); ++i, ++expected)
+    {
+        ASSERT_EQ(values[i], *expected);
+        ASSERT_EQ(values.position(values.find(*expected)), i);
+    }
+}
+
+// Small blocks, so that splits, emptied blocks and the tree over their sizes are all reached: it agrees with std::set in
+// its elements, their order and their positions.
+TEST(SortedBlockSet, AgreesWithTheStandardSetInElementsAndPositions)
+{
+    using Blocks = urd::repr::SortedBlockSet<int, urd::Less<int>, 4>;
+    auto random = std::mt19937(53);
+    auto blocks = Blocks();
+    auto model = std::set<int>();
+    const auto agree = [&]
+    {
+        ASSERT_EQ(blocks.size(), model.size());
+        ASSERT_TRUE(std::ranges::equal(blocks, model));
+        auto expected = model.begin();
+        for (std::size_t i = 0; i < model.size(); ++i, ++expected)
+        {
+            ASSERT_EQ(blocks.nth_element(i), *expected);
+            ASSERT_EQ(blocks.index_of(blocks.find(*expected)), i);
+            ASSERT_EQ(blocks.begin()[static_cast<std::ptrdiff_t>(i)], *expected);
+            ASSERT_EQ(blocks.nth(i) - blocks.begin(), static_cast<std::ptrdiff_t>(i));
+        }
+        ASSERT_EQ(blocks.nth(model.size()), blocks.end());
+    };
+    for (int round = 0; round < 3; ++round)
+    {
+        for (int step = 0; step < 400; ++step)
+        {
+            const auto value = static_cast<int>(random() % 120);
+            if (random() % 3 == 0)
+                ASSERT_EQ(blocks.erase(value), model.erase(value));
+            else
+            {
+                const auto [it, inserted] = blocks.insert(value);
+                ASSERT_EQ(inserted, model.insert(value).second);
+                ASSERT_EQ(*it, value);
+                ASSERT_EQ(blocks.index_of(it), static_cast<std::size_t>(std::distance(model.begin(), model.find(value))));
+            }
+            if (step % 50 == 0)
+                agree();
+            const auto probe = static_cast<int>(random() % 130);
+            ASSERT_EQ(blocks.contains(probe), model.contains(probe));
+            const auto lower = blocks.lower_bound(probe);
+            const auto expected = model.lower_bound(probe);
+            ASSERT_EQ(lower == blocks.end(), expected == model.end());
+            if (expected != model.end())
+                ASSERT_EQ(*lower, *expected);
+        }
+        agree();
+        for (auto it = blocks.begin(); it != blocks.end();)  // erase every other element by iterator
+        {
+            model.erase(*it);
+            it = blocks.erase(it);
+            if (it != blocks.end())
+                ++it;
+        }
+        agree();
+        blocks.clear();  // its blocks kept for the next round
+        model.clear();
+        agree();
+    }
+}
+
+// A move-only element goes in by move, and is found again after the block it went into was split.
+TEST(SortedBlockSet, TakesMoveOnlyElements)
+{
+    using Boxed = std::unique_ptr<int>;
+    struct ByValue
+    {
+        bool operator()(const Boxed& lhs, const Boxed& rhs) const { return *lhs < *rhs; }
+    };
+    auto blocks = urd::repr::SortedBlockSet<Boxed, ByValue, 2>();
+    for (int value : { 5, 1, 4, 2, 3, 0, 6 })
+    {
+        const auto [it, inserted] = blocks.insert(std::make_unique<int>(value));
+        ASSERT_TRUE(inserted);
+        ASSERT_EQ(**it, value);
+    }
+    auto order = std::vector<int>();
+    for (const auto& boxed : blocks)
+        order.push_back(*boxed);
+    EXPECT_EQ(order, (std::vector<int> { 0, 1, 2, 3, 4, 5, 6 }));
+    EXPECT_FALSE(blocks.insert(std::make_unique<int>(3)).second);
+}
+
+namespace
+{
+/// Orders pairs by their first member, and compares a pair with a bare first member (transparent).
+struct ByFirst
+{
+    using is_transparent = void;
+    bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const { return lhs.first < rhs.first; }
+    bool operator()(const std::pair<int, int>& lhs, int rhs) const { return lhs.first < rhs; }
+    bool operator()(int lhs, const std::pair<int, int>& rhs) const { return lhs < rhs.first; }
+};
+}  // namespace
+
+// A transparent order takes another form of a key in the ordered lookups, in the Store and in a range read from it.
+TEST(SortedBlockSet, LooksUpByAnyKeyItsOrderCompares)
+{
+    auto pairs = Store<multiset<std::pair<int, int>>, urd::sorted, urd::unique, urd::order_by<ByFirst>>();
+    for (int i = 0; i < 2000; i += 2)
+        pairs.insert({ i, -i });
+    EXPECT_EQ(pairs.lower_bound(501)->first, 502);
+    EXPECT_EQ(pairs.upper_bound(500)->first, 502);
+    EXPECT_TRUE(pairs.contains(1998) && !pairs.contains(1999));
+    const auto seconds = urd::transform(pairs, [](const std::pair<int, int>& pair) { return pair.second; });
+    static_assert(urd::OrderedLookup<decltype(seconds), int>);
+    EXPECT_EQ(*seconds.lower_bound(501), -502);
+    EXPECT_EQ(seconds.lower_bound(501) - seconds.begin(), 251);
+}

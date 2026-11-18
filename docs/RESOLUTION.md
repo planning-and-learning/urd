@@ -28,14 +28,14 @@ indexable).
 | `Store<set<int>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
 | `Store<set<int>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
 | `Store<set<int>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
-| `Store<set<int>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<set<int>, positional, sorted>` | sorted, unique, positional | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<int>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<set<int>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<set<int>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
 | `Store<set<int>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
 | `Store<set<int>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<set<int>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<set<int>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<set<int>, sorted, retains>` | sorted, unique, retains | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<int>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
 | `Store<set<int>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
 | `Store<set<int>, reclaims>` | unique, reclaims | `set` | std_set.hpp |
@@ -65,14 +65,14 @@ indexable).
 | `Store<set<std::string>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
 | `Store<set<std::string>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
 | `Store<set<std::string>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
-| `Store<set<std::string>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<set<std::string>, positional, sorted>` | sorted, unique, positional | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<std::string>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<set<std::string>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<set<std::string>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
 | `Store<set<std::string>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
 | `Store<set<std::string>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<set<std::string>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<set<std::string>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<set<std::string>, sorted, retains>` | sorted, unique, retains | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<std::string>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
 | `Store<set<std::string>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
 | `Store<set<std::string>, reclaims>` | unique, reclaims | `set` | std_set.hpp |
@@ -102,14 +102,14 @@ indexable).
 | `Store<set<Id>, small, sorted, stable_refs>` | sorted, unique, stable_refs, small | `set` | std_set.hpp |
 | `Store<set<Id>, insertion_ordered>` | insertion_ordered, unique | `indexed_set` | indexed.hpp |
 | `Store<set<Id>, positional>` | insertion_ordered, unique, positional | `indexed_set` | indexed.hpp |
-| `Store<set<Id>, positional, sorted>` | sorted, unique, positional | `flat_set` | flat_set.hpp |
+| `Store<set<Id>, positional, sorted>` | sorted, unique, positional | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<Id>, positional, monotone>` | insertion_ordered, unique, monotone, positional | `indexed_set` | indexed.hpp |
 | `Store<set<Id>, positional, monotone, stable_refs>` | insertion_ordered, unique, stable_refs, monotone, positional | `stable_indexed_set` | indexed.hpp |
 | `Store<set<Id>, positional, monotone, concurrent>` | insertion_ordered, unique, concurrent, monotone, positional | `concurrent_indexed_set` | indexed.hpp |
 | `Store<set<Id>, concurrent>` | unique, concurrent | `parallel_hash_set` | parallel_hash_set.hpp |
 | `Store<set<Id>, stable_refs, concurrent>` | unique, stable_refs, concurrent | `parallel_node_hash_set` | parallel_hash_set.hpp |
 | `Store<set<Id>, retains>` | unique, retains | `unordered_flat_set` | unordered_flat_set.hpp |
-| `Store<set<Id>, sorted, retains>` | sorted, unique, retains | `flat_set` | flat_set.hpp |
+| `Store<set<Id>, sorted, retains>` | sorted, unique, retains | `sorted_block_set` | sorted_block_set.hpp |
 | `Store<set<Id>, stable_refs, retains>` | unique, stable_refs, retains | `recycling_hash_set` | std_set.hpp + recycling.hpp |
 | `Store<set<Id>, sorted, stable_refs, retains>` | sorted, unique, stable_refs, retains | `recycling_tree_set` | std_set.hpp + recycling.hpp |
 | `Store<set<Id>, reclaims>` | unique, reclaims | `set` | std_set.hpp |

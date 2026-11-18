@@ -28,7 +28,10 @@ what the request says; the registry picks the container (:doc:`../RESOLUTION`).
    * - ``Store<set<K>, sorted>``
      - ``std::set``
    * - ``Store<set<K>, sorted, frozen>``
-     - ``boost::container::flat_set`` (a sorted vector)
+     - ``boost::container::flat_set`` (a sorted vector); also a ``small`` sorted set
+   * - ``Store<set<K>, sorted, positional>``, and a sorted set that changes and needs what ``std::set`` lacks
+     - ``SortedBlockSet``: sorted blocks (``layout`` ``blocks``) and a Fenwick tree over their sizes; insert, erase and
+       lookup in O(log n), positions by the tree; emptied blocks kept (``retains``)
    * - ``Store<set<K>, stable_refs>``
      - ``std::unordered_set``
    * - ``Store<set<K>, stable_refs, retains>``
@@ -143,7 +146,10 @@ Lookup
 .. cpp:function:: const_iterator upper_bound(const key_type& key) const
 .. cpp:function:: std::pair<const_iterator, const_iterator> equal_range(const key_type& key) const
 
-   ``sorted`` only.
+   ``sorted`` only. Each also takes another form of a key, ``template<typename K> lower_bound(const K& key)``, where
+   the order compares it with a key (an ``order_by`` whose comparator declares ``is_transparent``): the standard's
+   heterogeneous lookup. A range read from a sorted Store through a function (``urd::transform``) keeps its
+   ``lower_bound`` (:cpp:concept:`OrderedLookup`).
 
 Modifiers
 ^^^^^^^^^

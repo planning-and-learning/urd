@@ -23,6 +23,7 @@
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/sorted_block_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"

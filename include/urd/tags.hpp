@@ -334,6 +334,7 @@ enum class layout : std::uint8_t
 {
     none,
     contiguous,
+    blocks,
 };
 
 struct any_layout : tag_defaults
@@ -356,10 +357,20 @@ struct contiguous : any_layout
     static constexpr std::array<std::string_view, 4> phrases { "contiguous", "cache friendly", "as a span", "one array" };
 };
 
+/// The elements lie in blocks, each contiguous: an insertion or erasure moves the elements of one block only.
+struct blocks : any_layout
+{
+    static constexpr auto value = layout::blocks;
+    static constexpr std::string_view name = "blocks";
+    static constexpr std::string_view promise = "guaranteed";
+    static constexpr std::string_view description = "The elements lie in blocks, each contiguous: a change moves one block's elements.";
+    static constexpr std::array<std::string_view, 3> phrases { "in blocks", "chunked", "blocked" };
+};
+
 template<>
 struct tags_of<layout>
 {
-    using type = boost::mp11::mp_list<any_layout, contiguous>;
+    using type = boost::mp11::mp_list<any_layout, contiguous, blocks>;
 };
 
 enum class representation : std::uint8_t
@@ -1135,10 +1146,11 @@ struct frozen : monotone
 {
     static constexpr auto value = change::frozen;
     /// Nothing changes, so nothing moves: it means stable_refs, which the Store keeps itself (its container need not);
-    /// contiguous storage serves it best, so containers with stable references come after the others.
+    /// contiguous storage serves it best, so containers with stable references, and those in blocks (which pay for
+    /// changes it never makes), come after the others.
     using implies = boost::mp11::mp_list<stable_refs>;
     using kept_by_store = boost::mp11::mp_list<stable_refs>;
-    using later = boost::mp11::mp_list<stable_refs>;
+    using later = boost::mp11::mp_list<stable_refs, blocks>;
     static constexpr std::string_view name = "frozen";
     static constexpr std::string_view promise = "guaranteed";
     static constexpr std::string_view description = "No change after construction; assign rebuilds it whole.";
@@ -1277,8 +1289,9 @@ struct general : tag_defaults
 struct small : general
 {
     static constexpr auto value = workload::small;
-    /// Few elements: contiguous storage serves them best, so containers with stable references come after the others.
-    using later = boost::mp11::mp_list<stable_refs>;
+    /// Few elements: contiguous storage serves them best, so containers with stable references, and those in blocks,
+    /// come after the others.
+    using later = boost::mp11::mp_list<stable_refs, blocks>;
     static constexpr std::string_view name = "small";
     static constexpr std::string_view promise = "";
     static constexpr std::string_view description = "A few elements, or a few at a time: compact containers first.";

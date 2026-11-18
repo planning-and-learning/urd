@@ -27,6 +27,9 @@ With ``sorted`` it keeps its elements in order and takes ``insert`` instead of `
      - ``std::vector``
    * - ``Store<multiset<T>, sorted>``
      - ``boost::container::flat_multiset``
+   * - ``Store<multiset<T>, sorted, unique>``
+     - ``SortedBlockSet``: a sorted sequence of unique values in blocks, inserting and erasing in O(log n), its
+       elements by position (``frozen`` or ``small``: a flat container)
    * - ``Store<sequence<T>, stable_refs>``
      - ``SegmentedVector`` (thread-safe with ``concurrent``, which implies ``stable_refs``). A sequence with stable
        references changes at its end only: ``pop_back``, ``clear`` and a shrinking ``resize``, no ``erase`` or

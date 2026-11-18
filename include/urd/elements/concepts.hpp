@@ -367,6 +367,11 @@ concept variant_value = requires(const M& member) {
     visit([](const auto&) {}, member);
 };
 
+/// Whether R looks up a key K by its order (lower_bound(key)): a sorted container whose order takes K, or a range
+/// read from one (urd::transformed_range of a container).
+template<typename R, typename K>
+concept OrderedLookup = requires(const R& range, const K& key) { range.lower_bound(key); };
+
 /// The value type of an optional value.
 template<optional_value M>
 using optional_value_t = std::remove_cvref_t<decltype(*std::declval<const M&>())>;

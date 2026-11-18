@@ -272,6 +272,9 @@ class transformed_range : public std::ranges::view_interface<transformed_range<R
     using held_range = decltype(std::ranges::subrange(std::declval<const R&>()));
     held_range m_range;
     F m_function {};
+    /// Its source where it is a container (which outlives it, as its iterators do), not a view: what its ordered
+    /// lookups ask.
+    const R* m_source = nullptr;
 
 public:
     class iterator
@@ -369,7 +372,19 @@ public:
         { return (lhs.m_it - rhs.m_it) <=> difference_type { 0 }; }
     };
 
-    transformed_range(const R& range, F function) : m_range(range), m_function(std::move(function)) {}
+    transformed_range(const R& range, F function) :
+        m_range(range),
+        m_function(std::move(function)),
+        m_source(std::ranges::view<R> ? nullptr : &range)
+    {
+    }
+
+    /// The first element not before `key` in its source's order, read through its function: where its source, a sorted
+    /// container, looks up K by its order.
+    template<typename K>
+        requires(!std::ranges::view<R>) && OrderedLookup<R, K>
+    [[nodiscard]] iterator lower_bound(const K& key) const
+    { return { m_source->lower_bound(key), m_function }; }
 
     /// The range read through (its elements as they are), as std's views name it, and the function.
     [[nodiscard]] const held_range& base() const noexcept { return m_range; }

@@ -8,6 +8,7 @@
 #include "urd/repr/maps/unordered_flat_map.hpp"
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/sorted_block_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
 #include "urd/store.hpp"
 
