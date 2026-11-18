@@ -1,12 +1,14 @@
 #pragma once
 
 #include "urd/config.hpp"
+#include "urd/elements/handle.hpp"
 #include "urd/cost.hpp"
 #include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/store/types.hpp"
 
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <memory_resource>
 #include <type_traits>
@@ -116,6 +118,14 @@ public:
         return std::unique_ptr<value_type, releaser>(&representation()[handle], releaser { &self(), handle });
     }
 
+    /// As make_unique(), held by a handle that names no Store (urd::handle): the record a builder holds as its child.
+    [[nodiscard]] handle<value_type> make_handle()
+        requires std::default_initializable<value_type> && unkeyed && shrinks<S>
+    {
+        const auto slot = representation().acquire();
+        return handle<value_type>(&representation()[slot], release { &self(), slot.value, &give_back });
+    }
+
     /// As make_unique(), holding `keep` while the slot is in use and dropping it once the slot is back: pass the
     /// owner of the Store (std::enable_shared_from_this) and the Store outlives the owner of its slot. A free slot
     /// holds nothing.
@@ -184,6 +194,13 @@ private:
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
+
+    /// Gives a handle's record back to its Store, as the releaser of its slot does.
+    static void give_back(void* store, std::uint64_t slot, void* record) noexcept
+    {
+        using Value = typename handle_type::value_type;
+        releaser { static_cast<Derived*>(store), handle_type(static_cast<Value>(slot)) }(static_cast<value_type*>(record));
+    }
 };
 
 }  // namespace urd::detail::facet

@@ -77,7 +77,7 @@ struct urd::data<Term>
 
 /// A term being built: the fields of data<Term> under the same names, so its view reads as a term's.
 template<>
-struct urd::builder<Term>
+struct urd::builder<Term, Context>
 {
     int arity = 0;
     urd::flat_vector<int> objects;
@@ -178,11 +178,11 @@ Context& context()
     return held;
 }
 
-urd::builder<Term>& term_builder()
+urd::builder<Term, Context>& term_builder()
 {
     static auto held = []
     {
-        auto made = urd::builder<Term>();
+        auto made = urd::builder<Term, Context>();
         made.arity = 1;
         made.objects.push_back(9);
         return made;
@@ -191,7 +191,7 @@ urd::builder<Term>& term_builder()
 }
 
 using TermView = urd::index_view<Term, Context>;
-using TermBuilderView = urd::borrowed_view<Term, Context, urd::builder<Term>>;
+using TermBuilderView = urd::borrowed_view<Term, Context, urd::builder<Term, Context>>;
 using TermOwnedView = urd::owning_view<Term, Context>;
 
 }  // namespace

@@ -50,7 +50,7 @@ math(EXPR last_group "${URD_REQUEST_GROUPS} - 1")
 
 # unit/: the Store's behavior, one program per topic. Those below count allocations (they link
 # urd::count_allocations, which replaces operator new).
-foreach(test rows semantics queues pools views children concurrency shortfall)
+foreach(test rows semantics queues pools views builders children concurrency shortfall)
     add_executable(test_${test} unit/${test}.cpp support/main.cpp)
     target_link_libraries(test_${test} PRIVATE urd::urd GTest::gtest Threads::Threads fmt::fmt)
     add_test(NAME ${test} COMMAND test_${test})

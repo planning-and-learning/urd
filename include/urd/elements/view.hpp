@@ -54,8 +54,8 @@ struct view_mixin<data<T>, V> : view_mixin<T, V>
 {
 };
 
-template<typename T, typename V>
-struct view_mixin<builder<T>, V> : view_mixin<T, V>
+template<typename T, typename C, typename V>
+struct view_mixin<builder<T, C>, V> : view_mixin<T, V>
 {
 };
 
@@ -84,7 +84,7 @@ namespace detail
 struct view_access
 {
     /// The whole record: an index_view's in its context, where it hands it out (HandsOutRecords: data<T>, or a plain
-    /// T); a borrowed, owning or shared view's own (data<T>, builder<T>, or a plain T).
+    /// T); a borrowed, owning or shared view's own (data<T>, builder<T, C>, or a plain T).
     template<typename V>
     [[nodiscard]] static const typename V::record_type& record(const V& view)
     { return view.record(); }
@@ -563,7 +563,7 @@ private:
     K m_at;
 };
 
-/// A T through a context C, held as a record R (data<T>, or builder<T>) outside the context, which it points at: the
+/// A T through a context C, held as a record R (data<T>, or builder<T, C>) outside the context, which it points at: the
 /// record must outlive the view. What urd::resolve makes of a record held in place. Read and identified by the record.
 template<typename T, typename C, typename R>
 class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
@@ -584,7 +584,7 @@ private:
     const R* m_record;
 };
 
-/// A T through a context C, holding its record R (data<T>, or builder<T>) by value: a record computed rather than
+/// A T through a context C, holding its record R (data<T>, or builder<T, C>) by value: a record computed rather than
 /// stored. Read and identified by the record.
 template<typename T, typename C, typename R>
 class owning_view : public detail::view_base<owning_view<T, C, R>, T, C, R>
@@ -609,7 +609,7 @@ private:
     R m_record;
 };
 
-/// A T through a context C, sharing its record R (data<T>, or builder<T>): released with the last copy. Read and
+/// A T through a context C, sharing its record R (data<T>, or builder<T, C>): released with the last copy. Read and
 /// identified by the record.
 template<typename T, typename C, typename R>
 class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
@@ -645,16 +645,35 @@ struct resolution<data<T>>
     static void of(const data<T>&& member, const C& context) = delete;
 };
 
-/// A builder read through a context: its borrowed_view. Never a temporary.
-template<typename T>
-struct resolution<builder<T>>
+/// A builder read through a context: its borrowed_view through its own context C, where the context is one; else
+/// the view the context makes of it (context.view(builder): a child read through a context of its own, reached from
+/// the context of its parent). Never a temporary.
+template<typename T, typename C>
+struct resolution<builder<T, C>>
 {
-    template<typename C>
-    static borrowed_view<T, C, builder<T>> of(const builder<T>& member, const C& context) noexcept
-    { return { &member, &context }; }
+    template<typename P>
+    static auto of(const builder<T, C>& member, const P& context)
+    {
+        if constexpr (std::convertible_to<const P*, const C*>)
+            return borrowed_view<T, C, builder<T, C>> { &member, &context };
+        else
+            return context.view(member);
+    }
 
-    template<typename C>
-    static void of(const builder<T>&& member, const C& context) = delete;
+    template<typename P>
+    static void of(const builder<T, C>&& member, const P& context) = delete;
+};
+
+/// A built child (urd::child) held by its handle: its builder resolved. Never a temporary.
+template<typename T, typename C>
+struct resolution<handle<builder<T, C>>>
+{
+    template<typename P>
+    static auto of(const handle<builder<T, C>>& member, const P& context)
+    { return resolution<builder<T, C>>::of(*member, context); }
+
+    template<typename P>
+    static void of(const handle<builder<T, C>>&& member, const P& context) = delete;
 };
 
 }  // namespace urd

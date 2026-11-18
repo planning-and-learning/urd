@@ -198,9 +198,9 @@ void bind_functions(nb::class_<View>& cls)
 }
 
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder for a view of a
-/// builder<T>, <name>Owned for a view that owns its record, so that the views of one record bound in one module have
+/// builder<T, C>, <name>Owned for a view that owns its record, so that the views of one record bound in one module have
 /// their own names), the one way a view is bound, whether it reads a stored record (data<T>), a record a context hands out
-/// in another layout (a value with the record's fields) or a builder (builder<T>): get_<field>() for each field of its
+/// in another layout (a value with the record's fields) or a builder (builder<T, C>): get_<field>() for each field of its
 /// record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
 /// that names its index (index_view: index() gives its key, an urd::index<T> or a key of its own such as a row's) also
 /// gives index() and converts to that key wherever one is expected, also in lists and optionals; the key is bound first
@@ -210,7 +210,7 @@ template<typename View>
 nb::class_<View> bind_view(nb::module_& m)
 {
     using T = typename View::value_type;
-    const auto name = urd::name<T>() + (std::same_as<record_of<View>, urd::builder<T>> ? "Builder" : "") + (detail::owns_record<View> ? "Owned" : "");
+    const auto name = urd::name<T>() + (urd::is_builder<record_of<View>> ? "Builder" : "") + (detail::owns_record<View> ? "Owned" : "");
     auto view = nb::class_<View>(m, name.c_str());
     bind_field_getters(view);
     bind_functions(view);

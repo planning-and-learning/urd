@@ -90,7 +90,7 @@ struct data;
 
 /// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index K (index<T>, or a
 /// handle of another shape the context resolves) and reads it through the context; borrowed_view, owning_view and
-/// shared_view hold a record R (data<T>, or builder<T>) outside the context: a pointer to it, it by value, a shared
+/// shared_view hold a record R (data<T>, or builder<T, C>) outside the context: a pointer to it, it by value, a shared
 /// pointer to it.
 template<typename T, typename C = typename context_of<T>::type, typename K = index<T>>
 class index_view;

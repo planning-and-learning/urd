@@ -186,7 +186,7 @@ std::string field_written(const V& value)
 
 }  // namespace detail
 
-/// A record of tag T as urd writes one: `Name(`, each field of Record (data<T>, or builder<T>) on a line of its own one
+/// A record of tag T as urd writes one: `Name(`, each field of Record (data<T>, or builder<T, C>) on a line of its own one
 /// level deeper, `name=value`, its value read by read.template operator()<F>() and written as a field's (an optional, a
 /// variant, a list), then `)`; `Name()` without fields. A library calls it for a view that reads its fields otherwise (a
 /// packed record).
@@ -211,7 +211,7 @@ std::string record_written(Read read)
 namespace detail
 {
 
-/// The tag a value with fields is named after: T for a record data<T> or a builder builder<T>, the value itself otherwise.
+/// The tag a value with fields is named after: T for a record data<T> or a builder builder<T, C>, the value itself otherwise.
 template<typename V>
 struct named
 {
@@ -224,8 +224,8 @@ struct named<data<T>>
     using type = T;
 };
 
-template<typename T>
-struct named<builder<T>>
+template<typename T, typename C>
+struct named<builder<T, C>>
 {
     using type = T;
 };
@@ -252,7 +252,7 @@ struct view_formatter
 }  // namespace urd
 
 /// A value that names its fields (fields()), `Name(\n    field=value\n    ...\n)`: a record (data<T>) or a builder
-/// (builder<T>) under the name of its tag T, any other value under its own name (urd::name), its fields in order. A
+/// (builder<T, C>) under the name of its tag T, any other value under its own name (urd::name), its fields in order. A
 /// library that writes such a value otherwise specializes this for it.
 template<typename V>
     requires urd::HasFields<V>
