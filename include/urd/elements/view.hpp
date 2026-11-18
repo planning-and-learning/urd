@@ -672,6 +672,35 @@ struct resolution<pooled_view<T, C, R>>
     static void of(const pooled_view<T, C, R>&& member, const P& context) = delete;
 };
 
+/// Whether V is one of urd's views: a T read through a context, held as its index (index_view) or as its record
+/// (borrowed_view, owning_view, shared_view, pooled_view).
+template<typename V>
+inline constexpr bool is_view = false;
+template<typename T, typename C, typename K>
+inline constexpr bool is_view<index_view<T, C, K>> = true;
+template<typename T, typename C, typename R>
+inline constexpr bool is_view<borrowed_view<T, C, R>> = true;
+template<typename T, typename C, typename R>
+inline constexpr bool is_view<owning_view<T, C, R>> = true;
+template<typename T, typename C, typename R>
+inline constexpr bool is_view<shared_view<T, C, R>> = true;
+template<typename T, typename C, typename R>
+inline constexpr bool is_view<pooled_view<T, C, R>> = true;
+
+template<typename V>
+concept View = is_view<V>;
+
+/// f of a view.
+template<View V, typename F>
+decltype(auto) visit_view(const V& view, F&& f)
+{ return std::forward<F>(f)(view); }
+
+/// f of the view a resolved child holds (urd::child resolved: a variant of the views of its forms). One reading serves a
+/// member that resolves to a view in a record and to a variant of views in its builder.
+template<View... Vs, typename F>
+decltype(auto) visit_view(const std::variant<Vs...>& views, F&& f)
+{ return std::visit(std::forward<F>(f), views); }
+
 /// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it,
 /// where it makes one (context.view(record): a record read through a context of its own, reached from the context of
 /// its parent), else its borrowed_view through the context. Never a temporary.

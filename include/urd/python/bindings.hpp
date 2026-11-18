@@ -143,6 +143,13 @@ inline constexpr bool owns_record = false;
 template<typename T, typename C, typename R>
 inline constexpr bool owns_record<owning_view<T, C, R>> = true;
 
+/// Whether a view borrows a record (borrowed_view of a data<T>): bound beside the view of the same record that holds its
+/// index. A builder's view is not counted: a builder is only ever read by holding it, so Builder names it.
+template<typename View>
+inline constexpr bool borrows_record = false;
+template<typename T, typename C, typename R>
+inline constexpr bool borrows_record<borrowed_view<T, C, R>> = !is_builder<R>;
+
 /// Whether a view shares its record (shared_view): bound beside a view of the same record that borrows it.
 template<typename View>
 inline constexpr bool shares_record = false;
@@ -204,8 +211,8 @@ void bind_functions(nb::class_<View>& cls)
 }
 
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder for a view of a
-/// builder<T, C>, <name>Owned for a view that owns its record, <name>Shared for one that shares it, so that the views of
-/// one record bound in one module have their own names), the one way a view is bound, whether it reads a stored record
+/// builder<T, C>, <name>Borrowed for a view that borrows a record (data<T>), <name>Owned for a view that owns its record,
+/// <name>Shared for one that shares it, so that the views of one record bound in one module have their own names), the one way a view is bound, whether it reads a stored record
 /// (data<T>), a record a context hands out in another layout (a value with the record's fields) or a builder
 /// (builder<T, C>): get_<field>() for each field of its
 /// record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
@@ -217,8 +224,8 @@ template<typename View>
 nb::class_<View> bind_view(nb::module_& m)
 {
     using T = typename View::value_type;
-    const auto name = urd::name<T>() + (urd::is_builder<record_of<View>> ? "Builder" : "") + (detail::owns_record<View> ? "Owned" : "")
-                      + (detail::shares_record<View> ? "Shared" : "");
+    const auto name = urd::name<T>() + (urd::is_builder<record_of<View>> ? "Builder" : "") + (detail::borrows_record<View> ? "Borrowed" : "")
+                      + (detail::owns_record<View> ? "Owned" : "") + (detail::shares_record<View> ? "Shared" : "");
     auto view = nb::class_<View>(m, name.c_str());
     bind_field_getters(view);
     bind_functions(view);

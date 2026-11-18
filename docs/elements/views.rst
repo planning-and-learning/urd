@@ -78,6 +78,17 @@ What all four give:
    A record's member as a view sees it: ``resolution<M>::of(member, context)``, the member passed on as given (so
    that a record or builder, which its resolution borrows, is refused as a temporary); see :cpp:func:`index_view::get`.
 
+.. cpp:concept:: template<typename V> View
+
+   One of urd's views (``is_view``): an :cpp:class:`index_view`, ``borrowed_view``, ``owning_view``, ``shared_view`` or
+   :cpp:class:`pooled_view`.
+
+.. cpp:function:: template<View V, typename F> decltype(auto) visit_view(const V& view, F&& f)
+                  template<View... Vs, typename F> decltype(auto) visit_view(const std::variant<Vs...>& views, F&& f)
+
+   ``f`` of a view, or of the view a resolved :cpp:type:`child` holds (a variant of the views of its forms). One
+   reading serves a member that resolves to a view in a record and to a variant of views in its builder.
+
 .. cpp:struct:: template<typename M> resolution
 
    How a member of type ``M`` resolves: as it is, unless specialized. Given for indices (``index<U>``: the context's view),

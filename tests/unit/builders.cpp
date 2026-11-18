@@ -152,10 +152,10 @@ struct InsertIntoNodes
     }
 };
 
-/// The weight of a child, in whichever form it is held.
-int weight_of(const auto& child)
+/// The weight of a leaf, read as it is resolved: a view, or a child in whichever form it is held.
+int weight_of(const auto& leaf)
 {
-    return std::visit([](const auto& leaf) { return leaf.get_weight(); }, child);
+    return urd::visit_view(leaf, [](const auto& view) { return view.get_weight(); });
 }
 
 }  // namespace
@@ -252,4 +252,5 @@ TEST(Builder, AChildsKeyIsTheOneItsViewNames)
     const auto read = urd::resolve(keyed, nodes);
     EXPECT_EQ(weight_of(read), 3);
     EXPECT_EQ(urd::inserted_index(nodes.view(LeafKey { 0 })), LeafKey { 0 });
+    EXPECT_EQ(weight_of(nodes.view(LeafKey { 0 })), 3);  // a view as it is
 }
