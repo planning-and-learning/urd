@@ -664,6 +664,22 @@ struct resolution<builder<T, C>>
     static void of(const builder<T, C>&& member, const P& context) = delete;
 };
 
+/// A child's record held elsewhere (urd::child), by its pointer: the view its context makes of it (context.view(record):
+/// a record read through a context of its own, reached from the context of its parent), else its borrowed_view through
+/// the context.
+template<typename T>
+struct resolution<const data<T>*>
+{
+    template<typename P>
+    static auto of(const data<T>* member, const P& context)
+    {
+        if constexpr (requires { context.view(*member); })
+            return context.view(*member);
+        else
+            return borrowed_view<T, P> { member, &context };
+    }
+};
+
 /// A built child (urd::child) held by its handle: its builder resolved. Never a temporary.
 template<typename T, typename C>
 struct resolution<handle<builder<T, C>>>
