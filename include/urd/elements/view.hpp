@@ -715,6 +715,9 @@ public:
     /// The record it owns, to write: a builder being built, a record not interned yet.
     [[nodiscard]] R& held() const noexcept { return *m_record; }
 
+    /// A copy of it: its record cloned into a slot of its own of the same pool (urd::clone), through the same context.
+    [[nodiscard]] pooled_view clone() const { return pooled_view(urd::clone(m_record), &this->context()); }
+
     /// The slot of its record in the pool it was drawn from, as the pool names its slots (its handle_type, index<R>): an
     /// identity that stays while it holds its record, a dense index that is no address.
     [[nodiscard]] index<R> slot() const noexcept { return index<R>(static_cast<typename index<R>::value_type>(m_record.get_deleter().slot)); }

@@ -12,12 +12,15 @@ namespace urd
 {
 
 /// What gives a record back to the Store of slots it came from when its handle goes: the Store, the record's slot
-/// there, and the Store's function that gives it back (its releaser: urd::slot_release, then erase).
+/// there, and the Store's function that gives it back (its releaser: urd::slot_release, then erase); and the Store's
+/// function that draws another slot of it (its record as the slot kept it), so that a handle is cloned into the same
+/// Store (urd::clone), where it has one (a Store of keyed slots has none: a slot is drawn under a key).
 struct release
 {
     void* store = nullptr;
     std::uint64_t slot = 0;
     void (*give_back)(void* store, std::uint64_t slot, void* record) noexcept = nullptr;
+    void* (*acquire)(void* store, std::uint64_t& slot) = nullptr;
 
     void operator()(void* record) const noexcept { give_back(store, slot, record); }
 };
@@ -25,6 +28,10 @@ struct release
 /// A record R held by its handle, from a Store of slots of R (Store::make_handle): given back when the handle goes.
 template<typename R>
 using handle = std::unique_ptr<R, release>;
+
+/// A copy of the record a handle holds, in a slot of its own of the same Store (urd/elements/clone.hpp).
+template<typename R>
+handle<R> clone(const handle<R>& held);
 
 /// A record held by its handle equals another as the records they hold; no record equals only none.
 template<typename R>

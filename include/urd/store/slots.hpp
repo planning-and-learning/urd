@@ -123,7 +123,7 @@ public:
         requires std::default_initializable<value_type> && unkeyed && shrinks<S>
     {
         const auto slot = representation().acquire();
-        return handle<value_type>(&representation()[slot], release { &self(), slot.value, &give_back });
+        return handle<value_type>(&representation()[slot], release { &self(), slot.value, &give_back, &acquire_slot });
     }
 
     /// As make_unique(), holding `keep` while the slot is in use and dropping it once the slot is back: pass the
@@ -204,6 +204,15 @@ private:
     [[nodiscard]] R& representation() { return store_access::of<Derived>(*this); }
 
     [[nodiscard]] Derived& self() { return static_cast<Derived&>(*this); }
+
+    /// Draws another slot of a handle's Store (as make_handle() does), for urd::clone: its record as the slot kept it.
+    static void* acquire_slot(void* store, std::uint64_t& slot)
+    {
+        auto& representation = store_access::of<Derived>(*static_cast<Derived*>(store));
+        const auto acquired = representation.acquire();
+        slot = acquired.value;
+        return &representation[acquired];
+    }
 
     /// Gives a handle's record back to its Store, as the releaser of its slot does.
     static void give_back(void* store, std::uint64_t slot, void* record) noexcept

@@ -5,6 +5,7 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/children.hpp"
+#include "urd/elements/clone.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/memory.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
@@ -396,4 +397,48 @@ TEST(Builder, MapsVariantsInsideVectorsBothWays)
     ASSERT_EQ(built.size(), 2U);
     EXPECT_EQ(weight_of(urd::resolve(std::get<0>(built[0]), nodes)), 3);
     EXPECT_EQ(std::get<1>(built[1]), 7);
+}
+
+// A builder that holds a built or held child is move-only (its child owns its record by a unique handle); urd::clone
+// copies it deeply: each built or held child into a slot of its own of the same pool, interned children and values as
+// they are.
+TEST(Builder, IsClonedWithItsChildren)
+{
+    static_assert(!std::copy_constructible<NodeBuilder> && !urd::CopiedAsIs<NodeBuilder>);
+    static_assert(urd::CopiedAsIs<LeafBuilder>);  // no child: copied as it is
+
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    node.first = nodes.view(urd::index<Leaf>(0));
+    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
+    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
+    node.depth = 2;
+
+    auto copy = urd::clone(node);
+    EXPECT_EQ(weights_of(urd::resolve(copy, nodes)), (std::vector<int> { 7, 3, 11 }));
+    EXPECT_EQ(weight_of(urd::resolve(std::as_const(copy.first), nodes)), 3);
+    EXPECT_EQ(copy.depth, 2);
+    // The built and the held child each have a record of their own, in the same pool.
+    EXPECT_NE(&std::get<1>(copy.rest[0]).held(), &std::get<1>(node.rest[0]).held());
+    EXPECT_NE(&std::get<2>(copy.rest[2]).held(), &std::get<2>(node.rest[2]).held());
+    std::get<1>(copy.rest[0]).held().weight = 8;
+    std::get<2>(copy.rest[2]).held().weight = 12;
+    EXPECT_EQ(weights_of(urd::resolve(node, nodes)), (std::vector<int> { 7, 3, 11 }));
+    EXPECT_EQ(weights_of(urd::resolve(copy, nodes)), (std::vector<int> { 8, 3, 12 }));
+
+    // A cloned slot goes back to its pool with its copy.
+    const auto* cloned = &std::get<1>(copy.rest[0]).held();
+    copy = NodeBuilder {};
+    EXPECT_EQ(&urd::builder_of(copy.first, pool, nodes), cloned);
+
+    // A keyed slot is drawn under its key, so its handle is not cloned.
+    auto sized = urd::Store<urd::slots<Sized>, urd::keyed<int>>();
+    const auto two = sized.make_handle(2);
+    EXPECT_THROW((void) urd::clone(two), std::logic_error);
 }
