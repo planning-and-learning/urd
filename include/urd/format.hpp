@@ -342,6 +342,17 @@ struct fmt::formatter<urd::index<T>, char>
     { return fmt::format_to(context.out(), "{}", at.value); }
 };
 
+/// A flat pair, as (first, second): cista's pair is not tuple-like, so fmt's tuple formatter does not take it.
+template<typename T1, typename T2>
+struct fmt::formatter<urd::flat_pair<T1, T2>, char>
+{
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
+    template<typename FormatContext>
+    auto format(const urd::flat_pair<T1, T2>& pair, FormatContext& context) const
+    { return fmt::format_to(context.out(), "({}, {})", pair.first, pair.second); }
+};
+
 /// A bitset span, as the positions of its set bits: {p, q, ...}.
 template<std::unsigned_integral Block>
 struct fmt::formatter<urd::bitset_span<Block>, char>
