@@ -321,6 +321,10 @@ TEST(Builder, AChildOwnsNoMemoryOfItsOwn)
     auto node = NodeBuilder {};
     urd::builder_of(node.first, pool, nodes).weight = 5;
     EXPECT_EQ(urd::memory_usage(node.first), 0U);
+    // A builder owns what its fields own: its list of children, not their records.
+    node.rest.resize(8);
+    EXPECT_EQ(urd::memory_usage(node), urd::memory_usage(node.rest));
+    EXPECT_GE(urd::memory_usage(node), 8 * sizeof(urd::child<Leaf, Nodes>));
     const auto text = std::variant<int, std::string>(std::string(200, 'x'));
     EXPECT_GE(urd::memory_usage(text), 200U);
 }

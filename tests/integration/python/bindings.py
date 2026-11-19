@@ -60,7 +60,7 @@ assert builder.get_weight() is None
 assert builder == m.term_builder()
 assert hash(builder) == hash(m.term_builder())
 assert str(builder) == "Term(\n    arity=1\n    objects=[\n        9\n    ]\n    weight=none\n)"
-assert type(builder) is m.TermBuilder
+assert type(builder) is m.TermBuilderBorrowed
 assert m.pair_name() == "PairTermPairAtomTerm"
 assert not hasattr(builder, "index")
 # A view that owns its record is bound beside the record's other views, under its own name.
@@ -73,3 +73,18 @@ assert (point.x, point.y) == (1, 2)
 point.y = 3
 assert point == m.Point(1, 3) and point != m.Point(1, 2)
 assert str(point) == "(1, 3)"
+
+# bind_builder: the builder itself, set from its record's form through a context, changed by its listed mutators, read
+# through view(context).
+built = m.TermBuilder()
+context = m.context()
+built.set_arity(context, 2)
+built.set_objects(context, [7])
+built.set_weight(context, 3)
+built.add_object(object=8)
+read = built.view(context)
+assert type(read) is m.TermBuilderBorrowed
+assert read.get_arity() == 2
+assert read.get_objects() == [7, 8]
+assert read.get_weight() == 3
+assert not hasattr(built, "get_arity")

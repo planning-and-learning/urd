@@ -4,6 +4,7 @@
 
 #include "urd/bits.hpp"
 #include "urd/elements/builder.hpp"
+#include "urd/elements/children.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/view.hpp"
@@ -79,14 +80,19 @@ struct urd::data<Term>
 template<>
 struct urd::builder<Term, Context>
 {
-    int arity = 0;
-    urd::flat_vector<int> objects;
-    urd::flat_optional<int> weight;
+    urd::built_t<int, Context> arity = 0;
+    urd::built_t<urd::flat_vector<int>, Context> objects;
+    urd::built_t<urd::flat_optional<int>, Context> weight;
 
     static constexpr auto fields() noexcept
     { return urd::Fields<urd::field<"arity", &builder::arity>, urd::field<"objects", &builder::objects>, urd::field<"weight", &builder::weight>> {}; }
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    /// Adds an object (a mutator, bound by bind_builder as its functions() lists it).
+    void add_object(int object) { objects.push_back(object); }
+
+    static constexpr auto functions() noexcept { return urd::Functions<urd::function<"add_object", &builder::add_object, urd::arg<"object">>> {}; }
 };
 
 /// The block a term's flags read (get_flags): it outlives every call.
@@ -156,6 +162,14 @@ struct Context
 {
     std::vector<urd::data<Term>> terms;
 
+    // Its records are move-only, so it is (std::vector reports itself copyable whatever it holds; nanobind would copy it).
+    Context() = default;
+    Context(const Context& other) = delete;
+    Context& operator=(const Context& other) = delete;
+    Context(Context&& other) = default;
+    Context& operator=(Context&& other) = default;
+    ~Context() = default;
+
     [[nodiscard]] const urd::data<Term>& operator[](urd::index<Term> at) const { return terms[at.value]; }
 
     [[nodiscard]] urd::index_view<Term, Context> view(urd::index<Term> at) const { return { at, this }; }
@@ -190,6 +204,8 @@ urd::builder<Term, Context>& term_builder()
     return held;
 }
 
+namespace nb = nanobind;
+
 using TermView = urd::index_view<Term, Context>;
 using TermBuilderView = urd::borrowed_view<Term, Context, urd::builder<Term, Context>>;
 using TermOwnedView = urd::owning_view<Term, Context>;
@@ -198,15 +214,19 @@ using TermOwnedView = urd::owning_view<Term, Context>;
 
 NB_MODULE(urd_bindings_test, m)
 {
-    urd::python::bind_index<urd::index<Atom>>(m, "AtomIndex");
+    nb::class_<Context>(m, "Context");
+    urd::python::bind_index<Atom>(m);
     urd::python::bind_value<Point>(m);
+    urd::python::bind_index<Term>(m);
     urd::python::bind_data<Term>(m);
     urd::python::bind_view<TermView>(m);
+    urd::python::bind_builder<Term, Context>(m);
     urd::python::bind_view<TermBuilderView>(m);
     urd::python::bind_view<TermOwnedView>(m);
     m.def("pair_name", [] { return urd::name<Pair<Term, Pair<Atom, Term>>>(); });
     m.def("term", [](std::size_t at) { return context().view(urd::index<Term>(static_cast<urd::index<Term>::value_type>(at))); });
     m.def("term_builder", [] { return TermBuilderView(&term_builder(), &context()); });
+    m.def("context", []() -> const Context& { return context(); }, nb::rv_policy::reference);
     m.def("term_owned",
           []
           {

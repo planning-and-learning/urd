@@ -42,7 +42,7 @@ jobs:
           prepare: |
             cmake -S . -B build/peachycheck -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                   -DURD_BUILD_BENCHMARKS=ON -DURD_NATIVE_PREFIX="$HOME/urd-deps"
-      # The schema rules (brokkr's docs/schema_rules.rst, S1 to S4), parsed with clang over the compile database the
+      # The schema rules (brokkr's docs/schema_rules.rst, S1 to S5), parsed with clang over the compile database the
       # lint configured.
       - name: Schema rules
         run: |

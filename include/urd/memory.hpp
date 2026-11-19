@@ -56,6 +56,22 @@ struct memory_of<T>
     }
 };
 
+template<typename T, typename C>
+struct builder;
+
+/// A builder owns what its fields own (a child its built or held record, through its handle: nothing of its own).
+template<typename T, typename C>
+    requires HasFields<builder<T, C>>
+struct memory_of<builder<T, C>>
+{
+    static std::size_t bytes(const builder<T, C>& held)
+    {
+        auto result = std::size_t { 0 };
+        for_each_field<builder<T, C>>([&]<typename F>() { result += memory_usage(held.*F::member); });
+        return result;
+    }
+};
+
 template<typename A, typename B>
 struct memory_of<std::pair<A, B>>
 {

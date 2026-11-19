@@ -38,11 +38,15 @@ namespace urd
 /// record's key (index<T> of a stored record) a child, a record held in place (data<T>) its builder, a flat container its
 /// std counterpart of built forms (flat_vector, flat_optional, flat_pair, flat_variant: std::vector, std::optional,
 /// std::pair, std::variant), anything else as it is (a value: a number, a flat_string, a plan, a key of no record). C is
-/// the repository that holds the member's records.
+/// the repository that holds the member's records. Each form also says how it is made from a record's member, read
+/// through its context (from: a key its interned child, the bind_builder setters' conversion); a library that
+/// specializes built_form for a member of its own gives both.
 template<typename M, typename C>
 struct built_form
 {
     using type = M;
+
+    static M from(const M& value, const C& /*context*/) { return value; }
 };
 
 template<typename M, typename C>
@@ -53,36 +57,79 @@ template<typename T, typename C>
 struct built_form<index<T>, C>
 {
     using type = child<T, C>;
+
+    static type from(index<T> value, const C& context) { return type(std::in_place_index<0>, interned_child<T, C>(value, &context)); }
 };
 
 template<typename T, typename C>
 struct built_form<data<T>, C>
 {
     using type = builder<T, C>;
+
+    /// Its index as it is, each field from the record's of the same position (a builder's fields are its record's).
+    static type from(const data<T>& value, const C& context)
+    {
+        auto result = type();
+        if constexpr (requires { result.index; })
+            result.index = value.index;
+        [&]<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
+        { ((result.*Bs::member = built_form<member_type_t<Ds::member>, C>::from(value.*Ds::member, context)), ...); }(data<T>::fields(), type::fields());
+        return result;
+    }
 };
 
 template<typename M, typename C>
 struct built_form<flat_vector<M>, C>
 {
     using type = std::vector<built_t<M, C>>;
+
+    static type from(const flat_vector<M>& value, const C& context)
+    {
+        auto result = type();
+        result.reserve(value.size());
+        for (const auto& element : value)
+            result.push_back(built_form<M, C>::from(element, context));
+        return result;
+    }
 };
 
 template<typename M, typename C>
 struct built_form<flat_optional<M>, C>
 {
     using type = std::optional<built_t<M, C>>;
+
+    static type from(const flat_optional<M>& value, const C& context)
+    {
+        if (!value.has_value())
+            return std::nullopt;
+        return type(built_form<M, C>::from(*value, context));
+    }
 };
 
 template<typename M, typename N, typename C>
 struct built_form<flat_pair<M, N>, C>
 {
     using type = std::pair<built_t<M, C>, built_t<N, C>>;
+
+    static type from(const flat_pair<M, N>& value, const C& context)
+    { return type(built_form<M, C>::from(value.first, context), built_form<N, C>::from(value.second, context)); }
 };
 
 template<typename... Ms, typename C>
 struct built_form<flat_variant<Ms...>, C>
 {
     using type = std::variant<built_t<Ms, C>...>;
+
+    /// Its alternative's form, at the alternative's position.
+    static type from(const flat_variant<Ms...>& value, const C& context)
+    {
+        return value.apply(
+            [&]<typename A>(const A& alternative)
+            {
+                constexpr auto at = boost::mp11::mp_find<boost::mp11::mp_list<Ms...>, A>::value;
+                return type(std::in_place_index<at>, built_form<A, C>::from(alternative, context));
+            });
+    }
 };
 
 
