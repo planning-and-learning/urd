@@ -6,6 +6,7 @@
 // against what is allocated (benchmarks/tools/record.py). Its declared words are urd/cost.hpp's.
 
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/handle.hpp"
 
 #include <cstddef>
 #include <functional>
@@ -83,6 +84,14 @@ template<typename V, typename Deleter>
 struct memory_of<std::unique_ptr<V, Deleter>>
 {
     static std::size_t bytes(const std::unique_ptr<V, Deleter>& held) { return held ? sizeof(V) + memory_usage(*held) : 0; }
+};
+
+/// A record held by its handle (urd::handle): one in a slot of a Store is the Store's, which counts it; one on the heap
+/// (make_owned) is its handle's, with what it owns.
+template<typename V>
+struct memory_of<std::unique_ptr<V, release>>
+{
+    static std::size_t bytes(const std::unique_ptr<V, release>& held) { return held && is_owned(held) ? sizeof(V) + memory_usage(*held) : 0; }
 };
 
 /// An optional owns what its value owns, where it has one.

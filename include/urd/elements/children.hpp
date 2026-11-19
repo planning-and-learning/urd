@@ -38,15 +38,15 @@ namespace urd
 /// record's key (index<T> of a stored record) a child, a record held in place (data<T>) its builder, a flat container its
 /// std counterpart of built forms (flat_vector, flat_optional, flat_pair, flat_variant: std::vector, std::optional,
 /// std::pair, std::variant), anything else as it is (a value: a number, a flat_string, a plan, a key of no record). C is
-/// the repository that holds the member's records. Each form also says how it is made from a record's member, read
-/// through its context (from: a key its interned child, the bind_builder setters' conversion); a library that
-/// specializes built_form for a member of its own gives both.
+/// the repository that holds the member's records. Each form also says how it is made from a record's member (from: a
+/// key its interned child, a record its builder; the bind_builder setters' conversion), which needs no context, as no
+/// child holds one; a library that specializes built_form for a member of its own gives both.
 template<typename M, typename C>
 struct built_form
 {
     using type = M;
 
-    static M from(const M& value, const C& /*context*/) { return value; }
+    static M from(const M& value) { return value; }
 };
 
 template<typename M, typename C>
@@ -58,7 +58,7 @@ struct built_form<index<T>, C>
 {
     using type = child<T, C>;
 
-    static type from(index<T> value, const C& context) { return type(std::in_place_index<0>, interned_child<T, C>(value, &context)); }
+    static type from(index<T> value) { return type(std::in_place_index<0>, value); }
 };
 
 template<typename T, typename C>
@@ -67,13 +67,13 @@ struct built_form<data<T>, C>
     using type = builder<T, C>;
 
     /// Its index as it is, each field from the record's of the same position (a builder's fields are its record's).
-    static type from(const data<T>& value, const C& context)
+    static type from(const data<T>& value)
     {
         auto result = type();
         if constexpr (requires { result.index; })
             result.index = value.index;
         [&]<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
-        { ((result.*Bs::member = built_form<member_type_t<Ds::member>, C>::from(value.*Ds::member, context)), ...); }(data<T>::fields(), type::fields());
+        { ((result.*Bs::member = built_form<member_type_t<Ds::member>, C>::from(value.*Ds::member)), ...); }(data<T>::fields(), type::fields());
         return result;
     }
 };
@@ -83,12 +83,12 @@ struct built_form<flat_vector<M>, C>
 {
     using type = std::vector<built_t<M, C>>;
 
-    static type from(const flat_vector<M>& value, const C& context)
+    static type from(const flat_vector<M>& value)
     {
         auto result = type();
         result.reserve(value.size());
         for (const auto& element : value)
-            result.push_back(built_form<M, C>::from(element, context));
+            result.push_back(built_form<M, C>::from(element));
         return result;
     }
 };
@@ -98,11 +98,11 @@ struct built_form<flat_optional<M>, C>
 {
     using type = std::optional<built_t<M, C>>;
 
-    static type from(const flat_optional<M>& value, const C& context)
+    static type from(const flat_optional<M>& value)
     {
         if (!value.has_value())
             return std::nullopt;
-        return type(built_form<M, C>::from(*value, context));
+        return type(built_form<M, C>::from(*value));
     }
 };
 
@@ -111,8 +111,8 @@ struct built_form<flat_pair<M, N>, C>
 {
     using type = std::pair<built_t<M, C>, built_t<N, C>>;
 
-    static type from(const flat_pair<M, N>& value, const C& context)
-    { return type(built_form<M, C>::from(value.first, context), built_form<N, C>::from(value.second, context)); }
+    static type from(const flat_pair<M, N>& value)
+    { return type(built_form<M, C>::from(value.first), built_form<N, C>::from(value.second)); }
 };
 
 template<typename... Ms, typename C>
@@ -121,13 +121,13 @@ struct built_form<flat_variant<Ms...>, C>
     using type = std::variant<built_t<Ms, C>...>;
 
     /// Its alternative's form, at the alternative's position.
-    static type from(const flat_variant<Ms...>& value, const C& context)
+    static type from(const flat_variant<Ms...>& value)
     {
         return value.apply(
             [&]<typename A>(const A& alternative)
             {
                 constexpr auto at = boost::mp11::mp_find<boost::mp11::mp_list<Ms...>, A>::value;
-                return type(std::in_place_index<at>, built_form<A, C>::from(alternative, context));
+                return type(std::in_place_index<at>, built_form<A, C>::from(alternative));
             });
     }
 };
@@ -275,17 +275,17 @@ K as_key(R&& inserted)
         return urd::inserted_index(inserted);
 }
 
-/// A child as the key f gives it in the form it holds: its index_view (interned), its builder (built), or its record
-/// not interned yet (held, writable: interning may prepare it).
+/// A child as the key f gives it in the form it holds: its key (interned), its builder (built), or its record not
+/// interned yet (held, writable: interning may prepare it).
 template<typename K, typename U, typename C, typename F>
 void assign_member(K& target, const child<U, C, K>& source, F& f)
 {
-    if (const auto* interned = std::get_if<interned_child<U, C, K>>(&source))
-        target = detail::as_key<K>(f(*interned));
-    else if (const auto* built = std::get_if<built_child<U, C>>(&source))
-        target = detail::as_key<K>(f(std::as_const(built->held())));
+    if (const auto* interned = std::get_if<0>(&source))
+        target = detail::as_key<K>(f(std::as_const(*interned)));
+    else if (const auto* built = std::get_if<1>(&source))
+        target = detail::as_key<K>(f(std::as_const(**built)));
     else
-        target = detail::as_key<K>(f(std::get<held_child<U, C>>(source).held()));
+        target = detail::as_key<K>(f(*std::get<2>(source)));
 }
 
 template<typename U, typename C, typename F>
@@ -400,7 +400,7 @@ R& map_children(const R& source, R& scratch, const C& context, F f)
 /// The record of a builder, written into scratch (a reused record: its buffers kept, its own handle as it is): each
 /// field in step with the builder's (urd::builder: the same names, in the same order), each child (urd::child: interned,
 /// built, or a record not interned yet; a vector's elements one by one, each in its own form) replaced by the key f
-/// gives for it in its form: f(index_view) for an interned one, f(const builder&) for a built one, f(data&) for a
+/// gives for it in its form: f(key) for an interned one, f(const builder&) for a built one, f(data&) for a
 /// record not interned yet; f returns a key, a view of one, the pair a repository's insert returns, or missing_key.
 /// Builders held in place are written as their records, std's containers as the flat ones.
 template<typename T, typename C, typename F>
@@ -411,11 +411,10 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
 }
 
 /// Interns a builder: its record written into scratch (map_children), each child as the key `insert` gives it, then the
-/// record inserted. `insert` takes every form a child holds: an interned child's index_view (its key, where the
-/// repository interned into holds it), a built one's builder (interned again, with a scratch record of its own) and a
+/// record inserted. `insert` takes every form a child holds: an interned child's key (kept as it is), a built one's builder (interned again, with a scratch record of its own) and a
 /// record not interned yet, of every kind the builder holds, and inserts it into the repository that holds its kind; so
-/// built children first. A child of a kind another context holds must be interned there: insert takes only its
-/// index_view (a built one or a record of that kind does not compile). Returns what insert(scratch) returns.
+/// built children first. A child of a kind another context holds must be interned there: insert takes only its key
+/// (a built one or a record of that kind does not compile). Returns what insert(scratch) returns.
 template<typename T, typename C, typename Insert>
 decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert&& insert)
 {
@@ -454,24 +453,26 @@ template<std::copyable T, typename Cx, typename F>
     requires(!is_built_element_wise<T>)
 void build_member(T& target, const T& source, const Cx& context, F& f);
 
-/// A child from another builder's child: a copy of the record it reads where it is interned (a built or held child is
-/// owned by its builder, not copied: std::bad_variant_access).
+/// A child from another builder's child: its key where it is interned (a built or held child is owned by its builder,
+/// not copied: std::bad_variant_access).
 template<typename U, typename C, typename K, typename Cx, typename F>
 void build_member(child<U, C, K>& target, const child<U, C, K>& source, const Cx& /*context*/, F& /*f*/)
-{ target = std::get<interned_child<U, C, K>>(source); }
+{ target.template emplace<0>(std::get<0>(source)); }
 
-/// A child from a view of the builder's context, as it is (a writer that has the view already).
-template<typename U, typename C, typename K, typename Cx, typename F>
-void build_member(child<U, C, K>& target, const index_view<U, C, K>& source, const Cx& /*context*/, F& /*f*/)
-{ target = source; }
+/// A child from a view (a writer that has the view already): its key.
+template<typename U, typename C, typename K, typename Cv, typename Cx, typename F>
+void build_member(child<U, C, K>& target, const index_view<U, Cv, K>& source, const Cx& /*context*/, F& /*f*/)
+{ target.template emplace<0>(source.index()); }
 
+/// A child from a record's key: the key of the view f gives for the element it names (f(view): as it is, or the view in
+/// another repository that copying gives).
 template<typename U, typename C, typename K, typename Cx, typename F>
 void build_member(child<U, C, K>& target, const K& source, const Cx& context, F& f)
 {
     if (source == K {})
         target = child<U, C, K> {};  // none: the empty child
     else
-        target = f(context.view(source));
+        urd::store(target, f(context.view(source)));
 }
 
 template<typename U, typename C, typename Cx, typename F>
@@ -597,11 +598,11 @@ auto interned_view(const std::variant<Vs...>& reading)
     return std::get<Interned>(reading);
 }
 
-/// A child written from a reading of its kind, as build_member copies a child from another builder's: the record it
-/// reads where that is interned (interned_view; a built or held one is its holder's, not copied).
+/// A child written from a reading of its kind, as build_member copies a child from another builder's: the key of the
+/// record it reads where that is interned (interned_view; a built or held one is its holder's, not copied).
 template<typename U, typename C, typename K, typename R>
 void copy_child(child<U, C, K>& target, const R& reading)
-{ target = urd::interned_view(reading); }
+{ target.template emplace<0>(urd::interned_view(reading).index()); }
 
 /// Whether a reading of a T (a view of it, or a resolved child: the variant of the views of its forms) reads the
 /// interned record `interned` (the same context, the same key): a built or held record is another record, even of the

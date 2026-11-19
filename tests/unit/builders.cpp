@@ -137,7 +137,7 @@ struct InsertIntoNodes
     Nodes* nodes;
     std::vector<urd::data<Node>>* stored;
 
-    urd::index<Leaf> operator()(const urd::index_view<Leaf, Nodes>& leaf) const { return leaf.index(); }
+    urd::index<Leaf> operator()(urd::index<Leaf> leaf) const { return leaf; }
 
     urd::index<Leaf> operator()(const LeafBuilder& leaf) const
     {
@@ -215,10 +215,10 @@ TEST(Builder, ReadsItsChildrenInEachForm)
 
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
-    node.first = nodes.view(urd::index<Leaf>(0));
-    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
-    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
-    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
+    node.first = urd::index<Leaf>(0);
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 7;
+    node.rest.emplace_back(urd::index<Leaf>(0));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
 
     const auto view = urd::resolve(node, nodes);
     static_assert(std::same_as<decltype(view), const urd::borrowed_view<Node, Nodes, NodeBuilder>>);
@@ -268,10 +268,10 @@ TEST(Builder, AChildIsBuiltFromItsPool)
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
     auto nodes = Nodes {};
-    urd::builder_of(node.first, pool, nodes).weight = 5;
+    urd::builder_of(node.first, pool).weight = 5;
     ASSERT_EQ(node.first.index(), 1U);
-    EXPECT_EQ(std::get<1>(node.first).held().weight, 5);
-    EXPECT_EQ(&urd::builder_of(node.first, pool, nodes), &std::get<1>(node.first).held());
+    EXPECT_EQ(std::get<1>(node.first)->weight, 5);
+    EXPECT_EQ(&urd::builder_of(node.first, pool), std::get<1>(node.first).get());
 }
 
 TEST(Builder, InternsItsChildrenFirst)
@@ -283,10 +283,10 @@ TEST(Builder, InternsItsChildrenFirst)
     leaf_record->weight = 11;
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
-    node.first = nodes.view(urd::index<Leaf>(0));
-    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
-    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
-    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
+    node.first = urd::index<Leaf>(0);
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 7;
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
+    node.rest.emplace_back(urd::index<Leaf>(0));
     node.depth = 2;
 
     auto stored = std::vector<urd::data<Node>> {};
@@ -306,7 +306,7 @@ TEST(Builder, AChildsKeyIsTheOneItsViewNames)
 {
     auto nodes = Nodes {};
     nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
-    const auto keyed = urd::child<Leaf, Nodes, LeafKey>(nodes.view(LeafKey { 0 }));
+    const auto keyed = urd::child<Leaf, Nodes, LeafKey>(LeafKey { 0 });
     const auto read = urd::resolve(keyed, nodes);
     EXPECT_EQ(weight_of(read), 3);
     EXPECT_EQ(urd::inserted_index(nodes.view(LeafKey { 0 })), LeafKey { 0 });
@@ -319,7 +319,7 @@ TEST(Builder, AChildOwnsNoMemoryOfItsOwn)
     auto nodes = Nodes {};
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
-    urd::builder_of(node.first, pool, nodes).weight = 5;
+    urd::builder_of(node.first, pool).weight = 5;
     EXPECT_EQ(urd::memory_usage(node.first), 0U);
     // A builder owns what its fields own: its list of children, not their records.
     node.rest.resize(8);
@@ -327,6 +327,21 @@ TEST(Builder, AChildOwnsNoMemoryOfItsOwn)
     EXPECT_GE(urd::memory_usage(node), 8 * sizeof(urd::child<Leaf, Nodes>));
     const auto text = std::variant<int, std::string>(std::string(200, 'x'));
     EXPECT_GE(urd::memory_usage(text), 200U);
+}
+
+// A child may own its record on the heap (urd::make_owned: where no pool is at hand, as a builder made in Python): the
+// handle owns what its record owns, and is cloned onto the heap.
+TEST(Builder, AnOwnedChildOwnsItsRecord)
+{
+    auto node = NodeBuilder {};
+    node.first.emplace<1>(urd::make_owned<LeafBuilder>());
+    std::get<1>(node.first)->weight = 4;
+    EXPECT_TRUE(urd::is_owned(std::get<1>(node.first)));
+    EXPECT_GE(urd::memory_usage(node.first), sizeof(LeafBuilder));
+    const auto copy = urd::clone(node);
+    EXPECT_TRUE(urd::is_owned(std::get<1>(copy.first)));
+    EXPECT_NE(std::get<1>(copy.first).get(), std::get<1>(node.first).get());
+    EXPECT_EQ(std::get<1>(copy.first)->weight, 4);
 }
 
 namespace
@@ -418,10 +433,10 @@ TEST(Builder, IsClonedWithItsChildren)
     leaf_record->weight = 11;
     auto pool = LeafPool {};
     auto node = NodeBuilder {};
-    node.first = nodes.view(urd::index<Leaf>(0));
-    urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
-    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
-    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
+    node.first = urd::index<Leaf>(0);
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 7;
+    node.rest.emplace_back(urd::index<Leaf>(0));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
     node.depth = 2;
 
     auto copy = urd::clone(node);
@@ -429,17 +444,17 @@ TEST(Builder, IsClonedWithItsChildren)
     EXPECT_EQ(weight_of(urd::resolve(std::as_const(copy.first), nodes)), 3);
     EXPECT_EQ(copy.depth, 2);
     // The built and the held child each have a record of their own, in the same pool.
-    EXPECT_NE(&std::get<1>(copy.rest[0]).held(), &std::get<1>(node.rest[0]).held());
-    EXPECT_NE(&std::get<2>(copy.rest[2]).held(), &std::get<2>(node.rest[2]).held());
-    std::get<1>(copy.rest[0]).held().weight = 8;
-    std::get<2>(copy.rest[2]).held().weight = 12;
+    EXPECT_NE(std::get<1>(copy.rest[0]).get(), std::get<1>(node.rest[0]).get());
+    EXPECT_NE(std::get<2>(copy.rest[2]).get(), std::get<2>(node.rest[2]).get());
+    std::get<1>(copy.rest[0])->weight = 8;
+    std::get<2>(copy.rest[2])->weight = 12;
     EXPECT_EQ(weights_of(urd::resolve(node, nodes)), (std::vector<int> { 7, 3, 11 }));
     EXPECT_EQ(weights_of(urd::resolve(copy, nodes)), (std::vector<int> { 8, 3, 12 }));
 
     // A cloned slot goes back to its pool with its copy.
-    const auto* cloned = &std::get<1>(copy.rest[0]).held();
+    const auto* cloned = std::get<1>(copy.rest[0]).get();
     copy = NodeBuilder {};
-    EXPECT_EQ(&urd::builder_of(copy.first, pool, nodes), cloned);
+    EXPECT_EQ(&urd::builder_of(copy.first, pool), cloned);
 
     // A keyed slot is drawn under its key, so its handle is not cloned.
     auto sized = urd::Store<urd::slots<Sized>, urd::keyed<int>>();

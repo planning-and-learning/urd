@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace urd
 {
@@ -28,6 +29,22 @@ struct release
 /// A record R held by its handle, from a Store of slots of R (Store::make_handle): given back when the handle goes.
 template<typename R>
 using handle = std::unique_ptr<R, release>;
+
+/// A record held by its handle on the heap, owned by no Store: deleted when its handle goes, and cloned onto the heap
+/// (urd::clone). What a child holds where no pool is at hand (a builder made in Python, a test).
+template<typename R, typename... Args>
+handle<R> make_owned(Args&&... args)
+{
+    auto release = urd::release {};
+    release.give_back = [](void* /*store*/, std::uint64_t /*slot*/, void* record) noexcept { delete static_cast<R*>(record); };
+    release.acquire = [](void* /*store*/, std::uint64_t& /*slot*/) -> void* { return new R(); };
+    return handle<R>(new R(std::forward<Args>(args)...), release);
+}
+
+/// Whether a handle's record is on the heap (make_owned), not in a slot of a Store.
+template<typename R>
+[[nodiscard]] bool is_owned(const handle<R>& held) noexcept
+{ return held.get_deleter().store == nullptr; }
 
 /// A copy of the record a handle holds, in a slot of its own of the same Store (urd/elements/clone.hpp).
 template<typename R>

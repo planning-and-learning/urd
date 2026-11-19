@@ -74,17 +74,27 @@ point.y = 3
 assert point == m.Point(1, 3) and point != m.Point(1, 2)
 assert str(point) == "(1, 3)"
 
-# bind_builder: the builder itself, set from its record's form through a context, changed by its listed mutators, read
-# through view(context).
+# bind_builder: the builder itself, set from its record's form without a context, changed by its listed mutators, read
+# through view(context); its __init__ takes each field by name, every one optional.
 built = m.TermBuilder()
-context = m.context()
-built.set_arity(context, 2)
-built.set_objects(context, [7])
-built.set_weight(context, 3)
+built.set_arity(2)
+built.set_objects([7])
+built.set_weight(3)
 built.add_object(object=8)
+context = m.context()
 read = built.view(context)
 assert type(read) is m.TermBuilderBorrowed
 assert read.get_arity() == 2
 assert read.get_objects() == [7, 8]
 assert read.get_weight() == 3
 assert not hasattr(built, "get_arity")
+made = m.TermBuilder(arity=4, objects=[1, 2])
+assert made.view(context).get_arity() == 4
+assert made.view(context).get_objects() == [1, 2]
+assert made.view(context).get_weight() is None
+try:
+    built.set_arity("two")
+except TypeError:
+    pass
+else:
+    raise AssertionError("a field takes only what its built form holds")

@@ -23,18 +23,18 @@ namespace urd
 template<typename T, typename C>
 struct builder;
 
-/// A child record T of a builder, as a view through its own context C, in one of three forms: interned (its index_view;
-/// the none view until one is given: a child default-constructs empty), built (a builder of its own), or a record of
-/// its own not interned yet; the last two owned by the child (pooled_view: held by its handle from a pool). Every form
-/// carries its context, so that a child reads as it is, whoever reads it: urd resolves it as any variant member, the
-/// index_view as it is, a pooled view as its record's borrowed view through its own context. K is the key of the
-/// interned form, as index_view's: index<T>, or a key of its own (a row's: its pool and its id).
+/// A child record T of a builder, in one of three forms: interned (its key K: index<T>, or a key of its own such as a
+/// row's; the none key until one is given: a child default-constructs empty), built (a builder of its own), or a record
+/// of its own not interned yet; the last two owned by the child through their handles (urd::handle: from a pool, or
+/// make_owned). No form carries a context: a child is read through the context of the view that reads its builder,
+/// which urd resolves as any variant member (a key as the view its context makes, a handle as its record).
+/// C is the context type of the builder that holds it: what a built child's builder is read through.
 template<typename T, typename C, typename K = index<T>>
-using interned_child = index_view<T, C, K>;  ///< A child's interned form.
+using interned_child = K;  ///< A child's interned form: its key.
 template<typename T, typename C>
-using built_child = pooled_view<T, C, builder<T, C>>;  ///< A child's built form.
+using built_child = handle<builder<T, C>>;  ///< A child's built form.
 template<typename T, typename C>
-using held_child = pooled_view<T, C, data<T>>;  ///< A child's form of a record of its own, not interned yet.
+using held_child = handle<data<T>>;  ///< A child's form of a record of its own, not interned yet.
 
 template<typename T, typename C, typename K = index<T>>
 using child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>;
@@ -54,14 +54,14 @@ struct child_in
 template<typename L, typename C>
 using child_variant = boost::mp11::mp_apply<std::variant, boost::mp11::mp_transform<detail::child_in<C>::template fn, L>>;
 
-/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>), read through
-/// `context`, where it holds no builder (it is interned, or a record).
+/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>) where it holds no
+/// builder (it is interned, or a record).
 template<typename T, typename C, typename K, typename Pool>
-builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool, const C& context)
+builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
 {
     if (!std::holds_alternative<built_child<T, C>>(held))
-        held.template emplace<built_child<T, C>>(pool.make_handle(), &context);
-    return std::get<built_child<T, C>>(held).held();
+        held.template emplace<built_child<T, C>>(pool.make_handle());
+    return *std::get<built_child<T, C>>(held);
 }
 
 /// Whether R is a builder.

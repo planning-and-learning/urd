@@ -5,6 +5,8 @@
 
 #include "urd/elements/builder.hpp"
 #include "urd/elements/children.hpp"
+#include "urd/elements/handle.hpp"
+#include "urd/elements/clone.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/hash.hpp"
@@ -26,6 +28,17 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
+NAMESPACE_BEGIN(NB_NAMESPACE)
+NAMESPACE_BEGIN(detail)
+/// A builder is copied as urd copies it (urd::CopiedAsIs): one holding a child of its own is move-only, which a
+/// std::vector of children does not tell (it reports itself copyable whatever its elements); nanobind would copy it.
+template<typename T, typename C>
+struct is_copy_constructible<urd::builder<T, C>> : std::bool_constant<urd::CopiedAsIs<urd::builder<T, C>>>
+{
+};
+NAMESPACE_END(detail)
+NAMESPACE_END(NB_NAMESPACE)
 
 namespace urd::python
 {
@@ -263,28 +276,152 @@ void bind_functions(nb::class_<View>& cls)
             });
 }
 
-/// Binds the builder<T, C> under <name>Builder (urd::name<T>()), the one way a builder is bound: an __init__ of an empty
-/// one; set_<field>(context, value) for each field, the value in its record's form (data<T>'s field: a key, a list of
-/// keys, a number; a view converts to its key) made the field's built form through the context (built_form::from); the
-/// mutators its functions() lists, under their names; and view(context), its view through the context
-/// (<name>BuilderBorrowed), which every read goes through, as a record's do. Bound after bind_data<T>.
+namespace detail
+{
+template<typename B>
+bool from_python(nb::handle value, B& target);
+
+/// A child from Python: a builder of its kind (built: a copy, owned by the child), a record of its kind (held: a copy),
+/// or its key (interned: an index, or a view, which converts to its key).
+template<typename U, typename C, typename K>
+bool child_from_python(nb::handle value, child<U, C, K>& target)
+{
+    if (nb::isinstance<builder<U, C>>(value))
+        target.template emplace<1>(urd::make_owned<builder<U, C>>(urd::clone(nb::cast<const builder<U, C>&>(value))));
+    else if (nb::isinstance<data<U>>(value))
+        target.template emplace<2>(urd::make_owned<data<U>>(urd::clone(nb::cast<const data<U>&>(value))));
+    else if (auto key = K(); nb::try_cast(value, key))
+        target.template emplace<0>(key);
+    else
+        return false;
+    return true;
+}
+
+/// A builder held in place from Python: a builder of its kind (a copy), or a record of its kind (built_form::from).
+template<typename U, typename C>
+bool builder_from_python(nb::handle value, builder<U, C>& target)
+{
+    if (nb::isinstance<builder<U, C>>(value))
+        target = urd::clone(nb::cast<const builder<U, C>&>(value));
+    else if (nb::isinstance<data<U>>(value))
+        target = built_form<data<U>, C>::from(nb::cast<const data<U>&>(value));
+    else
+        return false;
+    return true;
+}
+
+template<typename B>
+inline constexpr bool is_child_value = false;
+template<typename U, typename C, typename K>
+inline constexpr bool is_child_value<std::variant<K, handle<builder<U, C>>, handle<data<U>>>> = true;
+
+/// A std::vector of what is not copyable (children): built element by element; one of values nanobind casts whole.
+template<typename B>
+inline constexpr bool is_vector_of_children = false;
+template<typename E, typename A>
+inline constexpr bool is_vector_of_children<std::vector<E, A>> = !std::copy_constructible<E>;
+
+template<typename B>
+inline constexpr bool is_std_optional = false;
+template<typename E>
+inline constexpr bool is_std_optional<std::optional<E>> = true;
+
+template<typename B>
+inline constexpr bool is_std_variant = false;
+template<typename... Bs>
+inline constexpr bool is_std_variant<std::variant<Bs...>> = true;
+
+/// The first alternative of a variant that takes the value.
+template<std::size_t I, typename... Bs>
+bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
+{
+    if constexpr (I == sizeof...(Bs))
+        return false;
+    else
+    {
+        auto alternative = std::variant_alternative_t<I, std::variant<Bs...>>();
+        if (detail::from_python(value, alternative))
+        {
+            target.template emplace<I>(std::move(alternative));
+            return true;
+        }
+        return detail::alternative_from_python<I + 1>(value, target);
+    }
+}
+
+/// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a list
+/// of members element by element, an optional (None is empty), a variant by the first alternative that takes it, a
+/// builder held in place as a builder or its record (a copy), anything else as nanobind casts it. Whether it took it.
+template<typename B>
+bool from_python(nb::handle value, B& target)
+{
+    if constexpr (is_child_value<B>)
+        return detail::child_from_python(value, target);
+    else if constexpr (is_std_variant<B>)
+        return detail::alternative_from_python<0>(value, target);
+    else if constexpr (is_std_optional<B>)
+    {
+        if (value.is_none())
+        {
+            target.reset();
+            return true;
+        }
+        return detail::from_python(value, target.emplace());
+    }
+    else if constexpr (is_vector_of_children<B>)
+    {
+        if (!nb::isinstance<nb::sequence>(value) || nb::isinstance<nb::str>(value))
+            return false;
+        auto result = B();
+        for (const auto element : value)
+            if (!detail::from_python(element, result.emplace_back()))
+                return false;
+        target = std::move(result);
+        return true;
+    }
+    else if constexpr (is_builder<B>)
+        return detail::builder_from_python(value, target);
+    else if constexpr (std::copy_constructible<B>)
+        return nb::try_cast(value, target);
+    else
+        return false;  // a form with no Python value (a relation's ordered rows): its builder's mutators make it
+}
+}  // namespace detail
+
+/// Binds the builder<T, C> under <name>Builder (urd::name<T>()), the one way a builder is bound: an __init__ that takes
+/// each field by its name, every one optional (empty where it is not given); set_<field>(value) for each field; the
+/// mutators its functions() lists, under their names; and view(context), its view through a context
+/// (<name>BuilderBorrowed), which every read goes through, as a record's do. A field takes what its built form holds,
+/// none of it read through a context: a child a key (an index, or a view of one), a builder or a record of its kind (a
+/// copy, owned by the child); a list, an optional or a variant of these, element by element; a value as nanobind casts
+/// it. Bound after bind_data<T>.
 template<typename T, typename C>
     requires HasFields<builder<T, C>>
 nb::class_<builder<T, C>> bind_builder(nb::module_& m)
 {
     using B = builder<T, C>;
-    auto cls = nb::class_<B>(m, (urd::name<T>() + "Builder").c_str()).def(nb::init<>());
-    [&]<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
+    auto cls = nb::class_<B>(m, (urd::name<T>() + "Builder").c_str());
+    const auto set = []<typename F>(B& built, nb::handle value)
     {
+        if (!detail::from_python(value, built.*F::member))
+            throw nb::type_error((std::string("urd::python::bind_builder: ") + F::c_name + " does not take this value").c_str());
+    };
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/)
+    {
+        cls.def(
+            "__init__",
+            [set](B* self, std::conditional_t<true, nb::handle, Fs>... values)
+            {
+                new (self) B();
+                ((values.is_none() ? void() : set.template operator()<Fs>(*self, values)), ...);
+            },
+            (nb::arg(Fs::c_name) = nb::none())...);
         (cls.def(
-             Bs::template prefixed<"set_">.data(),
-             [](B& built, const C& context, const member_type_t<Ds::member>& value)
-             { built.*Bs::member = built_form<member_type_t<Ds::member>, C>::from(value, context); },
-             nb::arg("context"),
-             nb::arg(Bs::c_name),
-             nb::keep_alive<1, 2>()),  // an interned child refers to its context
+             Fs::template prefixed<"set_">.data(),
+             [set](B& built, nb::handle value) { set.template operator()<Fs>(built, value); },
+             nb::arg(Fs::c_name)),
          ...);
-    }(data<T>::fields(), B::fields());
+    }(B::fields());
     bind_functions(cls);
     cls.def(
         "view",

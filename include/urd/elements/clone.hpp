@@ -110,10 +110,6 @@ template<typename... Vs>
     requires(!CopiedAsIs<std::variant<Vs...>>)
 std::variant<Vs...> clone(const std::variant<Vs...>& value);
 
-/// A built or held child's form: its record cloned into a slot of its own of the same pool.
-template<typename T, typename C, typename R>
-pooled_view<T, C, R> clone(const pooled_view<T, C, R>& held);
-
 namespace detail
 {
 /// Each field of `source` cloned into `target`, its index as it is.
@@ -179,10 +175,6 @@ std::variant<Vs...> clone(const std::variant<Vs...>& value)
 {
     return std::visit([]<typename V>(const V& alternative) { return std::variant<Vs...>(std::in_place_type<V>, urd::clone(alternative)); }, value);
 }
-
-template<typename T, typename C, typename R>
-pooled_view<T, C, R> clone(const pooled_view<T, C, R>& held)
-{ return held.clone(); }
 
 template<typename R>
 handle<R> clone(const handle<R>& held)

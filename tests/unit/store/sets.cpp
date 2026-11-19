@@ -40,6 +40,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <iterator>
 #include <limits>
@@ -440,6 +441,29 @@ struct Node
     static constexpr auto identifying_members() noexcept { return urd::Members<&Node::id> {}; }
 };
 }  // namespace
+
+namespace
+{
+/// An order that holds state: by distance from an origin it reads through a pointer (as a comparator reads its
+/// elements through a context).
+struct ByDistance
+{
+    const int* origin = nullptr;
+
+    bool operator()(int lhs, int rhs) const { return std::abs(lhs - *origin) < std::abs(rhs - *origin); }
+};
+}  // namespace
+
+// An ordered Store is built with an instance of its order, as std::set(compare), and keeps it.
+TEST(OrderBy, AStoreIsBuiltWithAnInstanceOfItsOrder)
+{
+    const auto origin = 10;
+    auto near = Store<set<int>, urd::sorted, urd::order_by<ByDistance>>(ByDistance { &origin });
+    near.insert(3);
+    near.insert(12);
+    near.insert(9);
+    EXPECT_EQ(std::vector<int>(near.begin(), near.end()), (std::vector<int> { 9, 12, 3 }));
+}
 
 // The order is the projection and nothing else: two nodes with equal f are one element of a unique Store, as with
 // any comparator; to keep both, the projection names what tells them apart.

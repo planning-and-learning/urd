@@ -1,6 +1,6 @@
 #pragma once
 
-// A view (urd::index_view, borrowed_view, owning_view, shared_view, pooled_view) handed to Python keeps its context alive:
+// A view (urd::index_view, borrowed_view, owning_view, shared_view) handed to Python keeps its context alive:
 // the self of the call that returned the view (nanobind hands it to every caster through the cleanup list;
 // nb::cast(value, policy, parent) names it): the context itself, an object that owns it, or the view it was read from,
 // which keeps its own context alive the same way. Only a view returned by a call without a self (a free function) keeps
@@ -64,11 +64,6 @@ struct type_caster<urd::owning_view<T, C, R>> : urd_view_caster<urd::owning_view
 
 template<typename T, typename C, typename R>
 struct type_caster<urd::shared_view<T, C, R>> : urd_view_caster<urd::shared_view<T, C, R>>
-{
-};
-
-template<typename T, typename C, typename R>
-struct type_caster<urd::pooled_view<T, C, R>> : urd_view_caster<urd::pooled_view<T, C, R>>
 {
 };
 

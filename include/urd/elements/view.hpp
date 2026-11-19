@@ -698,44 +698,6 @@ private:
     std::shared_ptr<const R> m_record;
 };
 
-/// A T through a context C, owning its record R (data<T>, or builder<T, C>) by its pooled handle (urd::handle): a
-/// child's temporary (urd::child), given back to its pool with the view. Move-only. Read and identified by the record,
-/// through its own context; its owner writes the record (held()).
-template<typename T, typename C, typename R>
-class pooled_view : public detail::view_base<pooled_view<T, C, R>, T, C, R>
-{
-    friend detail::view_base<pooled_view, T, C, R>;
-    friend detail::view_access;
-
-public:
-    using record_type = R;
-
-    pooled_view(handle<R> record, const C* context) noexcept : detail::view_base<pooled_view, T, C, R>(context), m_record(std::move(record)) {}
-
-    /// The record it owns, to write: a builder being built, a record not interned yet.
-    [[nodiscard]] R& held() const noexcept { return *m_record; }
-
-    /// A copy of it: its record cloned into a slot of its own of the same pool (urd::clone), through the same context.
-    [[nodiscard]] pooled_view clone() const { return pooled_view(urd::clone(m_record), &this->context()); }
-
-    /// The slot of its record in the pool it was drawn from, as the pool names its slots (its handle_type, index<R>): an
-    /// identity that stays while it holds its record, a dense index that is no address.
-    [[nodiscard]] index<R> slot() const noexcept { return index<R>(static_cast<typename index<R>::value_type>(m_record.get_deleter().slot)); }
-
-private:
-    [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
-
-    [[nodiscard]] const R& identity() const noexcept { return *m_record; }
-
-    handle<R> m_record;
-};
-
-/// A pooled view owns no memory of its own: its record belongs to the pool it was drawn from, which counts it.
-template<typename T, typename C, typename R>
-struct memory_of<pooled_view<T, C, R>>
-{
-    static constexpr std::size_t bytes(const pooled_view<T, C, R>& /*held*/) { return 0; }
-};
 
 /// A shared view owns no memory of its own: its record is shared.
 template<typename T, typename C, typename R>
@@ -751,21 +713,21 @@ struct memory_of<owning_view<T, C, R>>
     static std::size_t bytes(const owning_view<T, C, R>& held) { return memory_usage(detail::view_access::record(held)); }
 };
 
-/// A pooled view read in place: its record borrowed, through its own context (the reader's is not needed). Never a
-/// temporary.
-template<typename T, typename C, typename R>
-struct resolution<pooled_view<T, C, R>>
+/// A child's handle (a built or held child: urd::child) read in place: as the record it holds, through the reader's
+/// context (resolution<builder<T, C>>, resolution<data<T>>). Never a temporary.
+template<typename R>
+struct resolution<handle<R>>
 {
     template<typename P>
-    static borrowed_view<T, C, R> of(const pooled_view<T, C, R>& member, const P& /*context*/) noexcept
-    { return { &member.held(), &member.context() }; }
+    static decltype(auto) of(const handle<R>& member, const P& context)
+    { return urd::resolve(*member, context); }
 
     template<typename P>
-    static void of(const pooled_view<T, C, R>&& member, const P& context) = delete;
+    static void of(const handle<R>&& member, const P& context) = delete;
 };
 
 /// Whether V is one of urd's views: a T read through a context, held as its index (index_view) or as its record
-/// (borrowed_view, owning_view, shared_view, pooled_view).
+/// (borrowed_view, owning_view, shared_view).
 template<typename V>
 inline constexpr bool is_view = false;
 template<typename T, typename C, typename K>
@@ -776,8 +738,6 @@ template<typename T, typename C, typename R>
 inline constexpr bool is_view<owning_view<T, C, R>> = true;
 template<typename T, typename C, typename R>
 inline constexpr bool is_view<shared_view<T, C, R>> = true;
-template<typename T, typename C, typename R>
-inline constexpr bool is_view<pooled_view<T, C, R>> = true;
 
 template<typename V>
 concept View = is_view<V>;

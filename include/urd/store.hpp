@@ -230,6 +230,14 @@ public:
     {
     }
 
+    /// An ordered Store built with an instance of its order (order_by<C>'s C: a comparator that holds state, such as the
+    /// context it reads its elements through), as std::set(compare); its representation keeps the instance.
+    explicit Store(const typename S::order_type& order)
+        requires(!std::is_void_v<typename S::order_type>) && std::constructible_from<R, const typename S::order_type&>
+        : m_representation(order)
+    {
+    }
+
     /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from
     /// its rows' lengths (urd::row_lengths), or for rows of rows, each row's shape. A nonempty one needs an element (a
     /// row of length 0 is a row).
