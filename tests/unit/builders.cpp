@@ -120,6 +120,15 @@ using NodeBuilder = urd::builder<Node, Nodes>;
 using LeafPool = urd::Store<urd::slots<LeafBuilder>>;
 using LeafRecords = urd::Store<urd::slots<urd::data<Leaf>>>;
 
+/// The weights of a node's list, read element by element in whichever form it holds them.
+std::vector<int> weights_of(const auto& node_view)
+{
+    auto weights = std::vector<int> {};
+    for (const auto& leaf : node_view.get_rest())
+        weights.push_back(urd::visit_view(leaf, [](const auto& view) { return view.get_weight(); }));
+    return weights;
+}
+
 /// Inserts leaves (built, or records not interned yet) and nodes into Nodes, each a new index; an interned leaf is
 /// Nodes' already.
 struct InsertIntoNodes
@@ -172,6 +181,29 @@ struct urd::resolution<LeafKey>
     { return context.view(key); }
 };
 
+// A record member's built form: keys children, flat containers their std counterparts, values as they are.
+static_assert(std::same_as<urd::built_t<urd::index<Leaf>, Nodes>, urd::child<Leaf, Nodes>>);
+static_assert(std::same_as<urd::built_t<urd::flat_vector<urd::index<Leaf>>, Nodes>, std::vector<urd::child<Leaf, Nodes>>>);
+static_assert(std::same_as<urd::built_t<urd::flat_optional<urd::flat_pair<urd::index<Leaf>, int>>, Nodes>,
+                           std::optional<std::pair<urd::child<Leaf, Nodes>, int>>>);
+static_assert(std::same_as<urd::built_t<urd::flat_variant<urd::index<Leaf>, int>, Nodes>, std::variant<urd::child<Leaf, Nodes>, int>>);
+static_assert(std::same_as<urd::built_t<urd::flat_string, Nodes>, urd::flat_string>);
+// A record's list of values is written from a builder's (urd::store): the same values, in another container.
+TEST(Builder, StoresAListOfValuesFromAnotherContainer)
+{
+    auto stored = urd::flat_vector<int> {};
+    urd::store(stored, std::vector<int> { 1, 2, 3 });
+    EXPECT_EQ(stored.size(), 3U);
+    EXPECT_EQ(stored[2], 3);
+}
+
+struct Label  // a key of no record: a value
+{
+};
+static_assert(std::same_as<urd::built_t<urd::index<Label>, Nodes>, urd::index<Label>>);
+static_assert(std::same_as<urd::built_t<urd::data<Leaf>, Nodes>, urd::builder<Leaf, Nodes>>);
+static_assert(std::same_as<urd::built_t<urd::index_variant<boost::mp11::mp_list<Leaf>>, Nodes>, urd::child_variant<boost::mp11::mp_list<Leaf>, Nodes>>);
+
 TEST(Builder, ReadsItsChildrenInEachForm)
 {
     auto nodes = Nodes {};
@@ -190,10 +222,30 @@ TEST(Builder, ReadsItsChildrenInEachForm)
     const auto view = urd::resolve(node, nodes);
     static_assert(std::same_as<decltype(view), const urd::borrowed_view<Node, Nodes, NodeBuilder>>);
     EXPECT_EQ(weight_of(view.get_first()), 3);
-    auto weights = std::vector<int> {};
-    for (const auto& child : view.get_rest())
-        weights.push_back(weight_of(child));
-    EXPECT_EQ(weights, (std::vector<int> { 7, 3, 11 }));
+    EXPECT_EQ(weights_of(view), (std::vector<int> { 7, 3, 11 }));
+
+    // A record's member reads as a view of its kind, a builder's as a variant of the views of its forms: both read as
+    // a Leaf (urd::ReadsAs); the builder view itself is a view of a Node.
+    static_assert(urd::ReadsAs<decltype(nodes.view(urd::index<Leaf>(0))), Leaf>);
+    static_assert(urd::ReadsAs<decltype(view.get_first()), Leaf>);
+    static_assert(!urd::ViewOf<decltype(view.get_first()), Leaf>);
+    static_assert(urd::ViewOf<decltype(view), Node> && !urd::ReadsAs<decltype(view), Leaf>);
+
+    // A child copied from a reading: an interned one as it is; a built or held one is its holder's, not copied.
+    auto copied = urd::child<Leaf, Nodes> {};
+    urd::copy_child(copied, view.get_first());
+    EXPECT_EQ(weight_of(urd::resolve(std::as_const(copied), nodes)), 3);
+    EXPECT_THROW(urd::copy_child(copied, urd::resolve(std::as_const(node.rest[0]), nodes)), std::bad_variant_access);
+    EXPECT_THROW(urd::copy_child(copied, urd::resolve(std::as_const(node.rest[2]), nodes)), std::bad_variant_access);
+
+    // A reading's interned view: an interned one's, else none (a built or held record has no key).
+    EXPECT_EQ(urd::interned_view(view.get_first()).index(), urd::index<Leaf>(0));
+    EXPECT_THROW((void) urd::interned_view(urd::resolve(std::as_const(node.rest[0]), nodes)), std::bad_variant_access);
+
+    // A reading is the interned record only where it is interned: a built one of the same weight is another record.
+    EXPECT_TRUE(urd::is_interned_as(view.get_first(), nodes.view(urd::index<Leaf>(0))));
+    EXPECT_TRUE(urd::is_interned_as(nodes.view(urd::index<Leaf>(0)), nodes.view(urd::index<Leaf>(0))));
+    EXPECT_FALSE(urd::is_interned_as(urd::resolve(std::as_const(node.rest[2]), nodes), nodes.view(urd::index<Leaf>(0))));
 }
 
 TEST(Builder, AHandleGivesItsRecordBackToItsPool)
@@ -233,6 +285,7 @@ TEST(Builder, InternsItsChildrenFirst)
     node.first = nodes.view(urd::index<Leaf>(0));
     urd::builder_of(node.rest.emplace_back(), pool, nodes).weight = 7;
     node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record), &nodes);
+    node.rest.emplace_back(nodes.view(urd::index<Leaf>(0)));
     node.depth = 2;
 
     auto stored = std::vector<urd::data<Node>> {};
@@ -241,9 +294,10 @@ TEST(Builder, InternsItsChildrenFirst)
     ASSERT_EQ(at, urd::index<Node>(0));
     const auto& interned = stored[0];
     EXPECT_EQ(interned.first, urd::index<Leaf>(0));
-    ASSERT_EQ(interned.rest.size(), 2U);
+    ASSERT_EQ(interned.rest.size(), 3U);
     EXPECT_EQ(nodes.leaves[interned.rest[0].value].weight, 7);
     EXPECT_EQ(nodes.leaves[interned.rest[1].value].weight, 11);
+    EXPECT_EQ(interned.rest[2], urd::index<Leaf>(0));
     EXPECT_EQ(interned.depth, 2);
 }
 
@@ -300,3 +354,46 @@ TEST(Builder, AKeyedHandleGoesBackUnderItsKey)
     EXPECT_EQ(again->uses, 1);  // as it was given back
 }
 
+
+// A builder is filled from a record read through its context, each child as the view f gives (here: as it is), and is
+// cleared for reuse.
+TEST(Builder, IsBuiltFromARecordAndClearedForReuse)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(1), 5 });
+    auto record = urd::data<Node> {};
+    record.first = urd::index<Leaf>(1);
+    record.rest.push_back(urd::index<Leaf>(0));
+    record.depth = 4;
+    const auto source = urd::borrowed_view<Node, Nodes> { &record, &nodes };
+
+    auto node = NodeBuilder {};
+    urd::build_from(source, node, [](const auto& leaf) { return leaf; });
+    EXPECT_EQ(weight_of(urd::resolve(node.first, nodes)), 5);
+    ASSERT_EQ(node.rest.size(), 1U);
+    EXPECT_EQ(weight_of(urd::resolve(node.rest[0], nodes)), 3);
+    EXPECT_EQ(node.depth, 4);
+
+    urd::clear_fields(node);
+    EXPECT_TRUE(node.rest.empty());
+    EXPECT_EQ(node.depth, 0);
+}
+
+// A record's variant members, inside a vector, map to a builder's and back (each overload reaches the others).
+TEST(Builder, MapsVariantsInsideVectorsBothWays)
+{
+    using Term = urd::flat_variant<urd::index<Leaf>, int>;
+    using BuiltTerm = std::variant<urd::child<Leaf, Nodes>, int>;
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    auto terms = urd::flat_vector<Term> {};
+    terms.push_back(Term { urd::index<Leaf>(0) });
+    terms.push_back(Term { 7 });
+
+    auto built = std::vector<BuiltTerm> {};
+    urd::build_member(built, terms, nodes);
+    ASSERT_EQ(built.size(), 2U);
+    EXPECT_EQ(weight_of(urd::resolve(std::get<0>(built[0]), nodes)), 3);
+    EXPECT_EQ(std::get<1>(built[1]), 7);
+}

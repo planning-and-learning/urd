@@ -267,19 +267,20 @@ concept DeclaresMemoryMembers = requires { T::memory_members(); };
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
 
-/// @brief Empties every member a record names for cista (Serializable), keeping the buffers they own: each by its
-/// clear(), or else set to its default. A record reused in place (a builder) is reset with it.
-template<Serializable T>
-void clear_members(T& record)
+/// @brief Empties every field a record or a builder declares (HasFields), keeping the buffers they own: each by its
+/// clear(), or else set to its default (a child to the none index, giving back what it held). One reused in place (a
+/// checked-out builder, a scratch record) is reset with it; its own index, no field, stays (interning writes it).
+template<HasFields T>
+void clear_fields(T& built)
 {
-    const auto clear = []<typename M>(M& member)
+    const auto empty = []<typename M>(M& member)
     {
         if constexpr (Clearable<M>)
             member.clear();
         else
             member = M {};
     };
-    [&]<auto... Ms>(Members<Ms...> /*members*/) { (clear(record.*Ms), ...); }(T::cista_members());
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (empty(built.*Fs::member), ...); }(T::fields());
 }
 
 /// @brief T names what identifies it, as a Members list (its identifying_members()); Hash, EqualTo and Less then

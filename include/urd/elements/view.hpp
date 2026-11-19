@@ -124,6 +124,19 @@ struct resolution
     template<std::same_as<M> R>
     static M stored(const R& readout)
     { return readout; }
+
+    /// A list of values written from another range of the same values (a builder's std::vector into a record's
+    /// flat_vector), element by element.
+    template<std::ranges::input_range R>
+        requires(!std::same_as<R, M>) && std::ranges::input_range<M>
+                && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<M>>
+    static M stored(const R& readout)
+    {
+        auto result = M();
+        for (const auto& element : readout)
+            result.push_back(element);
+        return result;
+    }
 };
 
 /// A record's member, as a view sees it: what its resolution makes of it. The member is passed on as it is given, so
@@ -432,13 +445,16 @@ public:
 
     [[nodiscard]] iterator begin() const { return { m_range.begin(), m_function }; }
 
-    [[nodiscard]] iterator end() const
-        requires std::ranges::common_range<const R>
-    { return { m_range.end(), m_function }; }
-
-    [[nodiscard]] base_sentinel end() const
-        requires(!std::ranges::common_range<const R>)
-    { return m_range.end(); }
+    /// Its end: an iterator where R is a common range, else R's sentinel. One function choosing, not two overloads
+    /// constrained by C and !C: GCC 13 found both viable in a translation unit of runir (an end() over a range of keys
+    /// resolved through a context), and the call ambiguous.
+    [[nodiscard]] auto end() const
+    {
+        if constexpr (std::ranges::common_range<const R>)
+            return iterator { m_range.end(), m_function };
+        else
+            return m_range.end();
+    }
 
     [[nodiscard]] auto size() const
         requires std::ranges::sized_range<const R>
@@ -699,9 +715,9 @@ public:
     /// The record it owns, to write: a builder being built, a record not interned yet.
     [[nodiscard]] R& held() const noexcept { return *m_record; }
 
-    /// The slot of its record in the pool it was drawn from: an identity that stays while it holds its record, a number
-    /// that is no address (a dense index of the pool's slots).
-    [[nodiscard]] std::uint64_t slot() const noexcept { return m_record.get_deleter().slot; }
+    /// The slot of its record in the pool it was drawn from, as the pool names its slots (its handle_type, index<R>): an
+    /// identity that stays while it holds its record, a dense index that is no address.
+    [[nodiscard]] index<R> slot() const noexcept { return index<R>(static_cast<typename index<R>::value_type>(m_record.get_deleter().slot)); }
 
 private:
     [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
@@ -762,6 +778,31 @@ inline constexpr bool is_view<pooled_view<T, C, R>> = true;
 
 template<typename V>
 concept View = is_view<V>;
+
+/// The kind T a view reads (index_view<T, C, K>, borrowed_view<T, C, R>, …: each view's first parameter).
+template<typename V>
+struct view_kind;
+template<template<typename, typename, typename> typename W, typename T, typename C, typename X>
+    requires View<W<T, C, X>>
+struct view_kind<W<T, C, X>>
+{
+    using type = T;
+};
+
+/// Whether V is a view of a T, in any form.
+template<typename V, typename T>
+concept ViewOf = View<std::remove_cvref_t<V>> && std::same_as<typename view_kind<std::remove_cvref_t<V>>::type, T>;
+
+/// Whether every alternative of a std::variant R is a view of a T.
+template<typename R, typename T>
+inline constexpr bool views_of = false;
+template<typename T, typename... Vs>
+inline constexpr bool views_of<std::variant<Vs...>, T> = (ViewOf<Vs, T> && ...);
+
+/// Whether R reads a T: a view of it, or a resolved child of it (a variant of the views of its forms), as a member of a
+/// T's record and of its builder resolve. What a reader of either takes, through urd::visit_view.
+template<typename R, typename T>
+concept ReadsAs = ViewOf<R, T> || views_of<std::remove_cvref_t<R>, T>;
 
 /// f of a view.
 template<View V, typename F>

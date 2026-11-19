@@ -4,7 +4,11 @@
 #include "urd/elements/handle.hpp"
 #include "urd/elements/index.hpp"
 
+#include <boost/mp11/algorithm.hpp>
+#include <optional>
+#include <utility>
 #include <variant>
+#include <vector>
 
 namespace urd
 {
@@ -34,6 +38,21 @@ using held_child = pooled_view<T, C, data<T>>;  ///< A child's form of a record 
 
 template<typename T, typename C, typename K = index<T>>
 using child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>;
+
+namespace detail
+{
+template<typename C>
+struct child_in
+{
+    template<typename T>
+    using fn = child<T, C>;
+};
+}  // namespace detail
+
+/// The built form of an index_variant<L> (a flat_variant of the indices of L's tags): the std::variant of their
+/// children, read through C, in the same order.
+template<typename L, typename C>
+using child_variant = boost::mp11::mp_apply<std::variant, boost::mp11::mp_transform<detail::child_in<C>::template fn, L>>;
 
 /// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>), read through
 /// `context`, where it holds no builder (it is interned, or a record).

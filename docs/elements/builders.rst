@@ -11,7 +11,8 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
    Specialized per type. It has the members of its record ``data<T>``, under the same names and in the same order
    (``fields()``): the same record in another memory organization. A member that is a value in the record is a value
    in the builder; a ``data<X>`` held in place is a ``builder<X, C>``; a flat container is std's of the members it
-   holds; an index of a record is a *child*. ``C`` is the context the builder's children are read through.
+   holds; an index of a record is a *child*, and a flat vector of indices a ``std::vector`` of children, each in its own
+   form. ``C`` is the context the builder's children are read through.
 
    A builder only mutates. It is read through a view, as a record is (``borrowed_view<T, C, builder<T, C>>``,
    :cpp:func:`resolve` ``(builder, context)``), with its record's mixin.
@@ -23,6 +24,10 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
    A child's three forms, by name: code that takes one form apart (``std::get_if<built_child<T, C>>``) says which.
 
 .. cpp:type:: template<typename T, typename C, typename K = index<T>> child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>
+
+.. cpp:type:: template<typename L, typename C> child_variant
+
+   The built form of an ``index_variant<L>``: the ``std::variant`` of the children of ``L``'s tags, in the same order.
 
    A child of a builder, a view through its own context in one of three forms:
 

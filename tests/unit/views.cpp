@@ -426,19 +426,20 @@ TEST(View, MakeBuildsARecordFromOneReadoutPerField)
     EXPECT_EQ(record.owner, owner);
 }
 
-TEST(View, ClearMembersKeepsBuffers)
+TEST(View, ClearFieldsKeepsBuffers)
 {
     struct Builder
     {
         urd::flat_vector<int> values;
         urd::index<Owner> owner;
 
-        static constexpr auto cista_members() noexcept { return urd::Members<&Builder::values, &Builder::owner> {}; }
+        static constexpr auto fields() noexcept
+        { return urd::Fields<urd::field<"values", &Builder::values>, urd::field<"owner", &Builder::owner>> {}; }
     };
 
     auto builder = Builder { { 1, 2, 3 }, urd::index<Owner>(4) };
     const auto* const buffer = builder.values.data();
-    urd::clear_members(builder);
+    urd::clear_fields(builder);
     EXPECT_TRUE(builder.values.empty());
     EXPECT_EQ(builder.values.data(), buffer);
     EXPECT_TRUE(builder.owner.is_none());
