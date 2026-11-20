@@ -325,7 +325,7 @@ private:
     {
         const auto row = m_rows.at(handle_type(at));
         const auto columns = std::ranges::begin(row);
-        return std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return element(columns[column]); }), key);
+        return std::ranges::equal(index.columns | std::views::transform([&](std::size_t column) { return element(columns[static_cast<std::ptrdiff_t>(column)]); }), key);
     }
 
     /// The group of index whose key is `key`, else none.
@@ -351,7 +351,7 @@ private:
         const auto columns = std::ranges::begin(row);
         m_key.clear();
         for (const auto column : index.columns)
-            m_key.push_back(element(columns[column]));
+            m_key.push_back(element(columns[static_cast<std::ptrdiff_t>(column)]));
         auto group = find_group(index, m_key);
         if (group == none)
         {
