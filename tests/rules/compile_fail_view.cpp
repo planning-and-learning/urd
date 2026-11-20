@@ -25,11 +25,12 @@ struct urd::data<Bare>
 template<>
 struct urd::data<Bare>
 {
+    urd::index<Bare> index;
     int weight = 0;
 
     data() = default;
 
-    explicit data(int weight_) : weight(weight_) {}
+    explicit data(int weight_) : index(), weight(weight_) {}
 
     static constexpr bool copyable() noexcept
     {
@@ -41,7 +42,7 @@ struct urd::data<Bare>
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight> {}; }
 };
 
 template<typename V>

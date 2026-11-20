@@ -190,7 +190,7 @@ public:
     std::pair<handle_type, bool> insert(const prehashed<T>& key, Factory make)
         requires(!row_pool)
     {
-        if (const auto at = find(key); !at.is_none())
+        if (const auto at = find(key); !is_none(at))
             return { at, false };
         if (parent_grew())
             throw std::logic_error("urd::repr::LayeredPool: the parent grew after the branch");
@@ -208,11 +208,11 @@ public:
 
     [[nodiscard]] bool contains(const T& record) const
         requires(!row_pool)
-    { return !find(record).is_none(); }
+    { return !is_none(find(record)); }
 
     [[nodiscard]] bool contains(const prehashed<T>& key) const
         requires(!row_pool)
-    { return !find(key).is_none(); }
+    { return !is_none(find(key)); }
 
     [[nodiscard]] const T& operator[](handle_type at) const
         requires(!row_pool)
@@ -314,7 +314,7 @@ private:
     [[nodiscard]] handle_type find_in_chain(const K& key) const
     {
         for (const auto* layer = this; layer != nullptr; layer = layer->m_parent)
-            if (const auto at = layer->m_own.find(key); !at.is_none())
+            if (const auto at = layer->m_own.find(key); !is_none(at))
                 return layer->global(at);
         return handle_type();
     }
@@ -323,7 +323,7 @@ private:
     template<typename K>
     std::pair<handle_type, bool> insert_row(const K& key)
     {
-        if (const auto at = find_in_chain(key); !at.is_none())
+        if (const auto at = find_in_chain(key); !is_none(at))
             return { at, false };
         if (parent_grew())
             throw std::logic_error("urd::repr::LayeredPool: the parent grew after the branch");

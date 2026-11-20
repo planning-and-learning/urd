@@ -27,15 +27,19 @@ else()
     set(shared_library_suffix ".so")
 endif()
 
-# brokkr (pybrokkr): found through scikit-build-core in wheel builds, else asked of the Python that has it.
-find_package(brokkr QUIET)
-if(NOT brokkr_FOUND)
-    find_package(Python 3.11 REQUIRED COMPONENTS Interpreter)
-    execute_process(COMMAND "${Python_EXECUTABLE}" -m pybrokkr --cmake-dir
-                    OUTPUT_VARIABLE _brokkr_dir OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-    set(brokkr_DIR "${_brokkr_dir}" CACHE PATH "The directory holding brokkrConfig.cmake" FORCE)
-    find_package(brokkr REQUIRED)
+# brokkr (pybrokkr): build helpers, found as every dependency is: its prefix asked of the configuring Python (the
+# venv's, -DPython_EXECUTABLE; scikit-build-core sets it in wheel builds), put on CMAKE_PREFIX_PATH, nowhere else searched.
+if(NOT Python_EXECUTABLE)
+    message(FATAL_ERROR "brokkr: no Python_EXECUTABLE: configure with -DPython_EXECUTABLE=<venv>/bin/python of a venv that has pybrokkr.")
 endif()
+execute_process(COMMAND "${Python_EXECUTABLE}" -m pybrokkr --cmake-dir
+                OUTPUT_VARIABLE _brokkr_dir OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE _brokkr_result)
+if(NOT _brokkr_result EQUAL 0)
+    message(FATAL_ERROR "brokkr: ${Python_EXECUTABLE} has no pybrokkr: configure with -DPython_EXECUTABLE=<venv>/bin/python of a venv that has it.")
+endif()
+cmake_path(GET _brokkr_dir PARENT_PATH _brokkr_prefix)
+list(PREPEND CMAKE_PREFIX_PATH "${_brokkr_prefix}")
+find_package(brokkr CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 
 # The Python package.
 foreach(python_file IN ITEMS pyurd_native/__init__.py pyurd_native/__main__.py pyurd_native/py.typed)

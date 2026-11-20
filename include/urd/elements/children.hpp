@@ -40,7 +40,9 @@ namespace urd
 /// std::pair, std::variant), anything else as it is (a value: a number, a flat_string, a plan, a key of no record). C is
 /// the repository that holds the member's records. Each form also says how it is made from a record's member (from: a
 /// key its interned child, a record its builder; the bind_builder setters' conversion), which needs no context, as no
-/// child holds one; a library that specializes built_form for a member of its own gives both.
+/// child holds one; a library that specializes built_form for a member of its own gives both, or its type alone where
+/// the member is made only through its context (a packed storage, which only its pool opens): then nothing that holds
+/// it is made from a record either (made_from_record).
 template<typename M, typename C>
 struct built_form
 {
@@ -52,6 +54,21 @@ struct built_form
 template<typename M, typename C>
 using built_t = typename built_form<M, C>::type;
 
+/// Whether a member of type M is made from a record's (built_form<M, C>::from): not where its built form, or one of its
+/// parts', is made only through its context.
+template<typename M, typename C>
+concept made_from_record = requires(const M& value) { built_form<M, C>::from(value); };
+
+namespace detail
+{
+/// Whether each field of data<T> is made from a record's.
+template<typename T, typename C>
+consteval bool fields_made_from_record()
+{
+    return []<typename... Ds>(Fields<Ds...> /*fields*/) { return (made_from_record<member_type_t<Ds::member>, C> && ...); }(data<T>::fields());
+}
+}  // namespace detail
+
 template<typename T, typename C>
     requires stored_record<T>
 struct built_form<index<T>, C>
@@ -62,12 +79,14 @@ struct built_form<index<T>, C>
 };
 
 template<typename T, typename C>
+    requires(!PlainValue<T>)
 struct built_form<data<T>, C>
 {
     using type = builder<T, C>;
 
     /// Its index as it is, each field from the record's of the same position (a builder's fields are its record's).
     static type from(const data<T>& value)
+        requires(detail::fields_made_from_record<T, C>())
     {
         auto result = type();
         if constexpr (requires { result.index; })
@@ -84,6 +103,7 @@ struct built_form<flat_vector<M>, C>
     using type = std::vector<built_t<M, C>>;
 
     static type from(const flat_vector<M>& value)
+        requires made_from_record<M, C>
     {
         auto result = type();
         result.reserve(value.size());
@@ -99,6 +119,7 @@ struct built_form<flat_optional<M>, C>
     using type = std::optional<built_t<M, C>>;
 
     static type from(const flat_optional<M>& value)
+        requires made_from_record<M, C>
     {
         if (!value.has_value())
             return std::nullopt;
@@ -112,6 +133,7 @@ struct built_form<flat_pair<M, N>, C>
     using type = std::pair<built_t<M, C>, built_t<N, C>>;
 
     static type from(const flat_pair<M, N>& value)
+        requires made_from_record<M, C> && made_from_record<N, C>
     { return type(built_form<M, C>::from(value.first), built_form<N, C>::from(value.second)); }
 };
 
@@ -122,6 +144,7 @@ struct built_form<flat_variant<Ms...>, C>
 
     /// Its alternative's form, at the alternative's position.
     static type from(const flat_variant<Ms...>& value)
+        requires(made_from_record<Ms, C> && ...)
     {
         return value.apply(
             [&]<typename A>(const A& alternative)
@@ -131,7 +154,6 @@ struct built_form<flat_variant<Ms...>, C>
             });
     }
 };
-
 
 /// The index an insert gives: of the pair (view or index, created) a repository's insert returns, of the interned
 /// record's view (an index_view: its key), or the index itself.
@@ -234,6 +256,7 @@ void assign_members(R& scratch, const R& source)
             ...);
     }(R::cista_members());
 }
+
 /// A builder's member written into its record's member of the same position, converted: a child (urd::child) as the
 /// index f gives it, a builder held in place as its record, std's containers as the flat ones, a value as it is.
 // Every overload declared first: the qualified calls between them (a vector's elements, a variant's alternative) find
@@ -262,7 +285,7 @@ inline constexpr bool is_lookup_result<std::optional<V>> = true;
 /// What an insert or a lookup gave, as the key K: the key itself, or the index an insert's result names
 /// (urd::inserted_index); none for a key a lookup did not find (urd::missing_key, or an empty lookup result).
 template<typename K, typename R>
-K as_key(R&& inserted)
+K as_key(const R& inserted)
 {
     using Result = std::remove_cvref_t<R>;
     if constexpr (std::same_as<Result, K>)
@@ -411,12 +434,12 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
 }
 
 /// Interns a builder: its record written into scratch (map_children), each child as the key `insert` gives it, then the
-/// record inserted. `insert` takes every form a child holds: an interned child's key (kept as it is), a built one's builder (interned again, with a scratch record of its own) and a
-/// record not interned yet, of every kind the builder holds, and inserts it into the repository that holds its kind; so
-/// built children first. A child of a kind another context holds must be interned there: insert takes only its key
-/// (a built one or a record of that kind does not compile). Returns what insert(scratch) returns.
+/// record inserted. `insert` takes every form a child holds: an interned child's key (kept as it is), a built one's builder (interned again, with a scratch
+/// record of its own) and a record not interned yet, of every kind the builder holds, and inserts it into the repository that holds its kind; so built children
+/// first. A child of a kind another context holds must be interned there: insert takes only its key (a built one or a record of that kind does not compile).
+/// Returns what insert(scratch) returns.
 template<typename T, typename C, typename Insert>
-decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert&& insert)
+decltype(auto) intern(const builder<T, C>& built, data<T>& scratch, Insert insert)
 {
     urd::map_children(built, scratch, [&](auto& form) -> decltype(auto) { return insert(form); });
     return insert(scratch);
@@ -580,6 +603,7 @@ template<typename V>
 struct is_index_view : std::false_type
 {
 };
+
 template<typename T, typename C, typename K>
 struct is_index_view<index_view<T, C, K>> : std::true_type
 {

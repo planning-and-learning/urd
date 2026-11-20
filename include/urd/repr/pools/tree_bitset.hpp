@@ -94,7 +94,7 @@ public:
     using block_type = Block;
     using flip_type = BlockFlip;
     using value_type = Row;
-    using handle_type = TreeHandle;
+    using handle_type = data<TreeHandle>;
     using size_type = std::size_t;
 
     static constexpr std::size_t arity = Arity;
@@ -350,7 +350,7 @@ private:
         if (blocks.empty())
             return handle_type {};
         const auto root = find_recursive(blocks);
-        return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : handle_type::none();
+        return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : tree::none_handle();
     }
 
     /// The blocks of the row holding `elements`, up to its last nonzero block.

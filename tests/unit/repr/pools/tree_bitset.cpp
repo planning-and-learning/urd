@@ -45,7 +45,7 @@ TEST(CommonTreeBitsetSetTest, RoundTripsAndSkipsZeroBlocks)
     auto set = TreeBitsetSet<Row, 2> {};
 
     const auto empty = set.insert_blocks(std::span<const Block> {});
-    EXPECT_EQ(empty, TreeHandle {});
+    EXPECT_EQ(empty, urd::data<TreeHandle> {});
     EXPECT_TRUE(set.empty());
     set.read_blocks(empty, std::span<Block> {});
 
@@ -119,8 +119,9 @@ TEST(CommonTreeBitsetSetTest, DeltaInsertMatchesFullInsert)
 
     // No flips leaves the index unchanged; clearing everything gives the empty index.
     EXPECT_EQ(set.insert_flips(base, std::span<const Flip> {}), base);
-    EXPECT_EQ(set.insert_flips(base, std::array<Flip, 5> { Flip { 0, 1 }, Flip { 1, 2 }, Flip { 2, 3 }, Flip { 3, 4 }, Flip { 4, 5 } }), TreeHandle {});
-    EXPECT_EQ(set.insert_flips(TreeHandle {}, std::array<Flip, 1> { Flip { 3, 8 } }), set.insert_blocks(std::array<Block, 4> { 0, 0, 0, 8 }));
+    EXPECT_EQ(set.insert_flips(base, std::array<Flip, 5> { Flip { 0, 1 }, Flip { 1, 2 }, Flip { 2, 3 }, Flip { 3, 4 }, Flip { 4, 5 } }),
+              urd::data<TreeHandle> {});
+    EXPECT_EQ(set.insert_flips(urd::data<TreeHandle> {}, std::array<Flip, 1> { Flip { 3, 8 } }), set.insert_blocks(std::array<Block, 4> { 0, 0, 0, 8 }));
 }
 
 TEST(CommonTreeBitsetSetTest, DeltaInsertAcrossPowerOfTwoSizes)
@@ -174,7 +175,7 @@ TEST(CommonTreeBitsetSetTest, RandomDeltaChainsMatchFullInsert)
         for (std::size_t chain = 0; chain < 20; ++chain)
         {
             auto words = std::map<std::uint32_t, Block> {};
-            auto index = TreeHandle {};
+            auto index = urd::data<TreeHandle> {};
             auto position = std::uniform_int_distribution<std::uint32_t>(0, universe - 1);
             auto num_flips = std::uniform_int_distribution<std::size_t>(0, 6);
 
@@ -246,7 +247,7 @@ void expect_arity_round_trips_and_canonical_trees()
         for (std::uint32_t i = 0; i < size; ++i)
             if (blocks[i] != TestBlock { 0 })
                 flips.push_back(BlockFlip { i, blocks[i] });
-        EXPECT_EQ(set.insert_flips(TreeHandle {}, flips), index);
+        EXPECT_EQ(set.insert_flips(urd::data<TreeHandle> {}, flips), index);
     }
 }
 
@@ -271,7 +272,7 @@ void expect_random_delta_chains_match_full_insert()
         for (std::size_t chain = 0; chain < 10; ++chain)
         {
             auto words = std::map<std::uint32_t, TestBlock> {};
-            auto index = TreeHandle {};
+            auto index = urd::data<TreeHandle> {};
             auto position = std::uniform_int_distribution<std::uint32_t>(0, universe - 1);
             auto num_flips = std::uniform_int_distribution<std::size_t>(0, 6);
 

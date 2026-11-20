@@ -36,9 +36,13 @@ struct urd::include<"urd/repr/values/sorted_block_set.hpp">
 namespace urd::repr
 {
 
+/// The elements a block holds at most, by default: blocks of this size keep an insert's shift short and a search's
+/// first step (over the blocks) small.
+inline constexpr std::size_t default_block_size = 512;
+
 /// A sorted set of T in blocks (see above), ordered by Compare; unique: an element equivalent to one it holds is not
 /// inserted. Its iterators are const and random-access.
-template<typename T, typename Compare = urd::Less<T>, std::size_t Block = 512>
+template<typename T, typename Compare = urd::Less<T>, std::size_t Block = default_block_size>
 class SortedBlockSet
 {
     static_assert(Block > 0, "urd::SortedBlockSet: a block holds at least one element");
@@ -64,7 +68,9 @@ public:
         const_iterator() = default;
 
         reference operator*() const { return (*m_set->m_blocks[m_block])[m_offset]; }
+
         pointer operator->() const { return &**this; }
+
         reference operator[](difference_type n) const { return *(*this + n); }
 
         const_iterator& operator++()
@@ -110,13 +116,16 @@ public:
         const_iterator& operator-=(difference_type n) { return *this += -n; }
 
         friend const_iterator operator+(const_iterator it, difference_type n) { return it += n; }
+
         friend const_iterator operator+(difference_type n, const_iterator it) { return it += n; }
+
         friend const_iterator operator-(const_iterator it, difference_type n) { return it -= n; }
 
         friend difference_type operator-(const const_iterator& lhs, const const_iterator& rhs)
         { return static_cast<difference_type>(lhs.m_position) - static_cast<difference_type>(rhs.m_position); }
 
         friend bool operator==(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_position == rhs.m_position; }
+
         friend std::strong_ordering operator<=>(const const_iterator& lhs, const const_iterator& rhs) { return lhs.m_position <=> rhs.m_position; }
 
     private:
@@ -139,7 +148,11 @@ public:
     using iterator = const_iterator;
 
     SortedBlockSet() = default;
+
     explicit SortedBlockSet(const Compare& compare) : m_compare(compare) {}
+
+    /// The order it keeps (the instance it was built with), as std::set::key_comp.
+    [[nodiscard]] const Compare& key_comp() const noexcept { return m_compare; }
 
     template<std::input_iterator I>
     SortedBlockSet(I first, I last, const Compare& compare = Compare()) : m_compare(compare)
@@ -177,11 +190,15 @@ public:
     ~SortedBlockSet() = default;
 
     [[nodiscard]] const_iterator begin() const noexcept { return { this, 0, 0, 0 }; }
+
     [[nodiscard]] const_iterator end() const noexcept { return { this, m_blocks.size(), 0, m_size }; }
+
     [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
+
     [[nodiscard]] const_iterator cend() const noexcept { return end(); }
 
     [[nodiscard]] size_type size() const noexcept { return m_size; }
+
     [[nodiscard]] bool empty() const noexcept { return m_size == 0; }
 
     /// The element at a position (0 ≤ position < size()).
@@ -195,9 +212,14 @@ public:
 
     std::pair<const_iterator, bool> insert(const T& element)
         requires std::copy_constructible<T>
-    { return emplace_at(element, [&] { return T(element); }); }
+    {
+        return emplace_at(element, [&] { return T(element); });
+    }
 
-    std::pair<const_iterator, bool> insert(T&& element) { return emplace_at(element, [&] { return T(std::move(element)); }); }
+    std::pair<const_iterator, bool> insert(T&& element)
+    {
+        return emplace_at(element, [&] { return T(std::move(element)); });
+    }
 
     /// The hint is not used: its place is found by value.
     const_iterator insert(const_iterator /*hint*/, const T& element)
@@ -292,7 +314,8 @@ public:
     }
 
     template<typename K = T>
-    [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const K& element) const { return { lower_bound(element), upper_bound(element) }; }
+    [[nodiscard]] std::pair<const_iterator, const_iterator> equal_range(const K& element) const
+    { return { lower_bound(element), upper_bound(element) }; }
 
     template<typename K = T>
     [[nodiscard]] const_iterator find(const K& element) const
@@ -302,10 +325,12 @@ public:
     }
 
     template<typename K = T>
-    [[nodiscard]] bool contains(const K& element) const { return find(element) != end(); }
+    [[nodiscard]] bool contains(const K& element) const
+    { return find(element) != end(); }
 
     template<typename K = T>
-    [[nodiscard]] size_type count(const K& element) const { return contains(element) ? 1 : 0; }
+    [[nodiscard]] size_type count(const K& element) const
+    { return contains(element) ? 1 : 0; }
 
     /// Moves in the elements of `source` it does not hold; those it holds stay in `source`.
     void merge(SortedBlockSet& source)

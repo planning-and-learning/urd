@@ -238,6 +238,11 @@ public:
     {
     }
 
+    /// The instance of its order it keeps (std::set's key_comp), where its representation keeps one.
+    [[nodiscard]] decltype(auto) key_comp() const
+        requires requires(const R& representation) { representation.key_comp(); }
+    { return m_representation.key_comp(); }
+
     /// From what its kind builds it from besides elements (urd/kinds.hpp, builds_from): a fixed_shape sequence from
     /// its rows' lengths (urd::row_lengths), or for rows of rows, each row's shape. A nonempty one needs an element (a
     /// row of length 0 is a row).

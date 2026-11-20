@@ -1,7 +1,7 @@
 # The benchmarks (URD_BUILD_BENCHMARKS; run them in a Release build): named scenarios, and every container measured
 # on its own (benchmarks/tools/record.py records and judges them).
 
-find_package(benchmark REQUIRED PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
+find_package(benchmark REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 add_executable(benchmark_containers containers.cpp)
 target_link_libraries(benchmark_containers PRIVATE urd::urd benchmark::benchmark)
 add_executable(benchmark_pools pools.cpp)

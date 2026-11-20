@@ -244,12 +244,13 @@ struct Item;
 template<>
 struct urd::data<Item>
 {
+    urd::index<Item> index;
     int weight = 0;
     urd::index<Owner> owner;
 
     data() = default;
 
-    data(int weight_, urd::index<Owner> owner_) : weight(weight_), owner(owner_) {}
+    data(int weight_, urd::index<Owner> owner_) : index(), weight(weight_), owner(owner_) {}
 
     static constexpr bool copyable() noexcept
     {
@@ -261,7 +262,7 @@ struct urd::data<Item>
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::owner> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight, &data::owner> {}; }
 };
 
 template<typename V>
@@ -433,8 +434,7 @@ TEST(View, ClearFieldsKeepsBuffers)
         urd::flat_vector<int> values;
         urd::index<Owner> owner;
 
-        static constexpr auto fields() noexcept
-        { return urd::Fields<urd::field<"values", &Builder::values>, urd::field<"owner", &Builder::owner>> {}; }
+        static constexpr auto fields() noexcept { return urd::Fields<urd::field<"values", &Builder::values>, urd::field<"owner", &Builder::owner>> {}; }
     };
 
     auto builder = Builder { { 1, 2, 3 }, urd::index<Owner>(4) };

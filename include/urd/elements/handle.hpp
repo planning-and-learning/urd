@@ -36,9 +36,9 @@ template<typename R, typename... Args>
 handle<R> make_owned(Args&&... args)
 {
     auto release = urd::release {};
-    release.give_back = [](void* /*store*/, std::uint64_t /*slot*/, void* record) noexcept { delete static_cast<R*>(record); };
-    release.acquire = [](void* /*store*/, std::uint64_t& /*slot*/) -> void* { return new R(); };
-    return handle<R>(new R(std::forward<Args>(args)...), release);
+    release.give_back = [](void* /*store*/, std::uint64_t /*slot*/, void* record) noexcept { std::default_delete<R> {}(static_cast<R*>(record)); };
+    release.acquire = [](void* /*store*/, std::uint64_t& /*slot*/) -> void* { return std::make_unique<R>().release(); };
+    return handle<R>(std::make_unique<R>(std::forward<Args>(args)...).release(), release);
 }
 
 /// Whether a handle's record is on the heap (make_owned), not in a slot of a Store.

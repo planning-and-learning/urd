@@ -8,7 +8,9 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/handle.hpp"
 
+#include <bit>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -43,7 +45,9 @@ template<typename... Ts>
 struct memory_of<std::variant<Ts...>>
 {
     static std::size_t bytes(const std::variant<Ts...>& held)
-    { return std::visit([](const auto& alternative) { return memory_usage(alternative); }, held); }
+    {
+        return std::visit([](const auto& alternative) { return memory_usage(alternative); }, held);
+    }
 };
 
 /// A type that names the members it owns memory through, as a urd::Members list
@@ -107,10 +111,10 @@ struct memory_of<std::basic_string<C, Traits, Allocator>>
 {
     static std::size_t bytes(const std::basic_string<C, Traits, Allocator>& held)
     {
-        const auto* data = static_cast<const void*>(held.data());
-        const auto* begin = static_cast<const void*>(&held);
-        const auto* end = static_cast<const void*>(&held + 1);
-        const bool inside = !std::less<const void*> {}(data, begin) && std::less<const void*> {}(data, end);
+        // Its characters are inside it (the small-string buffer) where their address lies within its own bytes.
+        const auto data = std::bit_cast<std::uintptr_t>(static_cast<const void*>(held.data()));
+        const auto begin = std::bit_cast<std::uintptr_t>(static_cast<const void*>(&held));
+        const bool inside = data >= begin && data - begin < sizeof(held);
         return inside ? 0 : (held.capacity() + 1) * sizeof(C);
     }
 };

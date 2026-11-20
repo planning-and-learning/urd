@@ -17,6 +17,7 @@
 #include <fmt/format.h>
 #include <nanobind/nanobind.h>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -80,6 +81,7 @@ struct urd::data<Term>
 template<>
 struct urd::builder<Term, Context>
 {
+    urd::index<Term> index;
     urd::built_t<int, Context> arity = 0;
     urd::built_t<urd::flat_vector<int>, Context> objects;
     urd::built_t<urd::flat_optional<int>, Context> weight;
@@ -133,25 +135,34 @@ public:
 
 namespace
 {
-/// A plain value: two fields, bound with bind_value.
+/// A value: two fields, a record no Store holds (data<Point>, no index), bound with bind_data.
 struct Point
 {
     static constexpr std::string_view name = "Point";
-    int x = 0;
-    int y = 0;
-
-    friend auto operator<=>(const Point&, const Point&) = default;
-
-    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"x", &Point::x>, urd::field<"y", &Point::y>> {}; }
-
-    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 }  // namespace
 
 template<>
-struct fmt::formatter<Point> : fmt::formatter<std::string_view>
+struct urd::data<Point>
 {
-    auto format(const Point& point, fmt::format_context& out) const { return fmt::format_to(out.out(), "({}, {})", point.x, point.y); }
+    int x = 0;
+    int y = 0;
+
+    data() = default;
+
+    data(int x_, int y_) : x(x_), y(y_) {}
+
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"x", &data::x>, urd::field<"y", &data::y>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::x, &data::y> {}; }
 };
 
 namespace
@@ -214,9 +225,9 @@ using TermOwnedView = urd::owning_view<Term, Context>;
 
 NB_MODULE(urd_bindings_test, m)
 {
-    nb::class_<Context>(m, "Context");
+    [[maybe_unused]] const auto context_class = nb::class_<Context>(m, "Context");
     urd::python::bind_index<Atom>(m);
-    urd::python::bind_value<Point>(m);
+    urd::python::bind_data<Point>(m);
     urd::python::bind_index<Term>(m);
     urd::python::bind_data<Term>(m);
     urd::python::bind_view<TermView>(m);

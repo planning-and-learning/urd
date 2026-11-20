@@ -1,10 +1,8 @@
 // Sets and maps: random use against the standard's containers, set algebra, positions, ends, entries, Stores as keys, and orders by a projection. Each family
 // header a Store here needs is included, and no other.
 
-#include <memory>
-#include "urd/elements/view.hpp"
-#include "urd/repr/values/sorted_block_set.hpp"
 #include "names.hpp"
+#include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -26,6 +24,7 @@
 #include "urd/repr/values/dense_set.hpp"
 #include "urd/repr/values/flat_set.hpp"
 #include "urd/repr/values/indexed.hpp"
+#include "urd/repr/values/sorted_block_set.hpp"
 #include "urd/repr/values/sparse_set.hpp"
 #include "urd/repr/values/std_set.hpp"
 #include "urd/repr/values/unordered_flat_set.hpp"
@@ -39,12 +38,13 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <cstdlib>
+#include <functional>
 #include <gtest/gtest.h>
 #include <iterator>
 #include <limits>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <random>
 #include <ranges>
@@ -627,10 +627,12 @@ TEST(SortedBlockSet, AgreesWithTheStandardSetInElementsAndPositions)
 TEST(SortedBlockSet, TakesMoveOnlyElements)
 {
     using Boxed = std::unique_ptr<int>;
+
     struct ByValue
     {
         bool operator()(const Boxed& lhs, const Boxed& rhs) const { return *lhs < *rhs; }
     };
+
     auto blocks = urd::repr::SortedBlockSet<Boxed, ByValue, 2>();
     for (int value : { 5, 1, 4, 2, 3, 0, 6 })
     {
@@ -651,8 +653,11 @@ namespace
 struct ByFirst
 {
     using is_transparent = void;
+
     bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const { return lhs.first < rhs.first; }
+
     bool operator()(const std::pair<int, int>& lhs, int rhs) const { return lhs.first < rhs; }
+
     bool operator()(int lhs, const std::pair<int, int>& rhs) const { return lhs < rhs.first; }
 };
 }  // namespace
@@ -698,8 +703,11 @@ namespace
 struct ByFirstOnly
 {
     using is_transparent = void;
+
     bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const { return lhs < rhs; }
+
     bool operator()(const std::pair<int, int>& lhs, int rhs) const { return lhs.first < rhs; }
+
     bool operator()(int lhs, const std::pair<int, int>& rhs) const { return lhs < rhs.first; }
 };
 }  // namespace

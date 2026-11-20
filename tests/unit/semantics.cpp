@@ -267,10 +267,9 @@ struct InvalidPredicate
 
 template<typename T>
 concept OrderedByAllPredicates =
-    urd::LessFor<urd::Less<T>, T>
-    && urd::Hashable<T> && urd::EqualityComparableByEqualTo<T> && requires(const T& lhs, const T& rhs) {
-           { urd::ThreeWayCompare<T> {}(lhs, rhs) } -> std::same_as<std::strong_ordering>;
-       };
+    urd::LessFor<urd::Less<T>, T> && urd::Hashable<T> && urd::EqualityComparableByEqualTo<T> && requires(const T& lhs, const T& rhs) {
+        { urd::ThreeWayCompare<T> {}(lhs, rhs) } -> std::same_as<std::strong_ordering>;
+    };
 
 using Segmented = urd::Store<urd::sequence<int>, urd::stable_refs>;
 using SortedSet = urd::Store<urd::set<int>, urd::sorted>;

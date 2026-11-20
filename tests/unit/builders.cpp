@@ -2,10 +2,10 @@
 // leaf and a list of leaves; its builder holds each as a child, interned (its index), built (a builder of its own) or
 // a record not interned yet (both held by their handles), and reads as the node does.
 #include "urd/elements/builder.hpp"
-#include "urd/elements/concepts.hpp"
-#include "urd/elements/flat.hpp"
 #include "urd/elements/children.hpp"
 #include "urd/elements/clone.hpp"
+#include "urd/elements/concepts.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/memory.hpp"
 #include "urd/repr/maps/unordered_flat_map.hpp"
@@ -14,9 +14,10 @@
 
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <type_traits>
-#include <variant>
 #include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace
@@ -40,7 +41,15 @@ struct urd::data<Leaf>
     urd::index<Leaf> index;
     int weight = 0;
 
-    static constexpr bool copyable() noexcept { return true; }
+    data() = default;
+
+    explicit data(int weight_) : index(), weight(weight_) {}
+
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>> {}; }
 
@@ -57,6 +66,16 @@ struct urd::data<Node>
     urd::flat_vector<urd::index<Leaf>> rest;
     int depth = 0;
 
+    data() = default;
+
+    data(urd::index<Leaf> first_, urd::flat_vector<urd::index<Leaf>> rest_, int depth_) : index(), first(first_), rest(std::move(rest_)), depth(depth_) {}
+
+    data(const data& other) = delete;
+    data& operator=(const data& other) = delete;
+    data(data&& other) = default;
+    data& operator=(data&& other) = default;
+    ~data() = default;
+
     static constexpr auto fields() noexcept
     { return urd::Fields<urd::field<"first", &data::first>, urd::field<"rest", &data::rest>, urd::field<"depth", &data::depth>> {}; }
 
@@ -68,40 +87,62 @@ struct urd::data<Node>
 template<typename V>
 struct urd::view_mixin<Leaf, V>
 {
-    [[nodiscard]] auto get_weight() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::weight>(); }
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 };
 
 template<typename V>
 struct urd::view_mixin<Node, V>
 {
-    [[nodiscard]] auto get_first() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::first>(); }
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
-    [[nodiscard]] auto get_rest() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::rest>(); }
+public:
+    [[nodiscard]] decltype(auto) get_first() const { return self().template member<&urd::record_of<V>::first>(); }
+
+    [[nodiscard]] decltype(auto) get_rest() const { return self().template member<&urd::record_of<V>::rest>(); }
+
+    [[nodiscard]] decltype(auto) get_depth() const { return self().template member<&urd::record_of<V>::depth>(); }
 };
 
 template<>
 struct urd::builder<Leaf, Nodes>
 {
     urd::index<Leaf> index;
-    int weight = 0;
+    urd::built_t<int, Nodes> weight = 0;
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &builder::weight>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 
 template<>
 struct urd::builder<Node, Nodes>
 {
     urd::index<Node> index;
-    urd::child<Leaf, Nodes> first;
-    std::vector<urd::child<Leaf, Nodes>> rest;
-    int depth = 0;
+    urd::built_t<urd::index<Leaf>, Nodes> first;
+    urd::built_t<urd::flat_vector<urd::index<Leaf>>, Nodes> rest;
+    urd::built_t<int, Nodes> depth = 0;
 
     static constexpr auto fields() noexcept
     { return urd::Fields<urd::field<"first", &builder::first>, urd::field<"rest", &builder::rest>, urd::field<"depth", &builder::depth>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 
 namespace
 {
+/// A leaf record stored at `at`.
+urd::data<Leaf> stored_leaf(urd::index<Leaf> at, int weight)
+{
+    auto leaf = urd::data<Leaf>(weight);
+    leaf.index = at;
+    return leaf;
+}
+
 struct Nodes
 {
     std::vector<urd::data<Leaf>> leaves;
@@ -142,14 +183,14 @@ struct InsertIntoNodes
     urd::index<Leaf> operator()(const LeafBuilder& leaf) const
     {
         const auto at = urd::index<Leaf>(static_cast<std::uint32_t>(nodes->leaves.size()));
-        nodes->leaves.push_back(urd::data<Leaf> { at, leaf.weight });
+        nodes->leaves.push_back(stored_leaf(at, leaf.weight));
         return at;
     }
 
     urd::index<Leaf> operator()(const urd::data<Leaf>& leaf) const
     {
         const auto at = urd::index<Leaf>(static_cast<std::uint32_t>(nodes->leaves.size()));
-        nodes->leaves.push_back(urd::data<Leaf> { at, leaf.weight });
+        nodes->leaves.push_back(stored_leaf(at, leaf.weight));
         return at;
     }
 
@@ -185,10 +226,11 @@ struct urd::resolution<LeafKey>
 // A record member's built form: keys children, flat containers their std counterparts, values as they are.
 static_assert(std::same_as<urd::built_t<urd::index<Leaf>, Nodes>, urd::child<Leaf, Nodes>>);
 static_assert(std::same_as<urd::built_t<urd::flat_vector<urd::index<Leaf>>, Nodes>, std::vector<urd::child<Leaf, Nodes>>>);
-static_assert(std::same_as<urd::built_t<urd::flat_optional<urd::flat_pair<urd::index<Leaf>, int>>, Nodes>,
-                           std::optional<std::pair<urd::child<Leaf, Nodes>, int>>>);
+static_assert(
+    std::same_as<urd::built_t<urd::flat_optional<urd::flat_pair<urd::index<Leaf>, int>>, Nodes>, std::optional<std::pair<urd::child<Leaf, Nodes>, int>>>);
 static_assert(std::same_as<urd::built_t<urd::flat_variant<urd::index<Leaf>, int>, Nodes>, std::variant<urd::child<Leaf, Nodes>, int>>);
 static_assert(std::same_as<urd::built_t<urd::flat_string, Nodes>, urd::flat_string>);
+
 // A record's list of values is written from a builder's (urd::store): the same values, in another container.
 TEST(Builder, StoresAListOfValuesFromAnotherContainer)
 {
@@ -198,9 +240,13 @@ TEST(Builder, StoresAListOfValuesFromAnotherContainer)
     EXPECT_EQ(stored[2], 3);
 }
 
+namespace
+{
 struct Label  // a key of no record: a value
 {
 };
+}  // namespace
+
 static_assert(std::same_as<urd::built_t<urd::index<Label>, Nodes>, urd::index<Label>>);
 static_assert(std::same_as<urd::built_t<urd::data<Leaf>, Nodes>, urd::builder<Leaf, Nodes>>);
 static_assert(std::same_as<urd::built_t<urd::index_variant<boost::mp11::mp_list<Leaf>>, Nodes>, urd::child_variant<boost::mp11::mp_list<Leaf>, Nodes>>);
@@ -208,7 +254,7 @@ static_assert(std::same_as<urd::built_t<urd::index_variant<boost::mp11::mp_list<
 TEST(Builder, ReadsItsChildrenInEachForm)
 {
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
     auto records = LeafRecords {};
     auto leaf_record = records.make_handle();
     leaf_record->weight = 11;
@@ -277,7 +323,7 @@ TEST(Builder, AChildIsBuiltFromItsPool)
 TEST(Builder, InternsItsChildrenFirst)
 {
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
     auto records = LeafRecords {};
     auto leaf_record = records.make_handle();
     leaf_record->weight = 11;
@@ -305,7 +351,7 @@ TEST(Builder, InternsItsChildrenFirst)
 TEST(Builder, AChildsKeyIsTheOneItsViewNames)
 {
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
     const auto keyed = urd::child<Leaf, Nodes, LeafKey>(LeafKey { 0 });
     const auto read = urd::resolve(keyed, nodes);
     EXPECT_EQ(weight_of(read), 3);
@@ -374,14 +420,13 @@ TEST(Builder, AKeyedHandleGoesBackUnderItsKey)
     EXPECT_EQ(again->uses, 1);  // as it was given back
 }
 
-
 // A builder is filled from a record read through its context, each child as the view f gives (here: as it is), and is
 // cleared for reuse.
 TEST(Builder, IsBuiltFromARecordAndClearedForReuse)
 {
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(1), 5 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(1), 5));
     auto record = urd::data<Node> {};
     record.first = urd::index<Leaf>(1);
     record.rest.push_back(urd::index<Leaf>(0));
@@ -406,7 +451,7 @@ TEST(Builder, MapsVariantsInsideVectorsBothWays)
     using Term = urd::flat_variant<urd::index<Leaf>, int>;
     using BuiltTerm = std::variant<urd::child<Leaf, Nodes>, int>;
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
     auto terms = urd::flat_vector<Term> {};
     terms.push_back(Term { urd::index<Leaf>(0) });
     terms.push_back(Term { 7 });
@@ -427,7 +472,7 @@ TEST(Builder, IsClonedWithItsChildren)
     static_assert(urd::CopiedAsIs<LeafBuilder>);  // no child: copied as it is
 
     auto nodes = Nodes {};
-    nodes.leaves.push_back(urd::data<Leaf> { urd::index<Leaf>(0), 3 });
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
     auto records = LeafRecords {};
     auto leaf_record = records.make_handle();
     leaf_record->weight = 11;

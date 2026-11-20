@@ -11,8 +11,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <type_traits>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>

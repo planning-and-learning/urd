@@ -30,14 +30,14 @@ list(APPEND CMAKE_PREFIX_PATH "${URD_NATIVE_PREFIX}")
 # fmt writes urd's types (urd/format.hpp, with URD_ENABLE_FMT_FORMATTERS) and what the tests, generators and benchmarks
 # print, which need it either way.
 if(URD_ENABLE_FMT_FORMATTERS OR URD_BUILD_TESTS OR URD_BUILD_BENCHMARKS)
-    find_package(fmt CONFIG REQUIRED)
+    find_package(fmt CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 endif()
 # Boost.Container (flat sets and maps), Boost.ContainerHash (hash_combine) and Boost.Mp11 (type lists); cista
 # (serialization, for records stored flat); gtl (hash tables: the unordered sets and maps, and the sharded ones for
 # concurrent sets and maps). All header-only but for Boost.Container's small runtime library.
-find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container container_hash mp11)
-find_package(cista REQUIRED CONFIG)
-find_package(gtl REQUIRED CONFIG)
+find_package(Boost 1.89 REQUIRED CONFIG COMPONENTS container container_hash mp11 PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+find_package(cista REQUIRED CONFIG PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+find_package(gtl REQUIRED CONFIG PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 
 # Where the headers are installed: the include directory, or the pyurd package's in the wheel (python/).
 if(SKBUILD)

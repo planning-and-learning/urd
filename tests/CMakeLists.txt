@@ -2,7 +2,7 @@
 # checks, the cost of compiling, code that must not compile, and a consumer of the package.
 
 find_package(Threads REQUIRED)
-find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS "${URD_NATIVE_PREFIX}" NO_DEFAULT_PATH)
+find_package(GTest 1.11.0 REQUIRED COMPONENTS GTest PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # The tests' shared headers and gtest main (tests/support/), included by name from every directory.
@@ -315,9 +315,10 @@ set_tests_properties(consumer_configure PROPERTIES FIXTURES_SETUP consumer)
 add_test(NAME consumer_build COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/consumer)
 set_tests_properties(consumer_build PROPERTIES FIXTURES_REQUIRED consumer)
 
-# The nanobind casters (urd/python/): round trips through a module, where nanobind is found (-Dnanobind_DIR=...).
+# The nanobind casters (urd/python/): round trips through a module, where nanobind is found (on CMAKE_PREFIX_PATH: the
+# native prefix's, or -Dnanobind_DIR=...).
 find_package(Python 3.11 COMPONENTS Interpreter Development.Module)
-find_package(nanobind CONFIG QUIET)
+find_package(nanobind CONFIG QUIET PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 if(nanobind_FOUND AND Python_FOUND)
     nanobind_add_module(urd_casters_test NB_SUPPRESS_WARNINGS integration/python/casters_module.cpp integration/python/caster_headers.cpp)
     target_link_libraries(urd_casters_test PRIVATE urd::urd)

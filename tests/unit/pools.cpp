@@ -222,8 +222,8 @@ TEST(Pools, EraseMovesTheLastRowIn)
     EXPECT_EQ(rows.size(), 2U);
     EXPECT_TRUE(std::ranges::equal(rows.get(a), std::vector { 3 }));
     EXPECT_EQ(rows.find({ 3 }), a);
-    EXPECT_TRUE(rows.find({ 1 }).is_none());
-    EXPECT_TRUE(rows.erase(b).is_none());  // the last row: nothing moves
+    EXPECT_TRUE(is_none(rows.find({ 1 })));
+    EXPECT_TRUE(is_none(rows.erase(b)));  // the last row: nothing moves
     EXPECT_EQ(rows.size(), 1U);
     EXPECT_EQ(rows.insert({ 2 }), std::pair(b, true));  // stored again, at the next handle
 }
@@ -243,8 +243,8 @@ TEST(Pools, FindWithSharing)
     EXPECT_TRUE(stored);
     const auto memory = urd::memory_usage(rows);
     EXPECT_EQ(rows.find({ 1, 2, 3, 4, 5, 6, 7, 8 }), whole);
-    EXPECT_FALSE(rows.find({ 1, 2, 3, 4 }).is_none());  // the first half is a node of the whole
-    EXPECT_TRUE(rows.find({ 4, 3, 2, 1 }).is_none());
+    EXPECT_FALSE(is_none(rows.find({ 1, 2, 3, 4 })));  // the first half is a node of the whole
+    EXPECT_TRUE(is_none(rows.find({ 4, 3, 2, 1 })));
     EXPECT_EQ(urd::memory_usage(rows), memory);
     EXPECT_EQ(rows.insert({ 1, 2, 3, 4 }), std::pair(rows.find({ 1, 2, 3, 4 }), false));
     EXPECT_EQ(urd::memory_usage(rows), memory);  // inserting a found row stores nothing, and says so

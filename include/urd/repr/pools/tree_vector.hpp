@@ -1,6 +1,7 @@
 #pragma once
 
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/data.hpp"
 #include "urd/elements/requirements.hpp"
 #include "urd/registry/declaration.hpp"
 #include "urd/repr/pools/pools.hpp"
@@ -76,25 +77,47 @@ struct NoLeaves
 
 }  // namespace tree
 
-/// The handle of a row in a tree pool: its root and its length.
+/// The handle of a row in a tree pool: its root and its length (data<TreeHandle>, a value: no Store holds it).
 struct TreeHandle
+{
+    static constexpr std::string_view name = "TreeHandle";
+};
+
+}  // namespace urd::repr
+
+template<>
+struct urd::data<urd::repr::TreeHandle>
 {
     std::uint32_t root = 0;
     std::uint32_t size = 0;
 
-    /// No row's handle: an empty row is {0, 0}, and every other row has a size.
-    [[nodiscard]] static constexpr TreeHandle none() noexcept { return { tree::unused_child, 0 }; }
+    data() = default;
 
-    [[nodiscard]] constexpr bool is_none() const noexcept { return root == tree::unused_child && size == 0; }
+    constexpr data(std::uint32_t root_, std::uint32_t size_) : root(root_), size(size_) {}
 
-    static constexpr std::string_view name = "TreeHandle";
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
 
-    friend bool operator==(const TreeHandle&, const TreeHandle&) = default;
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"root", &data::root>, urd::field<"size", &data::size>> {}; }
 
-    static constexpr auto fields() noexcept { return Fields<field<"root", &TreeHandle::root>, field<"size", &TreeHandle::size>> {}; }
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
-    static constexpr auto identifying_members() noexcept { return members_of(fields()); }
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::root, &data::size> {}; }
 };
+
+namespace urd::repr
+{
+namespace tree
+{
+/// No row's handle: an empty row is {0, 0}, and every other row has a size.
+[[nodiscard]] constexpr data<TreeHandle> none_handle() noexcept { return { unused_child, 0 }; }
+}  // namespace tree
+
+/// Whether a tree pool's handle names no row (urd::is_none for handles).
+[[nodiscard]] constexpr bool is_none(const data<TreeHandle>& handle) noexcept { return handle == tree::none_handle(); }
 
 /// A pool of sequence rows (Row: a Store of values, or a vector), each a balanced tree with Arity children per node,
 /// whose leaves are the row's values and whose nodes are interned: equal subtrees are stored once, across all rows.
@@ -113,7 +136,7 @@ class TreeVectorSet
 
 public:
     using value_type = Row;
-    using handle_type = TreeHandle;
+    using handle_type = data<TreeHandle>;
     using write_type = Write<T>;
     using size_type = std::size_t;
 
@@ -142,7 +165,7 @@ public:
         if (values.empty())
             return handle_type {};
         const auto root = find_recursive(values);
-        return root ? handle_type { *root, static_cast<std::uint32_t>(values.size()) } : handle_type::none();
+        return root ? handle_type { *root, static_cast<std::uint32_t>(values.size()) } : tree::none_handle();
     }
 
     /// The row `base` with `writes` applied, which are sorted by unique position within it. Only the paths from

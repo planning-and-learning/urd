@@ -10,6 +10,7 @@
 #include <nanobind/stl/detail/nb_dict.h>
 #include <nanobind/stl/detail/nb_list.h>
 #include <nanobind/stl/detail/nb_set.h>
+#include <utility>
 
 // nanobind type casters for urd Stores: a sequence Store converts as std::vector does (a list), a set Store as
 // std::set (a set), a map Store with one value per key as std::map (a dict), with nanobind's own casters. Which Stores
@@ -47,11 +48,26 @@ struct type_caster<urd::Store<Kind, Tags...>> : list_caster<urd::Store<Kind, Tag
 {
 };
 
-/// A set Store: a set.
+/// A set Store: a set. Its keys are taken as it yields them, by reference or by value (a dense set's).
 template<typename Kind, typename... Tags>
     requires urd::python::castable<urd::Store<Kind, Tags...>> && std::same_as<typename urd::traits_t<urd::Store<Kind, Tags...>>::kind, urd::set_kind>
 struct type_caster<urd::Store<Kind, Tags...>> : set_caster<urd::Store<Kind, Tags...>, typename urd::Store<Kind, Tags...>::key_type>
 {
+    template<typename T>
+    static handle from_cpp(T&& src, rv_policy policy, cleanup_list* cleanup) noexcept
+    {
+        using KeyCaster = make_caster<typename urd::Store<Kind, Tags...>::key_type>;
+        object result = steal(PySet_New(nullptr));
+        if (!result.is_valid())
+            return {};
+        for (auto&& key : std::forward<T>(src))
+        {
+            const object item = steal(KeyCaster::from_cpp(key, policy, cleanup));
+            if (!item.is_valid() || PySet_Add(result.ptr(), item.ptr()) != 0)
+                return {};
+        }
+        return result.release();
+    }
 };
 
 /// A map Store with one value per key: a dict.

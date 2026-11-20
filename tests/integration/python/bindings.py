@@ -67,12 +67,13 @@ assert not hasattr(builder, "index")
 owned = m.term_owned()
 assert type(owned) is m.TermOwned and m.Term is not m.TermOwned
 assert owned.get_arity() == 3
-# bind_value: a plain value, from its fields, each read and written, compared, written with fmt.
-point = m.Point(1, 2)
+# A value: a record with no index (data<Point>), bound with bind_data: from its fields, each read and written, compared,
+# written by urd's formatter.
+point = m.PointData(1, 2)
 assert (point.x, point.y) == (1, 2)
 point.y = 3
-assert point == m.Point(1, 3) and point != m.Point(1, 2)
-assert str(point) == "(1, 3)"
+assert point == m.PointData(1, 3) and point != m.PointData(1, 2)
+assert str(point) == "Point(\n    x=1\n    y=3\n)"
 
 # bind_builder: the builder itself, set from its record's form without a context, changed by its listed mutators, read
 # through view(context); its __init__ takes each field by name, every one optional.
@@ -92,6 +93,13 @@ made = m.TermBuilder(arity=4, objects=[1, 2])
 assert made.view(context).get_arity() == 4
 assert made.view(context).get_objects() == [1, 2]
 assert made.view(context).get_weight() is None
+assert m.TermBuilder(weight=None).view(context).get_weight() is None  # None is an optional's empty value
+try:
+    m.TermBuilder(arity=None)
+except TypeError:
+    pass
+else:
+    raise AssertionError("None is no value of a field that is not optional")
 try:
     built.set_arity("two")
 except TypeError:

@@ -5,10 +5,10 @@
 
 #include "urd/elements/builder.hpp"
 #include "urd/elements/children.hpp"
-#include "urd/elements/handle.hpp"
 #include "urd/elements/clone.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
+#include "urd/elements/handle.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/format.hpp"
@@ -23,6 +23,7 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/variant.h>
 #include <nanobind/stl/vector.h>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -31,6 +32,7 @@
 
 NAMESPACE_BEGIN(NB_NAMESPACE)
 NAMESPACE_BEGIN(detail)
+
 /// A builder is copied as urd copies it (urd::CopiedAsIs): one holding a child of its own is move-only, which a
 /// std::vector of children does not tell (it reports itself copyable whatever its elements); nanobind would copy it.
 template<typename T, typename C>
@@ -77,20 +79,33 @@ nb::class_<V>& add_hash(nb::class_<V>& cls)
     return cls.def("__hash__", [](const V& self) { return urd::Hash<V> {}(self); });
 }
 
-/// Binds urd::index<Tag> under <name>Index (urd::name<Tag>()), the one way an index is bound: a record's (bound before
-/// bind_data of a record that holds one) or one of a tag of no record (a column, a slot). An index is bound once, by
-/// whichever module binds it first (a tag one library defines and another stores records of: ygg::formalism::Object);
-/// every other module names that class.
-template<typename Tag>
-nb::class_<urd::index<Tag>> bind_index(nb::module_& m)
+/// The fields of a record or key (urd::Fields), each read and written under its name, and an __init__ from them (below).
+template<typename Data>
+    requires HasFields<Data>
+void bind_fields(nb::class_<Data>& cls);
+
+namespace detail
 {
-    using T = urd::index<Tag>;
-    const auto name = urd::name<Tag>() + "Index";
+/// A class bound once, by whichever module binds it first (a tag one library defines and another stores records of:
+/// ygg::formalism::Object); every other module names that class. Empty where none is bound yet.
+template<typename T>
+std::optional<nb::class_<T>> bound_already(nb::module_& m, const std::string& name)
+{
     if (const auto bound = nb::type<T>(); bound.is_valid())
     {
         m.attr(name.c_str()) = bound;
         return nb::borrow<nb::class_<T>>(bound);
     }
+    return std::nullopt;
+}
+
+template<typename Tag>
+nb::class_<urd::index<Tag>> bind_index_of(nb::module_& m)
+{
+    using T = urd::index<Tag>;
+    const auto name = urd::name<Tag>() + "Index";
+    if (auto bound = detail::bound_already<T>(m, name))
+        return *bound;
     auto cls = nb::class_<T>(m, name.c_str());
     // urd::index's own names: the default is none, value is the integer, int() and index() give it too.
     cls.def(nb::init<>())
@@ -105,6 +120,36 @@ nb::class_<urd::index<Tag>> bind_index(nb::module_& m)
     add_hash(cls);
     cls.def("__repr__", [name](const T& i) { return name + "(" + std::to_string(static_cast<typename T::value_type>(i.value)) + ")"; });
     return cls;
+}
+
+template<typename K>
+nb::class_<K> bind_key(nb::module_& m)
+{
+    const auto name = urd::name<K>();
+    if (auto bound = detail::bound_already<K>(m, name))
+        return *bound;
+    auto cls = nb::class_<K>(m, name.c_str()).def(nb::init<>());
+    python::bind_fields(cls);
+    add_comparison(cls);
+    add_hash(cls);
+    static_assert(fmt::is_formattable<K>::value, "urd::python::bind_index: a key is written with fmt: specialize fmt::formatter for it");
+    cls.def("__str__", [](const K& key) { return fmt::format("{}", key); }).def("__repr__", [](const K& key) { return fmt::format("{}", key); });
+    return cls;
+}
+}  // namespace detail
+
+/// Binds a key, the one way a key is bound: an index, urd::index<Tag> of a tag, under <name>Index (urd::name<Tag>()); or
+/// a key of its own (a type with fields() that reads as what it names, as a row's key does: urd::resolution) under its
+/// name, from its fields, each field read and written, compared and hashed, written with fmt. A record's index is bound
+/// before bind_data of the record; a key is bound once, by whichever module binds it first, every other names that
+/// class.
+template<typename T>
+auto bind_index(nb::module_& m)
+{
+    if constexpr (HasFields<T>)
+        return detail::bind_key<T>(m);
+    else
+        return detail::bind_index_of<T>(m);
 }
 
 /// The fields of record Data (urd::Fields), each a read/write attribute under its name, and an __init__ from their
@@ -125,21 +170,6 @@ void bind_field_getters(nb::class_<View>& cls)
     for_each_field<record_of<View>>(
         [&]<typename F>()
         { cls.def(F::template prefixed<"get_">.data(), [](const View& view) -> decltype(auto) { return view.template member<F::member>(); }); });
-}
-
-/// Binds the plain value T (no record: a struct of fields, ColumnLayout, a row's key) under its name (urd::name<T>()):
-/// an __init__ from its fields in order, each field read and written under its name, compared by its identifying
-/// members, written with fmt (a value needs its fmt::formatter).
-template<typename T>
-    requires HasFields<T>
-nb::class_<T> bind_value(nb::module_& m)
-{
-    auto value = nb::class_<T>(m, urd::name<T>().c_str()).def(nb::init<>());
-    bind_fields(value);
-    add_comparison(value);
-    static_assert(fmt::is_formattable<T>::value, "urd::python::bind_value: a value is written with fmt: specialize fmt::formatter for it");
-    value.def("__str__", [](const T& v) { return fmt::format("{}", v); }).def("__repr__", [](const T& v) { return fmt::format("{}", v); });
-    return value;
 }
 
 /// Binds the record T as <name>Data (urd::name<T>()), the one way a record is bound: an __init__ from its fields in
@@ -297,29 +327,31 @@ bool child_from_python(nb::handle value, child<U, C, K>& target)
     return true;
 }
 
-/// A builder held in place from Python: a builder of its kind (a copy), or a record of its kind (built_form::from).
+/// A builder held in place from Python: a builder of its kind (a copy), or a record of its kind (built_form::from),
+/// where a record makes one (made_from_record).
 template<typename U, typename C>
 bool builder_from_python(nb::handle value, builder<U, C>& target)
 {
     if (nb::isinstance<builder<U, C>>(value))
+    {
         target = urd::clone(nb::cast<const builder<U, C>&>(value));
-    else if (nb::isinstance<data<U>>(value))
-        target = built_form<data<U>, C>::from(nb::cast<const data<U>&>(value));
-    else
-        return false;
-    return true;
+        return true;
+    }
+    if constexpr (made_from_record<data<U>, C>)
+    {
+        if (nb::isinstance<data<U>>(value))
+        {
+            target = built_form<data<U>, C>::from(nb::cast<const data<U>&>(value));
+            return true;
+        }
+    }
+    return false;
 }
 
 template<typename B>
 inline constexpr bool is_child_value = false;
 template<typename U, typename C, typename K>
 inline constexpr bool is_child_value<std::variant<K, handle<builder<U, C>>, handle<data<U>>>> = true;
-
-/// A std::vector of what is not copyable (children): built element by element; one of values nanobind casts whole.
-template<typename B>
-inline constexpr bool is_vector_of_children = false;
-template<typename E, typename A>
-inline constexpr bool is_vector_of_children<std::vector<E, A>> = !std::copy_constructible<E>;
 
 template<typename B>
 inline constexpr bool is_std_optional = false;
@@ -330,6 +362,30 @@ template<typename B>
 inline constexpr bool is_std_variant = false;
 template<typename... Bs>
 inline constexpr bool is_std_variant<std::variant<Bs...>> = true;
+
+/// Whether a built form holds a child or a builder, at any depth of its lists, optionals and variants: what nanobind
+/// cannot cast whole (std::vector of a move-only element still says it is copy constructible).
+template<typename B>
+inline constexpr bool holds_children = is_child_value<B> || is_builder<B>;
+template<typename E, typename A>
+inline constexpr bool holds_children<std::vector<E, A>> = holds_children<E>;
+template<typename E>
+inline constexpr bool holds_children<std::optional<E>> = holds_children<E>;
+template<typename... Bs>
+inline constexpr bool holds_children<std::variant<Bs...>> = is_child_value<std::variant<Bs...>> || (holds_children<Bs> || ...);
+template<typename F, typename S>
+inline constexpr bool holds_children<std::pair<F, S>> = holds_children<F> || holds_children<S>;
+
+template<typename B>
+inline constexpr bool is_std_pair = false;
+template<typename F, typename S>
+inline constexpr bool is_std_pair<std::pair<F, S>> = true;
+
+/// A std::vector of what holds children: built element by element; one of values nanobind casts whole.
+template<typename B>
+inline constexpr bool is_vector_of_children = false;
+template<typename E, typename A>
+inline constexpr bool is_vector_of_children<std::vector<E, A>> = holds_children<E>;
 
 /// The first alternative of a variant that takes the value.
 template<std::size_t I, typename... Bs>
@@ -350,7 +406,7 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
 }
 
 /// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a list
-/// of members element by element, an optional (None is empty), a variant by the first alternative that takes it, a
+/// of members element by element, a pair of them member by member, an optional (None is empty), a variant by the first alternative that takes it, a
 /// builder held in place as a builder or its record (a copy), anything else as nanobind casts it. Whether it took it.
 template<typename B>
 bool from_python(nb::handle value, B& target)
@@ -367,6 +423,12 @@ bool from_python(nb::handle value, B& target)
             return true;
         }
         return detail::from_python(value, target.emplace());
+    }
+    else if constexpr (is_std_pair<B> && holds_children<B>)
+    {
+        if (!nb::isinstance<nb::sequence>(value) || nb::isinstance<nb::str>(value) || nb::len(value) != 2)
+            return false;
+        return detail::from_python(value[0], target.first) && detail::from_python(value[1], target.second);
     }
     else if constexpr (is_vector_of_children<B>)
     {
@@ -389,7 +451,8 @@ bool from_python(nb::handle value, B& target)
 }  // namespace detail
 
 /// Binds the builder<T, C> under <name>Builder (urd::name<T>()), the one way a builder is bound: an __init__ that takes
-/// each field by its name, every one optional (empty where it is not given); set_<field>(value) for each field; the
+/// each field by its name, every one optional (empty where it is not given: its default is `...`, so that an explicit
+/// None is a value, an optional's empty one, and nothing else's); set_<field>(value) for each field; the
 /// mutators its functions() lists, under their names; and view(context), its view through a context
 /// (<name>BuilderBorrowed), which every read goes through, as a record's do. A field takes what its built form holds,
 /// none of it read through a context: a child a key (an index, or a view of one), a builder or a record of its kind (a
@@ -413,9 +476,10 @@ nb::class_<builder<T, C>> bind_builder(nb::module_& m)
             [set](B* self, std::conditional_t<true, nb::handle, Fs>... values)
             {
                 new (self) B();
-                ((values.is_none() ? void() : set.template operator()<Fs>(*self, values)), ...);
+                // `...`, Python's "unspecified", is a field not given (it stays empty); any other value, None too, is set.
+                ((values.is(nb::ellipsis()) ? void() : set.template operator()<Fs>(*self, values)), ...);
             },
-            (nb::arg(Fs::c_name) = nb::none())...);
+            (nb::arg(Fs::c_name) = nb::ellipsis())...);
         (cls.def(
              Fs::template prefixed<"set_">.data(),
              [set](B& built, nb::handle value) { set.template operator()<Fs>(built, value); },
@@ -434,13 +498,12 @@ nb::class_<builder<T, C>> bind_builder(nb::module_& m)
 
 /// Binds the view View under the name of its tag (urd::name<T>(), T its value_type; <name>Builder before the rest for a
 /// view of a builder<T, C>, <name>Borrowed for a view that borrows its record (a data<T> or a builder), <name>Owned for a view that owns its record,
-/// <name>Shared for one that shares it, so that the views of one record bound in one module have their own names), the one way a view is bound, whether it reads a stored record
-/// (data<T>), a record a context hands out in another layout (a value with the record's fields) or a builder
-/// (builder<T, C>): get_<field>() for each field of its
-/// record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view
-/// that names its index (index_view: index() gives its key, an urd::index<T> or a key of its own such as a row's) also
-/// gives index() and converts to that key wherever one is expected, also in lists and optionals; the key is bound first
-/// (T's index by bind_index<T>, another key by bind_value).
+/// <name>Shared for one that shares it, so that the views of one record bound in one module have their own names), the one way a view is bound, whether it
+/// reads a stored record (data<T>), a record a context hands out in another layout (a value with the record's fields) or a builder (builder<T, C>):
+/// get_<field>() for each field of its record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view that names its
+/// index (index_view: index() gives its key, an urd::index<T> or a key of its own such as a row's) also gives index() and converts to that key wherever one is
+/// expected, also in lists and optionals; the key is bound first (T's index by bind_index<T>, a key that is a value by
+/// bind_data of its tag).
 template<typename View>
     requires HasFields<record_of<View>>
 nb::class_<View> bind_view(nb::module_& m)
@@ -464,7 +527,8 @@ nb::class_<View> bind_view(nb::module_& m)
         view.def("index", &View::index);
         const auto index_type = nb::type<Handle>();
         if (!index_type.is_valid())
-            throw std::logic_error("urd::python::bind_view: " + name + " names its index: bind its index first (bind_index<T>, or bind_value of its key).");
+            throw std::logic_error("urd::python::bind_view: " + name
+                                   + " names its index: bind its index first (bind_index<T>, or bind_data of its key's tag).");
         nb::borrow<nb::class_<Handle>>(index_type).def("__init__", [](Handle* self, const View& v) { new (self) Handle(v.index()); });
         nb::implicitly_convertible<View, Handle>();
     }

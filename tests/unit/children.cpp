@@ -200,3 +200,25 @@ TEST(Children, MapsWholeVariantSlots)
 }
 
 }  // namespace
+
+// A member made only through its context (a packed storage, which only its pool opens): its built form gives a type and
+// no from(), so nothing that holds it is made from a record.
+namespace
+{
+struct Opened
+{
+};
+}  // namespace
+
+template<typename C>
+struct urd::built_form<Opened, C>
+{
+    using type = int;
+};
+
+static_assert(urd::made_from_record<int, Context>);
+static_assert(!urd::made_from_record<Opened, Context>);
+static_assert(urd::made_from_record<urd::flat_vector<int>, Context>);
+static_assert(!urd::made_from_record<urd::flat_vector<Opened>, Context>);
+static_assert(!urd::made_from_record<urd::flat_pair<int, Opened>, Context>);
+static_assert(!urd::made_from_record<urd::flat_variant<int, Opened>, Context>);

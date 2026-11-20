@@ -12,8 +12,8 @@
 #include <boost/mp11.hpp>
 #include <compare>
 #include <concepts>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -44,8 +44,16 @@ concept resolves = requires(const C& context, index<T> at) {
 /// urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::predicate>(); } };`
 /// (record_of<V>: the record, named through V, so that it may still be incomplete where the mixin is declared). A mixin
 /// must not declare member itself, which the view's member<&T::m>() would hide.
+namespace detail
+{
+/// What a record's view has where its record declares no mixin of its own (urd::DeclaresViewMixin).
+struct no_view_mixin
+{
+};
+}  // namespace detail
+
 template<typename T, typename V>
-struct view_mixin
+struct view_mixin : detail::no_view_mixin
 {
 };
 
@@ -128,8 +136,7 @@ struct resolution
     /// A list of values written from another range of the same values (a builder's std::vector into a record's
     /// flat_vector), element by element.
     template<std::ranges::input_range R>
-        requires(!std::same_as<R, M>) && std::ranges::input_range<M>
-                && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<M>>
+        requires(!std::same_as<R, M>) && std::ranges::input_range<M> && std::same_as<std::ranges::range_value_t<R>, std::ranges::range_value_t<M>>
     static M stored(const R& readout)
     {
         auto result = M();
@@ -164,13 +171,19 @@ template<typename M, typename C>
 using resolved_t = std::remove_cvref_t<decltype(urd::resolve(std::declval<const M&>(), std::declval<const C&>()))>;
 
 /// An index as the view its context makes (pointing at the layer that owns the element, where the context is a layer):
-/// a record's context must resolve every index type the record holds.
+/// a record's context must resolve every index type the record holds. The none index (an empty child, a key not given
+/// yet) is the none view: it names no element, so nothing is looked up.
 template<typename U>
 struct resolution<index<U>>
 {
     template<typename C>
     static auto of(index<U> at, const C& context)
-    { return context.view(at); }
+    {
+        using View = decltype(context.view(at));
+        if (at.is_none())
+            return View();
+        return context.view(at);
+    }
 
     /// Written from the index itself, or from a view of the element (its index()).
     template<std::same_as<index<U>> R>
@@ -411,12 +424,7 @@ public:
         { return (lhs.m_it - rhs.m_it) <=> difference_type { 0 }; }
     };
 
-    transformed_range(const R& range, F function) :
-        m_range(range),
-        m_function(std::move(function)),
-        m_source(std::ranges::view<R> ? nullptr : &range)
-    {
-    }
+    transformed_range(const R& range, F function) : m_range(range), m_function(std::move(function)), m_source(std::ranges::view<R> ? nullptr : &range) {}
 
     /// The first element not before `key` in its source's order, read through its function: where its source, a sorted
     /// container, looks up K by its order.
@@ -698,7 +706,6 @@ private:
     std::shared_ptr<const R> m_record;
 };
 
-
 /// A shared view owns no memory of its own: its record is shared.
 template<typename T, typename C, typename R>
 struct memory_of<shared_view<T, C, R>>
@@ -745,6 +752,7 @@ concept View = is_view<V>;
 /// The kind T a view reads (index_view<T, C, K>, borrowed_view<T, C, R>, …: each view's first parameter).
 template<typename V>
 struct view_kind;
+
 template<template<typename, typename, typename> typename W, typename T, typename C, typename X>
     requires View<W<T, C, X>>
 struct view_kind<W<T, C, X>>
@@ -778,10 +786,83 @@ template<View... Vs, typename F>
 decltype(auto) visit_view(const std::variant<Vs...>& views, F&& f)
 { return std::visit(std::forward<F>(f), views); }
 
+namespace detail
+{
+template<typename M>
+consteval bool holds_child();
+
+/// Whether a type argument of a class template instance (an optional, a pair, a variant) holds a child.
+template<template<typename...> typename V, typename... Ts>
+consteval bool argument_holds_child(std::type_identity<V<Ts...>> /*instance*/)
+{ return (detail::holds_child<Ts>() || ...); }
+
+consteval bool argument_holds_child(...) { return false; }
+
+template<typename T>
+inline constexpr bool is_data = false;
+template<typename T>
+inline constexpr bool is_data<data<T>> = true;
+
+/// The tag of a record type: T of data<T>.
+template<typename R>
+struct tag_of_data;
+
+template<typename T>
+struct tag_of_data<data<T>>
+{
+    using type = T;
+};
+
+/// Whether a record's fields hold a child.
+template<typename T>
+consteval bool record_holds_child()
+{
+    if constexpr (HasFields<data<T>>)
+        return []<typename... Fs>(Fields<Fs...> /*fields*/) { return (detail::holds_child<member_type_t<Fs::member>>() || ...); }(data<T>::fields());
+    else
+        return false;
+}
+
+/// Whether a member of type M holds a child (urd::child: an index of a stored record), anywhere in it: itself, its
+/// elements (a range), its alternatives or parts (an optional, a pair, a variant), or the fields of a record held in it.
+template<typename M>
+consteval bool holds_child()
+{
+    if constexpr (is_index_type<M>)
+        return stored_record<typename M::element_type>;
+    else if constexpr (is_data<M>)
+        return detail::record_holds_child<typename tag_of_data<M>::type>();
+    else if constexpr (std::ranges::range<M>)
+        return detail::holds_child<std::remove_cvref_t<std::ranges::range_value_t<M>>>();
+    else
+        return detail::argument_holds_child(std::type_identity<M> {});
+}
+}  // namespace detail
+
+namespace detail
+{
+/// A stand-in view, to ask which mixin a record's views get.
+struct any_view
+{
+};
+}  // namespace detail
+
+/// Whether T declares a view mixin of its own (urd::view_mixin<T, V>): its views read it through its context.
+template<typename T>
+concept DeclaresViewMixin = !std::is_base_of_v<detail::no_view_mixin, view_mixin<T, detail::any_view>>;
+
+/// Whether data<T> is a plain value: no index (no Store holds it), no child in its fields, and no view mixin of its own (a
+/// column's label and type, a pool's handle). Nothing in it is built or read through a context: it is held in a builder
+/// and read through a view as it is (urd::built_form, urd::resolution), with no builder and no view of its own. A
+/// value that is read through its context (a state's storage, its pool's handle in it) declares a mixin.
+template<typename T>
+concept PlainValue = !SelfIndexed<T> && !detail::record_holds_child<T>() && !DeclaresViewMixin<T>;
+
 /// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it,
 /// where it makes one (context.view(record): a record read through a context of its own, reached from the context of
 /// its parent), else its borrowed_view through the context. Never a temporary.
 template<typename T>
+    requires(!PlainValue<T>)
 struct resolution<data<T>>
 {
     static_assert(stored_record<T>, "urd::data<T> must be Serializable: cista_members() returning urd::Members<...>");

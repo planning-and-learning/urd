@@ -107,4 +107,10 @@ class owning_view;
 template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
 class shared_view;
 
+/// Whether a handle names nothing: the one way generic code asks a handle (an index, a tree pool's handle, ...), found by
+/// argument-dependent lookup, so that a handle that is a value (data<T>, no member functions) answers too.
+template<typename T>
+[[nodiscard]] constexpr bool is_none(index<T> at) noexcept
+{ return at.is_none(); }
+
 }  // namespace urd

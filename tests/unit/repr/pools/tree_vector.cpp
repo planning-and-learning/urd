@@ -45,7 +45,7 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     auto set = TreeVectorSet<std::vector<std::uint32_t>, 2> {};
 
     const auto empty = set.insert(std::span<const std::uint32_t> {}).first;
-    EXPECT_EQ(empty, TreeHandle {});
+    EXPECT_EQ(empty, urd::data<TreeHandle> {});
     EXPECT_TRUE(set.empty());
     set.copy(empty, std::span<std::uint32_t> {});
 
@@ -107,7 +107,7 @@ TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
         std::array<std::uint32_t, 5> { 0, max, 0, max, 0 },
         std::array<std::uint32_t, 5> { 1, 0, 2, 1, 0 },
     };
-    auto indices = std::array<TreeHandle, vectors.size()> {};
+    auto indices = std::array<urd::data<TreeHandle>, vectors.size()> {};
     for (std::size_t i = 0; i < vectors.size(); ++i)
     {
         indices[i] = set.insert(vectors[i]).first;
@@ -126,7 +126,7 @@ TEST(CommonTreeVectorSetTest, StoresUintLeavesInline)
     {
         const auto single = std::array<std::uint32_t, 1> { value };
         const auto index = set.insert(single).first;
-        EXPECT_EQ(index, (TreeHandle { value, 1 }));
+        EXPECT_EQ(index, (urd::data<TreeHandle> { value, 1 }));
         auto output = std::array<std::uint32_t, 1> {};
         set.copy(index, output);
         EXPECT_EQ(output, single);
