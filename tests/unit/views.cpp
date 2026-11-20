@@ -293,6 +293,9 @@ struct Items
     [[nodiscard]] urd::index_view<Item, Items> view(urd::index<Item> at) const { return { at, this }; }
 
     [[nodiscard]] urd::index_view<Owner, Items> view(urd::index<Owner> at) const { return { at, this }; }
+
+    /// An item held in place, as its view here (the context owning items).
+    [[nodiscard]] urd::borrowed_view<Item, Items> view(const urd::data<Item>& item) const { return { &item, this }; }
 };
 
 static_assert(urd::stored_record<Item>);

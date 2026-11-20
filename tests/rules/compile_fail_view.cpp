@@ -1,6 +1,7 @@
 // Views that must not compile, checked like compile_fail_store.cpp: without URD_CASE the file compiles; with
 // URD_CASE=<n>, case n alone must fail. Without a case, data<Bare> is a record (Serializable) that urd::resolve views
-// through its context; each case changes only the record, so it fails for its own reason.
+// through its context, the one owning it (Bares::view(record)); each case changes one thing, so it fails for its own
+// reason.
 
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/data.hpp"
@@ -68,6 +69,10 @@ struct Bares
     [[nodiscard]] std::size_t layer() const noexcept { return 6; }
 
     [[nodiscard]] urd::index_view<Bare, Bares> view(urd::index<Bare> at) const { return { at, this }; }
+
+#if URD_CASE != 2  // a context that does not view a record held in place (no view(data)): none is viewed through it
+    [[nodiscard]] urd::borrowed_view<Bare, Bares> view(const urd::data<Bare>& record) const { return { &record, this }; }
+#endif
 };
 }  // namespace
 

@@ -858,9 +858,10 @@ concept DeclaresViewMixin = !std::is_base_of_v<detail::no_view_mixin, view_mixin
 template<typename T>
 concept PlainValue = !SelfIndexed<T> && !detail::record_holds_child<T>() && !DeclaresViewMixin<T>;
 
-/// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it,
-/// where it makes one (context.view(record): a record read through a context of its own, reached from the context of
-/// its parent), else its borrowed_view through the context. Never a temporary.
+/// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it
+/// (context.view(record)), the context of the repository owning its kind, reached from the context of its parent (the
+/// same where it holds the kind itself, a borrowed_view). A context that neither holds nor reaches its kind does not
+/// compile: no view is ever through a context that does not own its record. Never a temporary.
 template<typename T>
     requires(!PlainValue<T>)
 struct resolution<data<T>>
@@ -868,13 +869,9 @@ struct resolution<data<T>>
     static_assert(stored_record<T>, "urd::data<T> must be Serializable: cista_members() returning urd::Members<...>");
 
     template<typename C>
+        requires detail::ViewsRecords<C, T>
     static auto of(const data<T>& member, const C& context) noexcept
-    {
-        if constexpr (detail::ViewsRecords<C, T>)
-            return context.view(member);
-        else
-            return borrowed_view<T, C> { &member, &context };
-    }
+    { return context.view(member); }
 
     template<typename C>
     static void of(const data<T>&& member, const C& context) = delete;

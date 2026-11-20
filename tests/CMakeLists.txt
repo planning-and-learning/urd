@@ -244,7 +244,7 @@ endfunction()
 
 urd_compile_fail_cases(compile_fail_store rules/compile_fail_store.cpp 65)
 # A record that is not Serializable: no view reads it (its control is a record that one does).
-urd_compile_fail_cases(compile_fail_view rules/compile_fail_view.cpp 1)
+urd_compile_fail_cases(compile_fail_view rules/compile_fail_view.cpp 2)
 # A rejected request names its rule (to_spec in urd/spec.hpp); docs/language/index.rst lists them.
 urd_compile_fail_expects(compile_fail_store 4 "the request contradicts itself")
 urd_compile_fail_expects(compile_fail_store 5 "two properties answer the same question")

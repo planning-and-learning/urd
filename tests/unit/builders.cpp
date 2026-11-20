@@ -151,6 +151,9 @@ struct Nodes
 
     [[nodiscard]] urd::index_view<Leaf, Nodes> view(urd::index<Leaf> at) const { return { at, this }; }
 
+    /// A leaf held in place, as its view here (the context owning leaves).
+    [[nodiscard]] urd::borrowed_view<Leaf, Nodes> view(const urd::data<Leaf>& leaf) const { return { &leaf, this }; }
+
     const urd::data<Leaf>& operator[](LeafKey key) const { return leaves[key.slot]; }
 
     [[nodiscard]] urd::index_view<Leaf, Nodes, LeafKey> view(LeafKey key) const { return { key, this }; }
