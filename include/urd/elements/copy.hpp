@@ -21,6 +21,14 @@ concept Sees = requires(const To& to, const To& source) {
     { to.sees(source) } -> std::same_as<bool>;
 };
 
+/// Whether a context tells whether every record of kind T that `source` can name is one it sees
+/// (`to.sees_all<T>(source)`): a key of T in `source` then names the same record in `to`, though `to` may not see
+/// `source` (a sibling layer that holds no records of T of its own, say).
+template<typename To, typename T>
+concept SeesAll = requires(const To& to, const To& source) {
+    { to.template sees_all<T>(source) } -> std::same_as<bool>;
+};
+
 /// Whether a context reaches records of kind T through another context of type C, one it nests (`to.repository_for<T>()`:
 /// that context): a key of such a record names it there, as it is.
 template<typename To, typename T, typename C>

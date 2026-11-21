@@ -158,6 +158,19 @@ public:
         return false;
     }
 
+    /// Whether every record of kind T that `source` can name is one this layer sees: no layer of `source`'s chain
+    /// below the first this layer sees holds one of its own.
+    template<typename T>
+    [[nodiscard]] bool sees_all(const Layer& source) const noexcept
+    {
+        for (const Layer* layer = &source; layer != nullptr && !sees(*layer); layer = layer->m_parent)
+        {
+            if (layer->own_size<T>() != 0)
+                return false;
+        }
+        return true;
+    }
+
     /// Whether this layer may hold copies of `source`'s records: of its realm (as a repository's nested ones must see
     /// the source's), else std::invalid_argument.
     void check_compatible(const Layer& source) const
@@ -212,6 +225,15 @@ public:
     [[nodiscard]] std::size_t num_nodes() const noexcept { return m_nodes.size(); }
 
 private:
+    template<typename T>
+    [[nodiscard]] std::size_t own_size() const noexcept
+    {
+        if constexpr (std::same_as<T, Leaf>)
+            return m_leaves.size();
+        else
+            return m_nodes.size();
+    }
+
     [[nodiscard]] const Layer& leaf_owner(urd::index<Leaf> at) const
     { return at.value >= m_leaf_base || m_parent == nullptr ? *this : m_parent->leaf_owner(at); }
 
@@ -244,6 +266,7 @@ struct Storage
 
 static_assert(urd::Sees<Layer> && urd::ChecksCompatibility<Layer>);
 static_assert(!urd::Sees<Storage>);
+static_assert(urd::SeesAll<Layer, Leaf> && !urd::SeesAll<Storage, Leaf>);
 static_assert(std::same_as<urd::view_context_t<urd::index_view<Leaf, Layer>>, Layer>);  // the context a view reads through
 static_assert(std::same_as<urd::view_context_t<const urd::borrowed_view<Pin, Layer>&>, Layer>);
 
@@ -291,6 +314,8 @@ TEST(Copy, ARecordOfASiblingIsCopiedChildrenFirst)
     const auto node = node_in(source, storage, own, shared);
 
     EXPECT_FALSE(target.sees(source));
+    EXPECT_FALSE(target.sees_all<Leaf>(source));  // its own leaf is one the target does not see
+    EXPECT_TRUE(target.sees_all<Leaf>(root));
     const auto copied = urd::copy(source.view(node), target, storage);
     EXPECT_EQ(target.num_nodes(), 1U);
     EXPECT_EQ(target.num_leaves(), 1U);  // its own leaf copied, the shared one seen
