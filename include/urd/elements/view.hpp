@@ -760,6 +760,20 @@ struct view_kind<W<T, C, X>>
     using type = T;
 };
 
+/// The context C a view reads through (index_view<T, C, K>, borrowed_view<T, C, R>, …: each view's second parameter).
+template<typename V>
+struct view_context;
+
+template<template<typename, typename, typename> typename W, typename T, typename C, typename X>
+    requires View<W<T, C, X>>
+struct view_context<W<T, C, X>>
+{
+    using type = C;
+};
+
+template<typename V>
+using view_context_t = typename view_context<std::remove_cvref_t<V>>::type;
+
 /// Whether V is a view of a T, in any form.
 template<typename V, typename T>
 concept ViewOf = View<std::remove_cvref_t<V>> && std::same_as<typename view_kind<std::remove_cvref_t<V>>::type, T>;

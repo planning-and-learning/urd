@@ -459,6 +459,13 @@ inline constexpr bool is_built_element_wise<std::vector<T, A>> = true;
 template<typename T>
 inline constexpr bool is_built_element_wise<std::optional<T>> = true;
 
+/// Whether a builder holds a member of type K as its record does although it names a record (a key of its own, as a
+/// row's: it resolves through context Cx to a view with a key, urd::Indexed): build_from builds it as a child.
+template<typename K, typename Cx>
+concept held_key = requires(const K& key, const Cx& context) {
+    { urd::resolve(key, context) } -> Indexed;
+};
+
 // Every overload declared first, as assign_member's.
 template<typename B, typename M, typename Cx, typename F>
 void build_member(std::vector<B>& target, const flat_vector<M>& source, const Cx& context, F& f);
@@ -473,8 +480,11 @@ void build_member(std::pair<A, B>& target, const flat_pair<M, N>& source, const 
 template<typename... Bs, typename... Ms, typename Cx, typename F>
 void build_member(std::variant<Bs...>& target, const flat_variant<Ms...>& source, const Cx& context, F& f);
 template<std::copyable T, typename Cx, typename F>
-    requires(!is_built_element_wise<T>)
+    requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& context, F& f);
+template<typename K, typename Cx, typename F>
+    requires held_key<K, Cx>
+void build_member(K& target, const K& source, const Cx& context, F& f);
 
 /// A child from another builder's child: its key where it is interned (a built or held child is owned by its builder,
 /// not copied: std::bad_variant_access).
@@ -571,9 +581,21 @@ void build_member(std::variant<Bs...>& target, const flat_variant<Ms...>& source
 }
 
 template<std::copyable T, typename Cx, typename F>
-    requires(!is_built_element_wise<T>)
+    requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& /*context*/, F& /*f*/)
 { target = source; }
+
+/// A key held as it is (a builder holds no child of it): the key of the view f gives for what it names, as a child's;
+/// the none key as it is.
+template<typename K, typename Cx, typename F>
+    requires held_key<K, Cx>
+void build_member(K& target, const K& source, const Cx& context, F& f)
+{
+    if (source == K {})
+        target = source;
+    else
+        urd::store(target, f(urd::resolve(source, context)));
+}
 
 template<typename... Bs, typename... Ds, typename B, typename D, typename Cx, typename F>
 void build_fields(Fields<Bs...> /*built*/, Fields<Ds...> /*record*/, B& target, const D& source, const Cx& context, F& f)
@@ -645,9 +667,9 @@ bool is_interned_as(const R& reading, const index_view<T, C, K>& interned)
 }
 
 /// A builder filled from the record a view reads, through the view's own context: each field in step with the record's
-/// (urd::builder: the same names, in the same order), each child as the view f gives for the view of the element it
-/// names (f(view of the child): a view in the builder's context, as copying into another repository gives it). The
-/// mirror of map_children(builder, scratch, f); target's buffers are reused, its own index stays.
+/// (urd::builder: the same names, in the same order), each child (a child member, or a key held as it is:
+/// held_key) as the view f gives for the view of the element it names (f(view of the child): a view in the builder's context, as copying into another
+/// repository gives it). The mirror of map_children(builder, scratch, f); target's buffers are reused, its own index stays.
 template<typename V, typename T, typename C, typename F>
 builder<T, C>& build_from(const V& source, builder<T, C>& target, F f)
 {
