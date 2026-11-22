@@ -122,35 +122,47 @@ nb::class_<urd::index<Tag>> bind_index_of(nb::module_& m)
     return cls;
 }
 
-template<typename K>
-nb::class_<K> bind_key(nb::module_& m)
+/// A key of several indices (urd::key<Ts...>) under its name (<Name>Key, after its last tag): an __init__ from its
+/// parts in order (each an index of its tag), parts() as the tuple of them, compared, hashed and written with fmt.
+template<typename... Ts>
+nb::class_<urd::key<Ts...>> bind_key(nb::module_& m)
 {
-    const auto name = urd::name<K>();
+    using K = urd::key<Ts...>;
+    const auto name = urd::name<typename K::element_type>() + "Key";
     if (auto bound = detail::bound_already<K>(m, name))
         return *bound;
-    auto cls = nb::class_<K>(m, name.c_str()).def(nb::init<>());
-    python::bind_fields(cls);
+    auto cls = nb::class_<K>(m, name.c_str())
+                   .def(nb::init<>())
+                   .def(nb::init<urd::index<Ts>...>())
+                   .def("parts", [](const K& key) { return nb::make_tuple(key.template get<Ts>()...); })
+                   .def("is_none", &K::is_none);
     add_comparison(cls);
     add_hash(cls);
-    static_assert(fmt::is_formattable<K>::value, "urd::python::bind_index: a key is written with fmt: specialize fmt::formatter for it");
-    cls.def("__str__", [](const K& key) { return fmt::format("{}", key); }).def("__repr__", [](const K& key) { return fmt::format("{}", key); });
+    cls.def("__str__", [](const K& key) { return fmt::format("{}", key); }).def("__repr__", [name](const K& key) { return name + fmt::format("{}", key); });
     return cls;
 }
+
+/// The binding of a key type: an index of a tag, or a key of several.
+template<typename T>
+struct key_binder
+{
+    static auto bind(nb::module_& m) { return detail::bind_index_of<T>(m); }
+};
+
+template<typename T, typename... Ts>
+struct key_binder<urd::key<T, Ts...>>
+{
+    static auto bind(nb::module_& m) { return detail::bind_key<T, Ts...>(m); }
+};
 }  // namespace detail
 
 /// Binds a key, the one way a key is bound: an index, urd::index<Tag> of a tag, under <name>Index (urd::name<Tag>()); or
-/// a key of its own (a type with fields() that reads as what it names, as a row's key does: urd::resolution) under its
-/// name, from its fields, each field read and written, compared and hashed, written with fmt. A record's index is bound
-/// before bind_data of the record; a key is bound once, by whichever module binds it first, every other names that
+/// a key of several indices, urd::key<Ts...>, under <name>Key (its last tag's name), from its parts. A record's index is
+/// bound before bind_data of the record; a key is bound once, by whichever module binds it first, every other names that
 /// class.
 template<typename T>
 auto bind_index(nb::module_& m)
-{
-    if constexpr (HasFields<T>)
-        return detail::bind_key<T>(m);
-    else
-        return detail::bind_index_of<T>(m);
-}
+{ return detail::key_binder<T>::bind(m); }
 
 /// The fields of record Data (urd::Fields), each a read/write attribute under its name, and an __init__ from their
 /// values, in order.

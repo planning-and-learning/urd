@@ -4,8 +4,12 @@
 #include "urd/repr/pools/pools.hpp"
 
 #include "names.hpp"
+#include "urd/elements/children.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
+#include "urd/elements/hash.hpp"
+#include "urd/elements/keyed.hpp"
+#include "urd/format.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
@@ -442,6 +446,194 @@ TEST(Records, ViewsResolveFlatMembers)
     const auto whole = urd::index_view<Item, Shop>(lamp, &shop);     // the shop resolves owners too
     EXPECT_EQ(whole.member<&Item::owners>()[0].member<&Owner::name>(), "ann");
     EXPECT_EQ((std::get<urd::index_view<Owner, Shop>>(whole.member<&Item::alternative>()).member<&Owner::name>()), "ann");
+}
+
+/// Tags of a key of two parts: a relation and a row of it.
+struct KeyRelation
+{
+    static constexpr std::string_view name = "KeyRelation";
+};
+struct KeyRow
+{
+    static constexpr std::string_view name = "KeyRow";
+};
+using RowKey = urd::key<KeyRelation, KeyRow>;
+
+/// A record holding a key and a string: serialized by cista, the key part by part.
+struct Keyed
+{
+    urd::flat_string label;
+    RowKey row;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&Keyed::label, &Keyed::row> {}; }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&Keyed::label, &Keyed::row> {}; }
+};
+
+static_assert(std::is_trivially_copyable_v<RowKey>);
+static_assert(sizeof(urd::index<KeyRow>) == 4 && std::is_trivially_copyable_v<urd::index<KeyRow>>);
+
+TEST(Key, ComparesHashesAndWritesPartByPart)
+{
+    const auto a = RowKey(urd::index<KeyRelation>(1), urd::index<KeyRow>(7));
+    const auto b = RowKey(urd::index<KeyRelation>(2), urd::index<KeyRow>(0));
+    EXPECT_EQ(a.get<KeyRelation>(), urd::index<KeyRelation>(1));
+    EXPECT_EQ(a.get<KeyRow>(), urd::index<KeyRow>(7));
+    EXPECT_LT(a, b);  // the first part first
+    EXPECT_EQ(a, RowKey(urd::index<KeyRelation>(1), urd::index<KeyRow>(7)));
+    EXPECT_EQ(urd::Hash<RowKey> {}(a), urd::Hash<RowKey> {}(RowKey(urd::index<KeyRelation>(1), urd::index<KeyRow>(7))));
+    EXPECT_NE(urd::Hash<RowKey> {}(a), urd::Hash<RowKey> {}(b));
+    EXPECT_TRUE(RowKey().is_none());
+    EXPECT_FALSE(a.is_none());
+    EXPECT_EQ(fmt::format("{}", a), "<1,7>");
+}
+
+TEST(Key, ItsPartsAreReadByAFreeGet)
+{
+    const auto a = RowKey(urd::index<KeyRelation>(1), urd::index<KeyRow>(7));
+    EXPECT_EQ(urd::get<KeyRelation>(a), urd::index<KeyRelation>(1));  // a free function: no .template in dependent code
+    EXPECT_EQ(urd::get<KeyRow>(a), urd::index<KeyRow>(7));
+    EXPECT_EQ(urd::get<KeyRow>(urd::index<KeyRow>(3)), urd::index<KeyRow>(3));  // an index is a key of one part
+}
+
+/// An item numbered in its group's own pool: the record a key<KeyRelation, NestItem> names.
+struct NestItem
+{
+    static constexpr std::string_view name = "NestItem";
+};
+
+template<>
+struct urd::data<NestItem>
+{
+    int weight = 0;
+    /// Its key's last part, written by its store at insertion (a record holds its whole key).
+    urd::index<NestItem> index;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::weight> {}; }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::index> {}; }
+};
+
+/// A group's items: a numbered pool of records (urd::layer, no default constructor), layered (an innermost container:
+/// urd::HoldsRecordsOf).
+using NestItems = Store<pool<urd::data<NestItem>, urd::index<NestItem>>, urd::flat, urd::layered>;
+/// Items in nested containers: a group's index selects its items, an item's index numbers the item there. A layer's
+/// own items of a group are a pool built in place over the parent layer's pool of the group (urd::repr::Layered), so
+/// that their numbering continues the parent's.
+using NestGroups = Store<urd::map<urd::index<KeyRelation>, NestItems>, urd::dense, urd::layered>;
+static_assert(!std::default_initializable<NestItems>);
+// A lookup hands out its record by value: a record_ref (the default stored_ref), trivially copyable.
+static_assert(std::same_as<decltype(urd::record_at(std::declval<const NestItems&>(), urd::index<NestItem>())), urd::stored_ref<NestItem>>);
+static_assert(std::same_as<urd::stored_ref<NestItem>, urd::record_ref<NestItem>> && std::is_trivially_copyable_v<urd::record_ref<NestItem>>);
+static_assert(urd::HoldsRecordsOf<NestItems, NestItem> && urd::SelectsBy<NestGroups, KeyRelation>);
+
+TEST(Key, ARecordIsFoundByFoldingOverTheKeysParts)
+{
+    using ItemKey = urd::key<KeyRelation, NestItem>;
+    const auto group = urd::index<KeyRelation>(2);
+    auto groups = NestGroups();
+    groups.try_emplace(group);
+    auto& items = *groups.own_value(group);
+    const auto first = items.insert(urd::data<NestItem> { 5 }).first;
+    const auto second = items.insert(urd::data<NestItem> { 8 }).first;
+    EXPECT_EQ(urd::record_at(groups, ItemKey(group, first))->weight, 5);
+    EXPECT_EQ(urd::record_at(groups, ItemKey(group, second))->weight, 8);
+    EXPECT_EQ(&*urd::record_at(items, second), &items[second]);  // an index: the innermost container's own lookup
+    EXPECT_TRUE(urd::contains_key(groups, ItemKey(group, second)));
+    EXPECT_FALSE(urd::contains_key(groups, ItemKey(group, urd::index<NestItem>(2))));
+    EXPECT_FALSE(urd::contains_key(groups, ItemKey(urd::index<KeyRelation>(3), first)));  // no group 3
+    EXPECT_THROW((void) urd::record_at(groups, ItemKey(urd::index<KeyRelation>(3), first)), std::out_of_range);
+
+    // Over a parent: a group the child never wrote is read from the parent; one it writes to has its own pool, built
+    // over the parent's, whose numbering continues the parent's.
+    auto child = NestGroups();
+    child.layer_over(&groups);
+    EXPECT_EQ(urd::record_at(child, ItemKey(group, second))->weight, 8);
+    child.try_emplace(group);
+    auto& own = *child.own_value(group);
+    EXPECT_EQ(own.layer(), items.layer() + 1);
+    EXPECT_EQ(own.insert(urd::data<NestItem> { 5 }).first, first);  // the parent's record, found through the chain
+    const auto third = own.insert(urd::data<NestItem> { 13 }).first;
+    EXPECT_EQ(third, urd::index<NestItem>(2));
+    EXPECT_EQ(urd::record_at(child, ItemKey(group, third))->weight, 13);
+    EXPECT_EQ(&*urd::record_at(child, ItemKey(group, second)), &items[second]);  // the parent's record, in place
+    EXPECT_FALSE(urd::contains_key(groups, ItemKey(group, third)));             // the parent knows nothing of it
+}
+
+/// A family of stores, one per record type (here one, of items): a key of a kind first selects its kind's store.
+struct NestFamily
+{
+    NestItems items = NestItems(urd::layer { 0 });
+
+    template<std::same_as<NestItem> T>
+    [[nodiscard]] const NestItems& get() const noexcept
+    { return items; }
+};
+static_assert(urd::SelectsStoreOf<NestFamily, NestItem> && !urd::HoldsRecordsOf<NestFamily, NestItem>);
+static_assert(!urd::SelectsStoreOf<NestGroups, NestItem>);
+
+TEST(Key, AFamilySelectsTheStoreOfTheKeysKindFirst)
+{
+    auto family = NestFamily();
+    const auto at = family.items.insert(urd::data<NestItem> { 3 }).first;
+    EXPECT_EQ(&*urd::record_at(family, at), &family.items[at]);  // the same fold: select the kind's store, then its lookup
+    EXPECT_TRUE(urd::contains_key(family, at));
+    EXPECT_FALSE(urd::contains_key(family, urd::index<NestItem>(1)));
+    EXPECT_FALSE(urd::contains_key(family, urd::index<NestItem>()));  // none
+}
+
+/// A key of three parts: shelves (by relation) of blocks (by block) of items.
+struct KeyBlock
+{
+    static constexpr std::string_view name = "KeyBlock";
+};
+using NestBlocks = Store<urd::map<urd::index<KeyBlock>, NestItems>, urd::dense, urd::layered>;
+using NestShelves = Store<urd::map<urd::index<KeyRelation>, NestBlocks>, urd::dense, urd::layered>;
+static_assert(urd::SelectsForInsertBy<NestShelves, KeyRelation> && urd::InsertsRecordsOf<NestItems, NestItem>);
+
+TEST(Key, ARecordIsInsertedUnderTheKnownPartsOfItsKey)
+{
+    auto record_5 = urd::data<NestItem> { 5 };
+    auto record_8 = urd::data<NestItem> { 8 };
+    auto record_21 = urd::data<NestItem> { 21 };
+    using ShelfKey = urd::key<KeyRelation, KeyBlock, NestItem>;
+    const auto known = urd::key<KeyRelation, KeyBlock>(urd::index<KeyRelation>(1), urd::index<KeyBlock>(4));
+    auto shelves = NestShelves();
+    const auto [first, inserted] = urd::insert_at(shelves, known, record_5);  // each level made on demand
+    static_assert(std::same_as<std::remove_const_t<decltype(first)>, ShelfKey>);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(urd::get<NestItem>(first), urd::index<NestItem>(0));
+    EXPECT_EQ(urd::insert_at(shelves, known, record_5), std::pair(first, false));  // deduplicated
+    const auto second = urd::insert_at(shelves, known, record_8).first;
+    EXPECT_EQ(record_8.index, urd::get<NestItem>(second));  // the record holds its whole key: its last part written in
+    EXPECT_EQ(urd::get<NestItem>(second), urd::index<NestItem>(1));
+    EXPECT_EQ(urd::record_at(shelves, second)->weight, 8);  // read back by the same fold
+    EXPECT_EQ(urd::find_at(shelves, known, record_8), second);
+    static_assert(std::same_as<urd::key<>, decltype(urd::built_key<>(record_8))>);  // a key of one part is known by nothing
+    EXPECT_TRUE(urd::find_at(shelves, known, urd::data<NestItem> { 13 }).is_none());
+    EXPECT_TRUE(urd::find_at(shelves, urd::key<KeyRelation, KeyBlock>(urd::index<KeyRelation>(1), urd::index<KeyBlock>(5)), urd::data<NestItem> { 5 })
+                    .is_none());  // no block 5
+
+    // Over a parent: its records found, its numbering continued in the child's own levels, built over the parent's.
+    auto child = NestShelves();
+    child.layer_over(&shelves);
+    EXPECT_EQ(urd::find_at(child, known, urd::data<NestItem> { 8 }), second);
+    EXPECT_EQ(urd::insert_at(child, known, record_5), std::pair(first, false));
+    const auto third = urd::insert_at(child, known, record_21).first;
+    EXPECT_EQ(urd::get<NestItem>(third), urd::index<NestItem>(2));
+    EXPECT_EQ(urd::record_at(child, third)->weight, 21);
+    EXPECT_EQ(&*urd::record_at(child, second), &*urd::record_at(shelves, second));  // the parent's record, in place
+    EXPECT_TRUE(urd::find_at(shelves, known, urd::data<NestItem> { 21 }).is_none());  // the parent knows nothing of it
+}
+
+TEST(Key, StoredFlatPartByPart)
+{
+    auto records = Store<pool<Keyed>, urd::flat>(urd::layer { 0 });
+    auto record = Keyed { urd::flat_string(std::string_view("at")), RowKey(urd::index<KeyRelation>(3), urd::index<KeyRow>(4)) };
+    const auto [at, inserted] = records.insert(record);
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(records[at].row, record.row);
+    EXPECT_EQ(records.insert(record), std::pair(at, false));
 }
 
 TEST(Layered, RowPoolsContinueTheirParent)

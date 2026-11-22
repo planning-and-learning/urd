@@ -14,22 +14,30 @@ Indices
    non-negative integers, enums, types identified by one integral member, and :cpp:struct:`urd::index`; specialize it
    for others.
 
-.. cpp:struct:: template<typename T> index
+.. cpp:struct:: template<typename... Ts> key
 
-   The index of a ``T`` in the Store that numbers ``T``'s (``urd/elements/index.hpp``): a positional set mints one on first
-   insert, and a pool's handles are indices. One 32-bit integer (``value``) with a ``none`` value
-   (``is_none()``), a different type per ``T`` that converts to no other, hashable, orderable, and a dense key.
-   Write it ``urd::index``: the C library declares a function ``index`` in the global namespace.
+   The key of a record in the context that finds it, one 32-bit number per tag, in order (``urd/elements/index.hpp``):
+   the first selects a container of the context, the next looks up in it, and so on (a row of a relation:
+   ``key<Relation, Row>``, its relation's number, then its row's there). One flat base per tag holding its number (no
+   ``std::tuple``), each part read with ``get<T>()`` (a ``key<T>``); the context resolves a key (``context.view(key)``)
+   and its views hold it whole as their index (``index_view<T, C, key<..., T>>``). Trivially copyable, compared and
+   hashed part by part in order, stored flat by cista part by part. ``element_type`` is its last tag, the kind it
+   names. A default-built key is none in every part (``is_none()``). Generic code asks :cpp:concept:`Key`. Bound in
+   Python as ``<Name>Key`` after its last tag (``parts()`` gives its indices); an index as ``<Name>Index``.
 
-   .. cpp:member:: value_type value
+   .. cpp:function:: template<typename T> key<T> get() const noexcept
 
-      The number; ``none_value`` by default.
+.. cpp:concept:: template<typename K> Key
 
-   .. cpp:member:: static constexpr value_type none_value
+   ``K`` is a :cpp:struct:`key` (of one tag, an index, or of several).
 
-      The ``none`` value: the largest ``value_type``. A default-built ``index`` is none.
+.. cpp:type:: template<typename T> index = key<T>
 
-   .. cpp:function:: bool is_none() const noexcept
+   The index of a ``T`` in the Store that numbers ``T``'s: a key of one tag. A positional set mints one on first
+   insert, and a pool's handles are indices. One 32-bit integer (``value``, read through its one base) with a ``none``
+   value (``is_none()``), a different type per ``T`` that converts to no other, hashable, orderable, and a dense key.
+   Write it ``urd::index``: the C library declares a function ``index`` in the global namespace. A key of several tags
+   has no ``value`` (it is ambiguous there): its parts are read with ``get<T>()``.
 
 .. cpp:struct:: layer
 

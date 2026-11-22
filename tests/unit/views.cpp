@@ -374,7 +374,7 @@ TEST(View, StoredInvertsResolve)
     };
     // Each part written as the member's type stores it: views as indices, ranges as lists, pairs and optionals as cista's.
     using Groups = urd::flat_vector<urd::flat_pair<urd::index<Owner>, urd::flat_vector<urd::flat_optional<urd::index<Owner>>>>>;
-    const auto stored = urd::stored<Groups>(urd::resolve(groups, both));
+    const auto stored = urd::as_member<Groups>(urd::resolve(groups, both));
     ASSERT_EQ(stored.size(), 2U);
     EXPECT_EQ(stored[0].first, a);
     ASSERT_EQ(stored[0].second.size(), 2U);
@@ -385,20 +385,20 @@ TEST(View, StoredInvertsResolve)
 
     // A variant readout goes to the alternative of the member that takes it, whichever its position; a value as it is.
     const auto alternative = urd::resolve(std::variant<urd::index<Owner>, int>(b), both);
-    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::stored<urd::flat_variant<urd::index<Owner>, int>>(alternative)), b);
-    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::stored<urd::flat_variant<int, urd::index<Owner>>>(alternative)), b);
-    EXPECT_EQ(cista::get<int>(urd::stored<urd::flat_variant<int, urd::index<Owner>>>(7)), 7);
-    EXPECT_EQ(urd::stored<int>(7), 7);
+    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::as_member<urd::flat_variant<urd::index<Owner>, int>>(alternative)), b);
+    EXPECT_EQ(cista::get<urd::index<Owner>>(urd::as_member<urd::flat_variant<int, urd::index<Owner>>>(alternative)), b);
+    EXPECT_EQ(cista::get<int>(urd::as_member<urd::flat_variant<int, urd::index<Owner>>>(7)), 7);
+    EXPECT_EQ(urd::as_member<int>(7), 7);
 
     // One of the member's alternatives is that alternative, though another (a nested variant) would take it too; the
     // member's own variant keeps each alternative as it is.
     using Inner = urd::flat_variant<urd::index<Owner>, int>;
     using Outer = urd::flat_variant<urd::index<Owner>, Inner>;
-    EXPECT_EQ(urd::stored<Outer>(b).index(), 0U);
-    const auto inner = urd::stored<Outer>(Inner(b));
+    EXPECT_EQ(urd::as_member<Outer>(b).index(), 0U);
+    const auto inner = urd::as_member<Outer>(Inner(b));
     ASSERT_EQ(inner.index(), 1U);
     EXPECT_EQ(cista::get<urd::index<Owner>>(cista::get<Inner>(inner)), b);
-    EXPECT_EQ(urd::stored<Outer>(inner).index(), 1U);
+    EXPECT_EQ(urd::as_member<Outer>(inner).index(), 1U);
 
     // store writes into a member as its type stores it.
     auto member = urd::flat_optional<urd::index<Owner>>();
@@ -895,7 +895,7 @@ TEST(View, AViewReadsByTheKeyWhereItsContextHandsOutNoRecord)
 {
     const auto context = ByKey();
     const auto view = urd::index_view<Keyed, ByKey>(urd::index<Keyed>(0), &context);
-    static_assert(urd::ReadsFieldsByKey<ByKey, urd::index<Keyed>, &urd::data<Keyed>::values> && !urd::HandsOutRecords<ByKey, urd::index<Keyed>>);
+    static_assert(urd::ReadsFieldsByKey<ByKey, urd::index<Keyed>, &urd::data<Keyed>::values> && !urd::HandsOutRecordsBy<ByKey, Keyed, urd::index<Keyed>>);
     static_assert(std::same_as<urd::record_of<decltype(view)>, urd::data<Keyed>>);
     // A field read by the key lives for the read only: what is read from it is a value, never a reference into it.
     static_assert(!std::is_reference_v<decltype(view.template member<&urd::data<Keyed>::values>())>);

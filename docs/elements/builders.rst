@@ -31,7 +31,7 @@ denotation while it is computed, a row before it is looked up) is a *builder* (`
 
    A child of a builder, a view through its own context in one of three forms:
 
-   - interned: its :cpp:class:`index_view`, whose key ``K`` is ``index<T>`` or a key of its own (a row's: its pool and
+   - interned: its :cpp:class:`index_view`, whose key ``K`` is ``index<T>`` or a :cpp:struct:`key` of several (a row's: its relation and
      its id); the none view (no key, no context): a child default-constructs empty;
    - built: a builder of its own, owned by its :cpp:class:`pooled_view`;
    - a record not interned yet, owned by its :cpp:class:`pooled_view`.

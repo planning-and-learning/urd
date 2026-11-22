@@ -79,6 +79,13 @@ public:
         requires(!chained)
     { return representation().own_value(key); }
 
+    /// This layer's own value of `key` (a layered map), made where there is none, in place over the parent layer's
+    /// value of the key: the step an insertion takes into it (urd::insert_at).
+    template<typename Key>
+    [[nodiscard]] auto& own(const Key& key)
+        requires(!chained)
+    { return representation().at(key); }
+
 private:
     [[nodiscard]] const R& representation() const { return store_access::of<Derived>(*this); }
 

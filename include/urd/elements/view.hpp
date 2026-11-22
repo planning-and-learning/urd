@@ -4,6 +4,7 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/data.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/keyed.hpp"
 #include "urd/elements/less.hpp"
 #include "urd/memory.hpp"
 
@@ -28,14 +29,14 @@
 namespace urd
 {
 
-/// Whether C resolves indices of T: `context[index<T>]` is the record (a T, or the stored record data<T>, which must
-/// be Serializable), and C has its number (urd::layer). A positional set or a pool of Ts does, and so does a layer of
+/// Whether C resolves indices of T: urd::record_at(context, index<T>) is the record's stored_ref (over a T, or the
+/// stored record data<T>), and C has its number (urd::layer). A positional set or a pool of Ts does, and so does a layer of
 /// them, for the records of every layer below. And it makes the views of its indices, `context.view(index<T>)`: the one
 /// place that says which context a view is through (a layer points it at the layer that owns the element); a context
 /// made of several Stores writes one per type.
 template<typename C, typename T>
 concept resolves = requires(const C& context, index<T> at) {
-    requires(std::same_as<std::remove_cvref_t<decltype(context[at])>, data<T>> && stored_record<T>) || std::convertible_to<decltype(context[at]), const T&>;
+    { urd::record_at<T>(context, at) } -> std::same_as<stored_ref<T>>;
     { context.layer() } -> std::same_as<std::size_t>;
     { context.view(at) } -> std::same_as<index_view<T, C>>;
 };
@@ -69,16 +70,18 @@ struct view_mixin<builder<T, C>, V> : view_mixin<T, V>
 {
 };
 
+/// An index_view's accessors are its stored form's (view_mixin<stored_ref<T>, V>): a record held in place reads as T.
+template<typename T, typename V>
+struct view_mixin<record_ref<T>, V> : view_mixin<T, V>
+{
+};
+
 /// The record a view V reads, as V declares it (record_type): an index_view's data<T>, or T where T has no stored record
 /// (a Store of plain values); a borrowed, owning or shared view's R. A view whose context keeps its records in a layout
 /// of its own (bit-packed, a trie) reads data<T> all the same, field by field: whatever the layout, the key is the
 /// handle and data<T> the schema.
 template<typename V>
 using record_of = typename std::remove_cvref_t<V>::record_type;
-
-/// Whether a context C hands out the record of a key K whole: context[key].
-template<typename C, typename K>
-concept HandsOutRecords = requires(const C& context, const K& key) { context[key]; };
 
 /// Whether a context C reads the field Member of the record of a key K by the key: context.field<Member>(key), where
 /// it keeps its records in a layout of its own. It hands the field out as its views read it: resolved through itself
@@ -93,11 +96,16 @@ namespace detail
 /// fields, stays inside urd.
 struct view_access
 {
-    /// The whole record: an index_view's in its context, where it hands it out (HandsOutRecords: data<T>, or a plain
+    /// The whole record: an index_view's in its context, where it hands it out (HandsOutRecordsBy: data<T>, or a plain
     /// T); a borrowed, owning or shared view's own (data<T>, builder<T, C>, or a plain T).
     template<typename V>
     [[nodiscard]] static const typename V::record_type& record(const V& view)
     { return view.record(); }
+
+    /// An index_view's record, through the stored_ref its context hands out (a record held in place: record_ref).
+    template<typename T, typename C, typename K>
+    [[nodiscard]] static const typename record_form<T>::type& record(const index_view<T, C, K>& view)
+    { return *view.record(); }
 };
 }  // namespace detail
 
@@ -170,14 +178,15 @@ concept resolving = !requires { resolution<M>::identity; };
 template<typename M, typename C>
 using resolved_t = std::remove_cvref_t<decltype(urd::resolve(std::declval<const M&>(), std::declval<const C&>()))>;
 
-/// An index as the view its context makes (pointing at the layer that owns the element, where the context is a layer):
-/// a record's context must resolve every index type the record holds. The none index (an empty child, a key not given
-/// yet) is the none view: it names no element, so nothing is looked up.
-template<typename U>
-struct resolution<index<U>>
+/// A key as the view its context makes (an index: pointing at the layer that owns the element, where the context is a
+/// layer; a key of several parts: the context finds the record through them, container by container): a record's
+/// context must resolve every key type the record holds. The none key (an empty child, a key not given yet) is the none
+/// view: it names no element, so nothing is looked up.
+template<typename... Ts>
+struct resolution<key<Ts...>>
 {
     template<typename C>
-    static auto of(index<U> at, const C& context)
+    static auto of(key<Ts...> at, const C& context)
     {
         using View = decltype(context.view(at));
         if (at.is_none())
@@ -185,15 +194,19 @@ struct resolution<index<U>>
         return context.view(at);
     }
 
-    /// Written from the index itself, or from a view of the element (its index()).
-    template<std::same_as<index<U>> R>
-    static index<U> stored(const R& readout) noexcept
+    /// Written from the key itself, or from a view of the element (its index()).
+    template<std::same_as<key<Ts...>> R>
+    static key<Ts...> stored(const R& readout) noexcept
     { return readout; }
 
-    template<IndexedBy<index<U>> V>
-    static index<U> stored(const V& view) noexcept
+    template<IndexedBy<key<Ts...>> V>
+    static key<Ts...> stored(const V& view) noexcept
     { return view.index(); }
 };
+
+/// Whether A is one of the types Ts (a variant's alternatives).
+template<typename A, typename... Ts>
+concept Alternative = (std::same_as<A, Ts> || ...);
 
 /// A variant (std's or cista's) as the std::variant of its alternatives resolved. An empty one (a cista variant not
 /// assigned, a std::variant valueless) throws std::bad_variant_access. Each alternative is constructed by its index:
@@ -202,9 +215,6 @@ template<template<typename...> typename V, typename... Ts>
     requires variant_value<V<Ts...>>
 struct resolution<V<Ts...>>
 {
-    /// Whether A is one of the alternatives.
-    template<typename A>
-    static constexpr bool is_alternative = (std::same_as<A, Ts> || ...);
 
     template<typename C>
     static auto of(const V<Ts...>& member, const C& context)
@@ -225,10 +235,10 @@ struct resolution<V<Ts...>>
     /// readouts: each to its own alternative, else to the one alternative whose stored takes it, whichever its position
     /// (none or several is a compile error).
     template<typename R>
-        requires(is_alternative<R> || variant_value<R> || detail::takers<R, Ts...> == 1)
+        requires(Alternative<R, Ts...> || variant_value<R> || detail::takers<R, Ts...> == 1)
     static V<Ts...> stored(const R& readout)
     {
-        if constexpr (!is_alternative<R> && variant_value<R>)
+        if constexpr (!Alternative<R, Ts...> && variant_value<R>)
             return visit([](const auto& alternative) { return stored_alternative(alternative); }, readout);
         else
             return stored_alternative(readout);
@@ -238,7 +248,7 @@ private:
     template<typename A>
     static V<Ts...> stored_alternative(const A& alternative)
     {
-        if constexpr (is_alternative<A>)
+        if constexpr (Alternative<A, Ts...>)
             return V<Ts...>(alternative);
         else
         {
@@ -597,31 +607,31 @@ private:
 /// names its index, index(). K is urd::index<T>, or a handle of another shape that the context resolves (a key of
 /// several parts: a row's pool and its position there).
 template<typename T, typename C, typename K>
-class index_view : public detail::view_base<index_view<T, C, K>, T, C, T>
+class index_view : public detail::view_base<index_view<T, C, K>, T, C, stored_ref<T>>
 {
-    friend detail::view_base<index_view, T, C, T>;
+    friend detail::view_base<index_view, T, C, stored_ref<T>>;
     friend detail::view_access;
 
 public:
     /// Its record: data<T> (named only here, so that a view of a record not yet complete may be declared).
     using record_type = data<T>;
 
-    index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
+    index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, stored_ref<T>>(context), m_at(at) {}
 
     /// The none view: the none key, no context (an empty urd::child). Only assigned to and compared by its key: it has no
     /// record to read.
-    index_view() noexcept : detail::view_base<index_view, T, C, T>(nullptr), m_at() {}
+    index_view() noexcept : detail::view_base<index_view, T, C, stored_ref<T>>(nullptr), m_at() {}
 
     [[nodiscard]] K index() const noexcept { return m_at; }
 
     /// A member of its record, resolved through its context: in place, where the context hands out the record of its
-    /// key (HandsOutRecords); as the context reads it by the key, resolved and by value, where it keeps its records in a
+    /// key (HandsOutRecordsBy); as the context reads it by the key, resolved and by value, where it keeps its records in a
     /// layout of its own (ReadsFieldsByKey).
     template<auto Member>
     [[nodiscard]] decltype(auto) member() const
     {
-        if constexpr (HandsOutRecords<C, K>)
-            return urd::resolve(this->context()[m_at].*Member, this->context());
+        if constexpr (HandsOutRecordsBy<C, T, K>)
+            return urd::resolve(stored_field<Member, stored_ref<T>>::read(urd::record_at<T>(this->context(), m_at)), this->context());
         else if constexpr (ReadsFieldsByKey<C, K, Member>)
             return this->context().template field<Member>(m_at);
         else
@@ -629,10 +639,10 @@ public:
     }
 
 private:
-    /// Its record whole, where its context hands it out (context[key]).
-    [[nodiscard]] const record_type& record() const
-        requires HandsOutRecords<C, K>
-    { return this->context()[m_at]; }
+    /// Its record as its context hands it out, by value (urd::record_at(context, key)): its stored_ref.
+    [[nodiscard]] stored_ref<T> record() const
+        requires HandsOutRecordsBy<C, T, K>
+    { return urd::record_at<T>(this->context(), m_at); }
 
     [[nodiscard]] const K& identity() const noexcept { return m_at; }
 
@@ -813,9 +823,13 @@ consteval bool argument_holds_child(std::type_identity<V<Ts...>> /*instance*/)
 consteval bool argument_holds_child(...) { return false; }
 
 template<typename T>
-inline constexpr bool is_data = false;
+inline constexpr bool data_type = false;
 template<typename T>
-inline constexpr bool is_data<data<T>> = true;
+inline constexpr bool data_type<data<T>> = true;
+
+/// Whether T is a record, data<U>.
+template<typename T>
+concept Data = data_type<T>;
 
 /// The tag of a record type: T of data<T>.
 template<typename R>
@@ -842,9 +856,9 @@ consteval bool record_holds_child()
 template<typename M>
 consteval bool holds_child()
 {
-    if constexpr (is_index_type<M>)
+    if constexpr (Key<M>)
         return stored_record<typename M::element_type>;
-    else if constexpr (is_data<M>)
+    else if constexpr (Data<M>)
         return detail::record_holds_child<typename tag_of_data<M>::type>();
     else if constexpr (std::ranges::range<M>)
         return detail::holds_child<std::remove_cvref_t<std::ranges::range_value_t<M>>>();

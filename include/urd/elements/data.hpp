@@ -19,6 +19,57 @@ struct data;
 template<typename T>
 concept stored_record = Serializable<data<T>>;
 
+/// The record a store holds for T: data<T> where T has a stored record (stored_record), else a plain T (a Store of plain
+/// values, read whole).
+template<typename T>
+struct record_form
+{
+    using type = T;
+};
+
+template<typename T>
+    requires stored_record<T>
+struct record_form<T>
+{
+    using type = data<T>;
+};
+
+/// A record of T where a store holds it, handed out by value: what a lookup returns by default (stored_ref<T>).
+/// Trivially copyable; the record must outlive it.
+template<typename T>
+class record_ref
+{
+    const typename record_form<T>::type* m_record;
+
+public:
+    explicit record_ref(const typename record_form<T>::type& record) noexcept : m_record(&record) {}
+
+    [[nodiscard]] const typename record_form<T>::type& operator*() const noexcept { return *m_record; }
+
+    [[nodiscard]] const typename record_form<T>::type* operator->() const noexcept { return m_record; }
+};
+
+/// What a lookup of a T hands out, by value (urd::record_at, a context's operator[] and at()): record_ref<T> unless T
+/// names another, by specializing stored_ref_of<T> (a row packed in its slot: a reader over its bits). The one
+/// customization point of how a record is handed out.
+template<typename T>
+struct stored_ref_of
+{
+    using type = record_ref<T>;
+};
+
+template<typename T>
+using stored_ref = typename stored_ref_of<T>::type;
+
+/// A field of a record, read through the stored_ref its store hands out (R): `(*ref).*Member`, in place, for a record
+/// held whole (record_ref); a stored form of its own (a row packed in its slot) says how it reads each field of data<T>
+/// by specializing stored_field.
+template<auto Member, typename R>
+struct stored_field
+{
+    [[nodiscard]] static const member_type_t<Member>& read(const R& ref) { return (*ref).*Member; }
+};
+
 /// A record with identifying_members() compares by them.
 template<typename T>
     requires Identifiable<data<T>>

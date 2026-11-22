@@ -507,7 +507,7 @@ struct queue : detail::data_of<queue_kind, V>
 template<typename V, typename H = index<V>>
 struct pool : detail::data_of<pool_kind, V>
 {
-    static_assert(is_index_type<H>, "urd::pool<V, H>: H, the handle a pool hands out, is an urd::index");
+    static_assert(Key<H> && H::single, "urd::pool<V, H>: H, the handle a pool hands out, is an urd::index");
     using value_type = V;
     using handle_type = H;
 };

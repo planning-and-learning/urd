@@ -27,13 +27,13 @@ namespace
 {
 
 /// A key whose hash counts its calls.
-struct Key
+struct Probe
 {
     int value = 0;
 
-    friend bool operator==(const Key&, const Key&) = default;
+    friend bool operator==(const Probe&, const Probe&) = default;
 
-    static constexpr auto cista_members() noexcept { return urd::Members<&Key::value> {}; }
+    static constexpr auto cista_members() noexcept { return urd::Members<&Probe::value> {}; }
 };
 
 int hashes = 0;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables): the counter the tests read
@@ -43,9 +43,9 @@ std::array<int, 4> hashes_of {};  // NOLINT(cppcoreguidelines-avoid-non-const-gl
 }  // namespace
 
 template<>
-struct urd::Hash<Key>
+struct urd::Hash<Probe>
 {
-    urd::hash_t operator()(const Key& key) const noexcept
+    urd::hash_t operator()(const Probe& key) const noexcept
     {
         ++hashes;
         ++hashes_of[static_cast<std::size_t>(key.value) & 3U];
@@ -65,11 +65,11 @@ void finds_and_inserts_hashing_once()
 {
     auto keys = Pool(urd::layer { 0 });
     hashes_of = {};
-    const auto [first, inserted] = keys.insert(Key { 1 });
+    const auto [first, inserted] = keys.insert(Probe { 1 });
     EXPECT_TRUE(inserted);
     EXPECT_EQ(hashes_of[1], 1) << "a new record is hashed once: the lookup's hash goes into the table";
 
-    const auto two_key = Key { 2 };
+    const auto two_key = Probe { 2 };
     const auto two = urd::prehash(two_key);
     EXPECT_EQ(hashes_of[2], 1);
     EXPECT_FALSE(keys.contains(two));
@@ -80,47 +80,47 @@ void finds_and_inserts_hashing_once()
     EXPECT_EQ(keys.find(two), second);
     EXPECT_EQ(hashes_of[2], 1) << "a prehashed key is not hashed again";
 
-    const auto one_key = Key { 1 };
+    const auto one_key = Probe { 1 };
     const auto one = urd::prehash(one_key);
-    const auto [again, new_one] = keys.insert(one, [](auto) { return Key { 1 }; });
+    const auto [again, new_one] = keys.insert(one, [](auto) { return Probe { 1 }; });
     EXPECT_FALSE(new_one);
     EXPECT_EQ(again, first);
-    const auto three_key = Key { 3 };
+    const auto three_key = Probe { 3 };
     const auto three = urd::prehash(three_key);
-    const auto [made, new_three] = keys.insert(three, [](auto) { return Key { 3 }; });
+    const auto [made, new_three] = keys.insert(three, [](auto) { return Probe { 3 }; });
     EXPECT_TRUE(new_three);
-    EXPECT_EQ(keys[made], Key { 3 });
+    EXPECT_EQ(keys[made], Probe { 3 });
     EXPECT_EQ(hashes_of[3], 1);
 }
 
-TEST(Prehashed, RecordInterner) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat>>(); }
+TEST(Prehashed, RecordInterner) { finds_and_inserts_hashing_once<Store<pool<Probe>, urd::flat>>(); }
 
-TEST(Prehashed, ThreadSafeRecordInterner) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat, urd::concurrent>>(); }
+TEST(Prehashed, ThreadSafeRecordInterner) { finds_and_inserts_hashing_once<Store<pool<Probe>, urd::flat, urd::concurrent>>(); }
 
-TEST(Prehashed, ValueInterner) { finds_and_inserts_hashing_once<Store<pool<Key>>>(); }
+TEST(Prehashed, ValueInterner) { finds_and_inserts_hashing_once<Store<pool<Probe>>>(); }
 
-TEST(Prehashed, ArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key>>>(); }
+TEST(Prehashed, ArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Probe>>>(); }
 
-TEST(Prehashed, ThreadSafeArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Key, true>>>(); }
+TEST(Prehashed, ThreadSafeArenaInterner) { finds_and_inserts_hashing_once<urd::repr::Numbered<urd::repr::ArenaInterner<Probe, true>>>(); }
 
-TEST(Prehashed, LayeredPool) { finds_and_inserts_hashing_once<Store<pool<Key>, urd::flat, urd::layered>>(); }
+TEST(Prehashed, LayeredPool) { finds_and_inserts_hashing_once<Store<pool<Probe>, urd::flat, urd::layered>>(); }
 
 // A layered pool hashes a key once for its whole chain of layers, not once per layer.
 TEST(Prehashed, LayeredPoolHashesOnceForTheChain)
 {
-    using Keys = Store<pool<Key>, urd::flat, urd::layered>;
+    using Keys = Store<pool<Probe>, urd::flat, urd::layered>;
     auto root = Keys(urd::layer { 0 });
-    const auto one = root.insert(Key { 1 }).first;
+    const auto one = root.insert(Probe { 1 }).first;
     auto middle = Keys(urd::layer { 1 });
     middle.layer_over(&root);
     auto leaf = Keys(urd::layer { 2 });
     leaf.layer_over(&middle);
     hashes = 0;
-    EXPECT_EQ(leaf.find(Key { 1 }), one);
-    EXPECT_FALSE(leaf.insert(Key { 1 }).second);
-    EXPECT_TRUE(leaf.insert(Key { 2 }).second);
+    EXPECT_EQ(leaf.find(Probe { 1 }), one);
+    EXPECT_FALSE(leaf.insert(Probe { 1 }).second);
+    EXPECT_TRUE(leaf.insert(Probe { 2 }).second);
     EXPECT_EQ(hashes, 3) << "one hash per lookup or insert";
-    const auto two_key = Key { 2 };
+    const auto two_key = Probe { 2 };
     const auto two = urd::prehash(two_key);
     EXPECT_FALSE(leaf.find(two).is_none());
     EXPECT_TRUE(middle.find(two).is_none());
@@ -211,7 +211,7 @@ TEST(Prehashed, EmptyPoolsOwnNoMemory)
 
     // So does a single-threaded indexed set (a positional set, a value or record interner).
     auto symbols = Store<urd::set<int>, urd::positional, urd::monotone>(urd::layer { 0 });
-    auto values = Store<pool<Key>>(urd::layer { 0 });
+    auto values = Store<pool<Probe>>(urd::layer { 0 });
     EXPECT_EQ(urd::memory_usage(symbols), 0U);
     EXPECT_EQ(urd::memory_usage(values), 0U);
     EXPECT_FALSE(symbols.contains(3));
@@ -224,9 +224,9 @@ TEST(Prehashed, EmptyPoolsOwnNoMemory)
 // A positional set (an indexed set) inserts by a prehashed key too.
 TEST(Prehashed, PositionalSet)
 {
-    auto keys = Store<urd::set<Key>, urd::positional, urd::monotone>(urd::layer { 0 });
+    auto keys = Store<urd::set<Probe>, urd::positional, urd::monotone>(urd::layer { 0 });
     hashes = 0;
-    const auto seven = Key { 7 };
+    const auto seven = Probe { 7 };
     const auto key = urd::prehash(seven);
     EXPECT_TRUE(keys.insert(key).second);
     EXPECT_FALSE(keys.insert(key).second);
@@ -238,15 +238,15 @@ TEST(Prehashed, PositionalSet)
 // A hash set and a hash map find by a prehashed key, as by their heterogeneous lookup.
 TEST(Prehashed, HashSetAndMap)
 {
-    auto keys = Store<urd::set<Key>> { Key { 4 } };
+    auto keys = Store<urd::set<Probe>> { Probe { 4 } };
     hashes = 0;
-    const auto four_key = Key { 4 };
+    const auto four_key = Probe { 4 };
     const auto four = urd::prehash(four_key);
-    const auto five_key = Key { 5 };
+    const auto five_key = Probe { 5 };
     const auto five = urd::prehash(five_key);
     EXPECT_TRUE(keys.contains(four));
     EXPECT_FALSE(keys.contains(five));
-    EXPECT_EQ(*keys.find(four), Key { 4 });
+    EXPECT_EQ(*keys.find(four), Probe { 4 });
     EXPECT_EQ(hashes, 2);
 
     auto arity = Store<urd::map<std::string, int>> { { "on", 2 }, { "clear", 1 } };

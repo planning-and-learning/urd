@@ -46,10 +46,12 @@ concept BuiltWithColumnWidths = requires(const V& value, const Arg& arg) {
 /// not own and never changes: a layer over a repository built earlier. It holds, iterates and erases only its own
 /// values; inserting a key the parent has inserts nothing and finds the parent's. A key's own value shadows the
 /// parent's: at(), update() and try_emplace() make an own value where this layer has none, once, under the slot's lock
-/// (IndexMap::update): where values layer (a map of layered pools layers through both levels) one built from
-/// try_emplace's arguments (a bit width), or default, layered over the parent's value (the slot's earlier value,
-/// cleared, where its Store offers clear() and it was built alike: without arguments, any earlier value); else one built from the arguments, or
-/// else a copy of the parent's.
+/// (IndexMap::update): where values layer (a map of layered pools layers through both levels) one built in place over
+/// the parent's value of the slot, from it and try_emplace's arguments (a bit width; mapped_type(above, args...): a
+/// layered Store numbered after it), so that a value without a default (a numbered pool of records) continues the
+/// parent's (the slot's earlier value, cleared, where its Store offers clear() and it was built alike: without
+/// arguments, any earlier value, layered over the parent's anew); else one built from the arguments, or else a copy of
+/// the parent's.
 /// insert_or_assign writes its own. owner(key) is the layer whose own values hold `key`.
 ///
 /// Over a thread-safe map (layered, concurrent: the thread-safe generation map), at, update, read, try_emplace,
@@ -222,35 +224,34 @@ private:
         return nullptr;
     }
 
-    /// update(value, held) with the own value of `key`, made from `args` once, under the slot's lock, where new.
+    /// update(value, held) with the own value of `key`, made from `args` once, in place, under the slot's lock, where new.
     template<typename Update, typename... Args>
     decltype(auto) own(const key_type& key, Update update, Args&&... args)
     {
-        return m_own.update(key,
-                            [&](mapped_type& value, bool held) -> decltype(auto)
-                            {
-                                if (!held)
-                                    make(value, m_parent == nullptr ? nullptr : m_parent->value_of(key), std::forward<Args>(args)...);
-                                return update(value, held);
-                            });
+        return m_own.update(
+            key,
+            [&](std::optional<mapped_type>& value) { make(value, m_parent == nullptr ? nullptr : m_parent->value_of(key), std::forward<Args>(args)...); },
+            update);
     }
 
-    /// The slot's value made own (see the class). A value that layers reuses what the slot kept (a generation map's
-    /// earlier value), storage and all, where its Store offers clear() and it was built alike: cleared and layered anew.
+    /// The slot's value made own, in place (see the class). A value that layers reuses what the slot kept (a generation
+    /// map's earlier value), storage and all, where its Store offers clear() and it was built alike: cleared and layered
+    /// anew.
     template<typename... Args>
-    static void make(mapped_type& value, const mapped_type* above, Args&&... args)
+    static void make(std::optional<mapped_type>& value, const mapped_type* above, Args&&... args)
     {
         if constexpr (layers_values)
         {
-            if (!reused(value, args...))
-                value = mapped_type(std::forward<Args>(args)...);
-            value.layer_over(above);
+            if (value.has_value() && reused(*value, args...))
+                value->layer_over(above);
+            else
+                value.emplace(above, std::forward<Args>(args)...);
         }
         else if (above != nullptr && sizeof...(Args) == 0)
-            value = *above;
+            value.emplace(*above);
         else
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay): a string literal argument decays where mapped_type takes it
-            value = mapped_type(std::forward<Args>(args)...);
+            value.emplace(std::forward<Args>(args)...);
     }
 
     /// Whether `value` was cleared for reuse: where its Store offers clear() (monotone_until_clear, or one that

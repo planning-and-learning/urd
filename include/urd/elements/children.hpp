@@ -187,7 +187,7 @@ void for_each_cista_member(R& record, F f)
 
 /// A slot of type S that is a child: an index of a type in the list Types.
 template<typename S, typename Types>
-concept child_of = is_index_type<std::remove_const_t<S>> && boost::mp11::mp_contains<Types, typename std::remove_const_t<S>::element_type>::value;
+concept child_of = Key<std::remove_const_t<S>> && boost::mp11::mp_contains<Types, typename std::remove_const_t<S>::element_type>::value;
 template<typename Types, typename S>
 inline constexpr bool is_child = child_of<S, Types>;
 
@@ -201,19 +201,19 @@ void walk(M& member, F& f)
     using V = std::remove_const_t<M>;
     if constexpr (std::invocable<F&, M&>)
         f(member);
-    else if constexpr (is_index_type<V>)
+    else if constexpr (Key<V>)
         return;
-    else if constexpr (is_flat_vector<V>)
+    else if constexpr (FlatVector<V>)
         for (auto& element : member)
             walk(element, f);
-    else if constexpr (is_flat_variant<V>)
+    else if constexpr (FlatVariant<V>)
         member.apply([&](auto& alternative) { walk(alternative, f); });
-    else if constexpr (is_flat_optional<V>)
+    else if constexpr (FlatOptional<V>)
     {
         if (member.has_value())
             walk(*member, f);
     }
-    else if constexpr (is_flat_pair<V>)
+    else if constexpr (FlatPair<V>)
     {
         walk(member.first, f);
         walk(member.second, f);
@@ -248,7 +248,7 @@ void assign_members(R& scratch, const R& source)
                 using M = std::remove_cvref_t<decltype(scratch.*Ms)>;
                 if constexpr (std::same_as<M, index<T>>)
                     return;
-                else if constexpr (is_flat_vector<M>)
+                else if constexpr (FlatVector<M>)
                     (scratch.*Ms).set((source.*Ms).begin(), (source.*Ms).end());
                 else
                     scratch.*Ms = source.*Ms;
@@ -276,11 +276,14 @@ template<typename M, typename F>
 void assign_member(M& target, const M& source, F& /*f*/)
 { target = source; }
 
+template<typename R>
+inline constexpr bool lookup_result_type = false;
+template<typename V>
+inline constexpr bool lookup_result_type<std::optional<V>> = true;
+
 /// Whether R is a lookup's result: the optional of what it found.
 template<typename R>
-inline constexpr bool is_lookup_result = false;
-template<typename V>
-inline constexpr bool is_lookup_result<std::optional<V>> = true;
+concept LookupResult = lookup_result_type<R>;
 
 /// What an insert or a lookup gave, as the key K: the key itself, or the index an insert's result names
 /// (urd::inserted_index); none for a key a lookup did not find (urd::missing_key, or an empty lookup result).
@@ -292,7 +295,7 @@ K as_key(const R& inserted)
         return inserted;
     else if constexpr (std::same_as<Result, missing_key>)
         return K {};
-    else if constexpr (is_lookup_result<Result>)
+    else if constexpr (LookupResult<Result>)
         return inserted.has_value() ? detail::as_key<K>(*inserted) : K {};
     else
         return urd::inserted_index(inserted);
@@ -386,6 +389,34 @@ void assign_fields(Fields<Ds...> /*record*/, Fields<Bs...> /*built*/, D& target,
     (detail::assign_member(target.*Ds::member, source.*Bs::member, f), ...);
 }
 
+/// Whether field B holds a key part of tag P as type M: a record's index<P>, a builder's child of it (built_t).
+template<typename M>
+struct holds_part_q
+{
+    template<typename B>
+    using fn = std::bool_constant<std::same_as<member_type_t<B::member>, M>>;
+};
+
+/// The field of type M among Bs: exactly one.
+template<typename M, typename... Bs>
+struct part_field
+{
+    using list = boost::mp11::mp_list<Bs...>;
+    static_assert(boost::mp11::mp_count_if_q<list, holds_part_q<M>>::value == 1,
+                  "urd::built_key: a record or builder holds each part of its key it names as exactly one field");
+    using type = boost::mp11::mp_at<list, boost::mp11::mp_find_if_q<list, holds_part_q<M>>>;
+};
+
+/// The index of tag P a builder holds as its one field of type built_t<index<P>, C>, as f gives it in its form.
+template<typename P, typename T, typename C, typename F, typename... Bs>
+index<P> built_part(Fields<Bs...> /*built*/, const builder<T, C>& built, F& f)
+{
+    using B = typename part_field<built_t<index<P>, C>, Bs...>::type;
+    auto part = index<P>();
+    detail::assign_member(part, built.*B::member, f);
+    return part;
+}
+
 template<typename U, typename C, typename F>
 void assign_built(data<U>& target, const builder<U, C>& source, F& f)
 { detail::assign_fields(data<U>::fields(), builder<U, C>::fields(), target, source, f); }
@@ -432,6 +463,25 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
     detail::assign_built(scratch, source, f);
     return scratch;
 }
+
+/// The parts Ps of its record's key a builder holds (its one field of type built_t<index<P>, C> each, as f gives it in
+/// its form, as map_children does a child): what a record of several parts' key is inserted under, its last part the
+/// store's to give.
+template<typename... Ps, typename T, typename C, typename F>
+key<Ps...> built_key(const builder<T, C>& built, F f)
+{ return key<Ps...>(detail::built_part<Ps>(builder<T, C>::fields(), built, f)...); }
+
+namespace detail
+{
+template<typename P, typename T, typename... Ds>
+index<P> record_part(Fields<Ds...> /*record*/, const data<T>& record)
+{ return record.*part_field<index<P>, Ds...>::type::member; }
+}  // namespace detail
+
+/// The parts Ps of its key a record holds (its one field of type index<P> each): what it is inserted under.
+template<typename... Ps, typename T>
+key<Ps...> built_key(const data<T>& record)
+{ return key<Ps...>(detail::record_part<Ps>(data<T>::fields(), record)...); }
 
 /// Interns a builder: its record written into scratch (map_children), each child as the key `insert` gives it, then the
 /// record inserted. `insert` takes every form a child holds: an interned child's key (kept as it is), a built one's builder (interned again, with a scratch
@@ -696,7 +746,7 @@ R& map_variant_children(const R& source, R& scratch, const C& context, F f)
     detail::assign_members<T>(scratch, source);
     detail::walk_members<T>(scratch,
                             [&]<typename S>(S& slot)
-                                requires(detail::is_child<Types, S> || is_flat_variant<S>)
+                                requires(detail::is_child<Types, S> || FlatVariant<S>)
                             { urd::store(slot, f(urd::resolve(std::as_const(slot), context))); });
     return scratch;
 }
@@ -709,9 +759,9 @@ namespace detail
 template<typename B, typename M, typename From, typename To, typename F>
 void build_variant_member(B& target, const M& source, const From& from, const To& to, F& f)
 {
-    if constexpr (is_flat_variant<M>)
+    if constexpr (FlatVariant<M>)
         urd::build_member(target, f(urd::resolve(source, from)), to);
-    else if constexpr (is_flat_vector<M>)
+    else if constexpr (FlatVector<M>)
     {
         // a list of slots slot by slot; of anything else, as build_from builds it
         target.resize(source.size());

@@ -31,6 +31,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <typeinfo>
 #include <vector>
 #if __has_include(<cxxabi.h>)
@@ -340,6 +341,22 @@ struct fmt::formatter<urd::index<T>, char>
     template<typename FormatContext>
     auto format(const urd::index<T>& at, FormatContext& context) const
     { return fmt::format_to(context.out(), "{}", at.value); }
+};
+
+/// A key, as its parts' numbers: <first,second,...>.
+template<typename... Ts>
+struct fmt::formatter<urd::key<Ts...>, char>
+{
+    constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
+
+    template<typename FormatContext>
+    auto format(const urd::key<Ts...>& at, FormatContext& context) const
+    {
+        auto out = fmt::format_to(context.out(), "<");
+        auto first = true;
+        ((out = fmt::format_to(out, "{}{}", std::exchange(first, false) ? "" : ",", at.template get<Ts>().value)), ...);
+        return fmt::format_to(out, ">");
+    }
 };
 
 /// A flat pair, as (first, second): cista's pair is not tuple-like, so fmt's tuple formatter does not take it.

@@ -110,6 +110,10 @@ struct store_parts
 
 }  // namespace detail
 
+/// Whether S lies over a parent of its type, answering from it too (layer_over: a layered Store).
+template<typename S>
+concept Layers = requires(S& store, const S* parent) { store.layer_over(parent); };
+
 /// A data structure described by its kind, with its element types, then its properties, in any order:
 ///
 ///     using Ids = urd::Store<urd::set<int>, urd::sorted>;            // a sorted set of ints
@@ -220,6 +224,20 @@ public:
         requires std::constructible_from<R, urd::layer, Args...>
     explicit Store(urd::layer number, Args&&... args) : m_representation(number, std::forward<Args>(args)...)
     { check_holds_one(); }
+
+    /// A layer over `parent` (a layered Store, which offers layer_over; nullptr: a root), built from `args`, numbered (where it hands out indices
+    /// for views) one after its parent, a root 0: what a layered map builds a slot's own value with, in place, over the
+    /// parent layer's value of the slot (urd::repr::Layered), so that its numbering continues the parent's.
+    template<typename... Args>
+        requires Layers<Store> && std::constructible_from<R, urd::layer, Args...>
+    explicit Store(const Store* parent, Args&&... args) :
+        m_representation(urd::layer { parent == nullptr ? 0 : parent->layer() + 1 }, std::forward<Args>(args)...)
+    { this->layer_over(parent); }
+
+    template<typename... Args>
+        requires Layers<Store> && (!std::constructible_from<R, urd::layer, Args...>) && std::constructible_from<R, Args...>
+    explicit Store(const Store* parent, Args&&... args) : m_representation(std::forward<Args>(args)...)
+    { this->layer_over(parent); }
 
     Store(urd::layer number, std::initializer_list<value_type> elements)
         requires std::constructible_from<R,

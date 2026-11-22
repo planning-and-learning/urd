@@ -39,23 +39,35 @@ using flat_optional = ::cista::optional<T>;
 template<typename T1, typename T2>
 using flat_pair = ::cista::pair<T1, T2>;
 
+namespace detail
+{
+template<typename T>
+inline constexpr bool flat_vector_type = false;
+template<typename T>
+inline constexpr bool flat_vector_type<flat_vector<T>> = true;
+template<typename T>
+inline constexpr bool flat_variant_type = false;
+template<typename... Ts>
+inline constexpr bool flat_variant_type<flat_variant<Ts...>> = true;
+template<typename T>
+inline constexpr bool flat_optional_type = false;
+template<typename T>
+inline constexpr bool flat_optional_type<flat_optional<T>> = true;
+template<typename T>
+inline constexpr bool flat_pair_type = false;
+template<typename T1, typename T2>
+inline constexpr bool flat_pair_type<flat_pair<T1, T2>> = true;
+}  // namespace detail
+
 /// Whether T is one of the flat containers above.
 template<typename T>
-inline constexpr bool is_flat_vector = false;
+concept FlatVector = detail::flat_vector_type<T>;
 template<typename T>
-inline constexpr bool is_flat_vector<flat_vector<T>> = true;
+concept FlatVariant = detail::flat_variant_type<T>;
 template<typename T>
-inline constexpr bool is_flat_variant = false;
-template<typename... Ts>
-inline constexpr bool is_flat_variant<flat_variant<Ts...>> = true;
+concept FlatOptional = detail::flat_optional_type<T>;
 template<typename T>
-inline constexpr bool is_flat_optional = false;
-template<typename T>
-inline constexpr bool is_flat_optional<flat_optional<T>> = true;
-template<typename T>
-inline constexpr bool is_flat_pair = false;
-template<typename T1, typename T2>
-inline constexpr bool is_flat_pair<flat_pair<T1, T2>> = true;
+concept FlatPair = detail::flat_pair_type<T>;
 /// The flat_variant of the indices of a type list's tags.
 template<typename L>
 using index_variant = boost::mp11::mp_apply<flat_variant, boost::mp11::mp_transform<index, L>>;
@@ -103,16 +115,16 @@ inline constexpr bool value_range<::cista::basic_vector<T, Ptr, IndexPointers, S
 /// itself, without conversion. A readout M does not take is a compile error naming M.
 template<typename M, typename R>
     requires stores<M, R>
-[[nodiscard]] M stored(const R& readout)
+[[nodiscard]] M as_member(const R& readout)
 { return resolution<M>::stored(readout); }
 
-/// Writes a readout into a member, as the member's type stores it (urd::stored).
+/// Writes a readout into a member, as the member's type stores it (urd::as_member).
 template<typename M, typename R>
     requires stores<M, R>
 void store(M& member, const R& readout)
 { member = resolution<M>::stored(readout); }
 
-/// Appends a readout to a list member, as its element type stores it (urd::stored).
+/// Appends a readout to a list member, as its element type stores it (urd::as_member).
 template<typename List, typename R>
     requires stores<std::ranges::range_value_t<List>, R>
 void append(List& list, const R& readout)

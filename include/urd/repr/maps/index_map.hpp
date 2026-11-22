@@ -60,7 +60,8 @@ class IndexMap
     {
         /// mutable for std::atomic_ref, which C++20 has only of non-const objects.
         mutable generation_type generation = 0;
-        V value {};
+        /// Made once the slot is first written, in place; kept across generations, storage and all.
+        std::optional<V> value;
         [[no_unique_address]] mutable std::conditional_t<ThreadSafe, SpinMutex, NoLock> lock;
     };
 
@@ -152,13 +153,33 @@ public:
         requires std::invocable<Update&, V&, bool>
     decltype(auto) update(const K& key, Update update)
     {
+        return this->update(
+            key,
+            [](std::optional<V>& value)
+            {
+                if (!value.has_value())
+                    value.emplace();
+            },
+            update);
+    }
+
+    /// As update(key, update), where the key had no value making it first, in place: make(value) with the slot's
+    /// std::optional<V>, empty, or with Generations holding the value the slot kept from an earlier generation, storage
+    /// and all, for make to reuse; make leaves it holding the key's value. A V needs no default constructor then.
+    template<typename Make, typename Update>
+        requires std::invocable<Make&, std::optional<V>&> && std::invocable<Update&, V&, bool>
+    decltype(auto) update(const K& key, Make make, Update update)
+    {
         auto& entry = slot_at(index_of<K>::to_index(key));
         return locked(entry,
                       [&]() -> decltype(auto)
                       {
-                          const bool held = claim(entry);
+                          const bool held = holds(entry);
                           if (!held)
+                          {
+                              make(storage_of(entry));
                               ++m_count;
+                          }
                           // Readers see a new slot only whole: after update made its value.
                           const auto publish_new_slot_once_made = publish_on_exit { this, held ? nullptr : &entry };
                           return update(value_of(entry), held);
@@ -390,8 +411,8 @@ private:
 
     [[nodiscard]] V& value(std::size_t index) { return value_of(m_slots[index]); }
 
-    // What a slot type does; the storage mode is the slot type. claim makes a slot's value ready and says whether it
-    // held one (a generation slot reuses the value it kept); publish makes a new slot visible.
+    // What a slot type does; the storage mode is the slot type. holds says whether it holds a value, storage_of is where
+    // a new one is made (a generation slot keeps its earlier one there, for reuse); publish makes a new slot visible.
     [[nodiscard]] bool holds(const generation_slot& entry) const noexcept { return generation_of(entry) == m_generation; }
 
     [[nodiscard]] static bool holds(const optional_slot& entry) noexcept { return entry.has_value(); }
@@ -399,7 +420,10 @@ private:
     template<typename Slot>
         requires std::same_as<std::remove_const_t<Slot>, generation_slot>
     [[nodiscard]] static auto& value_of(Slot& entry) noexcept
-    { return entry.value; }
+    {
+        URD_ASSUME(entry.value.has_value());  // callers look a value up only where present
+        return *entry.value;
+    }
 
     template<typename Slot>
         requires std::same_as<std::remove_const_t<Slot>, optional_slot>
@@ -409,15 +433,10 @@ private:
         return *entry;
     }
 
-    [[nodiscard]] bool claim(generation_slot& entry) const noexcept { return holds(entry); }
+    /// Where a slot's value is made in place: the optional it lies in.
+    [[nodiscard]] static std::optional<V>& storage_of(generation_slot& entry) noexcept { return entry.value; }
 
-    [[nodiscard]] static bool claim(optional_slot& entry)
-    {
-        if (entry.has_value())
-            return true;
-        entry.emplace();
-        return false;
-    }
+    [[nodiscard]] static std::optional<V>& storage_of(optional_slot& entry) noexcept { return entry; }
 
     /// Stores the generation with release where threads share slots: after the value, which readers then see whole.
     void publish(generation_slot& entry) const noexcept { store_generation(entry, m_generation); }

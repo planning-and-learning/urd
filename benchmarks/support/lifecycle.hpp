@@ -81,7 +81,7 @@ T make(std::size_t at)
         return "an element of some length " + std::to_string(at);
     else if constexpr (std::is_same_v<T, urd::test::Id>)
         return T { static_cast<std::uint32_t>(at) };
-    else if constexpr (urd::is_index_type<T>)
+    else if constexpr (urd::Key<T>)
         return T(static_cast<typename T::value_type>(at));
     else if constexpr (std::is_same_v<T, urd::test::Text>)
         return T { urd::flat_string("text " + std::to_string(at)) };
