@@ -365,7 +365,7 @@ void assign_member(key<U>& target, const builder<U, C>& source, F& f)
 /// Whether a record's member of type M takes a built value of another type B as it is (a library's own built form that
 /// assigns itself into its record's form).
 template<typename M, typename B>
-concept AssignsBuilt = !std::same_as<M, B> && std::assignable_from<M&, const B&>;
+concept AssignsBuilt = !std::same_as<M, B> && requires(M& target, const B& source) { target = source; };
 
 /// A built value the record's member takes by assignment.
 template<typename M, typename B, typename F>

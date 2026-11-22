@@ -141,8 +141,12 @@ class TreeVectorSet
 public:
     using value_type = Row;
     using handle_type = data<TreeHandle>;
+
     using write_type = Write<T>;
     using size_type = std::size_t;
+
+    /// The units it stores: its nodes (its rows share them, and are not counted).
+    [[nodiscard]] size_type size() const { return m_nodes.size(); }
 
     static constexpr std::size_t arity = Arity;
 
@@ -210,7 +214,6 @@ private:
 
     [[nodiscard]] size_type num_leaves() const { return m_leaves.size(); }
 
-    [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
 
 public:
     [[nodiscard]] bool empty() const { return m_leaves.size() == 0 && m_nodes.empty(); }

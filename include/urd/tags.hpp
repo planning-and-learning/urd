@@ -708,8 +708,8 @@ struct any_handle : tag_defaults
 };
 
 /// A pool: each element is identified by a handle that insert gives, with whether it was new, and equal elements get
-/// equal handles. Not iterated; counted, with handles 0..size()-1, unless it has structural_sharing (handles name
-/// shared nodes there).
+/// equal handles. Not iterated; counted (size: the units it stores): its rows, with handles 0..size()-1, or, with
+/// structural_sharing, its nodes (rows share them; handles name trees of them).
 struct handles : any_handle
 {
     static constexpr auto value = handling::handles;

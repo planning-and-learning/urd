@@ -95,7 +95,11 @@ public:
     using flip_type = BlockFlip;
     using value_type = Row;
     using handle_type = data<TreeHandle>;
+
     using size_type = std::size_t;
+
+    /// The units it stores: its nodes (its rows share them, and are not counted).
+    [[nodiscard]] size_type size() const { return m_nodes.size(); }
 
     static constexpr std::size_t arity = Arity;
 
@@ -265,7 +269,6 @@ private:
     // Read by tests (urd::testing::inspect), not by a Store.
     friend struct urd::testing::inspect;
 
-    [[nodiscard]] size_type num_nodes() const { return m_nodes.size(); }
 
 public:
     [[nodiscard]] bool empty() const { return m_nodes.empty(); }

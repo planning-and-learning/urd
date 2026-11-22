@@ -14,7 +14,7 @@ struct inspect
 {
     template<typename R>
     [[nodiscard]] static auto num_nodes(const R& held)
-    { return held.num_nodes(); }
+    { return held.size(); }
 
     template<typename R>
     [[nodiscard]] static auto num_leaves(const R& held)

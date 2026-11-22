@@ -26,7 +26,7 @@ A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Ro
 request names, ``pool<V, H>`` (an ``urd::index`` of any type: a pool of ``urd::data<T>`` handing out ``index<T>``,
 rows handing out a repository's own row index): a pool of rows kept in full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
 with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its
-own, and no ``size``. Every handle type has a none value (``is_none()``), which ``find`` and ``erase`` give where there is
+own, and its ``size`` counts its nodes, the units it stores (a measure of how much its rows share), not its rows. Every handle type has a none value (``is_none()``), which ``find`` and ``erase`` give where there is
 no row to name, as a pool of records does.
 
 .. list-table::
@@ -100,7 +100,8 @@ Member functions: interning pools (``handles, unique``)
 .. cpp:function:: std::size_t size() const
 .. cpp:function:: bool empty() const
 
-   Without ``structural_sharing``: the distinct rows, whose handles are 0..size()-1.
+   The units the pool stores: without ``structural_sharing``, the distinct rows, whose handles are 0..size()-1; with
+   it, the nodes its rows share.
 
 .. cpp:function:: handle_type erase(handle_type handle)
 

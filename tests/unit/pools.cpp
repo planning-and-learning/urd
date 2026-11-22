@@ -206,14 +206,14 @@ static_assert(std::same_as<Store<pool<Store<sequence<int>, urd::frozen>>, urd::c
                            urd::repr::RowInterner<Store<sequence<int>, urd::frozen>, true>>);
 static_assert(std::same_as<Store<pool<Store<set<int>, urd::dense, urd::frozen>>, urd::structural_sharing, urd::concurrent>::representation,
                            urd::repr::TreeBitsetSet<Store<set<int>, urd::dense, urd::frozen>, 4, true>>);
-// A pool is not iterated: it is reached by handle. It is counted, its handles 0..size()-1, unless it shares nodes
-// between rows (structural_sharing), where handles name nodes and no list of rows is kept.
+// A pool is not iterated: it is reached by handle. It is counted (size: the units it stores): its rows, its handles
+// 0..size()-1; or, where it shares nodes between rows (structural_sharing), its nodes (no list of rows is kept).
 template<typename P>
 concept iterable = requires(P pool) { pool.begin(); };
 template<typename P>
 concept sized = requires(P pool) { pool.size(); };
 static_assert(!iterable<Store<pool<Store<sequence<int>, urd::frozen>>>> && sized<Store<pool<Store<sequence<int>, urd::frozen>>>>
-              && !sized<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>>);
+              && sized<Store<pool<Store<sequence<int>, urd::frozen>>, urd::structural_sharing>>);
 
 // Erase moves the last row into the erased one's handle and says which handle it had, so whatever keeps handles
 // (postings over the rows, yggdrasil's swap-erase) follows it.
