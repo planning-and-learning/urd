@@ -29,13 +29,13 @@
 namespace urd
 {
 
-/// Whether C resolves indices of T: urd::record_at(context, index<T>) is the record's stored_ref (over a T, or the
+/// Whether C resolves indices of T: urd::record_at(context, key<T>) is the record's stored_ref (over a T, or the
 /// stored record data<T>), and C has its number (urd::layer). A positional set or a pool of Ts does, and so does a layer of
-/// them, for the records of every layer below. And it makes the views of its indices, `context.view(index<T>)`: the one
+/// them, for the records of every layer below. And it makes the views of its indices, `context.view(key<T>)`: the one
 /// place that says which context a view is through (a layer points it at the layer that owns the element); a context
 /// made of several Stores writes one per type.
 template<typename C, typename T>
-concept resolves = requires(const C& context, index<T> at) {
+concept resolves = requires(const C& context, key<T> at) {
     { urd::record_at<T>(context, at) } -> std::same_as<stored_ref<T>>;
     { context.layer() } -> std::same_as<std::size_t>;
     { context.view(at) } -> std::same_as<index_view<T, C>>;
@@ -612,7 +612,7 @@ private:
 
 /// A T through a context C, held as its index K: read through the context, context[index] (a T, or the stored record
 /// data<T>), and identified by the index. What a context makes of its indices, context.view(index); the only view that
-/// names its index, index(). K is urd::index<T>, or a handle of another shape that the context resolves (a key of
+/// names its index, index(). K is urd::key<T>, or a handle of another shape that the context resolves (a key of
 /// several parts: a row's pool and its position there).
 template<typename T, typename C, typename K>
 class index_view : public detail::view_base<index_view<T, C, K>, T, C, stored_ref<T>>

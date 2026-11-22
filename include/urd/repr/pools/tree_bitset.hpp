@@ -119,13 +119,13 @@ public:
     [[nodiscard]] handle_type find(const Elements& elements) const
     {
         const auto blocks = blocks_of(elements);
-        return find_blocks(std::span<const Block>(blocks));
+        return find_row(std::span<const Block>(blocks));
     }
 
     template<std::ranges::input_range Elements>
         requires keeps_words<Elements>
     [[nodiscard]] handle_type find(const Elements& row) const
-    { return find_blocks(WordBlocks(row.significant_words())); }
+    { return find_row(WordBlocks(row.significant_words())); }
 
     /// The row `base` with `added` put in and then `removed` taken out. Only the paths from the changed blocks, and
     /// from blocks at a changed length, to the root are rebuilt.
@@ -222,8 +222,13 @@ public:
 
     // The rows, as their blocks, as yggdrasil's TreeBitsetSet offers them.
 
-    /// The handle of the row with these blocks, whose last block must not be zero.
-    handle_type insert_blocks(std::span<const Block> blocks) { return store_blocks(blocks).first; }
+    /// The handle of the row with these blocks, whose last block must not be zero, and whether inserting it stored a node.
+    std::pair<handle_type, bool> insert_blocks(std::span<const Block> blocks) { return store_blocks(blocks); }
+
+    /// The handle insert_blocks would give, where it would store nothing; else none.
+    [[nodiscard]] handle_type find_blocks(std::span<const Block> blocks) const { return find_row(blocks); }
+
+
 
     /// The row `base` with `flips` applied, sorted by unique position; trimmed to its last nonzero block.
     handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips).first; }
@@ -345,10 +350,10 @@ private:
 
     /// The handle of the row with these blocks (a span, or WordBlocks), where every node is held; else none.
     template<typename Blocks>
-    [[nodiscard]] handle_type find_blocks(const Blocks& blocks) const
+    [[nodiscard]] handle_type find_row(const Blocks& blocks) const
     {
         if (blocks.empty())
-            return handle_type {};
+            return tree::empty_handle();
         const auto root = find_recursive(blocks);
         return root ? handle_type { *root, static_cast<std::uint32_t>(blocks.size()) } : tree::none_handle();
     }
@@ -376,7 +381,7 @@ private:
             throw std::invalid_argument("urd::repr::TreeBitsetSet::insert_blocks: the last block must not be zero");
         const auto size = static_cast<std::uint32_t>(blocks.size());
         if (blocks.empty())
-            return { handle_type {}, false };
+            return { tree::empty_handle(), false };
         auto stored = false;
         const auto root = insert_recursive(blocks, stored);
         return { handle_type { root, size }, stored };
@@ -389,7 +394,7 @@ private:
 
         const auto upper = flips.empty() ? base.size : std::max(base.size, flips.back().position + 1);
         if (upper == 0)
-            return { handle_type {}, false };
+            return { tree::empty_handle(), false };
 
         auto stored = false;
         auto spine = FreshSpine();
@@ -399,7 +404,7 @@ private:
         if (size == upper)
             return { handle_type { root, size }, stored };
         if (size == 0)
-            return { handle_type {}, false };
+            return { tree::empty_handle(), false };
 
         // Cleared trailing blocks: rebuild the right spine for the shorter size, reusing all other subtrees. The first
         // pass stored the untrimmed row's spine, which the row does not keep: what this one stores says whether the row

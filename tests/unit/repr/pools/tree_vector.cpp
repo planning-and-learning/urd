@@ -45,7 +45,7 @@ TEST(CommonTreeVectorSetTest, RoundTripsAndSharesTrees)
     auto set = TreeVectorSet<std::vector<std::uint32_t>, 2> {};
 
     const auto empty = set.insert(std::span<const std::uint32_t> {}).first;
-    EXPECT_EQ(empty, urd::data<TreeHandle> {});
+    EXPECT_EQ(empty, urd::repr::tree::empty_handle());
     EXPECT_TRUE(set.empty());
     set.copy(empty, std::span<std::uint32_t> {});
 

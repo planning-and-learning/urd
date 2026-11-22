@@ -100,25 +100,29 @@ std::optional<nb::class_<T>> bound_already(nb::module_& m, const std::string& na
 }
 
 template<typename Tag>
-nb::class_<urd::index<Tag>> bind_index_of(nb::module_& m)
+nb::class_<urd::key<Tag>> bind_index_of(nb::module_& m)
 {
-    using T = urd::index<Tag>;
-    const auto name = urd::name<Tag>() + "Index";
+    using T = urd::key<Tag>;
+    const auto name = urd::name<Tag>() + (NumberedKind<Tag> ? "Index" : "Key");
     if (auto bound = detail::bound_already<T>(m, name))
         return *bound;
     auto cls = nb::class_<T>(m, name.c_str());
-    // urd::index's own names: the default is none, value is the integer, int() and index() give it too.
-    cls.def(nb::init<>())
-        .def(nb::init<typename T::value_type>(), nb::arg("index"))
-        .def("__int__", [](const T& i) { return i.value; })
-        .def("__index__", [](const T& i) { return i.value; })
-        .def_ro("value", &T::value)
-        .def("is_none", &T::is_none)
-        .def_ro_static("none_value", &T::none_value);
-
+    cls.def(nb::init<>()).def("is_none", &T::is_none);
     add_comparison(cls);
     add_hash(cls);
-    cls.def("__repr__", [name](const T& i) { return name + "(" + std::to_string(static_cast<typename T::value_type>(i.value)) + ")"; });
+    if constexpr (NumberedKind<Tag>)
+    {
+        // urd::index's own names: the default is none, value is the integer, int() and index() give it too.
+        cls.def(nb::init<typename T::value_type>(), nb::arg("index"))
+            .def("__int__", [](const T& i) { return i.value; })
+            .def("__index__", [](const T& i) { return i.value; })
+            .def_ro("value", &T::value)
+            .def_ro_static("none_value", &T::none_value)
+            .def("__repr__", [name](const T& i) { return name + "(" + std::to_string(static_cast<typename T::value_type>(i.value)) + ")"; });
+    }
+    else
+        // A key whose value is its store's handle (urd::key_value_of): written, as a key is, with fmt.
+        cls.def("__repr__", [name](const T& i) { return name + fmt::format("{}", i); });
     return cls;
 }
 
@@ -156,7 +160,7 @@ struct key_binder<urd::key<T, Ts...>>
 };
 }  // namespace detail
 
-/// Binds a key, the one way a key is bound: an index, urd::index<Tag> of a tag, under <name>Index (urd::name<Tag>()); or
+/// Binds a key, the one way a key is bound: an index, urd::key<Tag> of a tag, under <name>Index (urd::name<Tag>()); or
 /// a key of several indices, urd::key<Ts...>, under <name>Key (its last tag's name), from its parts. A record's index is
 /// bound before bind_data of the record; a key is bound once, by whichever module binds it first, every other names that
 /// class.
@@ -195,7 +199,7 @@ nb::class_<urd::data<T>> bind_data(nb::module_& m)
     const auto name = urd::name<T>();
     if constexpr (urd::SelfIndexed<T>)
     {
-        if (!nb::type<urd::index<T>>().is_valid())
+        if (!nb::type<urd::key<T>>().is_valid())
             throw std::logic_error("urd::python::bind_data: " + name + " holds its index: bind it first (bind_index<T>).");
     }
     auto data = nb::class_<urd::data<T>>(m, (name + "Data").c_str()).def(nb::init<>());
@@ -339,8 +343,8 @@ bool child_from_python(nb::handle value, child<U, C, K>& target)
     return true;
 }
 
-/// A builder held in place from Python: a builder of its kind (a copy), or a record of its kind (built_form::from),
-/// where a record makes one (made_from_record).
+/// A builder held in place from Python: a builder of its kind (a copy), or a record of its kind written into it
+/// (built_form::assign), where a record makes one (made_from_record).
 template<typename U, typename C>
 bool builder_from_python(nb::handle value, builder<U, C>& target)
 {
@@ -353,7 +357,7 @@ bool builder_from_python(nb::handle value, builder<U, C>& target)
     {
         if (nb::isinstance<data<U>>(value))
         {
-            target = built_form<data<U>, C>::from(nb::cast<const data<U>&>(value));
+            built_form<data<U>, C>::assign(nb::cast<const data<U>&>(value), target);
             return true;
         }
     }
@@ -513,7 +517,7 @@ nb::class_<builder<T, C>> bind_builder(nb::module_& m)
 /// <name>Shared for one that shares it, so that the views of one record bound in one module have their own names), the one way a view is bound, whether it
 /// reads a stored record (data<T>), a record a context hands out in another layout (a value with the record's fields) or a builder (builder<T, C>):
 /// get_<field>() for each field of its record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view that names its
-/// index (index_view: index() gives its key, an urd::index<T> or a key of its own such as a row's) also gives index() and converts to that key wherever one is
+/// index (index_view: index() gives its key, an urd::key<T> or a key of its own such as a row's) also gives index() and converts to that key wherever one is
 /// expected, also in lists and optionals; the key is bound first (T's index by bind_index<T>, a key that is a value by
 /// bind_data of its tag).
 template<typename View>

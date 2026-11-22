@@ -88,7 +88,8 @@ struct TreeHandle
 template<>
 struct urd::data<urd::repr::TreeHandle>
 {
-    std::uint32_t root = 0;
+    /// By default no row's (as a key's default names nothing): the empty row is tree::empty_handle().
+    std::uint32_t root = repr::tree::unused_child;
     std::uint32_t size = 0;
 
     data() = default;
@@ -112,8 +113,11 @@ namespace urd::repr
 {
 namespace tree
 {
-/// No row's handle: an empty row is {0, 0}, and every other row has a size.
-[[nodiscard]] constexpr data<TreeHandle> none_handle() noexcept { return { unused_child, 0 }; }
+/// No row's handle: the default one.
+[[nodiscard]] constexpr data<TreeHandle> none_handle() noexcept { return {}; }
+
+/// The empty row's handle: {0, 0}; every other row has a size.
+[[nodiscard]] constexpr data<TreeHandle> empty_handle() noexcept { return { 0, 0 }; }
 }  // namespace tree
 
 /// Whether a tree pool's handle names no row (urd::is_none for handles).
@@ -150,7 +154,7 @@ public:
         const auto values = std::vector<T>(std::ranges::begin(elements), std::ranges::end(elements));
         const auto size = static_cast<std::uint32_t>(values.size());
         if (values.empty())
-            return { handle_type {}, false };
+            return { tree::empty_handle(), false };
         auto stored = false;
         const auto root = insert_recursive(values, stored);
         return { handle_type { root, size }, stored };
@@ -163,7 +167,7 @@ public:
     {
         const auto values = std::vector<T>(std::ranges::begin(elements), std::ranges::end(elements));
         if (values.empty())
-            return handle_type {};
+            return tree::empty_handle();
         const auto root = find_recursive(values);
         return root ? handle_type { *root, static_cast<std::uint32_t>(values.size()) } : tree::none_handle();
     }

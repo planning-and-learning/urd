@@ -599,6 +599,125 @@ TEST(Key, AFamilySelectsTheStoreOfTheKeysKindFirst)
 
 namespace
 {
+/// A kind whose store names its records by a handle into a flat buffer (where its values start, how many), not by a
+/// number: its key's part holds that handle (urd::key_value_of).
+struct Blob
+{
+    static constexpr std::string_view name = "Blob";
+};
+
+struct BlobHandle
+{
+    std::uint32_t offset = std::numeric_limits<std::uint32_t>::max();
+    std::uint32_t size = std::numeric_limits<std::uint32_t>::max();
+
+    friend constexpr auto operator<=>(const BlobHandle&, const BlobHandle&) = default;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&BlobHandle::offset, &BlobHandle::size> {}; }
+};
+}  // namespace
+
+template<>
+struct urd::key_value_of<Blob>
+{
+    using type = BlobHandle;
+    static constexpr type none = BlobHandle {};
+};
+
+template<>
+struct urd::data<Blob>
+{
+    urd::flat_vector<int> values;
+    /// Its key, written by its store at insertion.
+    urd::key<Blob> index;
+
+    static constexpr auto identifying_members() noexcept { return urd::Members<&data::values> {}; }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::values, &data::index> {}; }
+};
+
+namespace
+{
+/// What a lookup of a blob hands out: its values read in place from the store's buffer, by value.
+struct BlobRef
+{
+    std::span<const int> values;
+};
+}  // namespace
+
+template<>
+struct urd::stored_ref_of<Blob>
+{
+    using type = BlobRef;
+};
+
+namespace
+{
+/// A store of blobs, each stored once, packed into one buffer and named by its handle there.
+class BlobStore
+{
+    std::vector<int> m_buffer;
+    std::vector<urd::key<Blob>> m_stored;
+
+public:
+    [[nodiscard]] urd::key<Blob> find(const urd::data<Blob>& content) const
+    {
+        for (const auto at : m_stored)
+            if (std::ranges::equal((*this)[at].values, content.values))
+                return at;
+        return {};
+    }
+
+    template<typename Make>
+    std::pair<urd::key<Blob>, bool> insert(const urd::data<Blob>& content, Make&& /*make*/)
+    {
+        if (const auto found = find(content); !found.is_none())
+            return { found, false };
+        const auto at = urd::key<Blob>(BlobHandle { static_cast<std::uint32_t>(m_buffer.size()), static_cast<std::uint32_t>(content.values.size()) });
+        m_buffer.insert(m_buffer.end(), content.values.begin(), content.values.end());
+        m_stored.push_back(at);
+        return { at, true };
+    }
+
+    [[nodiscard]] BlobRef operator[](urd::key<Blob> at) const { return { std::span<const int>(m_buffer).subspan(at.value.offset, at.value.size) }; }
+
+    [[nodiscard]] bool contains(urd::key<Blob> at) const { return std::ranges::find(m_stored, at) != m_stored.end(); }
+};
+}  // namespace
+
+static_assert(!urd::NumberedKind<Blob> && urd::NumberedKind<NestItem>);
+static_assert(std::is_trivially_copyable_v<urd::key<Blob>>);
+static_assert(urd::HandsOutRecordsOf<BlobStore, Blob> && urd::ContainsKeysOf<BlobStore, Blob>);
+static_assert(urd::InsertsRecordsOf<BlobStore, Blob> && urd::FindsRecordsOf<BlobStore, Blob>);
+
+TEST(Key, AKeyMayHoldTheHandleItsStoreNamesARecordBy)
+{
+    auto store = BlobStore();
+    auto first = urd::data<Blob> { urd::flat_vector<int> { 1, 2, 3 } };
+    auto second = urd::data<Blob> { urd::flat_vector<int> { 4, 5 } };
+    const auto [a, a_new] = urd::insert_at(store, urd::key<>(), first);
+    const auto [b, b_new] = urd::insert_at(store, urd::key<>(), second);
+    EXPECT_TRUE(a_new && b_new);
+    EXPECT_EQ(first.index, a);  // the key written into the record, as an index is
+    EXPECT_EQ(b.value.offset, 3U);
+    EXPECT_EQ(b.value.size, 2U);
+
+    auto again = urd::data<Blob> { urd::flat_vector<int> { 1, 2, 3 } };
+    EXPECT_EQ(urd::insert_at(store, urd::key<>(), again), std::make_pair(a, false));  // stored once
+    EXPECT_EQ(urd::find_at(store, urd::key<>(), again), a);
+    EXPECT_TRUE(urd::find_at(store, urd::key<>(), urd::data<Blob> { urd::flat_vector<int> { 9 } }).is_none());
+
+    EXPECT_TRUE(std::ranges::equal(urd::record_at(store, b).values, std::vector<int> { 4, 5 }));
+    EXPECT_TRUE(urd::contains_key(store, a));
+    EXPECT_FALSE(urd::contains_key(store, urd::key<Blob>()));  // none
+    EXPECT_FALSE(urd::contains_key(store, urd::key<Blob>(BlobHandle { 0, 2 })));
+
+    EXPECT_EQ(urd::Hash<urd::key<Blob>> {}(a), urd::Hash<urd::key<Blob>> {}(again.index));  // hashed by its handle
+    EXPECT_NE(a, b);
+}
+
+namespace
+{
 /// A key of three parts: shelves (by relation) of blocks (by block) of items.
 struct KeyBlock
 {

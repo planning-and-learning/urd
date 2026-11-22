@@ -203,10 +203,15 @@ public:
     // Rows that are sets of indices kept as bits, by their blocks, where the representation keeps them so: a row
     // changes by the blocks that differ, without listing its elements.
 
-    /// The handle of the row with these blocks, whose last must not be zero.
-    handle_type insert_blocks(std::span<const block_type> blocks)
+    /// The handle of the row with these blocks, whose last must not be zero, and whether inserting it stored a node.
+    std::pair<handle_type, bool> insert_blocks(std::span<const block_type> blocks)
         requires(!std::is_void_v<block_type>)
     { return representation().insert_blocks(blocks); }
+
+    /// The handle insert_blocks would give, where it would store nothing; else none.
+    [[nodiscard]] handle_type find_blocks(std::span<const block_type> blocks) const
+        requires(!std::is_void_v<block_type>)
+    { return representation().find_blocks(blocks); }
 
     /// The row `base` with `flips` applied (sorted by unique position).
     handle_type insert_flips(handle_type base, std::span<const flip_type> flips)

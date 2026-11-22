@@ -83,7 +83,7 @@ struct type_spelling<std::string>
 };
 
 template<typename T>
-struct type_spelling<index<T>>
+struct type_spelling<key<T>>
 {
     static std::string spelled() { return fmt::format("index<{}>", spelling<T>()); }
 };
@@ -349,12 +349,12 @@ struct fmt::formatter<urd::tag> : fmt::formatter<std::string_view>
 
 /// An index, as its number.
 template<typename T>
-struct fmt::formatter<urd::index<T>, char>
+struct fmt::formatter<urd::key<T>, char>
 {
     constexpr auto parse(fmt::format_parse_context& context) { return context.begin(); }
 
     template<typename FormatContext>
-    auto format(const urd::index<T>& at, FormatContext& context) const
+    auto format(const urd::key<T>& at, FormatContext& context) const
     { return fmt::format_to(context.out(), "{}", at.value); }
 };
 

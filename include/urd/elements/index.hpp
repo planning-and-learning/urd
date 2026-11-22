@@ -6,6 +6,7 @@
 #include <boost/mp11.hpp>
 #include <cassert>
 #include <compare>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -23,25 +24,43 @@ struct layer
     std::size_t number;
 };
 
+/// What the part of tag T of a key holds, and the value of it that names nothing: by default the number of a T (an
+/// index; none its largest value). A library whose store names its records otherwise (a pool's handle of a packed
+/// value, whose default names nothing, as a key's does) specializes it for its tag; its key is then that tagged value, and whatever only compares, hashes, stores and
+/// resolves keys takes it as it takes an index.
+template<typename T>
+struct key_value_of
+{
+    using type = std::uint32_t;
+    static constexpr type none = std::numeric_limits<std::uint32_t>::max();
+};
+
+template<typename T>
+using key_value_t = typename key_value_of<T>::type;
+
+/// Whether the part of tag T is a number (the default): what a dense table keyed by its keys asks.
+template<typename T>
+concept NumberedKind = std::unsigned_integral<key_value_t<T>>;
+
 namespace detail
 {
-/// The part of a key that holds the number of T: one flat base per tag (not a std::tuple). A key of one tag reads it as
-/// `.value` through its one base; a key of several, where `.value` is ambiguous, through get<T>().
+/// The part of a key that holds the value of T (key_value_of): one flat base per tag (not a std::tuple). A key of one
+/// tag reads it as `.value` through its one base; a key of several, where `.value` is ambiguous, through get<T>().
 template<typename T>
 struct key_part
 {
-    std::uint32_t value = std::numeric_limits<std::uint32_t>::max();
+    key_value_t<T> value = key_value_of<T>::none;
 
     friend constexpr auto operator<=>(const key_part&, const key_part&) = default;
 };
 }  // namespace detail
 
-/// The key of a record in the context that finds it, one number per tag Ts, in order: the first selects a container of
+/// The key of a record in the context that finds it, one value per tag Ts (key_value_of: a number by default), in order: the first selects a container of
 /// the context, the next looks up in it, and so on (a row of a relation: key<Relation, Row>, its relation's number, then
-/// its row's there). A key of one tag is the index of a T (urd::index<T>): a positional set or a pool mints one on first
+/// its row's there). A key of one tag is the index of a T (urd::key<T>): a positional set or a pool mints one on first
 /// insert, so it is dense over the elements; a dense key for tables keyed by Ts. The context resolves a key
 /// (context.view(key)), and its views hold it whole (index_view<T, C, key<..., T>>). Trivially copyable, compared and
-/// hashed part by part, in order, stored flat by cista part by part; a key of one tag is one 32-bit number, as it hashes
+/// hashed part by part, in order, stored flat by cista part by part; a key of one tag is its one value, as it hashes
 /// and orders. The default is none in every part: no key at all, which a dense lookup finds absent. Keys of different
 /// tags are different types and convert to none of the others. The key of no part, key<>, is what a record of a key of
 /// one part is known by before it is stored (urd::insert_at): nothing.
@@ -52,8 +71,9 @@ struct key : detail::key_part<Ts>...
 
     /// The kind it names: its last tag (none, void, for the key of no part).
     using element_type = boost::mp11::mp_eval_if_c<sizeof...(Ts) == 0, void, boost::mp11::mp_back, boost::mp11::mp_list<Ts...>>;
-    using value_type = std::uint32_t;
-    static constexpr value_type none_value = std::numeric_limits<value_type>::max();
+    /// The value of its last part (key_value_of), and the one that names nothing.
+    using value_type = key_value_t<element_type>;
+    static constexpr value_type none_value = key_value_of<element_type>::none;
     /// Whether it is a key of one tag: an index.
     static constexpr bool single = sizeof...(Ts) == 1;
 
@@ -80,7 +100,7 @@ struct key : detail::key_part<Ts>...
     { return key<T>(static_cast<const detail::key_part<T>&>(*this).value); }
 
     /// Whether it names nothing: every part none.
-    [[nodiscard]] constexpr bool is_none() const noexcept { return ((static_cast<const detail::key_part<Ts>&>(*this).value == none_value) && ...); }
+    [[nodiscard]] constexpr bool is_none() const noexcept { return ((static_cast<const detail::key_part<Ts>&>(*this).value == key_value_of<Ts>::none) && ...); }
 
     friend constexpr auto operator<=>(const key&, const key&) = default;
 
@@ -90,8 +110,9 @@ struct key : detail::key_part<Ts>...
     static constexpr auto cista_members() noexcept { return Members<&detail::key_part<Ts>::value...> {}; }
 };
 
-/// The index of a T in the Store that numbers Ts: a key of one tag.
-template<typename T>
+/// The index of a T in the Store that numbers Ts: the key of one tag of a numbered kind (its value a dense number), the
+/// special form of a key. A key whose value is a store's handle (key_value_of) is no index: it is written key<T>.
+template<NumberedKind T>
 using index = key<T>;
 
 /// The key a record of T is stored under: its index, unless a library says otherwise by specializing key_of<T> (a
@@ -99,7 +120,7 @@ using index = key<T>;
 template<typename T>
 struct key_of
 {
-    using type = index<T>;
+    using type = key<T>;
 };
 
 template<typename T>
@@ -111,8 +132,8 @@ template<typename T, typename... Ts>
 [[nodiscard]] constexpr key<T> get(const key<Ts...>& at) noexcept
 { return at.template get<T>(); }
 
-/// An index is a dense key; none is no index, so a lookup of it finds nothing.
-template<typename T>
+/// An index of a numbered kind is a dense key; none is no index, so a lookup of it finds nothing.
+template<NumberedKind T>
 struct index_of<index<T>>
 {
     [[nodiscard]] static constexpr bool is_index(index<T> at) noexcept { return !at.is_none(); }
@@ -154,17 +175,17 @@ struct context_of;
 template<typename T>
 struct data;
 
-/// Whether a record of T carries its own index (a field index of urd::index<T>), as an interned record does.
+/// Whether a record of T carries its own index (a field index of urd::key<T>), as an interned record does.
 template<typename T>
 concept SelfIndexed = requires(const data<T>& record) {
-    { record.index } -> std::same_as<const index<T>&>;
+    { record.index } -> std::same_as<const key<T>&>;
 };
 
-/// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index K (index<T>, or a
+/// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index K (key<T>, or a
 /// handle of another shape the context resolves) and reads it through the context; borrowed_view, owning_view and
 /// shared_view hold a record R (data<T>, or builder<T, C>) outside the context: a pointer to it, it by value, a shared
 /// pointer to it.
-template<typename T, typename C = typename context_of<T>::type, typename K = index<T>>
+template<typename T, typename C = typename context_of<T>::type, typename K = key<T>>
 class index_view;
 template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
 class borrowed_view;

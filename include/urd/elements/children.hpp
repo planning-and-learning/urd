@@ -18,11 +18,11 @@
 #include <variant>
 #include <vector>
 
-/// The children of a record of element type T: every index<U> with U in the type list Types (a boost::mp11 list),
+/// The children of a record of element type T: every key<U> with U in the type list Types (a boost::mp11 list),
 /// found anywhere in the record's cista members: directly, in (nested) flat vectors, as a variant's alternative, in an
 /// optional or a pair (std's or cista's, as urd::resolution reads them), or inside a member that names cista members
-/// itself (urd::Serializable). U may be T: an index<T> nested in any of these shapes is a child (an (and (and ...))).
-/// Only a direct member of type index<T> is not: that is the record's own handle. A direct index<T> member that links
+/// itself (urd::Serializable). U may be T: an key<T> nested in any of these shapes is a child (an (and (and ...))).
+/// Only a direct member of type key<T> is not: that is the record's own handle. A direct key<T> member that links
 /// to another record of type T (a parent) is therefore not a child either; nest it (an optional, say) to make it one.
 /// They are handed out as the views their context makes, context.view(index) (urd::resolves), so callers never handle
 /// raw indices. urd::map_variant_children instead hands out each variant slot whole (urd::resolve of it), so that a
@@ -59,29 +59,30 @@ concept ViewsKeys = requires(const C& context, K at) { context.view(at); };
 
 /// The built form of a record's member of type M, read through C: the type a builder holds for it, every builder
 /// field being the built form of its record's (urd::builder), the mirror of how it is written back (assign_member): a
-/// record's key (index<T> of a stored record) a child, a record held in place (data<T>) its builder, a flat container its
+/// record's key (key<T> of a stored record) a child, a record held in place (data<T>) its builder, a flat container its
 /// std counterpart of built forms (flat_vector, flat_optional, flat_pair, flat_variant: std::vector, std::optional,
 /// std::pair, std::variant), anything else as it is (a value: a number, a flat_string, a plan, a key of no record). C is
-/// the repository that holds the member's records. Each form also says how it is made from a record's member (from: a
-/// key its interned child, a record its builder; the bind_builder setters' conversion), which needs no context, as no
-/// child holds one; a library that specializes built_form for a member of its own gives both, or its type alone where
-/// the member is made only through its context (a packed storage, which only its pool opens): then nothing that holds
-/// it is made from a record either (made_from_record).
+/// the repository that holds the member's records. Each form also says how a record's member is written into it, in
+/// place (assign: into a builder's own value, a pooled one, whose buffers are kept: nothing is allocated once they have
+/// grown; a key its interned child, a record its builder; the bind_builder setters' conversion), which needs no context,
+/// as no child holds one; a library that specializes built_form for a member of its own gives both, or its type alone
+/// where the member is made only through its context: then nothing that holds it is made from a record either
+/// (made_from_record).
 template<typename M, typename C>
 struct built_form
 {
     using type = M;
 
-    static M from(const M& value) { return value; }
+    static void assign(const M& value, M& into) { into = value; }
 };
 
 template<typename M, typename C>
 using built_t = typename built_form<M, C>::type;
 
-/// Whether a member of type M is made from a record's (built_form<M, C>::from): not where its built form, or one of its
-/// parts', is made only through its context.
+/// Whether a member of type M is made from a record's (built_form<M, C>::assign): not where its built form, or one of
+/// its parts', is made only through its context.
 template<typename M, typename C>
-concept made_from_record = requires(const M& value) { built_form<M, C>::from(value); };
+concept made_from_record = requires(const M& value, built_t<M, C>& into) { built_form<M, C>::assign(value, into); };
 
 namespace detail
 {
@@ -95,11 +96,11 @@ consteval bool fields_made_from_record()
 
 template<typename T, typename C>
     requires stored_record<T>
-struct built_form<index<T>, C>
+struct built_form<key<T>, C>
 {
     using type = child<T, C>;
 
-    static type from(index<T> value) { return type(std::in_place_index<0>, value); }
+    static void assign(key<T> value, type& into) { into.template emplace<0>(value); }
 };
 
 template<typename T, typename C>
@@ -109,15 +110,13 @@ struct built_form<data<T>, C>
     using type = builder<T, C>;
 
     /// Its index as it is, each field from the record's of the same position (a builder's fields are its record's).
-    static type from(const data<T>& value)
+    static void assign(const data<T>& value, type& into)
         requires(detail::fields_made_from_record<T, C>())
     {
-        auto result = type();
-        if constexpr (requires { result.index; })
-            result.index = value.index;
+        if constexpr (requires { into.index; })
+            into.index = value.index;
         [&]<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
-        { ((result.*Bs::member = built_form<member_type_t<Ds::member>, C>::from(value.*Ds::member)), ...); }(data<T>::fields(), type::fields());
-        return result;
+        { (built_form<member_type_t<Ds::member>, C>::assign(value.*Ds::member, into.*Bs::member), ...); }(data<T>::fields(), type::fields());
     }
 };
 
@@ -126,14 +125,12 @@ struct built_form<flat_vector<M>, C>
 {
     using type = std::vector<built_t<M, C>>;
 
-    static type from(const flat_vector<M>& value)
+    static void assign(const flat_vector<M>& value, type& into)
         requires made_from_record<M, C>
     {
-        auto result = type();
-        result.reserve(value.size());
-        for (const auto& element : value)
-            result.push_back(built_form<M, C>::from(element));
-        return result;
+        into.resize(value.size());
+        for (std::size_t i = 0; i < value.size(); ++i)
+            built_form<M, C>::assign(value[i], into[i]);
     }
 };
 
@@ -142,12 +139,17 @@ struct built_form<flat_optional<M>, C>
 {
     using type = std::optional<built_t<M, C>>;
 
-    static type from(const flat_optional<M>& value)
+    static void assign(const flat_optional<M>& value, type& into)
         requires made_from_record<M, C>
     {
         if (!value.has_value())
-            return std::nullopt;
-        return type(built_form<M, C>::from(*value));
+        {
+            into.reset();
+            return;
+        }
+        if (!into.has_value())
+            into.emplace();
+        built_form<M, C>::assign(*value, *into);
     }
 };
 
@@ -156,9 +158,12 @@ struct built_form<flat_pair<M, N>, C>
 {
     using type = std::pair<built_t<M, C>, built_t<N, C>>;
 
-    static type from(const flat_pair<M, N>& value)
+    static void assign(const flat_pair<M, N>& value, type& into)
         requires made_from_record<M, C> && made_from_record<N, C>
-    { return type(built_form<M, C>::from(value.first), built_form<N, C>::from(value.second)); }
+    {
+        built_form<M, C>::assign(value.first, into.first);
+        built_form<N, C>::assign(value.second, into.second);
+    }
 };
 
 template<typename... Ms, typename C>
@@ -166,15 +171,17 @@ struct built_form<flat_variant<Ms...>, C>
 {
     using type = std::variant<built_t<Ms, C>...>;
 
-    /// Its alternative's form, at the alternative's position.
-    static type from(const flat_variant<Ms...>& value)
+    /// Its alternative's form, at the alternative's position (kept where it holds that alternative already).
+    static void assign(const flat_variant<Ms...>& value, type& into)
         requires(made_from_record<Ms, C> && ...)
     {
-        return value.apply(
+        value.apply(
             [&]<typename A>(const A& alternative)
             {
                 constexpr auto at = boost::mp11::mp_find<boost::mp11::mp_list<Ms...>, A>::value;
-                return type(std::in_place_index<at>, built_form<A, C>::from(alternative));
+                if (into.index() != at)
+                    into.template emplace<at>();
+                built_form<A, C>::assign(alternative, std::get<at>(into));
             });
     }
 };
@@ -182,7 +189,7 @@ struct built_form<flat_variant<Ms...>, C>
 /// The index an insert gives: of the pair (view or index, created) a repository's insert returns, of the interned
 /// record's view (an index_view: its key), or the index itself.
 template<typename U>
-index<U> inserted_index(index<U> at) noexcept
+key<U> inserted_index(key<U> at) noexcept
 { return at; }
 
 template<typename T, typename C, typename K>
@@ -246,19 +253,19 @@ void walk(M& member, F& f)
         for_each_cista_member(member, [&](auto& nested) { walk(nested, f); });
 }
 
-/// walk over record's members, but for its own handle: a direct member of type index<T>.
+/// walk over record's members, but for its own handle: a direct member of type key<T>.
 template<typename T, typename R, typename F>
 void walk_members(R& record, F f)
 {
     for_each_cista_member(record,
                           [&]<typename M>(M& member)
                           {
-                              if constexpr (!std::same_as<std::remove_const_t<M>, index<T>>)
+                              if constexpr (!std::same_as<std::remove_const_t<M>, key<T>>)
                                   walk(member, f);
                           });
 }
 
-/// Assigns source's members to scratch's, all but scratch's own handle (a direct member of type index<T>, which stays as
+/// Assigns source's members to scratch's, all but scratch's own handle (a direct member of type key<T>, which stays as
 /// it is: none in a checked-out scratch). A flat vector keeps the memory it has (set), so a scratch reused across calls
 /// allocates only where a member grows beyond what it held before; every other member is assigned.
 template<typename T, typename R>
@@ -270,7 +277,7 @@ void assign_members(R& scratch, const R& source)
             [&]
             {
                 using M = std::remove_cvref_t<decltype(scratch.*Ms)>;
-                if constexpr (std::same_as<M, index<T>>)
+                if constexpr (std::same_as<M, key<T>>)
                     return;
                 else if constexpr (FlatVector<M>)
                     (scratch.*Ms).set((source.*Ms).begin(), (source.*Ms).end());
@@ -344,23 +351,27 @@ void assign_built(data<U>& target, const builder<U, C>& source, F& f);
 template<typename M, typename... Bs>
 struct part_field;
 
-/// Whether a record of U held in place is packed whole by its context: it has no handle of its own (SelfIndexed), and
-/// its fields are made only through the context (built_form gives no from: a state's storage, which only its pool packs).
-template<typename U, typename C>
-concept PackedInPlace = !SelfIndexed<U> && !fields_made_from_record<U, C>();
-
-/// A builder held in place written as its record: field by field; one its context packs (PackedInPlace) whole, by f,
-/// which interns the builder in the repository that holds its kind (under its key, key_t<U>), the key written into the
-/// record's one field of that type.
+/// A builder held in place written as its record, field by field.
 template<typename U, typename C, typename F>
 void assign_member(data<U>& target, const builder<U, C>& source, F& f)
-{
-    if constexpr (PackedInPlace<U, C>)
-        [&]<typename... Ds>(Fields<Ds...> /*record*/)
-        { target.*part_field<key_t<U>, Ds...>::type::member = detail::as_key<key_t<U>>(f(source)); }(data<U>::fields());
-    else
-        detail::assign_built(target, source, f);
-}
+{ detail::assign_built(target, source, f); }
+
+/// A builder held in place where its record holds a key of it (its built form a builder: urd::built_form): written as
+/// the key f gives, which interns the builder in the repository that holds its kind.
+template<typename U, typename C, typename F>
+void assign_member(key<U>& target, const builder<U, C>& source, F& f)
+{ target = detail::as_key<key<U>>(f(source)); }
+
+/// Whether a record's member of type M takes a built value of another type B as it is (a library's own built form that
+/// assigns itself into its record's form).
+template<typename M, typename B>
+concept AssignsBuilt = !std::same_as<M, B> && std::assignable_from<M&, const B&>;
+
+/// A built value the record's member takes by assignment.
+template<typename M, typename B, typename F>
+    requires AssignsBuilt<M, B>
+void assign_member(M& target, const B& source, F& /*f*/)
+{ target = source; }
 
 template<typename M, typename B, typename F>
 void assign_member(flat_vector<M>& target, const std::vector<B>& source, F& f)
@@ -430,7 +441,7 @@ void assign_fields(Fields<Ds...> /*record*/, Fields<Bs...> /*built*/, D& target,
     (detail::assign_member(target.*Ds::member, source.*Bs::member, f), ...);
 }
 
-/// Whether field B holds a key part as type M (a record's index<P>).
+/// Whether field B holds a key part as type M (a record's key<P>).
 template<typename M>
 struct holds_part_q
 {
@@ -597,11 +608,11 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
 namespace detail
 {
 template<typename P, typename T, typename... Ds>
-index<P> record_part(Fields<Ds...> /*record*/, const data<T>& record)
-{ return record.*part_field<index<P>, Ds...>::type::member; }
+key<P> record_part(Fields<Ds...> /*record*/, const data<T>& record)
+{ return record.*part_field<key<P>, Ds...>::type::member; }
 }  // namespace detail
 
-/// The parts Ps of its key a record holds (its one field of type index<P> each): what it is inserted under.
+/// The parts Ps of its key a record holds (its one field of type key<P> each): what it is inserted under.
 template<typename... Ps, typename T>
 key<Ps...> built_key(const data<T>& record)
 { return key<Ps...>(detail::record_part<Ps>(data<T>::fields(), record)...); }

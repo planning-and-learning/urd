@@ -23,20 +23,20 @@ namespace urd
 template<typename T, typename C>
 struct builder;
 
-/// A child record T of a builder, in one of three forms: interned (its key K: index<T>, or a key of its own such as a
+/// A child record T of a builder, in one of three forms: interned (its key K: key<T>, or a key of its own such as a
 /// row's; the none key until one is given: a child default-constructs empty), built (a builder of its own), or a record
 /// of its own not interned yet; the last two owned by the child through their handles (urd::handle: from a pool, or
 /// make_owned). No form carries a context: a child is read through the context of the view that reads its builder,
 /// which urd resolves as any variant member (a key as the view its context makes, a handle as its record).
 /// C is the context type of the builder that holds it: what a built child's builder is read through.
-template<typename T, typename C, typename K = index<T>>
+template<typename T, typename C, typename K = key<T>>
 using interned_child = K;  ///< A child's interned form: its key.
 template<typename T, typename C>
 using built_child = handle<builder<T, C>>;  ///< A child's built form.
 template<typename T, typename C>
 using held_child = handle<data<T>>;  ///< A child's form of a record of its own, not interned yet.
 
-template<typename T, typename C, typename K = index<T>>
+template<typename T, typename C, typename K = key<T>>
 using child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>;
 
 namespace detail
