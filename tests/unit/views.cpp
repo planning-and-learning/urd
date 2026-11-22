@@ -41,7 +41,6 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <ranges>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -155,6 +154,9 @@ static_assert(std::same_as<Owners::index_type, urd::index<Owner>>);
 
 // Contexts: a positional set resolves its own type; Both resolves two; a hash set resolves nothing.
 static_assert(urd::resolves<Owners, Owner> && !urd::resolves<Owners, Rec> && urd::resolves<Both, Owner> && urd::resolves<Both, Rec>);
+// A member read in place resolves to a reference to it; one read by value (a stored form's: urd::stored_field), to a value.
+static_assert(std::same_as<decltype(urd::resolve(std::declval<const int&>(), std::declval<const Owners&>())), const int&>);
+static_assert(std::same_as<decltype(urd::resolve(std::declval<int>(), std::declval<const Owners&>())), int>);
 static_assert(!urd::resolves<Store<set<Owner>>, Owner>);
 
 // What the members resolve to, in each context.
@@ -827,80 +829,4 @@ TEST(Format, NamesATagAsItDeclares)
 {
     EXPECT_EQ(urd::name<Shown>(), "Shown");
     EXPECT_EQ((urd::name<Twin<Inner, Twin<Shown, Empty>>>()), "TwinInnerTwinShownEmpty");
-}
-
-namespace
-{
-struct Keyed
-{
-};
-}  // namespace
-
-template<>
-struct urd::data<Keyed>
-{
-    int number = 0;
-    urd::flat_vector<int> values;
-
-    data() = default;
-
-    data(int number_, urd::flat_vector<int> values_) : number(number_), values(std::move(values_)) {}
-
-    data(const data& other) = delete;
-    data& operator=(const data& other) = delete;
-    data(data&& other) = default;
-    data& operator=(data&& other) = default;
-    ~data() = default;
-
-    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"number", &data::number>, urd::field<"values", &data::values>> {}; }
-
-    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
-
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::number, &data::values> {}; }
-};
-
-template<typename V>
-struct urd::view_mixin<Keyed, V>
-{
-private:
-    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
-
-public:
-    [[nodiscard]] decltype(auto) get_number() const { return self().template member<&urd::record_of<V>::number>(); }
-
-    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
-};
-
-namespace
-{
-// A context that keeps its records in a layout of its own: no data<Keyed> to hand out, each field read by the key.
-struct ByKey
-{
-    std::array<int, 3> storage { 4, 5, 6 };
-
-    template<auto Member>
-    [[nodiscard]] auto field(urd::index<Keyed> /*at*/) const
-    {
-        if constexpr (std::same_as<decltype(Member), int urd::data<Keyed>::*>)
-            return 2;
-        else
-            return std::span<const int>(storage);
-    }
-
-    [[nodiscard]] std::size_t layer() const noexcept { return 9; }
-};
-}  // namespace
-
-TEST(View, AViewReadsByTheKeyWhereItsContextHandsOutNoRecord)
-{
-    const auto context = ByKey();
-    const auto view = urd::index_view<Keyed, ByKey>(urd::index<Keyed>(0), &context);
-    static_assert(urd::ReadsFieldsByKey<ByKey, urd::index<Keyed>, &urd::data<Keyed>::values> && !urd::HandsOutRecordsBy<ByKey, Keyed, urd::index<Keyed>>);
-    static_assert(std::same_as<urd::record_of<decltype(view)>, urd::data<Keyed>>);
-    // A field read by the key lives for the read only: what is read from it is a value, never a reference into it.
-    static_assert(!std::is_reference_v<decltype(view.template member<&urd::data<Keyed>::values>())>);
-    const auto values = view.template member<&urd::data<Keyed>::values>();
-    ASSERT_EQ(values.size(), 3U);
-    EXPECT_EQ(values[2], 6);
-    EXPECT_EQ(view.template member<&urd::data<Keyed>::number>(), 2);
 }

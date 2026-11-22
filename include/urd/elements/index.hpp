@@ -94,6 +94,17 @@ struct key : detail::key_part<Ts>...
 template<typename T>
 using index = key<T>;
 
+/// The key a record of T is stored under: its index, unless a library says otherwise by specializing key_of<T> (a
+/// record numbered within another, as a row within its relation: key<F, Row<F>>).
+template<typename T>
+struct key_of
+{
+    using type = index<T>;
+};
+
+template<typename T>
+using key_t = typename key_of<T>::type;
+
 /// The part of tag T of a key, as a key of T: `urd::get<Relation>(row_key)`.
 template<typename T, typename... Ts>
     requires(std::same_as<T, Ts> || ...)

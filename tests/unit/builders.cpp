@@ -509,3 +509,80 @@ TEST(Builder, IsClonedWithItsChildren)
     const auto two = sized.make_handle(2);
     EXPECT_THROW((void) urd::clone(two), std::logic_error);
 }
+
+namespace
+{
+/// A record whose values are children or plain values by their position (urd::element_children): even positions name
+/// leaves of Nodes, odd ones are plain numbers.
+struct Mixed;
+}  // namespace
+
+template<>
+struct urd::data<Mixed>
+{
+    urd::index<Mixed> index;
+    urd::flat_vector<std::uint32_t> values;
+
+    data() = default;
+
+    explicit data(urd::flat_vector<std::uint32_t> values_) : index(), values(std::move(values_)) {}
+
+    data(const data& other) = delete;
+    data& operator=(const data& other) = delete;
+    data(data&& other) = default;
+    data& operator=(data&& other) = default;
+    ~data() = default;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"values", &data::values>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::values> {}; }
+};
+
+template<typename V>
+struct urd::view_mixin<Mixed, V>
+{
+};
+
+template<>
+struct urd::builder<Mixed, Nodes>
+{
+    urd::index<Mixed> index;
+    urd::built_t<urd::flat_vector<std::uint32_t>, Nodes> values;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"values", &builder::values>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+};
+
+template<>
+struct urd::element_children<&urd::data<Mixed>::values>
+{
+    using child_type = urd::index<Leaf>;
+
+    template<typename R, typename C>
+    [[nodiscard]] static bool is_child(const R& /*stored*/, const C& /*context*/, std::size_t position) noexcept
+    { return position % 2 == 0; }
+
+    [[nodiscard]] static child_type child(std::uint32_t element) noexcept { return child_type(element); }
+
+    [[nodiscard]] static std::uint32_t element(child_type child) noexcept { return child.value; }
+};
+
+static_assert(urd::HasElementChildren<&urd::data<Mixed>::values> && !urd::HasElementChildren<&urd::data<Node>::rest>);
+
+// A member whose elements are children by their position is built element by element: each child as f gives for the
+// view of what it names, each plain value as it is.
+TEST(Builder, BuildsElementChildrenByTheirPosition)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(1), 5));
+    const auto record = urd::data<Mixed>(urd::flat_vector<std::uint32_t> { 0, 7, 1, 9 });
+    const auto source = urd::borrowed_view<Mixed, Nodes> { &record, &nodes };
+
+    auto built = urd::builder<Mixed, Nodes> {};
+    urd::build_from(source, built, [](const urd::index_view<Leaf, Nodes>& leaf) { return urd::index<Leaf>(leaf.index().value + 10); });
+    EXPECT_EQ(built.values, (std::vector<std::uint32_t> { 10, 7, 11, 9 }));
+}

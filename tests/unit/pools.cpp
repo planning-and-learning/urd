@@ -9,8 +9,8 @@
 #include "urd/elements/flat.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/keyed.hpp"
-#include "urd/format.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/format.hpp"
 #include "urd/repr/maps/bidirectional_csr.hpp"
 #include "urd/repr/maps/csr_multimap.hpp"
 #include "urd/repr/maps/dense_multimap.hpp"
@@ -448,17 +448,24 @@ TEST(Records, ViewsResolveFlatMembers)
     EXPECT_EQ((std::get<urd::index_view<Owner, Shop>>(whole.member<&Item::alternative>()).member<&Owner::name>()), "ann");
 }
 
+namespace
+{
 /// Tags of a key of two parts: a relation and a row of it.
 struct KeyRelation
 {
     static constexpr std::string_view name = "KeyRelation";
 };
+
 struct KeyRow
 {
     static constexpr std::string_view name = "KeyRow";
 };
+}  // namespace
+
 using RowKey = urd::key<KeyRelation, KeyRow>;
 
+namespace
+{
 /// A record holding a key and a string: serialized by cista, the key part by part.
 struct Keyed
 {
@@ -469,6 +476,7 @@ struct Keyed
 
     static constexpr auto cista_members() noexcept { return urd::Members<&Keyed::label, &Keyed::row> {}; }
 };
+}  // namespace
 
 static_assert(std::is_trivially_copyable_v<RowKey>);
 static_assert(sizeof(urd::index<KeyRow>) == 4 && std::is_trivially_copyable_v<urd::index<KeyRow>>);
@@ -496,11 +504,14 @@ TEST(Key, ItsPartsAreReadByAFreeGet)
     EXPECT_EQ(urd::get<KeyRow>(urd::index<KeyRow>(3)), urd::index<KeyRow>(3));  // an index is a key of one part
 }
 
+namespace
+{
 /// An item numbered in its group's own pool: the record a key<KeyRelation, NestItem> names.
 struct NestItem
 {
     static constexpr std::string_view name = "NestItem";
 };
+}  // namespace
 
 template<>
 struct urd::data<NestItem>
@@ -557,9 +568,11 @@ TEST(Key, ARecordIsFoundByFoldingOverTheKeysParts)
     EXPECT_EQ(third, urd::index<NestItem>(2));
     EXPECT_EQ(urd::record_at(child, ItemKey(group, third))->weight, 13);
     EXPECT_EQ(&*urd::record_at(child, ItemKey(group, second)), &items[second]);  // the parent's record, in place
-    EXPECT_FALSE(urd::contains_key(groups, ItemKey(group, third)));             // the parent knows nothing of it
+    EXPECT_FALSE(urd::contains_key(groups, ItemKey(group, third)));              // the parent knows nothing of it
 }
 
+namespace
+{
 /// A family of stores, one per record type (here one, of items): a key of a kind first selects its kind's store.
 struct NestFamily
 {
@@ -569,6 +582,8 @@ struct NestFamily
     [[nodiscard]] const NestItems& get() const noexcept
     { return items; }
 };
+}  // namespace
+
 static_assert(urd::SelectsStoreOf<NestFamily, NestItem> && !urd::HoldsRecordsOf<NestFamily, NestItem>);
 static_assert(!urd::SelectsStoreOf<NestGroups, NestItem>);
 
@@ -582,11 +597,15 @@ TEST(Key, AFamilySelectsTheStoreOfTheKeysKindFirst)
     EXPECT_FALSE(urd::contains_key(family, urd::index<NestItem>()));  // none
 }
 
+namespace
+{
 /// A key of three parts: shelves (by relation) of blocks (by block) of items.
 struct KeyBlock
 {
     static constexpr std::string_view name = "KeyBlock";
 };
+}  // namespace
+
 using NestBlocks = Store<urd::map<urd::index<KeyBlock>, NestItems>, urd::dense, urd::layered>;
 using NestShelves = Store<urd::map<urd::index<KeyRelation>, NestBlocks>, urd::dense, urd::layered>;
 static_assert(urd::SelectsForInsertBy<NestShelves, KeyRelation> && urd::InsertsRecordsOf<NestItems, NestItem>);
@@ -622,7 +641,7 @@ TEST(Key, ARecordIsInsertedUnderTheKnownPartsOfItsKey)
     const auto third = urd::insert_at(child, known, record_21).first;
     EXPECT_EQ(urd::get<NestItem>(third), urd::index<NestItem>(2));
     EXPECT_EQ(urd::record_at(child, third)->weight, 21);
-    EXPECT_EQ(&*urd::record_at(child, second), &*urd::record_at(shelves, second));  // the parent's record, in place
+    EXPECT_EQ(&*urd::record_at(child, second), &*urd::record_at(shelves, second));    // the parent's record, in place
     EXPECT_TRUE(urd::find_at(shelves, known, urd::data<NestItem> { 21 }).is_none());  // the parent knows nothing of it
 }
 

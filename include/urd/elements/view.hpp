@@ -83,12 +83,6 @@ struct view_mixin<record_ref<T>, V> : view_mixin<T, V>
 template<typename V>
 using record_of = typename std::remove_cvref_t<V>::record_type;
 
-/// Whether a context C reads the field Member of the record of a key K by the key: context.field<Member>(key), where
-/// it keeps its records in a layout of its own. It hands the field out as its views read it: resolved through itself
-/// (urd::resolve), by value.
-template<typename C, typename K, auto Member>
-concept ReadsFieldsByKey = requires(const C& context, const K& key) { context.template field<Member>(key); };
-
 namespace detail
 {
 /// The way to a view's record whole, for urd itself (member<>, map_children): private to the views, whose friend this
@@ -106,6 +100,16 @@ struct view_access
     template<typename T, typename C, typename K>
     [[nodiscard]] static const typename record_form<T>::type& record(const index_view<T, C, K>& view)
     { return *view.record(); }
+
+    /// A view's record in its stored form: an index_view's stored_ref (a record held in place, or a reader of a record
+    /// laid out by its store: its fields read through urd::stored_field), any other view's record itself.
+    template<typename T, typename C, typename K>
+    [[nodiscard]] static stored_ref<T> stored(const index_view<T, C, K>& view)
+    { return view.record(); }
+
+    template<typename V>
+    [[nodiscard]] static const typename V::record_type& stored(const V& view)
+    { return view.record(); }
 };
 }  // namespace detail
 
@@ -131,10 +135,15 @@ struct resolution
 {
     static constexpr bool identity = true;
 
-    // The member lives in the record, which outlives the call: never a temporary.
+    // The member lives in the record, which outlives the call.
     template<typename C>
     static const M& of(const M& member, const C& /*context*/) noexcept
     { return member; }  // NOLINT(bugprone-return-const-ref-from-parameter)
+
+    /// A member read by value (a stored form of its own reads its fields so: urd::stored_field): by value.
+    template<typename C>
+    static M of(M&& member, const C& /*context*/) noexcept(std::is_nothrow_move_constructible_v<M>)
+    { return std::move(member); }
 
     /// Written only from an M: no conversion.
     template<std::same_as<M> R>
@@ -215,7 +224,6 @@ template<template<typename...> typename V, typename... Ts>
     requires variant_value<V<Ts...>>
 struct resolution<V<Ts...>>
 {
-
     template<typename C>
     static auto of(const V<Ts...>& member, const C& context)
     {
@@ -624,19 +632,11 @@ public:
 
     [[nodiscard]] K index() const noexcept { return m_at; }
 
-    /// A member of its record, resolved through its context: in place, where the context hands out the record of its
-    /// key (HandsOutRecordsBy); as the context reads it by the key, resolved and by value, where it keeps its records in a
-    /// layout of its own (ReadsFieldsByKey).
+    /// A member of its record, resolved through its context, which hands out the record of its key (HandsOutRecordsBy).
     template<auto Member>
+        requires HandsOutRecordsBy<C, T, K>
     [[nodiscard]] decltype(auto) member() const
-    {
-        if constexpr (HandsOutRecordsBy<C, T, K>)
-            return urd::resolve(stored_field<Member, stored_ref<T>>::read(urd::record_at<T>(this->context(), m_at)), this->context());
-        else if constexpr (ReadsFieldsByKey<C, K, Member>)
-            return this->context().template field<Member>(m_at);
-        else
-            static_assert(false, "urd: a context hands out a key's record (context[key]) or reads its fields by the key (context.field<Member>(key))");
-    }
+    { return urd::resolve(stored_field<Member, stored_ref<T>>::read(urd::record_at<T>(this->context(), m_at)), this->context()); }
 
 private:
     /// Its record as its context hands it out, by value (urd::record_at(context, key)): its stored_ref.

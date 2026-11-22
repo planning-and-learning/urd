@@ -31,8 +31,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <utility>
 #include <typeinfo>
+#include <utility>
 #include <vector>
 #if __has_include(<cxxabi.h>)
 #include <cxxabi.h>
@@ -86,6 +86,21 @@ template<typename T>
 struct type_spelling<index<T>>
 {
     static std::string spelled() { return fmt::format("index<{}>", spelling<T>()); }
+};
+
+/// A view of an interned record, by its tag and its key (its context, a repository's whole type, says nothing a reader
+/// needs, and the demangler may give up on it).
+template<typename T, typename C, typename K>
+struct type_spelling<index_view<T, C, K>>
+{
+    static std::string spelled() { return fmt::format("index_view<{}, {}>", spelling<T>(), spelling<K>()); }
+};
+
+/// A key of several parts, by its parts (the demangler gives up on some of them, and writes the whole key mangled).
+template<typename... Ts>
+struct type_spelling<key<Ts...>>
+{
+    static std::string spelled() { return fmt::format("key<{}>", fmt::join(std::vector<std::string> { spelling<Ts>()... }, ", ")); }
 };
 
 template<typename T, typename A>

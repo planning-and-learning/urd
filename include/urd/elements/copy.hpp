@@ -29,11 +29,11 @@ concept SeesAll = requires(const To& to, const To& source) {
     { to.template sees_all<T>(source) } -> std::same_as<bool>;
 };
 
-/// Whether a context reaches records of kind T through another context of type C, one it nests (`to.repository_for<T>()`:
-/// that context): a key of such a record names it there, as it is.
-template<typename To, typename T, typename C>
-concept Reaches = requires(const To& to) {
-    { to.template repository_for<T>() } -> std::same_as<const C&>;
+/// Whether a context resolves keys K through another context of type C, one it nests (`to.resolving<K>()`: that
+/// context, which resolves them itself): a key of such a record names it there, as it is.
+template<typename To, typename K, typename C>
+concept ResolvesThrough = requires(const To& to) {
+    { to.template resolving<K>() } -> std::same_as<const C&>;
 };
 
 /// Whether a context checks that it may hold copies of another's records (`to.check_compatible(source)`, throwing
@@ -47,7 +47,7 @@ struct copying;
 
 /// The key in `to` of the record a stored view reads: its own where `to` sees its context, else its copy's (once `to` has
 /// checked the context: ChecksCompatibility, where `to` declares the check), its children copied first and its builder drawn from `storage` (checkout<T>()) and
-/// interned into `to` (insert(builder, storage)). A record of a kind `to` reaches through a context it nests (Reaches) is not copied: its key where that
+/// interned into `to` (insert(builder, storage)). A record whose key `to` resolves through a context it nests (ResolvesThrough) is not copied: its key where that
 /// context sees the record's, else std::invalid_argument.
 template<typename T, typename C, typename K, Sees To, typename Storage>
 K copy(const index_view<T, C, K>& view, To& to, Storage& storage);
@@ -57,13 +57,13 @@ K copy(const index_view<T, C, K>& view, To& to, Storage& storage);
 template<typename T, typename C, typename R, Sees To, typename Storage>
 typename copying<T>::key_type copy(const borrowed_view<T, C, R>& view, To& to, Storage& storage);
 
-/// How a record of kind T is copied into a context that does not see it: through its fields, each child copied first
-/// (urd::copy), its values as they are, then interned. A library specializes it for a kind whose record is not read field
-/// by field (a row stored packed, say).
+/// How a record of kind T is copied into a context that does not see it: through its fields (in whatever form its store
+/// keeps it: urd::stored_field), each child copied first (urd::copy; an element of a member whose elements are children
+/// by their position too: urd::element_children), its values as they are, then interned under its key (urd::key_of).
 template<typename T>
 struct copying
 {
-    using key_type = index<T>;
+    using key_type = key_t<T>;
 
     template<typename V, typename To, typename Storage>
     static key_type into(const V& view, To& to, Storage& storage)
@@ -85,9 +85,9 @@ K copy(const index_view<T, C, K>& view, To& to, Storage& storage)
             to.check_compatible(view.context());
         return copying<T>::into(view, to, storage);
     }
-    else if constexpr (Reaches<To, T, C>)
+    else if constexpr (ResolvesThrough<To, K, C>)
     {
-        if (to.template repository_for<T>().sees(view.context()))
+        if (to.template resolving<K>().sees(view.context()))
             return view.index();
         throw std::invalid_argument("urd::copy: a record of a context its target nests but does not see");
     }
