@@ -70,7 +70,7 @@ TEST(CommonTreeBitsetSetTest, RoundTripsAndSkipsZeroBlocks)
 
     EXPECT_EQ(set.insert_blocks(single).first, single_index);
     EXPECT_EQ(set.insert_blocks(sparse).first, sparse_index);
-    EXPECT_THROW(set.insert_blocks(std::array<Block, 2> { 1, 0 }).first, std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(set.insert_blocks(std::array<Block, 2> { 1, 0 })), std::invalid_argument);
     EXPECT_THROW(set.read_blocks(sparse_index, std::span<Block>(far).first(3)), std::invalid_argument);
 
     set.clear();
@@ -121,7 +121,8 @@ TEST(CommonTreeBitsetSetTest, DeltaInsertMatchesFullInsert)
     EXPECT_EQ(set.insert_flips(base, std::span<const Flip> {}), base);
     EXPECT_EQ(set.insert_flips(base, std::array<Flip, 5> { Flip { 0, 1 }, Flip { 1, 2 }, Flip { 2, 3 }, Flip { 3, 4 }, Flip { 4, 5 } }),
               urd::repr::tree::empty_handle());
-    EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), std::array<Flip, 1> { Flip { 3, 8 } }), set.insert_blocks(std::array<Block, 4> { 0, 0, 0, 8 }).first);
+    EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), std::array<Flip, 1> { Flip { 3, 8 } }),
+              set.insert_blocks(std::array<Block, 4> { 0, 0, 0, 8 }).first);
 }
 
 TEST(CommonTreeBitsetSetTest, DeltaInsertAcrossPowerOfTwoSizes)

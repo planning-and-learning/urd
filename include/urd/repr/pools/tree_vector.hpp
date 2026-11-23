@@ -214,7 +214,6 @@ private:
 
     [[nodiscard]] size_type num_leaves() const { return m_leaves.size(); }
 
-
 public:
     [[nodiscard]] bool empty() const { return m_leaves.size() == 0 && m_nodes.empty(); }
 

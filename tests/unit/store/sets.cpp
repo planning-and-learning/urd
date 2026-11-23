@@ -606,7 +606,9 @@ TEST(SortedBlockSet, AgreesWithTheStandardSetInElementsAndPositions)
             const auto expected = model.lower_bound(probe);
             ASSERT_EQ(lower == blocks.end(), expected == model.end());
             if (expected != model.end())
+            {
                 ASSERT_EQ(*lower, *expected);
+            }
         }
         agree();
         for (auto it = blocks.begin(); it != blocks.end();)  // erase every other element by iterator

@@ -453,12 +453,10 @@ namespace
 /// Tags of a key of two parts: a relation and a row of it.
 struct KeyRelation
 {
-    static constexpr std::string_view name = "KeyRelation";
 };
 
 struct KeyRow
 {
-    static constexpr std::string_view name = "KeyRow";
 };
 }  // namespace
 
@@ -509,7 +507,6 @@ namespace
 /// An item numbered in its group's own pool: the record a key<KeyRelation, NestItem> names.
 struct NestItem
 {
-    static constexpr std::string_view name = "NestItem";
 };
 }  // namespace
 
@@ -627,7 +624,6 @@ namespace
 /// number: its key's part holds that handle (urd::key_value_of).
 struct Blob
 {
-    static constexpr std::string_view name = "Blob";
 };
 
 struct BlobHandle
@@ -635,7 +631,7 @@ struct BlobHandle
     std::uint32_t offset = std::numeric_limits<std::uint32_t>::max();
     std::uint32_t size = std::numeric_limits<std::uint32_t>::max();
 
-    friend constexpr auto operator<=>(const BlobHandle&, const BlobHandle&) = default;
+    friend constexpr bool operator==(const BlobHandle&, const BlobHandle&) = default;
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&BlobHandle::offset, &BlobHandle::size> {}; }
 };
@@ -769,7 +765,6 @@ namespace
 /// A key of three parts: shelves (by relation) of blocks (by block) of items.
 struct KeyBlock
 {
-    static constexpr std::string_view name = "KeyBlock";
 };
 }  // namespace
 

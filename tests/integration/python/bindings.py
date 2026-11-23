@@ -62,6 +62,10 @@ assert hash(builder) == hash(m.term_builder())
 assert str(builder) == "Term(\n    arity=1\n    objects=[\n        9\n    ]\n    weight=none\n)"
 assert type(builder) is m.TermBuilderBorrowed
 assert m.pair_name() == "PairTermPairAtomTerm"
+# A child from Python: a record is held (a copy), an index interned; anything else converts to none.
+assert m.term_child_alternative(m.TermData(1, [], 3)) == 2
+assert m.term_child_alternative(m.TermIndex(0)) == 0
+assert m.term_child_alternative("not a term") == -1
 assert not hasattr(builder, "index")
 # A view that owns its record is bound beside the record's other views, under its own name.
 owned = m.term_owned()

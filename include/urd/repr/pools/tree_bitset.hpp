@@ -232,8 +232,6 @@ public:
     /// The handle insert_blocks would give, where it would store nothing; else none.
     [[nodiscard]] handle_type find_blocks(std::span<const Block> blocks) const { return find_row(blocks); }
 
-
-
     /// The row `base` with `flips` applied, sorted by unique position; trimmed to its last nonzero block.
     handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips).first; }
 
@@ -268,7 +266,6 @@ public:
 private:
     // Read by tests (urd::testing::inspect), not by a Store.
     friend struct urd::testing::inspect;
-
 
 public:
     [[nodiscard]] bool empty() const { return m_nodes.empty(); }

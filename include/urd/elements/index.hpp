@@ -102,7 +102,19 @@ struct key : detail::key_part<Ts>...
     /// Whether it names nothing: every part none.
     [[nodiscard]] constexpr bool is_none() const noexcept { return ((static_cast<const detail::key_part<Ts>&>(*this).value == key_value_of<Ts>::none) && ...); }
 
-    friend constexpr auto operator<=>(const key&, const key&) = default;
+    /// Part by part, in order, on the parts' values: not defaulted, which would compare the detail::key_part<Ts> bases
+    /// and so look their operators up by ADL over Ts, completing each tag (a Store named as a pool's value).
+    friend constexpr auto operator<=>(const key& lhs, const key& rhs) noexcept
+        requires(std::three_way_comparable<key_value_t<Ts>> && ...)
+    {
+        auto result = std::common_comparison_category_t<std::compare_three_way_result_t<key_value_t<Ts>>...>(std::strong_ordering::equal);
+        static_cast<void>(
+            (((result = static_cast<const detail::key_part<Ts>&>(lhs).value <=> static_cast<const detail::key_part<Ts>&>(rhs).value) == 0) && ...));
+        return result;
+    }
+
+    friend constexpr bool operator==(const key& lhs, const key& rhs) noexcept
+    { return ((static_cast<const detail::key_part<Ts>&>(lhs).value == static_cast<const detail::key_part<Ts>&>(rhs).value) && ...); }
 
     static constexpr auto identifying_members() noexcept { return Members<&detail::key_part<Ts>::value...> {}; }
 

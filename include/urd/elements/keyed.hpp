@@ -75,7 +75,7 @@ template<typename K>
 using rest_t = boost::mp11::mp_rename<boost::mp11::mp_pop_front<boost::mp11::mp_rename<K, boost::mp11::mp_list>>, key>;
 
 template<typename P, typename... Ts>
-[[nodiscard]] key<Ts...> rest_of(key<P, Ts...> at) noexcept
+[[nodiscard]] key<Ts...> rest_of([[maybe_unused]] key<P, Ts...> at) noexcept
 { return key<Ts...>(urd::get<Ts>(at)...); }
 
 /// The key of the parts `known` followed by the parts of `rest`.

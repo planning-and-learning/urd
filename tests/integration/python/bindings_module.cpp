@@ -247,6 +247,14 @@ NB_MODULE(urd_bindings_test, m)
     m.def("pair_name", [] { return urd::name<Pair<Term, Pair<Atom, Term>>>(); });
     m.def("term", [](std::size_t at) { return context().view(urd::index<Term>(static_cast<urd::index<Term>::value_type>(at))); });
     m.def("term_builder", [] { return TermBuilderView(&term_builder(), &context()); });
+    // The child a Python value converts to, through the conversion URD_PYTHON_CONVERSIONS instantiated: its
+    // alternative (0 interned, 1 built, 2 held), or -1 where it converts to none.
+    m.def("term_child_alternative",
+          [](nb::handle value)
+          {
+              auto child = urd::child<Term, Context>();
+              return urd::python::detail::child_from_python(value, child) ? static_cast<int>(child.index()) : -1;
+          });
     m.def("context", []() -> const Context& { return context(); }, nb::rv_policy::reference);
     m.def("term_owned",
           []

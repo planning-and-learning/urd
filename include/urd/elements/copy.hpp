@@ -47,8 +47,8 @@ struct copying;
 
 /// The key in `to` of the record a stored view reads: its own where `to` sees its context, else its copy's (once `to` has
 /// checked the context: ChecksCompatibility, where `to` declares the check), its children copied first and its builder drawn from `storage` (checkout<T>()) and
-/// interned into `to` (insert(builder, storage)). A record whose key `to` resolves through a context it nests (ResolvesThrough) is not copied: its key where that
-/// context sees the record's, else std::invalid_argument.
+/// interned into `to` (insert(builder, storage)). A record whose key `to` resolves through a context it nests (ResolvesThrough) is not copied: its key where
+/// that context sees the record's, else std::invalid_argument.
 template<typename T, typename C, typename K, Sees To, typename Storage>
 K copy(const index_view<T, C, K>& view, To& to, Storage& storage);
 

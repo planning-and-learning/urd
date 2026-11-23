@@ -373,8 +373,9 @@ void assign_member(M& target, const B& source, F& /*f*/)
 template<typename M, typename B, typename F>
 void assign_member(flat_vector<M>& target, const std::vector<B>& source, F& f)
 {
-    target.resize(source.size());
-    for (std::size_t i = 0; i < source.size(); ++i)
+    using size_type = typename flat_vector<M>::size_type;
+    target.resize(static_cast<size_type>(source.size()));
+    for (size_type i = 0; i < target.size(); ++i)
         detail::assign_member(target[i], source[i], f);
 }
 
@@ -382,8 +383,9 @@ void assign_member(flat_vector<M>& target, const std::vector<B>& source, F& f)
 template<typename M, typename Kind, typename... Tags, typename F>
 void assign_member(flat_vector<M>& target, const Store<Kind, Tags...>& source, F& f)
 {
-    target.resize(source.size());
-    auto at = std::size_t { 0 };
+    using size_type = typename flat_vector<M>::size_type;
+    target.resize(static_cast<size_type>(source.size()));
+    auto at = size_type { 0 };
     for (const auto& element : source)
         detail::assign_member(target[at++], element, f);
 }
@@ -687,7 +689,7 @@ template<typename B, typename M, typename Cx, typename F>
 void build_member(std::vector<B>& target, const flat_vector<M>& source, const Cx& context, F& f)
 {
     target.resize(source.size());
-    for (std::size_t i = 0; i < source.size(); ++i)
+    for (typename flat_vector<M>::size_type i = 0; i < source.size(); ++i)
         detail::build_member(target[i], source[i], context, f);
 }
 
@@ -924,7 +926,7 @@ void build_variant_member(B& target, const M& source, const From& from, const To
     {
         // a list of slots slot by slot; of anything else, as build_from builds it
         target.resize(source.size());
-        for (std::size_t i = 0; i < source.size(); ++i)
+        for (typename M::size_type i = 0; i < source.size(); ++i)
             detail::build_variant_member(target[i], source[i], from, to, f);
     }
     else
