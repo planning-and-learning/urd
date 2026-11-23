@@ -10,6 +10,7 @@
 #include "urd/elements/view.hpp"
 #include "urd/python/bindings.hpp"
 #include "urd/python/containers/bitset_span.hpp"
+#include "urd/python/conversion_instantiations.hpp"
 
 #include <compare>
 #include <cstddef>
@@ -48,7 +49,7 @@ struct Context;
 template<>
 struct urd::data<Term>
 {
-    urd::index<Term> index;
+    urd::key<Term> index;
     int arity = 0;
     urd::flat_vector<int> objects;
     urd::flat_optional<int> weight;
@@ -75,13 +76,15 @@ struct urd::data<Term>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::arity, &data::objects, &data::weight> {}; }
+
+    [[nodiscard]] urd::key<Term> key() const noexcept { return urd::key<Term>(index); }
 };
 
 /// A term being built: the fields of data<Term> under the same names, so its view reads as a term's.
 template<>
 struct urd::builder<Term, Context>
 {
-    urd::index<Term> index;
+    urd::key<Term> index;
     urd::built_t<int, Context> arity = 0;
     urd::built_t<urd::flat_vector<int>, Context> objects;
     urd::built_t<urd::flat_optional<int>, Context> weight;
@@ -221,7 +224,14 @@ using TermView = urd::index_view<Term, Context>;
 using TermBuilderView = urd::borrowed_view<Term, Context, urd::builder<Term, Context>>;
 using TermOwnedView = urd::owning_view<Term, Context>;
 
+/// The kinds whose conversions from Python this module instantiates once: a record with a builder, and a plain value,
+/// which has none (its conversions are skipped).
+using ConvertedKinds = boost::mp11::mp_list<Term, Point>;
+
 }  // namespace
+
+URD_PYTHON_CONVERSIONS(, Context, ConvertedKinds, 2)
+static_assert(std::is_class_v<urd::python::detail::conversions<Term, Context>>);
 
 NB_MODULE(urd_bindings_test, m)
 {

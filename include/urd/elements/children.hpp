@@ -113,7 +113,7 @@ struct built_form<data<T>, C>
     static void assign(const data<T>& value, type& into)
         requires(detail::fields_made_from_record<T, C>())
     {
-        if constexpr (requires { into.index; })
+        if constexpr (SelfIndexed<T>)
             into.index = value.index;
         [&]<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
         { (built_form<member_type_t<Ds::member>, C>::assign(value.*Ds::member, into.*Bs::member), ...); }(data<T>::fields(), type::fields());
@@ -348,9 +348,6 @@ void assign_member(K& target, const child<U, C, K>& source, F& f)
 template<typename U, typename C, typename F>
 void assign_built(data<U>& target, const builder<U, C>& source, F& f);
 
-template<typename M, typename... Bs>
-struct part_field;
-
 /// A builder held in place written as its record, field by field.
 template<typename U, typename C, typename F>
 void assign_member(data<U>& target, const builder<U, C>& source, F& f)
@@ -441,24 +438,6 @@ void assign_fields(Fields<Ds...> /*record*/, Fields<Bs...> /*built*/, D& target,
     (detail::assign_member(target.*Ds::member, source.*Bs::member, f), ...);
 }
 
-/// Whether field B holds a key part as type M (a record's key<P>).
-template<typename M>
-struct holds_part_q
-{
-    template<typename B>
-    using fn = std::bool_constant<std::same_as<member_type_t<B::member>, M>>;
-};
-
-/// The field of type M among Bs: exactly one.
-template<typename M, typename... Bs>
-struct part_field
-{
-    using list = boost::mp11::mp_list<Bs...>;
-    static_assert(boost::mp11::mp_count_if_q<list, holds_part_q<M>>::value == 1,
-                  "urd::built_key: a record holds each part of its key it names as exactly one field");
-    using type = boost::mp11::mp_at<list, boost::mp11::mp_find_if_q<list, holds_part_q<M>>>;
-};
-
 template<typename U, typename C, typename F>
 void assign_built(data<U>& target, const builder<U, C>& source, F& f)
 { detail::assign_fields(data<U>::fields(), builder<U, C>::fields(), target, source, f); }
@@ -493,8 +472,7 @@ void visit_field_children(const S& stored, const C& context, F& f)
     else
     {
         auto visit = [&]<typename X>(X& child)
-            requires detail::is_child<Types, std::remove_const_t<X>>
-        { f(context.view(child)); };
+            requires detail::is_child<Types, std::remove_const_t<X>> { f(context.view(child)); };
         detail::walk(member, visit);
     }
 }
@@ -521,8 +499,7 @@ void map_field_children(R& scratch, const S& source, const C& context, F& f)
     else
     {
         auto replace = [&]<typename X>(X& child)
-            requires detail::is_child<Types, X>
-        { urd::store(child, f(context.view(child))); };
+            requires detail::is_child<Types, X> { urd::store(child, f(context.view(child))); };
         detail::walk(member, replace);
     }
 }
@@ -605,17 +582,19 @@ data<T>& map_children(const builder<T, C>& source, data<T>& scratch, F f)
     return scratch;
 }
 
-namespace detail
-{
-template<typename P, typename T, typename... Ds>
-key<P> record_part(Fields<Ds...> /*record*/, const data<T>& record)
-{ return record.*part_field<key<P>, Ds...>::type::member; }
-}  // namespace detail
-
-/// The parts Ps of its key a record holds (its one field of type key<P> each): what it is inserted under.
+/// The parts Ps of its key a record is known by before it is stored (its key(), all but the last part, which its store
+/// writes): what it is inserted under. None for a key of one part.
 template<typename... Ps, typename T>
 key<Ps...> built_key(const data<T>& record)
-{ return key<Ps...>(detail::record_part<Ps>(data<T>::fields(), record)...); }
+{
+    if constexpr (sizeof...(Ps) == 0)
+        return key<>();
+    else
+    {
+        const auto whole = record.key();
+        return key<Ps...>(whole.template get<Ps>()...);
+    }
+}
 
 /// Interns a builder: its record written into scratch (map_children), each child as the key `insert` gives it, then the
 /// record inserted. `insert` takes every form a child holds: an interned child's key (kept as it is), a built one's builder (interned again, with a scratch

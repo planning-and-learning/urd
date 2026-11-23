@@ -26,7 +26,7 @@ struct urd::data<Bare>
 template<>
 struct urd::data<Bare>
 {
-    urd::index<Bare> index;
+    urd::key<Bare> index;
     int weight = 0;
 
     data() = default;
@@ -44,6 +44,8 @@ struct urd::data<Bare>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight> {}; }
+
+    [[nodiscard]] urd::key<Bare> key() const noexcept { return urd::key<Bare>(index); }
 };
 
 template<typename V>

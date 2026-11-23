@@ -327,10 +327,27 @@ namespace detail
 template<typename B>
 bool from_python(nb::handle value, B& target);
 
+/// The conversion from Python of a child of kind U read through C (its key K): it copies a builder or record of the
+/// kind and walks its fields, and through its children the builders of their kinds. One source of a binding library
+/// instantiates it for each kind of a context (URD_PYTHON_CONVERSIONS, urd/python/conversion_instantiations.hpp), which
+/// its other sources declare: a source that binds a builder then compiles its own kind's conversion, not those of
+/// every kind its children reach. A plain value has no builder.
+template<typename U, typename C, typename K = key<U>>
+struct conversions
+{
+    static bool to_child(nb::handle value, child<U, C, K>& target)
+        requires(!PlainValue<U>);
+};
+
 /// A child from Python: a builder of its kind (built: a copy, owned by the child), a record of its kind (held: a copy),
 /// or its key (interned: an index, or a view, which converts to its key).
 template<typename U, typename C, typename K>
 bool child_from_python(nb::handle value, child<U, C, K>& target)
+{ return conversions<U, C, K>::to_child(value, target); }
+
+template<typename U, typename C, typename K>
+bool conversions<U, C, K>::to_child(nb::handle value, child<U, C, K>& target)
+    requires(!PlainValue<U>)
 {
     if (nb::isinstance<builder<U, C>>(value))
         target.template emplace<1>(urd::make_owned<builder<U, C>>(urd::clone(nb::cast<const builder<U, C>&>(value))));

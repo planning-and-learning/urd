@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace
@@ -34,25 +36,40 @@ struct LeafKey
 template<>
 struct urd::data<Leaf>
 {
-    urd::index<Leaf> index;
+    urd::key<Leaf> index;
     int weight = 0;
+
+    data() = default;
+
+    explicit data(int weight_) : index(), weight(weight_) {}
+
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>> {}; }
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight> {}; }
+
+    [[nodiscard]] urd::key<Leaf> key() const noexcept { return urd::key<Leaf>(index); }
 };
 
 template<>
 struct urd::data<Node>
 {
-    urd::index<Node> index;
+    urd::key<Node> index;
     urd::index<Leaf> first;
     urd::flat_vector<urd::index<Leaf>> rest;
     int depth = 0;
 
     data() = default;
+
+    data(urd::index<Leaf> first_, urd::flat_vector<urd::index<Leaf>> rest_, int depth_) : index(), first(first_), rest(std::move(rest_)), depth(depth_) {}
+
     data(const data& other) = delete;
     data& operator=(const data& other) = delete;
     data(data&& other) = default;
@@ -65,47 +82,69 @@ struct urd::data<Node>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::first, &data::rest, &data::depth> {}; }
+
+    [[nodiscard]] urd::key<Node> key() const noexcept { return urd::key<Node>(index); }
 };
 
 template<>
 struct urd::data<Pin>
 {
-    urd::index<Pin> index;
+    urd::key<Pin> index;
     LeafKey leaf;
+
+    data() = default;
+
+    explicit data(LeafKey leaf_) : index(), leaf(leaf_) {}
+
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"leaf", &data::leaf>> {}; }
 
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::leaf> {}; }
+
+    [[nodiscard]] urd::key<Pin> key() const noexcept { return urd::key<Pin>(index); }
 };
 
 template<>
 struct urd::builder<Leaf, Layer>
 {
-    urd::index<Leaf> index;
+    urd::key<Leaf> index;
     urd::built_t<int, Layer> weight = 0;
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &builder::weight>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 
 template<>
 struct urd::builder<Node, Layer>
 {
-    urd::index<Node> index;
+    urd::key<Node> index;
     urd::built_t<urd::index<Leaf>, Layer> first;
     urd::built_t<urd::flat_vector<urd::index<Leaf>>, Layer> rest;
     urd::built_t<int, Layer> depth = 0;
 
     static constexpr auto fields() noexcept
     { return urd::Fields<urd::field<"first", &builder::first>, urd::field<"rest", &builder::rest>, urd::field<"depth", &builder::depth>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 
 template<>
 struct urd::builder<Pin, Layer>
 {
-    urd::index<Pin> index;
+    urd::key<Pin> index;
     urd::built_t<LeafKey, Layer> leaf;  // a key held as it is: the builder holds no child of it
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"leaf", &builder::leaf>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 };
 
 template<typename V>
@@ -116,6 +155,16 @@ private:
 
 public:
     [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
+};
+
+template<typename V>
+struct urd::view_mixin<Pin, V>
+{
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_leaf() const { return self().template member<&urd::record_of<V>::leaf>(); }
 };
 
 /// A leaf's key reads as the leaf, through its context; it is written from that view.

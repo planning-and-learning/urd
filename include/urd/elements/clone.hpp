@@ -112,11 +112,12 @@ std::variant<Vs...> clone(const std::variant<Vs...>& value);
 
 namespace detail
 {
-/// Each field of `source` cloned into `target`, its index as it is.
-template<typename R>
+/// Each field of `source` (a record or a builder of T) cloned into `target`, its index as it is where T's records hold
+/// their key (SelfIndexed).
+template<typename T, typename R>
 void clone_fields(R& target, const R& source)
 {
-    if constexpr (requires { source.index; })
+    if constexpr (SelfIndexed<T>)
         target.index = source.index;
     for_each_field<R>([&]<typename F>() { target.*F::member = urd::clone(source.*F::member); });
 }
@@ -131,7 +132,7 @@ template<typename T, typename C>
 builder<T, C> clone(const builder<T, C>& built)
 {
     auto result = builder<T, C>();
-    detail::clone_fields(result, built);
+    detail::clone_fields<T>(result, built);
     return result;
 }
 
@@ -140,7 +141,7 @@ template<typename T>
 data<T> clone(const data<T>& record)
 {
     auto result = data<T>();
-    detail::clone_fields(result, record);
+    detail::clone_fields<T>(result, record);
     return result;
 }
 

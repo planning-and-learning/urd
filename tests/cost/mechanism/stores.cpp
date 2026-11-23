@@ -114,7 +114,7 @@ using Context = Repository<I,
 template<int I>
 struct urd::data<mechanism::A<I>>
 {
-    urd::index<mechanism::A<I>> index;
+    urd::key<mechanism::A<I>> index;
     urd::index<mechanism::Row<I>> row;
 
     data() = default;
@@ -132,12 +132,14 @@ struct urd::data<mechanism::A<I>>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::row> {}; }
+
+    [[nodiscard]] urd::key<mechanism::A<I>> key() const noexcept { return urd::key<mechanism::A<I>>(index); }
 };
 
 template<int I>
 struct urd::data<mechanism::B<I>>
 {
-    urd::index<mechanism::B<I>> index;
+    urd::key<mechanism::B<I>> index;
     urd::index<mechanism::A<I>> head;
     urd::Store<urd::sequence<urd::index<mechanism::A<I>>>> arguments;
 
@@ -161,6 +163,8 @@ struct urd::data<mechanism::B<I>>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::head, &data::arguments> {}; }
+
+    [[nodiscard]] urd::key<mechanism::B<I>> key() const noexcept { return urd::key<mechanism::B<I>>(index); }
 };
 
 template<int I, typename V>

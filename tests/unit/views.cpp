@@ -246,7 +246,7 @@ struct Item;
 template<>
 struct urd::data<Item>
 {
-    urd::index<Item> index;
+    urd::key<Item> index;
     int weight = 0;
     urd::index<Owner> owner;
 
@@ -265,6 +265,8 @@ struct urd::data<Item>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight, &data::owner> {}; }
+
+    [[nodiscard]] urd::key<Item> key() const noexcept { return urd::key<Item>(index); }
 };
 
 template<typename V>

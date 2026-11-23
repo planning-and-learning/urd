@@ -516,13 +516,37 @@ struct NestItem
 template<>
 struct urd::data<NestItem>
 {
-    int weight = 0;
     /// Its key's last part, written by its store at insertion (a record holds its whole key).
-    urd::index<NestItem> index;
+    urd::key<NestItem> index;
+    int weight = 0;
 
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::weight> {}; }
+    data() = default;
 
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::weight, &data::index> {}; }
+    explicit data(int weight_) : index(), weight(weight_) {}
+
+    static constexpr bool copyable() noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<data>, "a copyable record is trivially copyable");
+        return true;
+    }
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &data::weight>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight> {}; }
+
+    [[nodiscard]] urd::key<NestItem> key() const noexcept { return urd::key<NestItem>(index); }
+};
+
+template<typename V>
+struct urd::view_mixin<NestItem, V>
+{
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 };
 
 /// A group's items: a numbered pool of records (urd::layer, no default constructor), layered (an innermost container:
@@ -627,13 +651,37 @@ struct urd::key_value_of<Blob>
 template<>
 struct urd::data<Blob>
 {
-    urd::flat_vector<int> values;
     /// Its key, written by its store at insertion.
     urd::key<Blob> index;
+    urd::flat_vector<int> values;
 
-    static constexpr auto identifying_members() noexcept { return urd::Members<&data::values> {}; }
+    data() = default;
 
-    static constexpr auto cista_members() noexcept { return urd::Members<&data::values, &data::index> {}; }
+    explicit data(urd::flat_vector<int> values_) : index(), values(std::move(values_)) {}
+
+    data(const data& other) = delete;
+    data& operator=(const data& other) = delete;
+    data(data&& other) = default;
+    data& operator=(data&& other) = default;
+    ~data() = default;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"values", &data::values>> {}; }
+
+    static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
+
+    static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::values> {}; }
+
+    [[nodiscard]] urd::key<Blob> key() const noexcept { return urd::key<Blob>(index); }
+};
+
+template<typename V>
+struct urd::view_mixin<Blob, V>
+{
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
 };
 
 namespace

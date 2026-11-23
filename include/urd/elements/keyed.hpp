@@ -145,7 +145,6 @@ concept EnumeratesOwnBy = requires(const S& store) { store.template for_each_own
 template<typename Count>
 concept CountsPerLayer = Count::per_layer;
 
-
 /// What `count` gives for the records of keys K (of kind K::element_type) under the parts `prefix` (its first parts),
 /// by the same steps as record_at: a family first selects the store of the kind (store.get<T>()); each part of the
 /// prefix selects the container of the next (store.visit: 0 where no layer has it); the store reached that holds the
@@ -171,8 +170,8 @@ template<typename K, typename S, typename... Ps, typename Count>
     else if constexpr (CountsPerLayer<Count> && EnumeratesOwnBy<S, detail::first_part<K>>)
     {
         auto result = std::size_t { 0 };
-        store.template for_each_own<detail::first_part<K>>(
-            [&result, &count](const auto& inner) { result += urd::count_at<detail::rest_t<K>>(inner, key<>(), count); });
+        store.template for_each_own<detail::first_part<K>>([&result, &count](const auto& inner)
+                                                           { result += urd::count_at<detail::rest_t<K>>(inner, key<>(), count); });
         return result;
     }
     else
@@ -207,7 +206,7 @@ concept SelectsStoreForInsertOf = requires(S& store) { store.template get<T>(); 
 /// of one part), and whether it was stored now: the same fold as record_at, one step shorter. A family first selects the
 /// store of the record's kind (store.get<T>()); each known part selects the container of the next (store.own: made
 /// where there is none); the store reached inserts the content (deduplicated) and gives the last part, which is written
-/// into the content (its `index`: a record holds its whole key).
+/// into the content (its `index`: the local part of its key).
 template<typename S, typename... Ps, typename T>
 std::pair<key<Ps..., T>, bool> insert_at(S& store, key<Ps...> known, data<T>& content)
 {

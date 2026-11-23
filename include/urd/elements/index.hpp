@@ -26,8 +26,8 @@ struct layer
 
 /// What the part of tag T of a key holds, and the value of it that names nothing: by default the number of a T (an
 /// index; none its largest value). A library whose store names its records otherwise (a pool's handle of a packed
-/// value, whose default names nothing, as a key's does) specializes it for its tag; its key is then that tagged value, and whatever only compares, hashes, stores and
-/// resolves keys takes it as it takes an index.
+/// value, whose default names nothing, as a key's does) specializes it for its tag; its key is then that tagged value, and whatever only compares, hashes,
+/// stores and resolves keys takes it as it takes an index.
 template<typename T>
 struct key_value_of
 {
@@ -175,10 +175,11 @@ struct context_of;
 template<typename T>
 struct data;
 
-/// Whether a record of T carries its own index (a field index of urd::key<T>), as an interned record does.
+/// Whether a record of T holds its key, as an interned record does: its key() (key_t<T>: its index, the local part its
+/// store writes, after the parts that select that store), the one way urd reads it.
 template<typename T>
 concept SelfIndexed = requires(const data<T>& record) {
-    { record.index } -> std::same_as<const key<T>&>;
+    { record.key() } -> std::same_as<key_t<T>>;
 };
 
 /// A T read through a context C, which it borrows (urd/elements/view.hpp): index_view holds an index K (key<T>, or a

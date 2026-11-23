@@ -38,7 +38,7 @@ struct LeafKey
 template<>
 struct urd::data<Leaf>
 {
-    urd::index<Leaf> index;
+    urd::key<Leaf> index;
     int weight = 0;
 
     data() = default;
@@ -56,12 +56,14 @@ struct urd::data<Leaf>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::weight> {}; }
+
+    [[nodiscard]] urd::key<Leaf> key() const noexcept { return urd::key<Leaf>(index); }
 };
 
 template<>
 struct urd::data<Node>
 {
-    urd::index<Node> index;
+    urd::key<Node> index;
     urd::index<Leaf> first;
     urd::flat_vector<urd::index<Leaf>> rest;
     int depth = 0;
@@ -82,6 +84,8 @@ struct urd::data<Node>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::first, &data::rest, &data::depth> {}; }
+
+    [[nodiscard]] urd::key<Node> key() const noexcept { return urd::key<Node>(index); }
 };
 
 template<typename V>
@@ -111,7 +115,7 @@ public:
 template<>
 struct urd::builder<Leaf, Nodes>
 {
-    urd::index<Leaf> index;
+    urd::key<Leaf> index;
     urd::built_t<int, Nodes> weight = 0;
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &builder::weight>> {}; }
@@ -122,7 +126,7 @@ struct urd::builder<Leaf, Nodes>
 template<>
 struct urd::builder<Node, Nodes>
 {
-    urd::index<Node> index;
+    urd::key<Node> index;
     urd::built_t<urd::index<Leaf>, Nodes> first;
     urd::built_t<urd::flat_vector<urd::index<Leaf>>, Nodes> rest;
     urd::built_t<int, Nodes> depth = 0;
@@ -520,7 +524,7 @@ struct Mixed;
 template<>
 struct urd::data<Mixed>
 {
-    urd::index<Mixed> index;
+    urd::key<Mixed> index;
     urd::flat_vector<std::uint32_t> values;
 
     data() = default;
@@ -538,17 +542,24 @@ struct urd::data<Mixed>
     static constexpr auto identifying_members() noexcept { return urd::members_of(fields()); }
 
     static constexpr auto cista_members() noexcept { return urd::Members<&data::index, &data::values> {}; }
+
+    [[nodiscard]] urd::key<Mixed> key() const noexcept { return urd::key<Mixed>(index); }
 };
 
 template<typename V>
 struct urd::view_mixin<Mixed, V>
 {
+private:
+    [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
+
+public:
+    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
 };
 
 template<>
 struct urd::builder<Mixed, Nodes>
 {
-    urd::index<Mixed> index;
+    urd::key<Mixed> index;
     urd::built_t<urd::flat_vector<std::uint32_t>, Nodes> values;
 
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"values", &builder::values>> {}; }

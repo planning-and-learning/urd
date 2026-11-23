@@ -58,8 +58,9 @@ struct view_mixin : detail::no_view_mixin
 {
 };
 
-/// A record view's accessors are its record's mixin (view_mixin<R, V>): a stored record and a builder read as T,
-/// unless a mixin of their own says otherwise.
+/// A record view's accessors are its record's mixin (view_mixin<R, V>): a held record and a builder read as T, unless
+/// a mixin of their own says otherwise. An index_view reads as T, whatever form its context hands its record out in
+/// (stored_ref<T>): member<>() reads each field from that form (stored_field).
 template<typename T, typename V>
 struct view_mixin<data<T>, V> : view_mixin<T, V>
 {
@@ -67,12 +68,6 @@ struct view_mixin<data<T>, V> : view_mixin<T, V>
 
 template<typename T, typename C, typename V>
 struct view_mixin<builder<T, C>, V> : view_mixin<T, V>
-{
-};
-
-/// An index_view's accessors are its stored form's (view_mixin<stored_ref<T>, V>): a record held in place reads as T.
-template<typename T, typename V>
-struct view_mixin<record_ref<T>, V> : view_mixin<T, V>
 {
 };
 
@@ -615,20 +610,20 @@ private:
 /// names its index, index(). K is urd::key<T>, or a handle of another shape that the context resolves (a key of
 /// several parts: a row's pool and its position there).
 template<typename T, typename C, typename K>
-class index_view : public detail::view_base<index_view<T, C, K>, T, C, stored_ref<T>>
+class index_view : public detail::view_base<index_view<T, C, K>, T, C, T>
 {
-    friend detail::view_base<index_view, T, C, stored_ref<T>>;
+    friend detail::view_base<index_view, T, C, T>;
     friend detail::view_access;
 
 public:
     /// Its record: data<T> (named only here, so that a view of a record not yet complete may be declared).
     using record_type = data<T>;
 
-    index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, stored_ref<T>>(context), m_at(at) {}
+    index_view(K at, const C* context) noexcept : detail::view_base<index_view, T, C, T>(context), m_at(at) {}
 
     /// The none view: the none key, no context (an empty urd::child). Only assigned to and compared by its key: it has no
     /// record to read.
-    index_view() noexcept : detail::view_base<index_view, T, C, stored_ref<T>>(nullptr), m_at() {}
+    index_view() noexcept : detail::view_base<index_view, T, C, T>(nullptr), m_at() {}
 
     [[nodiscard]] K index() const noexcept { return m_at; }
 
@@ -820,7 +815,10 @@ template<template<typename...> typename V, typename... Ts>
 consteval bool argument_holds_child(std::type_identity<V<Ts...>> /*instance*/)
 { return (detail::holds_child<Ts>() || ...); }
 
-consteval bool argument_holds_child(...) { return false; }
+/// Any other type holds none (the more specialized overload above takes a class template instance).
+template<typename M>
+consteval bool argument_holds_child(std::type_identity<M> /*other*/)
+{ return false; }
 
 template<typename T>
 inline constexpr bool data_type = false;

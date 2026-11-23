@@ -25709,6 +25709,54 @@
     "element_size": 32,
     "plain": false
    }
+  },
+  "multi_indexed_row_interner/-;Store<sequence<int>, stable_refs, frozen, positional>/16": {
+   "fingerprint": "40276cd2f2d96d1c",
+   "recorded": "2026-11-23",
+   "ns": {
+    "access": 9.97,
+    "insert_row": 90.303,
+    "find_row": 37.305
+   },
+   "memory": {
+    "counted": 35428,
+    "told": 35428,
+    "elements": 4096,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "multi_indexed_row_interner/-;Store<sequence<int>, stable_refs, frozen, positional>/256": {
+   "fingerprint": "40276cd2f2d96d1c",
+   "recorded": "2026-11-23",
+   "ns": {
+    "access": 16.895,
+    "insert_row": 1953.837,
+    "find_row": 740.188
+   },
+   "memory": {
+    "counted": 511588,
+    "told": 511588,
+    "elements": 65536,
+    "element_size": 4,
+    "plain": true
+   }
+  },
+  "multi_indexed_row_interner/-;Store<sequence<int>, stable_refs, frozen, positional>/4096": {
+   "fingerprint": "40276cd2f2d96d1c",
+   "recorded": "2026-11-23",
+   "ns": {
+    "access": 285.065,
+    "insert_row": 35174.396,
+    "find_row": 11373.146
+   },
+   "memory": {
+    "counted": 8130148,
+    "told": 8130148,
+    "elements": 1048576,
+    "element_size": 4,
+    "plain": true
+   }
   }
  },
  "compiler": "unknown",

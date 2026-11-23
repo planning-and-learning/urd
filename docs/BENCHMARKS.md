@@ -198,7 +198,7 @@ registry moves containers with stable storage last and the two are level.
 
 ## The registry's choices, measured
 
-Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, unknown). Each container is measured on its own (`benchmarks/suites/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 618 not compared, as the other gives a costly guarantee the request did not ask for; 105 settled by their costs; 106 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
+Generated from `benchmarks/results/dominik-MS-7D31.json` (12th Gen Intel(R) Core(TM) i9-12900KF, unknown). Each container is measured on its own (`benchmarks/suites/requests.json`): its lifecycle on each shape of element at three sizes, the median of three runs, in ns per operation. For each request, the chosen container against every other that serves it: 619 not compared, as the other gives a costly guarantee the request did not ask for; 105 settled by their costs; 106 measured. Alike costs are decided asymptotically: a measured choice holds where, at the largest size measured, the chosen container's lifecycle (the sum of the compared operations' times per element) exceeds the other's by at most 10% or 5 ns, whichever is larger, unless it takes fewer words per element. The costs and measured times of every container are in the complexity tables of each kind of Store.
 
 ### Choices that fail
 
@@ -280,6 +280,7 @@ The heap each container's Store holds once its lifecycle filled it, counted apar
 | `layered_thread_safe_row_interner` | O(n), 4.1 words | 4.05 | 0.0% |
 | `lifo` | O(n), 1.5 words | 0.82 | 0.0% |
 | `map` | O(n), 5 words | 5.00 | 0.0% |
+| `multi_indexed_row_interner` | O(n), 4.5 words | 1.08 | 0.0% |
 | `multimap` | O(n), 5 words | 5.00 | 0.0% |
 | `ordered_map` | O(capacity), 3.5 words | 2.66 | 0.0% |
 | `ordered_sparse_set` | O(U), 2.7 words | 2.69 | 0.0% |
