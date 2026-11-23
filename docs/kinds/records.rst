@@ -21,7 +21,7 @@ Without ``flat``, any hashable value is interned as it is (``ValueInterner``, an
 strings is ``Store<pool<std::string>>``). With ``flat``, records are stored as bytes:
 
 A pool of records stored ``flat`` interns whole records: each distinct record once, as one self-contained block of
-bytes, under the :cpp:struct:`index\<Record\> <urd::index>` ``insert`` gave it (or the index the request names,
+bytes, under the :cpp:type:`index\<Record\> <urd::index>` ``insert`` gave it (or the index the request names,
 ``pool<urd::data<T>, index<T>>``: the record a Store holds for an ``index<T>``, whose views are ``index_view<T, Store>``);
 read back by index, looked up by record, counted.
 A record (:doc:`/elements/records`) names its identity (:cpp:struct:`Members`); it is trivially copyable, or it names
@@ -64,7 +64,7 @@ interner) is included where the Store is held, ``urd/elements/flat.hpp`` where a
 Member types
 ------------
 
-``value_type`` is ``Record``; ``handle_type`` is :cpp:struct:`index\<Record\> <urd::index>`.
+``value_type`` is ``Record``; ``handle_type`` is :cpp:type:`index\<Record\> <urd::index>`.
 
 Member functions
 ----------------

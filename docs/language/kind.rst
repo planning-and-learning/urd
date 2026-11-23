@@ -30,7 +30,7 @@ their containers asks what the elements are.
 
 .. urd-category:: any_handle
 
-   A pool: ``insert`` gives an :cpp:struct:`urd::index`; with ``unique`` equal rows get equal handles. On a priority
+   A pool: ``insert`` gives an :cpp:type:`urd::index`; with ``unique`` equal rows get equal handles. On a priority
    queue, ``push`` gives a handle to ``update`` or ``erase`` by.
 
 .. urd-category:: any_grouping

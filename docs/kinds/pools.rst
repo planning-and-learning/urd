@@ -22,7 +22,7 @@ A pool is one kind (``pool``, ``handles`` with ``unique``) whatever it holds: ro
 container of elements) are interned as rows, on this page; values that are not rows are interned whole, on
 :doc:`records`. Slots (``handles`` without ``unique``) are a kind of their own.
 
-A pool is reached by handle, not iterated. A handle is an :cpp:struct:`index\<Row\> <urd::index>`, or the index the
+A pool is reached by handle, not iterated. A handle is an :cpp:type:`index\<Row\> <urd::index>`, or the index the
 request names, ``pool<V, H>`` (an ``urd::index`` of any type: a pool of ``urd::data<T>`` handing out ``index<T>``,
 rows handing out a repository's own row index): a pool of rows kept in full numbers them 0..size()-1, so a pool without ``structural_sharing`` is counted and walked by its handles. A pool
 with ``structural_sharing`` (a tree pool) shares nodes between rows and keeps no list of them: it has a handle of its
@@ -75,7 +75,7 @@ Member types
    * - ``value_type``
      - ``Row``
    * - ``handle_type``
-     - ``H`` (:cpp:struct:`index\<Row\> <urd::index>` by default), or the tree pools' handle
+     - ``H`` (:cpp:type:`index\<Row\> <urd::index>` by default), or the tree pools' handle
    * - ``write_type``
      - ``Write<element>``: a change to a sequence row, its value at a position
 

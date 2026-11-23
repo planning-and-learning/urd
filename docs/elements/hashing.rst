@@ -8,7 +8,7 @@ Hashing and equality
    ``hash_t operator()(const T&) const``: a deterministic 64-bit hash (scalars as themselves, Boost.ContainerHash
    mixing for composites). Given for arithmetic types, enums, strings and string views, the standard's composites
    (``pair``, ``tuple``, ``array``, ``vector``, ``set``, ``map``, ``optional``, ``variant``, ``span``), any
-   :cpp:concept:`Identifiable` type, :cpp:struct:`urd::index`,
+   :cpp:concept:`Identifiable` type, :cpp:type:`urd::index`,
    the views (:cpp:class:`urd::index_view` and the record views), the flat containers of ``urd/elements/flat.hpp``, any range whose elements in order are its
    value (``urd::value_range<R> = true``: hashed, compared and ordered as its elements), and Stores whose contents fix
    their order (``sorted``, ``canonical``, sequences). There is deliberately no fallback to ``std::hash``.

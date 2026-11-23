@@ -74,7 +74,7 @@ Member types
    * - ``iterator``, ``const_iterator``, ``reference``, ``const_reference``
      - the representation's; a set's elements never change in place, so ``iterator`` is ``const_iterator``
    * - ``index_type``
-     - :cpp:struct:`index\<K\> <urd::index>` (``positional`` only)
+     - :cpp:type:`index\<K\> <urd::index>` (``positional`` only)
 
 Member functions
 ----------------
@@ -232,7 +232,7 @@ Every insertion-ordered set is kept in one array, so it has positions whether th
 .. cpp:function:: const_reference at(index_type at) const
 .. cpp:function:: index_type index(const_iterator it) const
 
-   The same, through :cpp:struct:`index\<K\> <urd::index>`: what an interner mints. ``at`` throws ``std::out_of_range`` for
+   The same, through :cpp:type:`index\<K\> <urd::index>`: what an interner mints. ``at`` throws ``std::out_of_range`` for
    ``none`` or a position past the end.
 
 .. cpp:function:: index_view<K, Store> view(index_type at) const

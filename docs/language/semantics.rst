@@ -114,6 +114,11 @@ What more it can do
    of rows); their contents change in place, and ``reset()`` sets them back to defaults (with ``proportional_clear``,
    only rows handed out to change since).
 
+.. urd-category:: any_indexing
+
+   A pool of rows also found by sets of its columns (``multi_indexed``): hashed non-unique indexes added at run time
+   with ``add_index(columns)``, kept as rows are inserted and erased.
+
 How it hands out memory
 -----------------------
 
@@ -126,7 +131,7 @@ How it hands out memory
 .. urd-category:: any_packing
 
    Each record of an interning pool is one self-contained block of bytes (trivially copyable, or serialized by
-   cista), frozen once stored and read by :cpp:struct:`urd::index`.
+   cista), frozen once stored and read by :cpp:type:`urd::index`.
 
 .. urd-category:: word
 

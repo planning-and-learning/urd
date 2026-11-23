@@ -9,9 +9,9 @@ Indices
 
 .. cpp:struct:: template<typename K> index_of
 
-   How a key is an index 0..n-1: ``is_index(key)`` (a negative integer, or :cpp:struct:`urd::index`'s none, is no
+   How a key is an index 0..n-1: ``is_index(key)`` (a negative integer, or :cpp:type:`urd::index`'s none, is no
    index, and a lookup of one finds nothing), ``to_index(key)`` and ``from_index(std::size_t)``. Given for
-   non-negative integers, enums, types identified by one integral member, and :cpp:struct:`urd::index`; specialize it
+   non-negative integers, enums, types identified by one integral member, and :cpp:type:`urd::index`; specialize it
    for others.
 
 .. cpp:struct:: template<typename... Ts> key
