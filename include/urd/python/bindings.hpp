@@ -174,8 +174,21 @@ template<typename Data>
     requires HasFields<Data>
 void bind_fields(nb::class_<Data>& cls)
 {
-    for_each_field<Data>([&]<typename F>() { cls.def_rw(F::c_name, F::member); });
-    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { cls.def(nb::init<member_type_t<Fs::member>...>(), nb::arg(Fs::c_name)...); }(Data::fields());
+    // Read in place, written as a clone (urd::clone: a copy where it is copyable, field by field where it holds a
+    // move-only record, a plan), so that a field of any type binds alike.
+    for_each_field<Data>(
+        [&]<typename F>()
+        {
+            cls.def_prop_rw(
+                F::c_name,
+                [](const Data& data) -> const member_type_t<F::member>& { return data.*F::member; },
+                [](Data& data, const member_type_t<F::member>& value) { data.*F::member = urd::clone(value); },
+                nb::rv_policy::reference_internal);
+        });
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/)
+    {
+        cls.def("__init__", [](Data* self, const member_type_t<Fs::member>&... values) { new (self) Data(urd::clone(values)...); }, nb::arg(Fs::c_name)...);
+    }(Data::fields());
 }
 
 /// A view's getters, get_<name> for each field of its record: the field resolved through the view's context.
@@ -183,9 +196,17 @@ template<typename View>
     requires HasFields<record_of<View>>
 void bind_field_getters(nb::class_<View>& cls)
 {
+    // A field read in place (a reference into the view's record or context: a plan, a value of fields) is returned as
+    // that reference, kept alive by the view (reference_internal), never copied: a move-only value has no copy; one
+    // resolved (a view) is returned by value, moved.
     for_each_field<record_of<View>>(
         [&]<typename F>()
-        { cls.def(F::template prefixed<"get_">.data(), [](const View& view) -> decltype(auto) { return view.template member<F::member>(); }); });
+        {
+            cls.def(
+                F::template prefixed<"get_">.data(),
+                [](const View& view) -> decltype(auto) { return view.template member<F::member>(); },
+                nb::rv_policy::reference_internal);
+        });
 }
 
 /// Binds the record T as <name>Data (urd::name<T>()), the one way a record is bound: an __init__ from its fields in

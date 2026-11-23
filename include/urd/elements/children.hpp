@@ -5,6 +5,7 @@
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/elements/walk.hpp"
 #include "urd/traits.hpp"
 
 #include <boost/mp11/algorithm.hpp>
@@ -73,7 +74,7 @@ struct built_form
 {
     using type = M;
 
-    static void assign(const M& value, M& into) { into = value; }
+    static void assign(const M& value, M& into) { detail::assign_value(value, into); }
 };
 
 template<typename M, typename C>
@@ -209,49 +210,11 @@ struct missing_key
 
 namespace detail
 {
-/// Calls f with each member of a record whose cista_members() is a Members list.
-template<typename R, typename F>
-void for_each_cista_member(R& record, F f)
-{
-    [&]<auto... Ms>(Members<Ms...>) { (f(record.*Ms), ...); }(std::remove_const_t<R>::cista_members());
-}
-
 /// A slot of type S that is a child: an index of a type in the list Types.
 template<typename S, typename Types>
 concept child_of = Key<std::remove_const_t<S>> && boost::mp11::mp_contains<Types, typename std::remove_const_t<S>::element_type>::value;
 template<typename Types, typename S>
 inline constexpr bool is_child = child_of<S, Types>;
-
-/// Walks member (const or not, as member is) in member order, calling f with each slot f takes (std::invocable) and
-/// not descending into it; any other slot is descended into where it is one of the flat containers a stored record
-/// holds (flat_vector, flat_variant, flat_optional, flat_pair) or a nested record, else skipped. An index f does not
-/// take is skipped too (its own cista member, value, is no slot).
-template<typename M, typename F>
-void walk(M& member, F& f)
-{
-    using V = std::remove_const_t<M>;
-    if constexpr (std::invocable<F&, M&>)
-        f(member);
-    else if constexpr (Key<V>)
-        return;
-    else if constexpr (FlatVector<V>)
-        for (auto& element : member)
-            walk(element, f);
-    else if constexpr (FlatVariant<V>)
-        member.apply([&](auto& alternative) { walk(alternative, f); });
-    else if constexpr (FlatOptional<V>)
-    {
-        if (member.has_value())
-            walk(*member, f);
-    }
-    else if constexpr (FlatPair<V>)
-    {
-        walk(member.first, f);
-        walk(member.second, f);
-    }
-    else if constexpr (Serializable<V>)
-        for_each_cista_member(member, [&](auto& nested) { walk(nested, f); });
-}
 
 /// walk over record's members, but for its own handle: a direct member of type key<T>.
 template<typename T, typename R, typename F>
@@ -305,7 +268,7 @@ void assign_member(flat_variant<Ms...>& target, const std::variant<Bs...>& sourc
 
 template<typename M, typename F>
 void assign_member(M& target, const M& source, F& /*f*/)
-{ target = source; }
+{ detail::assign_value(source, target); }
 
 template<typename R>
 inline constexpr bool lookup_result_type = false;
@@ -520,6 +483,8 @@ void assign_fields_from(R& scratch, const S& source)
                 auto& target = scratch.*Ds::member;
                 if constexpr (FlatVector<std::remove_cvref_t<decltype(target)>>)
                     target.set(std::ranges::begin(value), std::ranges::end(value));
+                else if constexpr (std::same_as<std::remove_cvref_t<decltype(value)>, std::remove_cvref_t<decltype(target)>>)
+                    detail::assign_value(value, target);
                 else
                     target = value;
             }(),
@@ -644,7 +609,7 @@ template<typename A, typename B, typename M, typename N, typename Cx, typename F
 void build_member(std::pair<A, B>& target, const flat_pair<M, N>& source, const Cx& context, F& f);
 template<typename... Bs, typename... Ms, typename Cx, typename F>
 void build_member(std::variant<Bs...>& target, const flat_variant<Ms...>& source, const Cx& context, F& f);
-template<std::copyable T, typename Cx, typename F>
+template<typename T, typename Cx, typename F>
     requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& context, F& f);
 template<typename K, typename Cx, typename F>
@@ -750,10 +715,10 @@ void build_member(std::variant<Bs...>& target, const flat_variant<Ms...>& source
     detail::build_alternative<0>(target, source, context, f);
 }
 
-template<std::copyable T, typename Cx, typename F>
+template<typename T, typename Cx, typename F>
     requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& /*context*/, F& /*f*/)
-{ target = source; }
+{ detail::assign_value(source, target); }
 
 /// A key held as it is (a builder holds no child of it): the key of the view f gives for what it names, as a child's;
 /// the none key as it is.

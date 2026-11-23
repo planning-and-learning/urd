@@ -6,6 +6,7 @@
 #include "urd/elements/index.hpp"
 #include "urd/elements/keyed.hpp"
 #include "urd/elements/less.hpp"
+#include "urd/elements/walk.hpp"
 #include "urd/memory.hpp"
 
 #include <algorithm>
@@ -884,10 +885,46 @@ concept DeclaresViewMixin = !std::is_base_of_v<detail::no_view_mixin, view_mixin
 template<typename T>
 concept PlainValue = !SelfIndexed<T> && !detail::record_holds_child<T>() && !DeclaresViewMixin<T>;
 
-/// A stored record held in place (inside a composition, or given to urd::resolve): the view its context makes of it
-/// (context.view(record)), the context of the repository owning its kind, reached from the context of its parent (the
-/// same where it holds the kind itself, a borrowed_view). A context that neither holds nor reaches its kind does not
-/// compile: no view is ever through a context that does not own its record. Never a temporary.
+namespace detail
+{
+/// The context a value (a record with no index) is viewed through: of the layers owning the children it holds (every
+/// key of a kind the context resolves, at any depth of its members: detail::walk, into the context's own type), the one
+/// made last, which reaches the others (a layer's number exceeds its parent's); the context it is read through where it
+/// holds none, or where that context has no layers. The same value read through any layer above is thus one view (a
+/// view is identified by its record and its context's layer).
+template<typename T, typename C>
+[[nodiscard]] const C* value_context(const data<T>& record, const C& context)
+{
+    if constexpr (HasLayers<C>)
+    {
+        const C* owner = nullptr;
+        auto visit = [&]<Key K>(const K& key)
+            requires requires { context.view(key); }
+        {
+            const auto& child = context.view(key).context();
+            if constexpr (std::same_as<std::remove_cvref_t<decltype(child)>, C>)
+            {
+                if (owner == nullptr || child.layer() > owner->layer())
+                    owner = &child;
+            }
+        };
+        for_each_cista_member(record, [&](const auto& member) { walk(member, visit); });
+        if (owner != nullptr)
+            return owner;
+        else
+            return &context;
+    }
+    else
+        return &context;
+}
+}  // namespace detail
+
+/// A stored record held in place (inside a composition, or given to urd::resolve): an interned kind (SelfIndexed) as the
+/// view its context makes of it (context.view(record)), the context of the repository owning its kind, reached from the
+/// context of its parent (the same where it holds the kind itself, a borrowed_view); a context that neither holds nor
+/// reaches its kind does not compile: no view is ever through a context that does not own its record. A value (no
+/// index: no repository owns its kind, its parent holds it) as its borrowed_view through the lowest layer that reaches
+/// its children (detail::value_context); a temporary value as its owning_view, through the same.
 template<typename T>
     requires(!PlainValue<T>)
 struct resolution<data<T>>
@@ -895,9 +932,24 @@ struct resolution<data<T>>
     static_assert(stored_record<T>, "urd::data<T> must be Serializable: cista_members() returning urd::Members<...>");
 
     template<typename C>
-        requires detail::ViewsRecords<C, T>
-    static auto of(const data<T>& member, const C& context) noexcept
-    { return context.view(member); }
+        requires(!SelfIndexed<T> || detail::ViewsRecords<C, T>)
+    static auto of(const data<T>& member, const C& context)
+    {
+        if constexpr (SelfIndexed<T>)
+            return context.view(member);
+        else
+            return borrowed_view<T, C> { &member, detail::value_context(member, context) };
+    }
+
+    /// A value computed on the fly (a temporary, no index) as its owning_view, which holds it (detail::value_context).
+    /// An interned record is never viewed from a temporary.
+    template<typename C>
+        requires(!SelfIndexed<T>)
+    static owning_view<T, C> of(data<T>&& member, const C& context)
+    {
+        const auto* owner = detail::value_context(member, context);
+        return { std::move(member), owner };
+    }
 
     template<typename C>
     static void of(const data<T>&& member, const C& context) = delete;

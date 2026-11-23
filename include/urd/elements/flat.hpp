@@ -6,6 +6,7 @@
 
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
+#include "urd/elements/flat_containers.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/memory.hpp"
@@ -27,50 +28,6 @@
 
 namespace urd
 {
-
-/// The containers of a record stored flat: cista's, which serialize as a whole.
-template<typename T>
-using flat_vector = ::cista::offset::vector<T>;
-using flat_string = ::cista::offset::string;
-template<typename... Ts>
-using flat_variant = ::cista::offset::variant<Ts...>;
-template<typename T>
-using flat_optional = ::cista::optional<T>;
-template<typename T1, typename T2>
-using flat_pair = ::cista::pair<T1, T2>;
-
-namespace detail
-{
-template<typename T>
-inline constexpr bool flat_vector_type = false;
-template<typename T>
-inline constexpr bool flat_vector_type<flat_vector<T>> = true;
-template<typename T>
-inline constexpr bool flat_variant_type = false;
-template<typename... Ts>
-inline constexpr bool flat_variant_type<flat_variant<Ts...>> = true;
-template<typename T>
-inline constexpr bool flat_optional_type = false;
-template<typename T>
-inline constexpr bool flat_optional_type<flat_optional<T>> = true;
-template<typename T>
-inline constexpr bool flat_pair_type = false;
-template<typename T1, typename T2>
-inline constexpr bool flat_pair_type<flat_pair<T1, T2>> = true;
-}  // namespace detail
-
-/// Whether T is one of the flat containers above.
-template<typename T>
-concept FlatVector = detail::flat_vector_type<T>;
-template<typename T>
-concept FlatVariant = detail::flat_variant_type<T>;
-template<typename T>
-concept FlatOptional = detail::flat_optional_type<T>;
-template<typename T>
-concept FlatPair = detail::flat_pair_type<T>;
-/// The flat_variant of the indices of a type list's tags.
-template<typename L>
-using index_variant = boost::mp11::mp_apply<flat_variant, boost::mp11::mp_transform<index, L>>;
 
 /// Text hashes as its bytes (Hash<std::string_view>), so equal text hashes alike in every representation; it compares
 /// by cista's ==.
@@ -122,7 +79,12 @@ template<typename M, typename R>
 template<typename M, typename R>
     requires stores<M, R>
 void store(M& member, const R& readout)
-{ member = resolution<M>::stored(readout); }
+{
+    if constexpr (std::same_as<M, R>)
+        detail::assign_value(readout, member);  // a value of its own type, written in place (no copy of it)
+    else
+        member = resolution<M>::stored(readout);
+}
 
 /// Appends a readout to a list member, as its element type stores it (urd::as_member).
 template<typename List, typename R>
