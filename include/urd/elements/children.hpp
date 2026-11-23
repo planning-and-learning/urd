@@ -612,6 +612,10 @@ void build_member(std::variant<Bs...>& target, const flat_variant<Ms...>& source
 template<typename T, typename Cx, typename F>
     requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& context, F& f);
+template<typename T, typename R, typename Cx, typename F>
+    requires(!std::same_as<T, R> && !variant_value<T> && !variant_value<R> && !FlatVector<R> && !FlatOptional<R> && !FlatPair<R> && !is_built_element_wise<T>
+             && !held_key<T, Cx> && stores<T, R>)
+void build_member(T& target, const R& source, const Cx& context, F& f);
 template<typename K, typename Cx, typename F>
     requires held_key<K, Cx>
 void build_member(K& target, const K& source, const Cx& context, F& f);
@@ -719,6 +723,14 @@ template<typename T, typename Cx, typename F>
     requires(!is_built_element_wise<T> && !held_key<T, Cx>)
 void build_member(T& target, const T& source, const Cx& /*context*/, F& /*f*/)
 { detail::assign_value(source, target); }
+
+/// A value built from a readout of another type (a stored form's field read as a view over its storage: a packed
+/// denotation's bits): written as the built value's type writes it from that readout (urd::store, resolution<T>::stored).
+template<typename T, typename R, typename Cx, typename F>
+    requires(!std::same_as<T, R> && !variant_value<T> && !variant_value<R> && !FlatVector<R> && !FlatOptional<R> && !FlatPair<R> && !is_built_element_wise<T>
+             && !held_key<T, Cx> && stores<T, R>)
+void build_member(T& target, const R& source, const Cx& /*context*/, F& /*f*/)
+{ urd::store(target, source); }
 
 /// A key held as it is (a builder holds no child of it): the key of the view f gives for what it names, as a child's;
 /// the none key as it is.
