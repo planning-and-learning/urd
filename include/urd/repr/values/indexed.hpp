@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/access.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/prehashed.hpp"
@@ -83,11 +84,16 @@ struct single_table
         return found == positions.end() ? std::nullopt : std::optional<index>(found->value);
     }
 
+    /// One thread: a frozen table is read as any.
+    template<typename K>
+    [[nodiscard]] static std::optional<index> find(const type& positions, const prehashed<K>& key, FrozenRead /*read*/)
+    { return find(positions, key); }
+
     /// The position of `key`, and whether it is new: then `append()` stored its element and gave the position, which
     /// enters the table with the key's hash (gtl takes it as its own hash() gives it: for a prehashed key, the hash it
     /// carries).
     template<typename K, typename Append>
-    static std::pair<index, bool> find_or_insert(type& positions, mutex& /*writer*/, const prehashed<K>& key, Append append)
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& /*writer*/, const prehashed<K>& key, Append append, SharedWrite /*write*/)
     {
         if (const auto found = find(positions, key))
             return { *found, false };
@@ -95,6 +101,11 @@ struct single_table
         positions.emplace_with_hash(positions.hash(key), Position { position });
         return { position, true };
     }
+
+    /// One thread: an exclusive insert is any.
+    template<typename K, typename Append>
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& writer, const prehashed<K>& key, Append append, ExclusiveWrite /*write*/)
+    { return find_or_insert(positions, writer, key, std::move(append), SharedWrite {}); }
 };
 
 /// Threads share the set: gtl's sharded table, its 2^7 shards each under a shared spin lock (yggdrasil's interners
@@ -125,8 +136,20 @@ struct shared_table
         return found;
     }
 
+    /// The position `key` is held at in a table no thread changes while it is read (FrozenRead): its shard searched
+    /// without the shard's lock.
+    template<typename K>
+    [[nodiscard]] static std::optional<index> find(const type& positions, const prehashed<K>& key, FrozenRead /*read*/)
+    {
+        const auto hash = positions.hash(key);
+        const auto& shard = positions.get_inner(positions.subidx(hash)).set_;
+        if (const auto it = shard.find(key, hash); it != shard.end())
+            return it->value;
+        return std::nullopt;
+    }
+
     template<typename K, typename Append>
-    static std::pair<index, bool> find_or_insert(type& positions, mutex& writer, const prehashed<K>& key, Append append)
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& writer, const prehashed<K>& key, Append append, SharedWrite /*write*/)
     {
         // Most inserts find their element: looked up first, under the shard's shared lock only.
         if (const auto found = find(positions, key))
@@ -146,6 +169,19 @@ struct shared_table
                 inserted = true;
             });
         return { position, inserted };
+    }
+
+    /// The position of `key`, appended where it is new, by the one thread that uses the table meanwhile (ExclusiveWrite):
+    /// its shard searched and written without the shard's lock, the append without the writer lock.
+    template<typename K, typename Append>
+    static std::pair<index, bool> find_or_insert(type& positions, mutex& /*writer*/, const prehashed<K>& key, Append append, ExclusiveWrite /*write*/)
+    {
+        if (const auto found = find(positions, key, FrozenRead {}))
+            return { *found, false };
+        const auto hash = positions.hash(key);
+        const auto position = append();
+        positions.get_inner(positions.subidx(hash)).set_.emplace_with_hash(hash, Position { position });
+        return { position, true };
     }
 };
 
@@ -407,28 +443,34 @@ public:
 
     /// The element's position, appending it where it is new. Thread-safe, a lookup first, without a lock; a new
     /// element is appended and indexed under the lock, looked up again there in case another thread inserted it.
-    std::pair<iterator, bool> insert(const T& element) { return inserted(element, Keys::hash(element)); }
+    std::pair<iterator, bool> insert(const T& element) { return inserted(element, Keys::hash(element), SharedWrite {}); }
 
     std::pair<iterator, bool> insert(T&& element)
     {
         const auto hash = Keys::hash(element);
-        return inserted(std::move(element), hash);
+        return inserted(std::move(element), hash, SharedWrite {});
     }
 
     /// A copy of the key where it is new.
-    std::pair<iterator, bool> insert(const prehashed<T>& key) { return inserted(key.key, key.hash); }
+    std::pair<iterator, bool> insert(const prehashed<T>& key) { return inserted(key.key, key.hash, SharedWrite {}); }
+
+    /// An element or a row with its hash, inserted by the one thread that uses the set meanwhile (ExclusiveWrite): without
+    /// its locks.
+    template<typename K>
+    std::pair<iterator, bool> insert(const prehashed<K>& key, ExclusiveWrite write)
+    { return inserted(key.key, key.hash, write); }
 
     /// A set of rows inserts a row from any range of its elements its storage takes, or one with its hash
     /// (urd::hash_range of the elements), copied where it is new.
     template<detail::row_of<typename Elements::value_type> R>
         requires row_input<R>
     std::pair<iterator, bool> insert(const R& row)
-    { return inserted(row, Keys::hash(row)); }
+    { return inserted(row, Keys::hash(row), SharedWrite {}); }
 
     template<detail::row_of<typename Elements::value_type> R>
         requires row_input<prehashed<R>>
     std::pair<iterator, bool> insert(const prehashed<R>& key)
-    { return inserted(key.key, key.hash); }
+    { return inserted(key.key, key.hash, SharedWrite {}); }
 
     /// New elements go last, wherever the hint is.
     iterator insert(const_iterator /*hint*/, const T& element) { return insert(element).first; }
@@ -523,6 +565,12 @@ private:
     [[nodiscard]] std::optional<size_type> position(const R& row) const
     { return position_from(lookup(row)); }
 
+    /// The position of an element, a row, or either prehashed, in a set no thread changes while it is read (FrozenRead,
+    /// a parent layer's): without the table's read locks.
+    template<typename X>
+    [[nodiscard]] std::optional<size_type> position(const X& x, FrozenRead read) const
+    { return position_from(lookup(x, read)); }
+
     /// The position of `key`, appending what `make(position)` gives where it is new: the factory runs under the
     /// writer lock with the position reserved, for an element that holds its own position, and must give an element
     /// equal to `key`. It must not touch this set.
@@ -535,7 +583,7 @@ private:
         requires(!Rows)
     std::pair<iterator, bool> insert_with(const prehashed<T>& key, Factory make)
     {
-        return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); });
+        return appended(key, [&](Index position) -> decltype(auto) { return make(static_cast<std::size_t>(position)); }, SharedWrite {});
     }
 
     /// Erases the element at `position` by moving the last one into its place: O(1) expected, and only the last
@@ -577,6 +625,18 @@ private:
         return held ? Tables::find(held->positions, key) : std::nullopt;
     }
 
+    /// The position of `x` in a set no thread changes while it is read: without the table's read locks.
+    template<typename X>
+    [[nodiscard]] std::optional<Index> lookup(const X& x, FrozenRead read) const
+    { return lookup(prehashed<X> { x, Keys::hash(x) }, read); }
+
+    template<typename K>
+    [[nodiscard]] std::optional<Index> lookup(const prehashed<K>& key, FrozenRead read) const
+    {
+        const auto* held = state();
+        return held ? Tables::find(held->positions, key, read) : std::nullopt;
+    }
+
     /// Erases the elements at [from, to) of a storage that erases in place (a vector), which keeps its capacity: the
     /// elements that move leave the table before they do (it hashes a position by the element there) and go back in after.
     void erase_positions(Index from, Index to)
@@ -606,29 +666,35 @@ private:
 
     /// `element`, whose hash is `hash`, appended where it is new. A row that does not fit its storage throws here,
     /// before the table is touched.
-    template<typename U>
-    std::pair<iterator, bool> inserted(U&& element, hash_t hash)
+    template<typename U, typename Write>
+    std::pair<iterator, bool> inserted(U&& element, hash_t hash, Write write)
     {
         if constexpr (Rows)  // a row storage refuses a row that does not fit (check); other storages hold any element
             writable().check(element);
-        return appended(prehashed<std::remove_cvref_t<U>> { element, hash }, [&](Index /*position*/) -> decltype(auto) { return std::forward<U>(element); });
+        return appended(
+            prehashed<std::remove_cvref_t<U>> { element, hash },
+            [&](Index /*position*/) -> decltype(auto) { return std::forward<U>(element); },
+            write);
     }
 
     /// The position of `key`: where it is new, the element `make(position)` gives (equal to the key) is appended, as the
-    /// table's policy says (Tables): under the writer lock where threads share the set.
-    template<typename K, typename Make>
-    std::pair<iterator, bool> appended(const prehashed<K>& key, Make make)
+    /// table's policy says (Tables): under the writer lock where threads share the set (SharedWrite), without it by the
+    /// one thread that uses the set meanwhile (ExclusiveWrite).
+    template<typename K, typename Make, typename Write>
+    std::pair<iterator, bool> appended(const prehashed<K>& key, Make make, Write write)
     {
         auto& [elements, positions] = writable_state();
-        const auto [position, inserted] = Tables::find_or_insert(positions,
-                                                                 m_writer,
-                                                                 key,
-                                                                 [&]
-                                                                 {
-                                                                     const auto next = static_cast<Index>(elements.size());
-                                                                     elements.push_back(make(next));
-                                                                     return next;
-                                                                 });
+        const auto [position, inserted] = Tables::find_or_insert(
+            positions,
+            m_writer,
+            key,
+            [&]
+            {
+                const auto next = static_cast<Index>(elements.size());
+                elements.push_back(make(next));
+                return next;
+            },
+            write);
         return { at(position), inserted };
     }
 
@@ -718,6 +784,16 @@ struct indexed_access
     template<typename Set, typename Key>
     [[nodiscard]] static auto position(const Set& set, const Key& key)
     { return set.position(key); }
+
+    /// The position of `key`, read under the set's read locks where threads share it.
+    template<typename Set, typename Key>
+    [[nodiscard]] static auto position(const Set& set, const Key& key, SharedRead /*read*/)
+    { return set.position(key); }
+
+    /// The position of `key` in a set no thread changes while it is read: without its read locks.
+    template<typename Set, typename Key>
+    [[nodiscard]] static auto position(const Set& set, const Key& key, FrozenRead read)
+    { return set.position(key, read); }
 
     template<typename Set, typename Key, typename Factory>
     static auto insert_with(Set& set, const Key& key, Factory make)

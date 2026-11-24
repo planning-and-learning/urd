@@ -2,6 +2,7 @@
 
 // A pool over a parent pool: its own rows, numbered after the parent's.
 
+#include "urd/access.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
@@ -84,6 +85,14 @@ concept InsertsPrehashed = requires(R& pool, const prehashed<Elements>& key) { p
 
 template<typename R, typename Elements>
 concept FindsPrehashed = requires(const R& pool, const prehashed<Elements>& key) { pool.find(key); };
+
+/// Whether a pool R inserts a row with its hash by the one thread that uses it (insert(key, exclusive_write)).
+template<typename R, typename Elements>
+concept InsertsExclusive = requires(R& pool, const prehashed<Elements>& key) { pool.insert(key, exclusive_write); };
+
+/// Whether a pool R finds `key` without read locks (find(key, frozen_read)), as a parent layer is read.
+template<typename R, typename K>
+concept ReadsFrozen = requires(const R& pool, const K& key) { pool.find(key, frozen_read); };
 
 /// Whether a pool R inserts a row as another row with some of its elements written (insert(base, writes)).
 template<typename R, typename Handle, typename Write>
@@ -227,14 +236,21 @@ public:
     template<std::ranges::input_range Elements>
     std::pair<handle_type, bool> insert(const Elements& elements)
         requires row_pool
-    { return insert_row(elements); }
+    { return insert_row(elements, SharedWrite {}); }
 
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), where the parent pool
     /// takes one: hashed once for the whole chain, where a row given as it is is hashed again in every layer.
     template<typename Elements>
         requires row_pool && detail::InsertsPrehashed<R, Elements>
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
-    { return insert_row(key); }
+    { return insert_row(key, SharedWrite {}); }
+
+    /// The same, by the one thread that uses this layer meanwhile (ExclusiveWrite): this layer read and written without
+    /// its locks, its parents without their read locks.
+    template<typename Elements>
+        requires row_pool && detail::InsertsExclusive<R, Elements>
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key, ExclusiveWrite write)
+    { return insert_row(key, write); }
 
     /// The row `base` with `writes` applied, stored here where new.
     std::pair<handle_type, bool> insert(handle_type base, std::span<const write_type> writes)
@@ -310,26 +326,69 @@ public:
 
 private:
     /// The handle of `key` (a record or row, or it prehashed) in the nearest layer of the chain that holds it, or none.
+    /// This layer is read as any (threads may insert into it); its parents, which must not change while layered over,
+    /// without their read locks (FrozenRead).
     template<typename K>
     [[nodiscard]] handle_type find_in_chain(const K& key) const
     {
-        for (const auto* layer = this; layer != nullptr; layer = layer->m_parent)
-            if (const auto at = layer->m_own.find(key); !is_none(at))
+        if (const auto at = m_own.find(key); !is_none(at))
+            return global(at);
+        return find_in_parents(key);
+    }
+
+    /// The handle of `key` in the nearest parent layer that holds it, or none: read without their read locks.
+    template<typename K>
+    [[nodiscard]] handle_type find_in_parents(const K& key) const
+    {
+        for (const auto* layer = m_parent; layer != nullptr; layer = layer->m_parent)
+            if (const auto at = layer->find_frozen(key); !is_none(at))
                 return layer->global(at);
         return handle_type();
     }
 
-    /// The row `key` (its elements, or them prehashed) found in the chain, else stored here.
+    /// The handle of `key` in this layer's own elements, without read locks: by its pool's frozen read (ReadsFrozen: the
+    /// interners of rows and records); a pool without one is read by its ordinary lookup.
     template<typename K>
-    std::pair<handle_type, bool> insert_row(const K& key)
+    [[nodiscard]] handle_type find_frozen(const K& key) const
     {
-        if (const auto at = find_in_chain(key); !is_none(at))
+        if constexpr (detail::ReadsFrozen<R, K>)
+            return m_own.find(key, frozen_read);
+        else
+            return m_own.find(key);
+    }
+
+    /// The row `key` (its elements, or them prehashed) found in the chain, else stored here: this layer read and written
+    /// as `write` says (SharedWrite: under its locks; ExclusiveWrite: without them), its parents without their read locks.
+    template<typename K, typename Write>
+    std::pair<handle_type, bool> insert_row(const K& key, Write write)
+    {
+        if (const auto at = find_own(key, write); !is_none(at))
+            return { global(at), false };
+        if (const auto at = find_in_parents(key); !is_none(at))
             return { at, false };
         if (parent_grew())
             throw std::logic_error("urd::repr::LayeredPool: the parent grew after the branch");
-        const auto [own, stored] = m_own.insert(key);
+        const auto [own, stored] = insert_own(key, write);
         return { global(own), stored };
     }
+
+    /// This layer's own handle of `key`: read under its locks where threads share it.
+    template<typename K>
+    [[nodiscard]] handle_type find_own(const K& key, SharedWrite /*write*/) const
+    { return m_own.find(key); }
+
+    /// By the one thread that uses the layer: without its locks.
+    template<typename K>
+    [[nodiscard]] handle_type find_own(const K& key, ExclusiveWrite /*write*/) const
+    { return find_frozen(key); }
+
+    template<typename K>
+    std::pair<handle_type, bool> insert_own(const K& key, SharedWrite /*write*/)
+    { return m_own.insert(key); }
+
+    template<typename K>
+    std::pair<handle_type, bool> insert_own(const K& key, ExclusiveWrite write)
+    { return m_own.insert(key, write); }
 
     /// The layer that holds `at`: this one, or the ancestor whose range it lies in.
     [[nodiscard]] const LayeredPool& owner(handle_type at) const

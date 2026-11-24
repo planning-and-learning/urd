@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/access.hpp"
 #include "urd/config.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/requirements.hpp"
@@ -297,21 +298,31 @@ public:
         return intern(prehashed<SchemaKey> { key.row(), values.hash });
     }
 
-    /// The handle of the row with these values, or none (also where they do not fit the columns); no row is built for it.
+    /// The same, by the one thread that uses the pool meanwhile (ExclusiveWrite): without its locks.
     template<std::ranges::input_range Values>
         requires by_column_widths
-    [[nodiscard]] handle_type find(const Values& values) const
+    std::pair<handle_type, bool> insert(const prehashed<Values>& values, ExclusiveWrite write)
     {
-        const auto key = unsigned_values(values);
-        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, hash_range(key) }));
+        auto key = EncodedRow<ThreadSafe>(column_widths());
+        encode(key, values.key);
+        return intern(prehashed<SchemaKey> { key.row(), values.hash }, write);
     }
 
-    template<std::ranges::input_range Values>
+    /// The handle of the row with these values, or none (also where they do not fit the columns); no row is built for it.
+    template<std::ranges::input_range Values, typename Read = SharedRead>
         requires by_column_widths
-    [[nodiscard]] handle_type find(const prehashed<Values>& values) const
+    [[nodiscard]] handle_type find(const Values& values, Read read = {}) const
+    {
+        const auto key = unsigned_values(values);
+        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, hash_range(key) }, read));
+    }
+
+    template<std::ranges::input_range Values, typename Read = SharedRead>
+        requires by_column_widths
+    [[nodiscard]] handle_type find(const prehashed<Values>& values, Read read = {}) const
     {
         const auto key = unsigned_values(values.key);
-        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, values.hash }));
+        return handle_of(urd::detail::indexed_access::position(m_rows, prehashed<decltype(key)> { key, values.hash }, read));
     }
 
     /// The column widths its rows are stored by (urd::by_column_widths).
@@ -332,15 +343,15 @@ public:
     { return intern(elements); }
 
     /// The handle of the row with these elements, or none.
-    template<std::ranges::input_range Elements>
+    template<std::ranges::input_range Elements, typename Read = SharedRead>
         requires(!by_column_widths && !given<Elements>)
-    [[nodiscard]] handle_type find(const Elements& elements) const
-    { return handle_of(urd::detail::indexed_access::position(m_rows, canonical(elements))); }
+    [[nodiscard]] handle_type find(const Elements& elements, Read read = {}) const
+    { return handle_of(urd::detail::indexed_access::position(m_rows, canonical(elements), read)); }
 
-    template<std::ranges::input_range Elements>
+    template<std::ranges::input_range Elements, typename Read = SharedRead>
         requires(!by_column_widths && given<Elements>)
-    [[nodiscard]] handle_type find(const Elements& elements) const
-    { return handle_of(urd::detail::indexed_access::position(m_rows, elements)); }
+    [[nodiscard]] handle_type find(const Elements& elements, Read read = {}) const
+    { return handle_of(urd::detail::indexed_access::position(m_rows, elements, read)); }
 
     /// By a row with its hash (urd::prehashed: the hash urd::hash_range gives its elements), which is not hashed
     /// again: a row of a sequence, stored flat, as its contiguous elements.
@@ -349,11 +360,17 @@ public:
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return intern(key); }
 
+    /// The same, by the one thread that uses the pool meanwhile (ExclusiveWrite): without its locks.
     template<typename Elements>
         requires(!by_column_widths && given<Elements>)
-    [[nodiscard]] handle_type find(const prehashed<Elements>& key) const
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key, ExclusiveWrite write)
+    { return intern(key, write); }
+
+    template<typename Elements, typename Read = SharedRead>
+        requires(!by_column_widths && given<Elements>)
+    [[nodiscard]] handle_type find(const prehashed<Elements>& key, Read read = {}) const
     {
-        const auto found = urd::detail::indexed_access::position(m_rows, key);
+        const auto found = urd::detail::indexed_access::position(m_rows, key, read);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
 
@@ -462,6 +479,13 @@ private:
     std::pair<handle_type, bool> intern(Elements&& row)
     {
         const auto [found, inserted] = m_rows.insert(std::forward<Elements>(row));
+        return { handle_type(static_cast<std::uint32_t>(found - m_rows.begin())), inserted };
+    }
+
+    template<typename Elements>
+    std::pair<handle_type, bool> intern(const prehashed<Elements>& key, ExclusiveWrite write)
+    {
+        const auto [found, inserted] = m_rows.insert(key, write);
         return { handle_type(static_cast<std::uint32_t>(found - m_rows.begin())), inserted };
     }
 

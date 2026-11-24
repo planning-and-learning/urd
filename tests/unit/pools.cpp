@@ -594,6 +594,52 @@ TEST(Key, ARecordIsFoundByFoldingOverTheKeysParts)
 
 namespace
 {
+/// Counts the records a layer holds itself (a counter of one layer, urd::CountsPerLayer).
+struct CountOwnItems
+{
+    static constexpr bool per_layer = true;
+
+    template<typename S>
+    [[nodiscard]] std::size_t records(const S& store) const
+    { return store.size() - store.base(); }
+};
+}  // namespace
+
+TEST(Key, ALayerOwnsOnlyTheRecordsItHoldsItself)
+{
+    using ItemKey = urd::key<KeyRelation, NestItem>;
+    const auto group = urd::index<KeyRelation>(2);
+    auto groups = NestGroups();
+    groups.try_emplace(group);
+    const auto first = groups.own_value(group)->insert(urd::data<NestItem> { 5 }).first;
+
+    // A layer without a pool of its own for the group holds the parent's record, but owns none of it.
+    auto reader = NestGroups();
+    reader.layer_over(&groups);
+    EXPECT_TRUE(urd::contains_key(reader, ItemKey(group, first)));
+    EXPECT_FALSE(urd::owns_key(reader, ItemKey(group, first)));
+    EXPECT_TRUE(urd::owns_key(groups, ItemKey(group, first)));
+
+    // A layer with its own pool owns what it stored, from its base on; the parent's records stay the parent's.
+    auto writer = NestGroups();
+    writer.layer_over(&groups);
+    writer.try_emplace(group);
+    const auto second = writer.own_value(group)->insert(urd::data<NestItem> { 8 }).first;
+    EXPECT_TRUE(urd::owns_key(writer, ItemKey(group, second)));
+    EXPECT_FALSE(urd::owns_key(writer, ItemKey(group, first)));
+    EXPECT_FALSE(urd::owns_key(groups, ItemKey(group, second)));
+    EXPECT_FALSE(urd::owns_key(writer, ItemKey(group, urd::index<NestItem>(7))));     // no layer holds it
+    EXPECT_FALSE(urd::owns_key(writer, ItemKey(urd::index<KeyRelation>(3), first)));  // no group 3
+
+    // A count of one layer's records counts its own pool alone: none where it has no pool, not the parent's.
+    const auto prefix = urd::key<KeyRelation>(group);
+    EXPECT_EQ(urd::count_at<ItemKey>(groups, prefix, CountOwnItems {}), 1U);
+    EXPECT_EQ(urd::count_at<ItemKey>(reader, prefix, CountOwnItems {}), 0U);
+    EXPECT_EQ(urd::count_at<ItemKey>(writer, prefix, CountOwnItems {}), 1U);
+}
+
+namespace
+{
 /// A family of stores, one per record type (here one, of items): a key of a kind first selects its kind's store.
 struct NestFamily
 {
@@ -846,6 +892,39 @@ TEST(Layered, RowPoolsContinueTheirParent)
     EXPECT_TRUE((urd::testing::inspect::parent(child) != nullptr && urd::testing::inspect::parent(child)->size() > child.base()));
     EXPECT_THROW((void) child.insert({ 7, 7 }), std::logic_error);  // its new indices would collide with the parent's
     EXPECT_EQ(urd::testing::inspect::parent(child), &parent);
+}
+
+TEST(Layered, AnExclusiveInsertNumbersAndFindsRowsAsAShared)
+{
+    using Row = Store<sequence<unsigned>, urd::frozen>;
+    using Rows = Store<pool<Row>, urd::monotone, urd::layered, urd::concurrent>;
+    const auto prehash = [](const std::vector<unsigned>& row) { return urd::prehashed<std::vector<unsigned>> { row, urd::hash_range(row) }; };
+    const auto rows = std::vector<std::vector<unsigned>> { { 1, 2, 3 }, { 4 }, { 5, 6 }, { 7, 8, 9, 10 } };
+    auto parent = Rows();
+    const auto inherited = parent.insert(prehash(rows[0])).first;
+    auto shared = Rows();
+    shared.layer_over(&parent);
+    auto exclusive = Rows();
+    exclusive.layer_over(&parent);
+
+    // The parent's row is found in the parent, a frozen layer, without being stored again.
+    EXPECT_EQ(exclusive.insert(prehash(rows[0]), urd::exclusive_write), std::pair(inherited, false));
+    for (std::size_t each = 1; each < rows.size(); ++each)
+    {
+        const auto [shared_at, shared_stored] = shared.insert(prehash(rows[each]));
+        const auto [exclusive_at, exclusive_stored] = exclusive.insert(prehash(rows[each]), urd::exclusive_write);
+        EXPECT_TRUE(shared_stored);
+        EXPECT_TRUE(exclusive_stored);
+        EXPECT_EQ(exclusive_at, shared_at);
+    }
+    // What it stored alone, an exclusive insert and a shared lookup find again.
+    for (std::size_t each = 1; each < rows.size(); ++each)
+    {
+        const auto at = exclusive.find(prehash(rows[each]));
+        EXPECT_EQ(exclusive.insert(prehash(rows[each]), urd::exclusive_write), std::pair(at, false));
+        EXPECT_EQ(exclusive.insert(prehash(rows[each])), std::pair(at, false));
+    }
+    EXPECT_EQ(exclusive.size(), shared.size());
 }
 
 TEST(Layered, ViewsPointAtTheOwningLayer)

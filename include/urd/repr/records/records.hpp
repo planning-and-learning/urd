@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/access.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/prehashed.hpp"
 #include "urd/elements/requirements.hpp"
@@ -58,9 +59,12 @@ public:
 
     [[nodiscard]] handle_type find(const T& record) const { return find(prehash(record)); }
 
-    [[nodiscard]] handle_type find(const prehashed<T>& key) const
+    /// Read as `read` says: under the set's read locks (SharedRead), or without them in a set no thread changes while it
+    /// is read (FrozenRead, a parent layer's).
+    template<typename Read = SharedRead>
+    [[nodiscard]] handle_type find(const prehashed<T>& key, Read read = {}) const
     {
-        const auto found = urd::detail::indexed_access::position(m_records, key);
+        const auto found = urd::detail::indexed_access::position(m_records, key, read);
         return found ? handle_type(static_cast<std::uint32_t>(*found)) : handle_type();
     }
 

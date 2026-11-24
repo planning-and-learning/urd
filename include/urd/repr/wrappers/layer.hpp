@@ -88,10 +88,7 @@ public:
     [[nodiscard]] bool empty() const { return m_own.empty(); }
 
     /// Whether this layer's own values hold `key`.
-    [[nodiscard]] bool owns(const key_type& key) const
-    {
-        return read_own(key, [](const mapped_type& /*value*/) { return true; }, false);
-    }
+    [[nodiscard]] bool owns(const key_type& key) const { return own_value(key) != nullptr; }
 
 private:
     // Read by this layer's lookups, of itself and its parents.
@@ -179,15 +176,6 @@ public:
         return value == nullptr ? missing : Result(f(*value));
     }
 
-private:
-    // Read by this layer's lookups, of itself and its parents.
-    /// read(value) with this layer's own value of `key`, else `missing`: the parent's are not looked at.
-    template<typename Read, typename Result>
-        requires std::invocable<Read&, const mapped_type&>
-    [[nodiscard]] Result read_own(const key_type& key, Read read, Result missing) const
-    { return m_own.visit(key, read, missing); }
-
-public:
     /// This layer's own value of `key`, or nullptr: the parent's are not looked at.
     [[nodiscard]] const mapped_type* own_value(const key_type& key) const { return m_own.get_if(key); }
 
@@ -215,11 +203,12 @@ private:
     /// Whether values layer (are layered Stores).
     static constexpr bool layers_values = requires(mapped_type& own, const mapped_type* above) { own.layer_over(above); };
 
-    /// The owner's value of `key`, else nullptr.
+    /// The owner's value of `key`, else nullptr: each layer's own value by its pointer (own_value: a value a thread-safe
+    /// map has published, without the slot's lock, which a pointer handed out could not keep held anyway).
     [[nodiscard]] const mapped_type* value_of(const key_type& key) const
     {
         for (const auto* layer = this; layer != nullptr; layer = layer->m_parent)
-            if (const auto* value = layer->read_own(key, [](const mapped_type& own) { return &own; }, static_cast<const mapped_type*>(nullptr)))
+            if (const auto* value = layer->own_value(key))
                 return value;
         return nullptr;
     }

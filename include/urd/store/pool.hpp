@@ -1,5 +1,6 @@
 #pragma once
 
+#include "urd/access.hpp"
 #include "urd/cost.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/index.hpp"
@@ -24,6 +25,11 @@ struct row_blocks_of
     using block_type = void;
     using flip_type = void;
 };
+
+/// Whether a representation R inserts a row with its hash by the one thread that uses it (insert(key,
+/// exclusive_write)).
+template<typename R, typename Elements>
+concept InsertsExclusively = requires(R& representation, const prehashed<Elements>& key) { representation.insert(key, exclusive_write); };
 
 /// Whether a representation R keeps its rows in blocks it names (block_type, flip_type).
 template<typename R>
@@ -144,6 +150,13 @@ public:
         requires keeps_rows_whole<R>
     std::pair<handle_type, bool> insert(const prehashed<Elements>& key)
     { return representation().insert(key); }
+
+    /// The same, by the one thread that uses the pool meanwhile (ExclusiveWrite: no other thread reads or writes it):
+    /// without its locks.
+    template<typename Elements>
+        requires keeps_rows_whole<R> && InsertsExclusively<R, Elements>
+    std::pair<handle_type, bool> insert(const prehashed<Elements>& key, ExclusiveWrite write)
+    { return representation().insert(key, write); }
 
     template<typename Elements>
         requires keeps_rows_whole<R>

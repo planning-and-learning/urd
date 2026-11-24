@@ -51,6 +51,26 @@ concept SelectsBy = requires(const S& store, key<P> at) {
     } -> std::same_as<bool>;
 };
 
+/// Whether S selects, among the containers of its own layer only, the container an index of P selects:
+/// `store.own_value(key<P>)` is this layer's own container, empty where it has none (the parent layers' are not looked
+/// at), and dereferenced where not: a pointer (a layered map, urd::layered), or a handle a store makes of it.
+template<typename S, typename P>
+concept SelectsOwnBy = requires(const S& store, key<P> at) {
+    static_cast<bool>(store.own_value(at));
+    *store.own_value(at);
+};
+
+/// Whether S is a layer whose indices continue its parent's from its base (`store.base()`: a layered pool), so that the
+/// indices this layer holds itself are those at or after its base.
+template<typename S>
+concept ChainsLayers = requires(const S& store) {
+    { store.base() } -> std::convertible_to<std::size_t>;
+};
+
+/// Whether S is a layer over a parent (`store.parent()`: urd::layered), whose lookups answer from the parent too.
+template<typename S>
+concept LayeredOver = requires(const S& store) { store.parent(); };
+
 /// Whether S is a family of stores that selects the store of T's records first: `store.template get<T>()` is a store
 /// that holds records of T (HoldsRecordsOf), the step a key of T takes before its fold (a symbol repository: one pool per
 /// record type).
@@ -135,6 +155,37 @@ template<typename S, typename... Ts>
         static_assert(false, "urd::contains_key: a store that holds the key's records, selects their store or selects by the key's first part");
 }
 
+/// Whether this layer of the store holds the key itself, not through a parent layer, by the same steps as contains_key:
+/// an index at or after the base of a layer that continues its parent's indices (ChainsLayers), or below the size of a
+/// store without layers; a key of another value as a store without layers answers; in a family, in the store of its
+/// kind; a key of several parts, where its first part selects a container of this layer (SelectsOwnBy) that holds the
+/// rest itself. It compares indices, so that the layer owning a key (its view's context) is found without a lookup in
+/// every layer.
+template<typename S, typename... Ts>
+[[nodiscard]] bool owns_key(const S& store, key<Ts...> at)
+{
+    using T = typename key<Ts...>::element_type;
+    if constexpr (sizeof...(Ts) == 1 && NumberedKind<T> && HoldsRecordsOf<S, T> && ChainsLayers<S>)
+        return !at.is_none() && at.value >= store.base() && at.value < store.size();
+    else if constexpr (sizeof...(Ts) == 1 && NumberedKind<T> && HoldsRecordsOf<S, T> && !LayeredOver<S>)
+        return !at.is_none() && at.value < store.size();
+    else if constexpr (sizeof...(Ts) == 1 && ContainsKeysOf<S, T> && !LayeredOver<S>)
+        return !at.is_none() && store.contains(at);
+    else if constexpr (SelectsStoreOf<S, T>)
+        return urd::owns_key(store.template get<T>(), at);
+    else if constexpr (sizeof...(Ts) > 1 && SelectsOwnBy<S, detail::first_part<key<Ts...>>>)
+    {
+        const auto own = store.own_value(urd::get<detail::first_part<key<Ts...>>>(at));
+        if (!own)
+            return false;
+        return urd::owns_key(*own, detail::rest_of(at));
+    }
+    else
+        static_assert(false,
+                      "urd::owns_key: a store that holds the key's records (a layer continuing its parent's indices, or no layer), selects "
+                      "their store or selects by the key's first part among its own layer's containers");
+}
+
 /// Whether S enumerates the containers of its own layer that indices of P select: `store.for_each_own<P>(f)` calls f
 /// with each (a layered map of containers: only the ones this layer made, not its parent's).
 template<typename S, typename P>
@@ -147,7 +198,8 @@ concept CountsPerLayer = Count::per_layer;
 
 /// What `count` gives for the records of keys K (of kind K::element_type) under the parts `prefix` (its first parts),
 /// by the same steps as record_at: a family first selects the store of the kind (store.get<T>()); each part of the
-/// prefix selects the container of the next (store.visit: 0 where no layer has it); the store reached that holds the
+/// prefix selects the container of the next (store.visit: 0 where no layer has it; for a counter of one layer, the
+/// layer's own container, store.own_value: 0 where it has none, so that no parent's is counted); the store reached that holds the
 /// records is counted, count.records(store). With the prefix used up before the last part, the store reached selects
 /// containers: a counter of one layer (CountsPerLayer) sums over the containers of its own layer (EnumeratesOwnBy); a
 /// count along the layers needs the prefix to the last part (a compile error).
@@ -160,10 +212,16 @@ template<typename K, typename S, typename... Ps, typename Count>
     else if constexpr (sizeof...(Ps) > 0)
     {
         using P = detail::first_part<key<Ps...>>;
-        return store.visit(
-            urd::get<P>(prefix),
-            [&prefix, &count](const auto& inner) { return urd::count_at<detail::rest_t<K>>(inner, detail::rest_of(prefix), count); },
-            std::size_t { 0 });
+        const auto rest = [&prefix, &count](const auto& inner) { return urd::count_at<detail::rest_t<K>>(inner, detail::rest_of(prefix), count); };
+        if constexpr (CountsPerLayer<Count> && SelectsOwnBy<S, P>)
+        {
+            const auto own = store.own_value(urd::get<P>(prefix));
+            if (!own)
+                return std::size_t { 0 };
+            return rest(*own);
+        }
+        else
+            return store.visit(urd::get<P>(prefix), rest, std::size_t { 0 });
     }
     else if constexpr (std::same_as<K, key<T>> && HoldsRecordsOf<S, T>)
         return count.records(store);
