@@ -286,29 +286,118 @@ struct group
     using list = List;
 };
 
+/// The groups, each a class of its own (brokkr's template rule T20: the table names them, not their lists).
+struct group_sets_of_int : group<"Sets of int", sets_of<int>>
+{
+};
+
+struct group_sets_of_std_string : group<"Sets of std::string", sets_of<std::string>>
+{
+};
+
+struct group_sets_of_id : group<"Sets of Id", sets_of<Id>>
+{
+};
+
+struct group_sets_ordered_by_a_projection : group<"Sets ordered by a projection", ordered_sets>
+{
+};
+
+struct group_dense_sets_of_int : group<"Dense sets of int", dense_sets_of<int>>
+{
+};
+
+struct group_dense_sets_of_id : group<"Dense sets of Id", dense_sets_of<Id>>
+{
+};
+
+struct group_keyed_by_an_index : group<"Keyed by an index", indices>
+{
+};
+
+struct group_maps_int_to_int : group<"Maps int to int", maps_of<int, int>>
+{
+};
+
+struct group_maps_std_string_to_double : group<"Maps std::string to double", maps_of<std::string, double>>
+{
+};
+
+struct group_maps_id_to_id : group<"Maps Id to Id", maps_of<Id, Id>>
+{
+};
+
+struct group_maps_ordered_by_a_projection : group<"Maps ordered by a projection", ordered_maps>
+{
+};
+
+struct group_dense_maps_int_to_int : group<"Dense maps int to int", dense_maps_of<int, int>>
+{
+};
+
+struct group_dense_maps_id_to_double : group<"Dense maps Id to double", dense_maps_of<Id, double>>
+{
+};
+
+struct group_sequences : group<"Sequences", sequences>
+{
+};
+
+struct group_queues_of_int : group<"Queues of int", queues_of<int>>
+{
+};
+
+struct group_queues_of_id : group<"Queues of Id", queues_of<Id>>
+{
+};
+
+struct group_queues_ordered_by_a_projection : group<"Queues ordered by a projection", ordered_queues>
+{
+};
+
+struct group_pools : group<"Pools", pools>
+{
+};
+
+struct group_stores_as_keys : group<"Stores as keys", stores_as_keys>
+{
+};
+
+struct group_partitions_of_sparse_keys : group<"Partitions of sparse keys", sparse_partitions>
+{
+};
+
+struct group_graphs : group<"Graphs", graphs>
+{
+};
+
+struct group_records_and_values_interned : group<"Records and values interned", flat_pools>
+{
+};
+
 /// The groups, in the order of the table.
-using groups = std::tuple<group<"Sets of int", sets_of<int>>,
-                          group<"Sets of std::string", sets_of<std::string>>,
-                          group<"Sets of Id", sets_of<Id>>,
-                          group<"Sets ordered by a projection", ordered_sets>,
-                          group<"Dense sets of int", dense_sets_of<int>>,
-                          group<"Dense sets of Id", dense_sets_of<Id>>,
-                          group<"Keyed by an index", indices>,
-                          group<"Maps int to int", maps_of<int, int>>,
-                          group<"Maps std::string to double", maps_of<std::string, double>>,
-                          group<"Maps Id to Id", maps_of<Id, Id>>,
-                          group<"Maps ordered by a projection", ordered_maps>,
-                          group<"Dense maps int to int", dense_maps_of<int, int>>,
-                          group<"Dense maps Id to double", dense_maps_of<Id, double>>,
-                          group<"Sequences", sequences>,
-                          group<"Queues of int", queues_of<int>>,
-                          group<"Queues of Id", queues_of<Id>>,
-                          group<"Queues ordered by a projection", ordered_queues>,
-                          group<"Pools", pools>,
-                          group<"Stores as keys", stores_as_keys>,
-                          group<"Partitions of sparse keys", sparse_partitions>,
-                          group<"Graphs", graphs>,
-                          group<"Records and values interned", flat_pools>>;
+using groups = std::tuple<group_sets_of_int,
+                          group_sets_of_std_string,
+                          group_sets_of_id,
+                          group_sets_ordered_by_a_projection,
+                          group_dense_sets_of_int,
+                          group_dense_sets_of_id,
+                          group_keyed_by_an_index,
+                          group_maps_int_to_int,
+                          group_maps_std_string_to_double,
+                          group_maps_id_to_id,
+                          group_maps_ordered_by_a_projection,
+                          group_dense_maps_int_to_int,
+                          group_dense_maps_id_to_double,
+                          group_sequences,
+                          group_queues_of_int,
+                          group_queues_of_id,
+                          group_queues_ordered_by_a_projection,
+                          group_pools,
+                          group_stores_as_keys,
+                          group_partitions_of_sparse_keys,
+                          group_graphs,
+                          group_records_and_values_interned>;
 
 /// Calls f(title, requests<…> {}) for each group, in the order of the table.
 template<typename F>
