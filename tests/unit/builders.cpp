@@ -311,9 +311,27 @@ TEST(Builder, AHandleGivesItsRecordBackToItsPool)
         held->weight = 3;
         first = held.get();
     }
+    // The same slot, emptied as it came back.
     const auto again = pool.make_handle();
     EXPECT_EQ(again.get(), first);
-    EXPECT_EQ(again->weight, 3);
+    EXPECT_EQ(again->weight, 0);
+}
+
+TEST(Builder, AHandleGivesItsChildrenBackWithIt)
+{
+    auto leaves = LeafPool {};
+    auto nodes = urd::Store<urd::slots<NodeBuilder>> {};
+    const LeafBuilder* leaf = nullptr;
+    {
+        auto node = nodes.make_handle();
+        auto& built = urd::builder_of(node->rest.emplace_back(), leaves);
+        built.weight = 7;
+        leaf = &built;
+    }
+    // The node went back emptied, its list cleared: its built leaf is back in its pool, emptied too.
+    const auto again = leaves.make_handle();
+    EXPECT_EQ(again.get(), leaf);
+    EXPECT_EQ(again->weight, 0);
 }
 
 TEST(Builder, AChildIsBuiltFromItsPool)

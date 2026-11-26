@@ -647,6 +647,8 @@ private:
 
 /// A T through a context C, held as a record R (data<T>, or builder<T, C>) outside the context, which it points at: the
 /// record must outlive the view. What urd::resolve makes of a record held in place. Read and identified by the record.
+/// The views that own or share their record derive from it (owning_view, shared_view): each is the borrowed view of the
+/// record it holds, so whatever reads a borrowed view reads them too.
 template<typename T, typename C, typename R>
 class borrowed_view : public detail::view_base<borrowed_view<T, C, R>, T, C, R>
 {
@@ -658,6 +660,10 @@ public:
 
     borrowed_view(const R* record, const C* context) noexcept : detail::view_base<borrowed_view, T, C, R>(context), m_record(record) {}
 
+protected:
+    /// Points at the record a derived view holds (its own copy, after a copy or a move of it).
+    void lend(const R* record) noexcept { m_record = record; }
+
 private:
     [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
 
@@ -667,49 +673,67 @@ private:
 };
 
 /// A T through a context C, holding its record R (data<T>, or builder<T, C>) by value: a record computed rather than
-/// stored. Read and identified by the record.
+/// stored. Read and identified by the record, as the borrowed view of it.
 template<typename T, typename C, typename R>
-class owning_view : public detail::view_base<owning_view<T, C, R>, T, C, R>
+class owning_view : public borrowed_view<T, C, R>
 {
-    friend detail::view_base<owning_view, T, C, R>;
-    friend detail::view_access;
-
 public:
     using record_type = R;
 
     owning_view(R record, const C* context) noexcept(std::is_nothrow_move_constructible_v<R>) :
-        detail::view_base<owning_view, T, C, R>(context),
-        m_record(std::move(record))
+        borrowed_view<T, C, R>(nullptr, context),
+        m_owned(std::move(record))
+    { this->lend(&m_owned); }
+
+    owning_view(const owning_view& other)
+        requires std::copy_constructible<R>
+        : borrowed_view<T, C, R>(other), m_owned(other.m_owned)
+    { this->lend(&m_owned); }
+
+    owning_view(owning_view&& other) noexcept(std::is_nothrow_move_constructible_v<R>) : borrowed_view<T, C, R>(other), m_owned(std::move(other.m_owned))
+    { this->lend(&m_owned); }
+
+    owning_view& operator=(const owning_view& other)
+        requires std::copy_constructible<R>
     {
+        if (this != &other)
+        {
+            borrowed_view<T, C, R>::operator=(other);
+            m_owned = other.m_owned;
+            this->lend(&m_owned);
+        }
+        return *this;
     }
 
+    owning_view& operator=(owning_view&& other) noexcept(std::is_nothrow_move_assignable_v<R>)
+    {
+        if (this != &other)
+        {
+            borrowed_view<T, C, R>::operator=(other);
+            m_owned = std::move(other.m_owned);
+            this->lend(&m_owned);
+        }
+        return *this;
+    }
+
+    ~owning_view() = default;
+
 private:
-    [[nodiscard]] const record_type& record() const noexcept { return m_record; }
-
-    [[nodiscard]] const R& identity() const noexcept { return m_record; }
-
-    R m_record;
+    R m_owned;
 };
 
 /// A T through a context C, sharing its record R (data<T>, or builder<T, C>): released with the last copy. Read and
-/// identified by the record.
+/// identified by the record, as the borrowed view of it (the shared record stays where it is: copies point at it).
 template<typename T, typename C, typename R>
-class shared_view : public detail::view_base<shared_view<T, C, R>, T, C, R>
+class shared_view : public borrowed_view<T, C, R>
 {
-    friend detail::view_base<shared_view, T, C, R>;
-    friend detail::view_access;
-
 public:
     using record_type = R;
 
-    shared_view(std::shared_ptr<const R> record, const C* context) noexcept : detail::view_base<shared_view, T, C, R>(context), m_record(std::move(record)) {}
+    shared_view(std::shared_ptr<const R> record, const C* context) noexcept : borrowed_view<T, C, R>(record.get(), context), m_shared(std::move(record)) {}
 
 private:
-    [[nodiscard]] const record_type& record() const noexcept { return *m_record; }
-
-    [[nodiscard]] const R& identity() const noexcept { return *m_record; }
-
-    std::shared_ptr<const R> m_record;
+    std::shared_ptr<const R> m_shared;
 };
 
 /// A shared view owns no memory of its own: its record is shared.
@@ -805,6 +829,29 @@ decltype(auto) visit_view(const V& view, F&& f)
 template<View... Vs, typename F>
 decltype(auto) visit_view(const std::variant<Vs...>& views, F&& f)
 { return std::visit(std::forward<F>(f), views); }
+
+namespace detail
+{
+template<typename V>
+using reads_builder = std::bool_constant<is_builder<record_of<V>>>;
+}
+
+/// The view of a reading's built form (a builder's view): the reading itself where it is one; the alternative of a
+/// resolved child (urd::child resolved: a variant of the views of its forms) that reads its builder,
+/// std::bad_variant_access where the child holds another form. What a reader that works on built records takes out of
+/// a child, without naming the view.
+template<View V>
+    requires is_builder<record_of<V>>
+V built_view(const V& view)
+{ return view; }
+
+template<View... Vs>
+auto built_view(const std::variant<Vs...>& views)
+{
+    using Views = boost::mp11::mp_list<Vs...>;
+    using Built = boost::mp11::mp_at<Views, boost::mp11::mp_find_if<Views, detail::reads_builder>>;
+    return std::get<Built>(views);
+}
 
 namespace detail
 {

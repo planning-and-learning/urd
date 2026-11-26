@@ -585,6 +585,48 @@ TEST(View, OwnsACopyOfARecord)
     EXPECT_NE(owning, Owning(urd::detail::view_access::record(owning), &other));
 }
 
+TEST(View, IsTheBorrowedViewOfARecordItOwnsOrShares)
+{
+    // A view that owns or shares its record derives from the borrowed view of it, through the same context: what a function
+    // that only reads takes, whoever holds the record.
+    using Owning = urd::owning_view<Rec, Both, Rec>;
+    using Shared = urd::shared_view<Rec, Both, Rec>;
+    using Borrowed = urd::borrowed_view<Rec, Both, Rec>;
+    static_assert(std::derived_from<Owning, Borrowed> && std::derived_from<Shared, Borrowed>);
+    const auto both = make_both();
+    const auto owning = Owning(Rec { "owned", {}, urd::index<Owner>(0), 3 }, &both);
+    const auto shared = Shared(std::make_shared<const Rec>(Rec { "shared", {}, urd::index<Owner>(1), 3 }), &both);
+    const auto read = [](const Borrowed& borrowed) { return std::string(borrowed.name()); };
+    EXPECT_EQ(read(owning), "owned");
+    EXPECT_EQ(read(shared), "shared");
+    const auto& lent = static_cast<const Borrowed&>(owning);
+    EXPECT_EQ(&lent.context(), &both);
+    EXPECT_EQ(lent.member<&Rec::owner>().member<&Owner::name>(), "a");
+    EXPECT_EQ(lent, Borrowed(&urd::detail::view_access::record(owning), &both));
+}
+
+TEST(View, OwnsItsRecordAcrossCopiesAndMoves)
+{
+    // A copy or a move of an owning view reads the record it holds itself, never the one it came from.
+    using Owning = urd::owning_view<Rec, Both, Rec>;
+    const auto both = make_both();
+    auto first = Owning(Rec { "first", {}, urd::index<Owner>(0), 1 }, &both);
+    auto copy = first;
+    EXPECT_NE(&urd::detail::view_access::record(copy), &urd::detail::view_access::record(first));
+    EXPECT_EQ(copy, first);
+    auto moved = std::move(first);
+    EXPECT_EQ(moved.name(), "first");
+    auto assigned = Owning(Rec { "other", {}, urd::index<Owner>(1), 2 }, &both);
+    assigned = copy;
+    EXPECT_EQ(assigned.name(), "first");
+    EXPECT_NE(&urd::detail::view_access::record(assigned), &urd::detail::view_access::record(copy));
+    {
+        auto temporary = Owning(Rec { "temporary", {}, urd::index<Owner>(0), 4 }, &both);
+        assigned = std::move(temporary);
+    }
+    EXPECT_EQ(assigned.name(), "temporary");
+}
+
 TEST(TransformedRange, ItsIteratorsOutliveIt)
 {
     // Unlike std::views::transform, the iterators hold the function (here a function object holding a value): they

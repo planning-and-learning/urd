@@ -64,6 +64,26 @@ builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
     return *std::get<built_child<T, C>>(held);
 }
 
+/// The builder a child holds, to replace whole (clear, assign, unpack into): a new one of its own on the heap
+/// (urd::make_owned) where it holds none (it is interned, or a record), as builder_of(held, pool) gives one from a pool.
+template<typename T, typename C, typename K>
+builder<T, C>& builder_of(child<T, C, K>& held)
+{
+    if (!std::holds_alternative<built_child<T, C>>(held))
+        held.template emplace<built_child<T, C>>(urd::make_owned<builder<T, C>>());
+    return *std::get<built_child<T, C>>(held);
+}
+
+/// The builder a child holds built, to write in place: std::bad_variant_access where it holds its key or a record (its
+/// context unpacks it first).
+template<typename T, typename C, typename K>
+builder<T, C>& built(child<T, C, K>& held)
+{ return *std::get<built_child<T, C>>(held); }
+
+template<typename T, typename C, typename K>
+const builder<T, C>& built(const child<T, C, K>& held)
+{ return *std::get<built_child<T, C>>(held); }
+
 /// Whether R is a builder.
 template<typename R>
 inline constexpr bool is_builder = false;

@@ -316,12 +316,6 @@ template<typename U, typename C, typename F>
 void assign_member(data<U>& target, const builder<U, C>& source, F& f)
 { detail::assign_built(target, source, f); }
 
-/// A builder held in place where its record holds a key of it (its built form a builder: urd::built_form): written as
-/// the key f gives, which interns the builder in the repository that holds its kind.
-template<typename U, typename C, typename F>
-void assign_member(key<U>& target, const builder<U, C>& source, F& f)
-{ target = detail::as_key<key<U>>(f(source)); }
-
 /// Whether a record's member of type M takes a built value of another type B as it is (a library's own built form that
 /// assigns itself into its record's form).
 template<typename M, typename B>

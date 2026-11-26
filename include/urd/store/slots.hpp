@@ -2,6 +2,7 @@
 
 #include "urd/config.hpp"
 #include "urd/cost.hpp"
+#include "urd/elements/concepts.hpp"
 #include "urd/elements/handle.hpp"
 #include "urd/repr/slots/slots_fwd.hpp"
 #include "urd/store/types.hpp"
@@ -30,8 +31,11 @@ class slots
 public:
     using handle_type = typename R::handle_type;
 
-    /// What gives a slot back when its owner goes: the element's release (urd::slot_release: to let go of what it
-    /// refers to, keeping its storage), then erase. The element is not destroyed.
+    /// What gives a slot back when its owner goes: in a Store of unkeyed slots, an element of fields (a builder or a
+    /// record) emptied field by field (urd::clear_fields: its buffers kept, the handles it holds given back to their
+    /// pools, theirs in turn, so a tree of pooled builders goes back whole); the element's release (urd::slot_release: to
+    /// let go of what it refers to, keeping its storage); then erase. The element is not destroyed. A keyed slot keeps
+    /// its element as it is, to be handed out again under an equal key.
     struct releaser
     {
         Derived* store = nullptr;
@@ -41,6 +45,8 @@ public:
         void operator()(value_type* element) const noexcept
         {
             static_assert(noexcept(slot_release<value_type>::release(*element)), "urd::slot_release: release(T&) must be noexcept");
+            if constexpr (unkeyed && HasFields<value_type>)
+                clear_fields(*element);
             slot_release<value_type>::release(*element);
             store->erase(handle);
         }

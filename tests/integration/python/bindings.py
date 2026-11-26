@@ -60,7 +60,7 @@ assert builder.get_weight() is None
 assert builder == m.term_builder()
 assert hash(builder) == hash(m.term_builder())
 assert str(builder) == "Term(\n    arity=1\n    objects=[\n        9\n    ]\n    weight=none\n)"
-assert type(builder) is m.TermBuilderBorrowed
+assert type(builder) is m.TermBuilderView
 assert m.pair_name() == "PairTermPairAtomTerm"
 # A child from Python: a record is held (a copy), an index interned; anything else converts to none.
 assert m.term_child_alternative(m.TermData(1, [], 3)) == 2
@@ -69,7 +69,7 @@ assert m.term_child_alternative("not a term") == -1
 assert not hasattr(builder, "index")
 # A view that owns its record is bound beside the record's other views, under its own name.
 owned = m.term_owned()
-assert type(owned) is m.TermOwned and m.Term is not m.TermOwned
+assert type(owned) is m.OwnedTermRecordView and m.Term is not m.OwnedTermRecordView
 assert owned.get_arity() == 3
 # A value: a record with no index (data<Point>), bound with bind_data: from its fields, each read and written, compared,
 # written by urd's formatter.
@@ -88,7 +88,7 @@ built.set_weight(3)
 built.add_object(object=8)
 context = m.context()
 read = built.view(context)
-assert type(read) is m.TermBuilderBorrowed
+assert type(read) is m.TermBuilderView
 assert read.get_arity() == 2
 assert read.get_objects() == [7, 8]
 assert read.get_weight() == 3
