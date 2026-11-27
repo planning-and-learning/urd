@@ -88,11 +88,23 @@ concept made_from_record = requires(const M& value, built_t<M, C>& into) { built
 
 namespace detail
 {
-/// Whether each field of data<T> is made from a record's.
+/// Whether the builder field B (of type F) is made from its record's member of type M: F is M's built form, which is
+/// made from M's; a field held otherwise (a key held only built: urd::built_child) is made through its context only.
+template<typename M, typename C, typename F>
+consteval bool field_made_from_record()
+{
+    if constexpr (std::same_as<F, built_t<M, C>>)
+        return made_from_record<M, C>;
+    else
+        return false;
+}
+
+/// Whether each field of builder<T, C> is made from its record's.
 template<typename T, typename C>
 consteval bool fields_made_from_record()
 {
-    return []<typename... Ds>(Fields<Ds...> /*fields*/) { return (made_from_record<member_type_t<Ds::member>, C> && ...); }(data<T>::fields());
+    return []<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
+    { return (field_made_from_record<member_type_t<Ds::member>, C, member_type_t<Bs::member>>() && ...); }(data<T>::fields(), builder<T, C>::fields());
 }
 }  // namespace detail
 

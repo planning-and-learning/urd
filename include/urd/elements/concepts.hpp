@@ -267,9 +267,19 @@ concept DeclaresMemoryMembers = requires { T::memory_members(); };
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
 
+namespace detail
+{
+/// Whether M holds a record or a builder through its handle (a unique_ptr to a type that declares fields: a child held
+/// only built, urd::built_child, whose handle is never null).
+template<typename M>
+concept HandleToFields = requires { typename M::element_type; } && HasFields<typename M::element_type>
+                         && requires(M& member) { member.get(); };
+}  // namespace detail
+
 /// @brief Empties every field a record or a builder declares (HasFields), keeping the buffers they own: each by its
-/// clear(), or else set to its default (a child to the none index, giving back what it held). One reused in place (a
-/// checked-out builder, a scratch record) is reset with it; its own index, no field, stays (interning writes it).
+/// clear(); a record or a builder held in place, or through its handle (never null), emptied in place, field by field,
+/// the handle kept; or else set to its default (a child to the none index, giving back what it held). One reused in
+/// place (a checked-out builder, a scratch record) is reset with it; its own index, no field, stays (interning writes it).
 template<HasFields T>
 void clear_fields(T& built)
 {
@@ -277,6 +287,15 @@ void clear_fields(T& built)
     {
         if constexpr (Clearable<M>)
             member.clear();
+        else if constexpr (HasFields<M>)
+            clear_fields(member);
+        else if constexpr (detail::HandleToFields<M>)
+        {
+            if constexpr (Clearable<typename M::element_type>)
+                member->clear();
+            else
+                clear_fields(*member);
+        }
         else
             member = M {};
     };

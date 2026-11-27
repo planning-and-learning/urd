@@ -471,6 +471,12 @@ inline constexpr bool is_child_value = false;
 template<typename U, typename C, typename K>
 inline constexpr bool is_child_value<std::variant<K, handle<builder<U, C>>, handle<data<U>>>> = true;
 
+/// A child held only built (urd::built_child: its builder's handle, never null).
+template<typename B>
+inline constexpr bool is_built_child = false;
+template<typename U, typename C>
+inline constexpr bool is_built_child<handle<builder<U, C>>> = true;
+
 template<typename B>
 inline constexpr bool is_std_optional = false;
 template<typename E>
@@ -484,7 +490,7 @@ inline constexpr bool is_std_variant<std::variant<Bs...>> = true;
 /// Whether a built form holds a child or a builder, at any depth of its lists, optionals and variants: what nanobind
 /// cannot cast whole (std::vector of a move-only element still says it is copy constructible).
 template<typename B>
-inline constexpr bool holds_children = is_child_value<B> || is_builder<B>;
+inline constexpr bool holds_children = is_child_value<B> || is_builder<B> || is_built_child<B>;
 template<typename E, typename A>
 inline constexpr bool holds_children<std::vector<E, A>> = holds_children<E>;
 template<typename E>
@@ -523,7 +529,8 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
     }
 }
 
-/// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a list
+/// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a child
+/// held only built (a builder of its own, as a builder held in place takes it), a list
 /// of members element by element, a pair of them member by member, an optional (None is empty), a variant by the first alternative that takes it, a
 /// builder held in place as a builder or its record (a copy), anything else as nanobind casts it. Whether it took it.
 template<typename B>
@@ -531,6 +538,14 @@ bool from_python(nb::handle value, B& target)
 {
     if constexpr (is_child_value<B>)
         return detail::child_from_python(value, target);
+    else if constexpr (is_built_child<B>)
+    {
+        auto built = urd::make_owned<typename B::element_type>();
+        if (!detail::builder_from_python(value, *built))
+            return false;
+        target = std::move(built);
+        return true;
+    }
     else if constexpr (is_std_variant<B>)
         return detail::alternative_from_python<0>(value, target);
     else if constexpr (is_std_optional<B>)
