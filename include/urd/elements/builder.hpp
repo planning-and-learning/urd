@@ -55,21 +55,22 @@ template<typename L, typename C>
 using child_variant = boost::mp11::mp_apply<std::variant, boost::mp11::mp_transform<detail::child_in<C>::template fn, L>>;
 
 /// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>) where it holds no
-/// builder (it is interned, or a record).
+/// builder (it is interned, a record, or its builder was moved out).
 template<typename T, typename C, typename K, typename Pool>
 builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
 {
-    if (!std::holds_alternative<built_child<T, C>>(held))
+    if (const auto* built = std::get_if<built_child<T, C>>(&held); built == nullptr || *built == nullptr)
         held.template emplace<built_child<T, C>>(pool.make_handle());
     return *std::get<built_child<T, C>>(held);
 }
 
 /// The builder a child holds, to replace whole (clear, assign, unpack into): a new one of its own on the heap
-/// (urd::make_owned) where it holds none (it is interned, or a record), as builder_of(held, pool) gives one from a pool.
+/// (urd::make_owned) where it holds none (it is interned, a record, or its builder was moved out), as builder_of(held,
+/// pool) gives one from a pool.
 template<typename T, typename C, typename K>
 builder<T, C>& builder_of(child<T, C, K>& held)
 {
-    if (!std::holds_alternative<built_child<T, C>>(held))
+    if (const auto* built = std::get_if<built_child<T, C>>(&held); built == nullptr || *built == nullptr)
         held.template emplace<built_child<T, C>>(urd::make_owned<builder<T, C>>());
     return *std::get<built_child<T, C>>(held);
 }

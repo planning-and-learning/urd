@@ -828,6 +828,10 @@ auto interned_view(const std::variant<Vs...>& reading)
     return std::get<Interned>(reading);
 }
 
+template<typename T, typename... Vs>
+auto interned_view(const child_view<T, Vs...>& reading)
+{ return urd::interned_view(reading.form()); }
+
 /// A child written from a reading of its kind, as build_member copies a child from another builder's: the key of the
 /// record it reads where that is interned (interned_view; a built or held one is its holder's, not copied).
 template<typename U, typename C, typename K, typename R>

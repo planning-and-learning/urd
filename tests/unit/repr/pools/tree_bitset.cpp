@@ -92,9 +92,9 @@ TEST(CommonTreeBitsetSetTest, DistinguishesAllOnesBlocksFromZeroSubtrees)
     }
 
     const auto base = set.insert_blocks(std::vector<Block> { 1, 2, 3 }).first;
-    const auto flipped = set.insert_flips(base, std::array<Flip, 2> { Flip { 0, ones ^ 1 }, Flip { 2, 3 } });
+    const auto flipped = set.insert_flips(base, std::array<Flip, 2> { Flip { 0, ones ^ 1 }, Flip { 2, 3 } }).first;
     EXPECT_EQ(flipped, set.insert_blocks(std::vector<Block> { ones, 2 }).first);
-    EXPECT_EQ(set.insert_flips(flipped, std::array<Flip, 1> { Flip { 0, ones } }), set.insert_blocks(std::vector<Block> { 0, 2 }).first);
+    EXPECT_EQ(set.insert_flips(flipped, std::array<Flip, 1> { Flip { 0, ones } }).first, set.insert_blocks(std::vector<Block> { 0, 2 }).first);
 }
 
 TEST(CommonTreeBitsetSetTest, DeltaInsertMatchesFullInsert)
@@ -106,22 +106,22 @@ TEST(CommonTreeBitsetSetTest, DeltaInsertMatchesFullInsert)
 
     // Same size: only the path to block 2 is new.
     const auto nodes_before = urd::testing::inspect::num_nodes(set);
-    const auto changed = set.insert_flips(base, std::array<Flip, 1> { Flip { 2, 0b11 } });
+    const auto changed = set.insert_flips(base, std::array<Flip, 1> { Flip { 2, 0b11 } }).first;
     EXPECT_EQ(changed, set.insert_blocks(std::array<Block, 5> { 1, 2, 0, 4, 5 }).first);
     EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, 3);
 
     // Growing and shrinking.
-    const auto grown = set.insert_flips(base, std::array<Flip, 1> { Flip { 9, 1 } });
+    const auto grown = set.insert_flips(base, std::array<Flip, 1> { Flip { 9, 1 } }).first;
     EXPECT_EQ(grown, set.insert_blocks(std::array<Block, 10> { 1, 2, 3, 4, 5, 0, 0, 0, 0, 1 }).first);
-    const auto shrunk = set.insert_flips(grown, std::array<Flip, 2> { Flip { 4, 5 }, Flip { 9, 1 } });
+    const auto shrunk = set.insert_flips(grown, std::array<Flip, 2> { Flip { 4, 5 }, Flip { 9, 1 } }).first;
     EXPECT_EQ(shrunk, set.insert_blocks(std::array<Block, 4> { 1, 2, 3, 4 }).first);
-    EXPECT_EQ(set.insert_flips(shrunk, std::array<Flip, 1> { Flip { 4, 5 } }), base);
+    EXPECT_EQ(set.insert_flips(shrunk, std::array<Flip, 1> { Flip { 4, 5 } }).first, base);
 
     // No flips leaves the index unchanged; clearing everything gives the empty index.
-    EXPECT_EQ(set.insert_flips(base, std::span<const Flip> {}), base);
-    EXPECT_EQ(set.insert_flips(base, std::array<Flip, 5> { Flip { 0, 1 }, Flip { 1, 2 }, Flip { 2, 3 }, Flip { 3, 4 }, Flip { 4, 5 } }),
+    EXPECT_EQ(set.insert_flips(base, std::span<const Flip> {}).first, base);
+    EXPECT_EQ(set.insert_flips(base, std::array<Flip, 5> { Flip { 0, 1 }, Flip { 1, 2 }, Flip { 2, 3 }, Flip { 3, 4 }, Flip { 4, 5 } }).first,
               urd::repr::tree::empty_handle());
-    EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), std::array<Flip, 1> { Flip { 3, 8 } }),
+    EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), std::array<Flip, 1> { Flip { 3, 8 } }).first,
               set.insert_blocks(std::array<Block, 4> { 0, 0, 0, 8 }).first);
 }
 
@@ -158,7 +158,7 @@ TEST(CommonTreeBitsetSetTest, DeltaInsertAcrossPowerOfTwoSizes)
             while (!blocks.empty() && blocks.back() == 0)
                 blocks.pop_back();
 
-            EXPECT_EQ(set.insert_flips(base, flips), set.insert_blocks(blocks).first) << "from " << from << " to " << to;
+            EXPECT_EQ(set.insert_flips(base, flips).first, set.insert_blocks(blocks).first) << "from " << from << " to " << to;
         }
     }
 }
@@ -200,7 +200,7 @@ TEST(CommonTreeBitsetSetTest, RandomDeltaChainsMatchFullInsert)
                 const auto blocks = to_blocks(words);
                 const auto nodes_before = urd::testing::inspect::num_nodes(set);
                 const auto height = blocks.empty() ? std::size_t { 0 } : static_cast<std::size_t>(std::bit_width(blocks.size()));
-                index = set.insert_flips(index, flip_list);
+                index = set.insert_flips(index, flip_list).first;
 
                 // Changing a block and growing or shrinking each rebuild at most one path.
                 EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, (flip_list.size() + 2) * (height + 1));
@@ -248,7 +248,7 @@ void expect_arity_round_trips_and_canonical_trees()
         for (std::uint32_t i = 0; i < size; ++i)
             if (blocks[i] != TestBlock { 0 })
                 flips.push_back(BlockFlip { i, blocks[i] });
-        EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), flips), index);
+        EXPECT_EQ(set.insert_flips(urd::repr::tree::empty_handle(), flips).first, index);
     }
 }
 
@@ -301,7 +301,7 @@ void expect_random_delta_chains_match_full_insert()
                 const auto nodes_before = urd::testing::inspect::num_nodes(set);
                 const auto bits = static_cast<std::size_t>(std::countr_zero(Arity));
                 const auto levels = blocks.empty() ? std::size_t { 0 } : (static_cast<std::size_t>(std::bit_width(blocks.size())) + bits - 1) / bits + 1;
-                index = set.insert_flips(index, flip_list);
+                index = set.insert_flips(index, flip_list).first;
 
                 // Changing a block and growing or shrinking each rebuild at most one path.
                 EXPECT_LE(urd::testing::inspect::num_nodes(set) - nodes_before, (flip_list.size() + 2) * (levels + 1));

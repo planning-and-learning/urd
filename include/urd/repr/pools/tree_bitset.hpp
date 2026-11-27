@@ -233,7 +233,7 @@ public:
     [[nodiscard]] handle_type find_blocks(std::span<const Block> blocks) const { return find_row(blocks); }
 
     /// The row `base` with `flips` applied, sorted by unique position; trimmed to its last nonzero block.
-    handle_type insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips).first; }
+    std::pair<handle_type, bool> insert_flips(handle_type base, std::span<const BlockFlip> flips) { return store_flips(base, flips); }
 
     /// The row's blocks into `blocks`, which must hold handle.size of them.
     void read_blocks(handle_type handle, std::span<Block> blocks) const

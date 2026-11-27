@@ -226,8 +226,8 @@ public:
         requires(!std::is_void_v<block_type>)
     { return representation().find_blocks(blocks); }
 
-    /// The row `base` with `flips` applied (sorted by unique position).
-    handle_type insert_flips(handle_type base, std::span<const flip_type> flips)
+    /// The row `base` with `flips` applied (sorted by unique position): its handle, and whether it was stored now.
+    std::pair<handle_type, bool> insert_flips(handle_type base, std::span<const flip_type> flips)
         requires(!std::is_void_v<flip_type>)
     { return representation().insert_flips(base, flips); }
 

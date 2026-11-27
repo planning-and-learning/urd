@@ -17,6 +17,7 @@
 #include "urd/elements/data.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
+#include "urd/elements/child_view.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/spec.hpp"
 #include "urd/traits.hpp"
@@ -31,6 +32,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <variant>
 #include <typeinfo>
 #include <utility>
 #include <vector>
@@ -308,6 +310,16 @@ template<typename T, typename C, typename R>
     requires urd::HasFields<R>
 struct fmt::formatter<urd::shared_view<T, C, R>> : urd::detail::view_formatter<urd::shared_view<T, C, R>>
 {
+};
+
+/// A child view is written as the view of the form it holds.
+template<typename T, typename... Vs>
+struct fmt::formatter<urd::child_view<T, Vs...>> : fmt::formatter<std::string_view>
+{
+    auto format(const urd::child_view<T, Vs...>& view, fmt::format_context& context) const
+    {
+        return std::visit([&context](const auto& form) { return fmt::format_to(context.out(), "{}", form); }, view.form());
+    }
 };
 
 /// A cost as the docs write it: O(1), O(log n), O(n log n), O(n changes), with * for amortized and ~ for expected.

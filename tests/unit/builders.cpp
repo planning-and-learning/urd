@@ -14,6 +14,8 @@
 
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <list>
+#include <span>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -161,6 +163,9 @@ struct Nodes
     const urd::data<Leaf>& operator[](LeafKey key) const { return leaves[key.slot]; }
 
     [[nodiscard]] urd::index_view<Leaf, Nodes, LeafKey> view(LeafKey key) const { return { key, this }; }
+
+    /// Its number, as a repository's: its views compare by identity (urd::HasLayers).
+    [[nodiscard]] std::size_t layer() const noexcept { return 0; }
 };
 
 using LeafBuilder = urd::builder<Leaf, Nodes>;
@@ -278,8 +283,8 @@ TEST(Builder, ReadsItsChildrenInEachForm)
     EXPECT_EQ(weight_of(view.get_first()), 3);
     EXPECT_EQ(weights_of(view), (std::vector<int> { 7, 3, 11 }));
 
-    // A record's member reads as a view of its kind, a builder's as a variant of the views of its forms: both read as
-    // a Leaf (urd::ReadsAs); the builder view itself is a view of a Node.
+    // A record's member reads as a view of its kind, a builder's as a child view (of the views of its forms): both read
+    // as a Leaf (urd::ReadsAs); the builder view itself is a view of a Node.
     static_assert(urd::ReadsAs<decltype(nodes.view(urd::index<Leaf>(0))), Leaf>);
     static_assert(urd::ReadsAs<decltype(view.get_first()), Leaf>);
     static_assert(!urd::ViewOf<decltype(view.get_first()), Leaf>);
@@ -300,6 +305,60 @@ TEST(Builder, ReadsItsChildrenInEachForm)
     EXPECT_TRUE(urd::is_interned_as(view.get_first(), nodes.view(urd::index<Leaf>(0))));
     EXPECT_TRUE(urd::is_interned_as(nodes.view(urd::index<Leaf>(0)), nodes.view(urd::index<Leaf>(0))));
     EXPECT_FALSE(urd::is_interned_as(urd::resolve(std::as_const(node.rest[2]), nodes), nodes.view(urd::index<Leaf>(0))));
+}
+
+TEST(ChildView, ReadsEachFormWithItsKindsGettersAndComparesAsItsForm)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
+
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    node.first = urd::index<Leaf>(0);
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 7;
+    node.rest.emplace_back(urd::index<Leaf>(0));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
+    const auto view = urd::resolve(node, nodes);
+
+    // A builder's child reads as a child view, with the kind's getters whatever its form: built, interned, held.
+    static_assert(urd::ChildView<decltype(view.get_first())>);
+    auto weights = std::vector<int> {};
+    for (const auto leaf : view.get_rest())
+        weights.push_back(leaf.get_weight());
+    EXPECT_EQ(weights, (std::vector<int> { 7, 3, 11 }));
+    EXPECT_EQ(view.get_first().get_weight(), 3);
+
+    // It compares as the view of its form: two readings of one interned leaf are equal; a built leaf is another reading,
+    // whatever its fields.
+    EXPECT_EQ(view.get_first(), urd::resolve(std::as_const(node.rest[1]), nodes));
+    EXPECT_NE(view.get_first(), urd::resolve(std::as_const(node.rest[0]), nodes));
+
+    // Its form, where a reader needs it: interned (its key), built (its builder's view).
+    EXPECT_EQ(urd::interned_view(view.get_first()).index(), urd::index<Leaf>(0));
+    EXPECT_EQ(urd::built_view(urd::resolve(std::as_const(node.rest[0]), nodes)).get_weight(), 7);
+}
+
+TEST(ChildView, AChildRangeIsAsCapableAsItsFormsRanges)
+{
+    // Random access where every form's range has it: indexed, iterator arithmetic, sized.
+    using Indexed = urd::child_range<int, std::vector<int>, std::span<const int>>;
+    static_assert(std::ranges::random_access_range<Indexed> && std::ranges::sized_range<Indexed>);
+    const auto values = std::vector<int> { 5, 6, 7 };
+    const auto range = Indexed(Indexed::form_type(std::in_place_index<1>, std::span<const int>(values)));
+    EXPECT_EQ(range[1], 6);
+    EXPECT_EQ(*(range.begin() + 2), 7);
+    EXPECT_EQ(range.end() - range.begin(), 3);
+    EXPECT_EQ(range.size(), 3U);
+    EXPECT_TRUE(range.begin() < range.end());
+
+    // Forward only where one form's range is.
+    using Listed = urd::child_range<int, std::vector<int>, std::list<int>>;
+    static_assert(std::ranges::forward_range<Listed> && !std::ranges::random_access_range<Listed>);
+    const auto listed = Listed(Listed::form_type(std::in_place_index<1>, std::list<int> { 1, 2 }));
+    EXPECT_EQ(std::vector<int>(listed.begin(), listed.end()), (std::vector<int> { 1, 2 }));
 }
 
 TEST(Builder, AHandleGivesItsRecordBackToItsPool)

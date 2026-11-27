@@ -39,6 +39,42 @@ template<typename T, typename C>
 struct is_copy_constructible<urd::builder<T, C>> : std::bool_constant<urd::CopiedAsIs<urd::builder<T, C>>>
 {
 };
+/// A child view (urd::child resolved) is handed out as the view of the form it holds, and taken from Python as the view
+/// of any of its forms (nanobind's variant caster over them).
+template<typename T, typename... Vs>
+struct type_caster<urd::child_view<T, Vs...>>
+{
+    using Value = urd::child_view<T, Vs...>;
+    using Forms = std::variant<Vs...>;
+    static constexpr auto Name = union_name(make_caster<Vs>::Name...);
+    template<typename U>
+    using Cast = movable_cast_t<U>;
+    template<typename U>
+    static constexpr bool can_cast()
+    { return true; }
+
+    explicit operator Value*() { return &*value; }
+    explicit operator Value&() { return *value; }
+    explicit operator Value&&() { return std::move(*value); }
+
+    bool from_python(handle src, uint32_t flags, cleanup_list* cleanup) noexcept
+    {
+        auto forms = make_caster<Forms>();
+        if (!forms.from_python(src, flags, cleanup))
+            return false;
+        value.emplace(static_cast<Forms&>(forms));
+        return true;
+    }
+
+    /// A child view is a temporary (a getter's result): the view of its form is handed over as a copy of its own,
+    /// moved (a reference to the temporary's form would dangle).
+    template<typename U>
+    static handle from_cpp(U&& view, rv_policy /*policy*/, cleanup_list* cleanup) noexcept
+    { return make_caster<Forms>::from_cpp(Forms(view.form()), rv_policy::move, cleanup); }
+
+    std::optional<Value> value;
+};
+
 NAMESPACE_END(detail)
 NAMESPACE_END(NB_NAMESPACE)
 

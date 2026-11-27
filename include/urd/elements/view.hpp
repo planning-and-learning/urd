@@ -216,9 +216,12 @@ concept Alternative = (std::same_as<A, Ts> || ...);
 /// A variant (std's or cista's) as the std::variant of its alternatives resolved. An empty one (a cista variant not
 /// assigned, a std::variant valueless) throws std::bad_variant_access. Each alternative is constructed by its index:
 /// std::variant's converting constructor would resolve its overloads over every alternative, for every alternative.
+namespace detail
+{
+/// The resolution of a variant V<Ts...> (resolution<V<Ts...>>), named, so that a variant of its own (a child) resolves
+/// on it.
 template<template<typename...> typename V, typename... Ts>
-    requires variant_value<V<Ts...>>
-struct resolution<V<Ts...>>
+struct variant_resolution
 {
     template<typename C>
     static auto of(const V<Ts...>& member, const C& context)
@@ -262,6 +265,13 @@ private:
             return V<Ts...>(resolution<Target>::stored(alternative));
         }
     }
+};
+}  // namespace detail
+
+template<template<typename...> typename V, typename... Ts>
+    requires variant_value<V<Ts...>>
+struct resolution<V<Ts...>> : detail::variant_resolution<V, Ts...>
+{
 };
 
 /// An optional as the std::optional of its value resolved.
@@ -1032,3 +1042,6 @@ namespace std::ranges
 template<typename R, typename F>
 inline constexpr bool enable_borrowed_range<urd::transformed_range<R, F>> = true;
 }  // namespace std::ranges
+
+// The child view (urd::child resolved) and the resolution of a child to it.
+#include "urd/elements/child_view.hpp"
