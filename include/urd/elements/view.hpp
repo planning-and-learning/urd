@@ -693,6 +693,9 @@ public:
     owning_view(owning_view&& other) noexcept(std::is_nothrow_move_constructible_v<R>) : borrowed_view<T, C, R>(other), m_owned(std::move(other.m_owned))
     { this->lend(&m_owned); }
 
+    /// Its record, moved out of the view (an expiring one): to keep or fill on its own.
+    [[nodiscard]] R release() && noexcept(std::is_nothrow_move_constructible_v<R>) { return std::move(m_owned); }
+
     owning_view& operator=(const owning_view& other)
         requires std::copy_constructible<R>
     {

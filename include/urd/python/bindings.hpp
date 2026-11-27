@@ -168,26 +168,36 @@ template<typename T>
 auto bind_index(nb::module_& m)
 { return detail::key_binder<T>::bind(m); }
 
-/// The fields of record Data (urd::Fields), each a read/write attribute under its name, and an __init__ from their
-/// values, in order.
+/// Whether Python gives a member of type M as a value: anything but a flat container of move-only records, whose
+/// elements Python lists hand over only by copy (as nanobind's std::vector: a successor's distributions).
+template<typename M>
+inline constexpr bool python_settable = CopiedAsIs<M> || !(FlatVector<M> || FlatOptional<M> || FlatPair<M> || FlatVariant<M>);
+
+/// The fields of record Data (urd::Fields), each an attribute under its name (written where Python gives its value),
+/// and an __init__ from their values, in order, where Python gives each.
 template<typename Data>
     requires HasFields<Data>
 void bind_fields(nb::class_<Data>& cls)
 {
-    // Read in place, written as a clone (urd::clone: a copy where it is copyable, field by field where it holds a
-    // move-only record, a plan), so that a field of any type binds alike.
+    // Read in place, written as a clone (urd::clone: a copy where it is copyable, field by field where it is a move-only
+    // record, a plan).
     for_each_field<Data>(
         [&]<typename F>()
         {
-            cls.def_prop_rw(
-                F::c_name,
-                [](const Data& data) -> const member_type_t<F::member>& { return data.*F::member; },
-                [](Data& data, const member_type_t<F::member>& value) { data.*F::member = urd::clone(value); },
-                nb::rv_policy::reference_internal);
+            const auto get = [](const Data& data) -> const member_type_t<F::member>& { return data.*F::member; };
+            if constexpr (python_settable<member_type_t<F::member>>)
+                cls.def_prop_rw(
+                    F::c_name,
+                    get,
+                    [](Data& data, const member_type_t<F::member>& value) { data.*F::member = urd::clone(value); },
+                    nb::rv_policy::reference_internal);
+            else
+                cls.def_prop_ro(F::c_name, get, nb::rv_policy::reference_internal);
         });
     [&]<typename... Fs>(Fields<Fs...> /*fields*/)
     {
-        cls.def("__init__", [](Data* self, const member_type_t<Fs::member>&... values) { new (self) Data(urd::clone(values)...); }, nb::arg(Fs::c_name)...);
+        if constexpr ((python_settable<member_type_t<Fs::member>> && ...))
+            cls.def("__init__", [](Data* self, const member_type_t<Fs::member>&... values) { new (self) Data(urd::clone(values)...); }, nb::arg(Fs::c_name)...);
     }(Data::fields());
 }
 
@@ -595,6 +605,9 @@ void bind_view(nb::module_& m)
         if (nb::type<Borrowed>().is_valid())
         {
             nb::class_<View, Borrowed>(m, name.c_str());
+            // A borrowed view (valid while its record is) kept as a view owning a clone of its record (urd::clone).
+            if constexpr (detail::owns_record<View>)
+                nb::borrow<nb::class_<Borrowed>>(nb::type<Borrowed>()).def("clone", [](const Borrowed& v) { return urd::clone(v); });
             return;
         }
     }

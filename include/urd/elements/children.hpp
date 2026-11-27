@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -832,6 +833,38 @@ auto interned_view(const std::variant<Vs...>& reading)
 template<typename U, typename C, typename K, typename R>
 void copy_child(child<U, C, K>& target, const R& reading)
 { target.template emplace<0>(urd::interned_view(reading).index()); }
+
+namespace detail
+{
+template<typename X>
+inline constexpr bool is_record = false;
+template<typename T>
+inline constexpr bool is_record<data<T>> = true;
+
+[[noreturn]] inline missing_key child_not_interned()
+{ throw std::invalid_argument("urd::child_record: a built child's own children are interned first"); }
+}  // namespace detail
+
+/// The record of a child not interned yet, as another repository interns it (writable: an insert prepares it in place):
+/// a held one's own; a built one's written into scratch (map_children), its own children interned already, kept as
+/// their keys (one that is not throws std::invalid_argument). An interned child has its key instead
+/// (std::bad_variant_access).
+template<typename T, typename C, typename K>
+data<T>& child_record(child<T, C, K>& held, data<T>& scratch)
+{
+    if (const auto* record = std::get_if<held_child<T, C>>(&held))
+        return **record;
+    return urd::map_children(urd::built(held),
+                             scratch,
+                             []<typename Form>(Form& form)
+                             {
+                                 using Plain = std::remove_const_t<Form>;
+                                 if constexpr (is_builder<Plain> || detail::is_record<Plain>)
+                                     return detail::child_not_interned();
+                                 else
+                                     return Plain(form);
+                             });
+}
 
 /// Whether a reading of a T (a view of it, or a resolved child: the variant of the views of its forms) reads the
 /// interned record `interned` (the same context, the same key): a built or held record is another record, even of the

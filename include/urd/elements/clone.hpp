@@ -4,6 +4,7 @@
 // same pool, and the builder's other members as they are. Copies are explicit: a builder is never copied implicitly.
 #include "urd/elements/builder.hpp"
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/flat.hpp"
 #include "urd/elements/handle.hpp"
 #include "urd/elements/view.hpp"
 
@@ -50,6 +51,32 @@ struct copied<std::pair<A, B>>
 
 template<typename... Vs>
 struct copied<std::variant<Vs...>>
+{
+    static constexpr bool value = (copied<Vs>::value && ...);
+};
+
+/// A record's flat containers, as their std counterparts (a flat vector, too, reports itself copyable whatever its
+/// elements).
+template<typename E>
+struct copied<flat_vector<E>>
+{
+    static constexpr bool value = copied<E>::value;
+};
+
+template<typename E>
+struct copied<flat_optional<E>>
+{
+    static constexpr bool value = copied<E>::value;
+};
+
+template<typename A, typename B>
+struct copied<flat_pair<A, B>>
+{
+    static constexpr bool value = copied<A>::value && copied<B>::value;
+};
+
+template<typename... Vs>
+struct copied<flat_variant<Vs...>>
 {
     static constexpr bool value = (copied<Vs>::value && ...);
 };
@@ -109,6 +136,28 @@ std::pair<A, B> clone(const std::pair<A, B>& value);
 template<typename... Vs>
     requires(!CopiedAsIs<std::variant<Vs...>>)
 std::variant<Vs...> clone(const std::variant<Vs...>& value);
+
+/// A record's flat containers of what is not copyable (move-only records), element by element, as std's.
+template<typename E>
+    requires(!CopiedAsIs<E>)
+flat_vector<E> clone(const flat_vector<E>& values);
+
+template<typename E>
+    requires(!CopiedAsIs<E>)
+flat_optional<E> clone(const flat_optional<E>& value);
+
+template<typename A, typename B>
+    requires(!CopiedAsIs<flat_pair<A, B>>)
+flat_pair<A, B> clone(const flat_pair<A, B>& value);
+
+template<typename... Vs>
+    requires(!CopiedAsIs<flat_variant<Vs...>>)
+flat_variant<Vs...> clone(const flat_variant<Vs...>& value);
+
+/// A view of a record held outside it (a borrowed view: valid while its record is), as a view owning a clone of that
+/// record: kept beyond it, read through the same context.
+template<typename T, typename C, typename R>
+owning_view<T, C, R> clone(const borrowed_view<T, C, R>& view);
 
 namespace detail
 {
@@ -177,6 +226,36 @@ std::variant<Vs...> clone(const std::variant<Vs...>& value)
     return std::visit([]<typename V>(const V& alternative) { return std::variant<Vs...>(std::in_place_type<V>, urd::clone(alternative)); }, value);
 }
 
+template<typename E>
+    requires(!CopiedAsIs<E>)
+flat_vector<E> clone(const flat_vector<E>& values)
+{
+    auto result = flat_vector<E>();
+    result.reserve(values.size());
+    for (const auto& value : values)
+        result.emplace_back(urd::clone(value));
+    return result;
+}
+
+template<typename E>
+    requires(!CopiedAsIs<E>)
+flat_optional<E> clone(const flat_optional<E>& value)
+{
+    if (!value.has_value())
+        return flat_optional<E>();
+    return flat_optional<E>(urd::clone(*value));
+}
+
+template<typename A, typename B>
+    requires(!CopiedAsIs<flat_pair<A, B>>)
+flat_pair<A, B> clone(const flat_pair<A, B>& value)
+{ return flat_pair<A, B> { urd::clone(value.first), urd::clone(value.second) }; }
+
+template<typename... Vs>
+    requires(!CopiedAsIs<flat_variant<Vs...>>)
+flat_variant<Vs...> clone(const flat_variant<Vs...>& value)
+{ return value.apply([](const auto& alternative) { return flat_variant<Vs...>(urd::clone(alternative)); }); }
+
 template<typename R>
 handle<R> clone(const handle<R>& held)
 {
@@ -191,5 +270,9 @@ handle<R> clone(const handle<R>& held)
     *result = urd::clone(*held);
     return result;
 }
+
+template<typename T, typename C, typename R>
+owning_view<T, C, R> clone(const borrowed_view<T, C, R>& view)
+{ return owning_view<T, C, R>(urd::clone(detail::view_access::record(view)), &view.context()); }
 
 }  // namespace urd

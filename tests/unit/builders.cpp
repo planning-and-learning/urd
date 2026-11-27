@@ -615,3 +615,26 @@ TEST(Builder, BuildsElementChildrenByTheirPosition)
     urd::build_from(source, built, [](const urd::index_view<Leaf, Nodes>& leaf) { return urd::index<Leaf>(leaf.index().value + 10); });
     EXPECT_EQ(built.values, (std::vector<std::uint32_t> { 10, 7, 11, 9 }));
 }
+
+// A record's flat list of move-only records (a record holding its records in place) is cloned element by element.
+TEST(Builder, AFlatListOfMoveOnlyRecordsIsCloned)
+{
+    static_assert(!urd::CopiedAsIs<urd::flat_vector<urd::data<Node>>>);
+    auto rest = urd::flat_vector<urd::index<Leaf>> {};
+    rest.push_back(urd::index<Leaf>(2));
+    auto nodes = urd::flat_vector<urd::data<Node>> {};
+    nodes.emplace_back(urd::index<Leaf>(1), std::move(rest), 3);
+    const auto copy = urd::clone(nodes);
+    ASSERT_EQ(copy.size(), 1U);
+    EXPECT_EQ(copy[0].first, nodes[0].first);
+    EXPECT_TRUE(copy[0].rest == nodes[0].rest);
+    EXPECT_EQ(copy[0].depth, 3);
+}
+
+// An owning view hands its record out (release): the record to keep or fill without the view.
+TEST(Builder, AnOwningViewReleasesItsRecord)
+{
+    auto view = urd::owning_view<Leaf, Nodes, urd::data<Leaf>>(urd::data<Leaf>(7), nullptr);
+    const auto record = std::move(view).release();
+    EXPECT_EQ(record.weight, 7);
+}
