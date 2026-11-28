@@ -315,7 +315,7 @@ K as_key(const R& inserted)
 /// not interned yet (held: writable, interning may prepare it).
 template<Key K>
 const K& form_of(const K& interned) noexcept
-{ return interned; }
+{ return interned; }  // NOLINT(bugprone-return-const-ref-from-parameter): called with a child's form held, never a temporary
 
 template<typename U, typename C>
 const builder<U, C>& form_of(const handle<builder<U, C>>& built) noexcept
@@ -352,7 +352,7 @@ void assign_member(M& target, const B& source, F& f)
         target = detail::as_key<M>(f(detail::form_of(source)));
     else if constexpr (Record<M> && Builder<B>)
         detail::assign_built(target, source, f);
-    else if constexpr (FlatVector<M> && (StdVector<B> || is_store<B>))
+    else if constexpr (FlatVector<M> && (StdVector<B> || is_store<B>) )
     {
         using size_type = typename M::size_type;
         target.resize(static_cast<size_type>(source.size()));
@@ -659,7 +659,7 @@ void build_member(T& target, const R& source, const Cx& context, F& f)
     }
     else if constexpr (Builder<T>)
         detail::build_fields_of(target, source, context, f);
-    else if constexpr (StdVector<T> && (FlatVector<R> || StdVector<R>))
+    else if constexpr (StdVector<T> && (FlatVector<R> || StdVector<R>) )
     {
         const auto before = target.size();
         target.resize(source.size());
@@ -792,8 +792,7 @@ void copy_child(child<U, C, K>& target, const R& reading)
 
 namespace detail
 {
-[[noreturn]] inline missing_key child_not_interned()
-{ throw std::invalid_argument("urd::child_record: a built child's own children are interned first"); }
+[[noreturn]] inline missing_key child_not_interned() { throw std::invalid_argument("urd::child_record: a built child's own children are interned first"); }
 }  // namespace detail
 
 /// The record of a child not interned yet, as another repository interns it (writable: an insert prepares it in place):

@@ -7,7 +7,7 @@
 #include "urd/elements/builder.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/less.hpp"
-#include "urd/elements/view.hpp"
+#include "urd/elements/view_decl.hpp"
 
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/list.hpp>
@@ -102,8 +102,8 @@ struct unified<R, Rs...>
 };
 
 template<typename R, typename... Rs>
-    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && (!StdOptional<R>) && std::ranges::forward_range<const R>
-            && (std::ranges::forward_range<const Rs> && ...)
+    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && (!StdOptional<R>)
+            && std::ranges::forward_range<const R> && (std::ranges::forward_range<const Rs> && ...)
 struct unified<R, Rs...>
 {
     using element = typename unified<std::ranges::range_value_t<const R>, std::ranges::range_value_t<const Rs>...>::type;
@@ -150,7 +150,9 @@ U unify(R&& result)
         auto unified_value = std::optional<U>();
         [&]<std::size_t... I>(std::index_sequence<I...>)
         {
-            ((result.index() == I ? (unified_value.emplace(std::in_place_index<I>, detail::unify<std::variant_alternative_t<I, U>>(std::get<I>(result))), 0) : 0), ...);
+            ((result.index() == I ? (unified_value.emplace(std::in_place_index<I>, detail::unify<std::variant_alternative_t<I, U>>(std::get<I>(result))), 0) :
+                                    0),
+             ...);
         }(std::make_index_sequence<std::variant_size_v<U>> {});
         return std::move(*unified_value);
     }
@@ -182,12 +184,16 @@ consteval std::size_t field_position()
 /// The number of record R's fields.
 template<typename R>
 consteval std::size_t field_count()
-{ return []<typename... Fs>(Fields<Fs...> /*fields*/) { return sizeof...(Fs); }(R::fields()); }
+{
+    return []<typename... Fs>(Fields<Fs...> /*fields*/) { return sizeof...(Fs); }(R::fields());
+}
 
 /// The member of the field at Position among record R's fields.
 template<typename R, std::size_t Position>
 consteval auto field_member()
-{ return []<typename... Fs>(Fields<Fs...> /*fields*/) { return boost::mp11::mp_at_c<boost::mp11::mp_list<Fs...>, Position>::member; }(R::fields()); }
+{
+    return []<typename... Fs>(Fields<Fs...> /*fields*/) { return boost::mp11::mp_at_c<boost::mp11::mp_list<Fs...>, Position>::member; }(R::fields());
+}
 }  // namespace detail
 
 /// A child of kind T read through its context: the view of the form it holds (one of Vs, the views of T's forms), read
@@ -397,20 +403,20 @@ public:
     [[nodiscard]] E operator[](std::size_t position) const
         requires random_access
     {
-        return std::visit([position](const auto& range) { return detail::unify<E>(std::ranges::begin(range)[static_cast<std::ptrdiff_t>(position)]); },
-                          m_form);
+        return std::visit([position](const auto& range) { return detail::unify<E>(std::ranges::begin(range)[static_cast<std::ptrdiff_t>(position)]); }, m_form);
     }
 
 private:
     /// The iterator `f` gives for the range of the form held, at the form's position (forms whose ranges share an
     /// iterator type stay apart).
     template<typename F>
-    iterator at(F f) const
+    [[nodiscard]] iterator at(F f) const
     {
         return [&]<std::size_t... I>(std::index_sequence<I...>)
         {
             auto result = std::optional<iterator>();
-            ((m_form.index() == I ? (result.emplace(std::variant<std::ranges::iterator_t<const Rs>...>(std::in_place_index<I>, f(std::get<I>(m_form)))), 0) : 0),
+            ((m_form.index() == I ? (result.emplace(std::variant<std::ranges::iterator_t<const Rs>...>(std::in_place_index<I>, f(std::get<I>(m_form)))), 0) :
+                                    0),
              ...);
             return std::move(*result);
         }(std::make_index_sequence<sizeof...(Rs)> {});
@@ -524,4 +530,3 @@ auto interned_view(const child_view<T, Vs...>& reading)
 { return urd::interned_view(reading.form()); }
 
 }  // namespace urd
-

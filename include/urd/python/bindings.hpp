@@ -39,6 +39,7 @@ template<typename T, typename C>
 struct is_copy_constructible<urd::builder<T, C>> : std::bool_constant<urd::CopiedAsIs<urd::builder<T, C>>>
 {
 };
+
 /// A child view (urd::child resolved) is handed out as the view of the form it holds, and taken from Python as the view
 /// of any of its forms (nanobind's variant caster over them).
 template<typename T, typename... Vs>
@@ -49,12 +50,15 @@ struct type_caster<urd::child_view<T, Vs...>>
     static constexpr auto Name = union_name(make_caster<Vs>::Name...);
     template<typename U>
     using Cast = movable_cast_t<U>;
+
     template<typename U>
     static constexpr bool can_cast()
     { return true; }
 
     explicit operator Value*() { return &*value; }
+
     explicit operator Value&() { return *value; }
+
     explicit operator Value&&() { return std::move(*value); }
 
     bool from_python(handle src, uint32_t flags, cleanup_list* cleanup) noexcept
@@ -69,7 +73,7 @@ struct type_caster<urd::child_view<T, Vs...>>
     /// A child view is a temporary (a getter's result): the view of its form is handed over as a copy of its own,
     /// moved (a reference to the temporary's form would dangle).
     template<typename U>
-    static handle from_cpp(U&& view, rv_policy /*policy*/, cleanup_list* cleanup) noexcept
+    static handle from_cpp(const U& view, rv_policy /*policy*/, cleanup_list* cleanup) noexcept
     { return make_caster<Forms>::from_cpp(Forms(view.form()), rv_policy::move, cleanup); }
 
     std::optional<Value> value;
@@ -247,12 +251,7 @@ void bind_field_getters(nb::class_<View>& cls)
     // resolved (a view) is returned by value, moved.
     for_each_field<record_of<View>>(
         [&]<typename F>()
-        {
-            cls.def(
-                F::c_name,
-                [](const View& view) -> decltype(auto) { return view.template member<F::member>(); },
-                nb::rv_policy::reference_internal);
-        });
+        { cls.def(F::c_name, [](const View& view) -> decltype(auto) { return view.template member<F::member>(); }, nb::rv_policy::reference_internal); });
 }
 
 /// Binds the record T as <name>Data (urd::name<T>()), the one way a record is bound: an __init__ from its fields in
@@ -627,7 +626,9 @@ template<typename View>
 void bind_view(nb::module_& m)
 {
     using T = typename View::value_type;
-    const auto form = std::string(urd::Builder<record_of<View>> ? "BuilderView" : (detail::borrows_record<View> || detail::owns_record<View> || detail::shares_record<View>) ? "RecordView" : "");
+    const auto form = std::string(urd::Builder<record_of<View>>                                                              ? "BuilderView" :
+                                  (detail::borrows_record<View> || detail::owns_record<View> || detail::shares_record<View>) ? "RecordView" :
+                                                                                                                               "");
     const auto holding = std::string(detail::owns_record<View> ? "Owned" : detail::shares_record<View> ? "Shared" : "");
     const auto name = holding + urd::name<T>() + form;
     if constexpr (detail::owns_record<View> || detail::shares_record<View>)
@@ -637,7 +638,7 @@ void bind_view(nb::module_& m)
         using Borrowed = borrowed_view<T, view_context_t<View>, record_of<View>>;
         if (nb::type<Borrowed>().is_valid())
         {
-            nb::class_<View, Borrowed>(m, name.c_str());
+            const auto subclass = nb::class_<View, Borrowed>(m, name.c_str());  // its members are its base's
             // A borrowed view (valid while its record is) kept as a view owning a clone of its record (urd::clone).
             if constexpr (detail::owns_record<View>)
                 nb::borrow<nb::class_<Borrowed>>(nb::type<Borrowed>()).def("clone", [](const Borrowed& v) { return urd::clone(v); });

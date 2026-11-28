@@ -187,27 +187,32 @@ concept Builder = detail::record_builder<R>;
 /// The kind a record or a builder is of: T of data<T> and of builder<T, C>.
 template<typename R>
 struct kind_of;
+
 template<typename T>
 struct kind_of<data<T>>
 {
     using type = T;
 };
+
 template<typename T, typename C>
 struct kind_of<builder<T, C>>
 {
     using type = T;
 };
+
 template<typename R>
 using kind_of_t = typename kind_of<R>::type;
 
 /// The context a builder's children are read through: C of builder<T, C>.
 template<typename R>
 struct builder_context;
+
 template<typename T, typename C>
 struct builder_context<builder<T, C>>
 {
     using type = C;
 };
+
 template<typename R>
 using builder_context_t = typename builder_context<R>::type;
 

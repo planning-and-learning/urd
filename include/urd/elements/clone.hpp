@@ -60,11 +60,6 @@ consteval bool copied()
 template<typename V>
 concept CopiedAsIs = detail::copied<V>();
 
-/// A record held by its handle: a clone of it in a slot of its own of the same Store (or on the heap, where it is
-/// owned: urd::make_owned).
-template<typename R>
-handle<R> clone(const handle<R>& held);
-
 /// A view of a record held outside it (a borrowed view: valid while its record is), as a view owning a clone of that
 /// record: kept beyond it, read through the same context.
 template<typename T, typename C, typename R>
@@ -110,6 +105,8 @@ V clone(const V& value)
         static_assert(false, "urd::clone: a value is copied as it is, or cloned member by member (a record, a builder, a container, a handle)");
 }
 
+/// A record held by its handle: a clone of it in a slot of its own of the same Store (or on the heap, where it is
+/// owned: urd::make_owned). Declared beside the handle (urd/elements/handle.hpp).
 template<typename R>
 handle<R> clone(const handle<R>& held)
 {

@@ -9,9 +9,9 @@
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/equal_to.hpp"
 #include "urd/elements/flat.hpp"
-#include "urd/format.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/view.hpp"
+#include "urd/format.hpp"
 #include "urd/repr/slots/slots.hpp"
 #include "urd/store.hpp"
 #include "urd/tags.hpp"
@@ -31,6 +31,7 @@ struct Twig
 {
     static constexpr std::string_view name = "Twig";
 };
+
 struct Bough
 {
     static constexpr std::string_view name = "Bough";
@@ -184,6 +185,7 @@ static_assert(std::same_as<decltype(urd::identifying_members_of<urd::data<Twig>>
 static_assert(std::same_as<decltype(urd::data<Twig>::cista_members()), urd::Members<&urd::data<Twig>::index, &urd::data<Twig>::weight>>);
 // A field says what its record promises of it.
 static_assert([]<typename Tip, typename Twigs, typename... Rest>(urd::Fields<Tip, Twigs, Rest...>)
+              // NOLINTNEXTLINE(misc-redundant-expression): the two promises of Twigs differ in their template argument
               { return Twigs::template promises<urd::sorted> && Twigs::template promises<urd::unique> && !Tip::template promises<urd::sorted>; }(
                   urd::data<Bough>::fields()));
 // A record's key of several parts is built as a child, as an index is; its interned view holds that key.
