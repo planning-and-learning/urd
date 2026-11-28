@@ -377,7 +377,7 @@ public:
 
         iterator& operator++()
         {
-            ++m_it;
+            ++m_it;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic): the base iterator may be a pointer into a range
             return *this;
         }
 
@@ -742,6 +742,10 @@ public:
     using record_type = R;
 
     shared_view(std::shared_ptr<const R> record, const C* context) noexcept : borrowed_view<T, C, R>(record.get(), context), m_shared(std::move(record)) {}
+
+    /// A view of a record it does not own: valid while the record is (a shared pointer that aliases it with no owner).
+    [[nodiscard]] static shared_view unowned(const R& record, const C* context) noexcept
+    { return shared_view(std::shared_ptr<const R>(std::shared_ptr<void>(), &record), context); }
 
 private:
     std::shared_ptr<const R> m_shared;

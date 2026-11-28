@@ -22,6 +22,29 @@ Hashing and equality
 
    :cpp:struct:`Hash` and :cpp:struct:`EqualTo` apply to ``T``: what an unordered key needs.
 
+By content
+----------
+
+A view hashes and compares by its identity (its record's identity and its context's number): the views of a builder
+and of the record it interns to are different elements. Their content is compared instead through
+``urd/elements/content.hpp``.
+
+.. cpp:function:: template<View V> hash_t hash_content(const V& view)
+
+   The hash of what ``view`` reads: its record form's identifying members (:cpp:func:`identifying_members_of`
+   ``<record_of<V>>``), each read through the view, combined as :cpp:struct:`Hash` combines an identified type's. A
+   member that reads as a view (a child, a builder or record held in place) is taken by its content in turn, the form a
+   child holds by the view of that form; a range of such by its elements', in order; any other value by its
+   :cpp:struct:`Hash`. So a builder, a record held in place and an interned record of the same content hash alike,
+   read through any contexts; a builder's view hashes as :cpp:struct:`Hash` hashes the builder where none of its
+   identifying members is a child.
+
+.. cpp:function:: template<View V, View W> bool equal_content(const V& lhs, const W& rhs)
+
+   Whether two views of one kind read the same content (:cpp:func:`hash_content`'s): their record forms' identifying
+   members, by position, read through each view; values of one type by their :cpp:struct:`EqualTo`, ranges of values
+   of different types element by element.
+
 Prehashed keys
 --------------
 

@@ -140,6 +140,12 @@ T member_type_of(T C::* /*member*/);
 template<auto Member>
 using member_type_t = decltype(member_type_of(Member));
 
+/// The class whose data member `Member` points to.
+template<typename T, typename C>
+C member_class_of(T C::* /*member*/);
+template<auto Member>
+using member_class_t = decltype(member_class_of(Member));
+
 /// A record's fields, in data order: what it is, under the names it is read and written by. A record declares them
 /// once, `static constexpr auto fields() noexcept { return urd::Fields<urd::field<"lhs", &Data::lhs>, ...> {}; }`,
 /// and its identifying members are their members (urd::members_of); serialization, printing and bindings iterate them
@@ -202,6 +208,38 @@ struct kind_of<builder<T, C>>
 
 template<typename R>
 using kind_of_t = typename kind_of<R>::type;
+
+/// How the store of a kind T hands its records out where it keeps them compressed, in a form of its own (bits packed at
+/// their widths, a node of a tree, a row of a pool) rather than as data<T>: declared once per kind, by specializing it,
+/// by the library whose store it is, beside its tag (before its key is used: the key reads it). Unspecialized (empty),
+/// a record is held whole: a lookup hands out a reference to its data<T> (record_ref), its fields are read in place and
+/// its key is a number. A specialization declares
+///
+/// - `using ref = R;`: what a lookup hands out, by value (urd::stored_ref<T>), made from `context[key]`;
+/// - `template<auto Member> static auto read(const R& stored);`: each field `Member` of data<T> read from it
+///   (urd::stored_field), by value or in place as the form allows;
+/// - and, only where its store names a record by a handle rather than a number, `using key_value = H;` and
+///   `static constexpr H none;`, the handle that names nothing: what the key's part holds (urd::key_value_of).
+template<typename T>
+struct compressed_form
+{
+};
+
+/// Whether the store of T keeps its records compressed (compressed_form<T> names what a lookup hands out).
+template<typename T>
+concept CompressedKind = requires { typename compressed_form<T>::ref; };
+
+/// Whether the store of T names its compressed records by a handle of its own (compressed_form<T>::key_value).
+template<typename T>
+concept HandleKeyedKind = CompressedKind<T> && requires {
+    typename compressed_form<T>::key_value;
+    compressed_form<T>::none;
+};
+
+/// Whether `Member` is a field of a compressed record, read from R, what its store hands out (compressed_form::ref).
+template<auto Member, typename R>
+concept CompressedField = Record<member_class_t<Member>> && CompressedKind<kind_of_t<member_class_t<Member>>>
+                          && std::same_as<R, typename compressed_form<kind_of_t<member_class_t<Member>>>::ref>;
 
 /// The context a builder's children are read through: C of builder<T, C>.
 template<typename R>

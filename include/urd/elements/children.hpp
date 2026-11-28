@@ -2,6 +2,7 @@
 
 #include "urd/elements/builder.hpp"
 #include "urd/elements/child_view.hpp"
+#include "urd/elements/clone.hpp"
 #include "urd/elements/concepts.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/index.hpp"
@@ -31,10 +32,9 @@
 /// raw indices. urd::map_variant_children instead hands out each variant slot whole (urd::resolve of it), so that a
 /// callback may replace it by another alternative.
 ///
-/// A builder's children are its urd::child members (an index, a built builder, or a record not interned yet) and its
-/// members held only built (urd::built_child: a builder's handle, never null), found in the same shapes as std's
-/// containers and builders held in place: urd::map_children of a builder writes its record with each child replaced by
-/// an index, and urd::intern interns a builder so (its built children first).
+/// A builder's children are its urd::child members (an index, a built builder, or a record not interned yet), found in
+/// the same shapes as std's containers and builders held in place: urd::map_children of a builder writes its record with
+/// each child replaced by an index, and urd::intern interns a builder so (its built children first).
 namespace urd
 {
 
@@ -86,18 +86,11 @@ concept made_from_record = requires(const M& value, built_t<M, C>& into) { built
 
 namespace detail
 {
-/// Whether a builder's field of type F is made from its record's member of type M (built_form<M, C>::assign writes
-/// into it): not a field held otherwise than as M's built form (a key held only built, urd::built_child: its context
-/// builds it).
-template<typename M, typename C, typename F>
-concept field_made_from = requires(const M& value, F& into) { built_form<M, C>::assign(value, into); };
-
 /// Whether each field of builder<T, C> is made from its record's.
 template<typename T, typename C>
 consteval bool fields_made_from_record()
 {
-    return []<typename... Ds, typename... Bs>(Fields<Ds...> /*record*/, Fields<Bs...> /*builder*/)
-    { return (field_made_from<member_type_t<Ds::member>, C, member_type_t<Bs::member>> && ...); }(data<T>::fields(), builder<T, C>::fields());
+    return []<typename... Ds>(Fields<Ds...> /*record*/) { return (made_from_record<member_type_t<Ds::member>, C> && ...); }(data<T>::fields());
 }
 }  // namespace detail
 
@@ -193,50 +186,6 @@ struct built_form<flat_variant<Ms...>, C>
             });
     }
 };
-
-namespace detail
-{
-/// A built form with each child (urd::child) held only built (urd::built_child), wherever std's containers hold one.
-template<typename B>
-struct only_built
-{
-    using type = B;
-};
-
-template<typename B>
-using only_built_t = typename only_built<B>::type;
-
-template<typename U, typename C, typename K>
-struct only_built<child<U, C, K>>
-{
-    using type = built_child<U, C>;
-};
-
-template<typename E, typename A>
-struct only_built<std::vector<E, A>>
-{
-    using type = std::vector<only_built_t<E>>;
-};
-
-template<typename E>
-struct only_built<std::optional<E>>
-{
-    using type = std::optional<only_built_t<E>>;
-};
-
-template<typename A, typename B>
-struct only_built<std::pair<A, B>>
-{
-    using type = std::pair<only_built_t<A>, only_built_t<B>>;
-};
-}  // namespace detail
-
-/// The form of a record's member of type M in a builder that holds its children only built: built_t<M, C> with each
-/// child a builder's handle (urd::built_child: never null; a single one is made with its builder,
-/// `= urd::make_owned<urd::builder<T, C>>()`, a list's as they are added), so that its readers read the builders' views
-/// with no form to dispatch on. Such a field is made through its context, not from its record alone (made_from_record).
-template<typename M, typename C>
-using built_only_t = detail::only_built_t<built_t<M, C>>;
 
 /// The index an insert gives: of the pair (view or index, created) a repository's insert returns, of the interned
 /// record's view (an index_view: its key), or the index itself.
@@ -338,9 +287,9 @@ template<std::size_t I, typename... Ms, typename... Bs, typename F>
 void assign_alternative(flat_variant<Ms...>& target, const std::variant<Bs...>& source, F& f);
 
 /// A builder's member written into its record's member of the same position, converted: a child (urd::child) as the key
-/// f gives for the form it holds, a child held only built (urd::built_child) as the key f gives for its builder, a
-/// builder held in place as its record, std's containers (and a Store of children, in its order) as the flat ones, a
-/// built value its record's member takes by assignment (AssignsBuilt) so, a value as it is.
+/// f gives for the form it holds, a builder held in place as its record (or, where its record holds the key of a record
+/// stored in a pool of its own, as the key f gives for it), std's containers (and a Store of children, in its order) as
+/// the flat ones, a built value its record's member takes by assignment (AssignsBuilt) so, a value as it is.
 template<typename M, typename B, typename F>
 void assign_member(M& target, const B& source, F& f)
 {
@@ -348,10 +297,10 @@ void assign_member(M& target, const B& source, F& f)
         detail::assign_value(source, target);
     else if constexpr (Child<B>)
         std::visit([&](const auto& form) { target = detail::as_key<M>(f(detail::form_of(form))); }, source);
-    else if constexpr (BuiltChild<B>)
-        target = detail::as_key<M>(f(detail::form_of(source)));
     else if constexpr (Record<M> && Builder<B>)
         detail::assign_built(target, source, f);
+    else if constexpr (Key<M> && Builder<B>)
+        target = detail::as_key<M>(f(source));
     else if constexpr (FlatVector<M> && (StdVector<B> || is_store<B>) )
     {
         using size_type = typename M::size_type;
@@ -598,24 +547,14 @@ void build_fields_of(builder<U, C>& target, const builder<U, D>& source, const C
 template<std::size_t I, typename... Bs, typename... Ms, typename Cx, typename F>
 void build_alternative(std::variant<Bs...>& target, const flat_variant<Ms...>& source, const Cx& context, F& f);
 
-/// A new slot of a builder's container (a list's element, an optional's value, a variant's alternative), as a builder
-/// holds it: a child held only built with a builder of its own (never null), anything else as it is made.
-template<typename B>
-void make_built(B& slot)
-{
-    if constexpr (BuiltChild<B>)
-        slot = urd::make_owned<typename B::element_type>();
-}
-
 /// A builder's member from its record's (or another builder's of the same record), read through `context`
 /// (build_from):
 /// - a child from a record's key: the key of the view f gives for the element it names (f(view): as it is, or the view
 ///   in another repository that copying gives), none as the empty child; from a view that has the key already: its key;
 ///   from another builder's child: its key where it is interned (a built or held child is owned by its builder, not
 ///   copied: std::bad_variant_access);
-/// - a child held only built (urd::built_child) from a record's key: its builder filled from the view f gives (none:
-///   emptied); from another builder's: its builder filled from that builder;
-/// - a builder held in place from its record, or from another builder of the record;
+/// - a builder held in place from its record, or from another builder of the record; from its record's key, as the
+///   context reads that record into it (UnpacksBuilt: a record whose stored form lies in a pool of its own);
 /// - std's containers from the flat ones (or from std's of the record's form), element by element;
 /// - a key held as it is (held_key): the key of the view f gives for what it names, none as it is;
 /// - a value from a readout of another type (a stored form's field read as a view over its storage): as the built
@@ -640,35 +579,15 @@ void build_member(T& target, const R& source, const Cx& context, F& f)
         else
             static_assert(false, "urd::build_from: a child is built from its key, a view of its record, or another builder's child");
     }
-    else if constexpr (BuiltChild<T>)
-    {
-        if constexpr (BuiltChild<R>)
-            detail::build_fields_of(*target, *source, context, f);
-        else if constexpr (Key<R>)
-        {
-            if (source == R {})
-                urd::clear_fields(*target);
-            else
-            {
-                const auto view = f(context.view(source));
-                detail::build_fields_of(*target, detail::view_access::stored(view), view.context(), f);
-            }
-        }
-        else
-            static_assert(false, "urd::build_from: a child held only built is built from its key or another builder's");
-    }
+    else if constexpr (Builder<T> && Key<R> && UnpacksBuilt<Cx, R, T>)
+        context.unpack_built(source, target);
     else if constexpr (Builder<T>)
         detail::build_fields_of(target, source, context, f);
     else if constexpr (StdVector<T> && (FlatVector<R> || StdVector<R>) )
     {
-        const auto before = target.size();
         target.resize(source.size());
         for (std::size_t i = 0; i < target.size(); ++i)
-        {
-            if (i >= before)
-                detail::make_built(target[i]);
             detail::build_member(target[i], source[static_cast<typename R::size_type>(i)], context, f);
-        }
     }
     else if constexpr (StdOptional<T> && optional_value<R>)
     {
@@ -676,7 +595,7 @@ void build_member(T& target, const R& source, const Cx& context, F& f)
             target.reset();
         else
         {
-            detail::make_built(target.emplace());
+            target.emplace();
             detail::build_member(*target, *source, context, f);
         }
     }
@@ -714,7 +633,6 @@ void build_alternative(std::variant<Bs...>& target, const flat_variant<Ms...>& s
         if (source.index() != I)
             return detail::build_alternative<I + 1>(target, source, context, f);
         auto& alternative = target.template emplace<I>();
-        detail::make_built(alternative);
         detail::build_member(alternative, cista::get<I>(source), context, f);
     }
 }
@@ -919,5 +837,45 @@ data<T> pack(const builder<T, C>& built)
 template<BuilderView V>
 data<view_kind_t<V>> pack(const V& view)
 { return urd::pack(urd::record(view)); }
+
+/// The record an interned view reads, read out of its stored form field by field (urd::stored_field: in place for a
+/// record held whole, by value from a record laid out by its store); its own index the view's key, where that is its
+/// whole key (not a row's).
+template<typename T, typename C, typename K>
+    requires HandsOutRecordsBy<C, T, K>
+data<T> pack(const index_view<T, C, K>& view)
+{
+    auto record = data<T>();
+    detail::assign_fields_from<T>(record, detail::view_access::stored(view));
+    if constexpr (detail::HoldsWholeKey<data<T>> && std::same_as<K, key_t<T>>)
+        record.index = view.index();
+    return record;
+}
+
+/// The record a view of a record holds (a held child's), copied (urd::clone).
+template<typename T, typename C>
+data<T> pack(const borrowed_view<T, C, data<T>>& view)
+{ return urd::clone(urd::record(view)); }
+
+namespace detail
+{
+/// Whether a form V of a child view packs: urd::pack as declared up to here (a builder's, a view's), which a child
+/// view's own overload below requires of its forms.
+template<typename V>
+concept PackableForm = requires(const V& view) { urd::pack(view); };
+}  // namespace detail
+
+/// The record a child view reads: pack of the form it holds, where each of its forms packs (detail::PackableForm).
+template<typename T, typename... Vs>
+    requires(detail::PackableForm<Vs> && ...)
+data<T> pack(const child_view<T, Vs...>& view)
+{
+    return urd::visit_view(view, [](const auto& form) -> data<T> { return urd::pack(form); });
+}
+
+/// Whether a view V packs (urd::pack takes it): defined after every overload of urd::pack, since the qualified call
+/// finds only the overloads declared before it.
+template<typename V>
+concept Packable = requires(const V& view) { urd::pack(view); };
 
 }  // namespace urd

@@ -81,6 +81,12 @@ complexity of each operation per representation.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Source
+
+   layout
+
+.. toctree::
+   :maxdepth: 1
    :caption: Development
 
    BENCHMARKS

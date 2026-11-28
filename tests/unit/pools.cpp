@@ -666,8 +666,8 @@ TEST(Key, AFamilySelectsTheStoreOfTheKeysKindFirst)
 
 namespace
 {
-/// A kind whose store names its records by a handle into a flat buffer (where its values start, how many), not by a
-/// number: its key's part holds that handle (urd::key_value_of).
+/// A kind whose store keeps its records compressed, packed into a flat buffer, and names each by a handle there (where
+/// its values start, how many), not by a number: its key's part holds that handle (urd::compressed_form).
 struct Blob
 {
 };
@@ -681,13 +681,25 @@ struct BlobHandle
 
     static constexpr auto identifying_members() noexcept { return urd::Members<&BlobHandle::offset, &BlobHandle::size> {}; }
 };
+
+/// What a lookup of a blob hands out: its values read in place from the store's buffer, by value.
+struct BlobRef
+{
+    std::span<const int> values;
+};
 }  // namespace
 
+/// A blob's store hands out its reader (BlobRef), its one field read from it, and names it by its handle.
 template<>
-struct urd::key_value_of<Blob>
+struct urd::compressed_form<Blob>
 {
-    using type = BlobHandle;
-    static constexpr type none = BlobHandle {};
+    using ref = BlobRef;
+    using key_value = BlobHandle;
+    static constexpr key_value none = BlobHandle {};
+
+    template<auto Member>
+    [[nodiscard]] static std::span<const int> read(const BlobRef& stored) noexcept
+    { return stored.values; }
 };
 
 template<>
@@ -728,21 +740,6 @@ public:
 
 namespace
 {
-/// What a lookup of a blob hands out: its values read in place from the store's buffer, by value.
-struct BlobRef
-{
-    std::span<const int> values;
-};
-}  // namespace
-
-template<>
-struct urd::stored_ref_of<Blob>
-{
-    using type = BlobRef;
-};
-
-namespace
-{
 /// A store of blobs, each stored once, packed into one buffer and named by its handle there.
 class BlobStore
 {
@@ -776,6 +773,7 @@ public:
 }  // namespace
 
 static_assert(!urd::NumberedKind<Blob> && urd::NumberedKind<NestItem>);
+static_assert(std::same_as<urd::stored_ref<Blob>, BlobRef> && urd::CompressedField<&urd::data<Blob>::values, BlobRef>);
 static_assert(std::is_trivially_copyable_v<urd::key<Blob>>);
 static_assert(urd::HandsOutRecordsOf<BlobStore, Blob> && urd::ContainsKeysOf<BlobStore, Blob>);
 static_assert(urd::InsertsRecordsOf<BlobStore, Blob> && urd::FindsRecordsOf<BlobStore, Blob>);
@@ -798,6 +796,7 @@ TEST(Key, AKeyMayHoldTheHandleItsStoreNamesARecordBy)
     EXPECT_TRUE(urd::find_at(store, urd::key<>(), urd::data<Blob> { urd::flat_vector<int> { 9 } }).is_none());
 
     EXPECT_TRUE(std::ranges::equal(urd::record_at(store, b).values, std::vector<int> { 4, 5 }));
+    EXPECT_TRUE(std::ranges::equal(urd::stored_field<&urd::data<Blob>::values, BlobRef>::read(urd::record_at(store, b)), std::vector<int> { 4, 5 }));
     EXPECT_TRUE(urd::contains_key(store, a));
     EXPECT_FALSE(urd::contains_key(store, urd::key<Blob>()));  // none
     EXPECT_FALSE(urd::contains_key(store, urd::key<Blob>(BlobHandle { 0, 2 })));

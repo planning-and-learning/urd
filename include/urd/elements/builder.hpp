@@ -33,7 +33,7 @@ struct builder;
 template<typename T, typename C, typename K = key_t<T>>
 using interned_child = K;  ///< A child's interned form: its key.
 template<typename T, typename C>
-using built_child = handle<builder<T, C>>;  ///< A child's built form; alone, a field a builder holds only built (never null).
+using built_child = handle<builder<T, C>>;  ///< A child's built form.
 template<typename T, typename C>
 using held_child = handle<data<T>>;  ///< A child's form of a record of its own, not interned yet.
 
@@ -46,23 +46,14 @@ template<typename B>
 inline constexpr bool child_type = false;
 template<typename U, typename C, typename K>
 inline constexpr bool child_type<child<U, C, K>> = true;
-
-template<typename B>
-inline constexpr bool built_child_type = false;
-template<typename U, typename C>
-inline constexpr bool built_child_type<built_child<U, C>> = true;
 }  // namespace detail
 
 /// Whether B is a child (urd::child): a record's key as a builder holds it, in one of its three forms.
 template<typename B>
 concept Child = detail::child_type<B>;
 
-/// Whether B is a child held only built (urd::built_child): a builder's handle, never null.
-template<typename B>
-concept BuiltChild = detail::built_child_type<B>;
-
 /// The builder a child holds, to fill: where it holds none (it is interned or a record), the one `make` gives (a
-/// function of no argument that returns a built_child: from a pool, a storage's checkout, the heap).
+/// function of no argument that returns a built_child: the heap's make_owned, any other maker).
 template<typename T, typename C, typename K, std::invocable Make>
 builder<T, C>& builder_of(child<T, C, K>& held, Make make)
 {
@@ -82,16 +73,22 @@ builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
     return urd::builder_of(held, [&pool]() -> built_child<T, C> { return pool.make_handle(); });
 }
 
-/// The builder a child holds, to replace whole (clear, assign, unpack into): a new one of its own on the heap
-/// (urd::make_owned) where it holds none.
-template<typename T, typename C, typename K>
-builder<T, C>& builder_of(child<T, C, K>& held)
+/// Whether Storage checks out builders of T read through C: a storage of pools of many kinds, which hands out a builder
+/// of the kind it is asked for (storage.template checkout<T>()).
+template<typename Storage, typename T, typename C>
+concept ChecksOutBuilders = requires(Storage& storage) {
+    { storage.template checkout<T>() } -> std::same_as<built_child<T, C>>;
+};
+
+/// The builder a child holds, to fill: one `storage` checks out of the child's kind where it holds none.
+template<typename T, typename C, typename K, ChecksOutBuilders<T, C> Storage>
+builder<T, C>& builder_of(child<T, C, K>& held, Storage& storage)
 {
-    return urd::builder_of(held, []() -> built_child<T, C> { return urd::make_owned<builder<T, C>>(); });
+    return urd::builder_of(held, [&storage]() -> built_child<T, C> { return storage.template checkout<T>(); });
 }
 
 /// The builder a child holds built, to write in place: std::bad_variant_access where it holds its key or a record (its
-/// context unpacks it first).
+/// context unpacks it first: urd::unpacked).
 template<typename T, typename C, typename K>
 builder<T, C>& built(child<T, C, K>& held)
 { return *std::get<built_child<T, C>>(held); }
@@ -100,9 +97,9 @@ template<typename T, typename C, typename K>
 const builder<T, C>& built(const child<T, C, K>& held)
 { return *std::get<built_child<T, C>>(held); }
 
-/// The contents of a builder, taken out of it: `built` is left as a new one (its handles made anew, never null), fit to
-/// be filled again. What keeps a builder that its owner reuses (a pooled one, a generator's): moving it out would leave
-/// its handles null.
+/// The contents of a builder, taken out of it: `built` is left as a new one (each child the none key), fit to be filled
+/// again. What keeps a builder that its owner reuses (a pooled one, a generator's): moving it out would leave its built
+/// children's handles null.
 template<Builder B>
 [[nodiscard]] B take(B& built)
 {

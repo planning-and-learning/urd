@@ -44,8 +44,9 @@ of records resolve their own type; any type that gives the record, its number an
 
 Each reads its record (:cpp:type:`record_of`) whole: a borrowed, owning or shared view the record it holds; an
 index_view the record its context hands out, ``context[index]`` (``HandsOutRecordsBy``), as a ``stored_ref<T>``: a
-reference to the stored ``data<T>``, or a handle that reads a layout of its own (bit-packed) field by field. Its
-record is ``data<T>`` all the same: whatever the layout, the key is the handle and ``data<T>`` the schema.
+reference to the stored ``data<T>``, or a reader of a compressed record (bit-packed) that reads it field by field
+(:cpp:struct:`compressed_form`). Its record is ``data<T>`` all the same: whatever the layout, the key is the handle
+and ``data<T>`` the schema.
 
 What all four give:
 

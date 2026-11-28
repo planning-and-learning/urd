@@ -49,21 +49,26 @@ public:
     [[nodiscard]] const typename record_form<T>::type* operator->() const noexcept { return m_record; }
 };
 
-/// What a lookup of a T hands out, by value (urd::record_at, a context's operator[] and at()): record_ref<T> unless T
-/// names another, by specializing stored_ref_of<T> (a row packed in its slot: a reader over its bits). The one
-/// customization point of how a record is handed out.
+/// What a lookup of a T hands out, by value (urd::record_at, a context's operator[] and at()): record_ref<T>, or for a
+/// kind whose store keeps its records compressed, the form it declares (compressed_form<T>::ref: a row packed in its
+/// slot, a reader over its bits).
 template<typename T>
 struct stored_ref_of
 {
     using type = record_ref<T>;
 };
 
+template<CompressedKind T>
+struct stored_ref_of<T>
+{
+    using type = typename compressed_form<T>::ref;
+};
+
 template<typename T>
 using stored_ref = typename stored_ref_of<T>::type;
 
 /// A field of a record, read through the stored_ref its store hands out (R): `(*ref).*Member`, in place, for a record
-/// held whole (record_ref); a stored form of its own (a row packed in its slot) says how it reads each field of data<T>
-/// by specializing stored_field.
+/// held whole (record_ref).
 template<auto Member, typename R>
 struct stored_field
 {
@@ -77,6 +82,15 @@ template<auto Member, typename R>
 struct stored_field<Member, R>
 {
     [[nodiscard]] static const member_type_t<Member>& read(const R& held) { return held.*Member; }
+};
+
+/// A field of a compressed record, read from the form its store hands out as its kind declares
+/// (compressed_form<T>::read<Member>): by value or in place, as that read returns it.
+template<auto Member, typename R>
+    requires CompressedField<Member, R>
+struct stored_field<Member, R>
+{
+    [[nodiscard]] static decltype(auto) read(const R& stored) { return compressed_form<kind_of_t<member_class_t<Member>>>::template read<Member>(stored); }
 };
 
 /// A record with identifying_members() compares by them.

@@ -19,11 +19,13 @@ Indices
    The key of a record in the context that finds it, one 32-bit number per tag, in order (``urd/elements/index.hpp``):
    the first selects a container of the context, the next looks up in it, and so on (a row of a relation:
    ``key<Relation, Row>``, its relation's number, then its row's there). One flat base per tag holding its number (no
-   ``std::tuple``), each part read with ``get<T>()`` (a ``key<T>``); the context resolves a key (``context.view(key)``)
-   and its views hold it whole as their index (``index_view<T, C, key<..., T>>``). Trivially copyable, compared and
-   hashed part by part in order, stored flat by cista part by part. ``element_type`` is its last tag, the kind it
-   names. A default-built key is none in every part (``is_none()``). Generic code asks :cpp:concept:`Key`. Bound in
-   Python as ``<Name>Key`` after its last tag (``parts()`` gives its indices); an index as ``<Name>Index``.
+   ``std::tuple``; a kind whose Store names its compressed records by a handle holds that handle instead:
+   :cpp:struct:`compressed_form`), each part read with ``get<T>()`` (a ``key<T>``); the context resolves a key
+   (``context.view(key)``) and its views hold it whole as their index (``index_view<T, C, key<..., T>>``). Trivially
+   copyable, compared and hashed part by part in order, stored flat by cista part by part. ``element_type`` is its
+   last tag, the kind it names. A default-built key is none in every part (``is_none()``). Generic code asks
+   :cpp:concept:`Key`. Bound in Python as ``<Name>Key`` after its last tag (``parts()`` gives its indices); an index as
+   ``<Name>Index``.
 
    .. cpp:function:: template<typename T> key<T> get() const noexcept
 

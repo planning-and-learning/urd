@@ -25,14 +25,22 @@ struct layer
 };
 
 /// What the part of tag T of a key holds, and the value of it that names nothing: by default the number of a T (an
-/// index; none its largest value). A library whose store names its records otherwise (a pool's handle of a packed
-/// value, whose default names nothing, as a key's does) specializes it for its tag; its key is then that tagged value, and whatever only compares, hashes,
-/// stores and resolves keys takes it as it takes an index.
+/// index; none its largest value). A store that names its records otherwise (a pool's handle of a compressed record,
+/// whose default names nothing, as a key's does) declares its handle in compressed_form<T> (key_value, none); its key
+/// is then that tagged value, and whatever only compares, hashes, stores and resolves keys takes it as it takes an index.
 template<typename T>
 struct key_value_of
 {
     using type = std::uint32_t;
     static constexpr type none = std::numeric_limits<std::uint32_t>::max();
+};
+
+/// The part of a kind whose store names its compressed records by a handle: that handle (compressed_form<T>).
+template<HandleKeyedKind T>
+struct key_value_of<T>
+{
+    using type = typename compressed_form<T>::key_value;
+    static constexpr type none = compressed_form<T>::none;
 };
 
 template<typename T>

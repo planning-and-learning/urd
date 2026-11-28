@@ -2,6 +2,7 @@
 
 #include "urd/config.hpp"
 #include "urd/elements/equal_to.hpp"
+#include "urd/elements/handle.hpp"
 #include "urd/elements/hash.hpp"
 #include "urd/elements/index.hpp"
 #include "urd/elements/less.hpp"
@@ -330,5 +331,18 @@ struct memory_of<Store<Kind, Tags...>>
 /// whose deleter gives the slot back. A shared owner is a std::shared_ptr<T>.
 template<typename T, typename... Tags>
 using unique_slot_ptr = std::unique_ptr<T, typename Store<slots<T>, Tags...>::releaser>;
+
+/// A pooled record R shared: its handle moved into a slot of `holders`, which holds `keep` until the slot and its
+/// control block (drawn from the holders' pool: make_shared(keep)) are back. The record goes back to its own pool with
+/// the last copy (slot_release<handle<R>>), `keep` dropped after it. `holders` goes before the pool the handle names
+/// (declared after it), as the slots given back to it give their records back to that pool.
+template<typename R, typename... Tags>
+std::shared_ptr<const R> share(Store<slots<handle<R>>, Tags...>& holders, handle<R> held, std::shared_ptr<const void> keep)
+{
+    auto holder = holders.make_shared(std::move(keep));
+    *holder = std::move(held);
+    const R* const record = holder->get();
+    return std::shared_ptr<const R>(std::move(holder), record);
+}
 
 }  // namespace urd

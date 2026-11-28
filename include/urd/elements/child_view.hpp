@@ -15,6 +15,7 @@
 #include <concepts>
 #include <cstddef>
 #include <iterator>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
@@ -528,5 +529,59 @@ auto interned_view(const std::variant<Vs...>& reading)
 template<typename T, typename... Vs>
 auto interned_view(const child_view<T, Vs...>& reading)
 { return urd::interned_view(reading.form()); }
+
+/// Whether a context C unpacks a key K of a T: hands out a builder of the record it names, shared, owned as the context
+/// decides (a builder from its pool, given back with the last copy).
+template<typename C, typename T, typename K = key_t<T>>
+concept Unpacks = requires(const C& context, const K& key) {
+    { context.unpack(key) } -> std::same_as<std::shared_ptr<const builder<T, C>>>;
+};
+
+/// Whether a context C unpacks a record of a T it does not hold (a held child's): hands out a builder of it, shared as
+/// Unpacks does.
+template<typename C, typename T>
+concept UnpacksRecords = requires(const C& context, const data<T>& record) {
+    { context.unpack(record) } -> std::same_as<std::shared_ptr<const builder<T, C>>>;
+};
+
+/// Whether a context C reads the record a key K names into a builder B in place (context.unpack_built(key, built)):
+/// the builder's buffers kept, as build_from fills a builder held in place by another from its record's key.
+template<typename C, typename K, typename B>
+concept UnpacksBuilt = requires(const C& context, K key, B& built) { context.unpack_built(key, built); };
+
+/// A reading of a T as a builder's view, shared: a builder's view the builder itself, unowned (a shared view itself);
+/// an index view the builder its context unpacks its key into (Unpacks), a record's view the builder its context
+/// unpacks the record into (UnpacksRecords), each released with the last copy; a child view that of the form it holds,
+/// where each of its forms unpacks (Unpackable).
+template<typename T, typename C>
+shared_view<T, C, builder<T, C>> unpacked(const shared_view<T, C, builder<T, C>>& view)
+{ return view; }
+
+template<typename T, typename C>
+shared_view<T, C, builder<T, C>> unpacked(const borrowed_view<T, C, builder<T, C>>& view)
+{ return shared_view<T, C, builder<T, C>>::unowned(urd::record(view), &view.context()); }
+
+template<typename T, typename C, typename K>
+    requires Unpacks<C, T, K>
+shared_view<T, C, builder<T, C>> unpacked(const index_view<T, C, K>& view)
+{ return shared_view<T, C, builder<T, C>>(view.context().unpack(view.index()), &view.context()); }
+
+template<typename T, typename C>
+    requires UnpacksRecords<C, T>
+shared_view<T, C, builder<T, C>> unpacked(const borrowed_view<T, C, data<T>>& view)
+{ return shared_view<T, C, builder<T, C>>(view.context().unpack(urd::record(view)), &view.context()); }
+
+/// Whether a view V unpacks (urd::unpacked takes it).
+template<typename V>
+concept Unpackable = requires(const V& view) { urd::unpacked(view); };
+
+template<typename T, typename... Vs>
+    requires(Unpackable<Vs> && ...)
+shared_view<T, view_context_t<child_view<T, Vs...>>, builder<T, view_context_t<child_view<T, Vs...>>>> unpacked(const child_view<T, Vs...>& view)
+{
+    return urd::visit_view(view,
+                           [](const auto& form) -> shared_view<T, view_context_t<child_view<T, Vs...>>, builder<T, view_context_t<child_view<T, Vs...>>>>
+                           { return urd::unpacked(form); });
+}
 
 }  // namespace urd

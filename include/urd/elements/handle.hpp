@@ -83,8 +83,7 @@ void clear_fields(T& built);
 namespace detail
 {
 /// Empties a member, keeping the buffers it owns: by its clear(); a record or a builder held in place field by field;
-/// one held through its handle (never null) in place, the handle kept; anything else set to its default (a child to
-/// the none key, giving back what it held).
+/// anything else set to its default (a child to the none key, giving back what it held).
 template<typename M>
 void empty_member(M& member)
 {
@@ -92,8 +91,6 @@ void empty_member(M& member)
         member.clear();
     else if constexpr (HasFields<M>)
         urd::clear_fields(member);
-    else if constexpr (Handle<M>)
-        detail::empty_member(*member);
     else
         member = M {};
 }

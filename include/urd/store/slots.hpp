@@ -15,6 +15,19 @@
 #include <type_traits>
 #include <utility>
 
+namespace urd
+{
+
+/// A slot that holds a handle gives the record the handle holds back to its own pool when the slot is given back
+/// (reset): a Store of slots of handles shares pooled records (urd::share).
+template<typename R>
+struct slot_release<handle<R>>
+{
+    static void release(handle<R>& held) noexcept { held.reset(); }
+};
+
+}  // namespace urd
+
 namespace urd::detail::facet
 {
 

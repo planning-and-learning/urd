@@ -177,6 +177,14 @@ Member functions: slots (``handles`` without ``unique``)
 ``make_unique()`` and ``make_shared()`` own an acquired slot as ``std::unique_ptr`` and ``std::shared_ptr`` do:
 the slot goes back with its (last) owner, and once as many owners have lived at once nothing allocates.
 
+.. cpp:function:: template<typename R, typename... Tags> std::shared_ptr<const R> share(Store<slots<handle<R>>, Tags...>& holders, handle<R> held, std::shared_ptr<const void> keep)
+
+   A pooled record shared: its :cpp:type:`handle` moved into a slot of ``holders``, which holds ``keep`` until the
+   slot and its control block (from the holders' pool: ``make_shared(keep)``) are back. A slot of a handle gives the
+   record back to its own pool when the slot goes back (``slot_release<handle<R>>`` resets it), so the record goes
+   back with the last copy and ``keep`` (the owner of both pools, say) after it. ``holders`` is declared after the pool
+   the handle names, so it goes first.
+
 With ``keyed<K>`` (single-threaded), slots are acquired only by key: ``make_shared(key, args...)`` hands out a slot
 given back under an equal key (``urd::Hash``, ``urd::EqualTo``) as it is, else a new ``T(key, args...)``. Each slot
 keeps its key and goes back to its key's free list, so a slot is never reused for another key (a buffer shaped by its

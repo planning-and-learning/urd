@@ -502,7 +502,6 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
     else
     {
         auto alternative = std::variant_alternative_t<I, std::variant<Bs...>>();
-        urd::detail::make_built(alternative);
         if (detail::from_python(value, alternative))
         {
             target.template emplace<I>(std::move(alternative));
@@ -512,8 +511,7 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
     }
 }
 
-/// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a child
-/// held only built (a builder of its own, as a builder held in place takes it), a list
+/// A builder's member from Python, as its built form takes it (urd::built_form): a child (child_from_python), a list
 /// of members element by element, a pair of them member by member, an optional (None is empty), a variant by the first alternative that takes it, a
 /// builder held in place as a builder or its record (a copy), anything else as nanobind casts it. Whether it took it.
 template<typename B>
@@ -521,8 +519,6 @@ bool from_python(nb::handle value, B& target)
 {
     if constexpr (Child<B>)
         return detail::child_from_python(value, target);
-    else if constexpr (BuiltChild<B>)
-        return detail::builder_from_python(value, *target);  // never null: written in place
     else if constexpr (urd::detail::StdVariant<B>)
         return detail::alternative_from_python<0>(value, target);
     else if constexpr (urd::detail::StdOptional<B>)
@@ -532,7 +528,7 @@ bool from_python(nb::handle value, B& target)
             target.reset();
             return true;
         }
-        urd::detail::make_built(target.emplace());
+        target.emplace();
         return detail::from_python(value, *target);
     }
     else if constexpr (is_std_pair<B> && holds_children<B>)
@@ -548,7 +544,7 @@ bool from_python(nb::handle value, B& target)
         auto result = B();
         for (const auto element : value)
         {
-            urd::detail::make_built(result.emplace_back());
+            result.emplace_back();
             if (!detail::from_python(element, result.back()))
                 return false;
         }

@@ -28,6 +28,46 @@ A record is a value a Store keeps once and never changes: the stored form of a t
 
 A record with ``identifying_members()`` compares and orders by them (``==``, ``<=>``).
 
+Compressed records
+------------------
+
+A Store may keep the records of a kind compressed, in a form of its own (bits packed at their widths, a node of a
+tree, a row of a pool) rather than as ``data<T>``, which stays the owning form a record is inserted and found from. The
+kind says so once, by a specialization of :cpp:struct:`compressed_form` declared beside its tag (before its key is
+used: the key reads it). Unspecialized, a lookup hands out a reference to the stored ``data<T>`` (``record_ref<T>``),
+each field is read in place and the key is a number.
+
+.. cpp:struct:: template<typename T> compressed_form
+
+   How the Store of ``T`` hands its records out (``urd/elements/concepts.hpp``). A specialization declares:
+
+   - ``using ref = R;``: what a lookup hands out, by value (``stored_ref<T>``: ``urd::record_at``, a context's
+     ``operator[]`` and ``at()``), made from ``context[key]``;
+   - ``template<auto Member> static auto read(const R& stored);``: each field ``Member`` of ``data<T>`` read from it,
+     by value or in place as the form allows; a view's ``member<Member>()``, a walk over the record's children and a
+     builder made from it read every field through it (``stored_field``);
+   - and only where the Store names a record by a handle rather than a number: ``using key_value = H;`` and
+     ``static constexpr H none;``, the handle that names nothing. The key's part then holds the handle
+     (``key_value_of<T>``): ``key<T>`` is compared, hashed, stored and resolved as an index is, and is no index
+     (``NumberedKind<T>`` is false).
+
+   A state's storage in its pool's tree hands out its pool and its key, unpacks its values on reading and is named by
+   the pool's handle; a row in its relation's slot hands out a reader of its packed bits (its values) and of its slot's
+   relation, under a numbered key.
+
+.. cpp:concept:: template<typename T> CompressedKind
+
+   ``compressed_form<T>`` names ``ref``.
+
+.. cpp:concept:: template<typename T> HandleKeyedKind
+
+   ``T`` is a :cpp:concept:`CompressedKind` whose form names ``key_value`` and ``none``.
+
+.. cpp:concept:: template<auto Member, typename R> CompressedField
+
+   ``Member`` is a field of ``data<T>`` for a :cpp:concept:`CompressedKind` ``T``, and ``R`` is what its Store hands
+   out: the field is read by ``compressed_form<T>::read<Member>``.
+
 Fields
 ------
 

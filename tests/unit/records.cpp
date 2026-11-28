@@ -1,8 +1,7 @@
 // What a record and its builder need not say: a record or a builder that names no identifying members is identified by
 // all its fields; its cista members are its index and its fields (urd::cista_members_of); a field says what the record
-// promises of it; a key of several parts is built as a child like an index. And a builder that holds a record's key
-// only built (urd::built_child: its builder's handle, never null) is cleared, interned, packed and built from a record
-// as one that holds a child.
+// promises of it; a key of several parts is built as a child like an index. And a child that holds its builder
+// (urd::built_child) is cleared, interned, packed, formatted and taken with the builder that holds it.
 #include "urd/elements/builder.hpp"
 #include "urd/elements/children.hpp"
 #include "urd/elements/clone.hpp"
@@ -23,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace
@@ -106,13 +106,12 @@ struct urd::builder<Twig, Trees>
     static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &builder::weight>> {}; }
 };
 
-/// A bough's builder holds its tip and its twigs only built, its spare as a child.
 template<>
 struct urd::builder<Bough, Trees>
 {
     urd::key<Bough> index;
-    urd::built_only_t<urd::index<Twig>, Trees> tip = urd::make_owned<urd::builder<Twig, Trees>>();
-    urd::built_only_t<urd::flat_vector<urd::index<Twig>>, Trees> twigs;
+    urd::built_t<urd::index<Twig>, Trees> tip;
+    urd::built_t<urd::flat_vector<urd::index<Twig>>, Trees> twigs;
     urd::built_t<urd::index<Twig>, Trees> spare;
     urd::built_t<int, Trees> depth = 0;
 
@@ -161,6 +160,12 @@ struct Trees
 using TwigBuilder = urd::builder<Twig, Trees>;
 using BoughBuilder = urd::builder<Bough, Trees>;
 
+/// A twig's builder of its own on the heap, for a child to hold.
+urd::built_child<Twig, Trees> make_twig() { return urd::make_owned<TwigBuilder>(); }
+
+/// Whether a child holds the none key.
+bool holds_none(const urd::child<Twig, Trees>& twig) { return std::holds_alternative<urd::index<Twig>>(twig) && std::get<urd::index<Twig>>(twig).is_none(); }
+
 /// Interns a twig in whichever form a bough's builder holds it; an interned one is Trees' already.
 struct InternTwigs
 {
@@ -192,13 +197,7 @@ static_assert([]<typename Tip, typename Twigs, typename... Rest>(urd::Fields<Tip
 static_assert(std::same_as<urd::built_t<urd::key<Grid, Cell>, Trees>, urd::child<Cell, Trees, urd::key<Grid, Cell>>>);
 static_assert(std::same_as<urd::built_t<urd::index<Twig>, Trees>, urd::child<Twig, Trees>>);
 static_assert(std::same_as<urd::index_view<Cell, Trees>, urd::index_view<Cell, Trees, urd::key<Grid, Cell>>>);
-// A builder with a field held only built is not made from its record alone (its context builds it).
-static_assert(!urd::made_from_record<urd::data<Bough>, Trees>);
 static_assert(urd::made_from_record<urd::data<Twig>, Trees>);
-static_assert(std::same_as<urd::built_only_t<urd::index<Twig>, Trees>, urd::built_child<Twig, Trees>>);
-static_assert(std::same_as<urd::built_only_t<urd::flat_vector<urd::index<Twig>>, Trees>, std::vector<urd::built_child<Twig, Trees>>>);
-static_assert(std::same_as<urd::built_only_t<int, Trees>, int>);
-static_assert(urd::BuiltChild<urd::built_child<Twig, Trees>> && !urd::Child<urd::built_child<Twig, Trees>> && urd::Child<urd::child<Twig, Trees>>);
 static_assert(std::same_as<urd::kind_of_t<BoughBuilder>, Bough> && std::same_as<urd::builder_context_t<BoughBuilder>, Trees>);
 
 TEST(Record, IsIdentifiedByAllItsFieldsWhereItNamesNone)
@@ -215,30 +214,27 @@ TEST(Record, IsIdentifiedByAllItsFieldsWhereItNamesNone)
     EXPECT_EQ(urd::Hash<> {}(light), urd::Hash<> {}(other));
 }
 
-TEST(BuiltChild, IsClearedInPlaceItsHandleKept)
+TEST(ChildBuiltForm, IsClearedToTheNoneKey)
 {
     auto bough = BoughBuilder {};
-    const auto* tip = bough.tip.get();
-    bough.tip->weight = 5;
-    bough.twigs.push_back(urd::make_owned<TwigBuilder>());
+    urd::builder_of(bough.tip, make_twig).weight = 5;
+    urd::builder_of(bough.twigs.emplace_back(), make_twig);
     bough.depth = 3;
 
     urd::clear_fields(bough);
 
-    EXPECT_EQ(bough.tip.get(), tip);
-    EXPECT_EQ(bough.tip->weight, 0);
+    EXPECT_TRUE(holds_none(bough.tip));
     EXPECT_TRUE(bough.twigs.empty());
     EXPECT_EQ(bough.depth, 0);
 }
 
-TEST(BuiltChild, IsInternedAsAChildsBuilderIs)
+TEST(ChildBuiltForm, IsInternedAsItsBuilder)
 {
     auto trees = Trees {};
     const auto stored = trees.add(9);
     auto bough = BoughBuilder {};
-    bough.tip->weight = 5;
-    bough.twigs.push_back(urd::make_owned<TwigBuilder>());
-    bough.twigs.back()->weight = 7;
+    urd::builder_of(bough.tip, make_twig).weight = 5;
+    urd::builder_of(bough.twigs.emplace_back(), make_twig).weight = 7;
     bough.spare = stored;
     bough.depth = 2;
 
@@ -252,12 +248,12 @@ TEST(BuiltChild, IsInternedAsAChildsBuilderIs)
     EXPECT_EQ(record.depth, 2);
 }
 
-TEST(BuiltChild, IsPackedAsItsBuildersIndex)
+TEST(ChildBuiltForm, IsPackedAsItsBuildersIndex)
 {
     auto bough = BoughBuilder {};
     bough.index = urd::index<Bough>(4);
-    bough.tip->index = urd::index<Twig>(3);
-    bough.twigs.push_back(urd::make_owned<TwigBuilder>());  // not interned: no index
+    urd::builder_of(bough.tip, make_twig).index = urd::index<Twig>(3);
+    urd::builder_of(bough.twigs.emplace_back(), make_twig);  // not interned: no index
     bough.spare = urd::index<Twig>(1);
     bough.depth = 6;
 
@@ -277,7 +273,7 @@ TEST(BuiltChild, IsPackedAsItsBuildersIndex)
     EXPECT_EQ(urd::pack(view).tip, urd::index<Twig>(3));
 }
 
-TEST(BuiltChild, IsBuiltFromARecordsKeyAndFromAnotherBuilder)
+TEST(Child, IsBuiltFromARecordsKeyAndFromAnotherBuilder)
 {
     auto trees = Trees {};
     const auto five = trees.add(5);
@@ -291,24 +287,21 @@ TEST(BuiltChild, IsBuiltFromARecordsKeyAndFromAnotherBuilder)
     const auto source = urd::borrowed_view<Bough, Trees> { &record, &trees };
 
     auto bough = BoughBuilder {};
-    const auto* tip = bough.tip.get();
     urd::build_from(source, bough, [](const auto& twig) { return twig; });
 
-    EXPECT_EQ(bough.tip.get(), tip);  // filled in place
-    EXPECT_EQ(bough.tip->weight, 7);
+    EXPECT_EQ(std::get<urd::index<Twig>>(bough.tip), seven);
     ASSERT_EQ(bough.twigs.size(), 2U);
-    EXPECT_EQ(bough.twigs[0]->weight, 5);
-    EXPECT_EQ(bough.twigs[1]->weight, 7);
+    EXPECT_EQ(std::get<urd::index<Twig>>(bough.twigs[0]), five);
+    EXPECT_EQ(std::get<urd::index<Twig>>(bough.twigs[1]), seven);
     EXPECT_EQ(std::get<urd::index<Twig>>(bough.spare), five);
     EXPECT_EQ(bough.depth, 1);
 
     // From another builder of the record, through its view.
     auto copy = BoughBuilder {};
     urd::build_from(urd::borrowed_view<Bough, Trees, BoughBuilder> { &bough, &trees }, copy);
-    EXPECT_NE(copy.tip.get(), bough.tip.get());
-    EXPECT_EQ(copy.tip->weight, 7);
+    EXPECT_EQ(std::get<urd::index<Twig>>(copy.tip), seven);
     ASSERT_EQ(copy.twigs.size(), 2U);
-    EXPECT_EQ(copy.twigs[1]->weight, 7);
+    EXPECT_EQ(std::get<urd::index<Twig>>(copy.twigs[1]), seven);
     EXPECT_EQ(copy.depth, 1);
 }
 
@@ -329,10 +322,10 @@ TEST(Child, HoldsTheBuilderItsMakerGivesWhereItHoldsNone)
     EXPECT_EQ(again.weight, 4);
 }
 
-TEST(BuiltChild, IsWrittenAsTheBuilderItHolds)
+TEST(ChildBuiltForm, IsWrittenAsTheBuilderItHolds)
 {
     auto bough = BoughBuilder {};
-    bough.tip->weight = 5;
+    urd::builder_of(bough.tip, make_twig).weight = 5;
     bough.depth = 2;
     const auto written = fmt::format("{}", bough);
     EXPECT_NE(written.find("tip=Twig("), std::string::npos) << written;
@@ -340,20 +333,19 @@ TEST(BuiltChild, IsWrittenAsTheBuilderItHolds)
     EXPECT_NE(written.find("depth=2"), std::string::npos) << written;
 }
 
-TEST(BuiltChild, IsTakenLeavingItsBuilderAsNew)
+TEST(ChildBuiltForm, IsTakenLeavingItsBuilderAsNew)
 {
     auto bough = BoughBuilder {};
-    bough.tip->weight = 5;
-    bough.twigs.push_back(urd::make_owned<TwigBuilder>());
+    urd::builder_of(bough.tip, make_twig).weight = 5;
+    urd::builder_of(bough.twigs.emplace_back(), make_twig);
     bough.depth = 2;
 
     const auto taken = urd::take(bough);
 
-    EXPECT_EQ(taken.tip->weight, 5);
+    EXPECT_EQ(urd::built(taken.tip).weight, 5);
     EXPECT_EQ(taken.twigs.size(), 1U);
     EXPECT_EQ(taken.depth, 2);
-    ASSERT_NE(bough.tip, nullptr);  // never null: fit to be filled again
-    EXPECT_EQ(bough.tip->weight, 0);
+    EXPECT_TRUE(holds_none(bough.tip));  // fit to be filled again
     EXPECT_TRUE(bough.twigs.empty());
     EXPECT_EQ(bough.depth, 0);
 }

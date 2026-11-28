@@ -5,6 +5,7 @@
 #include "urd/elements/children.hpp"
 #include "urd/elements/clone.hpp"
 #include "urd/elements/concepts.hpp"
+#include "urd/elements/content.hpp"
 #include "urd/elements/flat.hpp"
 #include "urd/elements/view.hpp"
 #include "urd/memory.hpp"
@@ -15,6 +16,8 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <list>
+#include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <type_traits>
@@ -166,6 +169,32 @@ struct Nodes
 
     /// Its number, as a repository's: its views compare by identity (urd::HasLayers).
     [[nodiscard]] std::size_t layer() const noexcept { return 0; }
+
+    /// A builder of a leaf, shared (urd::Unpacks, urd::UnpacksRecords): of the one stored under `at`, or of a record it
+    /// does not hold; counted, the last one handed out kept weakly.
+    [[nodiscard]] std::shared_ptr<const urd::builder<Leaf, Nodes>> unpack(urd::index<Leaf> at) const
+    {
+        ++key_unpacks;
+        return shared(leaves[at.value].weight);
+    }
+
+    [[nodiscard]] std::shared_ptr<const urd::builder<Leaf, Nodes>> unpack(const urd::data<Leaf>& leaf) const
+    {
+        ++record_unpacks;
+        return shared(leaf.weight);
+    }
+
+    [[nodiscard]] std::shared_ptr<const urd::builder<Leaf, Nodes>> shared(int weight) const
+    {
+        auto built = std::make_shared<urd::builder<Leaf, Nodes>>();
+        built->weight = weight;
+        last_unpacked = built;
+        return built;
+    }
+
+    mutable int key_unpacks = 0;
+    mutable int record_unpacks = 0;
+    mutable std::weak_ptr<const urd::builder<Leaf, Nodes>> last_unpacked;
 };
 
 using LeafBuilder = urd::builder<Leaf, Nodes>;
@@ -341,6 +370,77 @@ TEST(ChildView, ReadsEachFormWithItsKindsGettersAndComparesAsItsForm)
     EXPECT_EQ(urd::built_view(urd::resolve(std::as_const(node.rest[0]), nodes)).weight(), 7);
 }
 
+// A child view unpacked: its built form the builder itself, its interned and held forms the builder their context unpacks
+// them into, kept while a copy of the view lives.
+TEST(ChildView, UnpacksEachFormThroughItsContext)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
+
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 7;
+    node.rest.emplace_back(urd::index<Leaf>(0));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
+
+    const auto built = urd::unpacked(urd::resolve(std::as_const(node.rest[0]), nodes));
+    EXPECT_EQ(&urd::record(built), &urd::built(node.rest[0]));
+    EXPECT_EQ(nodes.key_unpacks + nodes.record_unpacks, 0);
+
+    {
+        auto interned = std::optional(urd::unpacked(urd::resolve(std::as_const(node.rest[1]), nodes)));
+        EXPECT_EQ(nodes.key_unpacks, 1);
+        EXPECT_EQ(interned->weight(), 3);
+        const auto copy = *interned;
+        interned.reset();
+        EXPECT_FALSE(nodes.last_unpacked.expired());
+        EXPECT_EQ(copy.weight(), 3);
+    }
+    EXPECT_TRUE(nodes.last_unpacked.expired());
+
+    const auto held = urd::unpacked(urd::resolve(std::as_const(node.rest[2]), nodes));
+    EXPECT_EQ(nodes.record_unpacks, 1);
+    EXPECT_EQ(nodes.key_unpacks, 1);
+    EXPECT_EQ(held.weight(), 11);
+}
+
+// A child view packed: the record of the form it holds, its own: a built one its builder packed (its index the
+// builder's), an interned one its stored record read out (its index the key), a held one a copy of its record.
+TEST(ChildView, PacksTheRecordOfEachForm)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    auto records = LeafRecords {};
+    auto leaf_record = records.make_handle();
+    leaf_record->weight = 11;
+
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    auto& built = urd::builder_of(node.rest.emplace_back(), pool);
+    built.weight = 7;
+    built.index = urd::index<Leaf>(4);
+    node.rest.emplace_back(urd::index<Leaf>(0));
+    node.rest.emplace_back(std::in_place_index<2>, std::move(leaf_record));
+
+    static_assert(urd::Packable<decltype(urd::resolve(std::as_const(node.rest[0]), nodes))>);
+
+    const auto packed_built = urd::pack(urd::resolve(std::as_const(node.rest[0]), nodes));
+    static_assert(std::same_as<decltype(packed_built), const urd::data<Leaf>>);
+    EXPECT_EQ(packed_built.weight, 7);
+    EXPECT_EQ(packed_built.index, urd::index<Leaf>(4));
+
+    const auto packed_interned = urd::pack(urd::resolve(std::as_const(node.rest[1]), nodes));
+    EXPECT_EQ(packed_interned.weight, 3);
+    EXPECT_EQ(packed_interned.index, urd::index<Leaf>(0));
+
+    const auto packed_held = urd::pack(urd::resolve(std::as_const(node.rest[2]), nodes));
+    EXPECT_EQ(packed_held.weight, 11);
+    EXPECT_NE(&packed_held, &*std::get<2>(node.rest[2]));
+}
+
 TEST(ChildView, AChildRangeIsAsCapableAsItsFormsRanges)
 {
     // Random access where every form's range has it: indexed, iterator arithmetic, sized.
@@ -393,6 +493,65 @@ TEST(Builder, AHandleGivesItsChildrenBackWithIt)
     EXPECT_EQ(again->weight, 0);
 }
 
+// A pooled builder shared (urd::share): its handle in a slot of the holders, whose control blocks the holders pool too;
+// the builder goes back to its pool with the last copy, and what the share keeps alive goes only after that.
+TEST(Builder, ASharedHandleGivesItsRecordBackWithTheLastCopy)
+{
+    auto pool = LeafPool {};
+    auto holders = urd::Store<urd::slots<urd::handle<LeafBuilder>>> {};
+    const LeafBuilder* leaf = nullptr;
+    auto back_before_keep = false;
+    auto keep = std::shared_ptr<int>(new int(0),
+                                     [&](const int* kept)
+                                     {
+                                         // The builder's slot is free again when what the share keeps goes.
+                                         back_before_keep = pool.make_handle().get() == leaf;
+                                         delete kept;
+                                     });
+    const auto kept = std::weak_ptr<int>(keep);
+    {
+        auto held = pool.make_handle();
+        held->weight = 4;
+        leaf = held.get();
+        const auto shared = urd::share(holders, std::move(held), std::move(keep));
+        const auto copy = shared;  // NOLINT(performance-unnecessary-copy-initialization): a copy of the share is what is read
+        EXPECT_EQ(copy.get(), leaf);
+        EXPECT_EQ(copy->weight, 4);
+        EXPECT_FALSE(kept.expired());
+    }
+    EXPECT_TRUE(kept.expired());
+    EXPECT_TRUE(back_before_keep);
+    const auto again = pool.make_handle();
+    EXPECT_EQ(again.get(), leaf);
+    EXPECT_EQ(again->weight, 0);
+}
+
+// A builder and the record it interns to read the same content: they hash and compare alike by it (urd::hash_content,
+// urd::equal_content), a child built in the one and interned in the other; another depth is other content.
+TEST(Builder, HashesAndComparesByContentAsItsRecord)
+{
+    auto nodes = Nodes {};
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    nodes.leaves.push_back(stored_leaf(urd::index<Leaf>(1), 5));
+    auto record = urd::data<Node> {};
+    record.first = urd::index<Leaf>(1);
+    record.rest.push_back(urd::index<Leaf>(0));
+    record.depth = 4;
+
+    auto pool = LeafPool {};
+    auto node = NodeBuilder {};
+    node.first = urd::index<Leaf>(1);
+    urd::builder_of(node.rest.emplace_back(), pool).weight = 3;
+    node.depth = 4;
+
+    const auto built = urd::borrowed_view<Node, Nodes, NodeBuilder> { &node, &nodes };
+    const auto stored = urd::borrowed_view<Node, Nodes> { &record, &nodes };
+    EXPECT_EQ(urd::hash_content(built), urd::hash_content(stored));
+    EXPECT_TRUE(urd::equal_content(built, stored));
+    node.depth = 5;
+    EXPECT_FALSE(urd::equal_content(built, stored));
+}
+
 TEST(Builder, AChildIsBuiltFromItsPool)
 {
     auto pool = LeafPool {};
@@ -402,6 +561,34 @@ TEST(Builder, AChildIsBuiltFromItsPool)
     ASSERT_EQ(node.first.index(), 1U);
     EXPECT_EQ(std::get<1>(node.first)->weight, 5);
     EXPECT_EQ(&urd::builder_of(node.first, pool), std::get<1>(node.first).get());
+}
+
+namespace
+{
+/// A storage of pools of many kinds, as urd::ChecksOutBuilders names it: a builder of a kind it pools (here a leaf)
+/// checked out of that kind's pool.
+struct LeafStorage
+{
+    template<typename T>
+        requires std::same_as<T, Leaf>
+    [[nodiscard]] urd::built_child<T, Nodes> checkout()
+    { return leaves.make_handle(); }
+
+    LeafPool leaves;
+};
+}  // namespace
+
+static_assert(urd::ChecksOutBuilders<LeafStorage, Leaf, Nodes>);
+static_assert(!urd::ChecksOutBuilders<LeafStorage, Node, Nodes>);  // a kind it does not pool
+
+TEST(Builder, AChildIsBuiltFromAStorageOfItsKind)
+{
+    auto storage = LeafStorage {};
+    auto node = NodeBuilder {};
+    urd::builder_of(node.first, storage).weight = 5;
+    ASSERT_EQ(node.first.index(), 1U);
+    EXPECT_EQ(std::get<1>(node.first)->weight, 5);
+    EXPECT_EQ(&urd::builder_of(node.first, storage), std::get<1>(node.first).get());
 }
 
 TEST(Builder, InternsItsChildrenFirst)
@@ -502,6 +689,84 @@ TEST(Builder, AKeyedHandleGoesBackUnderItsKey)
     const auto again = sized.make_handle(2);
     EXPECT_EQ(again.get(), two);
     EXPECT_EQ(again->uses, 1);  // as it was given back
+}
+
+namespace
+{
+struct Crate;
+struct Shelf;
+}  // namespace
+
+/// A leaf read through a shelf, which keeps its leaves' records in a pool of its own.
+template<>
+struct urd::builder<Leaf, Shelf>
+{
+    urd::key<Leaf> index;
+    int weight = 0;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"weight", &builder::weight>> {}; }
+};
+
+/// A crate's leaf is built as the leaf's builder, held in place: its record holds only the leaf's key, which the shelf
+/// reads into it (made only through its context).
+template<>
+struct urd::built_form<urd::key<Leaf>, Shelf>
+{
+    using type = urd::builder<Leaf, Shelf>;
+};
+
+template<>
+struct urd::data<Crate>
+{
+    urd::key<Leaf> leaf;
+    int count = 0;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"leaf", &data::leaf>, urd::field<"count", &data::count>> {}; }
+};
+
+template<>
+struct urd::builder<Crate, Shelf>
+{
+    urd::built_t<urd::key<Leaf>, Shelf> leaf;
+    urd::built_t<int, Shelf> count = 0;
+
+    static constexpr auto fields() noexcept { return urd::Fields<urd::field<"leaf", &builder::leaf>, urd::field<"count", &builder::count>> {}; }
+};
+
+namespace
+{
+/// Leaves by their keys, each read into a builder in place (urd::UnpacksBuilt); counted.
+struct Shelf
+{
+    std::vector<urd::data<Leaf>> leaves;
+
+    void unpack_built(urd::key<Leaf> at, urd::builder<Leaf, Shelf>& built) const
+    {
+        ++unpacks;
+        built.weight = leaves[at.value].weight;
+    }
+
+    mutable int unpacks = 0;
+};
+}  // namespace
+
+// A builder held in place, of a record whose record holds only its key, is built from that key as its context reads the
+// record into it (urd::UnpacksBuilt); the other fields as they are.
+TEST(Builder, IsBuiltInPlaceFromAKeyItsContextUnpacks)
+{
+    static_assert(urd::UnpacksBuilt<Shelf, urd::key<Leaf>, urd::builder<Leaf, Shelf>>);
+    auto shelf = Shelf {};
+    shelf.leaves.push_back(stored_leaf(urd::index<Leaf>(0), 3));
+    shelf.leaves.push_back(stored_leaf(urd::index<Leaf>(1), 5));
+    auto record = urd::data<Crate> {};
+    record.leaf = urd::key<Leaf>(1);
+    record.count = 2;
+
+    auto crate = urd::builder<Crate, Shelf> {};
+    urd::build_from(urd::borrowed_view<Crate, Shelf> { &record, &shelf }, crate);
+    EXPECT_EQ(crate.leaf.weight, 5);
+    EXPECT_EQ(crate.count, 2);
+    EXPECT_EQ(shelf.unpacks, 1);
 }
 
 // A builder is filled from a record read through its context, each child as the view f gives (here: as it is), and is
