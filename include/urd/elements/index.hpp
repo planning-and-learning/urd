@@ -198,7 +198,7 @@ concept SelfIndexed = requires(const data<T>& record) {
 /// handle of another shape the context resolves) and reads it through the context; borrowed_view, owning_view and
 /// shared_view hold a record R (data<T>, or builder<T, C>) outside the context: a pointer to it, it by value, a shared
 /// pointer to it.
-template<typename T, typename C = typename context_of<T>::type, typename K = key<T>>
+template<typename T, typename C = typename context_of<T>::type, typename K = key_t<T>>
 class index_view;
 template<typename T, typename C = typename context_of<T>::type, typename R = data<T>>
 class borrowed_view;

@@ -543,7 +543,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] decltype(auto) weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 };
 
 /// A group's items: a numbered pool of records (urd::layer, no default constructor), layered (an innermost container:
@@ -723,7 +723,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
+    [[nodiscard]] decltype(auto) values() const { return self().template member<&urd::record_of<V>::values>(); }
 };
 
 namespace
@@ -989,7 +989,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_id() const noexcept { return self().template member<&urd::record_of<V>::id>(); }
+    [[nodiscard]] auto id() const noexcept { return self().template member<&urd::record_of<V>::id>(); }
 };
 
 namespace

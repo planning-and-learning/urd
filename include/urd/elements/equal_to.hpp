@@ -96,8 +96,7 @@ struct EqualTo<std::tuple<Ts...>>
     }
 };
 
-/// A pair equals as the tuple of its two members.
-/// A pair (std's or cista's), as the tuple of its two members.
+/// A pair (std's or cista's) equals as the tuple of its two members.
 template<template<typename, typename> typename P, typename T1, typename T2>
     requires pair_value<P<T1, T2>>
 struct EqualTo<P<T1, T2>>
@@ -162,8 +161,8 @@ struct EqualTo<T>
     using is_transparent = void;
 
     constexpr bool operator()(const T& lhs, const T& rhs) const
-        requires(detail::members_equality_comparable<T>(T::identifying_members()))
-    { return detail::equal_members(lhs, rhs, T::identifying_members()); }
+        requires(detail::members_equality_comparable<T>(urd::identifying_members_of<T>()))
+    { return detail::equal_members(lhs, rhs, urd::identifying_members_of<T>()); }
 
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const

@@ -92,7 +92,7 @@ struct single_member<Members<M>>
 };
 
 template<typename K>
-concept single_member_identified = Identifiable<K> && requires { single_member<decltype(K::identifying_members())>::pointer; };
+concept single_member_identified = Identifiable<K> && requires { single_member<decltype(urd::identifying_members_of<K>())>::pointer; };
 
 }  // namespace detail
 
@@ -137,10 +137,10 @@ struct index_of<K>
 };
 
 template<detail::single_member_identified K>
-    requires std::integral<std::remove_cv_t<member_type_t<detail::single_member<decltype(K::identifying_members())>::pointer>>>
+    requires std::integral<std::remove_cv_t<member_type_t<detail::single_member<decltype(urd::identifying_members_of<K>())>::pointer>>>
 struct index_of<K>
 {
-    static constexpr auto member = detail::single_member<decltype(K::identifying_members())>::pointer;
+    static constexpr auto member = detail::single_member<decltype(urd::identifying_members_of<K>())>::pointer;
     using value_type = std::remove_cv_t<member_type_t<member>>;
 
     [[nodiscard]] static constexpr bool is_index(const K& key) noexcept { return index_of<value_type>::is_index(key.*member); }

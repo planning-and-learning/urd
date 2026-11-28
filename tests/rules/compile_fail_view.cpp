@@ -55,7 +55,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] auto weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
 };
 #endif
 

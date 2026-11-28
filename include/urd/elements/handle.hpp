@@ -30,6 +30,18 @@ struct release
 template<typename R>
 using handle = std::unique_ptr<R, release>;
 
+namespace detail
+{
+template<typename H>
+inline constexpr bool handle_type = false;
+template<typename R>
+inline constexpr bool handle_type<handle<R>> = true;
+
+/// Whether H is a handle (urd::handle<R>).
+template<typename H>
+concept Handle = handle_type<H>;
+}  // namespace detail
+
 /// A record held by its handle on the heap, owned by no Store: deleted when its handle goes, and cloned onto the heap
 /// (urd::clone). What a child holds where no pool is at hand (a builder made in Python, a test).
 template<typename R, typename... Args>
@@ -50,19 +62,50 @@ template<typename R>
 template<typename R>
 handle<R> clone(const handle<R>& held);
 
-/// A record held by its handle equals another as the records they hold; no record equals only none.
+/// A record held by its handle equals another as the records they hold (a handle a record or a builder holds is never null).
 template<typename R>
 struct EqualTo<handle<R>>
 {
     // Unconstrained: a record may hold handles of its own kind (a call stack's caller), whose constraint would recurse.
-    bool operator()(const handle<R>& lhs, const handle<R>& rhs) const { return lhs == nullptr || rhs == nullptr ? lhs == rhs : EqualTo<R> {}(*lhs, *rhs); }
+    bool operator()(const handle<R>& lhs, const handle<R>& rhs) const { return EqualTo<R> {}(*lhs, *rhs); }
 };
 
 /// A record held by its handle hashes as the record it holds.
 template<typename R>
 struct Hash<handle<R>>
 {
-    hash_t operator()(const handle<R>& held) const { return held == nullptr ? hash_t { 0 } : Hash<R> {}(*held); }
+    hash_t operator()(const handle<R>& held) const { return Hash<R> {}(*held); }
 };
+
+template<HasFields T>
+void clear_fields(T& built);
+
+namespace detail
+{
+/// Empties a member, keeping the buffers it owns: by its clear(); a record or a builder held in place field by field;
+/// one held through its handle (never null) in place, the handle kept; anything else set to its default (a child to
+/// the none key, giving back what it held).
+template<typename M>
+void empty_member(M& member)
+{
+    if constexpr (Clearable<M>)
+        member.clear();
+    else if constexpr (HasFields<M>)
+        urd::clear_fields(member);
+    else if constexpr (Handle<M>)
+        detail::empty_member(*member);
+    else
+        member = M {};
+}
+}  // namespace detail
+
+/// @brief Empties every field a record or a builder declares (HasFields), keeping the buffers they own
+/// (detail::empty_member). One reused in place (a checked-out builder, a scratch record) is reset with it; its own
+/// index, no field, stays (interning writes it).
+template<HasFields T>
+void clear_fields(T& built)
+{
+    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (detail::empty_member(built.*Fs::member), ...); }(T::fields());
+}
 
 }  // namespace urd

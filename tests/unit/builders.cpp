@@ -97,7 +97,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] decltype(auto) weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 };
 
 template<typename V>
@@ -107,11 +107,11 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_first() const { return self().template member<&urd::record_of<V>::first>(); }
+    [[nodiscard]] decltype(auto) first() const { return self().template member<&urd::record_of<V>::first>(); }
 
-    [[nodiscard]] decltype(auto) get_rest() const { return self().template member<&urd::record_of<V>::rest>(); }
+    [[nodiscard]] decltype(auto) rest() const { return self().template member<&urd::record_of<V>::rest>(); }
 
-    [[nodiscard]] decltype(auto) get_depth() const { return self().template member<&urd::record_of<V>::depth>(); }
+    [[nodiscard]] decltype(auto) depth() const { return self().template member<&urd::record_of<V>::depth>(); }
 };
 
 template<>
@@ -178,8 +178,8 @@ using LeafRecords = urd::Store<urd::slots<urd::data<Leaf>>>;
 std::vector<int> weights_of(const auto& node_view)
 {
     auto weights = std::vector<int> {};
-    for (const auto& leaf : node_view.get_rest())
-        weights.push_back(urd::visit_view(leaf, [](const auto& view) { return view.get_weight(); }));
+    for (const auto& leaf : node_view.rest())
+        weights.push_back(urd::visit_view(leaf, [](const auto& view) { return view.weight(); }));
     return weights;
 }
 
@@ -221,7 +221,7 @@ struct InsertIntoNodes
 /// The weight of a leaf, read as it is resolved: a view, or a child in whichever form it is held.
 int weight_of(const auto& leaf)
 {
-    return urd::visit_view(leaf, [](const auto& view) { return view.get_weight(); });
+    return urd::visit_view(leaf, [](const auto& view) { return view.weight(); });
 }
 
 }  // namespace
@@ -261,7 +261,7 @@ struct Label  // a key of no record: a value
 
 static_assert(std::same_as<urd::built_t<urd::index<Label>, Nodes>, urd::index<Label>>);
 static_assert(std::same_as<urd::built_t<urd::data<Leaf>, Nodes>, urd::builder<Leaf, Nodes>>);
-static_assert(std::same_as<urd::built_t<urd::index_variant<boost::mp11::mp_list<Leaf>>, Nodes>, urd::child_variant<boost::mp11::mp_list<Leaf>, Nodes>>);
+static_assert(std::same_as<urd::built_t<urd::index_variant<boost::mp11::mp_list<Leaf>>, Nodes>, std::variant<urd::child<Leaf, Nodes>>>);
 
 TEST(Builder, ReadsItsChildrenInEachForm)
 {
@@ -280,29 +280,29 @@ TEST(Builder, ReadsItsChildrenInEachForm)
 
     const auto view = urd::resolve(node, nodes);
     static_assert(std::same_as<decltype(view), const urd::borrowed_view<Node, Nodes, NodeBuilder>>);
-    EXPECT_EQ(weight_of(view.get_first()), 3);
+    EXPECT_EQ(weight_of(view.first()), 3);
     EXPECT_EQ(weights_of(view), (std::vector<int> { 7, 3, 11 }));
 
     // A record's member reads as a view of its kind, a builder's as a child view (of the views of its forms): both read
     // as a Leaf (urd::ReadsAs); the builder view itself is a view of a Node.
     static_assert(urd::ReadsAs<decltype(nodes.view(urd::index<Leaf>(0))), Leaf>);
-    static_assert(urd::ReadsAs<decltype(view.get_first()), Leaf>);
-    static_assert(!urd::ViewOf<decltype(view.get_first()), Leaf>);
+    static_assert(urd::ReadsAs<decltype(view.first()), Leaf>);
+    static_assert(!urd::ViewOf<decltype(view.first()), Leaf>);
     static_assert(urd::ViewOf<decltype(view), Node> && !urd::ReadsAs<decltype(view), Leaf>);
 
     // A child copied from a reading: an interned one as it is; a built or held one is its holder's, not copied.
     auto copied = urd::child<Leaf, Nodes> {};
-    urd::copy_child(copied, view.get_first());
+    urd::copy_child(copied, view.first());
     EXPECT_EQ(weight_of(urd::resolve(std::as_const(copied), nodes)), 3);
     EXPECT_THROW(urd::copy_child(copied, urd::resolve(std::as_const(node.rest[0]), nodes)), std::bad_variant_access);
     EXPECT_THROW(urd::copy_child(copied, urd::resolve(std::as_const(node.rest[2]), nodes)), std::bad_variant_access);
 
     // A reading's interned view: an interned one's, else none (a built or held record has no key).
-    EXPECT_EQ(urd::interned_view(view.get_first()).index(), urd::index<Leaf>(0));
+    EXPECT_EQ(urd::interned_view(view.first()).index(), urd::index<Leaf>(0));
     EXPECT_THROW((void) urd::interned_view(urd::resolve(std::as_const(node.rest[0]), nodes)), std::bad_variant_access);
 
     // A reading is the interned record only where it is interned: a built one of the same weight is another record.
-    EXPECT_TRUE(urd::is_interned_as(view.get_first(), nodes.view(urd::index<Leaf>(0))));
+    EXPECT_TRUE(urd::is_interned_as(view.first(), nodes.view(urd::index<Leaf>(0))));
     EXPECT_TRUE(urd::is_interned_as(nodes.view(urd::index<Leaf>(0)), nodes.view(urd::index<Leaf>(0))));
     EXPECT_FALSE(urd::is_interned_as(urd::resolve(std::as_const(node.rest[2]), nodes), nodes.view(urd::index<Leaf>(0))));
 }
@@ -324,21 +324,21 @@ TEST(ChildView, ReadsEachFormWithItsKindsGettersAndComparesAsItsForm)
     const auto view = urd::resolve(node, nodes);
 
     // A builder's child reads as a child view, with the kind's getters whatever its form: built, interned, held.
-    static_assert(urd::ChildView<decltype(view.get_first())>);
+    static_assert(urd::ChildView<decltype(view.first())>);
     auto weights = std::vector<int> {};
-    for (const auto leaf : view.get_rest())
-        weights.push_back(leaf.get_weight());
+    for (const auto leaf : view.rest())
+        weights.push_back(leaf.weight());
     EXPECT_EQ(weights, (std::vector<int> { 7, 3, 11 }));
-    EXPECT_EQ(view.get_first().get_weight(), 3);
+    EXPECT_EQ(view.first().weight(), 3);
 
     // It compares as the view of its form: two readings of one interned leaf are equal; a built leaf is another reading,
     // whatever its fields.
-    EXPECT_EQ(view.get_first(), urd::resolve(std::as_const(node.rest[1]), nodes));
-    EXPECT_NE(view.get_first(), urd::resolve(std::as_const(node.rest[0]), nodes));
+    EXPECT_EQ(view.first(), urd::resolve(std::as_const(node.rest[1]), nodes));
+    EXPECT_NE(view.first(), urd::resolve(std::as_const(node.rest[0]), nodes));
 
     // Its form, where a reader needs it: interned (its key), built (its builder's view).
-    EXPECT_EQ(urd::interned_view(view.get_first()).index(), urd::index<Leaf>(0));
-    EXPECT_EQ(urd::built_view(urd::resolve(std::as_const(node.rest[0]), nodes)).get_weight(), 7);
+    EXPECT_EQ(urd::interned_view(view.first()).index(), urd::index<Leaf>(0));
+    EXPECT_EQ(urd::built_view(urd::resolve(std::as_const(node.rest[0]), nodes)).weight(), 7);
 }
 
 TEST(ChildView, AChildRangeIsAsCapableAsItsFormsRanges)
@@ -630,7 +630,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_values() const { return self().template member<&urd::record_of<V>::values>(); }
+    [[nodiscard]] decltype(auto) values() const { return self().template member<&urd::record_of<V>::values>(); }
 };
 
 template<>

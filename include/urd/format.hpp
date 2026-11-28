@@ -151,7 +151,7 @@ inline int& indent_level() noexcept
 }
 
 /// A value as a record's field writes it: an optional as its value or `none`, a variant as its alternative, a string as
-/// its characters, a range as `[`, each element written so on a line of its own one level deeper, `]` (`[]` empty), and
+/// its characters, a handle as what it holds, a range as `[`, each element written so on a line of its own one level deeper, `]` (`[]` empty), and
 /// anything else as fmt writes it.
 template<typename V>
 std::string field_written(const V& value);
@@ -186,6 +186,8 @@ std::string field_written(const V& value)
         return visit([](const auto& alternative) { return field_written(alternative); }, value);
     else if constexpr (std::convertible_to<const V&, std::string_view>)
         return std::string(std::string_view(value));
+    else if constexpr (Handle<V>)
+        return field_written(*value);  // a child's builder or record, held by its handle (never null)
     else if constexpr (std::ranges::input_range<const V>)
     {
         if (std::ranges::empty(value))
@@ -236,16 +238,11 @@ struct named
     using type = V;
 };
 
-template<typename T>
-struct named<data<T>>
+template<typename V>
+    requires Record<V> || Builder<V>
+struct named<V>
 {
-    using type = T;
-};
-
-template<typename T, typename C>
-struct named<builder<T, C>>
-{
-    using type = T;
+    using type = kind_of_t<V>;
 };
 
 template<typename V>
@@ -288,27 +285,9 @@ struct fmt::formatter<V>
 
 /// A view of a record or a builder whose fields its record names, written as that record (each field resolved through
 /// the view's context). A library that writes a view otherwise specializes this for its own record.
-template<typename T, typename C, typename K>
-    requires urd::HasFields<urd::record_of<urd::index_view<T, C, K>>>
-struct fmt::formatter<urd::index_view<T, C, K>> : urd::detail::view_formatter<urd::index_view<T, C, K>>
-{
-};
-
-template<typename T, typename C, typename R>
-    requires urd::HasFields<R>
-struct fmt::formatter<urd::borrowed_view<T, C, R>> : urd::detail::view_formatter<urd::borrowed_view<T, C, R>>
-{
-};
-
-template<typename T, typename C, typename R>
-    requires urd::HasFields<R>
-struct fmt::formatter<urd::owning_view<T, C, R>> : urd::detail::view_formatter<urd::owning_view<T, C, R>>
-{
-};
-
-template<typename T, typename C, typename R>
-    requires urd::HasFields<R>
-struct fmt::formatter<urd::shared_view<T, C, R>> : urd::detail::view_formatter<urd::shared_view<T, C, R>>
+template<urd::View V>
+    requires urd::HasFields<urd::record_of<V>>
+struct fmt::formatter<V> : urd::detail::view_formatter<V>
 {
 };
 

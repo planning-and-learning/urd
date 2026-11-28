@@ -237,7 +237,7 @@ void bind_fields(nb::class_<Data>& cls)
     }(Data::fields());
 }
 
-/// A view's getters, get_<name> for each field of its record: the field resolved through the view's context.
+/// A view's getters, <name> for each field of its record: the field resolved through the view's context.
 template<typename View>
     requires HasFields<record_of<View>>
 void bind_field_getters(nb::class_<View>& cls)
@@ -249,7 +249,7 @@ void bind_field_getters(nb::class_<View>& cls)
         [&]<typename F>()
         {
             cls.def(
-                F::template prefixed<"get_">.data(),
+                F::c_name,
                 [](const View& view) -> decltype(auto) { return view.template member<F::member>(); },
                 nb::rv_policy::reference_internal);
         });
@@ -400,8 +400,23 @@ bool builder_from_view(nb::handle value, builder<U, C>& target)
 {
     if (!nb::type<View>().is_valid() || !nb::isinstance<View>(value))
         return false;
-    target = urd::clone(urd::detail::view_access::record(nb::cast<const View&>(value)));
+    target = urd::clone(urd::record(nb::cast<const View&>(value)));
     return true;
+}
+
+/// A builder from Python: a builder of its kind, or one read through one of its views (borrowed, owned, shared), as a
+/// copy. Whether it took it.
+template<typename U, typename C>
+bool copy_builder(nb::handle value, builder<U, C>& target)
+{
+    if (nb::isinstance<builder<U, C>>(value))
+    {
+        target = urd::clone(nb::cast<const builder<U, C>&>(value));
+        return true;
+    }
+    return detail::builder_from_view<borrowed_view<U, C, builder<U, C>>>(value, target)
+           || detail::builder_from_view<owning_view<U, C, builder<U, C>>>(value, target)
+           || detail::builder_from_view<shared_view<U, C, builder<U, C>>>(value, target);
 }
 
 /// The conversion from Python of a child of kind U read through C (its key K): it copies a builder or record of the
@@ -409,7 +424,7 @@ bool builder_from_view(nb::handle value, builder<U, C>& target)
 /// instantiates it for each kind of a context (URD_PYTHON_CONVERSIONS, urd/python/conversion_instantiations.hpp), which
 /// its other sources declare: a source that binds a builder then compiles its own kind's conversion, not those of
 /// every kind its children reach. A plain value has no builder.
-template<typename U, typename C, typename K = key<U>>
+template<typename U, typename C, typename K = key_t<U>>
 struct conversions
 {
     static bool to_child(nb::handle value, child<U, C, K>& target)
@@ -426,16 +441,12 @@ template<typename U, typename C, typename K>
 bool conversions<U, C, K>::to_child(nb::handle value, child<U, C, K>& target)
     requires(!PlainValue<U>)
 {
-    if (nb::isinstance<builder<U, C>>(value))
-        target.template emplace<1>(urd::make_owned<builder<U, C>>(urd::clone(nb::cast<const builder<U, C>&>(value))));
-    else if (auto built = builder<U, C>(); detail::builder_from_view<borrowed_view<U, C, builder<U, C>>>(value, built)
-                                           || detail::builder_from_view<owning_view<U, C, builder<U, C>>>(value, built)
-                                           || detail::builder_from_view<shared_view<U, C, builder<U, C>>>(value, built))
-        target.template emplace<1>(urd::make_owned<builder<U, C>>(std::move(built)));
+    if (auto built = builder<U, C>(); detail::copy_builder(value, built))
+        target.template emplace<built_child<U, C>>(urd::make_owned<builder<U, C>>(std::move(built)));
     else if (nb::isinstance<data<U>>(value))
-        target.template emplace<2>(urd::make_owned<data<U>>(urd::clone(nb::cast<const data<U>&>(value))));
+        target.template emplace<held_child<U, C>>(urd::make_owned<data<U>>(urd::clone(nb::cast<const data<U>&>(value))));
     else if (auto key = K(); nb::try_cast(value, key))
-        target.template emplace<0>(key);
+        target.template emplace<K>(key);
     else
         return false;
     return true;
@@ -446,14 +457,7 @@ bool conversions<U, C, K>::to_child(nb::handle value, child<U, C, K>& target)
 template<typename U, typename C>
 bool builder_from_python(nb::handle value, builder<U, C>& target)
 {
-    if (nb::isinstance<builder<U, C>>(value))
-    {
-        target = urd::clone(nb::cast<const builder<U, C>&>(value));
-        return true;
-    }
-    if (detail::builder_from_view<borrowed_view<U, C, builder<U, C>>>(value, target)
-        || detail::builder_from_view<owning_view<U, C, builder<U, C>>>(value, target)
-        || detail::builder_from_view<shared_view<U, C, builder<U, C>>>(value, target))
+    if (detail::copy_builder(value, target))
         return true;
     if constexpr (made_from_record<data<U>, C>)
     {
@@ -466,37 +470,16 @@ bool builder_from_python(nb::handle value, builder<U, C>& target)
     return false;
 }
 
-template<typename B>
-inline constexpr bool is_child_value = false;
-template<typename U, typename C, typename K>
-inline constexpr bool is_child_value<std::variant<K, handle<builder<U, C>>, handle<data<U>>>> = true;
-
-/// A child held only built (urd::built_child: its builder's handle, never null).
-template<typename B>
-inline constexpr bool is_built_child = false;
-template<typename U, typename C>
-inline constexpr bool is_built_child<handle<builder<U, C>>> = true;
-
-template<typename B>
-inline constexpr bool is_std_optional = false;
-template<typename E>
-inline constexpr bool is_std_optional<std::optional<E>> = true;
-
-template<typename B>
-inline constexpr bool is_std_variant = false;
-template<typename... Bs>
-inline constexpr bool is_std_variant<std::variant<Bs...>> = true;
-
 /// Whether a built form holds a child or a builder, at any depth of its lists, optionals and variants: what nanobind
 /// cannot cast whole (std::vector of a move-only element still says it is copy constructible).
 template<typename B>
-inline constexpr bool holds_children = is_child_value<B> || is_builder<B> || is_built_child<B>;
+inline constexpr bool holds_children = Builder<B> || urd::detail::Handle<B>;
 template<typename E, typename A>
 inline constexpr bool holds_children<std::vector<E, A>> = holds_children<E>;
 template<typename E>
 inline constexpr bool holds_children<std::optional<E>> = holds_children<E>;
 template<typename... Bs>
-inline constexpr bool holds_children<std::variant<Bs...>> = is_child_value<std::variant<Bs...>> || (holds_children<Bs> || ...);
+inline constexpr bool holds_children<std::variant<Bs...>> = (holds_children<Bs> || ...);
 template<typename F, typename S>
 inline constexpr bool holds_children<std::pair<F, S>> = holds_children<F> || holds_children<S>;
 
@@ -520,6 +503,7 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
     else
     {
         auto alternative = std::variant_alternative_t<I, std::variant<Bs...>>();
+        urd::detail::make_built(alternative);
         if (detail::from_python(value, alternative))
         {
             target.template emplace<I>(std::move(alternative));
@@ -536,26 +520,21 @@ bool alternative_from_python(nb::handle value, std::variant<Bs...>& target)
 template<typename B>
 bool from_python(nb::handle value, B& target)
 {
-    if constexpr (is_child_value<B>)
+    if constexpr (Child<B>)
         return detail::child_from_python(value, target);
-    else if constexpr (is_built_child<B>)
-    {
-        auto built = urd::make_owned<typename B::element_type>();
-        if (!detail::builder_from_python(value, *built))
-            return false;
-        target = std::move(built);
-        return true;
-    }
-    else if constexpr (is_std_variant<B>)
+    else if constexpr (BuiltChild<B>)
+        return detail::builder_from_python(value, *target);  // never null: written in place
+    else if constexpr (urd::detail::StdVariant<B>)
         return detail::alternative_from_python<0>(value, target);
-    else if constexpr (is_std_optional<B>)
+    else if constexpr (urd::detail::StdOptional<B>)
     {
         if (value.is_none())
         {
             target.reset();
             return true;
         }
-        return detail::from_python(value, target.emplace());
+        urd::detail::make_built(target.emplace());
+        return detail::from_python(value, *target);
     }
     else if constexpr (is_std_pair<B> && holds_children<B>)
     {
@@ -569,12 +548,15 @@ bool from_python(nb::handle value, B& target)
             return false;
         auto result = B();
         for (const auto element : value)
-            if (!detail::from_python(element, result.emplace_back()))
+        {
+            urd::detail::make_built(result.emplace_back());
+            if (!detail::from_python(element, result.back()))
                 return false;
+        }
         target = std::move(result);
         return true;
     }
-    else if constexpr (is_builder<B>)
+    else if constexpr (Builder<B>)
         return detail::builder_from_python(value, target);
     else if constexpr (std::copy_constructible<B>)
         return nb::try_cast(value, target);
@@ -635,7 +617,7 @@ nb::class_<builder<T, C>> bind_builder(nb::module_& m)
 /// record, Shared<...> for one that shares it (so that the views of one record bound in one module have their own
 /// names). The one way a view is bound, whether it
 /// reads a stored record (data<T>), a record a context hands out in another layout (a value with the record's fields) or a builder (builder<T, C>):
-/// get_<field>() for each field of its record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view that names its
+/// <field>() for each field of its record, compared and hashed by its identity, written with fmt (a view needs its fmt::formatter). A view that names its
 /// index (index_view: index() gives its key, an urd::key<T> or a key of its own such as a row's) also gives index() and converts to that key wherever one is
 /// expected, also in lists and optionals; the key is bound first (T's index by bind_index<T>, a key that is a value by
 /// bind_data of its tag). A view that owns or shares its record is bound as a subclass of the borrowed view of it where
@@ -645,7 +627,7 @@ template<typename View>
 void bind_view(nb::module_& m)
 {
     using T = typename View::value_type;
-    const auto form = std::string(urd::is_builder<record_of<View>> ? "BuilderView" : (detail::borrows_record<View> || detail::owns_record<View> || detail::shares_record<View>) ? "RecordView" : "");
+    const auto form = std::string(urd::Builder<record_of<View>> ? "BuilderView" : (detail::borrows_record<View> || detail::owns_record<View> || detail::shares_record<View>) ? "RecordView" : "");
     const auto holding = std::string(detail::owns_record<View> ? "Owned" : detail::shares_record<View> ? "Shared" : "");
     const auto name = holding + urd::name<T>() + form;
     if constexpr (detail::owns_record<View> || detail::shares_record<View>)
@@ -683,6 +665,27 @@ void bind_view(nb::module_& m)
         nb::borrow<nb::class_<Handle>>(index_type).def("__init__", [](Handle* self, const View& v) { new (self) Handle(v.index()); });
         nb::implicitly_convertible<View, Handle>();
     }
+}
+
+/// Binds a record of T read through C, the one way a stored record is bound: its key (<Name>Index or <Name>Key:
+/// bind_index), its record (<Name>Data: bind_data), its builder (<Name>Builder: bind_builder) and its interned view
+/// (<Name>: bind_view of index_view<T, C>), in that order.
+template<typename T, typename C>
+void bind_record(nb::module_& m)
+{
+    urd::python::bind_index<T>(m);
+    urd::python::bind_data<T>(m);
+    urd::python::bind_builder<T, C>(m);
+    urd::python::bind_view<index_view<T, C>>(m);
+}
+
+/// Binds the views of a record of T a builder's child is read as where it is not interned: its builder's
+/// (<Name>BuilderView) and its record's (<Name>RecordView), each borrowed. After bind_record<T, C>.
+template<typename T, typename C>
+void bind_record_views(nb::module_& m)
+{
+    urd::python::bind_view<borrowed_view<T, C, builder<T, C>>>(m);
+    urd::python::bind_view<borrowed_view<T, C>>(m);
 }
 
 }  // namespace urd::python

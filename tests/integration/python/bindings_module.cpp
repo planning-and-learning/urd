@@ -100,7 +100,7 @@ struct urd::builder<Term, Context>
     static constexpr auto functions() noexcept { return urd::Functions<urd::function<"add_object", &builder::add_object, urd::arg<"object">>> {}; }
 };
 
-/// The block a term's flags read (get_flags): it outlives every call.
+/// The block a term's flags read (flags): it outlives every call.
 inline constexpr std::uint64_t term_flag_block = 1;
 
 /// A term's accessors, for its stored record and its builder alike (record_of<V>: whichever it reads).
@@ -111,28 +111,28 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_arity() const { return self().template member<&urd::record_of<V>::arity>(); }
+    [[nodiscard]] decltype(auto) arity() const { return self().template member<&urd::record_of<V>::arity>(); }
 
-    [[nodiscard]] decltype(auto) get_objects() const { return self().template member<&urd::record_of<V>::objects>(); }
+    [[nodiscard]] decltype(auto) objects() const { return self().template member<&urd::record_of<V>::objects>(); }
 
-    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] decltype(auto) weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 
     // Derived: whether it has no objects; and, with an argument, whether it has more objects than a count.
-    [[nodiscard]] bool is_empty() const { return get_objects().empty(); }
+    [[nodiscard]] bool is_empty() const { return objects().empty(); }
 
-    [[nodiscard]] bool has_more_objects_than(std::size_t count) const { return get_objects().size() > count; }
+    [[nodiscard]] bool has_more_objects_than(std::size_t count) const { return objects().size() > count; }
 
-    [[nodiscard]] auto arity_plus_one() const { return get_arity() + 1; }
+    [[nodiscard]] auto arity_plus_one() const { return arity() + 1; }
 
     // A bitset_span (urd/python/containers/bitset_span.hpp): two bits over a block that outlives the call, the first set.
-    [[nodiscard]] urd::bitset_span<const std::uint64_t> get_flags() const noexcept { return { &term_flag_block, 2 }; }
+    [[nodiscard]] urd::bitset_span<const std::uint64_t> flags() const noexcept { return { &term_flag_block, 2 }; }
 
     static constexpr auto functions() noexcept
     {
         return urd::Functions<urd::function<"is_empty", &view_mixin::is_empty>,
                               urd::function<"has_more_objects_than", &view_mixin::has_more_objects_than, urd::arg<"count">>,
                               urd::function<"arity_plus_one", &view_mixin::arity_plus_one>,
-                              urd::function<"get_flags", &view_mixin::get_flags>> {};
+                              urd::function<"flags", &view_mixin::flags>> {};
     }
 };
 
@@ -238,10 +238,7 @@ NB_MODULE(urd_bindings_test, m)
     [[maybe_unused]] const auto context_class = nb::class_<Context>(m, "Context");
     urd::python::bind_index<Atom>(m);
     urd::python::bind_data<Point>(m);
-    urd::python::bind_index<Term>(m);
-    urd::python::bind_data<Term>(m);
-    urd::python::bind_view<TermView>(m);
-    urd::python::bind_builder<Term, Context>(m);
+    urd::python::bind_record<Term, Context>(m);  // its index, record, builder and interned view
     urd::python::bind_view<TermBuilderView>(m);
     urd::python::bind_view<TermOwnedView>(m);
     m.def("pair_name", [] { return urd::name<Pair<Term, Pair<Atom, Term>>>(); });

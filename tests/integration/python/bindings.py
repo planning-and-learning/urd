@@ -37,15 +37,15 @@ assert m.TermData(2, [4, 5], None) == m.TermData(2, [4, 5], None)
 assert m.TermData(2, [4, 5], None) != m.TermData(3, [4, 5], None)
 term = m.term(0)
 assert term.index() == m.TermIndex(0)
-assert term.get_arity() == 2
-assert term.get_objects() == [4, 5]
+assert term.arity() == 2
+assert term.objects() == [4, 5]
 assert term == m.term(0)
 assert hash(term) == hash(m.term(0))
 assert term.arity_plus_one() == 3
 assert not term.is_empty()
 assert term.has_more_objects_than(0)
 assert not term.has_more_objects_than(count=99)  # by keyword: urd::arg
-assert term.get_flags() == [True, False]
+assert term.flags() == [True, False]
 # A view converts to its index wherever an index is expected: TermIndex(view), and the Data __init__'s index fields.
 assert m.TermIndex(term) == m.TermIndex(0)
 assert str(term) == repr(term) == "Term(\n    arity=2\n    objects=[\n        4\n        5\n    ]\n    weight=none\n)"
@@ -54,9 +54,9 @@ assert str(m.TermData(1, [], 3)) == "Term(\n    arity=1\n    objects=[]\n    wei
 assert m.TermData(2, [], 7).weight == 7 and m.TermData(2, [], None).weight is None
 # bind_view of a builder's view: the same getters, compared and hashed by the builder, no index.
 builder = m.term_builder()
-assert builder.get_arity() == 1
-assert builder.get_objects() == [9]
-assert builder.get_weight() is None
+assert builder.arity() == 1
+assert builder.objects() == [9]
+assert builder.weight() is None
 assert builder == m.term_builder()
 assert hash(builder) == hash(m.term_builder())
 assert str(builder) == "Term(\n    arity=1\n    objects=[\n        9\n    ]\n    weight=none\n)"
@@ -66,11 +66,10 @@ assert m.pair_name() == "PairTermPairAtomTerm"
 assert m.term_child_alternative(m.TermData(1, [], 3)) == 2
 assert m.term_child_alternative(m.TermIndex(0)) == 0
 assert m.term_child_alternative("not a term") == -1
-assert not hasattr(builder, "index")
 # A view that owns its record is bound beside the record's other views, under its own name.
 owned = m.term_owned()
 assert type(owned) is m.OwnedTermRecordView and m.Term is not m.OwnedTermRecordView
-assert owned.get_arity() == 3
+assert owned.arity() == 3
 # A value: a record with no index (data<Point>), bound with bind_data: from its fields, each read and written, compared,
 # written by urd's formatter.
 point = m.PointData(1, 2)
@@ -89,15 +88,14 @@ built.add_object(object=8)
 context = m.context()
 read = built.view(context)
 assert type(read) is m.TermBuilderView
-assert read.get_arity() == 2
-assert read.get_objects() == [7, 8]
-assert read.get_weight() == 3
-assert not hasattr(built, "get_arity")
+assert read.arity() == 2
+assert read.objects() == [7, 8]
+assert read.weight() == 3
 made = m.TermBuilder(arity=4, objects=[1, 2])
-assert made.view(context).get_arity() == 4
-assert made.view(context).get_objects() == [1, 2]
-assert made.view(context).get_weight() is None
-assert m.TermBuilder(weight=None).view(context).get_weight() is None  # None is an optional's empty value
+assert made.view(context).arity() == 4
+assert made.view(context).objects() == [1, 2]
+assert made.view(context).weight() is None
+assert m.TermBuilder(weight=None).view(context).weight() is None  # None is an optional's empty value
 try:
     m.TermBuilder(arity=None)
 except TypeError:

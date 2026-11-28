@@ -25,6 +25,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <span>
 #include <string_view>
@@ -114,8 +115,10 @@ template<fixed_string Head, const auto&... Parts>
 inline constexpr std::string_view joined_name { detail::joined_characters<Head, Parts...>::characters.data(),
                                                 detail::joined_characters<Head, Parts...>::characters.size() - 1 };
 
-/// A field of a record: its public name and the data member that holds it.
-template<fixed_string Name, auto Member>
+/// A field of a record: its public name, the data member that holds it, and what the record promises of it, as the tags
+/// a Store promises them (`urd::field<"effects", &Data::effects, urd::sorted, urd::unique>`: a list the record holds as
+/// a set, which a library canonicalizes so before it interns the record).
+template<fixed_string Name, auto Member, typename... Properties>
 struct field
 {
     /// The name, null-terminated (a template parameter object: it lives as long as the program).
@@ -123,9 +126,12 @@ struct field
     /// The name as a C string (where a function takes one).
     static constexpr const char* c_name = Name.characters.data();
     static constexpr auto member = Member;
-    /// The name after `Prefix` (get_lhs), null-terminated.
+    /// The name after `Prefix` (set_lhs), null-terminated.
     template<fixed_string Prefix>
     static constexpr auto prefixed = concatenated<Prefix, Name>();
+    /// Whether the record promises `Property` of this field.
+    template<typename Property>
+    static constexpr bool promises = (std::same_as<Property, Properties> || ...);
 };
 
 /// The type of the data member `Member` points to.
@@ -151,6 +157,77 @@ consteval auto members_of(Fields<Fs...> /*fields*/) noexcept
 /// A record that declares its fields.
 template<typename T>
 concept HasFields = requires { T::fields(); };
+
+template<typename T>
+struct data;
+template<typename T, typename C>
+struct builder;
+
+namespace detail
+{
+template<typename R>
+inline constexpr bool data_record = false;
+template<typename T>
+inline constexpr bool data_record<data<T>> = true;
+
+template<typename R>
+inline constexpr bool record_builder = false;
+template<typename T, typename C>
+inline constexpr bool record_builder<builder<T, C>> = true;
+}  // namespace detail
+
+/// Whether R is a record, data<T>.
+template<typename R>
+concept Record = detail::data_record<R>;
+
+/// Whether R is a builder, builder<T, C>.
+template<typename R>
+concept Builder = detail::record_builder<R>;
+
+/// The kind a record or a builder is of: T of data<T> and of builder<T, C>.
+template<typename R>
+struct kind_of;
+template<typename T>
+struct kind_of<data<T>>
+{
+    using type = T;
+};
+template<typename T, typename C>
+struct kind_of<builder<T, C>>
+{
+    using type = T;
+};
+template<typename R>
+using kind_of_t = typename kind_of<R>::type;
+
+/// The context a builder's children are read through: C of builder<T, C>.
+template<typename R>
+struct builder_context;
+template<typename T, typename C>
+struct builder_context<builder<T, C>>
+{
+    using type = C;
+};
+template<typename R>
+using builder_context_t = typename builder_context<R>::type;
+
+/// Whether R holds its own key in a member `index` (a stored record numbered by its store, its builder).
+template<typename R>
+concept HoldsIndex = requires(R& held) { held.index; };
+
+/// The members cista serializes of a record that declares its fields: its own key (where it holds one: HoldsIndex),
+/// then its fields. `static constexpr auto cista_members() noexcept { return urd::cista_members_of<data>(); }`.
+template<HasFields R>
+constexpr auto cista_members_of() noexcept
+{
+    return []<typename... Fs>(Fields<Fs...> /*fields*/)
+    {
+        if constexpr (HoldsIndex<R>)
+            return Members<&R::index, Fs::member...> {};
+        else
+            return Members<Fs::member...> {};
+    }(R::fields());
+}
 
 /// Whether record T declares a field named `name`.
 template<HasFields T>
@@ -267,45 +344,25 @@ concept DeclaresMemoryMembers = requires { T::memory_members(); };
 template<typename T>
 concept Serializable = requires { T::cista_members(); } && detail::is_members_v<decltype(T::cista_members())>;
 
-namespace detail
-{
-/// Whether M holds a record or a builder through its handle (a unique_ptr to a type that declares fields: a child held
-/// only built, urd::built_child, whose handle is never null).
-template<typename M>
-concept HandleToFields = requires { typename M::element_type; } && HasFields<typename M::element_type>
-                         && requires(M& member) { member.get(); };
-}  // namespace detail
-
-/// @brief Empties every field a record or a builder declares (HasFields), keeping the buffers they own: each by its
-/// clear(); a record or a builder held in place, or through its handle (never null), emptied in place, field by field,
-/// the handle kept; or else set to its default (a child to the none index, giving back what it held). One reused in
-/// place (a checked-out builder, a scratch record) is reset with it; its own index, no field, stays (interning writes it).
-template<HasFields T>
-void clear_fields(T& built)
-{
-    const auto empty = []<typename M>(M& member)
-    {
-        if constexpr (Clearable<M>)
-            member.clear();
-        else if constexpr (HasFields<M>)
-            clear_fields(member);
-        else if constexpr (detail::HandleToFields<M>)
-        {
-            if constexpr (Clearable<typename M::element_type>)
-                member->clear();
-            else
-                clear_fields(*member);
-        }
-        else
-            member = M {};
-    };
-    [&]<typename... Fs>(Fields<Fs...> /*fields*/) { (empty(built.*Fs::member), ...); }(T::fields());
-}
-
-/// @brief T names what identifies it, as a Members list (its identifying_members()); Hash, EqualTo and Less then
-/// follow from that.
+/// @brief T names what identifies it itself, as a Members list (its identifying_members()).
 template<typename T>
-concept Identifiable = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
+concept DeclaresIdentity = requires { T::identifying_members(); } && detail::is_members_v<decltype(T::identifying_members())>;
+
+/// @brief T is identified by members: those it names (DeclaresIdentity), or, a record or a builder that names none,
+/// all its fields (only a real subset is declared). Hash, EqualTo and Less then follow from them
+/// (urd::identifying_members_of).
+template<typename T>
+concept Identifiable = DeclaresIdentity<T> || ((Record<T> || Builder<T>) && HasFields<T>);
+
+/// The members that identify T, as a Members list.
+template<Identifiable T>
+constexpr auto identifying_members_of() noexcept
+{
+    if constexpr (DeclaresIdentity<T>)
+        return T::identifying_members();
+    else
+        return members_of(T::fields());
+}
 
 namespace detail
 {
@@ -316,7 +373,7 @@ template<Identifiable T>
 constexpr auto identity(const T& x)
 {
     return []<auto... Ms>(const T& of, Members<Ms...> /*members*/)
-    { return std::tuple<decltype(std::invoke(Ms, of))...>(std::invoke(Ms, of)...); }(x, T::identifying_members());
+    { return std::tuple<decltype(std::invoke(Ms, of))...>(std::invoke(Ms, of)...); }(x, urd::identifying_members_of<T>());
 }
 
 /// What member M (a data member or a getter) gives of a T: what identity() holds of it.
@@ -333,7 +390,7 @@ struct identity_of_members<T, Members<Ms...>>
 
 /// The type identity() gives, named from the members: naming it instantiates neither identity() nor the tuple.
 template<Identifiable T>
-using identity_t = typename identity_of_members<T, decltype(T::identifying_members())>::type;
+using identity_t = typename identity_of_members<T, decltype(urd::identifying_members_of<T>())>::type;
 
 }  // namespace detail
 
@@ -402,6 +459,32 @@ consteval bool members_ordered(Members<Ms...> /*members*/)
 /// as they give them), so a transparent lookup takes a U for a T.
 template<typename U, typename T>
 concept identity_of = Identifiable<T> && std::same_as<std::remove_cvref_t<U>, detail::identity_t<T>>;
+
+namespace detail
+{
+template<typename T>
+inline constexpr bool std_vector_type = false;
+template<typename E, typename A>
+inline constexpr bool std_vector_type<std::vector<E, A>> = true;
+
+template<typename T>
+inline constexpr bool std_optional_type = false;
+template<typename E>
+inline constexpr bool std_optional_type<std::optional<E>> = true;
+
+template<typename T>
+inline constexpr bool std_variant_type = false;
+template<typename... Es>
+inline constexpr bool std_variant_type<std::variant<Es...>> = true;
+
+/// Whether T is a std::vector, a std::optional, a std::variant: the containers a builder holds.
+template<typename T>
+concept StdVector = std_vector_type<T>;
+template<typename T>
+concept StdOptional = std_optional_type<T>;
+template<typename T>
+concept StdVariant = std_variant_type<T>;
+}  // namespace detail
 
 /// Whether M is an optional value: std::optional, or cista's.
 template<typename M>

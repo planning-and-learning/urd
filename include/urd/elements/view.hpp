@@ -42,10 +42,6 @@ concept resolves = requires(const C& context, key<T> at) {
     { context.view(at) } -> std::same_as<index_view<T, C>>;
 };
 
-/// Hook for the named accessors of a record's views, one line each over member<>: `template<typename V> struct
-/// urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::predicate>(); } };`
-/// (record_of<V>: the record, named through V, so that it may still be incomplete where the mixin is declared). A mixin
-/// must not declare member itself, which the view's member<&T::m>() would hide.
 namespace detail
 {
 /// What a record's view has where its record declares no mixin of its own (urd::DeclaresViewMixin).
@@ -54,21 +50,21 @@ struct no_view_mixin
 };
 }  // namespace detail
 
+/// Hook for the named accessors of a record's views, one line each over member<>: `template<typename V> struct
+/// urd::view_mixin<Atom, V> { auto predicate() const { return static_cast<const V&>(*this).template member<&urd::record_of<V>::predicate>(); } };`
+/// (record_of<V>: the record, named through V, so that it may still be incomplete where the mixin is declared). A mixin
+/// must not declare member itself, which the view's member<&T::m>() would hide.
 template<typename T, typename V>
 struct view_mixin : detail::no_view_mixin
 {
 };
 
-/// A record view's accessors are its record's mixin (view_mixin<R, V>): a held record and a builder read as T, unless
-/// a mixin of their own says otherwise. An index_view reads as T, whatever form its context hands its record out in
-/// (stored_ref<T>): member<>() reads each field from that form (stored_field).
-template<typename T, typename V>
-struct view_mixin<data<T>, V> : view_mixin<T, V>
-{
-};
-
-template<typename T, typename C, typename V>
-struct view_mixin<builder<T, C>, V> : view_mixin<T, V>
+/// A record view's accessors are its record's mixin (view_mixin<R, V>): a held record and a builder read as their kind
+/// T, unless a mixin of their own says otherwise. An index_view reads as T, whatever form its context hands its record
+/// out in (stored_ref<T>): member<>() reads each field from that form (stored_field).
+template<typename R, typename V>
+    requires Record<R> || Builder<R>
+struct view_mixin<R, V> : view_mixin<kind_of_t<R>, V>
 {
 };
 
@@ -792,6 +788,28 @@ inline constexpr bool is_view<shared_view<T, C, R>> = true;
 template<typename V>
 concept View = is_view<V>;
 
+/// Whether V is a view of a builder: a borrowed, an owning or a shared view over builder<T, C>.
+template<typename V>
+concept BuilderView = View<V> && Builder<typename std::remove_cvref_t<V>::record_type>;
+
+/// Whether a context makes the views of keys K (context.view(key)): a child of key K is read through it.
+template<typename C, typename K>
+concept ViewsKeys = requires(const C& context, K at) { context.view(at); };
+
+/// The record a view holds itself, as its maker gave it: a borrowed, an owning or a shared view's (a record or a
+/// builder). An index_view holds none: its record is its context's, read through the view.
+template<typename T, typename C, typename R>
+[[nodiscard]] const R& record(const borrowed_view<T, C, R>& view)
+{ return detail::view_access::record(view); }
+
+template<typename T, typename C, typename R>
+[[nodiscard]] const R& record(const owning_view<T, C, R>& view)
+{ return detail::view_access::record(view); }
+
+template<typename T, typename C, typename R>
+[[nodiscard]] const R& record(const shared_view<T, C, R>& view)
+{ return detail::view_access::record(view); }
+
 /// The kind T a view reads (index_view<T, C, K>, borrowed_view<T, C, R>, …: each view's first parameter).
 template<typename V>
 struct view_kind;
@@ -802,6 +820,9 @@ struct view_kind<W<T, C, X>>
 {
     using type = T;
 };
+
+template<typename V>
+using view_kind_t = typename view_kind<std::remove_cvref_t<V>>::type;
 
 /// The context C a view reads through (index_view<T, C, K>, borrowed_view<T, C, R>, …: each view's second parameter).
 template<typename V>
@@ -845,29 +866,6 @@ decltype(auto) visit_view(const std::variant<Vs...>& views, F&& f)
 
 namespace detail
 {
-template<typename V>
-using reads_builder = std::bool_constant<is_builder<record_of<V>>>;
-}
-
-/// The view of a reading's built form (a builder's view): the reading itself where it is one; the alternative of a
-/// resolved child (urd::child resolved: a variant of the views of its forms) that reads its builder,
-/// std::bad_variant_access where the child holds another form. What a reader that works on built records takes out of
-/// a child, without naming the view.
-template<View V>
-    requires is_builder<record_of<V>>
-V built_view(const V& view)
-{ return view; }
-
-template<View... Vs>
-auto built_view(const std::variant<Vs...>& views)
-{
-    using Views = boost::mp11::mp_list<Vs...>;
-    using Built = boost::mp11::mp_at<Views, boost::mp11::mp_find_if<Views, detail::reads_builder>>;
-    return std::get<Built>(views);
-}
-
-namespace detail
-{
 template<typename M>
 consteval bool holds_child();
 
@@ -880,25 +878,6 @@ consteval bool argument_holds_child(std::type_identity<V<Ts...>> /*instance*/)
 template<typename M>
 consteval bool argument_holds_child(std::type_identity<M> /*other*/)
 { return false; }
-
-template<typename T>
-inline constexpr bool data_type = false;
-template<typename T>
-inline constexpr bool data_type<data<T>> = true;
-
-/// Whether T is a record, data<U>.
-template<typename T>
-concept Data = data_type<T>;
-
-/// The tag of a record type: T of data<T>.
-template<typename R>
-struct tag_of_data;
-
-template<typename T>
-struct tag_of_data<data<T>>
-{
-    using type = T;
-};
 
 /// Whether a record's fields hold a child.
 template<typename T>
@@ -917,8 +896,8 @@ consteval bool holds_child()
 {
     if constexpr (Key<M>)
         return stored_record<typename M::element_type>;
-    else if constexpr (Data<M>)
-        return detail::record_holds_child<typename tag_of_data<M>::type>();
+    else if constexpr (Record<M>)
+        return detail::record_holds_child<kind_of_t<M>>();
     else if constexpr (std::ranges::range<M>)
         return detail::holds_child<std::remove_cvref_t<std::ranges::range_value_t<M>>>();
     else
@@ -959,7 +938,7 @@ template<typename T, typename C>
     {
         const C* owner = nullptr;
         auto visit = [&]<Key K>(const K& key)
-            requires requires { context.view(key); }
+            requires ViewsKeys<C, K>
         {
             const auto& child = context.view(key).context();
             if constexpr (std::same_as<std::remove_cvref_t<decltype(child)>, C>)

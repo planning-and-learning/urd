@@ -201,8 +201,8 @@ struct Less<T>
     using is_transparent = void;
 
     constexpr bool operator()(const T& lhs, const T& rhs) const
-        requires(detail::members_ordered<T>(T::identifying_members()))
-    { return detail::less_members(lhs, rhs, T::identifying_members()); }
+        requires(detail::members_ordered<T>(urd::identifying_members_of<T>()))
+    { return detail::less_members(lhs, rhs, urd::identifying_members_of<T>()); }
 
     template<identity_of<T> U>
     constexpr bool operator()(const T& lhs, const U& rhs) const

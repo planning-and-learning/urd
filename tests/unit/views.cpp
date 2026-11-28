@@ -276,9 +276,9 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] auto weight() const noexcept { return self().template member<&urd::record_of<V>::weight>(); }
 
-    [[nodiscard]] auto get_owner() const noexcept { return self().template member<&urd::record_of<V>::owner>(); }
+    [[nodiscard]] auto owner() const noexcept { return self().template member<&urd::record_of<V>::owner>(); }
 };
 
 namespace
@@ -467,7 +467,7 @@ TEST(Fields, NameMembersInOrderReadThroughAView)
     EXPECT_EQ(names, (std::vector<std::string_view> { "weight", "owner" }));
     using OwnerField = urd::field<"owner", &Data::owner>;
     EXPECT_EQ(item.member<OwnerField::member>().member<&Owner::name>(), "ada");
-    EXPECT_STREQ(OwnerField::prefixed<"get_">.data(), "get_owner");
+    EXPECT_STREQ(OwnerField::prefixed<"set_">.data(), "set_owner");
 }
 
 TEST(View, ResolvesMembersThroughItsContext)
@@ -799,7 +799,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_value() const noexcept { return self().template member<&urd::record_of<V>::value>(); }
+    [[nodiscard]] auto value() const noexcept { return self().template member<&urd::record_of<V>::value>(); }
 };
 
 template<typename V>
@@ -809,15 +809,15 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_count() const noexcept { return self().template member<&urd::record_of<V>::count>(); }
+    [[nodiscard]] auto count() const noexcept { return self().template member<&urd::record_of<V>::count>(); }
 
-    [[nodiscard]] auto get_limit() const noexcept { return self().template member<&urd::record_of<V>::limit>(); }
+    [[nodiscard]] auto limit() const noexcept { return self().template member<&urd::record_of<V>::limit>(); }
 
-    [[nodiscard]] auto get_choice() const noexcept { return self().template member<&urd::record_of<V>::choice>(); }
+    [[nodiscard]] auto choice() const noexcept { return self().template member<&urd::record_of<V>::choice>(); }
 
-    [[nodiscard]] auto get_choices() const noexcept { return self().template member<&urd::record_of<V>::choices>(); }
+    [[nodiscard]] auto choices() const noexcept { return self().template member<&urd::record_of<V>::choices>(); }
 
-    [[nodiscard]] auto get_inner() const noexcept { return self().template member<&urd::record_of<V>::inner>(); }
+    [[nodiscard]] auto inner() const noexcept { return self().template member<&urd::record_of<V>::inner>(); }
 };
 
 template<typename V>

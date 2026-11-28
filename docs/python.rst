@@ -37,7 +37,7 @@ Records and graphs are bound, not converted:
 
 - ``bind_fields(cls)`` (``urd/python/bindings.hpp``): a record's fields as read/write attributes, and an ``__init__``
   from their values.
-- ``bind_field_getters(cls)``: a view's ``get_<name>`` for each field.
+- ``bind_field_getters(cls)``: a view's ``<name>`` for each field.
 - ``bind_graph(cls)`` (``urd/python/graphs.hpp``): a graph's members, as urd's graph concepts say it has them. Their
   values go through nanobind's casters: ranges as lists (``urd/python/ranges.hpp``), a graph's data by reference,
   ``None`` where it carries none (``std::monostate``).

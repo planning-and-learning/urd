@@ -154,7 +154,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_weight() const { return self().template member<&urd::record_of<V>::weight>(); }
+    [[nodiscard]] decltype(auto) weight() const { return self().template member<&urd::record_of<V>::weight>(); }
 };
 
 template<typename V>
@@ -164,7 +164,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] decltype(auto) get_leaf() const { return self().template member<&urd::record_of<V>::leaf>(); }
+    [[nodiscard]] decltype(auto) leaf() const { return self().template member<&urd::record_of<V>::leaf>(); }
 };
 
 /// A leaf's key reads as the leaf, through its context; it is written from that view.
@@ -369,7 +369,7 @@ TEST(Copy, ARecordOfASiblingIsCopiedChildrenFirst)
     EXPECT_EQ(target.num_nodes(), 1U);
     EXPECT_EQ(target.num_leaves(), 1U);  // its own leaf copied, the shared one seen
     EXPECT_EQ(target[copied].rest[0], shared);
-    EXPECT_EQ(target.view(target[copied].first).get_weight(), 7);
+    EXPECT_EQ(target.view(target[copied].first).weight(), 7);
     EXPECT_EQ(target[copied].depth, 2);
 }
 
@@ -401,7 +401,7 @@ TEST(Copy, AKeyHeldAsItIsIsBuiltAsAChild)
                     pin,
                     [&named](const auto& view)
                     {
-                        named = view.get_weight();
+                        named = view.weight();
                         return view;
                     });
     EXPECT_EQ(named, 4);

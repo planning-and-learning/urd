@@ -72,16 +72,6 @@ struct reading_traits<child_view<T, Vs...>>
     using forms = boost::mp11::mp_list<Vs...>;
 };
 
-template<typename R>
-inline constexpr bool is_std_variant = false;
-template<typename... As>
-inline constexpr bool is_std_variant<std::variant<As...>> = true;
-
-template<typename R>
-inline constexpr bool is_std_optional = false;
-template<typename E>
-inline constexpr bool is_std_optional<std::optional<E>> = true;
-
 /// The type that unifies what the forms of a child give for one of their members (Rs, one per form): their type where
 /// all give the same; the child view of their forms where all read elements of one kind; an optional of the unified
 /// value where all give optionals; the child range of the unified element where all give ranges.
@@ -105,14 +95,14 @@ struct unified<R, Rs...>
 };
 
 template<typename R, typename... Rs>
-    requires(!(std::same_as<R, Rs> && ...)) && is_std_optional<R> && (is_std_optional<Rs> && ...)
+    requires(!(std::same_as<R, Rs> && ...)) && StdOptional<R> && (StdOptional<Rs> && ...)
 struct unified<R, Rs...>
 {
     using type = std::optional<typename unified<typename R::value_type, typename Rs::value_type...>::type>;
 };
 
 template<typename R, typename... Rs>
-    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && (!is_std_optional<R>) && std::ranges::forward_range<const R>
+    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && (!StdOptional<R>) && std::ranges::forward_range<const R>
             && (std::ranges::forward_range<const Rs> && ...)
 struct unified<R, Rs...>
 {
@@ -121,7 +111,7 @@ struct unified<R, Rs...>
 };
 
 template<typename R, typename... Rs>
-    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && is_std_variant<R> && ((is_std_variant<Rs> && !Reading<Rs>) && ...)
+    requires(!(std::same_as<R, Rs> && ...)) && (!Reading<R>) && StdVariant<R> && ((StdVariant<Rs> && !Reading<Rs>) && ...)
             && ((std::variant_size_v<R> == std::variant_size_v<Rs>) && ...)
 struct unified<R, Rs...>
 {
@@ -152,9 +142,9 @@ U unify(R&& result)
         else
             return std::visit([](const auto& view) { return U(typename U::form_type(std::in_place_type<std::remove_cvref_t<decltype(view)>>, view)); }, result);
     }
-    else if constexpr (is_std_optional<U>)
+    else if constexpr (StdOptional<U>)
         return result.has_value() ? U(detail::unify<typename U::value_type>(*std::forward<R>(result))) : U();
-    else if constexpr (is_std_variant<U>)
+    else if constexpr (StdVariant<U>)
     {
         // A variant value (not a child): its alternative unified, at the same position.
         auto unified_value = std::optional<U>();
@@ -436,19 +426,19 @@ inline constexpr bool value_range<child_range<E, Rs...>> = true;
 /// child its index_view, a built one its builder's view, a held one its record's view). Written back from a child view
 /// as from the variant of its forms (detail::variant_resolution::stored).
 template<typename U, typename C, typename K>
-struct resolution<std::variant<K, handle<builder<U, C>>, handle<data<U>>>> : detail::variant_resolution<std::variant, K, handle<builder<U, C>>, handle<data<U>>>
+struct resolution<child<U, C, K>> : detail::variant_resolution<std::variant, K, built_child<U, C>, held_child<U, C>>
 {
-    using Base = detail::variant_resolution<std::variant, K, handle<builder<U, C>>, handle<data<U>>>;
+    using Base = detail::variant_resolution<std::variant, K, built_child<U, C>, held_child<U, C>>;
     using Base::stored;
 
     template<typename P>
-    static auto of(const std::variant<K, handle<builder<U, C>>, handle<data<U>>>& member, const P& context)
+    static auto of(const child<U, C, K>& member, const P& context)
     {
         return []<typename... Ws>(std::variant<Ws...> forms) { return child_view<U, Ws...>(std::move(forms)); }(Base::of(member, context));
     }
 
     template<typename... Vs>
-    static std::variant<K, handle<builder<U, C>>, handle<data<U>>> stored(const child_view<U, Vs...>& readout)
+    static child<U, C, K> stored(const child_view<U, Vs...>& readout)
     { return Base::stored(readout.form()); }
 };
 
@@ -478,10 +468,60 @@ template<typename T, typename... Vs, typename F>
 decltype(auto) visit_view(const child_view<T, Vs...>& view, F&& f)
 { return std::visit(std::forward<F>(f), view.form()); }
 
-/// The view of the child's built form (its builder's view); std::bad_variant_access where it holds another.
+namespace detail
+{
+/// Whether a view reads a builder; whether it is an interned view (index_view): the form of a reading that has a key.
+template<typename V>
+using reads_builder = std::bool_constant<Builder<record_of<V>>>;
+
+template<typename V>
+struct is_index_view : std::false_type
+{
+};
+
+template<typename T, typename C, typename K>
+struct is_index_view<index_view<T, C, K>> : std::true_type
+{
+};
+
+/// The view of the form of a resolved child (urd::child resolved: the variant of the views of its forms) that `Form`
+/// picks: std::bad_variant_access where the child holds another form.
+template<template<typename> typename Form, View... Vs>
+auto form_view(const std::variant<Vs...>& views)
+{
+    using Views = boost::mp11::mp_list<Vs...>;
+    return std::get<boost::mp11::mp_at<Views, boost::mp11::mp_find_if<Views, Form>>>(views);
+}
+}  // namespace detail
+
+/// The view of a reading's built form (a builder's view): the reading itself where it is one; of a resolved child or a
+/// child view, the form that reads its builder, std::bad_variant_access where the child holds another form. What a
+/// reader that works on built records takes out of a child, without naming the view.
+template<BuilderView V>
+V built_view(const V& view)
+{ return view; }
+
+template<View... Vs>
+auto built_view(const std::variant<Vs...>& views)
+{ return detail::form_view<detail::reads_builder>(views); }
+
 template<typename T, typename... Vs>
 auto built_view(const child_view<T, Vs...>& view)
 { return urd::built_view(view.form()); }
+
+/// The interned view a reading of a T reads: an interned one as it is; of a resolved child or a child view, the form
+/// that has a key (a built or held record has none, its holder's: std::bad_variant_access).
+template<typename T, typename C, typename K>
+index_view<T, C, K> interned_view(const index_view<T, C, K>& interned)
+{ return interned; }
+
+template<View... Vs>
+auto interned_view(const std::variant<Vs...>& reading)
+{ return detail::form_view<detail::is_index_view>(reading); }
+
+template<typename T, typename... Vs>
+auto interned_view(const child_view<T, Vs...>& reading)
+{ return urd::interned_view(reading.form()); }
 
 }  // namespace urd
 

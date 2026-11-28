@@ -227,8 +227,8 @@ struct Hash<T>
     using is_transparent = void;
 
     hash_t operator()(const T& element) const
-        requires(detail::members_hashable<T>(T::identifying_members()))
-    { return detail::hash_members(element, T::identifying_members()); }
+        requires(detail::members_hashable<T>(urd::identifying_members_of<T>()))
+    { return detail::hash_members(element, urd::identifying_members_of<T>()); }
 
     template<identity_of<T> U>
     hash_t operator()(const U& identity) const

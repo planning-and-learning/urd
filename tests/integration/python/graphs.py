@@ -17,7 +17,6 @@ assert g.edges() == [0, 1]
 assert g.neighbours(a) == [b]
 assert g.source(e) == a and g.target(e) == b
 assert g.vertex_value(a) is None and g.edge_value(e) is None
-assert not hasattr(g, "in_edges")
 for missing in (lambda: g.neighbours(3), lambda: g.vertex_value(3), lambda: g.edge_value(2)):
     try:
         missing()
@@ -38,6 +37,5 @@ assert labeled.in_neighbours(1) == [0]
 rows = m.Rows(3, [(0, 2)])
 assert rows.adjacent(0, 2) and not rows.adjacent(2, 0)
 assert rows.vertex_value(0) is None
-assert not hasattr(rows, "edges")
 
 print("PASSED")

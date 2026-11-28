@@ -70,21 +70,13 @@ struct stored_field
     [[nodiscard]] static const member_type_t<Member>& read(const R& ref) { return (*ref).*Member; }
 };
 
-template<typename T, typename C>
-struct builder;
-
-/// A field of a builder itself (a builder read as its record is: build_from of a builder's view): in place.
-template<auto Member, typename T, typename C>
-struct stored_field<Member, builder<T, C>>
+/// A field of a record or a builder itself (held outside a store, reached through its ref, or a builder read as its
+/// record is: build_from of a builder's view): in place.
+template<auto Member, typename R>
+    requires Record<R> || Builder<R>
+struct stored_field<Member, R>
 {
-    [[nodiscard]] static const member_type_t<Member>& read(const builder<T, C>& built) { return built.*Member; }
-};
-
-/// A field of a record itself (a record held outside a store, or reached through its ref): in place.
-template<auto Member, typename T>
-struct stored_field<Member, data<T>>
-{
-    [[nodiscard]] static const member_type_t<Member>& read(const data<T>& record) { return record.*Member; }
+    [[nodiscard]] static const member_type_t<Member>& read(const R& held) { return held.*Member; }
 };
 
 /// A record with identifying_members() compares by them.

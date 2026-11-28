@@ -5,6 +5,7 @@
 #include "urd/elements/index.hpp"
 
 #include <boost/mp11/algorithm.hpp>
+#include <concepts>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -29,50 +30,64 @@ struct builder;
 /// make_owned). No form carries a context: a child is read through the context of the view that reads its builder,
 /// which urd resolves as any variant member (a key as the view its context makes, a handle as its record).
 /// C is the context type of the builder that holds it: what a built child's builder is read through.
-template<typename T, typename C, typename K = key<T>>
+template<typename T, typename C, typename K = key_t<T>>
 using interned_child = K;  ///< A child's interned form: its key.
 template<typename T, typename C>
-using built_child = handle<builder<T, C>>;  ///< A child's built form.
+using built_child = handle<builder<T, C>>;  ///< A child's built form; alone, a field a builder holds only built (never null).
 template<typename T, typename C>
 using held_child = handle<data<T>>;  ///< A child's form of a record of its own, not interned yet.
 
-template<typename T, typename C, typename K = key<T>>
+template<typename T, typename C, typename K = key_t<T>>
 using child = std::variant<interned_child<T, C, K>, built_child<T, C>, held_child<T, C>>;
 
 namespace detail
 {
-template<typename C>
-struct child_in
-{
-    template<typename T>
-    using fn = child<T, C>;
-};
+template<typename B>
+inline constexpr bool child_type = false;
+template<typename U, typename C, typename K>
+inline constexpr bool child_type<child<U, C, K>> = true;
+
+template<typename B>
+inline constexpr bool built_child_type = false;
+template<typename U, typename C>
+inline constexpr bool built_child_type<built_child<U, C>> = true;
 }  // namespace detail
 
-/// The built form of an index_variant<L> (a flat_variant of the indices of L's tags): the std::variant of their
-/// children, read through C, in the same order.
-template<typename L, typename C>
-using child_variant = boost::mp11::mp_apply<std::variant, boost::mp11::mp_transform<detail::child_in<C>::template fn, L>>;
+/// Whether B is a child (urd::child): a record's key as a builder holds it, in one of its three forms.
+template<typename B>
+concept Child = detail::child_type<B>;
 
-/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>) where it holds no
-/// builder (it is interned or a record; a built child's handle is never null).
-template<typename T, typename C, typename K, typename Pool>
-builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
+/// Whether B is a child held only built (urd::built_child): a builder's handle, never null.
+template<typename B>
+concept BuiltChild = detail::built_child_type<B>;
+
+/// The builder a child holds, to fill: where it holds none (it is interned or a record), the one `make` gives (a
+/// function of no argument that returns a built_child: from a pool, a storage's checkout, the heap).
+template<typename T, typename C, typename K, std::invocable Make>
+builder<T, C>& builder_of(child<T, C, K>& held, Make make)
 {
     if (!std::holds_alternative<built_child<T, C>>(held))
-        held.template emplace<built_child<T, C>>(pool.make_handle());
+        held.template emplace<built_child<T, C>>(make());
     return *std::get<built_child<T, C>>(held);
 }
 
+/// Whether Pool hands out handles of its slots (a Store of slots: make_handle()).
+template<typename Pool>
+concept HandsOutHandles = requires(Pool& pool) { pool.make_handle(); };
+
+/// The builder a child holds, to fill: a new one from `pool` (a Store of slots of builder<T, C>) where it holds none.
+template<typename T, typename C, typename K, HandsOutHandles Pool>
+builder<T, C>& builder_of(child<T, C, K>& held, Pool& pool)
+{
+    return urd::builder_of(held, [&pool]() -> built_child<T, C> { return pool.make_handle(); });
+}
+
 /// The builder a child holds, to replace whole (clear, assign, unpack into): a new one of its own on the heap
-/// (urd::make_owned) where it holds none (it is interned or a record), as builder_of(held,
-/// pool) gives one from a pool.
+/// (urd::make_owned) where it holds none.
 template<typename T, typename C, typename K>
 builder<T, C>& builder_of(child<T, C, K>& held)
 {
-    if (!std::holds_alternative<built_child<T, C>>(held))
-        held.template emplace<built_child<T, C>>(urd::make_owned<builder<T, C>>());
-    return *std::get<built_child<T, C>>(held);
+    return urd::builder_of(held, []() -> built_child<T, C> { return urd::make_owned<builder<T, C>>(); });
 }
 
 /// The builder a child holds built, to write in place: std::bad_variant_access where it holds its key or a record (its
@@ -85,11 +100,15 @@ template<typename T, typename C, typename K>
 const builder<T, C>& built(const child<T, C, K>& held)
 { return *std::get<built_child<T, C>>(held); }
 
-/// Whether R is a builder.
-template<typename R>
-inline constexpr bool is_builder = false;
-
-template<typename T, typename C>
-inline constexpr bool is_builder<builder<T, C>> = true;
+/// The contents of a builder, taken out of it: `built` is left as a new one (its handles made anew, never null), fit to
+/// be filled again. What keeps a builder that its owner reuses (a pooled one, a generator's): moving it out would leave
+/// its handles null.
+template<Builder B>
+[[nodiscard]] B take(B& built)
+{
+    auto taken = B();
+    std::swap(taken, built);
+    return taken;
+}
 
 }  // namespace urd

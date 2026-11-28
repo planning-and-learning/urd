@@ -174,7 +174,7 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_row() const noexcept { return self().template member<&urd::record_of<V>::row>(); }
+    [[nodiscard]] auto row() const noexcept { return self().template member<&urd::record_of<V>::row>(); }
 };
 
 template<int I, typename V>
@@ -184,9 +184,9 @@ private:
     [[nodiscard]] const V& self() const noexcept { return static_cast<const V&>(*this); }
 
 public:
-    [[nodiscard]] auto get_head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
+    [[nodiscard]] auto head() const noexcept { return self().template member<&urd::record_of<V>::head>(); }
 
-    [[nodiscard]] auto get_arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
+    [[nodiscard]] auto arguments() const noexcept { return self().template member<&urd::record_of<V>::arguments>(); }
 };
 
 namespace mechanism
